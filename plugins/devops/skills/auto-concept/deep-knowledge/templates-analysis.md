@@ -146,7 +146,7 @@ mode-aware decisions to `collectModeDecision()` below.
 
 ## Decision modes
 
-Seven modes, one typed value each. A decision WITHOUT `data-decision-mode`
+Twelve modes (seven classic, five Phase-2 forms in § Phase 2 answer forms), one typed value each. A decision WITHOUT `data-decision-mode`
 is the legacy include/discard bi-state (`§ Bi-State Variant Evaluation`) and
 keeps its `evaluation` payload untouched.
 
@@ -158,7 +158,9 @@ keeps its `evaluation` payload untouched.
 | `slider` | a quantity / threshold on a scale | `input[type=range][name="dm-{id}"][min][max][step][value]`; `data-unit` on the decision | number | number (`null` when empty) |
 | `order` | a priority or sequence | `input[type=hidden][name="dm-{id}"]` = comma-joined ids; the sortable list is rendered from it | comma-joined ids | ids in the chosen order (string[]) |
 | `verify` | Claude states something and the user confirms it | radios `dm-{id}` values `ok` `partial` `wrong`, plus `input[name="dm-{id}-fix"]` | verdict | verdict string; the correction in entry `fix` |
-| `wording` | a name / phrasing, with suggestions | radios `dm-{id}` with the suggestion ids (+ `custom`), each `data-text="…"`; `input[type=text][name="dm-{id}-text"]` for `custom` | suggestion id | the final wording (string); entry `choice` = suggestion id or `custom` |
+| \`picture\` / \`compare\` / \`chain\` / \`place\` | seen, compared, routed, located — see § Phase 2 answer forms | radios \`dm-{id}\` like \`single\`, with media / cells / steps / slots inside the options | option id | option id (string) |
+| \`points\` | a budget split over 2-8 items | hidden \`dm-{id}.{item}\` per item (0-8 points) | \`item:points\` pairs | \`{ item: points }\` |
+| \`wording\` | a name / phrasing, with suggestions | radios `dm-{id}` with the suggestion ids (+ `custom`), each `data-text="…"`; `input[type=text][name="dm-{id}-text"]` for `custom` | suggestion id | the final wording (string); entry `choice` = suggestion id or `custom` |
 
 Label rules for options: outcome verbs, no polarity-only labels ("An" /
 "Aus"), no double negation, one consequence line per option
@@ -255,6 +257,13 @@ function collectModeDecision(el) {
     const ids = text(n).split(',').map(s => s.trim()).filter(Boolean);
     entry.value = ids;
     deviates = ids.join(',') !== rec.replace(/\s+/g, '');
+  } else if (mode === 'points') {
+    const pts = {};
+    ctl.filter(c => (c.name || '').indexOf(n + '.') === 0).forEach(c => { pts[c.name.slice(n.length + 1)] = Math.max(0, Math.round(Number(c.value) || 0)); });
+    entry.value = pts;
+    const want = {};
+    rec.split(/[\s,]+/).filter(Boolean).forEach(t => { const k = t.split(':'); want[k[0]] = Math.max(0, Math.round(Number(k[1]) || 0)); });
+    deviates = Object.keys(pts).concat(Object.keys(want)).some(k => (pts[k] || 0) !== (want[k] || 0));
   } else if (mode === 'verify') {
     const p = picked(n);
     entry.value = p ? p.value : '';
@@ -274,7 +283,7 @@ function collectModeDecision(el) {
   entry.rec = rec;
   entry.deviates = deviates;
   entry.none = text(n + '-none') === '1';
-  if (entry.none) { entry.value = mode === 'multi' ? [] : ''; entry.deviates = true; }
+  if (entry.none) { entry.value = mode === 'multi' ? [] : mode === 'points' ? {} : ''; entry.deviates = true; }
   entry.untouched = text(n + '-touched') !== '1';
   entry.note = ((noteEl && noteEl.value) || '').trim();
   entry.appliesTo = el.dataset.appliesTo || '';
@@ -331,15 +340,71 @@ Core types every engine build must provide (the full ≥ 30 type catalogue with
 | `compare` | `{ "before": { "label": "…", "value": 10 }, "after": { "label": "…", "value": 4 }, "unit": "s" }` |
 | `flow` | `{ "steps": [ { "label": "…", "value": "…" } ] }` |
 
-## Phase 2 — TODO (not built yet)
+## Phase 2 answer forms
 
-New answer forms, after Phase 1 (the chat flow above) has settled:
+Five more modes. All sit in the same answer block (raised surface, rows or
+cards, ★ Empfohlen on the recommendation, recommendation preselected, "Keine
+passt?" link, hesitation tracking) and use the control convention of the
+table above; four of them are plain radio decisions, so collect, bake, freeze
+and the gate's preselection check treat them like `single`.
 
-- **Bildauswahl** — pick between sketches or real excerpts (never variant
-  prototyping: that belongs to concept design rounds).
-- **Vergleich** — at most 3 × 3, closer to the look of the other forms.
-- **Weg / Kette** — a path or chain of steps.
-- **Platzierung** — a slot on a sketch AND a list beside it.
-- **Punkte verteilen** — Fibonacci points 1 · 2 · 3 · 5 · 8, the budget scales with
-  the item count (e.g. 13 for 4 items).
-- Slider: live consequences along the scale.
+```html
+<!-- picture: 2-4 images; a sketch (inline SVG) or a real excerpt (img / pre). Never variant prototyping. -->
+<div data-options>
+  <label data-opt="flat"><input type="radio" name="dm-d-x" value="flat" checked>
+    <span data-opt-media><svg viewBox="0 0 160 90">…</svg></span>
+    <span data-opt-label>Flat list</span><span data-opt-consequence>One line per hook.</span></label>
+  <label data-opt="real"><input type="radio" name="dm-d-x" value="real">
+    <span data-opt-media><pre>real excerpt of the app</pre></span>…</label>
+</div>
+
+<!-- compare: max 3 options x 3 criteria; the option is the column, a cell is one criterion -->
+<label data-opt="a"><input type="radio" name="dm-d-x" value="a">
+  <span data-opt-label>Cache</span>
+  <span data-opt-cell data-crit="Tokens">-31 M</span>
+  <span data-opt-cell data-crit="Freshness">10 min</span></label>
+
+<!-- chain: every option is one route; its steps render as a chain -->
+<label data-opt="r1"><input type="radio" name="dm-d-x" value="r1">
+  <span data-opt-label>Via the bridge</span>
+  <ol data-opt-steps><li>Hook</li><li data-step-new>Bridge</li><li>Tool</li></ol></label>
+
+<!-- place: a sketch with slots AND the list; both select the same value -->
+<div data-place-sketch><svg viewBox="0 0 200 120">
+  <rect data-slot-for="top" x="10" y="8" width="180" height="26"/>
+  <rect data-slot-for="side" x="10" y="42" width="48" height="70"/></svg></div>
+<div data-options> …radios with the same ids (top, side)… </div>
+
+<!-- points: one hidden input per item, its preset = the recommendation -->
+<div data-options>
+  <div data-opt="speed"><span data-opt-label>Speed</span><span data-opt-consequence>…</span>
+    <input type="hidden" name="dm-d-x.speed" value="5"></div> …
+</div>
+```
+
+| Mode | `data-rec` | `value` | Engine |
+|---|---|---|---|
+| `picture` | option id | option id | cards in a grid; media above the label |
+| `compare` | option id | option id | the options become columns; `data-crit` names the row. Gate warns above 3 options or 3 cells |
+| `chain` | route id | route id | `[data-opt-steps]` renders as arrow-linked steps; `data-step-new` marks a new step |
+| `place` | slot id | slot id | `[data-slot-for="<opt id>"]` on the sketch selects the radio; the list row and the slot highlight each other |
+| `points` | `item:points` pairs, space separated (`speed:5 cost:3 risk:2 reach:3`) | `{ "speed": 5, "cost": 3, … }` (0 for unspent) | buttons 1 · 2 · 3 · 5 · 8 per item (click again = 0); budget `pointsBudget(n) = 3n + 1` (2 → 7, 3 → 10, **4 → 13**, 5 → 16); a live "Übrig: x von y" line; a step that would exceed the budget is disabled |
+
+`points` has no "Keine passt" link (the value is always an answer) and its
+inputs are named `dm-{id}.{item}`; the recommendation preset must be on
+Fibonacci steps and within the budget (gate error `decision-preselect`).
+Gate warnings: `picture-count` (not 2–4), `picture-media` (option without
+`[data-opt-media]`), `compare-size` (> 3 × 3), `chain-steps` (route without
+`[data-opt-steps]`), `place-sketch` / `place-slot` (no sketch, or a slot that
+names no option), `points-count` (not 2–8 items).
+
+**Slider live consequences.** `data-stops='[{"at":4,"text":"…"},{"at":8,"text":"…"}]'`
+on a slider decision: the line under the scale shows the text of the last stop
+at or below the value (the first stop below the first). The ★ marker stays.
+
+**"Davon hängt ab".** The one-line `data-stakes` of the fixed-height question
+message carries the full text as its tooltip.
+
+**Closing → next concept entry.** The link follows the concept page's own
+section nav (`.section-nav-item[data-section-id]`): the first item after the
+analysis whose section lies outside it; no nav, no link.

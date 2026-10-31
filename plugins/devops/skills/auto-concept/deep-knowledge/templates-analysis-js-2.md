@@ -58,7 +58,8 @@
   /* ================= 5. a decision stage: finding -> question -> answer block ================= */
   const KIND = {
     single: ['Eine Antwort', 'One answer'], multi: ['Mehrere möglich', 'Several possible'], yesnoalt: ['Ja · Nein · Anders', 'Yes · No · Other'],
-    slider: ['Wert wählen', 'Pick a value'], order: ['Reihenfolge', 'Order'], verify: ['Stimmt das?', 'Is this right?'], wording: ['Formulierung', 'Wording']
+    slider: ['Wert wählen', 'Pick a value'], order: ['Reihenfolge', 'Order'], verify: ['Stimmt das?', 'Is this right?'], wording: ['Formulierung', 'Wording'],
+    picture: ['Bild wählen', 'Pick a picture'], compare: ['Vergleich', 'Comparison'], chain: ['Weg wählen', 'Pick a route'], place: ['Platz wählen', 'Pick a spot'], points: ['Punkte verteilen', 'Distribute points']
   };
   function prepDecision(inst, st) {
     const d = st.el, id = decId(d), mode = d.dataset.decisionMode;
@@ -71,6 +72,8 @@
     // "Davon hängt ab" sits under the question in the fixed-height question message.
     const q = d.querySelector('[data-question]'), stakes = d.querySelector('[data-stakes]');
     if (stakes && !stakes.querySelector('.an-k-l')) stakes.insertBefore(h('b', 'an-k-l', L('Davon hängt ab: ', 'What depends on it: ')), stakes.firstChild);
+    // The line is ellipsised in the fixed-height question message: the full text is its tooltip.
+    if (stakes) { tip(stakes, stakes.textContent.trim()); stakes.tabIndex = 0; }
     const fresh = !isTouched(d);
     const rec = recList(d);
     if (mode === 'multi') {
@@ -81,10 +84,13 @@
       if (r) buildSlider(inst, d, r, zone);
     } else if (mode === 'order') {
       buildOrder(inst, d, zone);
+    } else if (mode === 'points') {
+      buildPoints(inst, d, zone);
     } else if (fresh && rec.length && !ctl(d, 'dm-' + id).some(c => c.type === 'radio' && c.checked)) {
       const c = ctl(d, 'dm-' + id).find(x => x.value === rec[0]);
       if (c) c.checked = true;
     }
+    if (mode === 'place') buildPlace(inst, d, zone);
     // ★ Empfohlen chip behind the label of the recommended option(s); the reason is its tooltip.
     const why = d.dataset.recWhy ? L('Warum: ', 'Why: ') + d.dataset.recWhy : L('Unsere Empfehlung', 'Our recommendation');
     d.querySelectorAll('[data-opt]').forEach((o, i) => {
@@ -94,7 +100,7 @@
         o.classList.add('an-rec');
         if (!o.querySelector('.an-badge')) { const b = h('span', 'an-badge', '★ ' + L('Empfohlen', 'Recommended')); b.setAttribute('data-tip', why); b.tabIndex = 0; (o.querySelector('[data-opt-label]') || o).appendChild(b); }
       }
-      if (i < 9) tip(o, '', String(i + 1));
+      if (i < 9 && mode !== 'points') tip(o, '', String(i + 1));
     });
     // Inline fields that belong to one option (alt / fix / custom text).
     const inline = { yesnoalt: ['-alt', 'alt'], verify: ['-fix', 'partial|wrong'], wording: ['-text', 'custom'] }[mode];
@@ -113,7 +119,7 @@
     // An option can be deselected again: a click on the row that is already on
     // clears the choice (radios cannot do that natively). Nothing picked AND an
     // empty note = the question counts as untouched again (see answerEmpty).
-    if (!['multi', 'slider', 'order'].includes(mode)) {
+    if (!['multi', 'slider', 'order', 'points'].includes(mode)) {
       d.querySelectorAll('[data-options] input[type=radio]').forEach(r => r.addEventListener('click', () => {
         if (r.checked && d.__sel && d.__sel === r.value) { r.checked = false; fire(r); }
       }));
@@ -122,7 +128,7 @@
     // answer block (not with slider / order, whose value is always an answer). It clears
     // the pick, sets dm-{id}-none and puts the cursor into the composer, whose note then
     // carries the answer.
-    if (!['slider', 'order'].includes(mode)) {
+    if (!['slider', 'order', 'points'].includes(mode)) {
       const none = btn('an-none', NONE_TXT());
       none.setAttribute('aria-pressed', 'false');
       none.addEventListener('click', () => setNone(inst, d, (ctl1(d, 'dm-' + id + '-none') || {}).value !== '1'));
@@ -207,7 +213,15 @@
     zone.appendChild(wrap);
     tip(r, d.dataset.label || '');
     r.setAttribute('data-tip-key', '← →');
-    d.__slider = { r, out, unit };
+    // Live consequences: data-stops='[{"at":4,"text":"…"}]' - the text of the last stop at or below the value.
+    let stops = [];
+    try { stops = JSON.parse(d.dataset.stops || '[]'); } catch (e) { stops = []; }
+    if (!Array.isArray(stops)) stops = [];
+    const cons = h('div', 'an-sl-cons');
+    cons.setAttribute('aria-live', 'polite');
+    cons.hidden = !stops.length;
+    wrap.appendChild(cons);
+    d.__slider = { r, out, unit, cons, stops };
     syncSlider(d);
   }
   function syncSlider(d) {
@@ -216,6 +230,13 @@
     const min = num(s.r.min), max = num(s.r.max) || 100;
     s.out.innerHTML = esc(fmt(s.r.value)) + (s.unit ? '<small>' + esc(s.unit) + '</small>' : '');
     s.r.style.setProperty('--an-p', clamp((num(s.r.value) - min) / ((max - min) || 1) * 100, 0, 100) + '%');
+    if (s.cons && s.stops.length) {
+      const v = num(s.r.value);
+      let hit = null;
+      s.stops.forEach(st => { if (num(st.at) <= v && (!hit || num(st.at) >= num(hit.at))) hit = st; });
+      if (!hit) hit = s.stops.reduce((a, b) => (num(b.at) < num(a.at) ? b : a));
+      s.cons.textContent = hit ? String(hit.text || '') : '';
+    }
   }
   function buildOrder(inst, d, zone) {
     const hid = ctl1(d, 'dm-' + decId(d));
@@ -273,6 +294,112 @@
     o.sig = ids.join(',');
     if (o.hid.value !== o.sig) { o.hid.value = o.sig; fire(o.hid); }
   }
+  /* ----- points: Fibonacci steps per item, a budget that scales with the item count ----- */
+  const POINT_STEPS = [1, 2, 3, 5, 8];
+  /** Budget for n items: 3 per item plus 1 (2 items 7, 3 items 10, 4 items 13, 5 items 16). */
+  const pointsBudget = n => 3 * n + 1;
+  const recPoints = s => { const o = {}; String(s || '').split(/[\s,]+/).filter(Boolean).forEach(t => { const k = t.split(':'); if (k[0]) o[k[0]] = Math.max(0, Math.round(Number(k[1]) || 0)); }); return o; };
+  const ptsOf = (d, item) => Math.max(0, Math.round(Number(d.__pts.hids[item].value) || 0));
+  const ptsSpent = d => Object.keys(d.__pts.hids).reduce((a, k) => a + ptsOf(d, k), 0);
+  function buildPoints(inst, d, zone) {
+    const id = decId(d), rows = [...d.querySelectorAll('[data-opt]')];
+    const items = rows.map(o => o.getAttribute('data-opt'));
+    const recP = recPoints(d.dataset.rec);
+    const blank = !isTouched(d) && !items.some(it => (ctl1(d, 'dm-' + id + '.' + it) || {}).value);
+    const hids = {};
+    rows.forEach(o => {
+      const item = o.getAttribute('data-opt');
+      let hid = ctl1(d, 'dm-' + id + '.' + item);
+      if (!hid) { hid = h('input'); hid.type = 'hidden'; hid.name = 'dm-' + id + '.' + item; hid.value = ''; o.appendChild(hid); }
+      if (blank) hid.value = recP[item] ? String(recP[item]) : '';
+      hids[item] = hid;
+    });
+    const bar = h('div', 'an-pts-bar'), left = h('span', 'an-pts-left'), meter = h('span', 'an-pts-meter'), fill = h('i');
+    meter.appendChild(fill);
+    bar.append(left, meter);
+    zone.insertBefore(bar, zone.firstChild);
+    d.__pts = { budget: pointsBudget(items.length), hids, rows: {}, left, fill };
+    rows.forEach(o => {
+      const item = o.getAttribute('data-opt'), steps = h('span', 'an-pts');
+      steps.setAttribute('role', 'group');
+      steps.setAttribute('aria-label', optLabel(d, item));
+      const bs = POINT_STEPS.map(s => {
+        const b = btn('an-pt', String(s));
+        b.dataset.pts = String(s);
+        b.setAttribute('aria-label', optLabel(d, item) + ': ' + s);
+        b.addEventListener('click', () => setPoints(d, item, s));
+        return b;
+      });
+      steps.append.apply(steps, bs);
+      o.appendChild(steps);
+      d.__pts.rows[item] = { o, bs };
+    });
+    syncPoints(d);
+  }
+  /** Sets an item to s points (the same step again = 0); refuses what would exceed the budget. */
+  function setPoints(d, item, s) {
+    const p = d.__pts, hid = p && p.hids[item];
+    if (!hid || hid.disabled) return false;
+    const cur = ptsOf(d, item), next = cur === s ? 0 : s;
+    if (ptsSpent(d) - cur + next > p.budget) return false;
+    hid.value = next ? String(next) : '';
+    hid.dispatchEvent(new Event('change', { bubbles: true }));
+    return true;
+  }
+  function syncPoints(d) {
+    const p = d.__pts;
+    if (!p) return;
+    const spent = ptsSpent(d), left = p.budget - spent;
+    p.left.innerHTML = L('Übrig: ', 'Left: ') + '<b>' + left + '</b> ' + L('von ', 'of ') + p.budget + L(' Punkten', ' points');
+    p.left.classList.toggle('an-pts-zero', left === 0);
+    p.fill.style.width = clamp(spent / p.budget * 100, 0, 100) + '%';
+    Object.keys(p.rows).forEach(k => {
+      const cur = ptsOf(d, k), r = p.rows[k];
+      r.o.classList.toggle('is-on', cur > 0);
+      r.bs.forEach(b => {
+        const s = Number(b.dataset.pts);
+        b.classList.toggle('an-pt-on', cur === s);
+        b.setAttribute('aria-pressed', cur === s ? 'true' : 'false');
+        b.disabled = p.hids[k].disabled || (cur !== s && spent - cur + s > p.budget);
+      });
+    });
+  }
+  /* ----- place: a slot on a sketch AND the list beside it select the same value ----- */
+  function buildPlace(inst, d, zone) {
+    const sk = d.querySelector('[data-place-sketch]'), opts = zone.querySelector('[data-options]');
+    if (!sk || !opts) return;
+    const id = decId(d), wrap = h('div', 'an-place');
+    zone.insertBefore(wrap, opts);
+    wrap.append(sk, opts);
+    const slots = [...sk.querySelectorAll('[data-slot-for]')];
+    slots.forEach(s => {
+      const v = s.getAttribute('data-slot-for'), o = optEl(d, v), lab = o ? optLabel(d, v) : v;
+      s.setAttribute('tabindex', '0');
+      s.setAttribute('role', 'radio');
+      s.setAttribute('aria-label', lab);
+      tip(s, lab);
+      const pick = () => { const c = ctl(d, 'dm-' + id).find(x => x.value === v); if (c && !c.disabled) c.click(); };
+      s.addEventListener('click', pick);
+      s.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); pick(); } });
+      if (o) {
+        o.addEventListener('mouseenter', () => s.classList.add('an-slot-hot'));
+        o.addEventListener('mouseleave', () => s.classList.remove('an-slot-hot'));
+        s.addEventListener('mouseenter', () => o.classList.add('an-hot'));
+        s.addEventListener('mouseleave', () => o.classList.remove('an-hot'));
+      }
+    });
+    d.__place = { slots };
+    syncPlace(d);
+  }
+  function syncPlace(d) {
+    const p = d.__place;
+    if (!p) return;
+    p.slots.forEach(s => {
+      const on = s.getAttribute('data-slot-for') === d.__sel;
+      s.classList.toggle('an-slot-on', on);
+      s.setAttribute('aria-checked', on ? 'true' : 'false');
+    });
+  }
   /** Keeps the option cards / inline fields / slider / order list in step with the controls. */
   function syncDecision(d) {
     d.querySelectorAll('[data-opt]').forEach(o => { const i = o.querySelector('input'); if (i) o.classList.toggle('is-on', !!i.checked); });
@@ -291,6 +418,8 @@
       w.classList.toggle('an-show', on);
     });
     syncSlider(d);
+    syncPoints(d);
+    syncPlace(d);
     const inst = instances.find(i => i.root.contains(d));
     if (d.__order && inst) syncOrder(inst, d);
     const st = inst && inst.decs.find(x => x.el === d);
@@ -305,7 +434,7 @@
   }
   /** Radio decision with no option picked, no note and no issue: nothing was answered. */
   function answerEmpty(d) {
-    if (['multi', 'slider', 'order'].includes(d.dataset.decisionMode)) return false;
+    if (['multi', 'slider', 'order', 'points'].includes(d.dataset.decisionMode)) return false;
     const id = decId(d), note = d.querySelector('.an-note');
     return !ctl(d, 'dm-' + id).some(c => c.type === 'radio' && c.checked)
       && (ctl1(d, 'dm-' + id + '-none') || {}).value !== '1'
@@ -322,7 +451,7 @@
     if ((e.target.type === 'radio' || e.target.type === 'checkbox') && e.target.checked && e.target.closest('[data-options]')) setHidden(d, '-none', '');
     syncDecision(d);
     if (e.target.classList && e.target.classList.contains('an-epic')) return;
-    if (/^(radio|checkbox|range)$/.test(e.target.type) && !/-(none|touched|issue|epic)$/.test(n)) {
+    if ((/^(radio|checkbox|range)$/.test(e.target.type) || d.dataset.decisionMode === 'points') && !/-(none|touched|issue|epic)$/.test(n)) {
       // The second and every further change of an answer counts like a revisit (hesitation signal).
       const r = hesEntry(inst, decId(d));
       r.changes = (r.changes || 0) + 1;
@@ -465,10 +594,16 @@
   }
 
   /* ================= 8. closing, done ================= */
-  /** The next entry of the surrounding devops concept (a sibling section with a nav label), when there is one. */
+  /** The next entry of the surrounding concept in ITS OWN nav order (.section-nav-item[data-section-id]): the first item after the analysis whose section lies outside it. No nav, no link. */
   function nextEntry(inst) {
-    for (let n = inst.root.nextElementSibling; n; n = n.nextElementSibling) {
-      if (n.id && n.getAttribute('data-nav-label') && !n.hasAttribute('data-analysis-briefing')) return n;
+    const items = [...document.querySelectorAll('.section-nav-item[data-section-id]')];
+    const target = it => document.getElementById(it.getAttribute('data-section-id'));
+    let at = -1;
+    items.forEach((it, i) => { const t = target(it); if (t && inst.root.contains(t)) at = i; });
+    if (at < 0) return null;
+    for (let i = at + 1; i < items.length; i++) {
+      const t = target(items[i]);
+      if (t && !inst.root.contains(t)) return { id: t.id, label: (t.getAttribute('data-nav-label') || items[i].textContent || '').trim(), item: items[i] };
     }
     return null;
   }
@@ -526,10 +661,9 @@
     wrap.appendChild(acts);
     const nx = nextEntry(inst);
     if (nx) {
-      const lk = btn('an-link', L('Weiter zu: ', 'Continue with: ') + nx.getAttribute('data-nav-label') + ' →');
+      const lk = btn('an-link', L('Weiter zu: ', 'Continue with: ') + nx.label + ' →');
       lk.addEventListener('click', () => {
-        const item = document.querySelector('.section-nav-item[data-section-id="' + cssEsc(nx.id) + '"]');
-        if (item) item.click(); else nx.scrollIntoView({ block: 'start' });
+        nx.item.click();
       });
       wrap.appendChild(lk);
     }

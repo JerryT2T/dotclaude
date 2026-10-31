@@ -187,12 +187,14 @@ What the code does, in the order of the file:
     if (m === 'slider') return v == null ? '–' : fmt(v) + unit;
     if (m === 'order') return v.map(x => optLabel(d, x)).join(' → ');
     if (m === 'wording') return v || '–';
+    if (m === 'points') { const ks = Object.keys(v || {}).filter(k => v[k]); return ks.length ? ks.map(k => optLabel(d, k) + ' ' + v[k]).join(', ') : '–'; }
     return v ? optLabel(d, v) : '–';
   }
   function recText(d) {
     const m = d.dataset.decisionMode, r = recList(d);
     if (m === 'slider') return r[0] + (d.dataset.unit ? ' ' + d.dataset.unit : '');
     if (m === 'order') return r.map(x => optLabel(d, x)).join(' → ');
+    if (m === 'points') return r.map(x => { const k = x.split(':'); return optLabel(d, k[0]) + ' ' + (k[1] || 0); }).join(', ');
     return r.map(x => optLabel(d, x)).join(', ');
   }
   function fire(el) {

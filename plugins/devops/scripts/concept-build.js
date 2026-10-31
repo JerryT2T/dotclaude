@@ -392,7 +392,8 @@ function modeFields(fragment, decisions) {
     const n = `dm-${d.id}`;
     const v = d.value;
     switch (d.mode) {
-      case 'single': case 'verify': out[n] = v == null ? '' : String(v); break;
+      case 'single': case 'verify': case 'picture': case 'compare': case 'chain': case 'place': out[n] = v == null ? '' : String(v); break;
+      case 'points': Object.keys(v || {}).forEach(k => { out[`${n}.${k}`] = v[k] ? String(v[k]) : ''; }); break;
       case 'multi': {
         const on = new Set(Array.isArray(v) ? v : []);
         boxNames.filter(b => b.startsWith(`${n}.`)).forEach(b => { out[b] = on.has(b.slice(n.length + 1)); });

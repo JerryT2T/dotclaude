@@ -25,7 +25,10 @@
 
 'use strict';
 
-const MODES = ['single', 'multi', 'yesnoalt', 'slider', 'order', 'verify', 'wording'];
+const MODES = ['single', 'multi', 'yesnoalt', 'slider', 'order', 'verify', 'wording', 'picture', 'compare', 'chain', 'place', 'points'];
+const POINT_STEPS = [1, 2, 3, 5, 8];
+/** Budget for n items (mirror of the engine's pointsBudget): 4 items -> 13. */
+const pointsBudget = n => 3 * n + 1;
 const VOID = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr']);
 const TAG_RE = /<(\/?)([a-z][a-z0-9-]*)\b((?:[^>"']|"[^"]*"|'[^']*')*)>/gi;
 
@@ -88,7 +91,7 @@ function preselectionIssue(doc, el, mode, rec) {
   const name = `dm-${id}`;
   const inputs = doc.nodes.filter(n => n.tag === 'input' && inside(el, n));
   const checked = n => /(?:^|\s)checked(?:\s|=|\/|$)/i.test(n.attrs);
-  if (mode === 'single' || mode === 'verify' || mode === 'wording' || mode === 'yesnoalt') {
+  if (['single', 'verify', 'wording', 'yesnoalt', 'picture', 'compare', 'chain', 'place'].includes(mode)) {
     const hit = inputs.find(n => attr(n, 'type') === 'radio' && attr(n, 'name') === name && checked(n));
     if (!hit) return `no radio of "${name}" is pre-checked`;
     if (attr(hit, 'value') !== rec) return `the pre-checked option "${attr(hit, 'value')}" is not the recommendation "${rec}"`;
@@ -105,6 +108,22 @@ function preselectionIssue(doc, el, mode, rec) {
     if (!r) return `no <input type="range" name="${name}">`;
     const v = attr(r, 'value');
     return v != null && v !== '' && Number(v) === Number(rec) ? null : `the slider value "${attr(r, 'value')}" is not the recommendation "${rec}"`;
+  }
+  if (mode === 'points') {
+    const items = inputs.filter(n => (attr(n, 'name') || '').startsWith(name + '.'));
+    if (!items.length) return 'no <input type="hidden" name="' + name + '.{item}"> per item';
+    const want = {};
+    rec.split(/[\s,]+/).filter(Boolean).forEach(t => { const k = t.split(':'); want[k[0]] = Number(k[1]) || 0; });
+    const budget = pointsBudget(items.length);
+    let sum = 0;
+    for (const n of items) {
+      const k = attr(n, 'name').slice(name.length + 1);
+      const v = Number(attr(n, 'value') || 0) || 0;
+      if (v && !POINT_STEPS.includes(v)) return 'the preset of "' + k + '" (' + v + ') is not a step of 1 · 2 · 3 · 5 · 8';
+      if (v !== (want[k] || 0)) return 'the preset of "' + k + '" (' + v + ') is not the recommendation (' + (want[k] || 0) + ')';
+      sum += v;
+    }
+    return sum <= budget ? null : 'the recommendation spends ' + sum + ' points, over the budget of ' + budget + ' for ' + items.length + ' items';
   }
   if (mode === 'order') {
     const h = inputs.find(n => attr(n, 'name') === name);
@@ -156,6 +175,30 @@ function findAnalysisIssues(html) {
     if (doc.nodes.some(n => has(n, 'data-baked') && inside(n, d))) continue;
     const issue = preselectionIssue(doc, d, mode, rec);
     if (issue) err('decision-preselect', `decision "${id}" (${mode}): ${issue} — the recommendation is always preselected`, d.start);
+  }
+
+  // A10 — the Phase-2 answer forms
+  for (const d of decisions) {
+    const mode = attr(d, 'data-decision-mode');
+    const id = attr(d, 'data-decision');
+    const opts = doc.nodes.filter(n => has(n, 'data-opt') && inside(d, n));
+    const sub = (o, name) => doc.nodes.filter(n => has(n, name) && inside(o, n));
+    if (mode === 'picture') {
+      if (opts.length < 2 || opts.length > 4) warn('picture-count', 'decision "' + id + '" (picture) offers ' + opts.length + ' images — keep it between 2 and 4', d.start);
+      for (const o of opts) if (!sub(o, 'data-opt-media').length) warn('picture-media', 'decision "' + id + '": option "' + attr(o, 'data-opt') + '" has no [data-opt-media] (a sketch as inline SVG or a real excerpt)', o.start);
+    } else if (mode === 'compare') {
+      const most = Math.max(0, ...opts.map(o => sub(o, 'data-opt-cell').length));
+      if (opts.length > 3 || most > 3) warn('compare-size', 'decision "' + id + '" (compare) is ' + opts.length + ' options × ' + most + ' criteria — at most 3 × 3', d.start);
+    } else if (mode === 'chain') {
+      for (const o of opts) if (!sub(o, 'data-opt-steps').length) warn('chain-steps', 'decision "' + id + '": route "' + attr(o, 'data-opt') + '" has no [data-opt-steps] chain', o.start);
+    } else if (mode === 'place') {
+      const slots = doc.nodes.filter(n => has(n, 'data-slot-for') && inside(d, n));
+      if (!doc.nodes.some(n => has(n, 'data-place-sketch') && inside(d, n)) || !slots.length) warn('place-sketch', 'decision "' + id + '" (place) has no [data-place-sketch] with [data-slot-for] slots', d.start);
+      const ids = opts.map(o => attr(o, 'data-opt'));
+      for (const s of slots) if (!ids.includes(attr(s, 'data-slot-for'))) warn('place-slot', 'decision "' + id + '": slot "' + attr(s, 'data-slot-for') + '" names no option', s.start);
+    } else if (mode === 'points') {
+      if (opts.length < 2 || opts.length > 8) warn('points-count', 'decision "' + id + '" (points) spreads points over ' + opts.length + ' items — keep it between 2 and 8', d.start);
+    }
   }
 
   // A4 — groups ≤ 3, decisions per group ≤ 7
@@ -214,4 +257,4 @@ function findAnalysisIssues(html) {
   return out;
 }
 
-module.exports = { findAnalysisIssues, MODES, TOPIC_MIN, TOPIC_MAX, PER_TOPIC_MIN, PER_TOPIC_MAX, TITLE_MAX_WORDS, LITE_MAX, parse, lineAt };
+module.exports = { findAnalysisIssues, pointsBudget, MODES, TOPIC_MIN, TOPIC_MAX, PER_TOPIC_MIN, PER_TOPIC_MAX, TITLE_MAX_WORDS, LITE_MAX, parse, lineAt };

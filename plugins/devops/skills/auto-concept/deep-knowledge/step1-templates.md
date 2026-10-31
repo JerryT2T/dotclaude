@@ -396,6 +396,17 @@ consequence per option, recommendation + why, preselection = recommendation.
 The mode comes from `decision-modes.md` § Which mode?. Timing is never a
 decision; deferring is the "Als Issue anlegen" link.
 
+**Beyond the seven classic modes (Phase 2).** Reach for `picture`, `compare`,
+`chain`, `place` or `points` only when the answer is seen, compared, routed,
+located or weighed rather than worded (`decision-modes.md` § 8–12). `picture`
+shows 2–4 sketches or real excerpts — never design variants (those are design
+rounds). `compare` is at most 3 options × 3 criteria, one cell = one short
+value. `chain` is a route of 2–6 steps per option. `place` needs the sketch
+with a slot per option AND the list. `points` spends `3 × items + 1` points
+(4 items = 13) in Fibonacci steps; `data-rec` is the preset allocation
+(`speed:5 cost:3 risk:2 reach:3`). A slider can carry `data-stops` so the
+consequence text follows the value.
+
 **Fragestellung — never a bare question.** The reader must grasp the problem
 without the analysis open:
 
