@@ -1,93 +1,41 @@
 # Concept templates, part 46 of 48: Template: analysis — engine UI JS (continued 2)
 
 ```javascript
-  }
-  function drawConn(inst) {
-    const b = inst.brief;
-    if (!b || !b.isConnected || b.classList.contains('an-off') || !b.getBoundingClientRect().width) return;
-    let svg = b.querySelector(':scope > .an-conn');
-    if (!svg) { svg = document.createElementNS(NS, 'svg'); svg.setAttribute('class', 'an-conn'); svg.setAttribute('aria-hidden', 'true'); b.insertBefore(svg, b.firstChild); }
-    svg.textContent = '';
-    const br = b.getBoundingClientRect();
-    const R = el => { const r = el.getBoundingClientRect(); return { x: r.left - br.left, y: r.top - br.top, w: r.width, h: r.height }; };
-    const pot = b.querySelector('[data-briefing-potential]'), why = b.querySelector('[data-briefing-why]') || b.querySelector('[data-briefing-what]');
-    const chips = [...b.querySelectorAll('[data-briefing-topic]')];
-    if (!pot) return;
-    const p = R(pot), defs = document.createElementNS(NS, 'defs');
-    svg.appendChild(defs);
-    const add = (d, w, c1, c2, i, x1, y1, x2, y2) => {
-      const gid = 'an-g' + inst.stages.length + '-' + i;
-      const g = document.createElementNS(NS, 'linearGradient');
-      g.setAttribute('id', gid); g.setAttribute('gradientUnits', 'userSpaceOnUse');
-      [['x1', x1], ['y1', y1], ['x2', x2], ['y2', y2 === y1 ? y1 + 1 : y2]].forEach(a => g.setAttribute(a[0], a[1]));
-      [['0', c1], ['1', c2]].forEach(s => { const st = document.createElementNS(NS, 'stop'); st.setAttribute('offset', s[0]); st.setAttribute('stop-color', s[1]); g.appendChild(st); });
-      defs.appendChild(g);
-      const path = document.createElementNS(NS, 'path');
-      path.setAttribute('d', d); path.setAttribute('stroke', 'url(#' + gid + ')'); path.setAttribute('stroke-width', String(w)); path.setAttribute('opacity', '.8');
-      svg.appendChild(path);
-      try { path.style.setProperty('--len', String(Math.ceil(path.getTotalLength()) + 2)); } catch (e) { /* jsdom */ }
-    };
-    if (why) {
-      const w = R(why), x = p.x + 40;
-      add('M' + x + ' ' + (w.y + w.h + 6) + ' L' + x + ' ' + p.y, 5, '#8b949e', '#79c0ff', 'w', x, w.y + w.h, x, p.y);
-    }
-    const total = chips.reduce((a, c) => a + (num(c.dataset.share) || 100 / chips.length), 0) || 1;
-    let acc = 0;
-    chips.forEach((c, i) => {
-      const share = num(c.dataset.share) || 100 / chips.length, r = R(c);
-      const x1 = p.x + p.w * ((acc + share / 2) / total), y1 = p.y + p.h, x2 = r.x + r.w / 2, y2 = r.y, my = (y1 + y2) / 2;
-      acc += share;
-      add('M' + x1.toFixed(1) + ' ' + y1.toFixed(1) + ' C' + x1.toFixed(1) + ' ' + my.toFixed(1) + ' ' + x2.toFixed(1) + ' ' + my.toFixed(1) + ' ' + x2.toFixed(1) + ' ' + y2.toFixed(1),
-        (2 + share / 100 * 10).toFixed(1), '#79c0ff', c.style.getPropertyValue('--c') || '#a371f7', i, x1, y1, x2, y2);
-    });
-  }
-  function rowFor(inst, st, cls) {
-    const d = st.el, s = stateOf(inst, d);
-    const b = btn(cls || 'an-rw');
-    b.dataset.go = String(inst.stages.indexOf(st));
-    b.innerHTML = '<i class="an-st an-s-' + s + '"></i><span></span><em></em>';
-    const sp = b.querySelector('span');
-    sp.textContent = d.dataset.label || decId(d);
-    const a = d.dataset.appliesTo;
-    if (a) sp.appendChild(Object.assign(h('small'), { textContent: L('Gilt für ', 'Applies to ') + a }));
-    b.querySelector('em').textContent = recText(d);
-    return b;
-  }
   function prepIntro(inst, g) {
     const intro = g.intro;
     intro.tabIndex = -1;
     intro.style.setProperty('--c', g.color);
     intro.dataset.group = String(g.idx);
   }
+  /** Topic page: "Thema n von N", title (<= 5 words), ring with the topic's share of the potential, its questions, the button. */
   function fillIntro(inst, st) {
     const g = st.group, el = st.el;
     el.textContent = '';
     const l2 = [...g.topic.children].find(c => c.getAttribute('data-alevel') === '2');
-    el.appendChild(h('div', 'an-pop-k', L('Themenfeld ', 'Topic ') + (g.idx + 1) + ' / ' + inst.groups.length));
-    el.appendChild(h('div', 'an-h', (l2 && l2.dataset.title) || g.label));
-    el.appendChild(h('div', 'an-sub', g.decs.length + ' ' + L('Entscheidungen · Empfehlung je Zeile', 'decisions · recommendation per row')));
-    const rows = h('div', 'an-rows');
-    g.decs.forEach(d => rows.appendChild(rowFor(inst, d)));
-    el.appendChild(rows);
-    const foot = h('div', 'an-foot');
-    foot.appendChild(h('div', 'an-quiet'));
-    foot.appendChild(goButtons(inst, L('Starten', 'Start')));
-    el.appendChild(foot);
-  }
-  function prepLiteStart(inst) {
-    const st = inst.stages.find(s => s.kind === 'start');
-    if (!st) return;
-    st.el.tabIndex = -1;
-  }
-  function fillLiteStart(inst, st) {
-    const l1 = inst.root.querySelector('[data-alevel="1"]'), el = st.el;
-    el.textContent = '';
-    el.appendChild(h('div', 'an-h', (l1 && l1.dataset.title) || L('Kurze Fragen', 'Quick questions')));
-    el.appendChild(h('div', 'an-sub', inst.decs.length + ' ' + L('kurze Entscheidungen', 'quick decisions')));
-    const foot = h('div', 'an-foot');
-    foot.appendChild(h('div', 'an-quiet'));
-    foot.appendChild(goButtons(inst, L("Los geht's", "Let's go")));
-    el.appendChild(foot);
+    const chip = inst.brief && inst.brief.querySelector('[data-briefing-topic="' + cssEsc(g.topic.id) + '"]');
+    const share = chip ? Math.round(num(chip.dataset.share)) : 0;
+    const hero = h('div', 'an-topic'), left = h('div', 'an-topic-l');
+    left.appendChild(h('div', 'an-meta', L('Thema ', 'Topic ') + (g.idx + 1) + L(' von ', ' of ') + inst.groups.length));
+    left.appendChild(h('h2', 'an-h', (l2 && l2.dataset.title) || g.label));
+    const qs = h('div', 'an-tq');
+    g.decs.forEach((s, i) => {
+      const b = btn('an-tqi');
+      b.dataset.go = String(inst.stages.indexOf(s));
+      b.append(h('b', '', String(i + 1)), h('span', '', s.el.dataset.label || decId(s.el)));
+      qs.appendChild(b);
+    });
+    left.appendChild(qs);
+    left.appendChild(goButtons(inst, L('Starten', 'Start')));
+    hero.appendChild(left);
+    if (share) {
+      const ring = h('div', 'an-ring');
+      ring.style.setProperty('--p', clamp(share, 0, 100) + '%');
+      const mid = h('div');
+      mid.append(h('b', '', share + ' %'), h('small', '', L('des Potenzials', 'of the potential')));
+      ring.appendChild(mid);
+      hero.appendChild(ring);
+    }
+    el.appendChild(hero);
   }
   /** [Zurück] [Weiter] pair. */
   function goButtons(inst, nextLabel, opts) {
@@ -107,7 +55,11 @@
     return go2;
   }
 
-  /* ================= 5. a decision stage ================= */
+  /* ================= 5. a decision stage: finding -> question -> answer block ================= */
+  const KIND = {
+    single: ['Eine Antwort', 'One answer'], multi: ['Mehrere möglich', 'Several possible'], yesnoalt: ['Ja · Nein · Anders', 'Yes · No · Other'],
+    slider: ['Wert wählen', 'Pick a value'], order: ['Reihenfolge', 'Order'], verify: ['Stimmt das?', 'Is this right?'], wording: ['Formulierung', 'Wording']
+  };
   function prepDecision(inst, st) {
     const d = st.el, id = decId(d), mode = d.dataset.decisionMode;
     d.classList.add('an-stage');
@@ -116,6 +68,9 @@
     const zone = h('div', 'an-zone');
     if (opts) { opts.parentNode.insertBefore(zone, opts); zone.appendChild(opts); }
     else { const a = d.querySelector('[data-context]') || d.querySelector('[data-question]'); if (a) a.after(zone); else d.appendChild(zone); }
+    // "Davon hängt ab" sits under the question in the fixed-height question message.
+    const q = d.querySelector('[data-question]'), stakes = d.querySelector('[data-stakes]');
+    if (stakes && !stakes.querySelector('.an-k-l')) stakes.insertBefore(h('b', 'an-k-l', L('Davon hängt ab: ', 'What depends on it: ')), stakes.firstChild);
     const fresh = !isTouched(d);
     const rec = recList(d);
     if (mode === 'multi') {
@@ -130,13 +85,14 @@
       const c = ctl(d, 'dm-' + id).find(x => x.value === rec[0]);
       if (c) c.checked = true;
     }
-    // ★ badge on the recommended option(s); the reason is its tooltip.
+    // ★ Empfohlen chip behind the label of the recommended option(s); the reason is its tooltip.
     const why = d.dataset.recWhy ? L('Warum: ', 'Why: ') + d.dataset.recWhy : L('Unsere Empfehlung', 'Our recommendation');
     d.querySelectorAll('[data-opt]').forEach((o, i) => {
       if (mode === 'order') return;
+      o.querySelectorAll('[data-opt-preview]').forEach(p => { if (!p.querySelector('.an-k-l')) p.insertBefore(h('b', 'an-k-l', L('So sähe das aus: ', 'This would look like: ')), p.firstChild); });
       if (rec.indexOf(o.getAttribute('data-opt')) >= 0 || o.hasAttribute('data-recommended')) {
         o.classList.add('an-rec');
-        if (!o.querySelector('.an-badge')) { const b = h('span', 'an-badge', '★ ' + L('Empfehlung', 'Recommended')); b.setAttribute('data-tip', why); b.tabIndex = 0; o.appendChild(b); }
+        if (!o.querySelector('.an-badge')) { const b = h('span', 'an-badge', '★ ' + L('Empfohlen', 'Recommended')); b.setAttribute('data-tip', why); b.tabIndex = 0; (o.querySelector('[data-opt-label]') || o).appendChild(b); }
       }
       if (i < 9) tip(o, '', String(i + 1));
     });
@@ -154,7 +110,7 @@
         if (!f.placeholder) f.placeholder = L('kurz eintippen', 'type briefly');
       }
     }
-    // An option can be deselected again: a click on the card that is already on
+    // An option can be deselected again: a click on the row that is already on
     // clears the choice (radios cannot do that natively). Nothing picked AND an
     // empty note = the question counts as untouched again (see answerEmpty).
     if (!['multi', 'slider', 'order'].includes(mode)) {
@@ -162,26 +118,32 @@
         if (r.checked && d.__sel && d.__sel === r.value) { r.checked = false; fire(r); }
       }));
     }
-    // Note: ONE field, 3 rows, full width directly under the options (its 📎
-    // inside it). Foot: discreet issue link left, Zurück / Weiter right.
-    const foot = h('div', 'an-foot'), quiet = h('div', 'an-quiet');
+    // "Keine passt? Schreib deine Antwort unten ins Notizfeld.": a text link under the
+    // answer block (not with slider / order, whose value is always an answer). It clears
+    // the pick, sets dm-{id}-none and puts the cursor into the composer, whose note then
+    // carries the answer.
+    if (!['slider', 'order'].includes(mode)) {
+      const none = btn('an-none', NONE_TXT());
+      none.setAttribute('aria-pressed', 'false');
+      none.addEventListener('click', () => setNone(inst, d, (ctl1(d, 'dm-' + id + '-none') || {}).value !== '1'));
+      d.__none = none;
+    }
+    for (const nm of ['-none', '-hes']) if (!ctl1(d, 'dm-' + id + nm)) { const c = h('input'); c.type = 'hidden'; c.name = 'dm-' + id + nm; c.value = ''; d.appendChild(c); }
+    // The note textarea is the storage target of the composer (data-comment stays); its 📎
+    // bar stays beside it, the composer's 📎 opens it.
     const note = d.querySelector('[data-comment="' + cssEsc(id + '-note') + '"]');
-    let notew = null;
+    const att = h('div', 'an-att');
     if (note) {
-      note.classList.add('an-note'); note.rows = 3;
+      note.classList.add('an-note', 'an-vh'); note.rows = 3;
+      note.tabIndex = -1;
       note.setAttribute('aria-label', L('Notiz zu dieser Frage', 'Note on this question'));
-      tip(note, '', 'N');
-      note.addEventListener('input', () => { note.style.height = 'auto'; note.style.height = Math.min(Math.max(note.scrollHeight, 84), 168) + 'px'; });
-      // A bar wired before this move sits where the note was; it follows the
-      // note and stays its adjacent sibling (`textarea[hidden] + .attach-bar`).
-      // A bar wired later is mounted right after the textarea anyway.
       const key = note.getAttribute('data-comment');
       const bar = [...d.querySelectorAll('.attach-slot, .attach-bar')]
         .find(b => (b.getAttribute('data-attach-slot') || b.getAttribute('data-attach-for')) === key) || null;
-      notew = h('div', 'an-notew');
-      notew.appendChild(note.closest('.field-row') || note);
+      att.appendChild(note.closest('.field-row') || note);
       if (bar && !bar.contains(note)) note.after(bar);
     }
+    const foot = h('div', 'an-foot'), quiet = h('div', 'an-quiet');
     const iss = btn('an-link', L('Als Issue anlegen (ggf. mit Epic)', 'Create an issue (with epic if needed)'));
     iss.setAttribute('aria-pressed', 'false');
     tip(iss, '', 'I');
@@ -191,12 +153,32 @@
     iss.addEventListener('click', () => toggleIssue(inst, d));
     epic.addEventListener('input', () => setHidden(d, '-epic', epic.value.trim()));
     quiet.append(iss, epic);
-    // The note sits right UNDER the option cards (zone), not in the Zurück / Weiter row.
-    if (notew) zone.after(notew);
     foot.append(quiet, goButtons(inst));
-    d.appendChild(foot);
     st.iss = iss; st.epic = epic;
+    // Messages: finding (variable height), question (fixed height), answer block (capped).
+    const fm = buildFinding(inst, st);
+    const qm = msg('an-m-q'), qb = h('div', 'an-bub an-qb');
+    if (q) qb.appendChild(q);
+    if (stakes) qb.appendChild(stakes);
+    qm.appendChild(qb);
+    const am = h('div', 'an-m-a'), ans = h('div', 'an-ans');
+    ans.append(h('div', 'an-kind', L(KIND[mode][0], KIND[mode][1])), zone);
+    if (d.__none) ans.appendChild(d.__none);
+    am.append(ans, foot, att);
+    d.insertBefore(am, d.firstChild);
+    d.insertBefore(qm, am);
+    d.insertBefore(fm, qm);
     syncDecision(d);
+  }
+  const NONE_TXT = () => L('Keine passt? Schreib deine Antwort unten ins Notizfeld.', 'None fits? Write your answer in the note field below.');
+  function setNone(inst, d, on) {
+    if (on) {
+      d.querySelectorAll('[data-options] input[type=radio], [data-options] input[type=checkbox]').forEach(c => { c.checked = false; });
+    }
+    setHidden(d, '-none', on ? '1' : '');
+    markTouched(d);
+    refresh(inst);
+    if (on) focusComposer(inst);
   }
   function toggleIssue(inst, d) {
     const on = (ctl1(d, 'dm-' + decId(d) + '-issue') || {}).value !== '1';
@@ -215,7 +197,7 @@
     wrap.append(top, r);
     const rec = num(d.dataset.rec);
     const recRow = h('div', 'an-sl-rec');
-    const badge = h('span', 'an-badge', '★ ' + L('Empfehlung', 'Recommended') + ' · ' + fmt(rec) + (unit ? ' ' + unit : ''));
+    const badge = h('span', 'an-badge', '★ ' + L('Empfohlen', 'Recommended') + ' · ' + fmt(rec) + (unit ? ' ' + unit : ''));
     badge.setAttribute('data-tip', d.dataset.recWhy ? L('Warum: ', 'Why: ') + d.dataset.recWhy : L('Unsere Empfehlung', 'Our recommendation'));
     badge.tabIndex = 0;
     const pct = (num(r.max) - num(r.min)) ? (rec - num(r.min)) / (num(r.max) - num(r.min)) * 100 : 0;
@@ -296,6 +278,14 @@
     d.querySelectorAll('[data-opt]').forEach(o => { const i = o.querySelector('input'); if (i) o.classList.toggle('is-on', !!i.checked); });
     const id = decId(d), checked = ctl(d, 'dm-' + id).find(c => c.type === 'radio' && c.checked);
     d.__sel = checked ? checked.value : '';
+    if (d.__none) {
+      const on = (ctl1(d, 'dm-' + id + '-none') || {}).value === '1';
+      d.__none.setAttribute('aria-pressed', on ? 'true' : 'false');
+      d.__none.textContent = on ? '✓ ' + L('Keine passt — deine Antwort steht im Notizfeld unten', 'None fits — your answer is in the note field below') : NONE_TXT();
+      d.classList.toggle('an-is-none', on);
+      const i0 = instances.find(i => i.root.contains(d));
+      if (i0 && i0.comp) i0.comp.ed.dataset.ph = on ? L('Deine Antwort, da keine Option passt …', 'Your answer, since no option fits …') : L('Notiz an devops … (optional)', 'Note to devops … (optional)');
+    }
     d.querySelectorAll('.an-inl').forEach(w => {
       const on = !!checked && w.dataset.when.split('|').indexOf(checked.value) >= 0;
       w.classList.toggle('an-show', on);
@@ -318,6 +308,7 @@
     if (['multi', 'slider', 'order'].includes(d.dataset.decisionMode)) return false;
     const id = decId(d), note = d.querySelector('.an-note');
     return !ctl(d, 'dm-' + id).some(c => c.type === 'radio' && c.checked)
+      && (ctl1(d, 'dm-' + id + '-none') || {}).value !== '1'
       && !(note && note.value.trim())
       && (ctl1(d, 'dm-' + id + '-issue') || {}).value !== '1';
   }
@@ -326,86 +317,74 @@
     if (!d) return;
     const n = e.target.name || '';
     if (/-touched$/.test(n)) { refresh(inst); return; }
+    if (/-hes$/.test(n)) return;
+    // Picking an option again withdraws "Keine passt".
+    if ((e.target.type === 'radio' || e.target.type === 'checkbox') && e.target.checked && e.target.closest('[data-options]')) setHidden(d, '-none', '');
     syncDecision(d);
     if (e.target.classList && e.target.classList.contains('an-epic')) return;
+    if (/^(radio|checkbox|range)$/.test(e.target.type) && !/-(none|touched|issue|epic)$/.test(n)) {
+      // The second and every further change of an answer counts like a revisit (hesitation signal).
+      const r = hesEntry(inst, decId(d));
+      r.changes = (r.changes || 0) + 1;
+      if (r.changes > 1) r.revisits++;
+    }
     if (e.target.type === 'radio' && d.dataset.decisionMode === 'wording' && e.target.value === 'custom') { const t = ctl1(d, 'dm-' + decId(d) + '-text'); if (t) t.focus(); }
     if (answerEmpty(d)) { if (!setHidden(d, '-touched', '')) refresh(inst); return; }
     if (!markTouched(d)) refresh(inst);
   }
   function refresh(inst) {
     inst.decs.forEach(st => syncDecision(st.el));
-    refreshStepper(inst);
-    updateCons(inst);
+    refreshNav(inst);
     if (inst.root.querySelector(':scope > .an-review:not(.an-off)')) fillReview(inst, inst.stages.find(s => s.kind === 'review'));
     if (typeof updateSectionNavState === 'function') updateSectionNavState();
   }
 
-  /* ================= 5b. fitted Full: one viewport, no page scroll ================= */
-  // A visible Full wider than 900px and >= 520px tall takes exactly the
-  // viewport below what precedes it (page header): .an-fit + --an-fit-h.
-  // Then the open stage and the analysis column are checked for overflow and
-  // condensed step by step — the stage .an-dense, .an-dense2, the column
-  // .an-afold (short summaries fold to their head); only what still does not
-  // fit scrolls inside its own box (.an-ovf / .an-aovf), never the page. The right gutters of the stepper
-  // and the bar clear the ☰ and 💬 FABs where they overlap the round.
-  const FIT_MIN_W = 900, FIT_MIN_H = 520;
-  function fabGutter(root, id, fallback) {
-    const fab = document.getElementById(id);
-    if (!fab || !fab.getClientRects().length) return fallback;
-    const fr = fab.getBoundingClientRect(), rr = root.getBoundingClientRect();
-    if (!fr.width || !rr.width) return fallback;
-    return Math.max(0, Math.ceil(rr.right - fr.left + 12));
-  }
-  function fitFull(inst) {
-    const root = inst.root;
-    if (inst.lite) return;
-    const vw = window.innerWidth || 0, vh = window.innerHeight || 0;
-    const on = vw > FIT_MIN_W && vh >= FIT_MIN_H && !root.closest('[hidden]') && root.getClientRects().length > 0;
-    // Measured without transitions: a fold that is still animating would
-    // read as overflow and condense one step too far.
-    const before = root.className + '|' + root.style.getPropertyValue('--an-fit-h');
-    root.classList.add('an-fitting');
-    root.classList.remove('an-dense', 'an-dense2', 'an-ovf', 'an-afold', 'an-aovf');
-    root.classList.toggle('an-fit', on);
-    try { fitMeasure(inst, on); } finally { void root.offsetHeight; root.classList.remove('an-fitting'); }
-    // A changed fit moved the briefing's chips: redraw its connectors.
-    if (root.className + '|' + root.style.getPropertyValue('--an-fit-h') !== before) drawConn(inst);
-  }
-  function fitMeasure(inst, on) {
-    const root = inst.root;
-    const vh = window.innerHeight || 0;
-    if (!on) { root.style.removeProperty('--an-fit-h'); return; }
-    root.style.setProperty('--an-step-pr', fabGutter(root, 'panel-toggle', 74) + 'px');
-    root.style.setProperty('--an-bar-pr', fabGutter(root, 'feedback-toggle', 0) + 'px');
-    const top = root.getBoundingClientRect().top + (window.scrollY || window.pageYOffset || 0);
-    const host = root.closest('.concept-content');
-    const below = host ? (parseFloat(getComputedStyle(host).paddingBottom) || 0) : 0;
-    let fit = Math.max(FIT_MIN_H - 120, Math.floor(vh - top - below));
-    root.style.setProperty('--an-fit-h', fit + 'px');
-    const doc = document.documentElement;
-    const extra = doc.scrollHeight - vh;
-    if (extra > 0 && extra < fit / 2) { fit -= extra; root.style.setProperty('--an-fit-h', fit + 'px'); }
+  /* ================= 6. hesitation: dwell, note length, revisits ================= */
+  // Per decision the page writes { ms, revisits, median } into the hidden dm-{id}-hes (so
+  // collect / bake / freeze carry it); collectModeDecision() turns it into
+  // hesitation { ms, noteWords, revisits, flagged }. ms counts ONLY while the stage is
+  // visible AND the window focused (timestamps, back-and-forth summed).
+  const hesEntry = (inst, id) => inst.hes[id] || (inst.hes[id] = { ms: 0, revisits: 0, changes: 0, since: 0 });
+  const hesLive = inst => !document.hidden && (typeof document.hasFocus !== 'function' || document.hasFocus()) && !inst.root.closest('[hidden]') && inst.root.getClientRects().length > 0;
+  function hesStart(inst) {
     const st = inst.stages[inst.idx];
-    const over = el => !!el && el.getClientRects().length > 0 && el.scrollHeight > el.clientHeight + 1;
-    // The stage condenses on its own overflow, the analysis column on its
-    // own: a long finding must not shrink the question beside it.
-    ['an-dense', 'an-dense2', 'an-ovf'].forEach(c => { if (over(st && st.el)) root.classList.add(c); });
-    // The column is measured by layout, not scrollHeight: a level that is
-    // still rising in (translateY) would count its transform as overflow.
-    const anaOver = () => {
-      const a = inst.ana;
-      if (!a || !a.getClientRects().length) return false;
-      a.scrollTop = 0;
-      return inst.lvs.getBoundingClientRect().bottom - a.getBoundingClientRect().top > a.clientHeight + 1;
-    };
-    ['an-afold', 'an-aovf'].forEach(c => { if (anaOver()) root.classList.add(c); });
+    if (!st || st.kind !== 'dec' || frozen(inst) || !hesLive(inst)) return;
+    const e = hesEntry(inst, decId(st.el));
+    if (!e.since) e.since = Date.now();
   }
-  function fitSoon(inst, ms) {
-    clearTimeout(inst.fitTimer);
-    inst.fitTimer = setTimeout(() => fitFull(inst), ms || 0);
+  function hesStop(inst) {
+    const now = Date.now();
+    Object.keys(inst.hes).forEach(id => { const e = inst.hes[id]; if (e.since) { e.ms += Math.max(0, now - e.since); e.since = 0; } });
+  }
+  function hesMedian(inst) {
+    const v = inst.decs.map(st => (inst.hes[decId(st.el)] || {}).ms || 0).filter(x => x > 0).sort((a, b) => a - b);
+    if (!v.length) return 0;
+    return v.length % 2 ? v[(v.length - 1) / 2] : (v[v.length / 2 - 1] + v[v.length / 2]) / 2;
+  }
+  /** The signal of one decision as the page sees it now: the stored record, the closing toggle wins. */
+  function hesOf(inst, st) {
+    const id = decId(st.el), e = inst.hes[id] || { ms: 0, revisits: 0 }, median = hesMedian(inst);
+    const note = ((st.el.querySelector('.an-note') || {}).value || '');
+    const h0 = { ms: Math.round(e.ms), noteWords: typeof noteWordCount === 'function' ? noteWordCount(note) : 0, revisits: e.revisits || 0 };
+    const auto = typeof hesitationFlag === 'function' ? hesitationFlag(h0, median) : false;
+    h0.flagged = inst.sharpen.has(id) ? inst.sharpen.get(id) : auto;
+    h0.median = median;
+    return h0;
+  }
+  /** Stops the clock, writes every record, restarts the clock (unless the window left). */
+  function hesFlush(inst, idle) {
+    hesStop(inst);
+    inst.decs.forEach(st => {
+      const id = decId(st.el), e = inst.hes[id];
+      if (!e && !inst.sharpen.has(id)) return;
+      const o = hesOf(inst, st), rec = { ms: o.ms, revisits: o.revisits, median: Math.round(o.median) };
+      if (inst.sharpen.has(id)) rec.sharpen = inst.sharpen.get(id);
+      setHidden(st.el, '-hes', JSON.stringify(rec));
+    });
+    if (!idle) hesStart(inst);
   }
 
-  /* ================= 6. navigation, touched timer, replay ================= */
+  /* ================= 7. navigation, touched timer, peeks ================= */
   const TOUCH_MS = 3000;
   const canTouch = inst => !inst.root.closest('[hidden], [data-baked]') && !document.hidden && inst.root.getClientRects().length > 0;
   function armTouch(inst) {
@@ -414,43 +393,61 @@
     if (!st || st.kind !== 'dec' || !canTouch(inst) || answerEmpty(st.el)) return;
     inst.touchTimer = setTimeout(() => { if (inst.stages[inst.idx] === st && canTouch(inst)) markTouched(st.el); }, TOUCH_MS);
   }
+  /** Previous stage hinted above (its question and your answer, calm), the next one below, both fading out. */
+  function peeks(inst, st) {
+    const k = inst.seq.indexOf(st), prev = inst.seq[k - 1], next = inst.seq[k + 1];
+    const up = inst.peekUp, dn = inst.peekDn;
+    up.textContent = ''; dn.textContent = '';
+    up.hidden = !prev; dn.hidden = !next;
+    if (prev) {
+      up.dataset.go = String(inst.stages.indexOf(prev));
+      if (prev.kind === 'dec') {
+        const q = prev.el.querySelector('[data-question]');
+        up.appendChild(h('div', 'an-settled an-settled-q', q ? q.textContent : stageLabel(inst, prev)));
+        up.appendChild(h('div', 'an-settled an-settled-a', valueText(prev.el, entryOf(prev.el))));
+      } else up.appendChild(h('div', 'an-peek-t', stageLabel(inst, prev)));
+    }
+    if (next) {
+      dn.dataset.go = String(inst.stages.indexOf(next));
+      dn.append(document.createTextNode(L('Als Nächstes: ', 'Next: ')), h('b', '', stageLabel(inst, next)));
+    }
+  }
   function go(inst, i, opt) {
     opt = opt || {};
     i = clamp(Number.isFinite(i) ? i : 0, 0, inst.stages.length - 1);
     const prev = inst.stages[inst.idx], st = inst.stages[i];
-    if (inst.pop) closeEvidence(inst);
+    hesStop(inst);
     if (!opt.initial && prev && prev.kind === 'dec') inst.visited.add(decId(prev.el));
-    if (st.aux && !prev.aux) inst.back = inst.idx;
+    if (!opt.initial && st.kind === 'dec' && inst.visited.has(decId(st.el))) hesEntry(inst, decId(st.el)).revisits++;
     inst.idx = i;
-    if (!st.aux) inst.maxIdx = Math.max(inst.maxIdx, i);
-    inst.stages.forEach(s => s.el.classList.toggle('an-off', s !== st));
+    inst.maxIdx = Math.max(inst.maxIdx, i);
+    // The messages of a stage enter one after another on its FIRST visit only (never with reduced motion).
+    const first = !inst.seen.has(i) && !reduced();
+    inst.seen.add(i);
+    inst.stages.forEach(s => { s.el.classList.toggle('an-off', s !== st); s.el.classList.remove('an-first'); });
     inst.groups.forEach(g => g.topic.classList.toggle('an-off', st.group !== g));
     if (inst.brief) inst.brief.classList.toggle('an-off', st.kind !== 'brief');
-    inst.root.classList.toggle('an-wide-stage', isWideKind(st.kind));
     inst.root.dataset.anStage = st.kind;
     if (st.kind === 'topic') fillIntro(inst, st);
-    else if (st.kind === 'start') fillLiteStart(inst, st);
     else if (st.kind === 'review') fillReview(inst, st);
-    else if (st.kind === 'next') fillNext(inst, st);
-    else if (st.kind === 'list') fillList(inst, st);
     else if (st.kind === 'done') fillDone(inst, st);
-    if (!isWideKind(st.kind)) {
-      const same = !!prev && prev.kind === 'dec' && st.kind === 'dec' && prev.topic === st.topic;
-      applyLevels(inst, st, { swap: same, dur: opt.initial ? 0 : undefined });
+    if (first) {
+      st.el.classList.add('an-first');
+      if (st.kind === 'dec') setTimeout(() => pulse(st.el), 1100);
     }
     // First stage: no way back — hidden, not dimmed; visibility keeps its space so Weiter stays put (#962).
-    const first = st === inst.seq[0];
-    inst.root.querySelectorAll('.an-back').forEach(x => { x.disabled = first; x.style.visibility = first ? 'hidden' : ''; });
-    refreshStepper(inst);
+    const firstSt = st === inst.seq[0];
+    inst.root.querySelectorAll('.an-back').forEach(x => { x.disabled = firstSt; x.style.visibility = firstSt ? 'hidden' : ''; });
+    peeks(inst, st);
+    loadComposer(inst, st);
+    if (st.kind === 'dec') syncDecision(st.el);
+    refreshNav(inst);
     if (typeof updateSectionNavState === 'function') updateSectionNavState();
     armTouch(inst);
-    fitFull(inst);
-    fitSoon(inst, (opt.initial ? 0 : transMs()) + 60);
-    requestAnimationFrame(() => drawConn(inst));
+    hesFlush(inst);
     if (!opt.initial) {
       if (!opt.noFocus) st.el.focus({ preventScroll: true });
-      const anchor = inst.stepEl && !inst.lite ? inst.stepEl : inst.root;
-      if (typeof anchor.scrollIntoView === 'function') anchor.scrollIntoView({ block: 'nearest' });
+      if (typeof inst.root.scrollIntoView === 'function') inst.root.scrollIntoView({ block: 'nearest' });
     }
     const navItem = document.querySelector('.section-nav-item[data-section-id="' + cssEsc((st.group && st.kind === 'topic') ? st.group.topic.id : st.el.id || '') + '"]');
     if (navItem && typeof setActiveNavItem === 'function') setActiveNavItem(navItem);
@@ -458,17 +455,8 @@
   }
   function step(inst, dir) {
     const cur = inst.stages[inst.idx];
-    if (cur.aux) { go(inst, inst.back || 0); return; }
     const k = inst.seq.indexOf(cur);
     go(inst, inst.stages.indexOf(inst.seq[clamp(k + dir, 0, inst.seq.length - 1)]));
-  }
-  function replay(inst) {
-    const st = inst.stages[inst.idx];
-    if (!st || isWideKind(st.kind)) return;
-    [1, 2, 3].forEach(n => { if (inst.lv[n]) { inst.lv[n].remove(); delete inst.lv[n]; } });
-    const base = inst.stages.find(s => s.kind === 'brief' || s.kind === 'start');
-    if (base && base !== st) applyLevels(inst, base, { dur: 0 });
-    setTimeout(() => applyLevels(inst, st, { dur: reduced() ? 0 : 1000, replay: true }), 40);
   }
   function firstUntouched(inst) {
     const st = inst.decs.find(s => !isTouched(s.el));
@@ -476,135 +464,77 @@
     return !!st;
   }
 
-  /* ================= 7. review, next round, list, done ================= */
-  function tag(text, cls) { return h('span', 'an-tag ' + cls, text); }
-  function rgroup(title, cls, rows, extra) {
-    const g = h('div', 'an-rg');
-    const hd = h('div', 'an-rg-h');
-    hd.appendChild(h('i', 'an-st an-s-' + cls));
-    hd.appendChild(document.createTextNode(title));
-    hd.appendChild(h('span', '', String(rows.length)));
-    g.appendChild(hd);
-    rows.forEach(r => g.appendChild(r));
-    if (extra) g.appendChild(extra);
-    return g;
+  /* ================= 8. closing, done ================= */
+  /** The next entry of the surrounding devops concept (a sibling section with a nav label), when there is one. */
+  function nextEntry(inst) {
+    for (let n = inst.root.nextElementSibling; n; n = n.nextElementSibling) {
+      if (n.id && n.getAttribute('data-nav-label') && !n.hasAttribute('data-analysis-briefing')) return n;
+    }
+    return null;
   }
-  function reviewRow(inst, x, cells) {
-    const b = btn('an-tr');
-    b.dataset.go = String(inst.stages.indexOf(x.s));
-    const first = h('div');
-    first.appendChild(h('b', '', x.d.dataset.label || decId(x.d)));
-    const ap = x.d.dataset.appliesTo;
-    if (ap) first.appendChild(h('small', '', L('Gilt für ', 'Applies to ') + ap));
-    // A condensed review cuts label / scope to one line: the tooltip has both.
-    tip(b, (x.d.dataset.label || decId(x.d)) + (ap ? ' · ' + L('Gilt für ', 'Applies to ') + ap : ''));
-    b.appendChild(first);
-    cells.forEach(c => { const w = h('div'); w.appendChild(c); b.appendChild(w); });
-    return b;
-  }
-  function impactSpec(inst, ents) {
-    const items = [];
-    let any = false;
-    const groups = inst.groups.length ? inst.groups : [{ label: L('Entscheidungen', 'Decisions'), decs: inst.decs }];
-    groups.forEach(g => {
-      let sum = 0;
-      g.decs.forEach(s => {
-        const x = ents.find(y => y.s === s), e = x.e;
-        const ids = e.mode === 'multi' ? e.value : e.mode === 'yesnoalt' ? [e.value.answer] : e.mode === 'single' || e.mode === 'verify' ? [e.value] : [];
-        ids.forEach(v => { const o = optEl(s.el, v); if (o && o.hasAttribute('data-opt-impact')) { any = true; sum += num(o.getAttribute('data-opt-impact')); } });
-      });
-      items.push({ label: g.label, value: Math.round(sum * 10) / 10 });
-    });
-    if (any) return { title: L('Was deine Auswahl bewirkt', 'What your choice does'), spec: { items, unit: inst.root.dataset.impactUnit || '' }, calc: true };
-    const cnt = k => ents.filter(x => (k === 'dev' ? x.e.deviates : k === 'iss' ? x.e.issue : k === 'un' ? x.e.untouched : !x.e.deviates && !x.e.untouched)).length;
-    return {
-      title: L('Was deine Auswahl bewirkt', 'What your choice does'), calc: false,
-      spec: { items: [{ label: L('Wie empfohlen', 'As recommended'), value: cnt('ok') }, { label: L('Weicht ab', 'Differs'), value: cnt('dev') }, { label: L('Issue', 'Issue'), value: cnt('iss') }, { label: L('Unberührt', 'Untouched'), value: cnt('un') }] }
-    };
-  }
+  /** Closing: headline result, every question with its dwell bar and a "Nachschärfen" toggle (preset from the hesitation signal). */
   function fillReview(inst, st) {
     const el = st.el;
     const keepFocus = el.contains(document.activeElement) ? document.activeElement.className : '';
     el.textContent = '';
-    const ents = inst.decs.map(s => ({ s, d: s.el, e: entryOf(s.el) }));
-    const dev = ents.filter(x => x.e.deviates), iss = ents.filter(x => x.e.issue), un = ents.filter(x => x.e.untouched);
-    el.appendChild(h('div', 'an-pop-k', L('Review', 'Review')));
-    el.appendChild(h('div', 'an-h', ents.length - un.length + ' / ' + ents.length + ' ' + L('angesehen', 'looked at')));
-    // Overview: the groups in the main column, impact + submit hint beside them.
-    const rv = h('div', 'an-rv'), main = h('div', 'an-rv-main'), side = h('div', 'an-rv-side');
-    if (dev.length) main.appendChild(rgroup(L('Weicht von der Empfehlung ab', 'Differs from the recommendation'), 'dev', dev.map(x => reviewRow(inst, x, [tag(valueText(x.d, x.e), 'an-y'), tag(recText(x.d), 'an-r')]))));
-    else rv.appendChild(h('div', 'an-sub', L('Alles wie empfohlen.', 'Everything as recommended.')));
-    if (iss.length) main.appendChild(rgroup('Issues', 'iss', iss.map(x => reviewRow(inst, x, [tag(x.e.epic ? 'Epic: ' + x.e.epic : L('als Issue', 'as issue'), 'an-i'), h('span')]))));
-    if (un.length) {
-      const bar = h('div', 'an-unt');
-      bar.appendChild(h('span', '', L('Nie geöffnet oder kürzer als 3 s offen — die Vorauswahl gilt.', 'Never opened or open under 3 s — the preselection stands.')));
-      const jump = btn('an-btn2', L('Zum ersten Unberührten', 'Jump to the first untouched'));
-      tip(jump, '', 'U');
-      jump.addEventListener('click', () => firstUntouched(inst));
-      bar.appendChild(jump);
-      main.appendChild(rgroup(L('Unberührt', 'Untouched'), 'un', un.map(x => reviewRow(inst, x, [tag(valueText(x.d, x.e), 'an-u'), h('span')])), bar));
-    }
-    const imp = impactSpec(inst, ents), box = h('div', 'an-imp');
-    box.appendChild(h('h4', '', imp.title));
-    const viz = h('div'); viz.setAttribute('data-viz', 'bars'); viz.setAttribute('data-viz-spec', JSON.stringify(imp.spec));
-    box.appendChild(viz);
-    renderViz(box, 'long');
-    side.appendChild(box);
-    side.appendChild(h('div', 'an-send', L('Absenden geht über das Panel oder das Menü unten rechts. Der 💬 Chat bleibt jederzeit offen.', 'Submit from the panel or the menu at the bottom right. The 💬 chat stays open.')));
-    if (main.childNodes.length) rv.appendChild(main);
-    rv.appendChild(side);
-    el.appendChild(rv);
-    const foot = h('div', 'an-foot');
-    foot.appendChild(h('div', 'an-quiet'));
-    foot.appendChild(goButtons(inst, L('Weiter', 'Next')));
-    el.appendChild(foot);
-    if (keepFocus) { const f = el.querySelector('.' + keepFocus.split(' ')[0]); if (f) f.focus({ preventScroll: true }); }
-  }
-  function fillNext(inst, st) {
-    const el = st.el;
-    const nq = inst.root.querySelector('[data-next-questions]');
-    if (nq && !nq.__moved) nq.__moved = true;
-    el.textContent = '';
-    const wrap = h('div', 'an-nx');
-    wrap.appendChild(h('div', 'an-pop-k', L('Nächste Runde', 'Next round')));
-    const c = h('div', 'an-nx-c');
-    c.appendChild(h('div', 'an-h', L('So geht es weiter', 'What happens next')));
-    const ol = h('ol');
-    [L('Du sendest ab — über das Panel oder das Menü unten rechts.', 'You submit — from the panel or the menu at the bottom right.'),
-      L('Claude setzt deine Entscheidungen um und meldet, was sich geändert hat.', 'Claude applies your decisions and reports what changed.'),
-      L('Offenes landet als Issue, die Unberührten bleiben bei der Empfehlung.', 'Open items become issues; untouched ones keep the recommendation.')]
-      .forEach(t => ol.appendChild(h('li', '', t)));
-    c.appendChild(ol);
-    if (nq) { nq.hidden = false; c.appendChild(nq); }
-    const f = h('div', 'an-nx-f');
-    f.appendChild(h('span', '', L('Drei kurze Fragen darfst du auch später beantworten.', 'You may answer any short question later.')));
-    const back = btn('an-btn2', '← ' + L('zurück zum Briefing', 'back to the briefing'));
-    tip(back, '', 'Pos1');
-    back.addEventListener('click', () => go(inst, 0));
-    f.appendChild(back);
-    c.appendChild(f);
-    wrap.appendChild(c);
-    el.appendChild(wrap);
-    const foot = h('div', 'an-foot');
-    foot.appendChild(goButtons(inst, '', { noNext: true }));
-    el.appendChild(foot);
-  }
-  function fillList(inst, st) {
-    const el = st.el;
-    el.textContent = '';
-    el.appendChild(h('div', 'an-h', L('Alle Entscheidungen', 'All decisions')));
-    const grid = h('div', 'an-lst');
-    const groups = inst.groups.length ? inst.groups : [{ label: L('Entscheidungen', 'Decisions'), color: TOPIC_COLORS[0], decs: inst.decs }];
-    groups.forEach(g => {
-      const col = h('div', 'an-lg'); col.style.setProperty('--c', g.color);
-      col.appendChild(h('div', 'an-lg-h', g.label));
-      g.decs.forEach(s => { const r = rowFor(inst, s, 'an-lr'); col.appendChild(r); });
-      grid.appendChild(col);
+    const stats = inst.decs.map(s => ({ s, e: entryOf(s.el), hs: hesOf(inst, s) }));
+    const un = stats.filter(x => x.e.untouched), dev = stats.filter(x => x.e.deviates);
+    const max = Math.max.apply(null, stats.map(x => x.hs.ms).concat([1]));
+    const wrap = h('div', 'an-close');
+    wrap.appendChild(h('div', 'an-eyebrow', inst.root.getAttribute('data-nav-label') || L('Abschluss', 'Closing')));
+    const big = h('div', 'an-big');
+    big.append(document.createTextNode(String(stats.length - un.length)), h('small', '', ' / ' + stats.length));
+    wrap.appendChild(big);
+    wrap.appendChild(h('p', 'an-claim', dev.length
+      ? dev.length + ' ' + L('Antworten weichen von der Empfehlung ab.', 'answers differ from the recommendation.')
+      : L('Alles wie empfohlen.', 'Everything as recommended.')));
+    const list = h('div', 'an-sig');
+    stats.forEach(x => {
+      const id = decId(x.s.el), row = h('div', 'an-sigrow');
+      row.style.setProperty('--tc', x.s.group ? x.s.group.color : BLUE);
+      const name = btn('an-sig-n');
+      name.dataset.go = String(inst.stages.indexOf(x.s));
+      name.append(h('b', '', x.s.el.dataset.label || id), h('small', '', x.e.untouched ? L('nicht angesehen — Vorauswahl gilt', 'not looked at — the preselection stands') : valueText(x.s.el, x.e)));
+      const dw = h('div', 'an-dw'), bar = h('b');
+      bar.style.width = Math.round(x.hs.ms / max * 100) + '%';
+      dw.appendChild(bar);
+      dw.classList.toggle('an-warn', x.hs.flagged);
+      const sec = Math.round(x.hs.ms / 1000);
+      tip(dw, L('Verweildauer ', 'Time spent ') + sec + ' s · ' + x.hs.noteWords + ' ' + L('Wörter Notiz', 'note words') + ' · ' + x.hs.revisits + ' ' + L('Rückkehr/Änderungen', 'revisits/changes') + ' · ' + L('Markiert ab zwei von: Zeit über dem Doppelten des Medians (mind. 20 s), Notiz über 12 Wörtern, mind. 2 Rückkehren.', 'Flagged at two of: time over twice the median (at least 20 s), note over 12 words, at least 2 revisits.'));
+      const tg = btn('an-tg', L('Nachschärfen', 'Sharpen'));
+      tg.setAttribute('aria-pressed', x.hs.flagged ? 'true' : 'false');
+      tip(tg, L('Diese Frage in der nächsten Runde nachschärfen', 'Sharpen this question in the next round'));
+      tg.addEventListener('click', () => {
+        const on = tg.getAttribute('aria-pressed') !== 'true';
+        inst.sharpen.set(id, on);
+        const tagText = L('Nachschärfen · ', 'Sharpen · ') + (x.s.el.dataset.label || id);
+        setTag(inst, on ? tagText : (inst.tag === tagText ? '' : inst.tag));
+        composeSync(inst);
+        if (on) { inst.comp.el.classList.remove('an-glow'); void inst.comp.el.offsetWidth; inst.comp.el.classList.add('an-glow'); }
+        hesFlush(inst);
+        fillReview(inst, st);
+      });
+      row.append(h('i'), name, dw, tg);
+      list.appendChild(row);
     });
-    el.appendChild(grid);
-    const foot = h('div', 'an-foot');
-    foot.appendChild(goButtons(inst, '', { noNext: true }));
-    el.appendChild(foot);
+    wrap.appendChild(list);
+    const acts = h('div', 'an-fabs');
+    doneSubmitButtons().forEach(b => acts.appendChild(b));
+    const back = btn('an-back', L('Zurück', 'Back'));
+    back.addEventListener('click', () => step(inst, -1));
+    acts.insertBefore(back, acts.firstChild);
+    wrap.appendChild(acts);
+    const nx = nextEntry(inst);
+    if (nx) {
+      const lk = btn('an-link', L('Weiter zu: ', 'Continue with: ') + nx.getAttribute('data-nav-label') + ' →');
+      lk.addEventListener('click', () => {
+        const item = document.querySelector('.section-nav-item[data-section-id="' + cssEsc(nx.id) + '"]');
+        if (item) item.click(); else nx.scrollIntoView({ block: 'start' });
+      });
+      wrap.appendChild(lk);
+    }
+    el.appendChild(wrap);
+    if (keepFocus) { const f = el.querySelector('.' + keepFocus.split(' ')[0]); if (f) f.focus({ preventScroll: true }); }
   }
   function fillDone(inst, st) {
     const el = st.el;
@@ -631,6 +561,7 @@
     foot.appendChild(go2);
     el.appendChild(foot);
   }
+
   // The last step ends in the two ways out — next round and implement — as
   // FAB-style pills (.an-fab) and through the SAME submit
   // path as the dock journey: a click is a click on #submit-iterate-btn /
@@ -684,7 +615,7 @@
     return [next, impl];
   }
 
-  /* ================= 8. keys ================= */
+  /* ================= 9. keys ================= */
   function visibleInst(target) {
     const own = target && target.closest ? target.closest('[data-analysis]') : null;
     if (own && own.__an) return own.__an;
@@ -712,7 +643,6 @@
     const inst = visibleInst(e.target);
     if (!inst) return;
     const t = e.target, tag0 = t.tagName, type = (t.type || '').toLowerCase();
-    if (e.key === 'Escape' && inst.pop) { e.preventDefault(); e.stopPropagation(); closeEvidence(inst); return; }
     const typing = tag0 === 'TEXTAREA' || tag0 === 'SELECT' || (tag0 === 'INPUT' && !/^(radio|checkbox|range|button|submit)$/.test(type)) || t.isContentEditable;
     const st = inst.stages[inst.idx], d = st && st.kind === 'dec' ? st.el : null;
     if (typing) {
@@ -732,17 +662,12 @@
     if (key === 'ArrowLeft' && type !== 'range' && type !== 'radio' && type !== 'checkbox') { act(() => step(inst, -1)); return; }
     if ((key === 'ArrowDown' || key === 'ArrowUp') && d && tag0 !== 'INPUT' && !t.closest('.an-ord')) { if (d.dataset.decisionMode !== 'order' && d.dataset.decisionMode !== 'slider') act(() => moveOption(d, key === 'ArrowDown' ? 1 : -1)); return; }
     if ((key === 'ArrowRight' || key === 'ArrowLeft') && (type === 'radio' || type === 'checkbox') && !d) return;
-    if (key === 'PageDown') { act(() => stepLevel(inst, 1)); return; }
-    if (key === 'PageUp') { act(() => stepLevel(inst, -1)); return; }
     if (key === 'Home' && type !== 'range' && !inst.lite) { act(() => go(inst, 0)); return; }
     if (key === 'End' && type !== 'range' && !inst.lite) { act(() => go(inst, inst.stages.findIndex(s => s.kind === 'review'))); return; }
     if (onButton && (key === ' ')) return;
     const k = key.toLowerCase();
-    if (k === 'n' && d) { const n = d.querySelector('.an-note'); if (n) act(() => n.focus()); return; }
+    if (k === 'n') { act(() => focusComposer(inst)); return; }
     if (k === 'i' && d) { act(() => toggleIssue(inst, d)); return; }
-    if (k === 'l' && !inst.lite) { act(() => go(inst, inst.stages.findIndex(s => s.kind === 'list'))); return; }
-    if (k === 'r') { act(() => replay(inst)); return; }
-    if (k === 'b') { const ev = inst.lvs.querySelector('.an-lv[data-state="long"] .an-ev'); if (ev) act(() => ev.click()); return; }
     if (k === 'u' && !inst.lite) { act(() => firstUntouched(inst)); }
   }, true);
   // The section nav (TOC) jumps to a stage instead of scrolling to a hidden section.
@@ -757,16 +682,20 @@
     e.preventDefault(); e.stopPropagation();
     go(inst, idx);
   }, true);
-  window.addEventListener('resize', () => instances.forEach(i => { drawConn(i); fitSoon(i, 60); }), { passive: true });
+  // The dwell clock runs only while the window is focused and visible.
+  window.addEventListener('blur', () => instances.forEach(i => hesFlush(i, true)));
+  window.addEventListener('focus', () => instances.forEach(hesStart));
+  document.addEventListener('visibilitychange', () => instances.forEach(i => (document.hidden ? hesFlush(i, true) : hesStart(i))));
+  window.addEventListener('pagehide', () => instances.forEach(i => hesFlush(i, true)));
 
-  /* ================= 9. boot ================= */
+  /* ================= 10. boot ================= */
   function init(scope) {
     (scope || document).querySelectorAll('[data-analysis]').forEach(r => {
       if (r.parentElement && r.parentElement.closest('[data-analysis]')) return;
       if (!r.__an) setup(r);
     });
   }
-  window.conceptAnalysis = { init, setup, go, step, refresh, markTouched, renderViz, replay, instances, TOUCH_MS, transMs, transCount };
+  window.conceptAnalysis = { init, setup, go, step, refresh, markTouched, renderViz, instances, TOUCH_MS, hesFlush, setTag, sendNote, tagFromClick };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => { init(); setTimeout(() => instances.forEach(refresh), 500); });
   else { init(); setTimeout(() => instances.forEach(refresh), 500); }
 })();

@@ -219,7 +219,7 @@ introduced the modes). Project-specific nouns are neutralised.
     Ausnahme.
   - **Gar nicht in der Analyse** — was nur ein Test klären kann, bleibt offen.
   - **Keine davon / anders …** — Notiz ist dann Pflicht.
-  - Analysis column: Formatierter Text (Heute · Risiko · Ausweg), Belege (2).
+  - Analysis column: Formatierter Text (Heute · Risiko · Ausweg), Beispiel (Tab).
 
 ### Größenstufe „mittel“ — three bi-states all preset include → `single`
 

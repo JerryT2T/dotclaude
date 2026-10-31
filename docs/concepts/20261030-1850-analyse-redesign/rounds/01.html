@@ -1,0 +1,479 @@
+<section data-iteration="1" data-iteration-template="design" data-design-set="alternatives" data-baked>
+  <script type="application/json" data-frozen-feedback>{"general":{"text":"","attachments":[]},"designs":{},"screens":{},"views":{},"favorite":"d3","userPins":[{"id":"up-mvvg9jsr228q","design":"d3","screen":"d3-s1","x":30.1,"y":38.5,"target":"div \"Zusammenfassung Cache und Hooks: ≈ 51 M \"","text":"ich finde die idee sehr gut dass wir uns nach utnen durchhangeln sozusagen statt seitwärts!","attachments":[]},{"id":"up-mvvgavim9jj4","design":"d3","screen":"d3-s2","x":47.5,"y":16.1,"target":"div.mock-bar.mock-dim \"10–60 min14 %\"","text":"Das liest sich viel besser wenbn der befund oben ist und unten darunter die actions!","attachments":[]},{"id":"up-mvvgbgstn0to","design":"d3","screen":"d3-s2","x":36.7,"y":51.9,"target":"div.mock-note \"Notiz (optional)\"","text":"super mit der notiz!","attachments":[]},{"id":"up-mvvgbmoqq649","design":"d3","screen":"d3-s2","x":25.2,"y":43.6,"target":"span.mock-none \"Keine passt, eigene Antwort in die Notiz\"","text":"super, mit dem textlink hier´!","attachments":[]}]}</script>
+  <style>
+    .mock-app { max-width: 1440px; min-height: 640px; margin: 0 auto; background: #0b0f17; color: #e6edf3; font: 14px/1.5 system-ui, "Segoe UI", sans-serif; display: flex; flex-direction: column; border-radius: 10px; overflow: hidden; }
+    .mock-toc { display: flex; align-items: center; gap: 10px; padding: 12px 22px; border-bottom: 1px solid #222b38; background: #0e131c; font-size: 13px; }
+    .mock-step { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px; color: #8b97a7; box-shadow: inset 0 0 0 1px #263142; white-space: nowrap; }
+    .mock-step.mock-done { color: #7ee2a8; box-shadow: inset 0 0 0 1px #2c5a3f; }
+    .mock-step.mock-on { color: #e6edf3; box-shadow: inset 0 0 0 1.5px #58a6ff; background: #13233a; }
+    .mock-dots { display: inline-flex; gap: 4px; }
+    .mock-dots i { width: 7px; height: 7px; border-radius: 50%; background: #2c3747; }
+    .mock-dots i.mock-x { background: #58a6ff; }
+    .mock-dots i.mock-c { background: #7ee2a8; }
+    .mock-sep { flex: 0 0 14px; height: 1px; background: #263142; }
+    .mock-grow { flex: 1; }
+    .mock-prog { font-size: 12px; color: #8b97a7; }
+    .mock-body { flex: 1; display: grid; gap: 36px; padding: 26px 30px 18px; min-height: 0; }
+    .mock-kicker { font-size: 11px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: #8b97a7; }
+    .mock-sit { margin: 8px 0 12px; padding-left: 12px; border-left: 3px solid #a371f7; color: #c3ccd8; max-width: 720px; }
+    .mock-q { font-size: 27px; font-weight: 740; letter-spacing: -.02em; line-height: 1.2; margin: 0; }
+    .mock-stakes { margin-top: 8px; font-size: 13px; color: #8b97a7; }
+    .mock-stakes b { color: #c3ccd8; }
+    .mock-opts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 20px; }
+    .mock-opt { position: relative; padding: 14px; border-radius: 14px; background: #111824; border: 1.5px solid #263142; }
+    .mock-opt b { display: block; font-size: 15px; margin-bottom: 4px; }
+    .mock-opt span { font-size: 12.5px; color: #8b97a7; }
+    .mock-opt.mock-sel { border-color: #58a6ff; background: #10203a; }
+    .mock-star { position: absolute; top: -10px; right: 10px; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: #e3b341; color: #1a1300; }
+    .mock-none { display: inline-block; margin-top: 10px; font-size: 12.5px; color: #8b97a7; text-decoration: underline; text-underline-offset: 3px; }
+    .mock-note { margin-top: 12px; height: 76px; border-radius: 10px; border: 1px solid #263142; background: #0e141e; padding: 10px 12px; color: #5d6a7c; font-size: 13px; }
+    .mock-foot { display: flex; align-items: center; gap: 14px; padding: 12px 30px 16px; border-top: 1px solid #1b2330; }
+    .mock-link { font-size: 12.5px; color: #6e7b8d; }
+    .mock-back { color: #8b97a7; font-size: 14px; background: none; border: 0; }
+    .mock-next { height: 40px; padding: 0 22px; border-radius: 10px; border: 0; background: #1f6feb; color: #fff; font-weight: 650; font-size: 14px; }
+    .mock-panel { border-radius: 16px; background: #111824; border: 1px solid #222b38; padding: 18px 20px; }
+    .mock-chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; font-size: 11.5px; box-shadow: inset 0 0 0 1px #314055; color: #c3ccd8; }
+    .mock-chip::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #a371f7; }
+    .mock-bars { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+    .mock-bar { display: grid; grid-template-columns: 110px minmax(0, 1fr) 46px; gap: 10px; align-items: center; font-size: 13px; }
+    .mock-bar i { display: block; height: 10px; border-radius: 5px; background: #58a6ff; }
+    .mock-bar.mock-dim { opacity: .4; }
+    .mock-bar.mock-hl span { font-weight: 650; }
+    .mock-ev { display: inline-block; margin-top: 14px; padding: 4px 11px; border-radius: 999px; font-size: 12px; color: #79c0ff; background: #12233a; }
+    .mock-kpi { font-size: 46px; font-weight: 780; letter-spacing: -.03em; }
+    .mock-kpi small { font-size: 16px; color: #8b97a7; font-weight: 500; margin-left: 6px; }
+    .mock-h1 { font-size: 30px; font-weight: 760; letter-spacing: -.025em; line-height: 1.2; margin: 6px 0 8px; max-width: 760px; }
+    .mock-mu { color: #8b97a7; }
+    .mock-topics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 24px; }
+    .mock-topic { padding: 16px; border-radius: 14px; background: #111824; border: 1px solid #222b38; border-top: 3px solid #a371f7; }
+    .mock-topic.mock-t2 { border-top-color: #39c5cf; }
+    .mock-topic b { display: block; font-size: 16px; }
+    .mock-rows { margin-top: 14px; border-radius: 12px; border: 1px solid #222b38; overflow: hidden; }
+    .mock-row { display: grid; grid-template-columns: 1.4fr 1fr 1fr 110px; gap: 12px; padding: 10px 16px; border-top: 1px solid #1b2330; font-size: 13px; align-items: center; }
+    .mock-row:first-child { border-top: 0; color: #8b97a7; font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; }
+    .mock-tag { justify-self: start; padding: 2px 9px; border-radius: 7px; font-size: 11.5px; font-weight: 650; background: #12233a; color: #79c0ff; }
+    .mock-tag.mock-own { background: #2a2140; color: #c297ff; }
+    /* D2 Karte & Lupe */
+    .mock-map { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: 92px; gap: 10px; }
+    .mock-tile { position: relative; padding: 12px; border-radius: 12px; background: #111824; border: 1px solid #222b38; font-size: 12.5px; color: #c3ccd8; }
+    .mock-tile b { display: block; font-size: 20px; color: #e6edf3; }
+    .mock-tile.mock-big { grid-column: span 2; grid-row: span 2; }
+    .mock-tile.mock-cur { border: 2px solid #58a6ff; box-shadow: 0 0 0 6px rgba(88,166,255,.14); background: #10203a; }
+    .mock-tile.mock-ok::after { content: "✓"; position: absolute; top: 8px; right: 10px; color: #7ee2a8; font-weight: 700; }
+    .mock-tile.mock-fade { opacity: .45; }
+    .mock-qcard { border-radius: 18px; background: #0f1622; border: 1px solid #2a3647; padding: 22px; box-shadow: 0 12px 40px rgba(0,0,0,.35); }
+    .mock-qcard .mock-opts { grid-template-columns: minmax(0, 1fr); }
+    .mock-lens { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #79c0ff; }
+    /* D3 Bericht im Fluss */
+    .mock-side { border-right: 1px solid #1b2330; padding-right: 18px; font-size: 13px; }
+    .mock-side p { margin: 0 0 8px; color: #8b97a7; }
+    .mock-side p.mock-here { color: #e6edf3; font-weight: 650; }
+    .mock-side p.mock-ok::before { content: "✓ "; color: #7ee2a8; }
+    .mock-find { padding: 18px 20px; border-radius: 14px; background: #111824; border: 1px solid #222b38; }
+    .mock-band { margin-top: 16px; padding: 18px 20px; border-radius: 14px; background: #0f1a2c; border: 1.5px solid #2b4d7a; }
+    .mock-band .mock-opts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .mock-next-find { margin-top: 18px; padding: 14px 20px; border-radius: 14px; border: 1px dashed #263142; color: #5d6a7c; }
+  </style>
+
+  <header class="iteration-intro">
+    <h2>{{iteration.tab}} 1 · Analyse-Seiten neu gedacht</h2>
+    <p>Drei klar verschiedene Grundaufbauten für Briefing, Frage und Abschluss einer Analyse. In allen drei gelten dieselben Bausteine: Ausgangslage über der Frage, „Davon hängt ab“ darunter, die Notiz immer dreizeilig sichtbar, „Keine passt“ als Textlink. Die Entwürfe unterscheiden sich darin, wie Orientierung und Bezug zum Befund entstehen. Die Fragen, die für jeden Entwurf gelten, stehen in der Ansicht „Grundsatzfragen“.</p>
+  </header>
+
+  <!-- ===================== D1 · Zwei Spalten mit Bezug ===================== -->
+  <section data-design="d1" data-nav-label="Zwei Spalten · Bezug" data-design-active="true" data-screen-fit="full"
+           data-design-motto="Frage links, Beweis rechts" data-design-icon="layers" data-design-color="#a371f7"
+           data-design-traits="Fester Bezug-Bereich je Frage, keine Ebenen zum Aufklappen|Themen-Zwischenseiten entfallen, Inhaltsverzeichnis führt|Am nächsten am Entwurf im Worktree" data-design-overlay="br">
+    <section id="d1-s1" data-nav-label="Briefing" data-screen data-screen-active="true">
+      <div class="mock-app">
+        <div class="mock-toc"><span class="mock-step mock-on">Briefing</span><span class="mock-sep"></span><span class="mock-step">Cache <span class="mock-dots"><i></i><i></i><i></i></span></span><span class="mock-sep"></span><span class="mock-step">Hooks <span class="mock-dots"><i></i><i></i></span></span><span class="mock-sep"></span><span class="mock-step">Abschluss</span><span class="mock-grow"></span><span class="mock-prog">5 Fragen · ≈ 4 min</span></div>
+        <div class="mock-body" style="grid-template-columns: minmax(0,3fr) minmax(0,2fr)">
+          <div>
+            <div class="mock-kicker">Was wir gefunden haben</div>
+            <h1 class="mock-h1">Cache und Hooks verbrauchen 70 % der Tokens, die sich sparen lassen.</h1>
+            <p class="mock-mu">Das Wochenlimit steht bei 93 %, deshalb lohnt es sich jetzt.</p>
+            <div class="mock-topics">
+              <div class="mock-topic"><b>Cache · 3 Fragen</b><span class="mock-mu">Einträge leben 24 h, obwohl 80 % der Treffer in 10 min fallen.</span></div>
+              <div class="mock-topic mock-t2"><b>Hooks · 2 Fragen</b><span class="mock-mu">Zwei Hooks liefern denselben Kontext.</span></div>
+            </div>
+          </div>
+          <div class="mock-panel">
+            <div class="mock-kicker">Potenzial</div>
+            <div class="mock-kpi">≈ 51 M<small>Tokens / Monat</small></div>
+            <div class="mock-bars"><div class="mock-bar"><span>Cache</span><i style="width:100%"></i><b>31 M</b></div><div class="mock-bar"><span>Hooks</span><i style="width:64%;background:#39c5cf"></i><b>20 M</b></div></div>
+          </div>
+        </div>
+        <div class="mock-foot"><span class="mock-grow"></span><button class="mock-next" type="button" data-screen-link="d1-s2">Los geht's</button></div>
+      </div>
+    </section>
+    <section id="d1-s2" data-nav-label="Frage" data-screen hidden>
+      <div class="mock-app">
+        <div class="mock-toc"><span class="mock-step mock-done">Briefing ✓</span><span class="mock-sep"></span><span class="mock-step mock-on">Cache <span class="mock-dots"><i class="mock-c"></i><i class="mock-x"></i><i></i></span></span><span class="mock-sep"></span><span class="mock-step">Hooks</span><span class="mock-sep"></span><span class="mock-step">Abschluss</span><span class="mock-grow"></span><span class="mock-prog">Frage 2 von 5</span></div>
+        <div class="mock-body" style="grid-template-columns: minmax(0,3fr) minmax(0,2fr)">
+          <div class="d1-left">
+            <div class="mock-kicker">Gilt für: alle Hooks</div>
+            <p class="mock-sit d1-sit">Heute fallen 80 % aller Cache-Treffer in die ersten 10 Minuten, trotzdem lebt jeder Eintrag 24 Stunden.</p>
+            <h3 class="mock-q">Wie lange darf eine gecachte Antwort leben?</h3>
+            <p class="mock-stakes"><b>Davon hängt ab:</b> Tokenverbrauch aller Hooks und wie aktuell ihre Antworten sind.</p>
+            <div class="mock-opts">
+              <div class="mock-opt mock-sel"><span class="mock-star">★ Empfehlung</span><b>Nach 10 Minuten verwerfen</b><span>Spart ≈ 31 M, Antworten bleiben frisch.</span></div>
+              <div class="mock-opt"><b>Nach 1 Stunde verwerfen</b><span>Spart ≈ 24 M, selten veraltet.</span></div>
+              <div class="mock-opt"><b>Einen Tag behalten</b><span>Spart am meisten, kann veraltet sein.</span></div>
+            </div>
+            <span class="mock-none d1-none">Keine passt, eigene Antwort in die Notiz</span>
+            <div class="mock-note d1-note">Notiz (optional): Ergänzung, Einwand, Kontext</div>
+          </div>
+          <div class="mock-panel d1-panel">
+            <div style="display:flex;justify-content:space-between"><span class="mock-kicker">Bezug</span><span class="mock-chip">Cache</span></div>
+            <div class="mock-bars"><div class="mock-bar mock-hl"><span>&lt; 10 min</span><i style="width:80%"></i><b>80 %</b></div><div class="mock-bar mock-dim"><span>10–60 min</span><i style="width:14%"></i><b>14 %</b></div><div class="mock-bar mock-dim"><span>&gt; 1 h</span><i style="width:6%"></i><b>6 %</b></div></div>
+            <p class="mock-mu" style="margin-top:14px">Treffer nach Alter des Eintrags. Hervorgehoben ist der Teil, um den es in dieser Frage geht.</p>
+            <span class="mock-ev">🔎 Belege</span>
+          </div>
+        </div>
+        <div class="mock-foot"><span class="mock-link">Als Issue anlegen</span><span class="mock-grow"></span><button class="mock-back" type="button" data-screen-link="d1-s1">Zurück</button><button class="mock-next" type="button" data-screen-link="d1-s3">Weiter</button></div>
+      </div>
+      <div class="anno-layer" data-anno-layer>
+        <div class="anno" data-anno="d1-s2-a1" data-anno-side="right" data-anno-target=".d1-panel" style="--anno-x:90%;--anno-y:30%">
+          <button class="anno-pin" type="button" data-anno-pin="d1-s2-a1" aria-expanded="false" aria-controls="anno-bubble-d1-s2-a1" aria-label="{{anno.pin_label}}">1</button>
+          <div class="anno-bubble" id="anno-bubble-d1-s2-a1" data-anno-bubble="d1-s2-a1" data-open="false">
+            <button type="button" class="anno-bubble-summary" data-anno-summary="d1-s2-a1" aria-expanded="false" aria-controls="anno-bubble-d1-s2-a1"><span class="anno-bubble-question">Reicht ein hervorgehobener Teil des Befunds, oder soll der Bezug mehr zeigen (z. B. Vorher/Nachher der gewählten Option)?</span></button>
+            <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-d1-s2-a1" data-annotation="d1-s2-a1" data-attachable placeholder="{{anno.answer_placeholder}}"></textarea><div class="attach-slot" data-attach-slot="anno-d1-s2-a1"></div></div>
+          </div>
+        </div>
+        <div class="anno" data-anno="d1-s2-a2" data-anno-side="right" data-anno-target=".d1-sit" style="--anno-x:50%;--anno-y:20%">
+          <button class="anno-pin" type="button" data-anno-pin="d1-s2-a2" aria-expanded="false" aria-controls="anno-bubble-d1-s2-a2" aria-label="{{anno.pin_label}}">2</button>
+          <div class="anno-bubble" id="anno-bubble-d1-s2-a2" data-anno-bubble="d1-s2-a2" data-open="false">
+            <button type="button" class="anno-bubble-summary" data-anno-summary="d1-s2-a2" aria-expanded="false" aria-controls="anno-bubble-d1-s2-a2"><span class="anno-bubble-question">Ist die Ausgangslage über der Frage die richtige Menge Fragestellung, oder fehlt etwas?</span></button>
+            <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-d1-s2-a2" data-annotation="d1-s2-a2" data-attachable placeholder="{{anno.answer_placeholder}}"></textarea><div class="attach-slot" data-attach-slot="anno-d1-s2-a2"></div></div>
+          </div>
+        </div>
+        <div class="anno" data-anno="d1-s2-a3" data-anno-side="right" data-anno-target=".d1-none" style="--anno-x:30%;--anno-y:70%">
+          <button class="anno-pin" type="button" data-anno-pin="d1-s2-a3" aria-expanded="false" aria-controls="anno-bubble-d1-s2-a3" aria-label="{{anno.pin_label}}">3</button>
+          <div class="anno-bubble" id="anno-bubble-d1-s2-a3" data-anno-bubble="d1-s2-a3" data-open="false">
+            <button type="button" class="anno-bubble-summary" data-anno-summary="d1-s2-a3" aria-expanded="false" aria-controls="anno-bubble-d1-s2-a3"><span class="anno-bubble-question">„Keine passt“ und die Notiz direkt darunter: passt das so?</span></button>
+            <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-d1-s2-a3" data-annotation="d1-s2-a3" data-attachable placeholder="{{anno.answer_placeholder}}"></textarea><div class="attach-slot" data-attach-slot="anno-d1-s2-a3"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section id="d1-s3" data-nav-label="Abschluss" data-screen hidden>
+      <div class="mock-app">
+        <div class="mock-toc"><span class="mock-step mock-done">Briefing ✓</span><span class="mock-sep"></span><span class="mock-step mock-done">Cache ✓</span><span class="mock-sep"></span><span class="mock-step mock-done">Hooks ✓</span><span class="mock-sep"></span><span class="mock-step mock-on">Abschluss</span><span class="mock-grow"></span><span class="mock-prog">5 von 5 beantwortet</span></div>
+        <div class="mock-body" style="grid-template-columns: minmax(0,3fr) minmax(0,2fr)">
+          <div>
+            <div class="mock-kicker">Deine Antworten</div>
+            <div class="mock-rows">
+              <div class="mock-row"><span>Frage</span><span>Antwort</span><span>Empfehlung</span><span>Status</span></div>
+              <div class="mock-row"><span>Cache-Lebensdauer</span><span>10 Minuten</span><span>10 Minuten</span><span class="mock-tag">wie empfohlen</span></div>
+              <div class="mock-row"><span>Doppelte Injektion</span><span>Eigene Antwort</span><span>SessionStart</span><span class="mock-tag mock-own">Notiz</span></div>
+              <div class="mock-row"><span>Hook-Budget</span><span>3 s</span><span>2 s</span><span class="mock-tag">abweichend</span></div>
+            </div>
+          </div>
+          <div class="mock-panel"><div class="mock-kicker">Wirkung deiner Wahl</div><div class="mock-kpi">≈ 44 M<small>von 51 M</small></div></div>
+        </div>
+        <div class="mock-foot"><span class="mock-grow"></span><button class="mock-back" type="button" data-screen-link="d1-s2">Zurück</button><button class="mock-next" type="button">Absenden</button></div>
+      </div>
+    </section>
+  </section>
+
+  <!-- ===================== D2 · Karte & Lupe ===================== -->
+  <section data-design="d2" data-nav-label="Karte & Lupe" data-screen-fit="full" hidden
+           data-design-motto="Die Analyse bleibt immer sichtbar" data-design-icon="map" data-design-color="#39c5cf"
+           data-design-traits="Die ganze Analyse als Kachel-Karte steht dauerhaft links|Die aktuelle Frage markiert ihre Kachel, beantwortete Kacheln bekommen ✓|Die Frage ist eine schwebende Karte rechts, die Karte ersetzt das Inhaltsverzeichnis" data-design-overlay="bl">
+    <section id="d2-s1" data-nav-label="Briefing" data-screen data-screen-active="true">
+      <div class="mock-app">
+        <div class="mock-toc"><span class="mock-kicker">Analyse · Token-Verbrauch</span><span class="mock-grow"></span><span class="mock-prog">5 Fragen · ≈ 4 min</span></div>
+        <div class="mock-body" style="grid-template-columns: minmax(0,3fr) minmax(0,2fr)">
+          <div class="mock-map">
+            <div class="mock-tile mock-big"><span class="mock-kicker">Cache</span><b>31 M</b>Einträge leben 24 h, 80 % der Treffer fallen in 10 min.</div>
+            <div class="mock-tile"><b>20 M</b>Doppelte Injektion</div>
+            <div class="mock-tile"><b>2,4 s</b>Hook-Laufzeit</div>
+            <div class="mock-tile"><b>12 %</b>Leere Treffer</div>
+            <div class="mock-tile"><b>3</b>Hooks ohne Budget</div>
+            <div class="mock-tile"><b>93 %</b>Wochenlimit</div>
+            <div class="mock-tile"><b>6 %</b>Treffer &gt; 1 h</div>
+          </div>
+          <div class="mock-qcard">
+            <div class="mock-kicker">Was wir gefunden haben</div>
+            <h1 class="mock-h1" style="font-size:24px">Cache und Hooks: ≈ 51 M Tokens im Monat lassen sich sparen.</h1>
+            <p class="mock-mu">Links siehst du die ganze Analyse. Jede Frage markiert dort die Kachel, auf die sie sich bezieht. So weißt du immer, wo du bist.</p>
+          </div>
+        </div>
+        <div class="mock-foot"><span class="mock-grow"></span><button class="mock-next" type="button" data-screen-link="d2-s2">Erste Frage</button></div>
+      </div>
+    </section>
+    <section id="d2-s2" data-nav-label="Frage" data-screen hidden>
+      <div class="mock-app">
+        <div class="mock-toc"><span class="mock-kicker">Analyse · Token-Verbrauch</span><span class="mock-grow"></span><span class="mock-prog">Frage 2 von 5</span></div>
+        <div class="mock-body" style="grid-template-columns: minmax(0,3fr) minmax(0,2fr)">
+          <div class="mock-map d2-map">
+            <div class="mock-tile mock-big mock-cur d2-cur"><span class="mock-lens">🔍 Diese Frage</span><b>80 %</b>der Treffer in den ersten 10 min, Einträge leben aber 24 h.</div>
+            <div class="mock-tile mock-ok mock-fade"><b>20 M</b>Doppelte Injektion</div>
+            <div class="mock-tile mock-fade"><b>2,4 s</b>Hook-Laufzeit</div>
+            <div class="mock-tile mock-fade"><b>12 %</b>Leere Treffer</div>
+            <div class="mock-tile mock-fade"><b>3</b>Hooks ohne Budget</div>
+            <div class="mock-tile mock-fade"><b>93 %</b>Wochenlimit</div>
+            <div class="mock-tile mock-fade"><b>6 %</b>Treffer &gt; 1 h</div>
+          </div>
+          <div class="mock-qcard d2-card">
+            <p class="mock-sit" style="margin-top:0">Heute fallen 80 % aller Cache-Treffer in die ersten 10 Minuten, trotzdem lebt jeder Eintrag 24 Stunden.</p>
+            <h3 class="mock-q" style="font-size:22px">Wie lange darf eine gecachte Antwort leben?</h3>
+            <p class="mock-stakes"><b>Davon hängt ab:</b> Tokenverbrauch und Aktualität aller Hooks.</p>
+            <div class="mock-opts">
+              <div class="mock-opt mock-sel"><span class="mock-star">★ Empfehlung</span><b>Nach 10 Minuten verwerfen</b><span>Spart ≈ 31 M.</span></div>
+              <div class="mock-opt"><b>Nach 1 Stunde verwerfen</b><span>Spart ≈ 24 M.</span></div>
+              <div class="mock-opt"><b>Einen Tag behalten</b><span>Kann veraltet sein.</span></div>
+            </div>
+            <span class="mock-none">Keine passt, eigene Antwort in die Notiz</span>
+            <div class="mock-note">Notiz (optional)</div>
+          </div>
+        </div>
+        <div class="mock-foot"><span class="mock-link">Als Issue anlegen</span><span class="mock-grow"></span><button class="mock-back" type="button" data-screen-link="d2-s1">Zurück</button><button class="mock-next" type="button" data-screen-link="d2-s3">Weiter</button></div>
+      </div>
+      <div class="anno-layer" data-anno-layer>
+        <div class="anno" data-anno="d2-s2-a1" data-anno-side="right" data-anno-target=".d2-cur" style="--anno-x:30%;--anno-y:25%">
+          <button class="anno-pin" type="button" data-anno-pin="d2-s2-a1" aria-expanded="false" aria-controls="anno-bubble-d2-s2-a1" aria-label="{{anno.pin_label}}">1</button>
+          <div class="anno-bubble" id="anno-bubble-d2-s2-a1" data-anno-bubble="d2-s2-a1" data-open="false">
+            <button type="button" class="anno-bubble-summary" data-anno-summary="d2-s2-a1" aria-expanded="false" aria-controls="anno-bubble-d2-s2-a1"><span class="anno-bubble-question">Hilft die markierte Kachel („🔍 Diese Frage“) beim Orientieren, oder lenkt die Karte ab?</span></button>
+            <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-d2-s2-a1" data-annotation="d2-s2-a1" data-attachable placeholder="{{anno.answer_placeholder}}"></textarea><div class="attach-slot" data-attach-slot="anno-d2-s2-a1"></div></div>
+          </div>
+        </div>
+        <div class="anno" data-anno="d2-s2-a2" data-anno-side="left" data-anno-target=".d2-card" style="--anno-x:80%;--anno-y:20%">
+          <button class="anno-pin" type="button" data-anno-pin="d2-s2-a2" aria-expanded="false" aria-controls="anno-bubble-d2-s2-a2" aria-label="{{anno.pin_label}}">2</button>
+          <div class="anno-bubble" id="anno-bubble-d2-s2-a2" data-anno-bubble="d2-s2-a2" data-open="false">
+            <button type="button" class="anno-bubble-summary" data-anno-summary="d2-s2-a2" aria-expanded="false" aria-controls="anno-bubble-d2-s2-a2"><span class="anno-bubble-question">Optionen untereinander in der schmalen Karte: ist das lesbar genug?</span></button>
+            <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-d2-s2-a2" data-annotation="d2-s2-a2" data-attachable placeholder="{{anno.answer_placeholder}}"></textarea><div class="attach-slot" data-attach-slot="anno-d2-s2-a2"></div></div>
+          </div>
+        </div>
+        <div class="anno" data-anno="d2-s2-a3" data-anno-side="right" data-anno-target=".d2-map" style="--anno-x:10%;--anno-y:80%">
+          <button class="anno-pin" type="button" data-anno-pin="d2-s2-a3" aria-expanded="false" aria-controls="anno-bubble-d2-s2-a3" aria-label="{{anno.pin_label}}">3</button>
+          <div class="anno-bubble" id="anno-bubble-d2-s2-a3" data-anno-bubble="d2-s2-a3" data-open="false">
+            <button type="button" class="anno-bubble-summary" data-anno-summary="d2-s2-a3" aria-expanded="false" aria-controls="anno-bubble-d2-s2-a3"><span class="anno-bubble-question">Soll ein Klick auf eine Kachel direkt zu ihrer Frage springen (die Karte als Inhaltsverzeichnis)?</span></button>
+            <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-d2-s2-a3" data-annotation="d2-s2-a3" data-attachable placeholder="{{anno.answer_placeholder}}"></textarea><div class="attach-slot" data-attach-slot="anno-d2-s2-a3"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section id="d2-s3" data-nav-label="Abschluss" data-screen hidden>
+      <div class="mock-app">
+        <div class="mock-toc"><span class="mock-kicker">Analyse · Token-Verbrauch</span><span class="mock-grow"></span><span class="mock-prog">5 von 5 beantwortet</span></div>
+        <div class="mock-body" style="grid-template-columns: minmax(0,3fr) minmax(0,2fr)">
+          <div class="mock-map">
+            <div class="mock-tile mock-big mock-ok"><span class="mock-kicker">Cache</span><b>−31 M</b>10 Minuten (wie empfohlen)</div>
+            <div class="mock-tile mock-ok"><b>Notiz</b>Eigene Antwort</div>
+            <div class="mock-tile mock-ok"><b>3 s</b>abweichend</div>
+            <div class="mock-tile mock-ok"><b>−5 M</b>Leere Treffer</div>
+            <div class="mock-tile mock-ok"><b>Issue</b>Budget später</div>
+            <div class="mock-tile mock-fade"><b>93 %</b>Wochenlimit</div>
+            <div class="mock-tile mock-fade"><b>6 %</b>Treffer &gt; 1 h</div>
+          </div>
+          <div class="mock-qcard"><div class="mock-kicker">Wirkung deiner Wahl</div><div class="mock-kpi">≈ 44 M<small>von 51 M</small></div><p class="mock-mu">Jede Kachel zeigt jetzt deine Antwort. Ein Klick öffnet die Frage noch einmal.</p></div>
+        </div>
+        <div class="mock-foot"><span class="mock-grow"></span><button class="mock-back" type="button" data-screen-link="d2-s2">Zurück</button><button class="mock-next" type="button">Absenden</button></div>
+      </div>
+    </section>
+  </section>
+
+  <!-- ===================== D3 · Bericht im Fluss ===================== -->
+  <section data-design="d3" data-nav-label="Bericht im Fluss" data-screen-fit="full" hidden
+           data-design-motto="Lesen wie ein Bericht, entscheiden im Lesefluss" data-design-icon="book" data-design-color="#e3b341"
+           data-design-traits="Jeder Befund steht als breiter Abschnitt da, seine Frage direkt darunter als Band|Seitliche Gliederung mit ✓ statt einer Zeile oben, die Seite scrollt|Keine einzelnen Stufen und kein Weiter-Knopf, man liest von oben nach unten" data-design-overlay="tr">
+    <section id="d3-s1" data-nav-label="Briefing" data-screen data-screen-active="true">
+      <div class="mock-app">
+        <div class="mock-body" style="grid-template-columns: 200px minmax(0,1fr)">
+          <div class="mock-side"><p class="mock-here">Zusammenfassung</p><p>Cache · 3</p><p>Hooks · 2</p><p>Abschluss</p></div>
+          <div>
+            <div class="mock-kicker">Zusammenfassung</div>
+            <h1 class="mock-h1">Cache und Hooks: ≈ 51 M Tokens im Monat lassen sich sparen.</h1>
+            <p class="mock-mu" style="max-width:720px">Darunter folgen fünf Befunde. Unter jedem steht die Frage, die er aufwirft. Du liest von oben nach unten und entscheidest dort, wo der Befund steht.</p>
+            <div class="mock-find" style="margin-top:20px"><div class="mock-bars"><div class="mock-bar"><span>Cache</span><i style="width:100%"></i><b>31 M</b></div><div class="mock-bar"><span>Hooks</span><i style="width:64%;background:#39c5cf"></i><b>20 M</b></div></div></div>
+            <button class="mock-next" type="button" style="margin-top:18px" data-screen-link="d3-s2">Zum ersten Befund ↓</button>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section id="d3-s2" data-nav-label="Befund + Frage" data-screen hidden>
+      <div class="mock-app">
+        <div class="mock-body" style="grid-template-columns: 200px minmax(0,1fr)">
+          <div class="mock-side d3-side"><p class="mock-ok">Zusammenfassung</p><p class="mock-ok">Cache · Treffer</p><p class="mock-here">Cache · Lebensdauer</p><p>Cache · Größe</p><p>Hooks · 2</p><p>Abschluss</p></div>
+          <div>
+            <div class="mock-find d3-find">
+              <div class="mock-kicker">Befund 2 · Cache</div>
+              <p style="margin:6px 0 0;font-size:17px;font-weight:650">80 % der Treffer fallen in die ersten 10 Minuten, Einträge leben aber 24 Stunden.</p>
+              <div class="mock-bars"><div class="mock-bar mock-hl"><span>&lt; 10 min</span><i style="width:80%"></i><b>80 %</b></div><div class="mock-bar mock-dim"><span>10–60 min</span><i style="width:14%"></i><b>14 %</b></div><div class="mock-bar mock-dim"><span>&gt; 1 h</span><i style="width:6%"></i><b>6 %</b></div></div>
+            </div>
+            <div class="mock-band d3-band">
+              <h3 class="mock-q" style="font-size:21px">Wie lange darf eine gecachte Antwort leben?</h3>
+              <p class="mock-stakes"><b>Davon hängt ab:</b> Tokenverbrauch und Aktualität aller Hooks.</p>
+              <div class="mock-opts">
+                <div class="mock-opt mock-sel"><span class="mock-star">★ Empfehlung</span><b>Nach 10 Minuten verwerfen</b><span>Spart ≈ 31 M.</span></div>
+                <div class="mock-opt"><b>Nach 1 Stunde</b><span>Spart ≈ 24 M.</span></div>
+                <div class="mock-opt"><b>Einen Tag</b><span>Kann veraltet sein.</span></div>
+              </div>
+              <span class="mock-none">Keine passt, eigene Antwort in die Notiz</span>
+              <div class="mock-note">Notiz (optional)</div>
+            </div>
+            <div class="mock-next-find">Befund 3 · Cache-Größe ↓</div>
+          </div>
+        </div>
+      </div>
+      <div class="anno-layer" data-anno-layer>
+        <div class="anno" data-anno="d3-s2-a1" data-anno-side="left" data-anno-target=".d3-band" style="--anno-x:90%;--anno-y:55%">
+          <button class="anno-pin" type="button" data-anno-pin="d3-s2-a1" aria-expanded="false" aria-controls="anno-bubble-d3-s2-a1" aria-label="{{anno.pin_label}}">1</button>
+          <div class="anno-bubble" id="anno-bubble-d3-s2-a1" data-anno-bubble="d3-s2-a1" data-open="false">
+            <button type="button" class="anno-bubble-summary" data-anno-summary="d3-s2-a1" aria-expanded="false" aria-controls="anno-bubble-d3-s2-a1"><span class="anno-bubble-question">Die Frage als Band direkt unter ihrem Befund: macht der Befund darüber eine eigene Ausgangslage überflüssig?</span></button>
+            <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-d3-s2-a1" data-annotation="d3-s2-a1" data-attachable placeholder="{{anno.answer_placeholder}}"></textarea><div class="attach-slot" data-attach-slot="anno-d3-s2-a1"></div></div>
+          </div>
+        </div>
+        <div class="anno" data-anno="d3-s2-a2" data-anno-side="right" data-anno-target=".d3-side" style="--anno-x:12%;--anno-y:30%">
+          <button class="anno-pin" type="button" data-anno-pin="d3-s2-a2" aria-expanded="false" aria-controls="anno-bubble-d3-s2-a2" aria-label="{{anno.pin_label}}">2</button>
+          <div class="anno-bubble" id="anno-bubble-d3-s2-a2" data-anno-bubble="d3-s2-a2" data-open="false">
+            <button type="button" class="anno-bubble-summary" data-anno-summary="d3-s2-a2" aria-expanded="false" aria-controls="anno-bubble-d3-s2-a2"><span class="anno-bubble-question">Seitliche Gliederung statt der Zeile oben: besser oder schlechter als das Inhaltsverzeichnis, das dir heute gefällt?</span></button>
+            <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-d3-s2-a2" data-annotation="d3-s2-a2" data-attachable placeholder="{{anno.answer_placeholder}}"></textarea><div class="attach-slot" data-attach-slot="anno-d3-s2-a2"></div></div>
+          </div>
+        </div>
+        <div class="anno" data-anno="d3-s2-a3" data-anno-side="left" data-anno-target=".d3-find" style="--anno-x:80%;--anno-y:15%">
+          <button class="anno-pin" type="button" data-anno-pin="d3-s2-a3" aria-expanded="false" aria-controls="anno-bubble-d3-s2-a3" aria-label="{{anno.pin_label}}">3</button>
+          <div class="anno-bubble" id="anno-bubble-d3-s2-a3" data-anno-bubble="d3-s2-a3" data-open="false">
+            <button type="button" class="anno-bubble-summary" data-anno-summary="d3-s2-a3" aria-expanded="false" aria-controls="anno-bubble-d3-s2-a3"><span class="anno-bubble-question">Scrollen statt Weiter-Knopf: angenehm, oder verliert man so das Gefühl, fertig zu werden?</span></button>
+            <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-d3-s2-a3" data-annotation="d3-s2-a3" data-attachable placeholder="{{anno.answer_placeholder}}"></textarea><div class="attach-slot" data-attach-slot="anno-d3-s2-a3"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section id="d3-s3" data-nav-label="Abschluss" data-screen hidden>
+      <div class="mock-app">
+        <div class="mock-body" style="grid-template-columns: 200px minmax(0,1fr)">
+          <div class="mock-side"><p class="mock-ok">Zusammenfassung</p><p class="mock-ok">Cache · 3</p><p class="mock-ok">Hooks · 2</p><p class="mock-here">Abschluss</p></div>
+          <div>
+            <div class="mock-kicker">Abschluss</div>
+            <div class="mock-rows">
+              <div class="mock-row"><span>Frage</span><span>Antwort</span><span>Empfehlung</span><span>Status</span></div>
+              <div class="mock-row"><span>Cache-Lebensdauer</span><span>10 Minuten</span><span>10 Minuten</span><span class="mock-tag">wie empfohlen</span></div>
+              <div class="mock-row"><span>Doppelte Injektion</span><span>Eigene Antwort</span><span>SessionStart</span><span class="mock-tag mock-own">Notiz</span></div>
+            </div>
+            <button class="mock-next" type="button" style="margin-top:18px">Absenden</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </section>
+
+  <!-- ===================== View · Grundsatzfragen (Lite) ===================== -->
+  <section data-view="v-grund" data-view-kind="analysis" data-analysis="lite" data-nav-label="Grundsatzfragen" hidden>
+    <div data-alevel="1" data-title="Grundsatzfragen">
+      <div data-slot="short"><p>Fünf Punkte, die für jeden Entwurf gelten.</p></div>
+      <div data-slot="long"><p>Diese Fragen hängen nicht davon ab, welcher Entwurf gewinnt. Sie legen die Bausteine fest, die alle drei teilen.</p></div>
+    </div>
+
+    <section id="g-draft" data-nav-label="Entwurf" data-decision="g-draft" data-decision-mode="verify" data-label="Entwurf im Worktree" data-rec="partial"
+             data-rec-why="Der Entwurf löst Notiz, Keine passt, Fragestellung und Lite-Start. Briefing, Themen-Zwischenseiten und das Schrumpfen der Schrift beim Einpassen sind noch alt."
+             data-applies-to="den ungeshippten Stand im Worktree" data-finding="f-draft">
+      <p data-applies>Gilt für: den ungeshippten Stand im Worktree</p>
+      <p data-situation>Ich habe einen ersten Umbau gebaut: rechts nur noch ein fester Bezug-Bereich ohne Akkordeon, Ausgangslage und „Davon hängt ab“ an jeder Frage, „Keine passt“ als Link, die Notiz immer sichtbar, Lite ohne leere Startseite, eine Gate-Warnung bei fehlender Ausgangslage.</p>
+      <h3 data-question>Trifft dieser Entwurf deine Kritik?</h3>
+      <p data-context>Meine eigene Prüfung: teilweise. Diese drei Punkte sind noch alt.</p>
+      <p data-stakes>Ob wir auf dem Entwurf aufbauen oder neu ansetzen.</p>
+      <div data-options>
+        <label data-opt="ok"><input type="radio" name="dm-g-draft" value="ok"><span data-opt-label>Trifft es</span><span data-opt-consequence>Wir bauen auf dem Entwurf auf und feilen nur noch.</span></label>
+        <label data-opt="partial" data-recommended><input type="radio" name="dm-g-draft" value="partial" checked><span data-opt-label>Teilweise</span><span data-opt-consequence>Bausteine behalten, Aufbau nach dem gewählten Entwurf neu.</span></label>
+        <label data-opt="wrong"><input type="radio" name="dm-g-draft" value="wrong"><span data-opt-label>Verfehlt</span><span data-opt-consequence>Entwurf verwerfen, neu ansetzen.</span></label>
+      </div>
+      <input type="text" name="dm-g-draft-fix" value="" placeholder="Was fehlt oder stimmt nicht?">
+      <textarea data-comment="g-draft-note"></textarea>
+      <input type="hidden" name="dm-g-draft-touched" value="1"><input type="hidden" name="dm-g-draft-issue" value=""><input type="hidden" name="dm-g-draft-epic" value="">
+      <div data-alevel="3" data-title="Entwurf im Worktree">
+        <div data-slot="short"><p>6 von 9 Kritikpunkten adressiert.</p></div>
+        <div data-slot="long">
+          <div data-viz="bars" data-viz-spec='{"items":[{"label":"adressiert","value":6},{"label":"noch alt","value":3}],"unit":"Punkte"}'></div>
+          <p>Noch alt: das Briefing (Kennzahl + Chips + Verbindungslinien), die Themen-Zwischenseiten vor jeder Gruppe und das Verkleinern der Schrift, wenn der Inhalt nicht passt.</p>
+          <div data-evidence hidden>Adressiert: Akkordeon entfernt, Bezug-Bereich breiter (3:2), Ausgangslage, „Davon hängt ab“, „Keine passt“, Notiz immer sichtbar, Lite ohne Startseite, Gate A9. 968 Tests grün, nicht geshippt.</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="g-anat" data-nav-label="Fragestellung" data-decision="g-anat" data-decision-mode="multi" data-label="Bausteine der Fragestellung" data-rec="sit stakes"
+             data-rec-why="Ausgangslage plus Tragweite reichen für das Verständnis, ohne dass die Frage zu einem Textblock wird."
+             data-applies-to="jede Frage" data-finding="f-anat">
+      <p data-applies>Gilt für: jede Frage</p>
+      <p data-situation>Heute steht über den Optionen nur die Frage plus ein Satz Hintergrund. Du hast gesagt, dass dir die Fragestellung fehlt.</p>
+      <h3 data-question>Welche Bausteine gehören zu jeder Frage?</h3>
+      <p data-stakes>Wie viel Text jede Frage mitbringt und ob sie auf einen Bildschirm passt.</p>
+      <div data-options>
+        <label data-opt="sit"><input type="checkbox" name="dm-g-anat.sit" checked><span data-opt-label>Ausgangslage</span><span data-opt-consequence>1–2 Sätze mit Zahl über der Frage.</span></label>
+        <label data-opt="stakes"><input type="checkbox" name="dm-g-anat.stakes" checked><span data-opt-label>Davon hängt ab</span><span data-opt-consequence>Eine Zeile, was sich nachgelagert ändert.</span></label>
+        <label data-opt="nodec"><input type="checkbox" name="dm-g-anat.nodec"><span data-opt-label>Wenn wir nichts tun</span><span data-opt-consequence>Eine Zeile zum Status quo.</span></label>
+        <label data-opt="example"><input type="checkbox" name="dm-g-anat.example" checked><span data-opt-label>Konkretes Beispiel</span><span data-opt-consequence>Ein Fall aus dem Projekt, der das Problem zeigt.</span></label>
+      </div>
+      <textarea data-comment="g-anat-note">Konkretes beispiel sollte immer mit dabei sein, sozusagen prominent umschaltbar den befund in konkretes beispiel, ggf. auch visualsiiert!</textarea>
+      <input type="hidden" name="dm-g-anat-touched" value="1"><input type="hidden" name="dm-g-anat-issue" value=""><input type="hidden" name="dm-g-anat-epic" value="">
+      <div data-alevel="3" data-title="Bausteine der Fragestellung">
+        <div data-slot="short"><p>Heute: Frage + 1 Satz.</p></div>
+        <div data-slot="long"><p>Jeder Baustein kostet etwa eine Zeile. Mit allen vier wird die Frage etwa doppelt so hoch, die Optionen rutschen nach unten.</p></div>
+      </div>
+    </section>
+
+    <section id="g-topics" data-nav-label="Themenseiten" data-decision="g-topics" data-decision-mode="single" data-label="Themen-Zwischenseiten" data-rec="fold"
+             data-rec-why="Eine eigene Seite pro Thema kostet einen Klick ohne Entscheidung. Das Inhaltsverzeichnis zeigt das Thema ohnehin."
+             data-applies-to="Full-Analysen mit Themenfeldern" data-finding="f-topics">
+      <p data-applies>Gilt für: Full-Analysen mit Themenfeldern</p>
+      <p data-situation>Vor jedem Themenfeld steht heute eine eigene Seite („Themenfeld 1 / 2 · 3 Entscheidungen“) mit einer Zeile pro Frage. Bei 3 Themen sind das 3 Klicks ohne Entscheidung.</p>
+      <h3 data-question>Was passiert mit den Zwischenseiten vor jedem Thema?</h3>
+      <p data-stakes>Anzahl der Klicks und wie gut man merkt, dass ein neues Thema beginnt.</p>
+      <div data-options>
+        <label data-opt="keep"><input type="radio" name="dm-g-topics" value="keep" checked><span data-opt-label>Behalten</span><span data-opt-consequence>Klare Pause zwischen Themen, ein Klick mehr.</span></label>
+        <label data-opt="fold" data-recommended><input type="radio" name="dm-g-topics" value="fold"><span data-opt-label>In die erste Frage falten</span><span data-opt-consequence>Die erste Frage eines Themas zeigt eine Themenzeile, keine eigene Seite.</span></label>
+        <label data-opt="drop"><input type="radio" name="dm-g-topics" value="drop"><span data-opt-label>Ganz streichen</span><span data-opt-consequence>Nur das Inhaltsverzeichnis zeigt das Thema.</span></label>
+      </div>
+      <textarea data-comment="g-topics-note">gern zwischenseiten aber die müssen schon einen wirklichen mehrwert bringen als ein befund bei der danach ersten frage!</textarea>
+      <input type="hidden" name="dm-g-topics-touched" value="1"><input type="hidden" name="dm-g-topics-issue" value=""><input type="hidden" name="dm-g-topics-epic" value="">
+      <div data-alevel="3" data-title="Themen-Zwischenseiten">
+        <div data-slot="short"><p>3 von 9 Seiten ohne Entscheidung.</p></div>
+        <div data-slot="long">
+          <div data-viz="bars" data-viz-spec='{"items":[{"label":"Fragen","value":5},{"label":"Themenseiten","value":3},{"label":"Briefing + Abschluss","value":2}],"unit":"Seiten","hl":"Themenseiten"}'></div>
+          <p>Bei einer typischen Analyse mit 2–3 Themen ist jede dritte Seite eine Zwischenseite.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="g-brief" data-nav-label="Briefing" data-decision="g-brief" data-decision-mode="single" data-label="Briefing-Inhalt" data-rec="findings"
+             data-rec-why="Wer die drei wichtigsten Befunde kennt, versteht danach jede Frage schneller als mit einer einzelnen Kennzahl."
+             data-applies-to="den Einstieg jeder Full-Analyse" data-finding="f-brief">
+      <p data-applies>Gilt für: den Einstieg jeder Full-Analyse</p>
+      <p data-situation>Das Briefing zeigt heute eine große Kennzahl, Themen-Chips und Verbindungslinien. Was eigentlich gefunden wurde, steht erst bei den Fragen.</p>
+      <h3 data-question>Was soll das Briefing zuerst zeigen?</h3>
+      <p data-stakes>Ob man nach dem Briefing weiß, worum es geht, bevor die erste Frage kommt.</p>
+      <div data-options>
+        <label data-opt="kpi"><input type="radio" name="dm-g-brief" value="kpi"><span data-opt-label>Das Potenzial</span><span data-opt-consequence>Eine Kennzahl, wie heute, ohne Verbindungslinien.</span></label>
+        <label data-opt="findings" data-recommended><input type="radio" name="dm-g-brief" value="findings" checked><span data-opt-label>Die Top-3-Befunde</span><span data-opt-consequence>Drei Sätze mit Zahl, das Potenzial klein daneben.</span></label>
+        <label data-opt="agenda"><input type="radio" name="dm-g-brief" value="agenda"><span data-opt-label>Die Fragenliste</span><span data-opt-consequence>Alle Fragen mit Empfehlung, wie eine Agenda.</span></label>
+      </div>
+      <textarea data-comment="g-brief-note">da bin ich mir noch nicht sooo sicher... finde alles drei interessant, aber gern nochmal best practices und recherche verstehen!</textarea>
+      <input type="hidden" name="dm-g-brief-touched" value="1"><input type="hidden" name="dm-g-brief-issue" value=""><input type="hidden" name="dm-g-brief-epic" value="">
+      <div data-alevel="3" data-title="Briefing-Inhalt">
+        <div data-slot="short"><p>Heute: Kennzahl + Chips.</p></div>
+        <div data-slot="long"><p>Dein Feedback: Man erfasst nicht gut, was man erfassen soll. Das Briefing ist der einzige Ort, der vor den Fragen erklären kann, was gefunden wurde.</p></div>
+      </div>
+    </section>
+
+    <section id="g-fit" data-nav-label="Wenn es nicht passt" data-decision="g-fit" data-decision-mode="single" data-label="Überlauf" data-rec="pop"
+             data-rec-why="Kleinere Schrift macht genau die Stufen schwer lesbar, die ohnehin viel Inhalt haben."
+             data-applies-to="Fragen mit viel Inhalt" data-finding="f-fit">
+      <p data-applies>Gilt für: Fragen mit viel Inhalt</p>
+      <p data-situation>Passt eine Stufe nicht auf den Bildschirm, verkleinert die Seite heute erst die Abstände, dann die Schrift, und scrollt erst zuletzt innen.</p>
+      <h3 data-question>Was soll passieren, wenn eine Frage zu viel Inhalt hat?</h3>
+      <p data-stakes>Lesbarkeit langer Fragen und ob jemals etwas außerhalb des Bildschirms landet.</p>
+      <div data-options>
+        <label data-opt="shrink"><input type="radio" name="dm-g-fit" value="shrink"><span data-opt-label>Schrift verkleinern</span><span data-opt-consequence>Wie heute, alles bleibt sichtbar, aber kleiner.</span></label>
+        <label data-opt="pop" data-recommended><input type="radio" name="dm-g-fit" value="pop" checked><span data-opt-label>Details in „Belege“ auslagern</span><span data-opt-consequence>Schrift bleibt groß, Längeres öffnet als Popup.</span></label>
+        <label data-opt="scroll"><input type="radio" name="dm-g-fit" value="scroll"><span data-opt-label>Linke Spalte scrollt</span><span data-opt-consequence>Schrift bleibt, die Notiz kann unter den Rand rutschen.</span></label>
+      </div>
+      <textarea data-comment="g-fit-note"></textarea>
+      <input type="hidden" name="dm-g-fit-touched" value="1"><input type="hidden" name="dm-g-fit-issue" value=""><input type="hidden" name="dm-g-fit-epic" value="">
+      <div data-alevel="3" data-title="Überlauf">
+        <div data-slot="short"><p>Heute: 3 Stufen Verdichtung.</p></div>
+        <div data-slot="long"><p>Die Notiz soll immer sichtbar sein. Deshalb fällt „scrollen“ eigentlich weg, außer die Notiz wird unten festgehalten.</p></div>
+      </div>
+    </section>
+  </section>
+</section>

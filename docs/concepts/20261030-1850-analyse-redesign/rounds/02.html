@@ -1,0 +1,288 @@
+<section data-iteration="2" data-iteration-template="design" data-baked>
+  <script type="application/json" data-frozen-feedback>{"general":{"text":"","attachments":[]},"designs":{},"screens":{"d3-s1":"finde ich vollkommen unübersichtlich!","d3-s2":"finde ich gut. Aber man erkennt visuell nciht, dass es die themenübersicht ist!  Es sollte direkt am design klar werden, Briefing oder review seite vs themenseite vs befund und frage seite!","d3-s3":"Super, wobei ich viel mich blendeen shee im dark mode. Ich finde die beiden boxen schon gut aber darin puh und entscheidungen müssen sich ja auch abheben... \nwirklcih nochmal kreativer in der darstellung werden und psyhcologisch recchersche prroven!"},"views":{}}</script>
+  <style>
+    .mock-r2-tog { display: inline-flex; padding: 3px; border-radius: 999px; background: #0e141e; box-shadow: inset 0 0 0 1px #263142; gap: 2px; }
+    .mock-r2-tog button { border: 0; background: none; color: #8b97a7; font-size: 12.5px; padding: 4px 12px; border-radius: 999px; }
+    .mock-r2-tog button.mock-r2-on { background: #1f6feb; color: #fff; }
+    .mock-r2-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    .mock-r2-case { margin-top: 14px; display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 18px; align-items: center; }
+    .mock-r2-tl { display: flex; gap: 4px; align-items: flex-end; height: 70px; }
+    .mock-r2-tl i { flex: 1; border-radius: 3px 3px 0 0; background: #58a6ff; }
+    .mock-r2-tl i.mock-r2-dead { background: #3a2f52; }
+    .mock-r2-code { font: 12.5px/1.5 ui-monospace, Consolas, monospace; color: #c3ccd8; background: #0e141e; border-radius: 8px; padding: 8px 10px; }
+    .mock-r2-big { font-size: 22px; font-weight: 720; letter-spacing: -.02em; line-height: 1.25; margin: 6px 0 10px; max-width: 820px; }
+    .mock-r2-scqa { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 4px 14px; font-size: 13.5px; max-width: 820px; }
+    .mock-r2-scqa b { color: #8b97a7; font-weight: 600; }
+    .mock-r2-three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
+    .mock-r2-f { padding: 14px; border-radius: 12px; background: #111824; border: 1px solid #222b38; }
+    .mock-r2-f b { display: block; font-size: 22px; }
+    .mock-r2-agenda { display: flex; gap: 18px; margin-top: 16px; padding: 12px 16px; border-radius: 12px; border: 1px dashed #314055; color: #c3ccd8; font-size: 13px; }
+    .mock-r2-share { display: flex; height: 14px; border-radius: 7px; overflow: hidden; margin-top: 10px; }
+    .mock-r2-share i { display: block; }
+    .mock-r2-decide { margin-top: 14px; padding: 14px 16px; border-radius: 12px; background: #0f1a2c; border: 1px solid #2b4d7a; }
+    .mock-r2-thread { margin-top: 14px; font-size: 13px; color: #8b97a7; border-left: 2px solid #314055; padding-left: 12px; }
+  </style>
+
+  <header class="iteration-intro">
+    <h2>{{iteration.tab}} 2 · Bericht im Fluss, verfeinert</h2>
+    <p>Dein Favorit „Bericht im Fluss“ ist jetzt die Grundlage. Neu sind: ein Briefing nach der Recherche (eine Kernaussage zuerst, dann Lage und Komplikation, Top-3-Befunde und eine kurze Vorschau auf die Entscheidungen), eine Themenseite mit drei Dingen, die der erste Befund nicht liefert, und ein Umschalter am Befund zwischen „Befund“ und „Konkretes Beispiel“. Klick im Mockup auf den Umschalter. Offene Grundsatzfragen stehen in der Ansicht „Fragen zu Runde 2“.</p>
+  </header>
+
+  <section data-design="d3" data-nav-label="Bericht im Fluss" data-design-active="true" data-screen-fit="full">
+    <section id="d3-s1" data-nav-label="Briefing" data-screen data-screen-active="true">
+      <div class="mock-app">
+        <div class="mock-body" style="grid-template-columns: 200px minmax(0,1fr)">
+          <div class="mock-side"><p class="mock-here">Briefing</p><p>Cache · 3</p><p>Hooks · 2</p><p>Abschluss</p></div>
+          <div class="r2-brief">
+            <div class="mock-kicker">Kernaussage</div>
+            <p class="mock-r2-big r2-big">≈ 51 M Tokens im Monat lassen sich sparen. Dafür brauchen wir 5 Entscheidungen von dir, für 4 davon haben wir eine klare Empfehlung.</p>
+            <div class="mock-r2-scqa r2-scqa">
+              <b>Lage</b><span>Cache und Hooks laufen seit Wochen unverändert.</span>
+              <b>Problem</b><span>Das Wochenlimit steht bei 93 %, 70 % des Verbrauchs entstehen dort.</span>
+              <b>Frage</b><span>Welche Stellschrauben drehen wir jetzt?</span>
+            </div>
+            <div class="mock-r2-three">
+              <div class="mock-r2-f"><b>80 %</b>der Cache-Treffer fallen in die ersten 10 min, Einträge leben aber 24 h.</div>
+              <div class="mock-r2-f"><b>20 M</b>Tokens kostet doppelt eingespielter Kontext aus zwei Hooks.</div>
+              <div class="mock-r2-f"><b>3</b>Hooks laufen ohne Zeitbudget.</div>
+            </div>
+            <div class="mock-r2-agenda r2-agenda"><span>5 Entscheidungen</span><span>· 2 Themen</span><span>· ≈ 4 min</span><span>· 4 mit klarer Empfehlung</span></div>
+            <button class="mock-next" type="button" style="margin-top:18px" data-screen-link="d3-s2">Zum ersten Thema ↓</button>
+          </div>
+        </div>
+      </div>
+      <div class="anno-layer" data-anno-layer>
+        <div class="anno" data-anno="r2-d3-s1-a1" data-anno-side="left" data-anno-target=".r2-big" style="--anno-x:70%;--anno-y:15%">
+          <button class="anno-pin" type="button" data-anno-pin="r2-d3-s1-a1" aria-expanded="false" aria-controls="anno-bubble-r2-d3-s1-a1" aria-label="{{anno.pin_label}}">1</button>
+          <div class="anno-bubble" id="anno-bubble-r2-d3-s1-a1" data-anno-bubble="r2-d3-s1-a1" data-open="false">
+            <p class="anno-bubble-improved"><strong>{{design.change_improved}}</strong> Kernaussage zuerst statt nackter Zahl</p>
+            <button type="button" class="anno-bubble-summary" data-anno-summary="r2-d3-s1-a1" aria-expanded="false" aria-controls="anno-bubble-r2-d3-s1-a1"><span class="anno-bubble-question">Eine Kernaussage mit Zahl und dem, was von dir verlangt wird: ist das der richtige Einstieg?</span></button>
+            <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r2-d3-s1-a1" data-annotation="r2-d3-s1-a1" data-attachable placeholder="{{anno.answer_placeholder}}"></textarea><div class="attach-slot" data-attach-slot="anno-r2-d3-s1-a1"></div></div>
+          </div>
+        </div>
+        <div class="anno" data-anno="r2-d3-s1-a2" data-anno-side="left" data-anno-target=".r2-scqa" style="--anno-x:70%;--anno-y:35%">
+          <button class="anno-pin" type="button" data-anno-pin="r2-d3-s1-a2" aria-expanded="false" aria-controls="anno-bubble-r2-d3-s1-a2" aria-label="{{anno.pin_label}}">2</button>
+          <div class="anno-bubble" id="anno-bubble-r2-d3-s1-a2" data-anno-bubble="r2-d3-s1-a2" data-open="false">
+            <button type="button" class="anno-bubble-summary" data-anno-summary="r2-d3-s1-a2" aria-expanded="false" aria-controls="anno-bubble-r2-d3-s1-a2"><span class="anno-bubble-question">Lage, Problem und Frage in drei Zeilen: hilft das, oder ist es eine Zeile zu viel Theorie?</span></button>
+            <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r2-d3-s1-a2" data-annotation="r2-d3-s1-a2" data-attachable placeholder="{{anno.answer_placeholder}}"></textarea><div class="attach-slot" data-attach-slot="anno-r2-d3-s1-a2"></div></div>
+          </div>
+        </div>
+        <div class="anno" data-anno="r2-d3-s1-a3" data-anno-side="left" data-anno-target=".r2-agenda" style="--anno-x:70%;--anno-y:75%">
+          <button class="anno-pin" type="button" data-anno-pin="r2-d3-s1-a3" aria-expanded="false" aria-controls="anno-bubble-r2-d3-s1-a3" aria-label="{{anno.pin_label}}">3</button>
+          <div class="anno-bubble" id="anno-bubble-r2-d3-s1-a3" data-anno-bubble="r2-d3-s1-a3" data-open="false">
+            <button type="button" class="anno-bubble-summary" data-anno-summary="r2-d3-s1-a3" aria-expanded="false" aria-controls="anno-bubble-r2-d3-s1-a3"><span class="anno-bubble-question">Die Fragen nur als Zahl ankündigen, nicht als Liste: so bleibt die Spannung. Einverstanden?</span></button>
+            <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r2-d3-s1-a3" data-annotation="r2-d3-s1-a3" data-attachable placeholder="{{anno.answer_placeholder}}"></textarea><div class="attach-slot" data-attach-slot="anno-r2-d3-s1-a3"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="d3-s2" data-nav-label="Themenseite" data-screen hidden>
+      <div class="mock-app">
+        <div class="mock-body" style="grid-template-columns: 200px minmax(0,1fr)">
+          <div class="mock-side"><p class="mock-ok">Briefing</p><p class="mock-here">Cache · 3</p><p>Hooks · 2</p><p>Abschluss</p></div>
+          <div>
+            <div class="mock-kicker">Thema 1 von 2 · Cache</div>
+            <h1 class="mock-h1">Der Cache hält zu lange fest, was kaum jemand nach 10 Minuten noch braucht.</h1>
+            <div class="mock-find r2-weight">
+              <div class="mock-kicker">Gewicht im Ganzen</div>
+              <div class="mock-r2-share"><i style="width:61%;background:#a371f7"></i><i style="width:39%;background:#263142"></i></div>
+              <p class="mock-mu" style="margin:8px 0 0">31 M von 51 M Tokens Potenzial (61 %), das größte der beiden Themen.</p>
+            </div>
+            <div class="mock-r2-decide r2-decide"><div class="mock-kicker">Was du hier entscheidest</div><p style="margin:6px 0 0">3 Fragen: wie lange, wie groß und für welche Hooks gecacht wird. Unsere Linie: kürzer und kleiner, dafür gezielt.</p></div>
+            <p class="mock-r2-thread r2-thread">Bisher: nichts entschieden. Danach gilt: Hooks bekommen frischere Antworten, das Thema Hooks baut darauf auf.</p>
+            <button class="mock-next" type="button" style="margin-top:16px" data-screen-link="d3-s3">Zum ersten Befund ↓</button>
+          </div>
+        </div>
+      </div>
+      <div class="anno-layer" data-anno-layer>
+        <div class="anno" data-anno="r2-d3-s2-a1" data-anno-side="left" data-anno-target=".r2-weight" style="--anno-x:70%;--anno-y:35%">
+          <button class="anno-pin" type="button" data-anno-pin="r2-d3-s2-a1" aria-expanded="false" aria-controls="anno-bubble-r2-d3-s2-a1" aria-label="{{anno.pin_label}}">1</button>
+          <div class="anno-bubble" id="anno-bubble-r2-d3-s2-a1" data-anno-bubble="r2-d3-s2-a1" data-open="false">
+            <button type="button" class="anno-bubble-summary" data-anno-summary="r2-d3-s2-a1" aria-expanded="false" aria-controls="anno-bubble-r2-d3-s2-a1"><span class="anno-bubble-question">Einordnung (Anteil am Ganzen): ist das echter Mehrwert gegenüber dem ersten Befund?</span></button>
+            <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r2-d3-s2-a1" data-annotation="r2-d3-s2-a1" data-attachable placeholder="{{anno.answer_placeholder}}">Ja schon!</textarea><div class="attach-slot" data-attach-slot="anno-r2-d3-s2-a1"></div></div>
+          </div>
+        </div>
+        <div class="anno" data-anno="r2-d3-s2-a2" data-anno-side="left" data-anno-target=".r2-decide" style="--anno-x:70%;--anno-y:55%">
+          <button class="anno-pin" type="button" data-anno-pin="r2-d3-s2-a2" aria-expanded="false" aria-controls="anno-bubble-r2-d3-s2-a2" aria-label="{{anno.pin_label}}">2</button>
+          <div class="anno-bubble" id="anno-bubble-r2-d3-s2-a2" data-anno-bubble="r2-d3-s2-a2" data-open="false">
+            <button type="button" class="anno-bubble-summary" data-anno-summary="r2-d3-s2-a2" aria-expanded="false" aria-controls="anno-bubble-r2-d3-s2-a2"><span class="anno-bubble-question">Die Entscheidungen des Themas vorab mit unserer Linie nennen: lenkt das zu sehr, oder hilft es beim gezielten Lesen?</span></button>
+            <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r2-d3-s2-a2" data-annotation="r2-d3-s2-a2" data-attachable placeholder="{{anno.answer_placeholder}}"></textarea><div class="attach-slot" data-attach-slot="anno-r2-d3-s2-a2"></div></div>
+          </div>
+        </div>
+        <div class="anno" data-anno="r2-d3-s2-a3" data-anno-side="left" data-anno-target=".r2-thread" style="--anno-x:70%;--anno-y:72%">
+          <button class="anno-pin" type="button" data-anno-pin="r2-d3-s2-a3" aria-expanded="false" aria-controls="anno-bubble-r2-d3-s2-a3" aria-label="{{anno.pin_label}}">3</button>
+          <div class="anno-bubble" id="anno-bubble-r2-d3-s2-a3" data-anno-bubble="r2-d3-s2-a3" data-open="false">
+            <button type="button" class="anno-bubble-summary" data-anno-summary="r2-d3-s2-a3" aria-expanded="false" aria-controls="anno-bubble-r2-d3-s2-a3"><span class="anno-bubble-question">Der rote Faden („bisher … danach gilt …“): braucht es den?</span></button>
+            <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r2-d3-s2-a3" data-annotation="r2-d3-s2-a3" data-attachable placeholder="{{anno.answer_placeholder}}">ne, der ist zu viel, weniger ist mehr!</textarea><div class="attach-slot" data-attach-slot="anno-r2-d3-s2-a3"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="d3-s3" data-nav-label="Befund + Frage" data-screen hidden>
+      <div class="mock-app">
+        <div class="mock-body" style="grid-template-columns: 200px minmax(0,1fr)">
+          <div class="mock-side"><p class="mock-ok">Briefing</p><p class="mock-ok">Cache · Thema</p><p class="mock-here">Cache · Lebensdauer</p><p>Cache · Größe</p><p>Hooks · 2</p><p>Abschluss</p></div>
+          <div>
+            <div class="mock-find">
+              <div class="mock-r2-head"><div class="mock-kicker">Befund · Cache</div><span class="mock-r2-tog r2-tog"><button type="button" class="mock-r2-on">Befund</button><button type="button" data-screen-link="d3-s4">Konkretes Beispiel</button></span></div>
+              <p style="margin:6px 0 0;font-size:17px;font-weight:650">Heute fallen 80 % der Treffer in die ersten 10 Minuten, Einträge leben aber 24 Stunden.</p>
+              <div class="mock-bars"><div class="mock-bar mock-hl"><span>&lt; 10 min</span><i style="width:80%"></i><b>80 %</b></div><div class="mock-bar mock-dim"><span>10–60 min</span><i style="width:14%"></i><b>14 %</b></div><div class="mock-bar mock-dim"><span>&gt; 1 h</span><i style="width:6%"></i><b>6 %</b></div></div>
+            </div>
+            <div class="mock-band">
+              <h3 class="mock-q" style="font-size:21px">Wie lange darf eine gecachte Antwort leben?</h3>
+              <p class="mock-stakes"><b>Davon hängt ab:</b> Tokenverbrauch und Aktualität aller Hooks.</p>
+              <div class="mock-opts">
+                <div class="mock-opt mock-sel"><span class="mock-star">★ Empfehlung</span><b>Nach 10 Minuten verwerfen</b><span>Spart ≈ 31 M.</span></div>
+                <div class="mock-opt"><b>Nach 1 Stunde</b><span>Spart ≈ 24 M.</span></div>
+                <div class="mock-opt"><b>Einen Tag</b><span>Kann veraltet sein.</span></div>
+              </div>
+              <span class="mock-none">Keine passt, eigene Antwort in die Notiz</span>
+              <div class="mock-note">Notiz (optional)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="anno-layer" data-anno-layer>
+        <div class="anno" data-anno="r2-d3-s3-a1" data-anno-side="left" data-anno-target=".r2-tog" style="--anno-x:85%;--anno-y:10%">
+          <button class="anno-pin" type="button" data-anno-pin="r2-d3-s3-a1" aria-expanded="false" aria-controls="anno-bubble-r2-d3-s3-a1" aria-label="{{anno.pin_label}}">1</button>
+          <div class="anno-bubble" id="anno-bubble-r2-d3-s3-a1" data-anno-bubble="r2-d3-s3-a1" data-open="false">
+            <p class="anno-bubble-improved"><strong>{{design.change_improved}}</strong> Umschalter Befund / Beispiel</p>
+            <button type="button" class="anno-bubble-summary" data-anno-summary="r2-d3-s3-a1" aria-expanded="false" aria-controls="anno-bubble-r2-d3-s3-a1"><span class="anno-bubble-question">Ist der Umschalter prominent genug, oder soll das Beispiel immer daneben stehen?</span></button>
+            <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r2-d3-s3-a1" data-annotation="r2-d3-s3-a1" data-attachable placeholder="{{anno.answer_placeholder}}">ne, nicht prominent genug, aber das beispiel nicht direkt daneben weil es ja nicht textuell sondern primär visuell ist - da würde platz und fokus nicht gut sein.</textarea><div class="attach-slot" data-attach-slot="anno-r2-d3-s3-a1"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="d3-s4" data-nav-label="Befund · Beispiel" data-screen hidden>
+      <div class="mock-app">
+        <div class="mock-body" style="grid-template-columns: 200px minmax(0,1fr)">
+          <div class="mock-side"><p class="mock-ok">Briefing</p><p class="mock-ok">Cache · Thema</p><p class="mock-here">Cache · Lebensdauer</p><p>Cache · Größe</p><p>Hooks · 2</p><p>Abschluss</p></div>
+          <div>
+            <div class="mock-find">
+              <div class="mock-r2-head"><div class="mock-kicker">Befund · Cache</div><span class="mock-r2-tog"><button type="button" data-screen-link="d3-s3">Befund</button><button type="button" class="mock-r2-on">Konkretes Beispiel</button></span></div>
+              <div class="mock-r2-case r2-case">
+                <div>
+                  <p style="margin:0 0 8px;font-size:15px;font-weight:650">Ein typischer Eintrag: die Antwort von <code>git status</code> im Hook <code>pre.tool.guard</code>.</p>
+                  <div class="mock-r2-code">gecacht 09:12 · Treffer 09:13, 09:15, 09:19 · danach 0 Treffer · gelöscht am nächsten Tag 09:12</div>
+                  <p class="mock-mu" style="margin:8px 0 0">Er wird dreimal genutzt und liegt danach knapp 24 Stunden ungenutzt im Cache. So sieht es bei 8 von 10 Einträgen aus.</p>
+                </div>
+                <div><div class="mock-r2-tl"><i style="height:90%"></i><i style="height:70%"></i><i style="height:55%"></i><i class="mock-r2-dead" style="height:8%"></i><i class="mock-r2-dead" style="height:8%"></i><i class="mock-r2-dead" style="height:8%"></i><i class="mock-r2-dead" style="height:8%"></i><i class="mock-r2-dead" style="height:8%"></i></div><p class="mock-mu" style="margin:6px 0 0;font-size:12px">Treffer pro Stunde nach dem Speichern</p></div>
+              </div>
+            </div>
+            <div class="mock-band">
+              <h3 class="mock-q" style="font-size:21px">Wie lange darf eine gecachte Antwort leben?</h3>
+              <p class="mock-stakes"><b>Davon hängt ab:</b> Tokenverbrauch und Aktualität aller Hooks.</p>
+              <div class="mock-opts">
+                <div class="mock-opt mock-sel"><span class="mock-star">★ Empfehlung</span><b>Nach 10 Minuten verwerfen</b><span>Spart ≈ 31 M.</span></div>
+                <div class="mock-opt"><b>Nach 1 Stunde</b><span>Spart ≈ 24 M.</span></div>
+                <div class="mock-opt"><b>Einen Tag</b><span>Kann veraltet sein.</span></div>
+              </div>
+              <span class="mock-none">Keine passt, eigene Antwort in die Notiz</span>
+              <div class="mock-note">Notiz (optional)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="anno-layer" data-anno-layer>
+        <div class="anno" data-anno="r2-d3-s4-a1" data-anno-side="left" data-anno-target=".r2-case" style="--anno-x:85%;--anno-y:25%">
+          <button class="anno-pin" type="button" data-anno-pin="r2-d3-s4-a1" aria-expanded="false" aria-controls="anno-bubble-r2-d3-s4-a1" aria-label="{{anno.pin_label}}">1</button>
+          <div class="anno-bubble" id="anno-bubble-r2-d3-s4-a1" data-anno-bubble="r2-d3-s4-a1" data-open="false">
+            <button type="button" class="anno-bubble-summary" data-anno-summary="r2-d3-s4-a1" aria-expanded="false" aria-controls="anno-bubble-r2-d3-s4-a1"><span class="anno-bubble-question">Ein echter, typischer Fall aus den Daten plus eine kleine Grafik: trifft das „konkretes Beispiel, ggf. visualisiert“?</span></button>
+            <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r2-d3-s4-a1" data-annotation="r2-d3-s4-a1" data-attachable placeholder="{{anno.answer_placeholder}}">Das ist für mich eher der Befund bzw. teil der analyse und nicht das beispiel aus der aktuellen applikation... außer wenn es nichts bildliches ist, dann ok visualisierung so ähnlich bzw. diagramme.</textarea><div class="attach-slot" data-attach-slot="anno-r2-d3-s4-a1"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </section>
+
+  <section data-view="v-r2" data-view-kind="analysis" data-analysis="lite" data-nav-label="Fragen zu Runde 2" hidden>
+    <div data-alevel="1" data-title="Fragen zu Runde 2">
+      <div data-slot="short"><p>Vier offene Punkte für den Bericht im Fluss.</p></div>
+      <div data-slot="long"><p>Die Recherche (Minto/SCQA, „Answer first“, Knaflics „Big Idea“) stützt ein Briefing aus Kernaussage und Top-3-Befunden. Die volle Agenda verrät zu viel vorab.</p></div>
+    </div>
+
+    <section id="r2-brief" data-nav-label="Briefing" data-decision="r2-brief" data-decision-mode="single" data-label="Briefing-Aufbau" data-rec="hybrid"
+             data-rec-why="Answer first: Wer zuerst Antwort und Anliegen kennt, liest jeden Befund gezielter. Eine volle Agenda lädt nur zum Abnicken der Empfehlungen ein."
+             data-applies-to="den Einstieg jeder Full-Analyse" data-finding="f-r2-brief">
+      <p data-applies>Gilt für: den Einstieg jeder Full-Analyse</p>
+      <p data-situation>Du fandest alle drei Varianten interessant. Die Recherche spricht für eine Mischung: eine Kernaussage zuerst, dann Lage, Problem und Frage, dann die Top-3-Befunde und die Entscheidungen nur als Zahl.</p>
+      <h3 data-question>Welchen Aufbau bekommt das Briefing?</h3>
+      <p data-stakes>Ob man nach dem Briefing weiß, worum es geht und was von einem verlangt wird.</p>
+      <div data-options>
+        <label data-opt="hybrid" data-recommended><input type="radio" name="dm-r2-brief" value="hybrid" checked><span data-opt-label>Kernaussage + Top-3 + Vorschau</span><span data-opt-consequence>Wie im Mockup. Antwort zuerst, Belege danach.</span></label>
+        <label data-opt="hybrid-agenda"><input type="radio" name="dm-r2-brief" value="hybrid-agenda"><span data-opt-label>Wie links, plus volle Fragenliste</span><span data-opt-consequence>Mehr Überblick, weniger Spannung beim Lesen.</span></label>
+        <label data-opt="kpi"><input type="radio" name="dm-r2-brief" value="kpi"><span data-opt-label>Nur Kennzahl + Top-3</span><span data-opt-consequence>Kürzer, ohne Lage und Problem.</span></label>
+      </div>
+      <textarea data-comment="r2-brief-note">vorschau? hmm</textarea>
+      <input type="hidden" name="dm-r2-brief-touched" value="1"><input type="hidden" name="dm-r2-brief-issue" value=""><input type="hidden" name="dm-r2-brief-epic" value="">
+      <div data-alevel="3" data-title="Briefing-Aufbau">
+        <div data-slot="short"><p>Recherche: Answer first.</p></div>
+        <div data-slot="long"><p>Minto/SCQA und Knaflics „Big Idea“ verlangen einen Satz mit Standpunkt, Einsatz und Handlungsaufforderung. Eine nackte Kennzahl erfüllt das nicht, eine volle Agenda nimmt die Spannung.</p><div data-evidence hidden>Quellen: Minto, The Pyramid Principle; Knaflic, Storytelling with Data; Rekonstruktionen des Amazon-6-Pagers. Die Quellen waren Zusammenfassungen, keine Primärtexte.</div></div>
+      </div>
+    </section>
+
+    <section id="r2-topic" data-nav-label="Themenseite" data-decision="r2-topic" data-decision-mode="multi" data-label="Inhalt der Themenseite" data-rec="weight decide"
+             data-rec-why="Gewicht und Entscheidungsvorschau liefert kein einzelner Befund. Der rote Faden lohnt sich erst ab 3 Themen."
+             data-applies-to="jede Themenseite" data-finding="f-r2-topic">
+      <p data-applies>Gilt für: jede Themenseite</p>
+      <p data-situation>Du willst Zwischenseiten nur, wenn sie mehr bringen als der Befund der ersten Frage. Das Mockup zeigt drei Bausteine, die kein einzelner Befund liefern kann.</p>
+      <h3 data-question>Welche Bausteine trägt eine Themenseite?</h3>
+      <p data-stakes>Ob die Seite den Klick wert ist.</p>
+      <div data-options>
+        <label data-opt="weight"><input type="checkbox" name="dm-r2-topic.weight"><span data-opt-label>Gewicht im Ganzen</span><span data-opt-consequence>Anteil am Potenzial und Rang unter den Themen.</span></label>
+        <label data-opt="decide"><input type="checkbox" name="dm-r2-topic.decide" checked><span data-opt-label>Was du hier entscheidest</span><span data-opt-consequence>Die Fragen des Themas in einem Satz, mit unserer Linie.</span></label>
+        <label data-opt="thread"><input type="checkbox" name="dm-r2-topic.thread" checked><span data-opt-label>Roter Faden</span><span data-opt-consequence>Was bisher feststeht und was dieses Thema ändert.</span></label>
+      </div>
+      <textarea data-comment="r2-topic-note">bitte den roten faden integriert machen in den texten oder fragen oder befunden, überlege nochmal tiefer, aber nicht als extra! und bitte bie jeder fragenseite nicht bei den meta seiten.
+</textarea>
+      <input type="hidden" name="dm-r2-topic-touched" value="1"><input type="hidden" name="dm-r2-topic-issue" value=""><input type="hidden" name="dm-r2-topic-epic" value="">
+      <div data-alevel="3" data-title="Inhalt der Themenseite">
+        <div data-slot="short"><p>3 Bausteine, die ein Befund nicht hat.</p></div>
+        <div data-slot="long"><p>Eine Themenseite, die nur den Titel wiederholt, ist Dekoration. Gewicht, Vorschau und roter Faden ordnen ein, was danach kommt.</p></div>
+      </div>
+    </section>
+
+    <section id="r2-example" data-nav-label="Beispiel" data-decision="r2-example" data-decision-mode="single" data-label="Beispiel-Anzeige" data-rec="toggle"
+             data-rec-why="Du hast „prominent umschaltbar“ gesagt. Nebeneinander verdoppelt die Höhe jedes Befunds."
+             data-applies-to="jeden Befund" data-finding="f-r2-example">
+      <p data-applies>Gilt für: jeden Befund</p>
+      <p data-situation>Zu jedem Befund gehört ab jetzt ein konkretes Beispiel: ein echter, typischer Fall aus den Daten, nicht der drastischste, mit derselben Zahl.</p>
+      <h3 data-question>Wie zeigen wir Befund und Beispiel?</h3>
+      <p data-stakes>Höhe jedes Befunds und ob man das Beispiel überhaupt sieht.</p>
+      <div data-options>
+        <label data-opt="toggle" data-recommended><input type="radio" name="dm-r2-example" value="toggle" checked><span data-opt-label>Umschalter, Befund zuerst</span><span data-opt-consequence>Wie im Mockup, kompakt.</span></label>
+        <label data-opt="toggle-ex"><input type="radio" name="dm-r2-example" value="toggle-ex"><span data-opt-label>Umschalter, Beispiel zuerst</span><span data-opt-consequence>Konkret vor abstrakt, die Regel kommt danach.</span></label>
+        <label data-opt="side"><input type="radio" name="dm-r2-example" value="side"><span data-opt-label>Immer nebeneinander</span><span data-opt-consequence>Beides sichtbar, der Befund wird höher.</span></label>
+      </div>
+      <textarea data-comment="r2-example-note"></textarea>
+      <input type="hidden" name="dm-r2-example-touched" value="1"><input type="hidden" name="dm-r2-example-issue" value=""><input type="hidden" name="dm-r2-example-epic" value="">
+      <div data-alevel="3" data-title="Beispiel-Anzeige">
+        <div data-slot="short"><p>Ein Beispiel pro Befund.</p></div>
+        <div data-slot="long"><p>Recherche-Regel: im selben Blickfeld, aus echten Daten, das typischste statt des drastischsten Falls.</p></div>
+      </div>
+    </section>
+
+    <section id="r2-flow" data-nav-label="Scrollen" data-decision="r2-flow" data-decision-mode="single" data-label="Scroll-Verhalten" data-rec="snap"
+             data-rec-why="Einrasten hält „ein Befund pro Bildschirm“, ohne den Weiter-Knopf zurückzubringen."
+             data-applies-to="den Bericht im Fluss" data-finding="f-r2-flow">
+      <p data-applies>Gilt für: den Bericht im Fluss</p>
+      <p data-situation>Du magst das Durchhangeln nach unten. Offen ist, ob die Seite frei scrollt oder bei jedem Befund einrastet.</p>
+      <h3 data-question>Wie scrollt der Bericht?</h3>
+      <p data-stakes>Ob ein Befund samt Frage immer ganz im Bild ist.</p>
+      <div data-options>
+        <label data-opt="free"><input type="radio" name="dm-r2-flow" value="free"><span data-opt-label>Frei scrollen</span><span data-opt-consequence>Wie ein Dokument, Befunde können angeschnitten sein.</span></label>
+        <label data-opt="snap" data-recommended><input type="radio" name="dm-r2-flow" value="snap" checked><span data-opt-label>Pro Befund einrasten</span><span data-opt-consequence>Befund + Frage füllen jeweils einen Bildschirm.</span></label>
+        <label data-opt="auto"><input type="radio" name="dm-r2-flow" value="auto"><span data-opt-label>Nach Antwort weiterrollen</span><span data-opt-consequence>Nach der Wahl rollt die Seite zum nächsten Befund.</span></label>
+      </div>
+      <textarea data-comment="r2-flow-note"></textarea>
+      <input type="hidden" name="dm-r2-flow-touched" value="1"><input type="hidden" name="dm-r2-flow-issue" value=""><input type="hidden" name="dm-r2-flow-epic" value="">
+      <div data-alevel="3" data-title="Scroll-Verhalten">
+        <div data-slot="short"><p>Heute: Stufen mit Weiter-Knopf.</p></div>
+        <div data-slot="long"><p>Einrasten nutzt CSS scroll-snap. Die seitliche Gliederung markiert den Befund im Bild, Enter springt zum nächsten.</p></div>
+      </div>
+    </section>
+  </section>
+</section>

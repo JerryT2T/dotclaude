@@ -11,7 +11,8 @@
  *         recommendation
  *     A3  unknown data-decision-mode
  *   Warnings (advisory, never part of `ok`):
- *     A4  more than 3 topics per Full / more than 7 decisions per topic
+ *     A4  a Full with fewer than 1 or more than 7 topics, a topic with fewer
+ *         than 3 or more than 7 questions, a topic title over 5 words
  *     A5  Lite with more than 5 decisions (use Full)
  *     A6  quantitative finding without a visual
  *     A7  an exclusive choice built as N bi-states
@@ -28,8 +29,11 @@ const MODES = ['single', 'multi', 'yesnoalt', 'slider', 'order', 'verify', 'word
 const VOID = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr']);
 const TAG_RE = /<(\/?)([a-z][a-z0-9-]*)\b((?:[^>"']|"[^"]*"|'[^']*')*)>/gi;
 
-const TOPIC_MAX = 3;
+const TOPIC_MIN = 1;
+const TOPIC_MAX = 7;
+const PER_TOPIC_MIN = 3;
 const PER_TOPIC_MAX = 7;
+const TITLE_MAX_WORDS = 5;
 const LITE_MAX = 5;
 
 const TIMING_RE = /\b(welle|wellen|wann\s+(?:\w+\s+){0,2}umsetz\w*|wann\s+einbauen|when\s+to\s+(?:implement|ship|build|do)|which\s+wave|in\s+which\s+(?:wave|release)|rollout\s+wave)\b/i;
@@ -157,10 +161,15 @@ function findAnalysisIssues(html) {
   // A4 — groups ≤ 3, decisions per group ≤ 7
   for (const f of fulls) {
     const topics = doc.nodes.filter(n => has(n, 'data-topic') && inside(f, n));
-    if (topics.length > TOPIC_MAX) warn('topics-max', `Full analysis has ${topics.length} topics — keep it to ${TOPIC_MAX} (split the concept or merge topics)`, f.start);
+    if (topics.length < TOPIC_MIN || topics.length > TOPIC_MAX) warn('topics-count', `Full analysis has ${topics.length} topics — keep it between ${TOPIC_MIN} and ${TOPIC_MAX} (split the concept or merge topics)`, f.start);
     for (const t of topics) {
+      const name = decode(attr(t, 'data-nav-label') || attr(t, 'id') || '?');
       const n = decisions.filter(d => inside(t, d)).length;
-      if (n > PER_TOPIC_MAX) warn('topic-decisions-max', `topic "${decode(attr(t, 'data-nav-label') || attr(t, 'id') || '?')}" holds ${n} decisions — keep it to ${PER_TOPIC_MAX}`, t.start);
+      if (n < PER_TOPIC_MIN || n > PER_TOPIC_MAX) warn('topic-questions-count', `topic "${name}" holds ${n} questions — keep it between ${PER_TOPIC_MIN} and ${PER_TOPIC_MAX}`, t.start);
+      const l2 = doc.nodes.find(x => attr(x, 'data-alevel') === '2' && inside(t, x));
+      const title = decode((l2 && attr(l2, 'data-title')) || attr(t, 'data-nav-label') || '').trim();
+      const words = title.split(/\s+/).filter(Boolean).length;
+      if (words > TITLE_MAX_WORDS) warn('topic-title-long', `topic title "${title}" has ${words} words — keep it to ${TITLE_MAX_WORDS}`, t.start);
     }
   }
   // A5 — Lite ≤ 5
@@ -191,6 +200,11 @@ function findAnalysisIssues(html) {
     if (n >= 3) warn('bistate-choice', `section "${decode(attr(parent, 'id') || attr(parent, 'data-nav-label') || '?')}" holds ${n} include/discard groups — if they are alternatives of ONE question use data-decision-mode="single" (radio cards), not ${n} bi-states`, parent.start);
   }
 
+  // A9 — a question needs its Fragestellung: the Ausgangslage above it
+  for (const d of decisions) {
+    if (!doc.nodes.some(n => has(n, 'data-situation') && inside(d, n) && textOf(doc, n))) warn('decision-situation', `decision "${attr(d, 'data-decision')}": no [data-situation] — open the question with 1–2 sentences of Ausgangslage (what the analysis found for it)`, d.start);
+  }
+
   // A8 — timing is never a decision
   for (const d of [...decisions, ...legacy]) {
     const q = doc.nodes.find(n => has(n, 'data-question') && inside(d, n));
@@ -200,4 +214,4 @@ function findAnalysisIssues(html) {
   return out;
 }
 
-module.exports = { findAnalysisIssues, MODES, TOPIC_MAX, PER_TOPIC_MAX, LITE_MAX, parse, lineAt };
+module.exports = { findAnalysisIssues, MODES, TOPIC_MIN, TOPIC_MAX, PER_TOPIC_MIN, PER_TOPIC_MAX, TITLE_MAX_WORDS, LITE_MAX, parse, lineAt };

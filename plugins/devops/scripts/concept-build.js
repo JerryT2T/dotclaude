@@ -410,6 +410,10 @@ function modeFields(fragment, decisions) {
     out[`${n}-touched`] = d.untouched ? '' : '1';
     out[`${n}-issue`] = d.issue ? '1' : '';
     out[`${n}-epic`] = d.epic || '';
+    out[`${n}-none`] = d.none ? '1' : '';
+    if (d.hesitation && typeof d.hesitation === 'object') {
+      out[`${n}-hes`] = JSON.stringify({ ms: d.hesitation.ms || 0, revisits: d.hesitation.revisits || 0, sharpen: !!d.hesitation.flagged });
+    }
     if (typeof d.note === 'string') out[`${d.id}-note`] = d.note;
   }
   return out;
