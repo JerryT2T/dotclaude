@@ -1,0 +1,294 @@
+<section data-iteration="3" data-iteration-template="design" data-design-set="alternatives" data-baked>
+  <script type="application/json" data-frozen-feedback>{"general":{"text":"","attachments":[]},"designs":{"q3":"Mit diesem nachrichstne style k.önnntenwir uach an der rtechnte bildschirm siet ein dünnes dezentes inhaltsverzeichnis machen mit hover over effekt wo man es dann deutlich sieht. Schau dir dazu google fotos oder andere an wie sie es gelöst haben."},"screens":{},"views":{},"userPins":[{"id":"up-mvw6w7n9lv5u","design":"q1","screen":"q1-s1","x":50.7,"y":32.2,"target":"span \"Hooks laufen ohne Zeitbudget.\"","text":"rethink wirklich nochmal das styling und de3sign konzept,  vom titel bis zum los gehts vom brieffing bis zu den kpis...","attachments":[]},{"id":"up-mvw71mgmfny7","design":"q1","screen":"q1-s3","x":20.9,"y":3.8,"target":"span.mock-r3-type.mock-r3-t-quest \"?Frage 1 von 3 · Cache\"","text":"finde ich ok, aber auch nur ok","attachments":[]},{"id":"up-mvw72io5t798","design":"q1","screen":"q1-s5","x":16.2,"y":14.2,"target":"span \"Cache-Lebensdauer\"","text":"Farbcodes finde ich gut, aber dann sollte breifing und abschluss keine ahben! ?","attachments":[]},{"id":"up-mvw72ro79zkq","design":"q1","screen":"q1-s5","x":4,"y":16.2,"target":"p.mock-r3-ok.mock-r3-t-topic \"Hooks\"","text":"hier links finde ich das doof, sollte eher einfach auf der seite drunter und drüber angedeutet werden von den aktuellen büphnen.","attachments":[]},{"id":"up-mvw7fn5l8exl","design":"q3","screen":"q3-s5","x":55.1,"y":15.7,"target":"div.mock-r3-revrow \"Cache-Lebensdauer10 Minutenwie empfohlen\"","text":"wen interessiert es wi eich geantwrotet habe...","attachments":[]},{"id":"up-mvw7fxe86aa0","design":"q3","screen":"q3-s5","x":38.7,"y":16.6,"target":"div.mock-r3-revrow \"Doppelte InjektionEigene AntwortNotiz\"","text":"lieber je thema erfassen wie lange ich auf den seiten war (deterministisch mit zeitstempeln, wechsel hin und her beliebig berücksichtigen) und dann hier nach einem ranking scvhließen ob man sich etwas ujnsicher war oder die frage noch nicht so super war.... \nSprich wenn jemand lange auf einer seite die focusses sein muss (nicht andere serite offen) verbringt verhältnismäßig zu den anderen seiten dieser analyse und mit mindestdauer, dann k ann man daraus schlißeen das man eher unsicher war bei dem spezifischen thema oder der vorschlag nicht gut war und wenn notizen mehr als ein paar wörter haben erst recht. Daher gern klassifizieren, wobei jetzt nicht jedes oder überhaupt ein thema zwangsweise so eingeordnet werden muss! Aber wenn, dann taggen und das sollte auch input sein für die enächste runde oder umsetzuung","attachments":[]}]}</script>
+
+  <style>
+    .mock-r3 { --b0:#121212; --s1:rgba(255,255,255,.05); --s2:rgba(255,255,255,.08); --t1:rgba(255,255,255,.87); --t2:rgba(255,255,255,.60); --t3:rgba(255,255,255,.38); --line:rgba(255,255,255,.10);
+      --brief:#e6c27a; --topic:#c3a6f5; --quest:#8fb8f0; --rev:#9fd8b4;
+      max-width: 1440px; min-height: 640px; margin: 0 auto; background: var(--b0); color: var(--t1); font: 14px/1.55 system-ui, "Segoe UI", sans-serif; display: grid; grid-template-columns: 210px minmax(0,1fr); border-radius: 10px; overflow: hidden; }
+    .mock-r3-side { padding: 26px 18px; border-right: 1px solid var(--line); font-size: 13px; }
+    .mock-r3-side p { margin: 0 0 9px; color: var(--t3); display: flex; gap: 8px; align-items: center; }
+    .mock-r3-side p i { width: 8px; height: 8px; border-radius: 2px; background: currentColor; flex: none; opacity: .7; }
+    .mock-r3-side p span { color: var(--t3); }
+    .mock-r3-side p.mock-r3-ok span { color: var(--t2); }
+    .mock-r3-side p.mock-r3-here span { color: var(--t1); font-weight: 650; }
+    .mock-r3-main { padding: 26px 36px 30px; min-width: 0; }
+    .mock-r3-type { display: inline-flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+    .mock-r3-type b { width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; font-size: 12px; color: #121212; }
+    .mock-r3-t-brief { color: var(--brief); } .mock-r3-type.mock-r3-t-brief b { background: var(--brief); }
+    .mock-r3-t-topic { color: var(--topic); } .mock-r3-type.mock-r3-t-topic b { background: var(--topic); }
+    .mock-r3-t-quest { color: var(--quest); } .mock-r3-type.mock-r3-t-quest b { background: var(--quest); }
+    .mock-r3-t-rev { color: var(--rev); } .mock-r3-type.mock-r3-t-rev b { background: var(--rev); }
+    .mock-r3-lead { font-size: 26px; font-weight: 700; letter-spacing: -.02em; line-height: 1.25; margin: 12px 0 18px; max-width: 760px; color: var(--t1); }
+    .mock-r3-rows { max-width: 760px; border-top: 1px solid var(--line); }
+    .mock-r3-row { display: grid; grid-template-columns: 90px minmax(0,1fr); gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--line); align-items: baseline; }
+    .mock-r3-row b { font-size: 22px; color: var(--t1); }
+    .mock-r3-row span { color: var(--t2); }
+    .mock-r3-btn { margin-top: 20px; height: 40px; padding: 0 20px; border: 0; border-radius: 10px; background: #8fb8f0; color: #121212; font-weight: 700; font-size: 14px; }
+    .mock-r3-topic-hero { margin-top: 14px; padding: 28px 30px; border-radius: 18px; background: linear-gradient(135deg, rgba(195,166,245,.16), rgba(195,166,245,.04)); border: 1px solid rgba(195,166,245,.25); }
+    .mock-r3-topic-hero h1 { font-size: 30px; letter-spacing: -.025em; line-height: 1.2; margin: 0 0 18px; max-width: 760px; }
+    .mock-r3-share { display: flex; height: 12px; border-radius: 6px; overflow: hidden; max-width: 520px; background: var(--s2); }
+    .mock-r3-share i { background: var(--topic); }
+    .mock-r3-tq { margin-top: 18px; display: grid; gap: 8px; max-width: 760px; }
+    .mock-r3-tq div { display: grid; grid-template-columns: 26px minmax(0,1fr); gap: 10px; color: var(--t2); }
+    .mock-r3-tq div b { color: var(--topic); }
+    .mock-r3-find { padding: 18px 20px 20px; border-radius: 14px; background: var(--s1); }
+    .mock-r3-tabs { display: flex; margin: -18px -20px 16px; border-bottom: 1px solid var(--line); }
+    .mock-r3-tabs button { flex: 1; padding: 13px 16px; border: 0; background: none; color: var(--t2); font-size: 14px; font-weight: 650; text-align: left; border-bottom: 2px solid transparent; }
+    .mock-r3-tabs button small { display: block; font-weight: 400; font-size: 12px; color: var(--t3); }
+    .mock-r3-tabs button.mock-r3-on { color: var(--t1); border-bottom-color: var(--quest); background: var(--s1); }
+    .mock-r3-fact { font-size: 17px; font-weight: 600; margin: 0 0 12px; color: var(--t1); }
+    .mock-r3-bars { display: grid; gap: 8px; max-width: 620px; }
+    .mock-r3-bar { display: grid; grid-template-columns: 100px minmax(0,1fr) 44px; gap: 10px; align-items: center; font-size: 13px; color: var(--t2); }
+    .mock-r3-bar i { height: 9px; border-radius: 5px; background: rgba(143,184,240,.35); }
+    .mock-r3-bar.mock-r3-hl { color: var(--t1); } .mock-r3-bar.mock-r3-hl i { background: rgba(143,184,240,.75); }
+    .mock-r3-win { border-radius: 10px; background: #0b0b0b; border: 1px solid var(--line); overflow: hidden; max-width: 760px; }
+    .mock-r3-win-h { display: flex; gap: 6px; align-items: center; padding: 8px 12px; background: var(--s2); font-size: 12px; color: var(--t2); }
+    .mock-r3-win-h i { width: 9px; height: 9px; border-radius: 50%; background: var(--t3); }
+    .mock-r3-win pre { margin: 0; padding: 12px 14px; font: 12.5px/1.6 ui-monospace, Consolas, monospace; color: var(--t2); white-space: pre-wrap; }
+    .mock-r3-win mark { background: rgba(230,194,122,.18); color: #f0d9a8; border-radius: 3px; padding: 0 3px; }
+    .mock-r3-cap { margin: 10px 0 0; color: var(--t2); font-size: 13px; }
+    .mock-r3-bridge { margin: 18px 0 0; font-size: 15px; color: var(--t2); }
+    .mock-r3-bridge b { color: var(--t1); }
+    .mock-r3-dec { position: relative; padding: 20px 22px; border-radius: 16px; background: #1f2329; border: 1px solid rgba(143,184,240,.55); box-shadow: 0 10px 30px rgba(0,0,0,.45); }
+    .mock-r3-q { font-size: 21px; font-weight: 700; letter-spacing: -.015em; margin: 0 0 4px; }
+    .mock-r3-stakes { font-size: 13px; color: var(--t2); margin: 0 0 14px; }
+    .mock-r3-opts { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; }
+    .mock-r3-opt { position: relative; padding: 13px 14px; border-radius: 12px; background: rgba(255,255,255,.04); border: 1px solid var(--line); }
+    .mock-r3-opt b { display: block; font-size: 14.5px; color: var(--t1); }
+    .mock-r3-opt span { display: block; font-size: 12.5px; color: var(--t2); margin-top: 3px; }
+    .mock-r3-opt em { display: block; margin-top: 8px; font-style: normal; font-size: 12px; color: var(--t3); border-top: 1px dashed var(--line); padding-top: 6px; }
+    .mock-r3-opt.mock-r3-sel { border: 1.5px solid #8fb8f0; background: rgba(143,184,240,.10); }
+    .mock-r3-rec { position: absolute; top: -9px; right: 10px; font-size: 10.5px; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: #8fb8f0; color: #121212; }
+    .mock-r3-none { display: inline-block; margin-top: 10px; font-size: 12.5px; color: var(--t2); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--t3); }
+    .mock-r3-note { margin-top: 10px; height: 70px; border-radius: 10px; border: 1px solid var(--line); padding: 9px 12px; color: var(--t3); font-size: 13px; }
+    .mock-r3-q1 .mock-r3-dec { margin: -14px 24px 0; }
+    .mock-r3-q1 .mock-r3-find { padding-bottom: 34px; }
+    .mock-r3-q2 .mock-r3-find { opacity: .62; }
+    .mock-r3-q2 .mock-r3-dec { margin-top: 16px; border: 0; border-left: 4px solid #8fb8f0; border-radius: 4px 16px 16px 4px; }
+    .mock-r3-q2 .mock-r3-opts { grid-template-columns: minmax(0,1fr); }
+    .mock-r3-q2 .mock-r3-opt { display: grid; grid-template-columns: 220px minmax(0,1fr) minmax(0,1.2fr); gap: 14px; align-items: center; }
+    .mock-r3-q2 .mock-r3-opt span, .mock-r3-q2 .mock-r3-opt em { margin: 0; border: 0; padding: 0; }
+    .mock-r3-dim { font-size: 12px; color: var(--t3); margin: 6px 0 0; }
+    .mock-r3-msg { display: grid; grid-template-columns: 34px minmax(0,1fr); gap: 12px; max-width: 880px; }
+    .mock-r3-msg + .mock-r3-msg { margin-top: 12px; }
+    .mock-r3-av { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: rgba(230,194,122,.22); color: #f0d9a8; font-weight: 700; font-size: 13px; }
+    .mock-r3-q3 .mock-r3-find { border-radius: 4px 16px 16px 16px; }
+    .mock-r3-q3 .mock-r3-dec { border-radius: 4px 16px 16px 16px; }
+    .mock-r3-q3 .mock-r3-opts { display: flex; flex-wrap: wrap; gap: 8px; }
+    .mock-r3-q3 .mock-r3-opt { border-radius: 999px; padding: 8px 16px; }
+    .mock-r3-q3 .mock-r3-opt span, .mock-r3-q3 .mock-r3-opt em { display: none; }
+    .mock-r3-me { margin: 14px 0 0 auto; max-width: 560px; padding: 12px 16px; border-radius: 16px 4px 16px 16px; background: rgba(143,184,240,.14); border: 1px solid rgba(143,184,240,.35); }
+    .mock-r3-me b { display: block; color: var(--t1); }
+    .mock-r3-me span { color: var(--t2); font-size: 13px; }
+    .mock-r3-revrow { display: grid; grid-template-columns: 22px minmax(0,1.4fr) minmax(0,1fr) 120px; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--line); align-items: center; max-width: 900px; }
+    .mock-r3-revrow i { width: 12px; height: 12px; border-radius: 50%; background: var(--rev); }
+    .mock-r3-revrow i.mock-r3-own { background: var(--topic); }
+    .mock-r3-revrow em { font-style: normal; font-size: 12px; color: var(--t2); }
+  </style>
+
+  <header class="iteration-intro">
+    <h2>{{iteration.tab}} 3 · Seitentypen, App-Beispiel, Entscheidung im Vordergrund</h2>
+    <p>Grundlage sind die Recherche (Material Dark Theme, Common Region, Defaults, Split Attention, Worked Examples) und dein Feedback. Jeder Seitentyp hat eine eigene Signatur aus Farbe, Symbol und Form: Briefing ◆ gold, Thema ▣ violett, Frage ? blau, Abschluss ✓ grün. Die Flächen sind gedämpft (Grund #121212, Text 87 % bzw. 60 % Weiß, entsättigte Akzente). Das Beispiel zeigt jetzt die echte App. Der rote Faden steckt im ersten Satz jeder Frage. Briefing, Thema und Abschluss sind in allen drei Entwürfen gleich, die Entwürfe unterscheiden sich nur in der Fragenseite (Bildschirme „Frage · Befund“ und „Frage · App-Beispiel“).</p>
+  </header>
+  <section data-design="q1" data-nav-label="Bühnenwechsel" data-design-active="true" data-screen-fit="full" data-design-motto="Die Entscheidung tritt auf die Bühne" data-design-icon="layers" data-design-color="#8fb8f0" data-design-traits="Entscheidung liegt angehoben und überlappt den vertieften Befund|Optionskarten nebeneinander, jede mit „So sähe das aus“|Befund bleibt voll sichtbar, keine Abdunklung" data-design-overlay="br">
+    <section id="q1-s1" data-nav-label="Briefing" data-screen data-screen-active="true"><div class="mock-r3"><div class="mock-r3-side"><p class="mock-r3-here mock-r3-t-brief"><i></i><span>Briefing</span></p><p class=" mock-r3-t-topic"><i></i><span>Cache · Thema</span></p><p class=" mock-r3-t-quest"><i></i><span>Cache · Lebensdauer</span></p><p class=" mock-r3-t-quest"><i></i><span>Cache · Größe</span></p><p class=" mock-r3-t-topic"><i></i><span>Hooks</span></p><p class=" mock-r3-t-rev"><i></i><span>Abschluss</span></p></div><div class="mock-r3-main">
+      <span class="mock-r3-type mock-r3-t-brief"><b>◆</b>Briefing</span>
+      <p class="mock-r3-lead q1-lead">≈ 51 M Tokens im Monat lassen sich sparen. Dafür brauchen wir 5 Entscheidungen von dir.</p>
+      <div class="mock-r3-rows">
+        <div class="mock-r3-row"><b>80 %</b><span>der Cache-Treffer fallen in die ersten 10 Minuten, Einträge leben aber 24 Stunden.</span></div>
+        <div class="mock-r3-row"><b>20 M</b><span>Tokens kostet Kontext, den zwei Hooks doppelt einspielen.</span></div>
+        <div class="mock-r3-row"><b>3</b><span>Hooks laufen ohne Zeitbudget.</span></div>
+      </div>
+      <button class="mock-r3-btn" type="button" data-screen-link="q1-s2">Los geht's · ≈ 4 min</button>
+    </div></div>
+      <div class="anno-layer" data-anno-layer>
+        <div class="anno" data-anno="r3-q1-s1-a1" data-anno-side="right" data-anno-target=".q1-lead" style="--anno-x:70%;--anno-y:20%">
+          <button class="anno-pin" type="button" data-anno-pin="r3-q1-s1-a1" aria-expanded="false" aria-controls="anno-bubble-r3-q1-s1-a1" aria-label="{{anno.pin_label}}">1</button>
+          <div class="anno-bubble" id="anno-bubble-r3-q1-s1-a1" data-anno-bubble="r3-q1-s1-a1" data-open="false">
+            <button type="button" class="anno-bubble-summary" data-anno-summary="r3-q1-s1-a1" aria-expanded="false" aria-controls="anno-bubble-r3-q1-s1-a1"><span class="anno-bubble-question">Ist das Briefing so übersichtlich genug: eine Kernaussage, drei Befunde, ein Knopf?</span></button>
+            <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r3-q1-s1-a1" data-annotation="r3-q1-s1-a1" data-attachable placeholder="{{anno.answer_placeholder}}">ja ba er viel zu hässlich und nicht klar visuell geleitet. </textarea><div class="attach-slot" data-attach-slot="anno-r3-q1-s1-a1"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section id="q1-s2" data-nav-label="Thema" data-screen hidden><div class="mock-r3"><div class="mock-r3-side"><p class="mock-r3-ok mock-r3-t-brief"><i></i><span>Briefing</span></p><p class="mock-r3-here mock-r3-t-topic"><i></i><span>Cache · Thema</span></p><p class=" mock-r3-t-quest"><i></i><span>Cache · Lebensdauer</span></p><p class=" mock-r3-t-quest"><i></i><span>Cache · Größe</span></p><p class=" mock-r3-t-topic"><i></i><span>Hooks</span></p><p class=" mock-r3-t-rev"><i></i><span>Abschluss</span></p></div><div class="mock-r3-main">
+      <span class="mock-r3-type mock-r3-t-topic"><b>▣</b>Thema 1 von 2</span>
+      <div class="mock-r3-topic-hero q1-hero">
+        <h1>Cache: Er hält zu lange fest, was nach 10 Minuten kaum noch jemand braucht.</h1>
+        <div class="mock-r3-share"><i style="width:61%"></i></div>
+        <p class="mock-r3-cap">31 M von 51 M Tokens Potenzial (61 %), das größere der beiden Themen.</p>
+        <div class="mock-r3-tq"><div><b>1</b>Wie lange darf eine Antwort leben?</div><div><b>2</b>Wie groß darf der Cache werden?</div><div><b>3</b>Welche Hooks cachen überhaupt?</div></div>
+      </div>
+      <button class="mock-r3-btn" type="button" data-screen-link="q1-s3">Zur ersten Frage ↓</button>
+    </div></div>
+      <div class="anno-layer" data-anno-layer>
+        <div class="anno" data-anno="r3-q1-s2-a1" data-anno-side="left" data-anno-target=".q1-hero" style="--anno-x:70%;--anno-y:20%">
+          <button class="anno-pin" type="button" data-anno-pin="r3-q1-s2-a1" aria-expanded="false" aria-controls="anno-bubble-r3-q1-s2-a1" aria-label="{{anno.pin_label}}">1</button>
+          <div class="anno-bubble" id="anno-bubble-r3-q1-s2-a1" data-anno-bubble="r3-q1-s2-a1" data-open="false">
+            <button type="button" class="anno-bubble-summary" data-anno-summary="r3-q1-s2-a1" aria-expanded="false" aria-controls="anno-bubble-r3-q1-s2-a1"><span class="anno-bubble-question">Erkennst du am Design sofort, dass das die Themenseite ist (violett ▣, großes Titelfeld)?</span></button>
+            <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r3-q1-s2-a1" data-annotation="r3-q1-s2-a1" data-attachable placeholder="{{anno.answer_placeholder}}">ja das schon wobei briefing cooler aussehen solte als thema und thema cooler als fragen/befund und fragen/befund aber elemente fvisuell von thema mitnimmt, weil es ja das gleiche thema ist!</textarea><div class="attach-slot" data-attach-slot="anno-r3-q1-s2-a1"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section id="q1-s3" data-nav-label="Frage · Befund" data-screen hidden><div class="mock-r3 mock-r3-q1"><div class="mock-r3-side"><p class="mock-r3-ok mock-r3-t-brief"><i></i><span>Briefing</span></p><p class="mock-r3-ok mock-r3-t-topic"><i></i><span>Cache · Thema</span></p><p class="mock-r3-here mock-r3-t-quest"><i></i><span>Cache · Lebensdauer</span></p><p class=" mock-r3-t-quest"><i></i><span>Cache · Größe</span></p><p class=" mock-r3-t-topic"><i></i><span>Hooks</span></p><p class=" mock-r3-t-rev"><i></i><span>Abschluss</span></p></div><div class="mock-r3-main"><span class="mock-r3-type mock-r3-t-quest"><b>?</b>Frage 1 von 3 · Cache</span><div style="margin-top:14px"><div class="mock-r3-find"><div class="mock-r3-tabs q1-tabs"><button type="button" class="mock-r3-on">📊 Was wir gemessen haben<small>Befund aus der Analyse</small></button><button type="button" class="" data-screen-link="q1-s4">🖥 So sieht es in der App aus<small>Konkretes Beispiel</small></button></div><p class="mock-r3-fact">Nach deiner Antwort zu den Treffern bleibt eine Lücke: 80 % der Treffer fallen in die ersten 10 Minuten, Einträge leben aber 24 Stunden.</p><div class="mock-r3-bars"><div class="mock-r3-bar mock-r3-hl"><span>&lt; 10 min</span><i style="width:80%"></i><b>80 %</b></div><div class="mock-r3-bar"><span>10–60 min</span><i style="width:14%"></i><b>14 %</b></div><div class="mock-r3-bar"><span>&gt; 1 h</span><i style="width:6%"></i><b>6 %</b></div></div></div><div class="mock-r3-dec q1-dec"><h3 class="mock-r3-q">Wie lange darf eine gecachte Antwort leben?</h3><p class="mock-r3-stakes">Davon hängt ab: Tokenverbrauch und wie aktuell alle Hooks antworten.</p><div class="mock-r3-opts"><div class="mock-r3-opt mock-r3-sel"><span class="mock-r3-rec">★ Empfohlen</span><b>Nach 10 Minuten verwerfen</b><span>Spart ≈ 31 M Tokens.</span><em>So sähe das aus: Antwort von 14:09 ist um 14:19 weg.</em></div><div class="mock-r3-opt"><b>Nach 1 Stunde verwerfen</b><span>Spart ≈ 24 M Tokens.</span><em>So sähe das aus: Antwort hält bis 15:09.</em></div><div class="mock-r3-opt"><b>Einen Tag behalten</b><span>Wie heute, spart nichts.</span><em>So sähe das aus: der Fall oben bleibt.</em></div></div><span class="mock-r3-none">Keine passt, eigene Antwort in die Notiz</span><div class="mock-r3-note">Notiz (optional): Ergänzung, Einwand, Kontext</div></div></div></div></div>
+      <div class="anno-layer" data-anno-layer>
+        <div class="anno" data-anno="r3-q1-s3-a1" data-anno-side="left" data-anno-target=".q1-dec" style="--anno-x:70%;--anno-y:20%">
+          <button class="anno-pin" type="button" data-anno-pin="r3-q1-s3-a1" aria-expanded="false" aria-controls="anno-bubble-r3-q1-s3-a1" aria-label="{{anno.pin_label}}">1</button>
+          <div class="anno-bubble" id="anno-bubble-r3-q1-s3-a1" data-anno-bubble="r3-q1-s3-a1" data-open="false">
+            <button type="button" class="anno-bubble-summary" data-anno-summary="r3-q1-s3-a1" aria-expanded="false" aria-controls="anno-bubble-r3-q1-s3-a1"><span class="anno-bubble-question">Hebt sich die angehobene, überlappende Entscheidungsfläche jetzt genug vom Befund ab?</span></button>
+            <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r3-q1-s3-a1" data-annotation="r3-q1-s3-a1" data-attachable placeholder="{{anno.answer_placeholder}}">genug noch nicht aber genau die richtige richutng.</textarea><div class="attach-slot" data-attach-slot="anno-r3-q1-s3-a1"></div></div>
+          </div>
+        </div>
+        <div class="anno" data-anno="r3-q1-s3-a2" data-anno-side="left" data-anno-target=".q1-tabs" style="--anno-x:70%;--anno-y:45%">
+          <button class="anno-pin" type="button" data-anno-pin="r3-q1-s3-a2" aria-expanded="false" aria-controls="anno-bubble-r3-q1-s3-a2" aria-label="{{anno.pin_label}}">2</button>
+          <div class="anno-bubble" id="anno-bubble-r3-q1-s3-a2" data-anno-bubble="r3-q1-s3-a2" data-open="false">
+            <button type="button" class="anno-bubble-summary" data-anno-summary="r3-q1-s3-a2" aria-expanded="false" aria-controls="anno-bubble-r3-q1-s3-a2"><span class="anno-bubble-question">Ist der große Tab-Umschalter oben (Befund / App-Beispiel) prominent genug?</span></button>
+            <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r3-q1-s3-a2" data-annotation="r3-q1-s3-a2" data-attachable placeholder="{{anno.answer_placeholder}}">Ja, das finde ich eine gute idee über tabs! und sehr selbst erklärend. subtitel befund und beispiel bitte einfachb als label, brauchen dort nicht noch ne ziele text... oder wir haben doch icons die köntenn auch größer sein und damit dann per tooltip nur befund und beispiel abbilden.
+Denn die titel sind auch super schon selbst erklärend von den tabs.</textarea><div class="attach-slot" data-attach-slot="anno-r3-q1-s3-a2"></div></div>
+          </div>
+        </div>
+        <div class="anno" data-anno="r3-q1-s3-a3" data-anno-side="left" data-anno-target=".mock-r3-opt em" style="--anno-x:70%;--anno-y:70%">
+          <button class="anno-pin" type="button" data-anno-pin="r3-q1-s3-a3" aria-expanded="false" aria-controls="anno-bubble-r3-q1-s3-a3" aria-label="{{anno.pin_label}}">3</button>
+          <div class="anno-bubble" id="anno-bubble-r3-q1-s3-a3" data-anno-bubble="r3-q1-s3-a3" data-open="false">
+            <button type="button" class="anno-bubble-summary" data-anno-summary="r3-q1-s3-a3" aria-expanded="false" aria-controls="anno-bubble-r3-q1-s3-a3"><span class="anno-bubble-question">„So sähe das aus“ in jeder Option: hilft das beim Entscheiden?</span></button>
+            <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r3-q1-s3-a3" data-annotation="r3-q1-s3-a3" data-attachable placeholder="{{anno.answer_placeholder}}">ja sehr</textarea><div class="attach-slot" data-attach-slot="anno-r3-q1-s3-a3"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section id="q1-s4" data-nav-label="Frage · App-Beispiel" data-screen hidden><div class="mock-r3 mock-r3-q1"><div class="mock-r3-side"><p class="mock-r3-ok mock-r3-t-brief"><i></i><span>Briefing</span></p><p class="mock-r3-ok mock-r3-t-topic"><i></i><span>Cache · Thema</span></p><p class="mock-r3-here mock-r3-t-quest"><i></i><span>Cache · Lebensdauer</span></p><p class=" mock-r3-t-quest"><i></i><span>Cache · Größe</span></p><p class=" mock-r3-t-topic"><i></i><span>Hooks</span></p><p class=" mock-r3-t-rev"><i></i><span>Abschluss</span></p></div><div class="mock-r3-main"><span class="mock-r3-type mock-r3-t-quest"><b>?</b>Frage 1 von 3 · Cache</span><div style="margin-top:14px"><div class="mock-r3-find"><div class="mock-r3-tabs q1-tabs"><button type="button" class="" data-screen-link="q1-s3">📊 Was wir gemessen haben<small>Befund aus der Analyse</small></button><button type="button" class="mock-r3-on">🖥 So sieht es in der App aus<small>Konkretes Beispiel</small></button></div><div class="mock-r3-win"><div class="mock-r3-win-h"><i></i><i></i><i></i>&nbsp;Claude Code · Session von heute 14:02</div><pre>● Bash(git status)
+  ⎿ pre.tool.guard: <mark>Antwort aus dem Cache (gespeichert gestern 14:09, vor 23 h 53 min)</mark>
+  ⎿ On branch main · nothing to commit
+● Du arbeitest auf einem Stand, den der Hook von gestern kennt.</pre></div><p class="mock-r3-cap">So sieht es heute in der App aus: Der Hook liefert eine fast einen Tag alte Antwort.</p></div><div class="mock-r3-dec q1-dec"><h3 class="mock-r3-q">Wie lange darf eine gecachte Antwort leben?</h3><p class="mock-r3-stakes">Davon hängt ab: Tokenverbrauch und wie aktuell alle Hooks antworten.</p><div class="mock-r3-opts"><div class="mock-r3-opt mock-r3-sel"><span class="mock-r3-rec">★ Empfohlen</span><b>Nach 10 Minuten verwerfen</b><span>Spart ≈ 31 M Tokens.</span><em>So sähe das aus: Antwort von 14:09 ist um 14:19 weg.</em></div><div class="mock-r3-opt"><b>Nach 1 Stunde verwerfen</b><span>Spart ≈ 24 M Tokens.</span><em>So sähe das aus: Antwort hält bis 15:09.</em></div><div class="mock-r3-opt"><b>Einen Tag behalten</b><span>Wie heute, spart nichts.</span><em>So sähe das aus: der Fall oben bleibt.</em></div></div><span class="mock-r3-none">Keine passt, eigene Antwort in die Notiz</span><div class="mock-r3-note">Notiz (optional): Ergänzung, Einwand, Kontext</div></div></div></div></div></section>
+    <section id="q1-s5" data-nav-label="Abschluss" data-screen hidden><div class="mock-r3"><div class="mock-r3-side"><p class="mock-r3-ok mock-r3-t-brief"><i></i><span>Briefing</span></p><p class="mock-r3-ok mock-r3-t-topic"><i></i><span>Cache · Thema</span></p><p class="mock-r3-ok mock-r3-t-quest"><i></i><span>Cache · Lebensdauer</span></p><p class="mock-r3-ok mock-r3-t-quest"><i></i><span>Cache · Größe</span></p><p class="mock-r3-ok mock-r3-t-topic"><i></i><span>Hooks</span></p><p class="mock-r3-here mock-r3-t-rev"><i></i><span>Abschluss</span></p></div><div class="mock-r3-main">
+      <span class="mock-r3-type mock-r3-t-rev"><b>✓</b>Abschluss</span>
+      <p class="mock-r3-lead">Mit deinen Antworten sparen wir ≈ 44 M von 51 M Tokens.</p>
+      <div class="mock-r3-revrow"><i></i><span>Cache-Lebensdauer</span><span>10 Minuten</span><em>wie empfohlen</em></div>
+      <div class="mock-r3-revrow"><i class="mock-r3-own"></i><span>Doppelte Injektion</span><span>Eigene Antwort</span><em>Notiz</em></div>
+      <div class="mock-r3-revrow"><i></i><span>Hook-Budget</span><span>3 s</span><em>abweichend</em></div>
+      <button class="mock-r3-btn" type="button" style="background:#9fd8b4">Absenden</button>
+    </div></div></section>
+  </section>
+  <section data-design="q2" data-nav-label="Spotlight" hidden data-screen-fit="full" data-design-motto="Der Befund tritt zurück, die Wahl rückt vor" data-design-icon="compass" data-design-color="#c3a6f5" data-design-traits="Befund wird beim Entscheiden abgedunkelt (Spotlight)|Brückensatz „Daraus folgt …“ zwischen Befund und Frage|Optionen als breite Zeilen: Wahl, Wirkung und Beispiel nebeneinander" data-design-overlay="tr">
+    <section id="q2-s1" data-nav-label="Briefing" data-screen data-screen-active="true"><div class="mock-r3"><div class="mock-r3-side"><p class="mock-r3-here mock-r3-t-brief"><i></i><span>Briefing</span></p><p class=" mock-r3-t-topic"><i></i><span>Cache · Thema</span></p><p class=" mock-r3-t-quest"><i></i><span>Cache · Lebensdauer</span></p><p class=" mock-r3-t-quest"><i></i><span>Cache · Größe</span></p><p class=" mock-r3-t-topic"><i></i><span>Hooks</span></p><p class=" mock-r3-t-rev"><i></i><span>Abschluss</span></p></div><div class="mock-r3-main">
+      <span class="mock-r3-type mock-r3-t-brief"><b>◆</b>Briefing</span>
+      <p class="mock-r3-lead q2-lead">≈ 51 M Tokens im Monat lassen sich sparen. Dafür brauchen wir 5 Entscheidungen von dir.</p>
+      <div class="mock-r3-rows">
+        <div class="mock-r3-row"><b>80 %</b><span>der Cache-Treffer fallen in die ersten 10 Minuten, Einträge leben aber 24 Stunden.</span></div>
+        <div class="mock-r3-row"><b>20 M</b><span>Tokens kostet Kontext, den zwei Hooks doppelt einspielen.</span></div>
+        <div class="mock-r3-row"><b>3</b><span>Hooks laufen ohne Zeitbudget.</span></div>
+      </div>
+      <button class="mock-r3-btn" type="button" data-screen-link="q2-s2">Los geht's · ≈ 4 min</button>
+    </div></div></section>
+    <section id="q2-s2" data-nav-label="Thema" data-screen hidden><div class="mock-r3"><div class="mock-r3-side"><p class="mock-r3-ok mock-r3-t-brief"><i></i><span>Briefing</span></p><p class="mock-r3-here mock-r3-t-topic"><i></i><span>Cache · Thema</span></p><p class=" mock-r3-t-quest"><i></i><span>Cache · Lebensdauer</span></p><p class=" mock-r3-t-quest"><i></i><span>Cache · Größe</span></p><p class=" mock-r3-t-topic"><i></i><span>Hooks</span></p><p class=" mock-r3-t-rev"><i></i><span>Abschluss</span></p></div><div class="mock-r3-main">
+      <span class="mock-r3-type mock-r3-t-topic"><b>▣</b>Thema 1 von 2</span>
+      <div class="mock-r3-topic-hero q2-hero">
+        <h1>Cache: Er hält zu lange fest, was nach 10 Minuten kaum noch jemand braucht.</h1>
+        <div class="mock-r3-share"><i style="width:61%"></i></div>
+        <p class="mock-r3-cap">31 M von 51 M Tokens Potenzial (61 %), das größere der beiden Themen.</p>
+        <div class="mock-r3-tq"><div><b>1</b>Wie lange darf eine Antwort leben?</div><div><b>2</b>Wie groß darf der Cache werden?</div><div><b>3</b>Welche Hooks cachen überhaupt?</div></div>
+      </div>
+      <button class="mock-r3-btn" type="button" data-screen-link="q2-s3">Zur ersten Frage ↓</button>
+    </div></div></section>
+    <section id="q2-s3" data-nav-label="Frage · Befund" data-screen hidden><div class="mock-r3 mock-r3-q2"><div class="mock-r3-side"><p class="mock-r3-ok mock-r3-t-brief"><i></i><span>Briefing</span></p><p class="mock-r3-ok mock-r3-t-topic"><i></i><span>Cache · Thema</span></p><p class="mock-r3-here mock-r3-t-quest"><i></i><span>Cache · Lebensdauer</span></p><p class=" mock-r3-t-quest"><i></i><span>Cache · Größe</span></p><p class=" mock-r3-t-topic"><i></i><span>Hooks</span></p><p class=" mock-r3-t-rev"><i></i><span>Abschluss</span></p></div><div class="mock-r3-main"><span class="mock-r3-type mock-r3-t-quest"><b>?</b>Frage 1 von 3 · Cache</span><div style="margin-top:14px"><div class="mock-r3-find"><div class="mock-r3-tabs q2-tabs"><button type="button" class="mock-r3-on">📊 Was wir gemessen haben<small>Befund aus der Analyse</small></button><button type="button" class="" data-screen-link="q2-s4">🖥 So sieht es in der App aus<small>Konkretes Beispiel</small></button></div><p class="mock-r3-fact">Nach deiner Antwort zu den Treffern bleibt eine Lücke: 80 % der Treffer fallen in die ersten 10 Minuten, Einträge leben aber 24 Stunden.</p><div class="mock-r3-bars"><div class="mock-r3-bar mock-r3-hl"><span>&lt; 10 min</span><i style="width:80%"></i><b>80 %</b></div><div class="mock-r3-bar"><span>10–60 min</span><i style="width:14%"></i><b>14 %</b></div><div class="mock-r3-bar"><span>&gt; 1 h</span><i style="width:6%"></i><b>6 %</b></div></div></div><p class="mock-r3-dim q2-dim">Der Befund tritt zurück, sobald du entscheidest. Ein Klick holt ihn wieder nach vorn.</p><p class="mock-r3-bridge q2-bridge"><b>Daraus folgt:</b> Wir müssen festlegen, wie lange eine Antwort gültig bleibt.</p><div class="mock-r3-dec q2-dec"><h3 class="mock-r3-q">Wie lange darf eine gecachte Antwort leben?</h3><p class="mock-r3-stakes">Davon hängt ab: Tokenverbrauch und wie aktuell alle Hooks antworten.</p><div class="mock-r3-opts"><div class="mock-r3-opt mock-r3-sel"><span class="mock-r3-rec">★ Empfohlen</span><b>Nach 10 Minuten verwerfen</b><span>Spart ≈ 31 M Tokens.</span><em>So sähe das aus: Antwort von 14:09 ist um 14:19 weg.</em></div><div class="mock-r3-opt"><b>Nach 1 Stunde verwerfen</b><span>Spart ≈ 24 M Tokens.</span><em>So sähe das aus: Antwort hält bis 15:09.</em></div><div class="mock-r3-opt"><b>Einen Tag behalten</b><span>Wie heute, spart nichts.</span><em>So sähe das aus: der Fall oben bleibt.</em></div></div><span class="mock-r3-none">Keine passt, eigene Antwort in die Notiz</span><div class="mock-r3-note">Notiz (optional): Ergänzung, Einwand, Kontext</div></div></div></div></div>
+      <div class="anno-layer" data-anno-layer>
+        <div class="anno" data-anno="r3-q2-s3-a1" data-anno-side="left" data-anno-target=".q2-dec" style="--anno-x:70%;--anno-y:20%">
+          <button class="anno-pin" type="button" data-anno-pin="r3-q2-s3-a1" aria-expanded="false" aria-controls="anno-bubble-r3-q2-s3-a1" aria-label="{{anno.pin_label}}">1</button>
+          <div class="anno-bubble" id="anno-bubble-r3-q2-s3-a1" data-anno-bubble="r3-q2-s3-a1" data-open="false">
+            <button type="button" class="anno-bubble-summary" data-anno-summary="r3-q2-s3-a1" aria-expanded="false" aria-controls="anno-bubble-r3-q2-s3-a1"><span class="anno-bubble-question">Breite Options-Zeilen statt Karten: lesbarer oder zu viel Text?</span></button>
+            <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r3-q2-s3-a1" data-annotation="r3-q2-s3-a1" data-attachable placeholder="{{anno.answer_placeholder}}">Ja vllt. viel hilfreicher ehrlich gesagt. Für mich haben karten auch eeher den zweck aus vielen auszuwählen und nicht eine exklusive entshciedung zu treffen </textarea><div class="attach-slot" data-attach-slot="anno-r3-q2-s3-a1"></div></div>
+          </div>
+        </div>
+        <div class="anno" data-anno="r3-q2-s3-a2" data-anno-side="left" data-anno-target=".q2-bridge" style="--anno-x:70%;--anno-y:45%">
+          <button class="anno-pin" type="button" data-anno-pin="r3-q2-s3-a2" aria-expanded="false" aria-controls="anno-bubble-r3-q2-s3-a2" aria-label="{{anno.pin_label}}">2</button>
+          <div class="anno-bubble" id="anno-bubble-r3-q2-s3-a2" data-anno-bubble="r3-q2-s3-a2" data-open="false">
+            <button type="button" class="anno-bubble-summary" data-anno-summary="r3-q2-s3-a2" aria-expanded="false" aria-controls="anno-bubble-r3-q2-s3-a2"><span class="anno-bubble-question">Hilft der Brückensatz „Daraus folgt …“ beim Übergang vom Befund zur Frage?</span></button>
+            <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r3-q2-s3-a2" data-annotation="r3-q2-s3-a2" data-attachable placeholder="{{anno.answer_placeholder}}">nope gar nciht</textarea><div class="attach-slot" data-attach-slot="anno-r3-q2-s3-a2"></div></div>
+          </div>
+        </div>
+        <div class="anno" data-anno="r3-q2-s3-a3" data-anno-side="left" data-anno-target=".q2-dim" style="--anno-x:70%;--anno-y:70%">
+          <button class="anno-pin" type="button" data-anno-pin="r3-q2-s3-a3" aria-expanded="false" aria-controls="anno-bubble-r3-q2-s3-a3" aria-label="{{anno.pin_label}}">3</button>
+          <div class="anno-bubble" id="anno-bubble-r3-q2-s3-a3" data-anno-bubble="r3-q2-s3-a3" data-open="false">
+            <button type="button" class="anno-bubble-summary" data-anno-summary="r3-q2-s3-a3" aria-expanded="false" aria-controls="anno-bubble-r3-q2-s3-a3"><span class="anno-bubble-question">Den Befund beim Entscheiden abdunkeln: hilfreich oder irritierend?</span></button>
+            <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r3-q2-s3-a3" data-annotation="r3-q2-s3-a3" data-attachable placeholder="{{anno.answer_placeholder}}">finde ich eigentlich eine gute iddee, aber wie mache ich es beim ersten betrachten des befundes.  Vllt. auch nicht soo gstark abdunkeln, vllt. animieren sich befund und frage etc. nacheinander rein, so das der nutzer mitlesen kann und dann direkt entscheiden kann oder wenn er möchte noch weiter betrachten. ... </textarea><div class="attach-slot" data-attach-slot="anno-r3-q2-s3-a3"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section id="q2-s4" data-nav-label="Frage · App-Beispiel" data-screen hidden><div class="mock-r3 mock-r3-q2"><div class="mock-r3-side"><p class="mock-r3-ok mock-r3-t-brief"><i></i><span>Briefing</span></p><p class="mock-r3-ok mock-r3-t-topic"><i></i><span>Cache · Thema</span></p><p class="mock-r3-here mock-r3-t-quest"><i></i><span>Cache · Lebensdauer</span></p><p class=" mock-r3-t-quest"><i></i><span>Cache · Größe</span></p><p class=" mock-r3-t-topic"><i></i><span>Hooks</span></p><p class=" mock-r3-t-rev"><i></i><span>Abschluss</span></p></div><div class="mock-r3-main"><span class="mock-r3-type mock-r3-t-quest"><b>?</b>Frage 1 von 3 · Cache</span><div style="margin-top:14px"><div class="mock-r3-find"><div class="mock-r3-tabs q2-tabs"><button type="button" class="" data-screen-link="q2-s3">📊 Was wir gemessen haben<small>Befund aus der Analyse</small></button><button type="button" class="mock-r3-on">🖥 So sieht es in der App aus<small>Konkretes Beispiel</small></button></div><div class="mock-r3-win"><div class="mock-r3-win-h"><i></i><i></i><i></i>&nbsp;Claude Code · Session von heute 14:02</div><pre>● Bash(git status)
+  ⎿ pre.tool.guard: <mark>Antwort aus dem Cache (gespeichert gestern 14:09, vor 23 h 53 min)</mark>
+  ⎿ On branch main · nothing to commit
+● Du arbeitest auf einem Stand, den der Hook von gestern kennt.</pre></div><p class="mock-r3-cap">So sieht es heute in der App aus: Der Hook liefert eine fast einen Tag alte Antwort.</p></div><p class="mock-r3-dim q2-dim">Der Befund tritt zurück, sobald du entscheidest. Ein Klick holt ihn wieder nach vorn.</p><p class="mock-r3-bridge q2-bridge"><b>Daraus folgt:</b> Wir müssen festlegen, wie lange eine Antwort gültig bleibt.</p><div class="mock-r3-dec q2-dec"><h3 class="mock-r3-q">Wie lange darf eine gecachte Antwort leben?</h3><p class="mock-r3-stakes">Davon hängt ab: Tokenverbrauch und wie aktuell alle Hooks antworten.</p><div class="mock-r3-opts"><div class="mock-r3-opt mock-r3-sel"><span class="mock-r3-rec">★ Empfohlen</span><b>Nach 10 Minuten verwerfen</b><span>Spart ≈ 31 M Tokens.</span><em>So sähe das aus: Antwort von 14:09 ist um 14:19 weg.</em></div><div class="mock-r3-opt"><b>Nach 1 Stunde verwerfen</b><span>Spart ≈ 24 M Tokens.</span><em>So sähe das aus: Antwort hält bis 15:09.</em></div><div class="mock-r3-opt"><b>Einen Tag behalten</b><span>Wie heute, spart nichts.</span><em>So sähe das aus: der Fall oben bleibt.</em></div></div><span class="mock-r3-none">Keine passt, eigene Antwort in die Notiz</span><div class="mock-r3-note">Notiz (optional): Ergänzung, Einwand, Kontext</div></div></div></div></div></section>
+    <section id="q2-s5" data-nav-label="Abschluss" data-screen hidden><div class="mock-r3"><div class="mock-r3-side"><p class="mock-r3-ok mock-r3-t-brief"><i></i><span>Briefing</span></p><p class="mock-r3-ok mock-r3-t-topic"><i></i><span>Cache · Thema</span></p><p class="mock-r3-ok mock-r3-t-quest"><i></i><span>Cache · Lebensdauer</span></p><p class="mock-r3-ok mock-r3-t-quest"><i></i><span>Cache · Größe</span></p><p class="mock-r3-ok mock-r3-t-topic"><i></i><span>Hooks</span></p><p class="mock-r3-here mock-r3-t-rev"><i></i><span>Abschluss</span></p></div><div class="mock-r3-main">
+      <span class="mock-r3-type mock-r3-t-rev"><b>✓</b>Abschluss</span>
+      <p class="mock-r3-lead">Mit deinen Antworten sparen wir ≈ 44 M von 51 M Tokens.</p>
+      <div class="mock-r3-revrow"><i></i><span>Cache-Lebensdauer</span><span>10 Minuten</span><em>wie empfohlen</em></div>
+      <div class="mock-r3-revrow"><i class="mock-r3-own"></i><span>Doppelte Injektion</span><span>Eigene Antwort</span><em>Notiz</em></div>
+      <div class="mock-r3-revrow"><i></i><span>Hook-Budget</span><span>3 s</span><em>abweichend</em></div>
+      <button class="mock-r3-btn" type="button" style="background:#9fd8b4">Absenden</button>
+    </div></div></section>
+  </section>
+  <section data-design="q3" data-nav-label="Gesprächsfluss" hidden data-screen-fit="full" data-design-motto="Claude zeigt, fragt, du antwortest" data-design-icon="sparkles" data-design-color="#e6c27a" data-design-traits="Befund und Frage kommen als Nachrichten von Claude|Optionen als Antwort-Chips ohne Wirkungstext|Deine Wahl erscheint rechts als deine Antwort" data-design-overlay="bl">
+    <section id="q3-s1" data-nav-label="Briefing" data-screen data-screen-active="true"><div class="mock-r3"><div class="mock-r3-side"><p class="mock-r3-here mock-r3-t-brief"><i></i><span>Briefing</span></p><p class=" mock-r3-t-topic"><i></i><span>Cache · Thema</span></p><p class=" mock-r3-t-quest"><i></i><span>Cache · Lebensdauer</span></p><p class=" mock-r3-t-quest"><i></i><span>Cache · Größe</span></p><p class=" mock-r3-t-topic"><i></i><span>Hooks</span></p><p class=" mock-r3-t-rev"><i></i><span>Abschluss</span></p></div><div class="mock-r3-main">
+      <span class="mock-r3-type mock-r3-t-brief"><b>◆</b>Briefing</span>
+      <p class="mock-r3-lead q3-lead">≈ 51 M Tokens im Monat lassen sich sparen. Dafür brauchen wir 5 Entscheidungen von dir.</p>
+      <div class="mock-r3-rows">
+        <div class="mock-r3-row"><b>80 %</b><span>der Cache-Treffer fallen in die ersten 10 Minuten, Einträge leben aber 24 Stunden.</span></div>
+        <div class="mock-r3-row"><b>20 M</b><span>Tokens kostet Kontext, den zwei Hooks doppelt einspielen.</span></div>
+        <div class="mock-r3-row"><b>3</b><span>Hooks laufen ohne Zeitbudget.</span></div>
+      </div>
+      <button class="mock-r3-btn" type="button" data-screen-link="q3-s2">Los geht's · ≈ 4 min</button>
+    </div></div></section>
+    <section id="q3-s2" data-nav-label="Thema" data-screen hidden><div class="mock-r3"><div class="mock-r3-side"><p class="mock-r3-ok mock-r3-t-brief"><i></i><span>Briefing</span></p><p class="mock-r3-here mock-r3-t-topic"><i></i><span>Cache · Thema</span></p><p class=" mock-r3-t-quest"><i></i><span>Cache · Lebensdauer</span></p><p class=" mock-r3-t-quest"><i></i><span>Cache · Größe</span></p><p class=" mock-r3-t-topic"><i></i><span>Hooks</span></p><p class=" mock-r3-t-rev"><i></i><span>Abschluss</span></p></div><div class="mock-r3-main">
+      <span class="mock-r3-type mock-r3-t-topic"><b>▣</b>Thema 1 von 2</span>
+      <div class="mock-r3-topic-hero q3-hero">
+        <h1>Cache: Er hält zu lange fest, was nach 10 Minuten kaum noch jemand braucht.</h1>
+        <div class="mock-r3-share"><i style="width:61%"></i></div>
+        <p class="mock-r3-cap">31 M von 51 M Tokens Potenzial (61 %), das größere der beiden Themen.</p>
+        <div class="mock-r3-tq"><div><b>1</b>Wie lange darf eine Antwort leben?</div><div><b>2</b>Wie groß darf der Cache werden?</div><div><b>3</b>Welche Hooks cachen überhaupt?</div></div>
+      </div>
+      <button class="mock-r3-btn" type="button" data-screen-link="q3-s3">Zur ersten Frage ↓</button>
+    </div></div></section>
+    <section id="q3-s3" data-nav-label="Frage · Befund" data-screen hidden><div class="mock-r3 mock-r3-q3"><div class="mock-r3-side"><p class="mock-r3-ok mock-r3-t-brief"><i></i><span>Briefing</span></p><p class="mock-r3-ok mock-r3-t-topic"><i></i><span>Cache · Thema</span></p><p class="mock-r3-here mock-r3-t-quest"><i></i><span>Cache · Lebensdauer</span></p><p class=" mock-r3-t-quest"><i></i><span>Cache · Größe</span></p><p class=" mock-r3-t-topic"><i></i><span>Hooks</span></p><p class=" mock-r3-t-rev"><i></i><span>Abschluss</span></p></div><div class="mock-r3-main"><span class="mock-r3-type mock-r3-t-quest"><b>?</b>Frage 1 von 3 · Cache</span><div style="margin-top:14px"><div class="mock-r3-msg"><div class="mock-r3-av">C</div><div class="mock-r3-find"><div class="mock-r3-tabs q3-tabs"><button type="button" class="mock-r3-on">📊 Was wir gemessen haben<small>Befund aus der Analyse</small></button><button type="button" class="" data-screen-link="q3-s4">🖥 So sieht es in der App aus<small>Konkretes Beispiel</small></button></div><p class="mock-r3-fact">Nach deiner Antwort zu den Treffern bleibt eine Lücke: 80 % der Treffer fallen in die ersten 10 Minuten, Einträge leben aber 24 Stunden.</p><div class="mock-r3-bars"><div class="mock-r3-bar mock-r3-hl"><span>&lt; 10 min</span><i style="width:80%"></i><b>80 %</b></div><div class="mock-r3-bar"><span>10–60 min</span><i style="width:14%"></i><b>14 %</b></div><div class="mock-r3-bar"><span>&gt; 1 h</span><i style="width:6%"></i><b>6 %</b></div></div></div></div><div class="mock-r3-msg"><div class="mock-r3-av">C</div><div class="mock-r3-dec q3-dec"><h3 class="mock-r3-q">Wie lange darf eine gecachte Antwort leben?</h3><p class="mock-r3-stakes">Davon hängt ab: Tokenverbrauch und wie aktuell alle Hooks antworten.</p><div class="mock-r3-opts"><div class="mock-r3-opt mock-r3-sel"><span class="mock-r3-rec">★ Empfohlen</span><b>Nach 10 Minuten verwerfen</b><span>Spart ≈ 31 M Tokens.</span><em>So sähe das aus: Antwort von 14:09 ist um 14:19 weg.</em></div><div class="mock-r3-opt"><b>Nach 1 Stunde verwerfen</b><span>Spart ≈ 24 M Tokens.</span><em>So sähe das aus: Antwort hält bis 15:09.</em></div><div class="mock-r3-opt"><b>Einen Tag behalten</b><span>Wie heute, spart nichts.</span><em>So sähe das aus: der Fall oben bleibt.</em></div></div><span class="mock-r3-none">Keine passt, eigene Antwort in die Notiz</span><div class="mock-r3-note">Notiz (optional): Ergänzung, Einwand, Kontext</div></div></div><div class="mock-r3-me q3-me"><b>Du: Nach 10 Minuten verwerfen</b><span>Deine Antwort erscheint hier, sobald du wählst.</span></div></div></div></div>
+      <div class="anno-layer" data-anno-layer>
+        <div class="anno" data-anno="r3-q3-s3-a1" data-anno-side="left" data-anno-target=".q3-dec" style="--anno-x:70%;--anno-y:20%">
+          <button class="anno-pin" type="button" data-anno-pin="r3-q3-s3-a1" aria-expanded="false" aria-controls="anno-bubble-r3-q3-s3-a1" aria-label="{{anno.pin_label}}">1</button>
+          <div class="anno-bubble" id="anno-bubble-r3-q3-s3-a1" data-anno-bubble="r3-q3-s3-a1" data-open="false">
+            <button type="button" class="anno-bubble-summary" data-anno-summary="r3-q3-s3-a1" aria-expanded="false" aria-controls="anno-bubble-r3-q3-s3-a1"><span class="anno-bubble-question">Antwort-Chips statt Karten: fehlt dir die Wirkung jeder Option im Blick?</span></button>
+            <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r3-q3-s3-a1" data-annotation="r3-q3-s3-a1" data-attachable placeholder="{{anno.answer_placeholder}}">Die nachrichten idee ist nicht doof! gern weiterverfolgen! aber es sollte dann natürlich mittig stattfinden und super aniumiert sein!
+Vllt. für die animation auch selber gut splitten wir frage und antwortmöglihckeiten auf in zwei nachrichten. So kann man es besser dem nutzer nach und nach vorbringen. </textarea><div class="attach-slot" data-attach-slot="anno-r3-q3-s3-a1"></div></div>
+          </div>
+        </div>
+        <div class="anno" data-anno="r3-q3-s3-a2" data-anno-side="left" data-anno-target=".q3-me" style="--anno-x:70%;--anno-y:45%">
+          <button class="anno-pin" type="button" data-anno-pin="r3-q3-s3-a2" aria-expanded="false" aria-controls="anno-bubble-r3-q3-s3-a2" aria-label="{{anno.pin_label}}">2</button>
+          <div class="anno-bubble" id="anno-bubble-r3-q3-s3-a2" data-anno-bubble="r3-q3-s3-a2" data-open="false">
+            <button type="button" class="anno-bubble-summary" data-anno-summary="r3-q3-s3-a2" aria-expanded="false" aria-controls="anno-bubble-r3-q3-s3-a2"><span class="anno-bubble-question">Deine Antwort als eigene Sprechblase rechts: ein gutes Gefühl, oder zu verspielt?</span></button>
+            <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r3-q3-s3-a2" data-annotation="r3-q3-s3-a2" data-attachable placeholder="{{anno.answer_placeholder}}">Brauche ich eher nicht! Hat keinen mehrwert zu dem in der nachricht es anzuzeigen. 
+Obwohl! man könnte unten einen chat input haben ala notizoptional inpout statt in der antwortmöglichkeit! so könnte man ein persisstentes element schaffen und auf all den analyse seiten inkl. briefing und abschluss notizen ergänzen und die antwort kachel / nachricht wird smoother. Das ist vllt. eine gute idee. Aber bitte nicht in der mitte horizontal den bildschirm trenenn, meine und seine nachrichten sind auf der gleichen spalte auch wenn das eine links undd das andere rechtsbündig (bitte hier nochmal checken was der internationale bekannteste standard ist wo wellche nachrichten angezeigt  werden und meine nachrichten sollten auch unspektakulärer sein sobald weiter gescrollt).
+</textarea><div class="attach-slot" data-attach-slot="anno-r3-q3-s3-a2"></div></div>
+          </div>
+        </div>
+        <div class="anno" data-anno="r3-q3-s3-a3" data-anno-side="left" data-anno-target=".q3-tabs" style="--anno-x:70%;--anno-y:70%">
+          <button class="anno-pin" type="button" data-anno-pin="r3-q3-s3-a3" aria-expanded="false" aria-controls="anno-bubble-r3-q3-s3-a3" aria-label="{{anno.pin_label}}">3</button>
+          <div class="anno-bubble" id="anno-bubble-r3-q3-s3-a3" data-anno-bubble="r3-q3-s3-a3" data-open="false">
+            <button type="button" class="anno-bubble-summary" data-anno-summary="r3-q3-s3-a3" aria-expanded="false" aria-controls="anno-bubble-r3-q3-s3-a3"><span class="anno-bubble-question">Funktioniert der Tab-Umschalter auch innerhalb einer Nachricht?</span></button>
+            <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r3-q3-s3-a3" data-annotation="r3-q3-s3-a3" data-attachable placeholder="{{anno.answer_placeholder}}"></textarea><div class="attach-slot" data-attach-slot="anno-r3-q3-s3-a3"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section id="q3-s4" data-nav-label="Frage · App-Beispiel" data-screen hidden><div class="mock-r3 mock-r3-q3"><div class="mock-r3-side"><p class="mock-r3-ok mock-r3-t-brief"><i></i><span>Briefing</span></p><p class="mock-r3-ok mock-r3-t-topic"><i></i><span>Cache · Thema</span></p><p class="mock-r3-here mock-r3-t-quest"><i></i><span>Cache · Lebensdauer</span></p><p class=" mock-r3-t-quest"><i></i><span>Cache · Größe</span></p><p class=" mock-r3-t-topic"><i></i><span>Hooks</span></p><p class=" mock-r3-t-rev"><i></i><span>Abschluss</span></p></div><div class="mock-r3-main"><span class="mock-r3-type mock-r3-t-quest"><b>?</b>Frage 1 von 3 · Cache</span><div style="margin-top:14px"><div class="mock-r3-msg"><div class="mock-r3-av">C</div><div class="mock-r3-find"><div class="mock-r3-tabs q3-tabs"><button type="button" class="" data-screen-link="q3-s3">📊 Was wir gemessen haben<small>Befund aus der Analyse</small></button><button type="button" class="mock-r3-on">🖥 So sieht es in der App aus<small>Konkretes Beispiel</small></button></div><div class="mock-r3-win"><div class="mock-r3-win-h"><i></i><i></i><i></i>&nbsp;Claude Code · Session von heute 14:02</div><pre>● Bash(git status)
+  ⎿ pre.tool.guard: <mark>Antwort aus dem Cache (gespeichert gestern 14:09, vor 23 h 53 min)</mark>
+  ⎿ On branch main · nothing to commit
+● Du arbeitest auf einem Stand, den der Hook von gestern kennt.</pre></div><p class="mock-r3-cap">So sieht es heute in der App aus: Der Hook liefert eine fast einen Tag alte Antwort.</p></div></div><div class="mock-r3-msg"><div class="mock-r3-av">C</div><div class="mock-r3-dec q3-dec"><h3 class="mock-r3-q">Wie lange darf eine gecachte Antwort leben?</h3><p class="mock-r3-stakes">Davon hängt ab: Tokenverbrauch und wie aktuell alle Hooks antworten.</p><div class="mock-r3-opts"><div class="mock-r3-opt mock-r3-sel"><span class="mock-r3-rec">★ Empfohlen</span><b>Nach 10 Minuten verwerfen</b><span>Spart ≈ 31 M Tokens.</span><em>So sähe das aus: Antwort von 14:09 ist um 14:19 weg.</em></div><div class="mock-r3-opt"><b>Nach 1 Stunde verwerfen</b><span>Spart ≈ 24 M Tokens.</span><em>So sähe das aus: Antwort hält bis 15:09.</em></div><div class="mock-r3-opt"><b>Einen Tag behalten</b><span>Wie heute, spart nichts.</span><em>So sähe das aus: der Fall oben bleibt.</em></div></div><span class="mock-r3-none">Keine passt, eigene Antwort in die Notiz</span><div class="mock-r3-note">Notiz (optional): Ergänzung, Einwand, Kontext</div></div></div><div class="mock-r3-me q3-me"><b>Du: Nach 10 Minuten verwerfen</b><span>Deine Antwort erscheint hier, sobald du wählst.</span></div></div></div></div></section>
+    <section id="q3-s5" data-nav-label="Abschluss" data-screen hidden><div class="mock-r3"><div class="mock-r3-side"><p class="mock-r3-ok mock-r3-t-brief"><i></i><span>Briefing</span></p><p class="mock-r3-ok mock-r3-t-topic"><i></i><span>Cache · Thema</span></p><p class="mock-r3-ok mock-r3-t-quest"><i></i><span>Cache · Lebensdauer</span></p><p class="mock-r3-ok mock-r3-t-quest"><i></i><span>Cache · Größe</span></p><p class="mock-r3-ok mock-r3-t-topic"><i></i><span>Hooks</span></p><p class="mock-r3-here mock-r3-t-rev"><i></i><span>Abschluss</span></p></div><div class="mock-r3-main">
+      <span class="mock-r3-type mock-r3-t-rev"><b>✓</b>Abschluss</span>
+      <p class="mock-r3-lead">Mit deinen Antworten sparen wir ≈ 44 M von 51 M Tokens.</p>
+      <div class="mock-r3-revrow"><i></i><span>Cache-Lebensdauer</span><span>10 Minuten</span><em>wie empfohlen</em></div>
+      <div class="mock-r3-revrow"><i class="mock-r3-own"></i><span>Doppelte Injektion</span><span>Eigene Antwort</span><em>Notiz</em></div>
+      <div class="mock-r3-revrow"><i></i><span>Hook-Budget</span><span>3 s</span><em>abweichend</em></div>
+      <button class="mock-r3-btn" type="button" style="background:#9fd8b4">Absenden</button>
+    </div></div></section>
+  </section>
+</section>

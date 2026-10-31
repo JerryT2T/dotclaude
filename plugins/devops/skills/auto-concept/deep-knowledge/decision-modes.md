@@ -1,6 +1,6 @@
 # Decision modes — how a concept page asks
 
-How Claude authors a decision on a concept page: the seven modes, the fields
+How Claude authors a decision on a concept page: the twelve modes, the fields
 every decision carries, the label rules and the before / after rewrites they
 came from. **The way to answer follows the question — never the other way
 round.** The markup and payload of each mode (`data-decision-mode`, the
@@ -52,6 +52,11 @@ Ask the questions in this order; the first yes picks the mode.
 | Is everything done anyway, but the position matters? | 5 · `order` |
 | Is it whether something is true / built right? | 6 · `verify` |
 | Is it about a word — a name, a label, a phrasing? | 7 · `wording` |
+| Is the answer easier to see than to describe (2–4 sketches / real excerpts)? | 8 · `picture` |
+| Do 2–3 options differ in the same criteria? | 9 · `compare` |
+| Are the options routes through several steps? | 10 · `chain` |
+| Is it where something goes? | 11 · `place` |
+| Does a scarce budget have to be split in proportion? | 12 · `points` |
 
 Never a mode: a point in time ("jetzt / später / Welle 2"). See § Rules.
 
@@ -155,6 +160,67 @@ Never a mode: a point in time ("jetzt / später / Welle 2"). See § Rules.
   Entscheidung?** ★ Weiter · Übernehmen · Bestätigen · ✎.
 - Result reads: "Knopf → „Weiter“".
 
+## 8 · picture — Bildauswahl
+
+- **Wann Claude ihn einsetzt:** die Antwort lässt sich besser sehen als
+  beschreiben — zwei bis vier Bilder: eine Skizze (inline SVG) oder ein
+  echter Ausschnitt (`img` / `pre`) aus der Anwendung.
+- **Control:** radios `dm-{id}`, each option a card with `[data-opt-media]`
+  above its label and consequence.
+- **Payload value:** the option id.
+- **Never:** variant prototyping — "which of these designs" belongs to the
+  design rounds of a concept, not to an analysis question.
+- **Example:** *Gilt für Kurzblick* — **Welche Darstellung ist lesbarer?**
+  ★ Balken · Zahl mit Trend · Tabelle.
+
+## 9 · compare — Vergleich
+
+- **Wann Claude ihn einsetzt:** zwei bis drei Optionen unterscheiden sich in
+  denselben Kriterien und der Unterschied IST die Entscheidung.
+- **Control:** radios `dm-{id}`; each option is one column with at most three
+  `[data-opt-cell data-crit="…"]` cells. Maximum 3 × 3 (gate warns above) —
+  more is a table, and a table is not a question.
+- **Payload value:** the option id (the column).
+- **Labels:** the same criteria in the same order in every column; short
+  values ("-31 M", "10 min"), no sentences.
+- **Example:** *Gilt für Hooks* — **Welche Cache-Strategie?** Kurz · Lang ·
+  Adaptiv × Tokens · Frische · Aufwand.
+
+## 10 · chain — Weg / Kette
+
+- **Wann Claude ihn einsetzt:** die Optionen sind Wege durch mehrere
+  Schritte; welche Route gilt, ist die Frage.
+- **Control:** radios `dm-{id}`; each option carries `[data-opt-steps]`, an
+  `ol` of 2–6 steps rendered as a chain; `data-step-new` marks the step that
+  differs from today.
+- **Payload value:** the route id.
+- **Example:** *Gilt für Tool-Aufrufe* — **Welchen Weg nimmt ein Aufruf?**
+  Hook → Tool · Hook → Bridge → Tool · Hook → Cache → Tool.
+
+## 11 · place — Platzierung
+
+- **Wann Claude ihn einsetzt:** es geht darum, WO etwas hin soll (ein Platz in
+  einem Layout, einer Pipeline, einer Datei).
+- **Control:** radios `dm-{id}` as the list, plus `[data-place-sketch]` with
+  `[data-slot-for="<option id>"]` slots. A slot and its list row select the
+  same value and highlight each other. Every slot names an option.
+- **Payload value:** the slot / option id.
+- **Example:** *Gilt für die Seitenleiste* — **Wo steht der Token-Zähler?**
+  ★ Kopfzeile · Seitenrand · Fußzeile.
+
+## 12 · points — Punkte verteilen
+
+- **Wann Claude ihn einsetzt:** mehrere Dinge konkurrieren um ein knappes
+  Budget und das Verhältnis zählt, nicht nur die Reihenfolge.
+- **Control:** per item buttons 1 · 2 · 3 · 5 · 8 (Fibonacci; click again =
+  0), hidden `dm-{id}.{item}`. Budget `3 × items + 1`: 2 items 7, 3 items 10,
+  **4 items 13**, 5 items 16. A live "Übrig: x von y" line; a step that would
+  exceed the budget cannot be pressed. 2–8 items. `data-rec` =
+  `item:points` pairs, the preset allocation.
+- **Payload value:** `{ "speed": 5, "cost": 3, "risk": 2, "reach": 3 }`.
+- **Example:** *Gilt für die nächste Runde* — **Wohin geht der Aufwand?**
+  Speed 5 · Kosten 3 · Risiko 2 · Reichweite 3 (13 Punkte).
+
 ## Label rules
 
 All checkable while writing; several are gate warnings.
@@ -219,7 +285,7 @@ introduced the modes). Project-specific nouns are neutralised.
     Ausnahme.
   - **Gar nicht in der Analyse** — was nur ein Test klären kann, bleibt offen.
   - **Keine davon / anders …** — Notiz ist dann Pflicht.
-  - Analysis column: Formatierter Text (Heute · Risiko · Ausweg), Belege (2).
+  - Analysis column: Formatierter Text (Heute · Risiko · Ausweg), Beispiel (Tab).
 
 ### Größenstufe „mittel“ — three bi-states all preset include → `single`
 

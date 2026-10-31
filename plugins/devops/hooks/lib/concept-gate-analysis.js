@@ -11,7 +11,8 @@
  *         recommendation
  *     A3  unknown data-decision-mode
  *   Warnings (advisory, never part of `ok`):
- *     A4  more than 3 topics per Full / more than 7 decisions per topic
+ *     A4  a Full with fewer than 1 or more than 7 topics, a topic with fewer
+ *         than 3 or more than 7 questions, a topic title over 5 words
  *     A5  Lite with more than 5 decisions (use Full)
  *     A6  quantitative finding without a visual
  *     A7  an exclusive choice built as N bi-states
@@ -24,12 +25,18 @@
 
 'use strict';
 
-const MODES = ['single', 'multi', 'yesnoalt', 'slider', 'order', 'verify', 'wording'];
+const MODES = ['single', 'multi', 'yesnoalt', 'slider', 'order', 'verify', 'wording', 'picture', 'compare', 'chain', 'place', 'points'];
+const POINT_STEPS = [1, 2, 3, 5, 8];
+/** Budget for n items (mirror of the engine's pointsBudget): 4 items -> 13. */
+const pointsBudget = n => 3 * n + 1;
 const VOID = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr']);
 const TAG_RE = /<(\/?)([a-z][a-z0-9-]*)\b((?:[^>"']|"[^"]*"|'[^']*')*)>/gi;
 
-const TOPIC_MAX = 3;
+const TOPIC_MIN = 1;
+const TOPIC_MAX = 7;
+const PER_TOPIC_MIN = 3;
 const PER_TOPIC_MAX = 7;
+const TITLE_MAX_WORDS = 5;
 const LITE_MAX = 5;
 
 const TIMING_RE = /\b(welle|wellen|wann\s+(?:\w+\s+){0,2}umsetz\w*|wann\s+einbauen|when\s+to\s+(?:implement|ship|build|do)|which\s+wave|in\s+which\s+(?:wave|release)|rollout\s+wave)\b/i;
@@ -84,7 +91,7 @@ function preselectionIssue(doc, el, mode, rec) {
   const name = `dm-${id}`;
   const inputs = doc.nodes.filter(n => n.tag === 'input' && inside(el, n));
   const checked = n => /(?:^|\s)checked(?:\s|=|\/|$)/i.test(n.attrs);
-  if (mode === 'single' || mode === 'verify' || mode === 'wording' || mode === 'yesnoalt') {
+  if (['single', 'verify', 'wording', 'yesnoalt', 'picture', 'compare', 'chain', 'place'].includes(mode)) {
     const hit = inputs.find(n => attr(n, 'type') === 'radio' && attr(n, 'name') === name && checked(n));
     if (!hit) return `no radio of "${name}" is pre-checked`;
     if (attr(hit, 'value') !== rec) return `the pre-checked option "${attr(hit, 'value')}" is not the recommendation "${rec}"`;
@@ -101,6 +108,22 @@ function preselectionIssue(doc, el, mode, rec) {
     if (!r) return `no <input type="range" name="${name}">`;
     const v = attr(r, 'value');
     return v != null && v !== '' && Number(v) === Number(rec) ? null : `the slider value "${attr(r, 'value')}" is not the recommendation "${rec}"`;
+  }
+  if (mode === 'points') {
+    const items = inputs.filter(n => (attr(n, 'name') || '').startsWith(name + '.'));
+    if (!items.length) return 'no <input type="hidden" name="' + name + '.{item}"> per item';
+    const want = {};
+    rec.split(/[\s,]+/).filter(Boolean).forEach(t => { const k = t.split(':'); want[k[0]] = Number(k[1]) || 0; });
+    const budget = pointsBudget(items.length);
+    let sum = 0;
+    for (const n of items) {
+      const k = attr(n, 'name').slice(name.length + 1);
+      const v = Number(attr(n, 'value') || 0) || 0;
+      if (v && !POINT_STEPS.includes(v)) return 'the preset of "' + k + '" (' + v + ') is not a step of 1 · 2 · 3 · 5 · 8';
+      if (v !== (want[k] || 0)) return 'the preset of "' + k + '" (' + v + ') is not the recommendation (' + (want[k] || 0) + ')';
+      sum += v;
+    }
+    return sum <= budget ? null : 'the recommendation spends ' + sum + ' points, over the budget of ' + budget + ' for ' + items.length + ' items';
   }
   if (mode === 'order') {
     const h = inputs.find(n => attr(n, 'name') === name);
@@ -154,19 +177,58 @@ function findAnalysisIssues(html) {
     if (issue) err('decision-preselect', `decision "${id}" (${mode}): ${issue} — the recommendation is always preselected`, d.start);
   }
 
+  // A10 — the Phase-2 answer forms
+  for (const d of decisions) {
+    const mode = attr(d, 'data-decision-mode');
+    const id = attr(d, 'data-decision');
+    const opts = doc.nodes.filter(n => has(n, 'data-opt') && inside(d, n));
+    const sub = (o, name) => doc.nodes.filter(n => has(n, name) && inside(o, n));
+    if (mode === 'picture') {
+      if (opts.length < 2 || opts.length > 4) warn('picture-count', 'decision "' + id + '" (picture) offers ' + opts.length + ' images — keep it between 2 and 4', d.start);
+      for (const o of opts) if (!sub(o, 'data-opt-media').length) warn('picture-media', 'decision "' + id + '": option "' + attr(o, 'data-opt') + '" has no [data-opt-media] (a sketch as inline SVG or a real excerpt)', o.start);
+    } else if (mode === 'compare') {
+      const most = Math.max(0, ...opts.map(o => sub(o, 'data-opt-cell').length));
+      if (opts.length > 3 || most > 3) warn('compare-size', 'decision "' + id + '" (compare) is ' + opts.length + ' options × ' + most + ' criteria — at most 3 × 3', d.start);
+    } else if (mode === 'chain') {
+      for (const o of opts) if (!sub(o, 'data-opt-steps').length) warn('chain-steps', 'decision "' + id + '": route "' + attr(o, 'data-opt') + '" has no [data-opt-steps] chain', o.start);
+    } else if (mode === 'place') {
+      const slots = doc.nodes.filter(n => has(n, 'data-slot-for') && inside(d, n));
+      if (!doc.nodes.some(n => has(n, 'data-place-sketch') && inside(d, n)) || !slots.length) warn('place-sketch', 'decision "' + id + '" (place) has no [data-place-sketch] with [data-slot-for] slots', d.start);
+      const ids = opts.map(o => attr(o, 'data-opt'));
+      for (const s of slots) if (!ids.includes(attr(s, 'data-slot-for'))) warn('place-slot', 'decision "' + id + '": slot "' + attr(s, 'data-slot-for') + '" names no option', s.start);
+    } else if (mode === 'points') {
+      if (opts.length < 2 || opts.length > 8) warn('points-count', 'decision "' + id + '" (points) spreads points over ' + opts.length + ' items — keep it between 2 and 8', d.start);
+    }
+  }
+
   // A4 — groups ≤ 3, decisions per group ≤ 7
   for (const f of fulls) {
     const topics = doc.nodes.filter(n => has(n, 'data-topic') && inside(f, n));
-    if (topics.length > TOPIC_MAX) warn('topics-max', `Full analysis has ${topics.length} topics — keep it to ${TOPIC_MAX} (split the concept or merge topics)`, f.start);
+    if (topics.length < TOPIC_MIN || topics.length > TOPIC_MAX) warn('topics-count', `Full analysis has ${topics.length} topics — keep it between ${TOPIC_MIN} and ${TOPIC_MAX} (split the concept or merge topics)`, f.start);
     for (const t of topics) {
+      const name = decode(attr(t, 'data-nav-label') || attr(t, 'id') || '?');
       const n = decisions.filter(d => inside(t, d)).length;
-      if (n > PER_TOPIC_MAX) warn('topic-decisions-max', `topic "${decode(attr(t, 'data-nav-label') || attr(t, 'id') || '?')}" holds ${n} decisions — keep it to ${PER_TOPIC_MAX}`, t.start);
+      if (n < PER_TOPIC_MIN || n > PER_TOPIC_MAX) warn('topic-questions-count', `topic "${name}" holds ${n} questions — keep it between ${PER_TOPIC_MIN} and ${PER_TOPIC_MAX}`, t.start);
+      const l2 = doc.nodes.find(x => attr(x, 'data-alevel') === '2' && inside(t, x));
+      const title = decode((l2 && attr(l2, 'data-title')) || attr(t, 'data-nav-label') || '').trim();
+      const words = title.split(/\s+/).filter(Boolean).length;
+      if (words > TITLE_MAX_WORDS) warn('topic-title-long', `topic title "${title}" has ${words} words — keep it to ${TITLE_MAX_WORDS}`, t.start);
     }
   }
   // A5 — Lite ≤ 5
   for (const l of lites) {
     const n = decisions.filter(d => inside(l, d)).length;
     if (n > LITE_MAX) warn('lite-max', `Lite analysis holds ${n} decisions — more than ${LITE_MAX} belong in a Full analysis`, l.start);
+  }
+  // A5b — a Lite round needs its own id (it keys the closing note and the persisted state)
+  for (const l of lites) {
+    if (!attr(l, 'id') && !attr(l, 'data-view')) warn('lite-id', 'Lite analysis has neither an id nor a data-view — give it an id so its state and closing note do not collide with another Lite round', l.start);
+  }
+  // A5c — the composer stores the note in the decision's own textarea
+  for (const d of decisions) {
+    const id = attr(d, 'data-decision');
+    if (!id || !MODES.includes(attr(d, 'data-decision-mode'))) continue;
+    if (!doc.nodes.some(n => n.tag === 'textarea' && attr(n, 'data-comment') === id + '-note' && inside(d, n))) warn('decision-note', `decision "${id}": no <textarea data-comment="${id}-note"> — the composer stores the note there (the engine adds one when missing, but author it)`, d.start);
   }
 
   // A6 — a quantitative finding wants a visual
@@ -191,6 +253,11 @@ function findAnalysisIssues(html) {
     if (n >= 3) warn('bistate-choice', `section "${decode(attr(parent, 'id') || attr(parent, 'data-nav-label') || '?')}" holds ${n} include/discard groups — if they are alternatives of ONE question use data-decision-mode="single" (radio cards), not ${n} bi-states`, parent.start);
   }
 
+  // A9 — a question needs its Fragestellung: the Ausgangslage above it
+  for (const d of decisions) {
+    if (!doc.nodes.some(n => has(n, 'data-situation') && inside(d, n) && textOf(doc, n))) warn('decision-situation', `decision "${attr(d, 'data-decision')}": no [data-situation] — open the question with 1–2 sentences of Ausgangslage (what the analysis found for it)`, d.start);
+  }
+
   // A8 — timing is never a decision
   for (const d of [...decisions, ...legacy]) {
     const q = doc.nodes.find(n => has(n, 'data-question') && inside(d, n));
@@ -200,4 +267,4 @@ function findAnalysisIssues(html) {
   return out;
 }
 
-module.exports = { findAnalysisIssues, MODES, TOPIC_MAX, PER_TOPIC_MAX, LITE_MAX, parse, lineAt };
+module.exports = { findAnalysisIssues, pointsBudget, MODES, TOPIC_MIN, TOPIC_MAX, PER_TOPIC_MIN, PER_TOPIC_MAX, TITLE_MAX_WORDS, LITE_MAX, parse, lineAt };

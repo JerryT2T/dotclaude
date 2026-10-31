@@ -1,0 +1,245 @@
+<section data-iteration="8" data-iteration-template="design">
+
+  <style>
+    .mock-r8 { --b0:#121212; --s1:rgba(255,255,255,.05); --s2:rgba(255,255,255,.08); --s3:rgba(255,255,255,.11); --t1:rgba(255,255,255,.87); --t2:rgba(255,255,255,.60); --t3:rgba(255,255,255,.38); --line:rgba(255,255,255,.10);
+      --b1:#58a6ff; --b2:#79c0ff; --b3:#a5d6ff; --b4:#388bfd; --cache:#f28fb8; --hooks:#4fd1c5;
+      position: relative; max-width: 1440px; min-height: 720px; margin: 0 auto; background: var(--b0); color: var(--t1); font: 15px/1.6 system-ui, "Segoe UI", sans-serif; border-radius: 10px; overflow: hidden; }
+    .mock-r8-col { max-width: 780px; margin: 0 auto; padding: 64px 24px 170px; }
+    .mock-r8-peek { text-align: center; font-size: 12.5px; color: var(--t3); padding: 4px 0; }
+    .mock-r8-peek b { color: var(--t2); font-weight: 600; }
+    .mock-r8-peek.mock-r8-up { -webkit-mask-image: linear-gradient(0deg, #000, transparent); mask-image: linear-gradient(0deg, #000, transparent); }
+    .mock-r8-peek.mock-r8-down { margin-top: 18px; -webkit-mask-image: linear-gradient(180deg, #000, transparent); mask-image: linear-gradient(180deg, #000, transparent); }
+    .mock-r8-rail { position: absolute; top: 80px; right: 14px; bottom: 170px; width: 18px; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; padding: 6px 0; border-radius: 10px; transition: width .2s, background .2s; z-index: 2; }
+    .mock-r8-rail p { margin: 0; display: flex; align-items: center; gap: 8px; white-space: nowrap; font-size: 12px; color: transparent; transition: color .2s; }
+    .mock-r8-rail p i { width: 10px; height: 3px; border-radius: 2px; background: var(--t3); flex: none; }
+    .mock-r8-rail p.mock-r8-here i { width: 18px; background: var(--t1); }
+    .mock-r8-rail p.mock-r8-c i { background: var(--cache); } .mock-r8-rail p.mock-r8-h i { background: var(--hooks); } .mock-r8-rail p.mock-r8-b i { background: var(--b1); }
+    .mock-r8-rail:hover { width: 210px; background: rgba(30,30,30,.94); padding: 6px 12px; box-shadow: 0 8px 30px rgba(0,0,0,.5); }
+    .mock-r8-rail:hover p { color: var(--t2); } .mock-r8-rail:hover p.mock-r8-here { color: var(--t1); font-weight: 650; }
+    .mock-r8-comp { position: absolute; left: 50%; bottom: 64px; transform: translateX(-50%); width: min(780px, calc(100% - 48px)); display: grid; grid-template-columns: minmax(0,1fr) auto auto; gap: 8px; align-items: end; padding: 12px 12px 12px 16px; border-radius: 18px; background: #1e1e1e; border: 1px solid var(--line); box-shadow: 0 -14px 34px rgba(18,18,18,.95); }
+    .mock-r8-comp span { color: var(--t3); font-size: 14px; line-height: 1.55; min-height: 70px; }
+    .mock-r8-comp small { display: block; font-size: 11.5px; color: var(--t3); }
+    .mock-r8-comp b { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--s2); color: var(--t2); font-weight: 400; }
+    .mock-r8-comp b.mock-r8-send { background: var(--b1); color: #0d1117; font-weight: 700; }
+    /* guided reveal: each message enters, holds a soft "read me" glow, then settles */
+    .mock-r8-msg { display: grid; grid-template-columns: 30px minmax(0,1fr); gap: 12px; margin-top: 16px; animation: mock-r8-in .9s cubic-bezier(.22,.8,.24,1) both; }
+    .mock-r8-msg.mock-r8-d1 { animation-delay: 2.6s; } .mock-r8-msg.mock-r8-d2 { animation-delay: 4.4s; }
+    .mock-r8-msg > :last-child { animation: mock-r8-read 2.4s ease-out both; }
+    .mock-r8-msg.mock-r8-d1 > :last-child { animation-delay: 2.6s; } .mock-r8-msg.mock-r8-d2 > :last-child { animation-delay: 4.4s; }
+    @keyframes mock-r8-in { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+    @keyframes mock-r8-read { 0%, 15% { box-shadow: 0 0 0 0 rgba(121,192,255,0); } 35%, 70% { box-shadow: 0 0 0 2px rgba(121,192,255,.45), 0 0 34px rgba(121,192,255,.18); } 100% { box-shadow: 0 0 0 0 rgba(121,192,255,0); } }
+    .mock-r8-hl-anim { animation: mock-r8-hl 1.4s ease-in-out 1.2s 2 both; }
+    @keyframes mock-r8-hl { 50% { filter: brightness(1.35); transform: scaleY(1.5); } }
+    @media (prefers-reduced-motion: reduce) { .mock-r8 *, .mock-r8 *::before { animation: none !important; } }
+    .mock-r8-av { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; color: #121212; background: var(--tc); box-shadow: 0 0 0 3px #121212, 0 0 0 4px var(--tc); }
+    .mock-r8-bub { padding: 14px 18px; border-radius: 4px 18px 18px 18px; background: var(--s1); }
+    .mock-r8-bub.mock-r8-edge { border-left: 3px solid var(--tc); }
+    .mock-r8-meta { font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--tc); font-weight: 700; margin-bottom: 6px; }
+    .mock-r8-tabs { display: inline-flex; gap: 4px; padding: 4px; border-radius: 14px; background: rgba(0,0,0,.35); margin-bottom: 12px; }
+    .mock-r8-tabs button { display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px; border: 0; border-radius: 10px; background: none; color: var(--t2); font-size: 14px; font-weight: 650; }
+    .mock-r8-tabs button i { font-style: normal; font-size: 20px; line-height: 1; }
+    .mock-r8-tabs button.mock-r8-on { background: var(--s3); color: var(--t1); }
+    .mock-r8-fact { margin: 0 0 12px; font-size: 16px; color: var(--t1); }
+    .mock-r8-bars { display: grid; gap: 8px; }
+    .mock-r8-bar { display: grid; grid-template-columns: 96px minmax(0,1fr) 44px; gap: 10px; align-items: center; font-size: 13px; color: var(--t2); }
+    .mock-r8-bar i { display: block; height: 9px; border-radius: 5px; background: color-mix(in srgb, var(--tc) 30%, transparent); transform-origin: left center; }
+    .mock-r8-bar.mock-r8-hl { color: var(--t1); } .mock-r8-bar.mock-r8-hl i { background: var(--tc); }
+    .mock-r8-shot { border-radius: 12px; overflow: hidden; border: 1px solid var(--line); background: #0d0d0d; }
+    .mock-r8-shot-h { display: flex; gap: 6px; align-items: center; padding: 8px 12px; background: var(--s2); font-size: 12px; color: var(--t2); }
+    .mock-r8-shot-h i { width: 9px; height: 9px; border-radius: 50%; background: var(--t3); }
+    .mock-r8-shot-b { display: grid; grid-template-columns: 170px minmax(0,1fr); min-height: 230px; }
+    .mock-r8-shot-side { border-right: 1px solid var(--line); padding: 12px; font-size: 12px; color: var(--t3); }
+    .mock-r8-shot-side p { margin: 0 0 6px; }
+    .mock-r8-shot pre { margin: 0; padding: 14px; font: 12.5px/1.7 ui-monospace, Consolas, monospace; color: var(--t2); white-space: pre-wrap; }
+    .mock-r8-shot mark { background: color-mix(in srgb, var(--tc) 22%, transparent); color: #fff; border-radius: 3px; padding: 0 3px; outline: 1px solid color-mix(in srgb, var(--tc) 60%, transparent); }
+    .mock-r8-cap { margin: 10px 0 0; color: var(--t2); font-size: 13px; }
+    /* the question: fixed height, one line of context */
+    .mock-r8-qb { height: 92px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; }
+    .mock-r8-q { font-size: 21px; font-weight: 700; letter-spacing: -.015em; margin: 0; color: var(--t1); }
+    .mock-r8-stakes { margin: 4px 0 0; font-size: 13.5px; color: var(--t2); }
+    /* answer block: variable height per type */
+    .mock-r8-ans { padding: 8px; border-radius: 4px 18px 18px 18px; background: linear-gradient(180deg, #1c2230, #181c24); border: 1px solid rgba(121,192,255,.40); box-shadow: 0 14px 40px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.06); }
+    .mock-r8-kind { display: flex; justify-content: space-between; padding: 4px 10px 8px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--b3); font-weight: 700; }
+    .mock-r8-kind span { color: var(--t3); letter-spacing: 0; text-transform: none; font-weight: 500; }
+    .mock-r8-row { position: relative; display: grid; grid-template-columns: 22px minmax(0,1.1fr) minmax(0,1fr); gap: 14px; align-items: center; padding: 12px 14px; border-radius: 12px; transition: background .15s; }
+    .mock-r8-row + .mock-r8-row { margin-top: 4px; }
+    .mock-r8-row:hover { background: rgba(255,255,255,.04); }
+    .mock-r8-row > i { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--t3); }
+    .mock-r8-row b { color: var(--t1); font-weight: 650; }
+    .mock-r8-row b small { display: block; font-weight: 400; font-size: 12.5px; color: var(--t2); }
+    .mock-r8-row > span { font-size: 12.5px; color: var(--t3); }
+    .mock-r8-row.mock-r8-sel { background: linear-gradient(90deg, rgba(88,166,255,.20), rgba(88,166,255,.06)); box-shadow: inset 0 0 0 1px rgba(121,192,255,.55); }
+    .mock-r8-row.mock-r8-sel > i { border-color: var(--b2); background: radial-gradient(circle, var(--b2) 0 4px, transparent 5px); }
+    .mock-r8-row.mock-r8-sel > span { color: var(--t2); }
+    .mock-r8-row.mock-r8-chk > i { border-radius: 5px; }
+    .mock-r8-row.mock-r8-chk.mock-r8-sel > i { background: var(--b2); border-color: var(--b2); box-shadow: inset 0 0 0 3px #1c2230; }
+    .mock-r8-rec { display: inline-block; margin-left: 6px; padding: 0 8px; border-radius: 999px; font-size: 10.5px; font-weight: 700; background: linear-gradient(120deg, var(--b2), var(--b3)); color: #0d1117; vertical-align: 2px; }
+    .mock-r8-none { margin: 8px 14px 6px; font-size: 12.5px; color: var(--t2); }
+    .mock-r8-none u { text-decoration-color: var(--t3); text-underline-offset: 3px; }
+    .mock-r8-sl { padding: 14px 16px 6px; }
+    .mock-r8-sl-v { font-size: 34px; font-weight: 750; letter-spacing: -.02em; color: var(--t1); }
+    .mock-r8-sl-v small { font-size: 15px; color: var(--t2); font-weight: 500; margin-left: 6px; }
+    .mock-r8-track { position: relative; height: 10px; border-radius: 5px; background: var(--s2); margin: 18px 0 30px; }
+    .mock-r8-track > i { position: absolute; left: 0; top: 0; bottom: 0; width: 40%; border-radius: 5px; background: linear-gradient(90deg, var(--b4), var(--b2)); }
+    .mock-r8-track > b { position: absolute; left: 40%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 5px rgba(121,192,255,.35); }
+    .mock-r8-track > em { position: absolute; left: 40%; top: 18px; transform: translateX(-50%); font-style: normal; font-size: 11px; color: var(--b3); white-space: nowrap; }
+    .mock-r8-sl-cons { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
+    .mock-r8-sl-cons div { padding: 10px 12px; border-radius: 10px; background: var(--s1); font-size: 13px; color: var(--t2); }
+    .mock-r8-sl-cons b { display: block; font-size: 18px; color: var(--t1); }
+    .mock-r8-ord { display: grid; gap: 6px; padding: 4px; }
+    .mock-r8-oi { display: grid; grid-template-columns: 18px 30px minmax(0,1fr) auto; gap: 12px; align-items: center; padding: 11px 14px; border-radius: 12px; background: var(--s1); }
+    .mock-r8-oi > i { color: var(--t3); font-style: normal; letter-spacing: -2px; }
+    .mock-r8-oi > b { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: rgba(88,166,255,.18); color: var(--b2); }
+    .mock-r8-oi:first-child { background: linear-gradient(90deg, rgba(88,166,255,.18), rgba(88,166,255,.05)); }
+    .mock-r8-oi span small { display: block; color: var(--t2); font-size: 12.5px; }
+    .mock-r8-oi em { font-style: normal; font-size: 12px; color: var(--t3); }
+    .mock-r8-yna { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; padding: 4px; }
+    .mock-r8-yna div { padding: 16px; border-radius: 14px; background: var(--s1); text-align: center; }
+    .mock-r8-yna div b { display: block; font-size: 17px; }
+    .mock-r8-yna div span { font-size: 12.5px; color: var(--t2); }
+    .mock-r8-yna div.mock-r8-sel { background: linear-gradient(180deg, rgba(88,166,255,.22), rgba(88,166,255,.06)); box-shadow: inset 0 0 0 1px rgba(121,192,255,.6); }
+    .mock-r8-alt { margin: 8px 4px 2px; padding: 10px 12px; border-radius: 10px; border: 1px dashed rgba(121,192,255,.35); color: var(--t3); font-size: 13px; }
+    .mock-r8-me { display: flex; justify-content: flex-end; margin-top: 14px; }
+    .mock-r8-me div { max-width: 70%; padding: 10px 15px; border-radius: 18px 4px 18px 18px; background: rgba(88,166,255,.18); color: var(--t1); }
+    /* settled: answered Q&A stays readable but calmer */
+    .mock-r8-done { position: relative; margin-bottom: 8px; padding: 6px 0 10px; }
+    .mock-r8-done .mock-r8-msg, .mock-r8-done .mock-r8-me { animation: none; }
+    .mock-r8-done .mock-r8-msg > :last-child { animation: none; }
+    .mock-r8-done .mock-r8-bub { background: transparent; border: 1px solid var(--line); padding: 8px 14px; font-size: 13.5px; color: var(--t2); }
+    .mock-r8-done .mock-r8-av { transform: scale(.8); opacity: .6; }
+    .mock-r8-done .mock-r8-me div { background: transparent; border: 1px solid rgba(121,192,255,.30); color: var(--t2); font-size: 13.5px; padding: 6px 13px; }
+    .mock-r8-done .mock-r8-me div::before { content: "✓ "; color: var(--b2); }
+    /* briefing + closing: cool blue, devops-concept family */
+    .mock-r8-hero { position: relative; text-align: center; padding: 24px 0 4px; }
+    .mock-r8-hero::before { content: ""; position: absolute; inset: -60px -220px auto; height: 460px; background: radial-gradient(ellipse at 50% 30%, rgba(88,166,255,.22), rgba(165,214,255,.08) 45%, transparent 72%); pointer-events: none; }
+    .mock-r8-hero > * { position: relative; animation: mock-r8-in 1s cubic-bezier(.22,.8,.24,1) both; }
+    .mock-r8-hero > :nth-child(2) { animation-delay: .7s; } .mock-r8-hero > :nth-child(3) { animation-delay: 1.6s; } .mock-r8-hero > :nth-child(4) { animation-delay: 2.6s; } .mock-r8-hero > :nth-child(5) { animation-delay: 3.8s; }
+    .mock-r8-eyebrow { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--t2); }
+    .mock-r8-big { font-size: 88px; font-weight: 800; letter-spacing: -.045em; line-height: 1; margin: 14px 0 4px; background: linear-gradient(120deg, #d6ebff, var(--b2) 45%, var(--b4)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .mock-r8-big small { font-size: 22px; letter-spacing: 0; font-weight: 600; -webkit-text-fill-color: rgba(255,255,255,.6); }
+    .mock-r8-claim { font-size: 17px; color: var(--t2); max-width: 600px; margin: 8px auto 0; line-height: 1.5; }
+    .mock-r8-path { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; margin-top: 28px; text-align: left; }
+    .mock-r8-step { padding: 14px 16px; border-radius: 14px; background: var(--s1); border-top: 3px solid var(--tc); }
+    .mock-r8-step b { display: block; font-size: 24px; color: var(--t1); }
+    .mock-r8-step span { font-size: 13px; color: var(--t2); }
+    .mock-r8-cta { margin-top: 28px; display: inline-grid; grid-template-columns: 1fr auto 1fr; gap: 16px; align-items: center; }
+    .mock-r8-cta small { font-size: 13px; color: var(--t2); }
+    .mock-r8-cta small:first-child { text-align: right; }
+    .mock-r8-cta small:last-child { text-align: left; }
+    .mock-r8-go { height: 50px; padding: 0 34px; border: 0; border-radius: 999px; background: linear-gradient(120deg, var(--b2), var(--b4)); color: #0d1117; font-size: 17px; font-weight: 800; box-shadow: 0 10px 40px rgba(88,166,255,.30); }
+    .mock-r8-topic { margin-top: 10px; padding: 30px 30px 26px; border-radius: 22px; background: radial-gradient(ellipse at 15% 0%, color-mix(in srgb, var(--tc) 26%, transparent), transparent 60%), var(--s1); border: 1px solid color-mix(in srgb, var(--tc) 30%, transparent); display: grid; grid-template-columns: minmax(0,1fr) 150px; gap: 24px; align-items: center; animation: mock-r8-in .9s both; }
+    .mock-r8-topic h1 { margin: 6px 0 12px; font-size: 30px; line-height: 1.2; letter-spacing: -.025em; }
+    .mock-r8-ring { width: 150px; height: 150px; border-radius: 50%; background: conic-gradient(var(--tc) 0 61%, rgba(255,255,255,.08) 61% 100%); display: grid; place-items: center; }
+    .mock-r8-ring div { width: 112px; height: 112px; border-radius: 50%; background: #1a1a1a; display: grid; place-items: center; text-align: center; }
+    .mock-r8-ring b { font-size: 26px; display: block; } .mock-r8-ring small { font-size: 11px; color: var(--t2); }
+    .mock-r8-tq { display: grid; gap: 8px; }
+    .mock-r8-tq div { display: grid; grid-template-columns: 24px minmax(0,1fr); gap: 10px; color: var(--t2); }
+    .mock-r8-tq b { color: var(--tc); }
+    .mock-r8-btn { margin-top: 22px; height: 42px; padding: 0 22px; border: 0; border-radius: 999px; background: var(--tc); color: #121212; font-weight: 700; font-size: 14.5px; }
+    .mock-r8-sig { margin-top: 24px; border-radius: 16px; background: var(--s1); padding: 6px 16px; text-align: left; }
+    .mock-r8-sigrow { display: grid; grid-template-columns: 8px minmax(0,1.3fr) minmax(0,1fr) 150px; gap: 14px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+    .mock-r8-sigrow:last-child { border-bottom: 0; }
+    .mock-r8-sigrow > i { width: 8px; height: 26px; border-radius: 4px; background: var(--tc); }
+    .mock-r8-dw { height: 8px; border-radius: 4px; background: rgba(255,255,255,.08); overflow: hidden; }
+    .mock-r8-dw b { display: block; height: 100%; background: rgba(255,255,255,.30); }
+    .mock-r8-dw.mock-r8-warn b { background: linear-gradient(90deg, var(--b4), var(--b2)); }
+    .mock-r8-flag { justify-self: start; padding: 3px 11px; border-radius: 8px; font-size: 12.5px; font-weight: 700; background: rgba(121,192,255,.16); color: var(--b3); box-shadow: inset 0 0 0 1px rgba(121,192,255,.35); }
+  
+
+    .mock-r8-av { background: linear-gradient(135deg, #79c0ff, #388bfd) !important; color: #0d1117; box-shadow: none !important; }
+    .mock-r8-av svg { width: 18px; height: 18px; }
+    .mock-r8-msg.mock-r8-now .mock-r8-av { box-shadow: 0 0 14px rgba(121,192,255,.65), 0 0 2px rgba(121,192,255,.9) !important; }
+    /* rail: 58 items on a fixed line, every pixel belongs to an item */
+    .mock-r8-rail { position: absolute; right: 22px; top: 120px; bottom: auto; height: 520px; width: 260px; display: flex; flex-direction: column; align-items: stretch; padding: 0; background: none; z-index: 2; }
+    .mock-r8-rail::before { content: ""; position: absolute; right: 4px; top: 0; bottom: 0; width: 1px; background: linear-gradient(180deg, transparent, rgba(121,192,255,.35) 6%, rgba(255,255,255,.18) 50%, rgba(121,192,255,.35) 94%, transparent); pointer-events: none; }
+    .mock-r8-rail p { flex: 1 1 0; min-height: 0; margin: 0; display: flex; align-items: center; justify-content: flex-end; gap: 10px; cursor: pointer; font-size: 12px; color: transparent; white-space: nowrap; transform-origin: right center; transition: transform .16s cubic-bezier(.22,.8,.24,1), color .16s; }
+    .mock-r8-rail p i { width: 4px; height: 4px; border-radius: 50%; flex: none; background: var(--dc); box-shadow: 0 0 6px var(--dc); margin-right: 2.5px; transition: transform .16s; }
+    .mock-r8-rail p.mock-r8-topic i { width: 8px; height: 8px; margin-right: .5px; }
+    .mock-r8-rail p.mock-r8-edge i { width: 7px; height: 7px; margin-right: 1px; }
+    .mock-r8-rail p.mock-r8-done i { opacity: .55; }
+    .mock-r8-rail p.mock-r8-here i { transform: scale(1.8); box-shadow: 0 0 10px var(--dc), 0 0 2px var(--dc); }
+    .mock-r8-rail p b { font-weight: 800; letter-spacing: .06em; text-transform: uppercase; font-size: 10px; margin-right: 5px; }
+    .mock-r8-rail:hover { height: 520px; bottom: auto; width: 260px; background: none; box-shadow: none; padding: 0; }
+    .mock-r8-rail:hover p { color: transparent; }
+    .mock-r8-rail p.mock-r8-here i { width: 4px; background: var(--dc); }
+    /* hover: topics + the item under the mouse and 2 neighbours each side get labels; dock magnification */
+    .mock-r8-rail:hover p.mock-r8-topic, .mock-r8-rail.mock-r8-open p.mock-r8-topic, .mock-r8-rail:hover p.mock-r8-edge, .mock-r8-rail.mock-r8-open p.mock-r8-edge { color: rgba(255,255,255,.45); }
+    .mock-r8-rail p:hover, .mock-r8-rail.mock-r8-open p.mock-r8-m0 { transform: scale(1.5); color: #fff; font-weight: 650; z-index: 2; }
+    .mock-r8-rail p:hover i, .mock-r8-rail.mock-r8-open p.mock-r8-m0 i { transform: scale(2.2); }
+    .mock-r8-rail p:has(+ p:hover), .mock-r8-rail p:hover + p, .mock-r8-rail.mock-r8-open p.mock-r8-m1 { transform: scale(1.25); color: rgba(255,255,255,.75); }
+    .mock-r8-rail p:has(+ p + p:hover), .mock-r8-rail p:hover + p + p, .mock-r8-rail.mock-r8-open p.mock-r8-m2 { transform: scale(1.1); color: rgba(255,255,255,.5); }
+    .mock-r8-rail p:has(+ p:hover) i, .mock-r8-rail p:hover + p i, .mock-r8-rail.mock-r8-open p.mock-r8-m1 i { transform: scale(1.6); }
+    /* FAB clearance markers (concept chrome) */
+    .mock-r8-fab { position: absolute; right: 18px; width: 60px; height: 60px; border-radius: 16px; border: 1.5px dashed rgba(255,255,255,.25); display: grid; place-items: center; color: rgba(255,255,255,.35); font-size: 11px; }
+    /* composer: tag as the first word, one-line hint */
+    .mock-r8-comp span { min-height: 70px; }
+    .mock-r8-comp small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .mock-r8-tagw { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; margin-right: 6px; border-radius: 6px; font-size: 12px; font-weight: 650; background: rgba(121,192,255,.18); color: #a5d6ff; vertical-align: 1px; }
+    .mock-r8-caret { display: inline-block; width: 1.5px; height: 17px; background: #fff; vertical-align: -3px; animation: mock-r8-blink 1s steps(1) infinite; }
+    @keyframes mock-r8-blink { 50% { opacity: 0; } }
+
+    .mock-r8-rail { overflow-y: auto; scrollbar-width: none; display: block !important; }
+    .mock-r8-rail::-webkit-scrollbar { display: none; }
+    .mock-r8-rail::before { display: none; }
+    .mock-r8-rail { background: linear-gradient(180deg, rgba(121,192,255,.35), rgba(255,255,255,.18) 50%, rgba(121,192,255,.35)) no-repeat right 4px top / 1px 100% !important; background-attachment: local !important; -webkit-mask-image: linear-gradient(180deg, transparent, #000 24px, #000 calc(100% - 24px), transparent); mask-image: linear-gradient(180deg, transparent, #000 24px, #000 calc(100% - 24px), transparent); }
+    .mock-r8-rail p { height: 18px; flex: none; transform: none !important; font-size: 11px; line-height: 18px; }
+    .mock-r8-rail p:hover, .mock-r8-rail.mock-r8-open p.mock-r8-m0 { font-size: 14px; color: #fff; font-weight: 700; }
+    .mock-r8-rail p:has(+ p:hover), .mock-r8-rail p:hover + p, .mock-r8-rail.mock-r8-open p.mock-r8-m1 { font-size: 12.5px; color: rgba(255,255,255,.75); }
+    .mock-r8-rail p:has(+ p + p:hover), .mock-r8-rail p:hover + p + p, .mock-r8-rail.mock-r8-open p.mock-r8-m2 { font-size: 11.5px; color: rgba(255,255,255,.5); }
+    .mock-r8-comp { align-items: center !important; padding: 8px 8px 8px 16px !important; }
+    .mock-r8-comp span { min-height: 0 !important; line-height: 22px !important; }
+    .mock-r8-comp.mock-r8-grow span { min-height: 66px !important; }
+    .mock-r8-tagw { height: 18px !important; padding: 0 4px 0 7px !important; font-size: 12.5px !important; font-weight: 600 !important; border-radius: 5px !important; background: rgba(121,192,255,.14) !important; }
+    .mock-r8-tagw em { font-style: normal; margin-left: 5px; padding: 0 3px; border-radius: 3px; color: rgba(255,255,255,.5); cursor: pointer; }
+    .mock-r8-tagw em:hover { background: rgba(255,255,255,.1); color: #fff; }
+  </style>
+
+  <header class="iteration-intro">
+    <h2>{{iteration.tab}} 8 · Leiste scrollbar, Notizfeld einzeilig</h2>
+    <p>Die drei Kleinigkeiten aus Runde 7: Die Leiste hat jetzt eine feste Zeilenhöhe und scrollt bei voller Belegung, statt Punkte zu stauchen. Beim Überfahren wächst nur die Schrift innerhalb der Zeile, nichts überlappt, und die aktuelle Frage bleibt im Bild. Das Notizfeld ist einzeilig ohne Hinweiszeile und wächst bei längerem Text bis drei Zeilen. Der Tag ist eine kleine Textmarke mit ×.</p>
+  </header>
+  <section data-design="r8" data-nav-label="Leiste & Notiz" data-design-active="true" data-screen-fit="full">
+    <section id="r8-s1" data-nav-label="Leiste · Hover" data-screen data-screen-active="true"><div class="mock-r8"><div class="mock-r8-rail r8-rail mock-r8-open"><p class="mock-r8-edge mock-r8-done" style="--dc:#79c0ff" data-tip="Briefing">Briefing<i></i></p><p class="mock-r8-topic mock-r8-done" style="--dc:#f28fb8" data-tip="Thema Cache"><b>Thema</b>Cache<i></i></p><p class="mock-r8-done" style="--dc:#f28fb8" data-tip="Lebensdauer">Lebensdauer<i></i></p><p class="mock-r8-done" style="--dc:#f28fb8" data-tip="Welche Hooks">Welche Hooks<i></i></p><p class="mock-r8-done" style="--dc:#f28fb8" data-tip="Größe">Größe<i></i></p><p class="mock-r8-done" style="--dc:#f28fb8" data-tip="Speicherort">Speicherort<i></i></p><p class="mock-r8-done" style="--dc:#f28fb8" data-tip="Invalidierung">Invalidierung<i></i></p><p class="mock-r8-done" style="--dc:#f28fb8" data-tip="Statistik">Statistik<i></i></p><p class="mock-r8-done" style="--dc:#f28fb8" data-tip="Grenzwerte">Grenzwerte<i></i></p><p class="mock-r8-topic mock-r8-done" style="--dc:#4fd1c5" data-tip="Thema Hooks"><b>Thema</b>Hooks<i></i></p><p class="mock-r8-done" style="--dc:#4fd1c5" data-tip="Frage 1">Frage 1<i></i></p><p class="mock-r8-done" style="--dc:#4fd1c5" data-tip="Frage 2">Frage 2<i></i></p><p class="mock-r8-done" style="--dc:#4fd1c5" data-tip="Frage 3">Frage 3<i></i></p><p class="mock-r8-done" style="--dc:#4fd1c5" data-tip="Frage 4">Frage 4<i></i></p><p class="mock-r8-done" style="--dc:#4fd1c5" data-tip="Frage 5">Frage 5<i></i></p><p class="mock-r8-done" style="--dc:#4fd1c5" data-tip="Frage 6">Frage 6<i></i></p><p class="mock-r8-done" style="--dc:#4fd1c5" data-tip="Frage 7">Frage 7<i></i></p><p class="mock-r8-topic mock-r8-done" style="--dc:#f0b86e" data-tip="Thema Startzeit"><b>Thema</b>Startzeit<i></i></p><p class="mock-r8-done" style="--dc:#f0b86e" data-tip="Frage 1">Frage 1<i></i></p><p class="mock-r8-done" style="--dc:#f0b86e" data-tip="Frage 2">Frage 2<i></i></p><p class="mock-r8-done" style="--dc:#f0b86e" data-tip="Frage 3">Frage 3<i></i></p><p class="mock-r8-done" style="--dc:#f0b86e" data-tip="Frage 4">Frage 4<i></i></p><p class="mock-r8-done" style="--dc:#f0b86e" data-tip="Frage 5">Frage 5<i></i></p><p class="mock-r8-done" style="--dc:#f0b86e" data-tip="Frage 6">Frage 6<i></i></p><p class="mock-r8-done" style="--dc:#f0b86e" data-tip="Frage 7">Frage 7<i></i></p><p class="mock-r8-topic mock-r8-done" style="--dc:#9b8cff" data-tip="Thema Agenten"><b>Thema</b>Agenten<i></i></p><p class="mock-r8-done" style="--dc:#9b8cff" data-tip="Frage 1">Frage 1<i></i></p><p class="mock-r8-done" style="--dc:#9b8cff" data-tip="Frage 2">Frage 2<i></i></p><p class="mock-r8-here mock-r8-m2" style="--dc:#9b8cff" data-tip="Frage 3">Frage 3<i></i></p><p class="mock-r8-m1" style="--dc:#9b8cff" data-tip="Frage 4">Frage 4<i></i></p><p class="mock-r8-m0" style="--dc:#9b8cff" data-tip="Frage 5">Frage 5<i></i></p><p class="mock-r8-m1" style="--dc:#9b8cff" data-tip="Frage 6">Frage 6<i></i></p><p class="mock-r8-m2" style="--dc:#9b8cff" data-tip="Frage 7">Frage 7<i></i></p><p class="mock-r8-topic" style="--dc:#7ed67a" data-tip="Thema Tests"><b>Thema</b>Tests<i></i></p><p class="" style="--dc:#7ed67a" data-tip="Frage 1">Frage 1<i></i></p><p class="" style="--dc:#7ed67a" data-tip="Frage 2">Frage 2<i></i></p><p class="" style="--dc:#7ed67a" data-tip="Frage 3">Frage 3<i></i></p><p class="" style="--dc:#7ed67a" data-tip="Frage 4">Frage 4<i></i></p><p class="" style="--dc:#7ed67a" data-tip="Frage 5">Frage 5<i></i></p><p class="" style="--dc:#7ed67a" data-tip="Frage 6">Frage 6<i></i></p><p class="" style="--dc:#7ed67a" data-tip="Frage 7">Frage 7<i></i></p><p class="mock-r8-topic" style="--dc:#ff9f8a" data-tip="Thema Release"><b>Thema</b>Release<i></i></p><p class="" style="--dc:#ff9f8a" data-tip="Frage 1">Frage 1<i></i></p><p class="" style="--dc:#ff9f8a" data-tip="Frage 2">Frage 2<i></i></p><p class="" style="--dc:#ff9f8a" data-tip="Frage 3">Frage 3<i></i></p><p class="" style="--dc:#ff9f8a" data-tip="Frage 4">Frage 4<i></i></p><p class="" style="--dc:#ff9f8a" data-tip="Frage 5">Frage 5<i></i></p><p class="" style="--dc:#ff9f8a" data-tip="Frage 6">Frage 6<i></i></p><p class="" style="--dc:#ff9f8a" data-tip="Frage 7">Frage 7<i></i></p><p class="mock-r8-topic" style="--dc:#e6d36a" data-tip="Thema Budget"><b>Thema</b>Budget<i></i></p><p class="" style="--dc:#e6d36a" data-tip="Frage 1">Frage 1<i></i></p><p class="" style="--dc:#e6d36a" data-tip="Frage 2">Frage 2<i></i></p><p class="" style="--dc:#e6d36a" data-tip="Frage 3">Frage 3<i></i></p><p class="" style="--dc:#e6d36a" data-tip="Frage 4">Frage 4<i></i></p><p class="" style="--dc:#e6d36a" data-tip="Frage 5">Frage 5<i></i></p><p class="" style="--dc:#e6d36a" data-tip="Frage 6">Frage 6<i></i></p><p class="" style="--dc:#e6d36a" data-tip="Frage 7">Frage 7<i></i></p><p class="mock-r8-edge" style="--dc:#79c0ff" data-tip="Abschluss">Abschluss<i></i></p></div><div class="mock-r8-fab" style="top:18px">☰</div><div class="mock-r8-fab" style="bottom:18px">💬</div><div class="mock-r8-col"><p class="mock-r8-peek mock-r8-up">Thema Startzeit · 7 Fragen</p>
+      <div class="mock-r8-msg" style="--tc:#f0b86e"><div class="mock-r8-av" data-tip="devops"><svg viewBox="0 0 24 24" fill="none" stroke="#0d1117" stroke-width="2.4" stroke-linecap="round"><path d="M6.5 8.5c-2 0-3.5 1.6-3.5 3.5s1.5 3.5 3.5 3.5c3.5 0 7.5-7 11-7 2 0 3.5 1.6 3.5 3.5s-1.5 3.5-3.5 3.5c-3.5 0-7.5-7-11-7z"/></svg></div><div class="mock-r8-bub mock-r8-edge"><div class="mock-r8-meta">Startzeit · Frage 3 von 7</div><p class="mock-r8-fact" style="margin:0">Der SessionStart braucht im Schnitt 2,4 s, davon 1,1 s für das Laden der Projektkarte.</p></div></div>
+      <div class="mock-r8-msg mock-r8-now" style="--tc:#f0b86e"><div class="mock-r8-av" data-tip="devops"><svg viewBox="0 0 24 24" fill="none" stroke="#0d1117" stroke-width="2.4" stroke-linecap="round"><path d="M6.5 8.5c-2 0-3.5 1.6-3.5 3.5s1.5 3.5 3.5 3.5c3.5 0 7.5-7 11-7 2 0 3.5 1.6 3.5 3.5s-1.5 3.5-3.5 3.5c-3.5 0-7.5-7-11-7z"/></svg></div><div class="mock-r8-bub mock-r8-qb"><p class="mock-r8-q">Darf die Projektkarte erst nach dem Start nachladen?</p><p class="mock-r8-stakes">Davon hängt ab: wie schnell die erste Antwort kommt.</p></div></div>
+      <p class="mock-r8-peek mock-r8-down">Als Nächstes: <b>Frage 4</b></p></div><div class="mock-r8-comp r8-comp"><span>Notiz an devops … (optional)</span><b>📎</b><b class="mock-r8-send">↑</b></div></div>
+      <div class="anno-layer" data-anno-layer>
+        <div class="anno" data-anno="r8-r8-s1-a1" data-anno-side="left" data-anno-target=".r8-rail" style="--anno-x:70%;--anno-y:20%">
+          <button class="anno-pin" type="button" data-anno-pin="r8-r8-s1-a1" aria-expanded="false" aria-controls="anno-bubble-r8-r8-s1-a1" aria-label="{{anno.pin_label}}">1</button>
+          <div class="anno-bubble" id="anno-bubble-r8-r8-s1-a1" data-anno-bubble="r8-r8-s1-a1" data-open="false">
+            <button type="button" class="anno-bubble-summary" data-anno-summary="r8-r8-s1-a1" aria-expanded="false" aria-controls="anno-bubble-r8-r8-s1-a1"><span class="anno-bubble-question">Jetzt mit fester Zeilenhöhe und scrollbar: Beim Überfahren wird nur die Schrift größer, nichts überlappt. Die aktuelle Frage bleibt im Bild. So?</span></button>
+            <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r8-r8-s1-a1" data-annotation="r8-r8-s1-a1" data-attachable placeholder="{{anno.answer_placeholder}}"></textarea><div class="attach-slot" data-attach-slot="anno-r8-r8-s1-a1"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section id="r8-s2" data-nav-label="Notiz · Tag" data-screen hidden><div class="mock-r8"><div class="mock-r8-rail r8-rail"><p class="mock-r8-edge mock-r8-done" style="--dc:#79c0ff" data-tip="Briefing">Briefing<i></i></p><p class="mock-r8-topic mock-r8-done" style="--dc:#f28fb8" data-tip="Thema Cache"><b>Thema</b>Cache<i></i></p><p class="mock-r8-done" style="--dc:#f28fb8" data-tip="Lebensdauer">Lebensdauer<i></i></p><p class="mock-r8-done" style="--dc:#f28fb8" data-tip="Welche Hooks">Welche Hooks<i></i></p><p class="mock-r8-done" style="--dc:#f28fb8" data-tip="Größe">Größe<i></i></p><p class="mock-r8-done" style="--dc:#f28fb8" data-tip="Speicherort">Speicherort<i></i></p><p class="mock-r8-done" style="--dc:#f28fb8" data-tip="Invalidierung">Invalidierung<i></i></p><p class="mock-r8-done" style="--dc:#f28fb8" data-tip="Statistik">Statistik<i></i></p><p class="mock-r8-done" style="--dc:#f28fb8" data-tip="Grenzwerte">Grenzwerte<i></i></p><p class="mock-r8-topic mock-r8-done" style="--dc:#4fd1c5" data-tip="Thema Hooks"><b>Thema</b>Hooks<i></i></p><p class="mock-r8-done" style="--dc:#4fd1c5" data-tip="Frage 1">Frage 1<i></i></p><p class="mock-r8-done" style="--dc:#4fd1c5" data-tip="Frage 2">Frage 2<i></i></p><p class="mock-r8-done" style="--dc:#4fd1c5" data-tip="Frage 3">Frage 3<i></i></p><p class="mock-r8-done" style="--dc:#4fd1c5" data-tip="Frage 4">Frage 4<i></i></p><p class="mock-r8-done" style="--dc:#4fd1c5" data-tip="Frage 5">Frage 5<i></i></p><p class="mock-r8-done" style="--dc:#4fd1c5" data-tip="Frage 6">Frage 6<i></i></p><p class="mock-r8-done" style="--dc:#4fd1c5" data-tip="Frage 7">Frage 7<i></i></p><p class="mock-r8-topic mock-r8-done" style="--dc:#f0b86e" data-tip="Thema Startzeit"><b>Thema</b>Startzeit<i></i></p><p class="mock-r8-done" style="--dc:#f0b86e" data-tip="Frage 1">Frage 1<i></i></p><p class="mock-r8-done" style="--dc:#f0b86e" data-tip="Frage 2">Frage 2<i></i></p><p class="mock-r8-done" style="--dc:#f0b86e" data-tip="Frage 3">Frage 3<i></i></p><p class="mock-r8-done" style="--dc:#f0b86e" data-tip="Frage 4">Frage 4<i></i></p><p class="mock-r8-done" style="--dc:#f0b86e" data-tip="Frage 5">Frage 5<i></i></p><p class="mock-r8-done" style="--dc:#f0b86e" data-tip="Frage 6">Frage 6<i></i></p><p class="mock-r8-done" style="--dc:#f0b86e" data-tip="Frage 7">Frage 7<i></i></p><p class="mock-r8-topic mock-r8-done" style="--dc:#9b8cff" data-tip="Thema Agenten"><b>Thema</b>Agenten<i></i></p><p class="mock-r8-done" style="--dc:#9b8cff" data-tip="Frage 1">Frage 1<i></i></p><p class="mock-r8-done" style="--dc:#9b8cff" data-tip="Frage 2">Frage 2<i></i></p><p class="mock-r8-here" style="--dc:#9b8cff" data-tip="Frage 3">Frage 3<i></i></p><p class="" style="--dc:#9b8cff" data-tip="Frage 4">Frage 4<i></i></p><p class="" style="--dc:#9b8cff" data-tip="Frage 5">Frage 5<i></i></p><p class="" style="--dc:#9b8cff" data-tip="Frage 6">Frage 6<i></i></p><p class="" style="--dc:#9b8cff" data-tip="Frage 7">Frage 7<i></i></p><p class="mock-r8-topic" style="--dc:#7ed67a" data-tip="Thema Tests"><b>Thema</b>Tests<i></i></p><p class="" style="--dc:#7ed67a" data-tip="Frage 1">Frage 1<i></i></p><p class="" style="--dc:#7ed67a" data-tip="Frage 2">Frage 2<i></i></p><p class="" style="--dc:#7ed67a" data-tip="Frage 3">Frage 3<i></i></p><p class="" style="--dc:#7ed67a" data-tip="Frage 4">Frage 4<i></i></p><p class="" style="--dc:#7ed67a" data-tip="Frage 5">Frage 5<i></i></p><p class="" style="--dc:#7ed67a" data-tip="Frage 6">Frage 6<i></i></p><p class="" style="--dc:#7ed67a" data-tip="Frage 7">Frage 7<i></i></p><p class="mock-r8-topic" style="--dc:#ff9f8a" data-tip="Thema Release"><b>Thema</b>Release<i></i></p><p class="" style="--dc:#ff9f8a" data-tip="Frage 1">Frage 1<i></i></p><p class="" style="--dc:#ff9f8a" data-tip="Frage 2">Frage 2<i></i></p><p class="" style="--dc:#ff9f8a" data-tip="Frage 3">Frage 3<i></i></p><p class="" style="--dc:#ff9f8a" data-tip="Frage 4">Frage 4<i></i></p><p class="" style="--dc:#ff9f8a" data-tip="Frage 5">Frage 5<i></i></p><p class="" style="--dc:#ff9f8a" data-tip="Frage 6">Frage 6<i></i></p><p class="" style="--dc:#ff9f8a" data-tip="Frage 7">Frage 7<i></i></p><p class="mock-r8-topic" style="--dc:#e6d36a" data-tip="Thema Budget"><b>Thema</b>Budget<i></i></p><p class="" style="--dc:#e6d36a" data-tip="Frage 1">Frage 1<i></i></p><p class="" style="--dc:#e6d36a" data-tip="Frage 2">Frage 2<i></i></p><p class="" style="--dc:#e6d36a" data-tip="Frage 3">Frage 3<i></i></p><p class="" style="--dc:#e6d36a" data-tip="Frage 4">Frage 4<i></i></p><p class="" style="--dc:#e6d36a" data-tip="Frage 5">Frage 5<i></i></p><p class="" style="--dc:#e6d36a" data-tip="Frage 6">Frage 6<i></i></p><p class="" style="--dc:#e6d36a" data-tip="Frage 7">Frage 7<i></i></p><p class="mock-r8-edge" style="--dc:#79c0ff" data-tip="Abschluss">Abschluss<i></i></p></div><div class="mock-r8-fab" style="top:18px">☰</div><div class="mock-r8-fab" style="bottom:18px">💬</div><div class="mock-r8-col"><p class="mock-r8-peek mock-r8-up">Thema Startzeit · 7 Fragen</p>
+      <div class="mock-r8-msg" style="--tc:#f0b86e"><div class="mock-r8-av" data-tip="devops"><svg viewBox="0 0 24 24" fill="none" stroke="#0d1117" stroke-width="2.4" stroke-linecap="round"><path d="M6.5 8.5c-2 0-3.5 1.6-3.5 3.5s1.5 3.5 3.5 3.5c3.5 0 7.5-7 11-7 2 0 3.5 1.6 3.5 3.5s-1.5 3.5-3.5 3.5c-3.5 0-7.5-7-11-7z"/></svg></div><div class="mock-r8-bub mock-r8-edge"><div class="mock-r8-meta">Startzeit · Frage 3 von 7</div><p class="mock-r8-fact" style="margin:0">Der SessionStart braucht im Schnitt 2,4 s, davon 1,1 s für das Laden der Projektkarte.</p></div></div>
+      <div class="mock-r8-msg mock-r8-now" style="--tc:#f0b86e"><div class="mock-r8-av" data-tip="devops"><svg viewBox="0 0 24 24" fill="none" stroke="#0d1117" stroke-width="2.4" stroke-linecap="round"><path d="M6.5 8.5c-2 0-3.5 1.6-3.5 3.5s1.5 3.5 3.5 3.5c3.5 0 7.5-7 11-7 2 0 3.5 1.6 3.5 3.5s-1.5 3.5-3.5 3.5c-3.5 0-7.5-7-11-7z"/></svg></div><div class="mock-r8-bub mock-r8-qb"><p class="mock-r8-q">Darf die Projektkarte erst nach dem Start nachladen?</p><p class="mock-r8-stakes">Davon hängt ab: wie schnell die erste Antwort kommt.</p></div></div>
+      <p class="mock-r8-peek mock-r8-down">Als Nächstes: <b>Frage 4</b></p></div><div class="mock-r8-comp r8-comp"><span><span class="mock-r8-tagw">Startzeit · Frage 3<em>×</em></span><span class="mock-r8-caret"></span></span><b>📎</b><b class="mock-r8-send">↑</b></div></div>
+      <div class="anno-layer" data-anno-layer>
+        <div class="anno" data-anno="r8-r8-s2-a1" data-anno-side="left" data-anno-target=".r8-comp" style="--anno-x:70%;--anno-y:20%">
+          <button class="anno-pin" type="button" data-anno-pin="r8-r8-s2-a1" aria-expanded="false" aria-controls="anno-bubble-r8-r8-s2-a1" aria-label="{{anno.pin_label}}">1</button>
+          <div class="anno-bubble" id="anno-bubble-r8-r8-s2-a1" data-anno-bubble="r8-r8-s2-a1" data-open="false">
+            <button type="button" class="anno-bubble-summary" data-anno-summary="r8-r8-s2-a1" aria-expanded="false" aria-controls="anno-bubble-r8-r8-s2-a1"><span class="anno-bubble-question">Einzeilig, der Tag ist eine kleine Textmarke mit ×. So?</span></button>
+            <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r8-r8-s2-a1" data-annotation="r8-r8-s2-a1" data-attachable placeholder="{{anno.answer_placeholder}}"></textarea><div class="attach-slot" data-attach-slot="anno-r8-r8-s2-a1"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section id="r8-s3" data-nav-label="Notiz · gewachsen" data-screen hidden><div class="mock-r8"><div class="mock-r8-rail r8-rail"><p class="mock-r8-edge mock-r8-done" style="--dc:#79c0ff" data-tip="Briefing">Briefing<i></i></p><p class="mock-r8-topic mock-r8-done" style="--dc:#f28fb8" data-tip="Thema Cache"><b>Thema</b>Cache<i></i></p><p class="mock-r8-done" style="--dc:#f28fb8" data-tip="Lebensdauer">Lebensdauer<i></i></p><p class="mock-r8-done" style="--dc:#f28fb8" data-tip="Welche Hooks">Welche Hooks<i></i></p><p class="mock-r8-done" style="--dc:#f28fb8" data-tip="Größe">Größe<i></i></p><p class="mock-r8-done" style="--dc:#f28fb8" data-tip="Speicherort">Speicherort<i></i></p><p class="mock-r8-done" style="--dc:#f28fb8" data-tip="Invalidierung">Invalidierung<i></i></p><p class="mock-r8-done" style="--dc:#f28fb8" data-tip="Statistik">Statistik<i></i></p><p class="mock-r8-done" style="--dc:#f28fb8" data-tip="Grenzwerte">Grenzwerte<i></i></p><p class="mock-r8-topic mock-r8-done" style="--dc:#4fd1c5" data-tip="Thema Hooks"><b>Thema</b>Hooks<i></i></p><p class="mock-r8-done" style="--dc:#4fd1c5" data-tip="Frage 1">Frage 1<i></i></p><p class="mock-r8-done" style="--dc:#4fd1c5" data-tip="Frage 2">Frage 2<i></i></p><p class="mock-r8-done" style="--dc:#4fd1c5" data-tip="Frage 3">Frage 3<i></i></p><p class="mock-r8-done" style="--dc:#4fd1c5" data-tip="Frage 4">Frage 4<i></i></p><p class="mock-r8-done" style="--dc:#4fd1c5" data-tip="Frage 5">Frage 5<i></i></p><p class="mock-r8-done" style="--dc:#4fd1c5" data-tip="Frage 6">Frage 6<i></i></p><p class="mock-r8-done" style="--dc:#4fd1c5" data-tip="Frage 7">Frage 7<i></i></p><p class="mock-r8-topic mock-r8-done" style="--dc:#f0b86e" data-tip="Thema Startzeit"><b>Thema</b>Startzeit<i></i></p><p class="mock-r8-done" style="--dc:#f0b86e" data-tip="Frage 1">Frage 1<i></i></p><p class="mock-r8-done" style="--dc:#f0b86e" data-tip="Frage 2">Frage 2<i></i></p><p class="mock-r8-done" style="--dc:#f0b86e" data-tip="Frage 3">Frage 3<i></i></p><p class="mock-r8-done" style="--dc:#f0b86e" data-tip="Frage 4">Frage 4<i></i></p><p class="mock-r8-done" style="--dc:#f0b86e" data-tip="Frage 5">Frage 5<i></i></p><p class="mock-r8-done" style="--dc:#f0b86e" data-tip="Frage 6">Frage 6<i></i></p><p class="mock-r8-done" style="--dc:#f0b86e" data-tip="Frage 7">Frage 7<i></i></p><p class="mock-r8-topic mock-r8-done" style="--dc:#9b8cff" data-tip="Thema Agenten"><b>Thema</b>Agenten<i></i></p><p class="mock-r8-done" style="--dc:#9b8cff" data-tip="Frage 1">Frage 1<i></i></p><p class="mock-r8-done" style="--dc:#9b8cff" data-tip="Frage 2">Frage 2<i></i></p><p class="mock-r8-here" style="--dc:#9b8cff" data-tip="Frage 3">Frage 3<i></i></p><p class="" style="--dc:#9b8cff" data-tip="Frage 4">Frage 4<i></i></p><p class="" style="--dc:#9b8cff" data-tip="Frage 5">Frage 5<i></i></p><p class="" style="--dc:#9b8cff" data-tip="Frage 6">Frage 6<i></i></p><p class="" style="--dc:#9b8cff" data-tip="Frage 7">Frage 7<i></i></p><p class="mock-r8-topic" style="--dc:#7ed67a" data-tip="Thema Tests"><b>Thema</b>Tests<i></i></p><p class="" style="--dc:#7ed67a" data-tip="Frage 1">Frage 1<i></i></p><p class="" style="--dc:#7ed67a" data-tip="Frage 2">Frage 2<i></i></p><p class="" style="--dc:#7ed67a" data-tip="Frage 3">Frage 3<i></i></p><p class="" style="--dc:#7ed67a" data-tip="Frage 4">Frage 4<i></i></p><p class="" style="--dc:#7ed67a" data-tip="Frage 5">Frage 5<i></i></p><p class="" style="--dc:#7ed67a" data-tip="Frage 6">Frage 6<i></i></p><p class="" style="--dc:#7ed67a" data-tip="Frage 7">Frage 7<i></i></p><p class="mock-r8-topic" style="--dc:#ff9f8a" data-tip="Thema Release"><b>Thema</b>Release<i></i></p><p class="" style="--dc:#ff9f8a" data-tip="Frage 1">Frage 1<i></i></p><p class="" style="--dc:#ff9f8a" data-tip="Frage 2">Frage 2<i></i></p><p class="" style="--dc:#ff9f8a" data-tip="Frage 3">Frage 3<i></i></p><p class="" style="--dc:#ff9f8a" data-tip="Frage 4">Frage 4<i></i></p><p class="" style="--dc:#ff9f8a" data-tip="Frage 5">Frage 5<i></i></p><p class="" style="--dc:#ff9f8a" data-tip="Frage 6">Frage 6<i></i></p><p class="" style="--dc:#ff9f8a" data-tip="Frage 7">Frage 7<i></i></p><p class="mock-r8-topic" style="--dc:#e6d36a" data-tip="Thema Budget"><b>Thema</b>Budget<i></i></p><p class="" style="--dc:#e6d36a" data-tip="Frage 1">Frage 1<i></i></p><p class="" style="--dc:#e6d36a" data-tip="Frage 2">Frage 2<i></i></p><p class="" style="--dc:#e6d36a" data-tip="Frage 3">Frage 3<i></i></p><p class="" style="--dc:#e6d36a" data-tip="Frage 4">Frage 4<i></i></p><p class="" style="--dc:#e6d36a" data-tip="Frage 5">Frage 5<i></i></p><p class="" style="--dc:#e6d36a" data-tip="Frage 6">Frage 6<i></i></p><p class="" style="--dc:#e6d36a" data-tip="Frage 7">Frage 7<i></i></p><p class="mock-r8-edge" style="--dc:#79c0ff" data-tip="Abschluss">Abschluss<i></i></p></div><div class="mock-r8-fab" style="top:18px">☰</div><div class="mock-r8-fab" style="bottom:18px">💬</div><div class="mock-r8-col"><p class="mock-r8-peek mock-r8-up">Thema Startzeit · 7 Fragen</p>
+      <div class="mock-r8-msg" style="--tc:#f0b86e"><div class="mock-r8-av" data-tip="devops"><svg viewBox="0 0 24 24" fill="none" stroke="#0d1117" stroke-width="2.4" stroke-linecap="round"><path d="M6.5 8.5c-2 0-3.5 1.6-3.5 3.5s1.5 3.5 3.5 3.5c3.5 0 7.5-7 11-7 2 0 3.5 1.6 3.5 3.5s-1.5 3.5-3.5 3.5c-3.5 0-7.5-7-11-7z"/></svg></div><div class="mock-r8-bub mock-r8-edge"><div class="mock-r8-meta">Startzeit · Frage 3 von 7</div><p class="mock-r8-fact" style="margin:0">Der SessionStart braucht im Schnitt 2,4 s, davon 1,1 s für das Laden der Projektkarte.</p></div></div>
+      <div class="mock-r8-msg mock-r8-now" style="--tc:#f0b86e"><div class="mock-r8-av" data-tip="devops"><svg viewBox="0 0 24 24" fill="none" stroke="#0d1117" stroke-width="2.4" stroke-linecap="round"><path d="M6.5 8.5c-2 0-3.5 1.6-3.5 3.5s1.5 3.5 3.5 3.5c3.5 0 7.5-7 11-7 2 0 3.5 1.6 3.5 3.5s-1.5 3.5-3.5 3.5c-3.5 0-7.5-7-11-7z"/></svg></div><div class="mock-r8-bub mock-r8-qb"><p class="mock-r8-q">Darf die Projektkarte erst nach dem Start nachladen?</p><p class="mock-r8-stakes">Davon hängt ab: wie schnell die erste Antwort kommt.</p></div></div>
+      <p class="mock-r8-peek mock-r8-down">Als Nächstes: <b>Frage 4</b></p></div><div class="mock-r8-comp r8-comp mock-r8-grow"><span><span class="mock-r8-tagw">Startzeit · Frage 3<em>×</em></span>Erst nach dem Start nachladen ist ok, aber die Karte muss vor dem ersten Tool-Aufruf da sein, sonst greifen die Guards ins Leere. Bitte prüfen, ob das reicht.<span class="mock-r8-caret"></span></span><b>📎</b><b class="mock-r8-send">↑</b></div></div>
+      <div class="anno-layer" data-anno-layer>
+        <div class="anno" data-anno="r8-r8-s3-a1" data-anno-side="left" data-anno-target=".r8-comp" style="--anno-x:70%;--anno-y:20%">
+          <button class="anno-pin" type="button" data-anno-pin="r8-r8-s3-a1" aria-expanded="false" aria-controls="anno-bubble-r8-r8-s3-a1" aria-label="{{anno.pin_label}}">1</button>
+          <div class="anno-bubble" id="anno-bubble-r8-r8-s3-a1" data-anno-bubble="r8-r8-s3-a1" data-open="false">
+            <button type="button" class="anno-bubble-summary" data-anno-summary="r8-r8-s3-a1" aria-expanded="false" aria-controls="anno-bubble-r8-r8-s3-a1"><span class="anno-bubble-question">Bei längerem Text wächst das Feld bis drei Zeilen. Passt das?</span></button>
+            <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r8-r8-s3-a1" data-annotation="r8-r8-s3-a1" data-attachable placeholder="{{anno.answer_placeholder}}"></textarea><div class="attach-slot" data-attach-slot="anno-r8-r8-s3-a1"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </section>
+</section>

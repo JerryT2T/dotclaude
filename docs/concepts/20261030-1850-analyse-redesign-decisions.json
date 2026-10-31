@@ -1,0 +1,1412 @@
+[
+  {
+    "iteration": 1,
+    "favorite": "d3",
+    "decisions": [
+      {
+        "id": "g-draft",
+        "label": "Entwurf im Worktree",
+        "mode": "verify",
+        "value": "partial",
+        "fix": "",
+        "rec": "partial",
+        "deviates": false,
+        "untouched": false,
+        "note": "",
+        "appliesTo": "den ungeshippten Stand im Worktree",
+        "finding": "f-draft",
+        "issue": false,
+        "epic": "",
+        "view": "v-grund"
+      },
+      {
+        "id": "g-anat",
+        "label": "Bausteine der Fragestellung",
+        "mode": "multi",
+        "value": [
+          "sit",
+          "stakes",
+          "example"
+        ],
+        "rec": "sit stakes",
+        "deviates": true,
+        "untouched": false,
+        "note": "Konkretes beispiel sollte immer mit dabei sein, sozusagen prominent umschaltbar den befund in konkretes beispiel, ggf. auch visualsiiert!",
+        "appliesTo": "jede Frage",
+        "finding": "f-anat",
+        "issue": false,
+        "epic": "",
+        "view": "v-grund"
+      },
+      {
+        "id": "g-topics",
+        "label": "Themen-Zwischenseiten",
+        "mode": "single",
+        "value": "keep",
+        "rec": "fold",
+        "deviates": true,
+        "untouched": false,
+        "note": "gern zwischenseiten aber die müssen schon einen wirklichen mehrwert bringen als ein befund bei der danach ersten frage!",
+        "appliesTo": "Full-Analysen mit Themenfeldern",
+        "finding": "f-topics",
+        "issue": false,
+        "epic": "",
+        "view": "v-grund"
+      },
+      {
+        "id": "g-brief",
+        "label": "Briefing-Inhalt",
+        "mode": "single",
+        "value": "findings",
+        "rec": "findings",
+        "deviates": false,
+        "untouched": false,
+        "note": "da bin ich mir noch nicht sooo sicher... finde alles drei interessant, aber gern nochmal best practices und recherche verstehen!",
+        "appliesTo": "den Einstieg jeder Full-Analyse",
+        "finding": "f-brief",
+        "issue": false,
+        "epic": "",
+        "view": "v-grund"
+      },
+      {
+        "id": "g-fit",
+        "label": "Überlauf",
+        "mode": "single",
+        "value": "pop",
+        "rec": "pop",
+        "deviates": false,
+        "untouched": false,
+        "note": "",
+        "appliesTo": "Fragen mit viel Inhalt",
+        "finding": "f-fit",
+        "issue": false,
+        "epic": "",
+        "view": "v-grund"
+      }
+    ],
+    "userPins": [
+      {
+        "id": "up-mvvg9jsr228q",
+        "design": "d3",
+        "screen": "d3-s1",
+        "x": 30.1,
+        "y": 38.5,
+        "target": "div \"Zusammenfassung Cache und Hooks: ≈ 51 M \"",
+        "text": "ich finde die idee sehr gut dass wir uns nach utnen durchhangeln sozusagen statt seitwärts!",
+        "attachments": []
+      },
+      {
+        "id": "up-mvvgavim9jj4",
+        "design": "d3",
+        "screen": "d3-s2",
+        "x": 47.5,
+        "y": 16.1,
+        "target": "div.mock-bar.mock-dim \"10–60 min14 %\"",
+        "text": "Das liest sich viel besser wenbn der befund oben ist und unten darunter die actions!",
+        "attachments": []
+      },
+      {
+        "id": "up-mvvgbgstn0to",
+        "design": "d3",
+        "screen": "d3-s2",
+        "x": 36.7,
+        "y": 51.9,
+        "target": "div.mock-note \"Notiz (optional)\"",
+        "text": "super mit der notiz!",
+        "attachments": []
+      },
+      {
+        "id": "up-mvvgbmoqq649",
+        "design": "d3",
+        "screen": "d3-s2",
+        "x": 25.2,
+        "y": 43.6,
+        "target": "span.mock-none \"Keine passt, eigene Antwort in die Notiz\"",
+        "text": "super, mit dem textlink hier´!",
+        "attachments": []
+      }
+    ]
+  },
+  {
+    "iteration": 2,
+    "decisions": [
+      {
+        "id": "r2-brief",
+        "label": "Briefing-Aufbau",
+        "mode": "single",
+        "value": "hybrid",
+        "rec": "hybrid",
+        "deviates": false,
+        "untouched": false,
+        "note": "vorschau? hmm",
+        "appliesTo": "den Einstieg jeder Full-Analyse",
+        "finding": "f-r2-brief",
+        "issue": false,
+        "epic": "",
+        "view": "v-r2"
+      },
+      {
+        "id": "r2-topic",
+        "label": "Inhalt der Themenseite",
+        "mode": "multi",
+        "value": [
+          "decide",
+          "thread"
+        ],
+        "rec": "weight decide",
+        "deviates": true,
+        "untouched": false,
+        "note": "bitte den roten faden integriert machen in den texten oder fragen oder befunden, überlege nochmal tiefer, aber nicht als extra! und bitte bie jeder fragenseite nicht bei den meta seiten.",
+        "appliesTo": "jede Themenseite",
+        "finding": "f-r2-topic",
+        "issue": false,
+        "epic": "",
+        "view": "v-r2"
+      },
+      {
+        "id": "r2-example",
+        "label": "Beispiel-Anzeige",
+        "mode": "single",
+        "value": "toggle",
+        "rec": "toggle",
+        "deviates": false,
+        "untouched": false,
+        "note": "",
+        "appliesTo": "jeden Befund",
+        "finding": "f-r2-example",
+        "issue": false,
+        "epic": "",
+        "view": "v-r2"
+      },
+      {
+        "id": "r2-flow",
+        "label": "Scroll-Verhalten",
+        "mode": "single",
+        "value": "snap",
+        "rec": "snap",
+        "deviates": false,
+        "untouched": false,
+        "note": "",
+        "appliesTo": "den Bericht im Fluss",
+        "finding": "f-r2-flow",
+        "issue": false,
+        "epic": "",
+        "view": "v-r2"
+      }
+    ],
+    "comments": {
+      "general": {
+        "text": "",
+        "attachments": []
+      },
+      "items": [
+        {
+          "id": "anno-r2-d3-s2-a1",
+          "text": "Ja schon!",
+          "attachments": []
+        },
+        {
+          "id": "anno-r2-d3-s2-a3",
+          "text": "ne, der ist zu viel, weniger ist mehr!",
+          "attachments": []
+        },
+        {
+          "id": "anno-r2-d3-s3-a1",
+          "text": "ne, nicht prominent genug, aber das beispiel nicht direkt daneben weil es ja nicht textuell sondern primär visuell ist - da würde platz und fokus nicht gut sein.",
+          "attachments": []
+        },
+        {
+          "id": "anno-r2-d3-s4-a1",
+          "text": "Das ist für mich eher der Befund bzw. teil der analyse und nicht das beispiel aus der aktuellen applikation... außer wenn es nichts bildliches ist, dann ok visualisierung so ähnlich bzw. diagramme.",
+          "attachments": []
+        },
+        {
+          "id": "r2-brief-note",
+          "text": "vorschau? hmm",
+          "attachments": []
+        },
+        {
+          "id": "r2-topic-note",
+          "text": "bitte den roten faden integriert machen in den texten oder fragen oder befunden, überlege nochmal tiefer, aber nicht als extra! und bitte bie jeder fragenseite nicht bei den meta seiten.",
+          "attachments": []
+        },
+        {
+          "id": "d3-s1",
+          "text": "finde ich vollkommen unübersichtlich!",
+          "attachments": []
+        },
+        {
+          "id": "d3-s2",
+          "text": "finde ich gut. Aber man erkennt visuell nciht, dass es die themenübersicht ist!  Es sollte direkt am design klar werden, Briefing oder review seite vs themenseite vs befund und frage seite!",
+          "attachments": []
+        },
+        {
+          "id": "d3-s3",
+          "text": "Super, wobei ich viel mich blendeen shee im dark mode. Ich finde die beiden boxen schon gut aber darin puh und entscheidungen müssen sich ja auch abheben... \nwirklcih nochmal kreativer in der darstellung werden und psyhcologisch recchersche prroven!",
+          "attachments": []
+        }
+      ],
+      "designs": {},
+      "screens": {
+        "d3-s1": "finde ich vollkommen unübersichtlich!",
+        "d3-s2": "finde ich gut. Aber man erkennt visuell nciht, dass es die themenübersicht ist!  Es sollte direkt am design klar werden, Briefing oder review seite vs themenseite vs befund und frage seite!",
+        "d3-s3": "Super, wobei ich viel mich blendeen shee im dark mode. Ich finde die beiden boxen schon gut aber darin puh und entscheidungen müssen sich ja auch abheben... \nwirklcih nochmal kreativer in der darstellung werden und psyhcologisch recchersche prroven!"
+      },
+      "views": {}
+    },
+    "annotations": [
+      {
+        "id": "r2-d3-s2-a1",
+        "screen": "d3-s2",
+        "design": "d3",
+        "question": "Einordnung (Anteil am Ganzen): ist das echter Mehrwert gegenüber dem ersten Befund?",
+        "answer": "Ja schon!"
+      },
+      {
+        "id": "r2-d3-s2-a3",
+        "screen": "d3-s2",
+        "design": "d3",
+        "question": "Der rote Faden („bisher … danach gilt …“): braucht es den?",
+        "answer": "ne, der ist zu viel, weniger ist mehr!"
+      },
+      {
+        "id": "r2-d3-s3-a1",
+        "screen": "d3-s3",
+        "design": "d3",
+        "question": "Ist der Umschalter prominent genug, oder soll das Beispiel immer daneben stehen?",
+        "improved": "Umschalter Befund / Beispiel",
+        "answer": "ne, nicht prominent genug, aber das beispiel nicht direkt daneben weil es ja nicht textuell sondern primär visuell ist - da würde platz und fokus nicht gut sein."
+      },
+      {
+        "id": "r2-d3-s4-a1",
+        "screen": "d3-s4",
+        "design": "d3",
+        "question": "Ein echter, typischer Fall aus den Daten plus eine kleine Grafik: trifft das „konkretes Beispiel, ggf. visualisiert“?",
+        "answer": "Das ist für mich eher der Befund bzw. teil der analyse und nicht das beispiel aus der aktuellen applikation... außer wenn es nichts bildliches ist, dann ok visualisierung so ähnlich bzw. diagramme."
+      }
+    ]
+  },
+  {
+    "iteration": 3,
+    "comments": {
+      "general": {
+        "text": "",
+        "attachments": []
+      },
+      "items": [
+        {
+          "id": "anno-r3-q1-s1-a1",
+          "text": "ja ba er viel zu hässlich und nicht klar visuell geleitet.",
+          "attachments": []
+        },
+        {
+          "id": "anno-r3-q1-s2-a1",
+          "text": "ja das schon wobei briefing cooler aussehen solte als thema und thema cooler als fragen/befund und fragen/befund aber elemente fvisuell von thema mitnimmt, weil es ja das gleiche thema ist!",
+          "attachments": []
+        },
+        {
+          "id": "anno-r3-q1-s3-a1",
+          "text": "genug noch nicht aber genau die richtige richutng.",
+          "attachments": []
+        },
+        {
+          "id": "anno-r3-q1-s3-a2",
+          "text": "Ja, das finde ich eine gute idee über tabs! und sehr selbst erklärend. subtitel befund und beispiel bitte einfachb als label, brauchen dort nicht noch ne ziele text... oder wir haben doch icons die köntenn auch größer sein und damit dann per tooltip nur befund und beispiel abbilden.\nDenn die titel sind auch super schon selbst erklärend von den tabs.",
+          "attachments": []
+        },
+        {
+          "id": "anno-r3-q1-s3-a3",
+          "text": "ja sehr",
+          "attachments": []
+        },
+        {
+          "id": "anno-r3-q2-s3-a1",
+          "text": "Ja vllt. viel hilfreicher ehrlich gesagt. Für mich haben karten auch eeher den zweck aus vielen auszuwählen und nicht eine exklusive entshciedung zu treffen",
+          "attachments": []
+        },
+        {
+          "id": "anno-r3-q2-s3-a2",
+          "text": "nope gar nciht",
+          "attachments": []
+        },
+        {
+          "id": "anno-r3-q2-s3-a3",
+          "text": "finde ich eigentlich eine gute iddee, aber wie mache ich es beim ersten betrachten des befundes.  Vllt. auch nicht soo gstark abdunkeln, vllt. animieren sich befund und frage etc. nacheinander rein, so das der nutzer mitlesen kann und dann direkt entscheiden kann oder wenn er möchte noch weiter betrachten. ...",
+          "attachments": []
+        },
+        {
+          "id": "anno-r3-q3-s3-a1",
+          "text": "Die nachrichten idee ist nicht doof! gern weiterverfolgen! aber es sollte dann natürlich mittig stattfinden und super aniumiert sein!\nVllt. für die animation auch selber gut splitten wir frage und antwortmöglihckeiten auf in zwei nachrichten. So kann man es besser dem nutzer nach und nach vorbringen.",
+          "attachments": []
+        },
+        {
+          "id": "anno-r3-q3-s3-a2",
+          "text": "Brauche ich eher nicht! Hat keinen mehrwert zu dem in der nachricht es anzuzeigen. \nObwohl! man könnte unten einen chat input haben ala notizoptional inpout statt in der antwortmöglichkeit! so könnte man ein persisstentes element schaffen und auf all den analyse seiten inkl. briefing und abschluss notizen ergänzen und die antwort kachel / nachricht wird smoother. Das ist vllt. eine gute idee. Aber bitte nicht in der mitte horizontal den bildschirm trenenn, meine und seine nachrichten sind auf der gleichen spalte auch wenn das eine links undd das andere rechtsbündig (bitte hier nochmal checken was der internationale bekannteste standard ist wo wellche nachrichten angezeigt  werden und meine nachrichten sollten auch unspektakulärer sein sobald weiter gescrollt).",
+          "attachments": []
+        },
+        {
+          "id": "design-q3",
+          "text": "Mit diesem nachrichstne style k.önnntenwir uach an der rtechnte bildschirm siet ein dünnes dezentes inhaltsverzeichnis machen mit hover over effekt wo man es dann deutlich sieht. Schau dir dazu google fotos oder andere an wie sie es gelöst haben.",
+          "attachments": []
+        }
+      ],
+      "designs": {
+        "q3": "Mit diesem nachrichstne style k.önnntenwir uach an der rtechnte bildschirm siet ein dünnes dezentes inhaltsverzeichnis machen mit hover over effekt wo man es dann deutlich sieht. Schau dir dazu google fotos oder andere an wie sie es gelöst haben."
+      },
+      "screens": {},
+      "views": {}
+    },
+    "annotations": [
+      {
+        "id": "r3-q1-s1-a1",
+        "screen": "q1-s1",
+        "design": "q1",
+        "question": "Ist das Briefing so übersichtlich genug: eine Kernaussage, drei Befunde, ein Knopf?",
+        "answer": "ja ba er viel zu hässlich und nicht klar visuell geleitet."
+      },
+      {
+        "id": "r3-q1-s2-a1",
+        "screen": "q1-s2",
+        "design": "q1",
+        "question": "Erkennst du am Design sofort, dass das die Themenseite ist (violett ▣, großes Titelfeld)?",
+        "answer": "ja das schon wobei briefing cooler aussehen solte als thema und thema cooler als fragen/befund und fragen/befund aber elemente fvisuell von thema mitnimmt, weil es ja das gleiche thema ist!"
+      },
+      {
+        "id": "r3-q1-s3-a1",
+        "screen": "q1-s3",
+        "design": "q1",
+        "question": "Hebt sich die angehobene, überlappende Entscheidungsfläche jetzt genug vom Befund ab?",
+        "answer": "genug noch nicht aber genau die richtige richutng."
+      },
+      {
+        "id": "r3-q1-s3-a2",
+        "screen": "q1-s3",
+        "design": "q1",
+        "question": "Ist der große Tab-Umschalter oben (Befund / App-Beispiel) prominent genug?",
+        "answer": "Ja, das finde ich eine gute idee über tabs! und sehr selbst erklärend. subtitel befund und beispiel bitte einfachb als label, brauchen dort nicht noch ne ziele text... oder wir haben doch icons die köntenn auch größer sein und damit dann per tooltip nur befund und beispiel abbilden.\nDenn die titel sind auch super schon selbst erklärend von den tabs."
+      },
+      {
+        "id": "r3-q1-s3-a3",
+        "screen": "q1-s3",
+        "design": "q1",
+        "question": "„So sähe das aus“ in jeder Option: hilft das beim Entscheiden?",
+        "answer": "ja sehr"
+      },
+      {
+        "id": "r3-q2-s3-a1",
+        "screen": "q2-s3",
+        "design": "q2",
+        "question": "Breite Options-Zeilen statt Karten: lesbarer oder zu viel Text?",
+        "answer": "Ja vllt. viel hilfreicher ehrlich gesagt. Für mich haben karten auch eeher den zweck aus vielen auszuwählen und nicht eine exklusive entshciedung zu treffen"
+      },
+      {
+        "id": "r3-q2-s3-a2",
+        "screen": "q2-s3",
+        "design": "q2",
+        "question": "Hilft der Brückensatz „Daraus folgt …“ beim Übergang vom Befund zur Frage?",
+        "answer": "nope gar nciht"
+      },
+      {
+        "id": "r3-q2-s3-a3",
+        "screen": "q2-s3",
+        "design": "q2",
+        "question": "Den Befund beim Entscheiden abdunkeln: hilfreich oder irritierend?",
+        "answer": "finde ich eigentlich eine gute iddee, aber wie mache ich es beim ersten betrachten des befundes.  Vllt. auch nicht soo gstark abdunkeln, vllt. animieren sich befund und frage etc. nacheinander rein, so das der nutzer mitlesen kann und dann direkt entscheiden kann oder wenn er möchte noch weiter betrachten. ..."
+      },
+      {
+        "id": "r3-q3-s3-a1",
+        "screen": "q3-s3",
+        "design": "q3",
+        "question": "Antwort-Chips statt Karten: fehlt dir die Wirkung jeder Option im Blick?",
+        "answer": "Die nachrichten idee ist nicht doof! gern weiterverfolgen! aber es sollte dann natürlich mittig stattfinden und super aniumiert sein!\nVllt. für die animation auch selber gut splitten wir frage und antwortmöglihckeiten auf in zwei nachrichten. So kann man es besser dem nutzer nach und nach vorbringen."
+      },
+      {
+        "id": "r3-q3-s3-a2",
+        "screen": "q3-s3",
+        "design": "q3",
+        "question": "Deine Antwort als eigene Sprechblase rechts: ein gutes Gefühl, oder zu verspielt?",
+        "answer": "Brauche ich eher nicht! Hat keinen mehrwert zu dem in der nachricht es anzuzeigen. \nObwohl! man könnte unten einen chat input haben ala notizoptional inpout statt in der antwortmöglichkeit! so könnte man ein persisstentes element schaffen und auf all den analyse seiten inkl. briefing und abschluss notizen ergänzen und die antwort kachel / nachricht wird smoother. Das ist vllt. eine gute idee. Aber bitte nicht in der mitte horizontal den bildschirm trenenn, meine und seine nachrichten sind auf der gleichen spalte auch wenn das eine links undd das andere rechtsbündig (bitte hier nochmal checken was der internationale bekannteste standard ist wo wellche nachrichten angezeigt  werden und meine nachrichten sollten auch unspektakulärer sein sobald weiter gescrollt)."
+      }
+    ],
+    "userPins": [
+      {
+        "id": "up-mvw6w7n9lv5u",
+        "design": "q1",
+        "screen": "q1-s1",
+        "x": 50.7,
+        "y": 32.2,
+        "target": "span \"Hooks laufen ohne Zeitbudget.\"",
+        "text": "rethink wirklich nochmal das styling und de3sign konzept,  vom titel bis zum los gehts vom brieffing bis zu den kpis...",
+        "attachments": []
+      },
+      {
+        "id": "up-mvw71mgmfny7",
+        "design": "q1",
+        "screen": "q1-s3",
+        "x": 20.9,
+        "y": 3.8,
+        "target": "span.mock-r3-type.mock-r3-t-quest \"?Frage 1 von 3 · Cache\"",
+        "text": "finde ich ok, aber auch nur ok",
+        "attachments": []
+      },
+      {
+        "id": "up-mvw72io5t798",
+        "design": "q1",
+        "screen": "q1-s5",
+        "x": 16.2,
+        "y": 14.2,
+        "target": "span \"Cache-Lebensdauer\"",
+        "text": "Farbcodes finde ich gut, aber dann sollte breifing und abschluss keine ahben! ?",
+        "attachments": []
+      },
+      {
+        "id": "up-mvw72ro79zkq",
+        "design": "q1",
+        "screen": "q1-s5",
+        "x": 4,
+        "y": 16.2,
+        "target": "p.mock-r3-ok.mock-r3-t-topic \"Hooks\"",
+        "text": "hier links finde ich das doof, sollte eher einfach auf der seite drunter und drüber angedeutet werden von den aktuellen büphnen.",
+        "attachments": []
+      },
+      {
+        "id": "up-mvw7fn5l8exl",
+        "design": "q3",
+        "screen": "q3-s5",
+        "x": 55.1,
+        "y": 15.7,
+        "target": "div.mock-r3-revrow \"Cache-Lebensdauer10 Minutenwie empfohlen\"",
+        "text": "wen interessiert es wi eich geantwrotet habe...",
+        "attachments": []
+      },
+      {
+        "id": "up-mvw7fxe86aa0",
+        "design": "q3",
+        "screen": "q3-s5",
+        "x": 38.7,
+        "y": 16.6,
+        "target": "div.mock-r3-revrow \"Doppelte InjektionEigene AntwortNotiz\"",
+        "text": "lieber je thema erfassen wie lange ich auf den seiten war (deterministisch mit zeitstempeln, wechsel hin und her beliebig berücksichtigen) und dann hier nach einem ranking scvhließen ob man sich etwas ujnsicher war oder die frage noch nicht so super war.... \nSprich wenn jemand lange auf einer seite die focusses sein muss (nicht andere serite offen) verbringt verhältnismäßig zu den anderen seiten dieser analyse und mit mindestdauer, dann k ann man daraus schlißeen das man eher unsicher war bei dem spezifischen thema oder der vorschlag nicht gut war und wenn notizen mehr als ein paar wörter haben erst recht. Daher gern klassifizieren, wobei jetzt nicht jedes oder überhaupt ein thema zwangsweise so eingeordnet werden muss! Aber wenn, dann taggen und das sollte auch input sein für die enächste runde oder umsetzuung",
+        "attachments": []
+      }
+    ]
+  },
+  {
+    "iteration": 4,
+    "decisions": [
+      {
+        "id": "r4-unc",
+        "label": "Signale für Unsicherheit",
+        "mode": "multi",
+        "value": [
+          "dwell",
+          "note",
+          "revisit"
+        ],
+        "rec": "dwell note revisit",
+        "deviates": false,
+        "untouched": false,
+        "note": "",
+        "appliesTo": "den Abschluss und die nächste Runde",
+        "finding": "f-r4-unc",
+        "issue": false,
+        "epic": "",
+        "view": "v-r4"
+      },
+      {
+        "id": "r4-use",
+        "label": "Umgang mit markierten Fragen",
+        "mode": "single",
+        "value": "both",
+        "rec": "both",
+        "deviates": false,
+        "untouched": false,
+        "note": "ja beide wobei nächste rund efragt nach, eher ein fragt erneut nach aber dann adaptiert, je nachdem können ja die notizgen sehr klar sagen was die unsicherh eit ist. es kann aber auch sein, dass es nix mit dem befund, dem beispiel, der frage zu tun hat sondern mit dem thema an sich, dann mag es auch sein, dass mit besonderen augenmerk das thema nur in das konzept oder für die umsetzung einfließt. Aber wenn essinnvoll ist gern nächste runde fragt genauer oder anders nach oder überarbeitet seine analyse estc....",
+        "appliesTo": "markierte Fragen",
+        "finding": "f-r4-use",
+        "issue": false,
+        "epic": "",
+        "view": "v-r4"
+      },
+      {
+        "id": "r4-motion",
+        "label": "Animation",
+        "mode": "single",
+        "value": "first",
+        "rec": "first",
+        "deviates": false,
+        "untouched": false,
+        "note": "",
+        "appliesTo": "alle Analyse-Seiten",
+        "finding": "f-r4-motion",
+        "issue": false,
+        "epic": "",
+        "view": "v-r4"
+      }
+    ],
+    "comments": {
+      "general": {
+        "text": "",
+        "attachments": []
+      },
+      "items": [
+        {
+          "id": "anno-r4-r4-s1-a1",
+          "text": "ja perfekt!",
+          "attachments": []
+        },
+        {
+          "id": "anno-r4-r4-s1-a2",
+          "text": "super!",
+          "attachments": []
+        },
+        {
+          "id": "anno-r4-r4-s2-a1",
+          "text": "Ja, perfekt!",
+          "attachments": []
+        },
+        {
+          "id": "anno-r4-r4-s3-a1",
+          "text": "finde ich visuell noch nicht top von denf farben und formen. \nInhalte zweizeilig, radio buttons und co alles gut, aber sohnst...  noch nciht das highlight",
+          "attachments": []
+        },
+        {
+          "id": "anno-r4-r4-s3-a2",
+          "text": "sehr gut!",
+          "attachments": []
+        },
+        {
+          "id": "anno-r4-r4-s5-a1",
+          "text": "also erst sollte es eine nachricht sein gleichwertig wie die anderen auch von claude. Aber sobald dann die nächste frage kommt sollte diese (meine nachricht) und die nachrichten davor (von claude) unaufgeregter werden, sodass slebst wenn ich hochscrolle direkt sehe, ach das sind ja schon geklärte dringe. sie müssen aber nicht öde sein... nur halt dezenter.",
+          "attachments": []
+        },
+        {
+          "id": "r4-use-note",
+          "text": "ja beide wobei nächste rund efragt nach, eher ein fragt erneut nach aber dann adaptiert, je nachdem können ja die notizgen sehr klar sagen was die unsicherh eit ist. es kann aber auch sein, dass es nix mit dem befund, dem beispiel, der frage zu tun hat sondern mit dem thema an sich, dann mag es auch sein, dass mit besonderen augenmerk das thema nur in das konzept oder für die umsetzung einfließt. Aber wenn essinnvoll ist gern nächste runde fragt genauer oder anders nach oder überarbeitet seine analyse estc....",
+          "attachments": []
+        },
+        {
+          "id": "r4-s1",
+          "text": "Wäre klasse wenn mna das dann auch schön nacheinander animiert, damit der nutzer es lesen kann",
+          "attachments": []
+        },
+        {
+          "id": "r4-s2",
+          "text": "bei themensieten gern stark unterschiedliche farben der jeweiligen tehemnseiten.\nAußerdem bitte ähnliche farbpaletten zum briefing sprich devops concept sperren (inkl. des custom notiz lila). und wenn im rahmen von devops concept ddie analyse aufgerufen auch nicht die farben der varianten nehmen!\n\nAnsonsten mega!",
+          "attachments": []
+        },
+        {
+          "id": "r4-s3",
+          "text": "für mich viel zu schenll animiert, das sollen nicht nur sichtanimationen sein sondern wirklich um den nutzer zu guiden wo schaut er hin, was liest er, was soll er nun als nächstes lesen usw.... \n\nBitte frage immer eine fest höhe. Befund/Beispiel dürrfen variieren, gerna uch wenn man tab auf beispiel geht dann expanden z. B. weil das beispiel ein bild enthält was einfach mehr platz braucht als der befund vertikal.\ndie Antwortmöglöichkeiten gern auch variable höhe je nach antwortmöglichketien typ. Da gern in der nächstne runde auch noch mehr typen entwickeln lassen.",
+          "attachments": []
+        }
+      ],
+      "designs": {},
+      "screens": {
+        "r4-s1": "Wäre klasse wenn mna das dann auch schön nacheinander animiert, damit der nutzer es lesen kann",
+        "r4-s2": "bei themensieten gern stark unterschiedliche farben der jeweiligen tehemnseiten.\nAußerdem bitte ähnliche farbpaletten zum briefing sprich devops concept sperren (inkl. des custom notiz lila). und wenn im rahmen von devops concept ddie analyse aufgerufen auch nicht die farben der varianten nehmen!\n\nAnsonsten mega!",
+        "r4-s3": "für mich viel zu schenll animiert, das sollen nicht nur sichtanimationen sein sondern wirklich um den nutzer zu guiden wo schaut er hin, was liest er, was soll er nun als nächstes lesen usw.... \n\nBitte frage immer eine fest höhe. Befund/Beispiel dürrfen variieren, gerna uch wenn man tab auf beispiel geht dann expanden z. B. weil das beispiel ein bild enthält was einfach mehr platz braucht als der befund vertikal.\ndie Antwortmöglöichkeiten gern auch variable höhe je nach antwortmöglichketien typ. Da gern in der nächstne runde auch noch mehr typen entwickeln lassen."
+      },
+      "views": {}
+    },
+    "annotations": [
+      {
+        "id": "r4-r4-s1-a1",
+        "screen": "r4-s1",
+        "design": "r4",
+        "question": "Ist das Briefing jetzt „cooler“ und klar geführt: Zahl, Satz, drei Befunde, ein Knopf?",
+        "answer": "ja perfekt!"
+      },
+      {
+        "id": "r4-r4-s1-a2",
+        "screen": "r4-s1",
+        "design": "r4",
+        "question": "Die drei Befunde tragen schon die Themenfarben (violett Cache, türkis Hooks): hilft das für den Wiedererkennungswert später?",
+        "answer": "super!"
+      },
+      {
+        "id": "r4-r4-s2-a1",
+        "screen": "r4-s2",
+        "design": "r4",
+        "question": "Wirkt die Themenseite zweitrangig zum Briefing, aber deutlich wertiger als eine Frage?",
+        "answer": "Ja, perfekt!"
+      },
+      {
+        "id": "r4-r4-s3-a1",
+        "screen": "r4-s3",
+        "design": "r4",
+        "question": "Optionen als Zeilen in einer eigenen, angehobenen Nachricht: hebt sich die Entscheidung jetzt genug ab?",
+        "answer": "finde ich visuell noch nicht top von denf farben und formen. \nInhalte zweizeilig, radio buttons und co alles gut, aber sohnst...  noch nciht das highlight"
+      },
+      {
+        "id": "r4-r4-s3-a2",
+        "screen": "r4-s3",
+        "design": "r4",
+        "question": "Tabs mit großen Icons und nur „Befund“ / „Beispiel“, Erklärung im Tooltip: so?",
+        "answer": "sehr gut!"
+      },
+      {
+        "id": "r4-r4-s5-a1",
+        "screen": "r4-s5",
+        "design": "r4",
+        "question": "Deine Antwort rechts, sobald weitergescrollt klein und grau: unspektakulär genug?",
+        "answer": "also erst sollte es eine nachricht sein gleichwertig wie die anderen auch von claude. Aber sobald dann die nächste frage kommt sollte diese (meine nachricht) und die nachrichten davor (von claude) unaufgeregter werden, sodass slebst wenn ich hochscrolle direkt sehe, ach das sind ja schon geklärte dringe. sie müssen aber nicht öde sein... nur halt dezenter."
+      }
+    ],
+    "userPins": [
+      {
+        "id": "up-mvw8sljwzoaq",
+        "design": "r4",
+        "screen": "r4-s1",
+        "x": 54.4,
+        "y": 6.9,
+        "target": "div.mock-r4-eyebrow \"Analyse · Token-Verbrauch · 31. Oktober\"",
+        "text": "Die zeile da oben sollte nur das tehma Token Verbrauch enthalten bzw. exakt das was uch in fragen bei devosp concept im dropdown steht falls es in ein devops cocnedpt drin ist sonst halt einfac h den titel von dem ganzen.",
+        "attachments": []
+      },
+      {
+        "id": "up-mvw8tm39tjy0",
+        "design": "r4",
+        "screen": "r4-s1",
+        "x": 54.5,
+        "y": 22.7,
+        "target": "p.mock-r4-claim \"Fast drei Viertel davon stecken in Cache\"",
+        "text": "gefühlt ein ticken zu groß diese unterüberschrift!",
+        "attachments": []
+      },
+      {
+        "id": "up-mvw8ulc0h2t3",
+        "design": "r4",
+        "screen": "r4-s1",
+        "x": 46.9,
+        "y": 14.5,
+        "target": "div.mock-r4-big \"51 M Tokens / Monat sparbar\"",
+        "text": "bei der briefing seite lass uns hier oben immer das gleiche color coding nehmen, eher bläulich cooles! egal welches thema",
+        "attachments": []
+      },
+      {
+        "id": "up-mvw8v4kog7tq",
+        "design": "r4",
+        "screen": "r4-s1",
+        "x": 40,
+        "y": 29.4,
+        "target": "div.mock-r4-step \"80 %der Cache-Treffer kommen in den erst\"",
+        "text": "bei den top 3 befunden gern variationen von dem color coding bläulich was wir ja von devops concept kennen!",
+        "attachments": []
+      },
+      {
+        "id": "up-mvw8vqifsrsu",
+        "design": "r4",
+        "screen": "r4-s1",
+        "x": 46.4,
+        "y": 47.5,
+        "target": "button.mock-r4-go \"Los geht's · 5 Fragen · ≈ 4 min\"",
+        "text": "gern hier auch bläuliche ehre",
+        "attachments": []
+      },
+      {
+        "id": "up-mvw8vww5udjg",
+        "design": "r4",
+        "screen": "r4-s1",
+        "x": 53.1,
+        "y": 46.7,
+        "target": "small \"· 5 Fragen · ≈ 4 min\"",
+        "text": "finde die zusatzinfos mega. Vllt. aanordung eher 5 Fragen, dann das große los geht's (wobei auf deutsch hier eher  Los stehen solte unddann das ungefähr 4 min\n=> So ist die haupt cta in der mitte :)",
+        "attachments": []
+      },
+      {
+        "id": "up-mvw8ymkzlp2v",
+        "design": "r4",
+        "screen": "r4-s2",
+        "x": 34.7,
+        "y": 92.7,
+        "target": "small \"Gilt für diese Seite · Enter = Zeilenumb\"",
+        "text": "Sehrt gut gern drei zeilen hoch. Aber ggf. noch etwas höher das ganze feld, weil vergiss nichbt, bei einbidndung devosp concept sollte es nicht kollidieren mit devosp concept elementen. auch wenn es nicht in devops concept ist, auch so machen.",
+        "attachments": []
+      },
+      {
+        "id": "up-mvw8z9xbsj8x",
+        "design": "r4",
+        "screen": "r4-s2",
+        "x": 49.8,
+        "y": 6.6,
+        "target": "p.mock-r4-peek.mock-r4-up \"Briefing · 51 M sparbar\"",
+        "text": "Achtung, das würde wenn die analyser im rahmen ovon devosp concept geschieht kollidieren mit der schnellnavigation von devops concept. Deshalb egal ob mit devops concept oder ohne einfahc hier oben etwas mehr abstand zum rand lassen ;)",
+        "attachments": []
+      },
+      {
+        "id": "up-mvw90lnkvbav",
+        "design": "r4",
+        "screen": "r4-s2",
+        "x": 39.2,
+        "y": 32.8,
+        "target": "div.mock-r4-tq \"1Wie lange darf eine Antwort leben?2Wie \"",
+        "text": "Mindestens 3 Fragen pro thema maximal 7 fragen bitte bei der erstellung berücksichtigen lassen immer von claud ewenn das hier gneutzt wird, egal wo.\nThema selber muss es minimal 1 geben, maximal auch 7 Tghemen darf es haben, bitte als feste regel rein!",
+        "attachments": []
+      },
+      {
+        "id": "up-mvw978zksv46",
+        "design": "r4",
+        "screen": "r4-s3",
+        "x": 40.1,
+        "y": 70.7,
+        "target": "u \"Schreib deine Antwort unten ins Notizfel\"",
+        "text": "sehr schön, den hinweis gern immer drin lasen.",
+        "attachments": []
+      },
+      {
+        "id": "up-mvw99kfren3a",
+        "design": "r4",
+        "screen": "r4-s6",
+        "x": 62,
+        "y": 38.3,
+        "target": "em \"zügig\"",
+        "text": "zügigi info einfach weglassen, unnötig..",
+        "attachments": []
+      },
+      {
+        "id": "up-mvw99qqhq9pb",
+        "design": "r4",
+        "screen": "r4-s6",
+        "x": 58.2,
+        "y": 16.1,
+        "target": "h1 \"≈ 44 M von 51 M Tokens geholt.\"",
+        "text": "Abschluss osllte zwar klar als abschlus serkennbar sein aber auch das color coding layout haben von briefing für wiederkennbarkeit!",
+        "attachments": []
+      },
+      {
+        "id": "up-mvw9a731ruww",
+        "design": "r4",
+        "screen": "r4-s6",
+        "x": 49.7,
+        "y": 55.8,
+        "target": "button.mock-r4-send \"Absenden\"",
+        "text": "Der button sollte mindesns gleichwertig styled sein, auch farblich wieder briefing button!",
+        "attachments": []
+      },
+      {
+        "id": "up-mvw9apl1brya",
+        "design": "r4",
+        "screen": "r4-s6",
+        "x": 66.6,
+        "y": 33.2,
+        "target": "span.mock-r4-tag \"3× zurückgekehrt\"",
+        "text": "sehr guter indikator auch!",
+        "attachments": []
+      },
+      {
+        "id": "up-mvw9avegqi0n",
+        "design": "r4",
+        "screen": "r4-s6",
+        "x": 66.7,
+        "y": 27.2,
+        "target": "span.mock-r4-tag \"unsicher? · 2,6× Median · 41 Wörter\"",
+        "text": "2,6x mehr als im median notizen gemacht gern in den tooltip und damit verstänliccher als das kryptische hier",
+        "attachments": []
+      },
+      {
+        "id": "up-mvw9bgs23qs9",
+        "design": "r4",
+        "screen": "r4-s6",
+        "x": 62.8,
+        "y": 26.4,
+        "target": "span.mock-r4-tag \"unsicher? · 2,6× Median · 41 Wörter\"",
+        "text": "in dem label einfach nur \"unsicher\" bzw. ein wording was klarer ist :D weil ich bin ja vllt. nicht unsicher aber so richtig war das noch keni match  vorschlag oder der bnefund usw.",
+        "attachments": []
+      },
+      {
+        "id": "up-mvw9cbnizebf",
+        "design": "r4",
+        "screen": "r4-s6",
+        "x": 63.2,
+        "y": 33.2,
+        "target": "span.mock-r4-tag \"3× zurückgekehrt\"",
+        "text": "das gern in den tooltip und im label dann eher ein wording exakt das gleiche wie oben. Es osll nur zwei stati gebne, nix vs unsicher (wobei wir noch ein besseres wording suchen als uinsicher!)",
+        "attachments": []
+      }
+    ]
+  },
+  {
+    "iteration": 5,
+    "decisions": [
+      {
+        "id": "r5-types",
+        "label": "Neue Antworttypen",
+        "mode": "multi",
+        "value": [
+          "visual",
+          "matrix",
+          "budget",
+          "scale",
+          "range"
+        ],
+        "rec": "visual matrix",
+        "deviates": true,
+        "untouched": false,
+        "note": "das punkte verteilen aber irgenwie smart machen, nichteinfach nur zahlen eintragen beliebig, dort gibt es doch aus der psychologie und befragungswissenscahften erkenntnisse, ggf. fibonacci oder so einsetzen, check das mal selber bitte tiefer.",
+        "appliesTo": "alle Analysen",
+        "finding": "f-r5-types",
+        "issue": false,
+        "epic": "",
+        "view": "v-r5"
+      },
+      {
+        "id": "r5-next",
+        "label": "Nächster Schritt",
+        "mode": "single",
+        "value": "round",
+        "rec": "build",
+        "deviates": true,
+        "untouched": false,
+        "note": "",
+        "appliesTo": "dieses Konzept",
+        "finding": "f-r5-next",
+        "issue": false,
+        "epic": "",
+        "view": "v-r5"
+      }
+    ],
+    "comments": {
+      "general": {
+        "text": "btw, es sollte geregelt werden,d ass wwenn ich die anallyse innerhalb der fragen habe von einem devops concept das wenn man mit der analyse durch ist danach aber noch ein weiteres element oder weitere anallyse aus fragen von devops cocnetp als eintrag existiert, das man auf der abschlussseite dann zu diesem springen kann und ansonsten direkt die möglichkeit hat nächste runde vs jetzt umsetzen inline im chat im style von devops cocnept!\n\nNatürlich das aufch wenn nächste runde / jetzt umsetzen wenn es nur eine reine analyser ist ohne varianten konzepte use.w darum. \n\nLasss uns nächste runde rein auf a) das inhaltsverzeichnis rechts konzentrieren und b) gern kritisch nochmal schauen ob die entscheidungsvisualiserungen ausreichen - analysiere dafür die letzten 20 analysen. Ich erinnere mich z. B . daran, dass ich zwischen drei minibildern oder darstellungen auch mal entscheiden musste oder drei matrizen mit max. drei spalten und zeilen,  die mehrer dimensionen zueinandder gebrachth hbaen. \nIch brauche keine 100 visualisierungen aber sie sollten schon für verschiedene fälle funktionieren um die entschzeidungen anzuklicken. Dabei weiterhin so gern einigermaßén kurz genug sein, damit die nachricht nicht mehr als 50% der höhe einnimmt bzw. vllt. besser definiert: min. die fragedrüber noch sichtbar ist ohne chhat scroll",
+        "attachments": []
+      },
+      "items": [
+        {
+          "id": "anno-r5-r5-s1-a1",
+          "text": "perfekt!!\"",
+          "attachments": []
+        },
+        {
+          "id": "anno-r5-r5-s1-a2",
+          "text": "super!",
+          "attachments": []
+        },
+        {
+          "id": "anno-r5-r5-s2-a1",
+          "text": "ja wobei das dann die claude session selber bestimmen kann pro thema einen farb code, geht mir nur um die regeln ;)",
+          "attachments": []
+        },
+        {
+          "id": "anno-r5-r5-s3-a1",
+          "text": "ja so ist super!",
+          "attachments": []
+        },
+        {
+          "id": "anno-r5-r5-s3-a2",
+          "text": "super!",
+          "attachments": []
+        },
+        {
+          "id": "anno-r5-r5-s4-a1",
+          "text": "ja, ich finde auch gut, dass z. B. die unteren dnachrichten darunter durch den tab wechsel auf beispiel kurz ausgeblendet werden und der tabwechsel animiert wird und dnach erst wieder auftauchen, so ist der fokus wirklich auf dem wechsel des beispiels!",
+          "attachments": []
+        },
+        {
+          "id": "anno-r5-r5-s5-a1",
+          "text": "schon besser, aber ehrlich gesagt ohne checkmark btite.",
+          "attachments": []
+        },
+        {
+          "id": "anno-r5-r5-s6-a1",
+          "text": "ja sehr gut!",
+          "attachments": []
+        },
+        {
+          "id": "anno-r5-r5-s9-a1",
+          "text": "sehr gut, dann lass uns es aber anklickbar machen und für die anderen zeilen auch da sein, dann lass es als graune button für jede zeile und angeklickt als vorschlag nach unserem definierten mechanismus von gerade. \nSo kann der nutzer sich sowohl umentscheiden für die zur nachbesserung vorgeschlagnenen oder auch feststelllen das ein anderes tehma noch nachgebessert ewrden muss. \nWnenn der nutzer eins als nachscärfen aktiviert, dann sollte unten das notiz feld aufleuchten, dami t man ermutigt wird zu erklären was man den dort nachschärfne will! \ngern direkt mit einem tag was im notizfeld als lable drin ist. das tag soll auch kommen wenn man hier ein thema anklickt. \nGenerell können wir so welche tags auch einführen wenn man auf fragen oder befunde klickt, immer maximal aber nur eins das aktuelle oder 0 defualt. Das tag hilft, das die nachricht eingeordnet werden kann. Eine getaggte notiz soll hnei dazu führen dass man die seite wechselt, aalso bei befudnen /fragen /entscheidungen zur nächsten kommt weil man eine notiz abgeschickt hat.... eine normale nachricht ohne tag hingegen schon autoamtmsich (außer bei abschluss und briefing :)",
+          "attachments": []
+        },
+        {
+          "id": "r5-types-note",
+          "text": "das punkte verteilen aber irgenwie smart machen, nichteinfach nur zahlen eintragen beliebig, dort gibt es doch aus der psychologie und befragungswissenscahften erkenntnisse, ggf. fibonacci oder so einsetzen, check das mal selber bitte tiefer.",
+          "attachments": []
+        }
+      ],
+      "designs": {},
+      "screens": {},
+      "views": {}
+    },
+    "annotations": [
+      {
+        "id": "r5-r5-s1-a1",
+        "screen": "r5-s1",
+        "design": "r5",
+        "question": "„5 Fragen · Los · ≈ 4 min“ mit dem Knopf in der Mitte: so?",
+        "answer": "perfekt!!\""
+      },
+      {
+        "id": "r5-r5-s1-a2",
+        "screen": "r5-s1",
+        "design": "r5",
+        "question": "Blau, langsamer und nacheinander animiert (Zahl, Satz, Befunde, Knopf): führt das jetzt durch?",
+        "answer": "super!"
+      },
+      {
+        "id": "r5-r5-s2-a1",
+        "screen": "r5-s2",
+        "design": "r5",
+        "question": "Cache in Pink, Hooks in Türkis, beides weit weg vom Briefing-Blau und vom Notiz-Lila: kräftig genug unterschieden?",
+        "answer": "ja wobei das dann die claude session selber bestimmen kann pro thema einen farb code, geht mir nur um die regeln ;)"
+      },
+      {
+        "id": "r5-r5-s3-a1",
+        "screen": "r5-s3",
+        "design": "r5",
+        "question": "Antwortblock neu: blauer Verlauf, Rahmen, markierte Zeile mit Verlauf. Ist das jetzt das Highlight?",
+        "answer": "ja so ist super!"
+      },
+      {
+        "id": "r5-r5-s3-a2",
+        "screen": "r5-s3",
+        "design": "r5",
+        "question": "Die Frage hat eine feste Höhe. Erst leuchtet der Befund auf, dann die Frage, dann die Antworten (je ≈ 1,8 s). Führt das den Blick?",
+        "answer": "super!"
+      },
+      {
+        "id": "r5-r5-s4-a1",
+        "screen": "r5-s4",
+        "design": "r5",
+        "question": "Das Beispiel ist ein Bildschirmausschnitt der App, und der Befund wird dafür höher. Trifft das deine Idee?",
+        "answer": "ja, ich finde auch gut, dass z. B. die unteren dnachrichten darunter durch den tab wechsel auf beispiel kurz ausgeblendet werden und der tabwechsel animiert wird und dnach erst wieder auftauchen, so ist der fokus wirklich auf dem wechsel des beispiels!"
+      },
+      {
+        "id": "r5-r5-s5-a1",
+        "screen": "r5-s5",
+        "design": "r5",
+        "question": "Erledigtes darüber: gleich groß beim Beantworten, danach mit Rahmen statt Fläche, kleiner und mit ✓. Dezent, aber nicht öde?",
+        "answer": "schon besser, aber ehrlich gesagt ohne checkmark btite."
+      },
+      {
+        "id": "r5-r5-s6-a1",
+        "screen": "r5-s6",
+        "design": "r5",
+        "question": "Antworttyp Wert (Slider) mit Empfehlungsmarke und zwei Live-Folgen: verständlich?",
+        "answer": "ja sehr gut!"
+      },
+      {
+        "id": "r5-r5-s9-a1",
+        "screen": "r5-s9",
+        "design": "r5",
+        "question": "Nur noch ein Status „Nachschärfen“, die Details im Tooltip. Gutes Wort?",
+        "answer": "sehr gut, dann lass uns es aber anklickbar machen und für die anderen zeilen auch da sein, dann lass es als graune button für jede zeile und angeklickt als vorschlag nach unserem definierten mechanismus von gerade. \nSo kann der nutzer sich sowohl umentscheiden für die zur nachbesserung vorgeschlagnenen oder auch feststelllen das ein anderes tehma noch nachgebessert ewrden muss. \nWnenn der nutzer eins als nachscärfen aktiviert, dann sollte unten das notiz feld aufleuchten, dami t man ermutigt wird zu erklären was man den dort nachschärfne will! \ngern direkt mit einem tag was im notizfeld als lable drin ist. das tag soll auch kommen wenn man hier ein thema anklickt. \nGenerell können wir so welche tags auch einführen wenn man auf fragen oder befunde klickt, immer maximal aber nur eins das aktuelle oder 0 defualt. Das tag hilft, das die nachricht eingeordnet werden kann. Eine getaggte notiz soll hnei dazu führen dass man die seite wechselt, aalso bei befudnen /fragen /entscheidungen zur nächsten kommt weil man eine notiz abgeschickt hat.... eine normale nachricht ohne tag hingegen schon autoamtmsich (außer bei abschluss und briefing :)"
+      }
+    ],
+    "userPins": [
+      {
+        "id": "up-mvwak3s1jyt3",
+        "design": "r5",
+        "screen": "r5-s5",
+        "x": 30.2,
+        "y": 22.6,
+        "target": "div.mock-r5-av \"C\"",
+        "text": "das C icon eher ein devops symbol und im tooltip devops rein ;) so promoten wir unser plugin ; )",
+        "attachments": []
+      },
+      {
+        "id": "up-mvwaogefroqp",
+        "design": "r5",
+        "screen": "r5-s9",
+        "x": 35.5,
+        "y": 41.6,
+        "target": "span \"Lebensdauer\"",
+        "text": "Btw, thementitel sollten zeichenlimits haben damit si gut und knaackig sind, maximal so 5 worte - vllt.d amit auch ein wortlimit?! wie auch immer bestimme du das selber, finde das trägt aber deutlich zur übersicht bei",
+        "attachments": []
+      },
+      {
+        "id": "up-mvwap98ywtdg",
+        "design": "r5",
+        "screen": "r5-s9",
+        "x": 92.5,
+        "y": 53.5,
+        "target": "div.mock-r5-rail \"BriefingCacheLebensdauerWelche HooksGröß\"",
+        "text": "ausgeklappt das inhaltsverzeichnis hover over finde ich den hintergrund box grau altbacken, einfach weglassen, das wirkt viel besser und dann glowing die inhaltsverzeichnispunkte neben ihrnenden shiny linien ;) anklickbar aber auch gern etwas größer dort wo man gerade mit der maus ist als würde man einen vertikalen ring sehen (weil man mit der maus drüber hovered - so ist immer das was unter der maus gerade ist größer,d as drum herum etwas größer der rest kleiner und beim bewegen immer so.",
+        "attachments": []
+      },
+      {
+        "id": "up-mvwas0frss18",
+        "design": "r5",
+        "screen": "r5-s9",
+        "x": 41.8,
+        "y": 56.6,
+        "target": "small \"2 zum Nachschärfen\"",
+        "text": "die info hier ist doppelt gemoppelt und überflüssig",
+        "attachments": []
+      },
+      {
+        "id": "up-mvwas88uskmo",
+        "design": "r5",
+        "screen": "r5-s9",
+        "x": 58.6,
+        "y": 56.5,
+        "target": "small \"alle Antworten ↗\"",
+        "text": "das alle antowrten nehmen wir ganz raus, das brauche nwir einfach grudnsätzlich nicht mehr, wir sind übersichtlich genug gund springen zu den antwortne und themen ist einfach genug",
+        "attachments": []
+      },
+      {
+        "id": "up-mvwasqkwuo2e",
+        "design": "r5",
+        "screen": "r5-s9",
+        "x": 94.6,
+        "y": 16.1,
+        "target": "div.mock-r5 \"BriefingCacheLebensdauerWelche HooksGröß\"",
+        "text": "beim inhaltsverzeichnis auch berücksichtigen nicht nur im color coding das es verschiednen abschnitte wie briefing thema x usw.  sind,also wenn man hover oiver macht!",
+        "attachments": []
+      },
+      {
+        "id": "up-mvwauob1wujw",
+        "design": "r5",
+        "screen": "r5-s3",
+        "x": 68.4,
+        "y": 16.9,
+        "target": "div.mock-r5-bub.mock-r5-edge \"Cache · Frage 1 von 3📊Befund🖥Beispiel8\"",
+        "text": "wollten wir nicht noch lange belege als popup verfügbar machen, für die nutzer die tief ins thema rein wollen?\nOder wir lassen das lieber raus, viele tokens für am ende guckt eh keiner rein und wenn kann derjenige das jaa nochmal als notiz schreiben das er in der nächstgen runde tiefer in das theema  rein will. das finde ich besser.",
+        "attachments": []
+      }
+    ]
+  },
+  {
+    "iteration": 6,
+    "decisions": [
+      {
+        "id": "r6-set",
+        "label": "Antwortformen",
+        "mode": "multi",
+        "value": [
+          "pics",
+          "mx",
+          "flow",
+          "place",
+          "alloc"
+        ],
+        "rec": "pics mx flow place alloc",
+        "deviates": false,
+        "untouched": true,
+        "note": "",
+        "appliesTo": "alle Analysen",
+        "finding": "f-r6-set",
+        "issue": false,
+        "epic": "",
+        "view": "v-r6"
+      },
+      {
+        "id": "r6-alloc",
+        "label": "Skala beim Punkte verteilen",
+        "mode": "single",
+        "value": "fib",
+        "rec": "fib",
+        "deviates": false,
+        "untouched": true,
+        "note": "",
+        "appliesTo": "die Form Punkte verteilen",
+        "finding": "f-r6-alloc",
+        "issue": false,
+        "epic": "",
+        "view": "v-r6"
+      }
+    ],
+    "comments": {
+      "general": {
+        "text": "das näpchste concpet gern klein, rein auf die änderungen bzgl. inhaltsverzeichnis nochmal bezogen, bei dem rest vertraue ich dir mit meinen notizen die ich dir mitgegebnen habe",
+        "attachments": []
+      },
+      "items": [
+        {
+          "id": "anno-r6-r6-s1-a1",
+          "text": "super ja, gern dabei aber auch berückischitgen, dass es nicht mit fab elemente von devops concept überlappt, ggf. gibt es einfach mehr punkte auf gleich langer linie, mach dafür mal ein maximal besipiel mit voller themneanzahl und voller fragenanzahl (7x7).\n\nAußerdem wenn man  drüber hovered soll man immer auf einem navigationsitem sein und nicht in einem zwischenraum (nicht visuell aber vom fokus her) sodass man immer iens anklicken würde - check dahingehend auch nochmal ob der richtige cursorg enommen wird, weil aktuell ist es ein input cursor obwohl ich ja was auswähle xD von windows / browser...",
+          "attachments": []
+        },
+        {
+          "id": "anno-r6-r6-s3-a1",
+          "text": "gern als zwei modi, skizzen vs real (bevorzugt skizzen) - aber manchmal macht nur real sinn! Aber wichtig, das ist kein varianten design pßrotottyping wie devops concept sonst es amcht, wenn es das wrüde müsste das eher in das devops concept varianten prrototyping gebaut werden und übergeben, das bitte kritisch an claude gebne!",
+          "attachments": []
+        },
+        {
+          "id": "anno-r6-r6-s4-a1",
+          "text": "sieht gut aus! wobei die titel und auswahl zu weit weg von anderen visualisierungen wie die e ausgewählt sijnd, ich galueb das ist die form hmmm",
+          "attachments": []
+        },
+        {
+          "id": "anno-r6-r6-s5-a1",
+          "text": "ja schon nützlich!",
+          "attachments": []
+        },
+        {
+          "id": "anno-r6-r6-s6-a1",
+          "text": "gute idee! aber auch anklickbar die optionen rechts daneben bitte alternativ!",
+          "attachments": []
+        },
+        {
+          "id": "anno-r6-r6-s7-a1",
+          "text": "ja klingt gut!",
+          "attachments": []
+        },
+        {
+          "id": "anno-r6-r6-s8-a2",
+          "text": "sehr gut",
+          "attachments": []
+        }
+      ],
+      "designs": {},
+      "screens": {},
+      "views": {}
+    },
+    "annotations": [
+      {
+        "id": "r6-r6-s1-a1",
+        "screen": "r6-s1",
+        "design": "r6",
+        "question": "Zugeklappt nur leuchtende Punkte auf einer feinen Linie, ohne Kasten. Dezent genug? Fahr mit der Maus darüber, es ist echt.",
+        "answer": "super ja, gern dabei aber auch berückischitgen, dass es nicht mit fab elemente von devops concept überlappt, ggf. gibt es einfach mehr punkte auf gleich langer linie, mach dafür mal ein maximal besipiel mit voller themneanzahl und voller fragenanzahl (7x7).\n\nAußerdem wenn man  drüber hovered soll man immer auf einem navigationsitem sein und nicht in einem zwischenraum (nicht visuell aber vom fokus her) sodass man immer iens anklicken würde - check dahingehend auch nochmal ob der richtige cursorg enommen wird, weil aktuell ist es ein input cursor obwohl ich ja was auswähle xD von windows / browser..."
+      },
+      {
+        "id": "r6-r6-s3-a1",
+        "screen": "r6-s3",
+        "design": "r6",
+        "question": "Bildauswahl: drei Mini-Skizzen. Reicht so eine Skizze, oder braucht es echte Ausschnitte?",
+        "answer": "gern als zwei modi, skizzen vs real (bevorzugt skizzen) - aber manchmal macht nur real sinn! Aber wichtig, das ist kein varianten design pßrotottyping wie devops concept sonst es amcht, wenn es das wrüde müsste das eher in das devops concept varianten prrototyping gebaut werden und übergeben, das bitte kritisch an claude gebne!"
+      },
+      {
+        "id": "r6-r6-s4-a1",
+        "screen": "r6-s4",
+        "design": "r6",
+        "question": "Vergleich: höchstens 3 Optionen × 3 Merkmale mit Punkten statt Zahlen, eine Spalte wird gewählt. Passt das für deine Matrix-Fälle?",
+        "answer": "sieht gut aus! wobei die titel und auswahl zu weit weg von anderen visualisierungen wie die e ausgewählt sijnd, ich galueb das ist die form hmmm"
+      },
+      {
+        "id": "r6-r6-s5-a1",
+        "screen": "r6-s5",
+        "design": "r6",
+        "question": "Weg / Kette: jede Option zeigt ihren Ablauf. Nützlich für Herkunft oder Datenfluss?",
+        "answer": "ja schon nützlich!"
+      },
+      {
+        "id": "r6-r6-s6-a1",
+        "screen": "r6-s6",
+        "design": "r6",
+        "question": "Platzierung: Fläche auf einer Skizze anklicken. Verständlich?",
+        "answer": "gute idee! aber auch anklickbar die optionen rechts daneben bitte alternativ!"
+      },
+      {
+        "id": "r6-r6-s7-a1",
+        "screen": "r6-s7",
+        "design": "r6",
+        "question": "Punkte verteilen in groben Stufen (1, 2, 3, 5, 8) bei festem Budget von 13 Punkten. Klug genug?",
+        "answer": "ja klingt gut!"
+      },
+      {
+        "id": "r6-r6-s8-a2",
+        "screen": "r6-s8",
+        "design": "r6",
+        "question": "Danach „Jetzt umsetzen“ oder „Nächste Runde“, und falls es im Concept noch etwas gibt, der Sprung dorthin. So?",
+        "answer": "sehr gut"
+      }
+    ],
+    "userPins": [
+      {
+        "id": "up-mvwbkhdiz2tw",
+        "design": "r6",
+        "screen": "r6-s2",
+        "x": 95.9,
+        "y": 20.3,
+        "target": "span.mock-r6-grp \"Thema Cache\"",
+        "text": "Thema Cache ist doch auch eine seite, warum nicht einfach in dem punkt den punkt präfixen mit dem Wort Thema was auch visuell font style ja dann anders aussieht.",
+        "attachments": []
+      },
+      {
+        "id": "up-mvwbma2na3d1",
+        "design": "r6",
+        "screen": "r6-s3",
+        "x": 30.6,
+        "y": 15.2,
+        "target": "svg",
+        "text": "dieser schjwarz und farbgi ring darum, irgendwie altbacken, vllt. beim aktuellen nachricht einfach als glwo? und sonst nur der rund kreis!",
+        "attachments": []
+      },
+      {
+        "id": "up-mvwbrqahxdqp",
+        "design": "r6",
+        "screen": "r6-s8",
+        "x": 33.3,
+        "y": 85.7,
+        "target": "span.mock-r6-tag \"🏷 Cache-Größe ×\"",
+        "text": "Das sollte dann vertikal keliner und ohne icon einfach in dem inputfeld stehen was dann schon fokussiert ist (sprich keine hinweise mehr angeziegt werden), sonst bläht das hier zu weit auf!. \nAlso einfach als wäre es das erste wort, aber halt als label und man tippt erst danach",
+        "attachments": []
+      },
+      {
+        "id": "up-mvwbszeffcg6",
+        "design": "r6",
+        "screen": "r6-s8",
+        "x": 36.9,
+        "y": 90,
+        "target": "small \"Gilt für diese Seite · Enter = Zeilenumb\"",
+        "text": "den input feld hinweis bitte immer einzeilig machen!",
+        "attachments": []
+      }
+    ]
+  },
+  {
+    "iteration": 7,
+    "comments": {
+      "general": {
+        "text": "",
+        "attachments": []
+      },
+      "items": [
+        {
+          "id": "anno-r7-r7-s1-a1",
+          "text": "ja sehr gut!",
+          "attachments": []
+        },
+        {
+          "id": "r7-s2",
+          "text": "Achtung, hier ist das was man gerade im hover hat überlappend, das geht gar nciht!.",
+          "attachments": [
+            {
+              "id": "d2a92fd28f12449a100fa283a89091ecde08c5a1be40fa2ec8a0f0ac7f315bca.png",
+              "name": "image.png",
+              "mime": "image/png",
+              "size": 209189,
+              "path": ".claude/concepts/20261030-1850-analyse-redesign/attachments/d2a92fd28f12449a100fa283a89091ecde08c5a1be40fa2ec8a0f0ac7f315bca.png"
+            }
+          ]
+        }
+      ],
+      "designs": {},
+      "screens": {
+        "r7-s2": "Achtung, hier ist das was man gerade im hover hat überlappend, das geht gar nciht!."
+      },
+      "views": {}
+    },
+    "annotations": [
+      {
+        "id": "r7-r7-s1-a1",
+        "screen": "r7-s1",
+        "design": "r7",
+        "question": "Volle Belegung: Briefing, 7 Themen à 7 Fragen, Abschluss, also 58 Punkte auf derselben Linienlänge, zwischen ☰ und 💬. Fahr mit der Maus darüber. Liest es sich noch?",
+        "answer": "ja sehr gut!"
+      }
+    ],
+    "userPins": [
+      {
+        "id": "up-mvwc7h7kyhdo",
+        "design": "r7",
+        "screen": "r7-s1",
+        "x": 93.2,
+        "y": 92.4,
+        "target": "b \"Thema\"",
+        "text": "aber nicht überlappend! mit den fab elementen, dann einfach scrollable! wobei immer beim drüber hovern das aktuelle zusehen sein soll",
+        "attachments": []
+      },
+      {
+        "id": "up-mvwc8sxa5dcq",
+        "design": "r7",
+        "screen": "r7-s1",
+        "x": 31.7,
+        "y": 88.3,
+        "target": "small \"Gilt für diese Seite · Strg+Enter speich\"",
+        "text": "gilt für diese seite bruachen wir hier nicht!",
+        "attachments": []
+      },
+      {
+        "id": "up-mvwcb33wnu69",
+        "design": "r7",
+        "screen": "r7-s3",
+        "x": 35.4,
+        "y": 88.4,
+        "target": "span.mock-r7-tagw \"Startzeit · Frage 3\"",
+        "text": "bitte kleiner, es sollte wie ienz zeile text sein! und mit x zum wegmachen des labels! Und bitte das input feld nur einzeilig machen und expanen bis zu drei zeilen wenn man mehr als eine zeile schreibt!",
+        "attachments": []
+      }
+    ]
+  },
+  {
+    "submitted": true,
+    "template": "design",
+    "iteration": "8",
+    "decisions": [],
+    "comments": {
+      "general": {
+        "text": "",
+        "attachments": []
+      },
+      "items": [
+        {
+          "id": "anno-r8-r8-s1-a1",
+          "text": "perfekt!",
+          "attachments": []
+        },
+        {
+          "id": "anno-r8-r8-s2-a1",
+          "text": "sehr gut! wobei das absenden zeichen irgendwie zu filigran aussieht und der pfeil nicht wie ein abschicken pfeil!?",
+          "attachments": []
+        },
+        {
+          "id": "anno-r8-r8-s3-a1",
+          "text": "ja aber doch nicht das label! xD das bleibet einzeilig vor dem ersten wort einfahc inline. .. und die cursorgröße ist super rieisig lol",
+          "attachments": [
+            {
+              "id": "e1e430b62c6e6b3683f7ee9c6cf7b5199a88b005c94ba1b63e6e23e823a32c3e.png",
+              "name": "image.png",
+              "mime": "image/png",
+              "size": 15293,
+              "path": ".claude/concepts/20261030-1850-analyse-redesign/attachments/e1e430b62c6e6b3683f7ee9c6cf7b5199a88b005c94ba1b63e6e23e823a32c3e.png"
+            }
+          ]
+        }
+      ],
+      "designs": {},
+      "screens": {},
+      "views": {}
+    },
+    "annotations": [
+      {
+        "id": "r8-r8-s1-a1",
+        "screen": "r8-s1",
+        "design": "r8",
+        "question": "Jetzt mit fester Zeilenhöhe und scrollbar: Beim Überfahren wird nur die Schrift größer, nichts überlappt. Die aktuelle Frage bleibt im Bild. So?",
+        "answer": "perfekt!"
+      },
+      {
+        "id": "r8-r8-s2-a1",
+        "screen": "r8-s2",
+        "design": "r8",
+        "question": "Einzeilig, der Tag ist eine kleine Textmarke mit ×. So?",
+        "answer": "sehr gut! wobei das absenden zeichen irgendwie zu filigran aussieht und der pfeil nicht wie ein abschicken pfeil!?"
+      },
+      {
+        "id": "r8-r8-s3-a1",
+        "screen": "r8-s3",
+        "design": "r8",
+        "question": "Bei längerem Text wächst das Feld bis drei Zeilen. Passt das?",
+        "answer": "ja aber doch nicht das label! xD das bleibet einzeilig vor dem ersten wort einfahc inline. .. und die cursorgröße ist super rieisig lol"
+      }
+    ],
+    "attachments": {
+      "anno-r8-r8-s3-a1": [
+        {
+          "id": "e1e430b62c6e6b3683f7ee9c6cf7b5199a88b005c94ba1b63e6e23e823a32c3e.png",
+          "name": "image.png",
+          "mime": "image/png",
+          "size": 15293,
+          "path": ".claude/concepts/20261030-1850-analyse-redesign/attachments/e1e430b62c6e6b3683f7ee9c6cf7b5199a88b005c94ba1b63e6e23e823a32c3e.png"
+        }
+      ]
+    },
+    "mappings": [],
+    "favorite": null,
+    "userPins": [],
+    "action": "implement",
+    "allFields": {
+      "anno-r8-r8-s1-a1": "perfekt!",
+      "anno-r8-r8-s2-a1": "sehr gut! wobei das absenden zeichen irgendwie zu filigran aussieht und der pfeil nicht wie ein abschicken pfeil!? ",
+      "anno-r8-r8-s3-a1": "ja aber doch nicht das label! xD das bleibet einzeilig vor dem ersten wort einfahc inline. .. und die cursorgröße ist super rieisig lol "
+    },
+    "submission_id": "sub-mvwgg664-use2zn4t",
+    "_version": 8,
+    "_processed_at": "2026-10-31T11:56:11.933Z",
+    "_picked_up_at": "2026-10-31T13:46:58.010Z",
+    "_phase": "",
+    "_progress": null
+  }
+]

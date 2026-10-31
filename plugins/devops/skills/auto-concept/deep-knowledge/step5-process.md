@@ -113,6 +113,21 @@ The mapping's cells are generated inputs and are not part of the coverage
 check above — the jsdom suite covers them; `allFields` carries only the
 compact state strings.
 
+### Hesitation signal (analysis rounds)
+
+An analysis decision entry carries `hesitation: { ms, noteWords, revisits, flagged }`
+(`templates-analysis.md` § Payload). It is a hint about where the user struggled,
+never an answer. `flagged` is the page's rule (at least two of: dwell over twice the
+analysis median and ≥ 20 s, a note over 12 words, ≥ 2 revisits/changes) after the
+user's own "Nachschärfen" toggle in the closing. Consumers read it like this:
+
+- **iterate** — a flagged question is asked again in the next round, adapted
+  (other wording, a concrete example, fewer options); do not repeat it verbatim.
+- **implement** — a flagged question about the topic itself (not just its phrasing)
+  goes into the concept / implementation with special attention: a note in the
+  affected task, a stricter check, no silent default.
+- An unflagged entry with `untouched: true` stays "not looked at", as before.
+
 ## 5b · Checkpoint duty
 
 **Checkpoint duty (all branches except `iterate`).** `implement` and the

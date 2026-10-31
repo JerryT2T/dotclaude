@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.336.0] — 2026-10-31
+
+### Added
+- **Concept analysis pages**: guided chat flow — each question arrives as finding → question → answer, with tabs for the finding and a concrete example from the app.
+- **Concept analysis pages**: a note field that is always there; "Keine passt" turns the note into the answer, and a tag pins a note to a finding, question or topic.
+- **Concept analysis pages**: right-side table of contents, blue briefing and closing, a colour per topic, and "Nachschärfen" toggles on the closing that start from where you hesitated.
+- **Concept analysis pages**: five new answer forms — picture choice, compare (up to 3×3), path/chain, placement on a sketch, and points allocation (1·2·3·5·8 with a budget); the slider shows its consequence live.
+
+### Changed
+- **Concept analysis pages**: the checker warns about too few or too many topics and questions, long topic titles and missing context lines; evidence popups are gone — ask for detail in a note instead.
+
+### Fixed
+- **API-credit agent**: the run deadline uses the real clock, so a run with an injected date no longer times out at once.
+
 ## [0.335.8] — 2026-10-30
 
 ### Changed

@@ -245,6 +245,8 @@ describe("every scroll container is skinned, not raw (ui-defaults.md R5)", () =>
     // and free iterations of the SAME page with the raw bar.
     for (const r of RULES) {
       if (!/scrollbar-(width|color)/.test(r.body)) continue;
+      // Hiding a bar outright (the analysis rail) is no skin: nothing raw shows.
+      if (/scrollbar-width\s*:\s*none/.test(r.body) && !/scrollbar-color/.test(r.body)) continue;
       for (const sel of r.selectors) {
         expect(norm(sel), "scrollbar skin must not be template-scoped").not.toMatch(/data-template/);
         expect(norm(sel), "only the universal rule sets the skin").toBe("*");

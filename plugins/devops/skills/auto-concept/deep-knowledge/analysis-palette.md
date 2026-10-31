@@ -5,7 +5,7 @@ Full or Lite analysis (`step1-templates.md` § 1b · Analysis results and
 decisions — Full vs Lite) shows a finding: 35 display types, grouped by the
 **shape of the content**, each with "Nimm sie, wenn …" / "Nicht, wenn …" for
 the choice and the slot it fits. The markup (`data-viz`, `data-viz-spec`,
-`data-slot`, `data-evidence`) is defined in `templates-analysis.md`
+`data-slot`, `data-example`) is defined in `templates-analysis.md`
 § Display palette — this file never redefines an attribute, it only says which
 type to pick and how to fill it.
 
@@ -58,7 +58,6 @@ a slot is never empty.
 | Text | 1 sentence, ≤ 140 characters — only the statement | 2–4 sentences: statement, reading, what it means for the decision |
 | Graphic | 1 KPI or 1 mini graphic (≤ 52 × 16 px) — strong lean to the mini graphic whenever there is a number | 1 palette display, cut down to this statement |
 | Height | ≤ 3 lines (≈ 64 px) | graphic 150–220 px, whole slot ≤ 420 px, **never scrolls** |
-| Evidence | none | "Belege (n) ›" opens `data-evidence` as a popup — raw numbers, sources, logs |
 | No number | Formatierter Text, one sentence | Formatierter Text, 2–4 sentences, free formatting |
 
 L2 short is always the topic's **result**, never its progress (the stepper
@@ -261,7 +260,7 @@ checkable before the round is built.
    `--text-color` with their label ("Budget 8 s"), not coloured.
 5. **Size per slot.** Short: ≤ 52 × 16 px, one number beside it. Long: full
    column width (≈ 360 px), 150–220 px high, never full screen, never a
-   scroll container — further detail goes into `data-evidence`.
+   scroll container — further detail is requested by the user through a note.
 6. **Accessible.** `role="img"` plus an `aria-label` that states the finding
    (the spec's `"text"`). Never colour alone: form, glyph or word
    distinguishes too. Text contrast ≥ 4.5 : 1 in both themes. A hover detail

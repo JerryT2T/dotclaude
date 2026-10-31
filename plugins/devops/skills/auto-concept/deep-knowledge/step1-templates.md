@@ -353,57 +353,106 @@ completely (SKILL.md Step 1b-ii names both). Markup, payload and gate rules:
 
 | Situation | Variant | Shape |
 |---|---|---|
-| The concept's content IS analysis results + the decisions that follow (an audit, a measurement, "where do the tokens go", a findings review) | **Full** — `data-analysis="full"` on a `decision` round | Briefing → one Themenfeld after another → one decision per stage → Review → Nächste Runde |
+| The concept's content IS analysis results + the decisions that follow (an audit, a measurement, "where do the tokens go", a findings review) | **Full** — `data-analysis="full"` on a `decision` round | Briefing → one Themenfeld after another → one decision per stage → Closing |
 | A few questions come up inside another concept — a design round, a prototype, a plan — and need their finding beside them | **Lite** — `data-analysis="lite"` (a `data-view-kind="analysis"` view in a design round, or a section in a `decision` / `free` round) | L1 + L3, one decision at a time with progress dots, **≤ 5 decisions** |
 | More than 5 such questions | Full, as its own round | — |
 
 Lite never gets topics or a briefing; Full never hides inside a design round.
 
-**The briefing (Full).** It reads top to bottom: **Analyse** (1–2 sentences,
-what was analysed and found) → **Potential** (one prominent number, e.g.
-"≈ 51 M Tokens", as a `kpi`) → the **Themenfelder** as chips linked to the
-potential by connector lines (`data-share` = their part of it) → the
-**"Los geht's"** button in the round's bar, beside the duration ("≈ 6 min"). The motivation is
-short and punchy — two sentences at most, no "was wir gemessen haben"
-sub-header, no "Deine drei Themenfelder" heading, no level numbers. A Full
-without what / why / potential fails the gate (A1).
+**The briefing (Full).** Eyebrow = the analysis title only → one **huge
+potential number** with its unit (`kpi`) → one claim sentence
+(`data-briefing-what`) → the top-3 findings as cards (the `data-briefing-topic`
+chips by `data-share`) → "N Fragen · Los geht's · ≈ X min" (`data-briefing-duration`)
+with the button centred. Two sentences at most, no "was wir gemessen haben"
+sub-header, no level numbers. A Full without what / why / potential fails the
+gate (A1). **Topic page:** "Thema n von N", title, a ring with the topic's
+share of the potential, its questions as a numbered list, a button — no
+"roter Faden" block. **Closing:** headline result, every question with a dwell
+bar and a "Nachschärfen" toggle (preset from the hesitation signal), "Jetzt
+umsetzen" / "Nächste Runde".
 
-**One screen, no page scroll (Full).** The engine fits a Full round to the
-viewport (`templates-analysis-css.md` § fitted Full): the stepper is one line
-(only the open Themenfeld shows its dots), every stage ends in the same bar
-at the same spot — the optional note across the full width right above it,
-its 📎 inside the field — and the topic intro and the review show their
-decisions as an overview grid, not a list. Content that does not fit is
-condensed (layout first, then type) and only as a last resort scrolls inside
-its own box. Author for that budget: the round's `.iteration-intro` is one
-heading + one sentence (it opens the briefing), questions fit two lines,
-option consequences one or two, and no stage is a long list.
+**The chat flow (Full + Lite).** Every stage is a centred column (≈ 780 px) of
+messages: the devops avatar (∞) left, your answer right-aligned. A question
+stage is three messages that enter one after another on its first visit —
+the finding (variable height), the question (fixed height: question + one
+"Davon hängt ab" line), the answer block (rows with label + consequence, ★
+Empfohlen preselected, capped at ≈ 45 % of the viewport). Once the next
+question arrives the previous one settles (outline, smaller, dimmer). The
+right rail lists briefing, topics and questions (hover enlarges the label
+under the mouse), the persistent composer sits at the bottom. Author for
+that budget: the round's `.iteration-intro` is one heading + one sentence,
+questions fit two lines, option consequences one or two.
 
-**Themenfelder.** At most **3** per Full with at most **7** decisions each —
-3 and 7 are the golden numbers (gate A4 warns beyond). Group by what the
-decisions change, not by where the finding came from. Topic colours are never
-red, green or orange (status colours); `analysis-palette.md` § Style rules.
+**Themenfelder.** A Full has **1–7** topics with **3–7** questions each, topic
+titles **≤ 5 words** (gate A4 warns outside). Group by what the decisions
+change, not by where the finding came from. A topic's colour is chosen by
+Claude (assigned by the engine): strongly different per topic, never blue
+(that is briefing / closing), never the note purple, never the concept variant
+colours, never red, green or orange (status colours); `analysis-palette.md` § Style rules.
 
 **Every decision** carries the anatomy of `decision-modes.md` § Anatomy: a
-real question, Gilt für, the finding it rests on (L3), outcome label +
+**Fragestellung** (below), Gilt für, the finding it rests on (L3), outcome label +
 consequence per option, recommendation + why, preselection = recommendation.
 The mode comes from `decision-modes.md` § Which mode?. Timing is never a
 decision; deferring is the "Als Issue anlegen" link.
 
-**Kurz / lang per level.** The level the reader is on is long, the others
-short; one level long at a time.
+**Beyond the seven classic modes (Phase 2).** Reach for `picture`, `compare`,
+`chain`, `place` or `points` only when the answer is seen, compared, routed,
+located or weighed rather than worded (`decision-modes.md` § 8–12). `picture`
+shows 2–4 sketches or real excerpts — never design variants (those are design
+rounds). `compare` is at most 3 options × 3 criteria, one cell = one short
+value. `chain` is a route of 2–6 steps per option. `place` needs the sketch
+with a slot per option AND the list. `points` spends `3 × items + 1` points
+(4 items = 13) in Fibonacci steps; `data-rec` is the preset allocation
+(`speed:5 cost:3 risk:2 reach:3`). A slider can carry `data-stops` so the
+consequence text follows the value.
+
+**Fragestellung — never a bare question.** The reader must grasp the problem
+without the analysis open:
+
+- `data-situation` (REQUIRED, gate A9 warns) — 1–2 sentences of Ausgangslage
+  above the question: what the analysis found *for this question*, with the
+  number. "Today 80 % of cache hits fall within 10 min, yet entries live 24 h."
+- `data-question` — the real question.
+- `data-context` — optional, one background sentence.
+- `data-stakes` — optional, "Davon hängt ab": what changes downstream.
+
+**The finding is the first chat message.** One level only — the stage's own:
+briefing → L1, topic page → L2, decision → its L3 (no L3: the topic's L2, else
+L1). Its long slot is the *visual of the analysed part this question is about*,
+not a generic chart: put the relevant number in a palette display and mark the
+item the question refers to (`bars` takes `"hl": "<label>"` — the rest steps
+back, the highlighted part pulses once). Tab **📊 Befund** = that slot; tab
+**🖥 Beispiel** = a `[data-example]` with a concrete case from the real
+application (screen excerpt, code, transcript) — a diagram only when there is
+nothing visual. No evidence popups ("Belege"): deeper detail is requested by
+the user through a note.
+
+**Notes and "Keine passt".** Every decision ships its
+`<textarea data-comment="{id}-note">`; the engine turns it into the storage
+target of the persistent composer (one line, grows to 3, max one tag; a tagged
+note stays on the stage, an untagged one advances). Every mode except slider / order / points
+(single, multi, yesnoalt, verify, wording, picture, compare, chain, place) also gets the "Keine passt? Schreib deine Antwort unten ins
+Notizfeld." link (sets `dm-{id}-none`, payload `none: true`, the note is then
+the answer) — Claude reads such an entry as "own answer in `note`", never as
+the preselected value. Each option may carry a `data-opt-preview` ("So sähe das
+aus").
+
+**Kurz / lang per level.** Only the long slot is shown (as the finding message);
+the short slot is the one-sentence summary for places that need it.
 
 | Level | Title (`data-title`) | Short | Long |
 |---|---|---|---|
-| L1 · Briefing / overall | the briefing's stepper name | the potential as KPI or mini graphic + 1 sentence | the overall display (e.g. Wirkungsmatrix, Rangbalken per topic) + 2–4 sentences — shown in the briefing, collapses after it, reopenable |
-| L2 · Themenfeld (Full only) | the topic's stepper name | always the topic's **result**, never its progress | the display that shows what the topic's problem is made of (e.g. Wasserfall) + 2–4 sentences |
-| L3 · this decision | the decision's stepper name | after deciding: the answer in a sentence | undecided: the finding; decided: the consequence of the chosen option |
+| L1 · Briefing / overall | the briefing's rail name | the potential as KPI or mini graphic + 1 sentence | the overall display (e.g. Wirkungsmatrix, Rangbalken per topic) + 2–4 sentences |
+| L2 · Themenfeld (Full only) | the topic's name, ≤ 5 words | always the topic's **result**, never its progress | the display that shows what the topic's problem is made of (e.g. Wasserfall) + 2–4 sentences |
+| L3 · this decision | the decision's rail name | the answer in a sentence | the finding: one palette display + 2–4 sentences, plus the optional `[data-example]` |
 
 Short = one sentence (≤ 140 characters) + KPI or mini graphic, strongly
 preferring the mini graphic whenever there is a number; no number →
-Formatierter Text. Long = one palette display + 2–4 sentences, never scrolls;
-evidence goes into `data-evidence` (opens as popup). Display choice, slot
-budgets and custom-type rules: `analysis-palette.md`.
+Formatierter Text. Long = one palette display + 2–4 sentences, never scrolls.
+Continuity lives in the first sentence of each finding ("Nach deiner Antwort zu
+… bleibt …"), not in a separate thread block. Display choice, slot budgets and
+custom-type rules: `analysis-palette.md`.
 
 ## 1c · Mapping spec rules
 

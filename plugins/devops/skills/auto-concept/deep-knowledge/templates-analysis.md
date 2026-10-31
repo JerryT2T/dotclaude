@@ -17,8 +17,8 @@ whose content IS analysis results + decisions → Full. A few questions that
 come up inside another concept (≤ 5) → Lite. More than 5 → Full.
 
 **Wave status.** Wave 1 is the contract and the collect code; wave 2 (below,
-§ Styling, § Engine UI) is the visual layer: CSS, stepper, level
-choreography, decision-mode widgets and the `CONCEPT_VIZ` palette renderers.
+§ Styling, § Engine UI) is the visual layer: the chat flow, the right rail, the
+persistent composer, the decision-mode widgets and the `CONCEPT_VIZ` palette renderers.
 The visual layer only enhances the authored markup — collect, bake, freeze and
 the gate never depend on it.
 
@@ -29,7 +29,7 @@ the gate never depend on it.
 ```html
 <section data-iteration="1" data-iteration-template="decision" data-analysis="full" data-active>
 
-  <!-- Briefing: Analyse -> Potential -> topics; the bar below says "Los geht's". Required: what, why, potential. -->
+  <!-- Briefing: eyebrow (the analysis title) -> huge potential number -> one claim sentence -> top-3 topic cards -> "N Fragen · Los geht's · ≈ X min". Required: what, why, potential. -->
   <section id="briefing" data-analysis-briefing data-nav-label="Briefing">
     <p data-briefing-what>1-2 sentences: what was analysed and found.</p>
     <p data-briefing-why>One sentence: why it matters now.</p>
@@ -46,12 +46,11 @@ the gate never depend on it.
       <div data-slot="long">
         <div data-viz="bars" data-viz-spec='{"items":[{"label":"Cache","value":31},{"label":"Hooks","value":20}],"unit":"M"}'></div>
         <p>2-4 sentences.</p>
-        <div data-evidence hidden>Belege: raw numbers, sources (opens as popup).</div>
       </div>
     </div>
   </section>
 
-  <!-- A topic (Themenfeld): at most 3 per Full, at most 7 decisions each. -->
+  <!-- A topic (Themenfeld): 1–7 per Full, 3–7 questions each, title ≤ 5 words. -->
   <section id="t-cache" data-topic data-nav-label="Cache">
     <div data-alevel="2" data-title="Cache">
       <div data-slot="short">…</div>   <!-- L2 short = always the group's result -->
@@ -64,8 +63,10 @@ the gate never depend on it.
              data-rec-why="Measured: 80 % of hits happen within 10 min."
              data-applies-to="all hooks" data-finding="f-ttl">
       <p data-applies>Gilt für: alle Hooks</p>
+      <p data-situation>Today 80 % of cache hits fall within 10 min, yet every entry lives 24 h.</p>
       <h3 data-question>How long may a cached answer live?</h3>
       <p data-context>One sentence of background under the question.</p>
+      <p data-stakes>Token use of every hook and how fresh their answers are.</p>
       <div data-options>
         <label data-opt="short" data-recommended>
           <input type="radio" name="dm-d-ttl" value="short" checked>
@@ -80,17 +81,20 @@ the gate never depend on it.
         <label data-opt="none">…</label>
       </div>
       <textarea data-comment="d-ttl-note" placeholder="Note (optional)"></textarea>
+      <input type="hidden" name="dm-d-ttl-none" value="">      <!-- "1" = "Keine passt", the note is the answer (the engine adds it when missing) -->
+      <input type="hidden" name="dm-d-ttl-hes" value="">       <!-- hesitation record {ms,revisits,median[,sharpen]} written by the engine -->
       <input type="hidden" name="dm-d-ttl-touched" value="">   <!-- "1" once the stage was open ≥ 3 s or edited -->
       <input type="hidden" name="dm-d-ttl-issue" value="">     <!-- "1" = "Als Issue anlegen" -->
       <input type="hidden" name="dm-d-ttl-epic" value="">      <!-- optional epic name for that issue -->
-      <!-- L3: the finding this decision rests on (shown right, ≈ 33 %). -->
+      <!-- L3: the finding this decision rests on (the first chat message: tab "Befund"; a [data-example] makes the second tab "Beispiel"). -->
       <div data-alevel="3" data-title="Cache lifetime">
         <div data-slot="short">…</div>
         <div data-slot="long">
           <div data-viz="bar" data-viz-spec='{"value":80,"max":100,"label":"hits within 10 min","unit":"%"}'></div>
-          <p>2-4 sentences. After deciding, this slot shows the consequence of the choice.</p>
-          <div data-evidence hidden>…</div>
+          <p>2-4 sentences.</p>
         </div>
+        <!-- Beispiel: a concrete case from the real application (screen excerpt / code / transcript); a diagram only when there is nothing visual. -->
+        <div data-example><pre>…</pre></div>
       </div>
     </section>
   </section>
@@ -105,19 +109,22 @@ Attribute reference:
 | `data-analysis-briefing` | one `section` per Full | the briefing screen; REQUIRED children `data-briefing-what`, `data-briefing-why`, `data-briefing-potential` (non-empty) |
 | `data-briefing-topic="<topic id>"` + `data-share` | `a` in the briefing | connector target of the "Striche und Verbindungen"; share of the potential in % |
 | `data-briefing-duration` | briefing | the time the bar names beside "Los geht's" |
-| `data-topic` | `section[id][data-nav-label]` | a Themenfeld; ≤ 3 per Full |
-| `data-alevel="1\|2\|3"` + `data-title` | block | analysis level: 1 briefing/overall, 2 topic, 3 this decision. `data-title` equals the stepper / header name exactly. Lite has L1 + L3 only |
+| `data-topic` | `section[id][data-nav-label]` | a Themenfeld; 1–7 per Full, 3–7 questions each, title ≤ 5 words (gate warns outside) |
+| `data-alevel="1\|2\|3"` + `data-title` | block | analysis level: 1 briefing/overall, 2 topic, 3 this decision. `data-title` equals the rail / topic-page name exactly. Lite has L1 + L3 only. The stage shows ONE level as its first message (brief → L1, topic → L2, decision → L3, falling back to L2, then L1) |
 | `data-slot="short\|long"` | child of a level | short = 1 sentence + KPI or mini graphic (formatted text only when there is no number); long = one palette display + 2-4 sentences, never scrolls |
-| `data-evidence` | in a long slot | "Belege", opens as popup, never inline |
+| `data-example` | inside a level (next to / inside the long slot) | the "Beispiel" tab of the finding message: a concrete case from the real application |
+| `data-opt-preview` | inside an option | optional "So sähe das aus" line of that option |
 | `data-viz="<type>"` + `data-viz-spec='<json>'` | any element in a slot | palette display (below) |
 | `data-decision="<id>"` + `data-decision-mode` | the decision element | id (`[a-z0-9_-]+`) and mode (below). It is also `section[id][data-nav-label]` in Full so the TOC lists it |
-| `data-label` | decision | the stepper tooltip / review name |
+| `data-label` | decision | the rail tooltip / closing name |
 | `data-rec` | decision | recommended option, ALWAYS preselected (value shapes below) |
 | `data-rec-why` | decision | the reason, shown in the ★ tooltip |
 | `data-applies-to` | decision | "Gilt für" text; the visible quiet line carries `data-applies` |
 | `data-finding="<id>"` | decision | the finding it rests on (the L3 block inside) |
 | `data-finding-quant="true\|false"` | decision | overrides the gate's guess whether the finding is quantitative |
-| `data-question`, `data-context`, `data-options`, `data-opt`, `data-opt-label`, `data-opt-consequence`, `data-recommended` | inside a decision | question (a real question), one background sentence, option cards (outcome verb + consequence line), the ★ option |
+| `data-situation` | inside a decision | Ausgangslage: 1–2 sentences above the question, what the analysis found for it (gate A9 warns when missing) |
+| `data-stakes` | inside a decision | optional "Davon hängt ab" line below the context |
+| `data-question`, `data-context`, `data-options`, `data-opt`, `data-opt-label`, `data-opt-consequence`, `data-recommended` | inside a decision | question (a real question), one background sentence, answer rows (outcome verb + consequence line), the ★ option |
 
 ### Lite
 
@@ -131,15 +138,15 @@ Attribute reference:
 </section>
 ```
 
-Lite is the Full stage without groups: L1 + L3, one decision at a time with
-progress dots, ≤ 5 decisions. In a design round the view is a normal
+Lite is the same chat flow without topic pages and without an empty start
+stage: it opens on its first question, L1 + L3, progress dots, ≤ 5 decisions. In a design round the view is a normal
 `section[data-view]` (`templates-design-views.md`); its decisions are
 collected by the design branch's view-decision loop, which dispatches
 mode-aware decisions to `collectModeDecision()` below.
 
 ## Decision modes
 
-Seven modes, one typed value each. A decision WITHOUT `data-decision-mode`
+Twelve modes (seven classic, five Phase-2 forms in § Phase 2 answer forms), one typed value each. A decision WITHOUT `data-decision-mode`
 is the legacy include/discard bi-state (`§ Bi-State Variant Evaluation`) and
 keeps its `evaluation` payload untouched.
 
@@ -151,7 +158,9 @@ keeps its `evaluation` payload untouched.
 | `slider` | a quantity / threshold on a scale | `input[type=range][name="dm-{id}"][min][max][step][value]`; `data-unit` on the decision | number | number (`null` when empty) |
 | `order` | a priority or sequence | `input[type=hidden][name="dm-{id}"]` = comma-joined ids; the sortable list is rendered from it | comma-joined ids | ids in the chosen order (string[]) |
 | `verify` | Claude states something and the user confirms it | radios `dm-{id}` values `ok` `partial` `wrong`, plus `input[name="dm-{id}-fix"]` | verdict | verdict string; the correction in entry `fix` |
-| `wording` | a name / phrasing, with suggestions | radios `dm-{id}` with the suggestion ids (+ `custom`), each `data-text="…"`; `input[type=text][name="dm-{id}-text"]` for `custom` | suggestion id | the final wording (string); entry `choice` = suggestion id or `custom` |
+| \`picture\` / \`compare\` / \`chain\` / \`place\` | seen, compared, routed, located — see § Phase 2 answer forms | radios \`dm-{id}\` like \`single\`, with media / cells / steps / slots inside the options | option id | option id (string) |
+| \`points\` | a budget split over 2-8 items | hidden \`dm-{id}.{item}\` per item (0-8 points) | \`item:points\` pairs | \`{ item: points }\` |
+| \`wording\` | a name / phrasing, with suggestions | radios `dm-{id}` with the suggestion ids (+ `custom`), each `data-text="…"`; `input[type=text][name="dm-{id}-text"]` for `custom` | suggestion id | the final wording (string); entry `choice` = suggestion id or `custom` |
 
 Label rules for options: outcome verbs, no polarity-only labels ("An" /
 "Aus"), no double negation, one consequence line per option
@@ -161,7 +170,8 @@ now); the discreet "Als Issue anlegen (ggf. mit Epic)" link sets
 
 Common to every decision:
 
-- ONE note: `<textarea data-comment="{id}-note">`, inline, never a second button or an option.
+- ONE note: `<textarea data-comment="{id}-note">` is the storage target of the persistent composer at the bottom of the stage (the engine hides the textarea; briefing, topic page and closing get a hidden note of their own). A note sent WITH a tag (`[tag] text`, max one) stays on the stage, one WITHOUT advances (not on briefing / closing).
+- "Keine passt? Schreib deine Antwort unten ins Notizfeld." (every mode but `slider` / `order` / `points`): a text link under the answer block; sets `dm-{id}-none` = `"1"`, clears the pick and focuses the composer. Payload `none: true`, `value` empty, `deviates: true` — the note carries the answer.
 - `dm-{id}-touched` (hidden): `""` until the stage was open ≥ 3 s or the user changed something, then `"1"`. A decision whose value is `""` stays **untouched**: the payload says so and the review lists it last.
 - The recommendation is the preselection: the markup ships the `data-rec` option checked / the slider at the value / the order as recommended. A user who only presses "Weiter" after ≥ 3 s has decided "keep the recommendation".
 
@@ -174,7 +184,8 @@ Lite) emit, per mode-aware decision (the legacy bi-state keeps
 ```json
 { "id": "d-ttl", "label": "Cache lifetime", "mode": "single", "value": "short",
   "rec": "short", "deviates": false, "untouched": false, "note": "",
-  "appliesTo": "all hooks", "finding": "f-ttl", "issue": false, "epic": "" }
+  "appliesTo": "all hooks", "finding": "f-ttl", "issue": false, "epic": "", "none": false,
+  "hesitation": { "ms": 4200, "noteWords": 0, "revisits": 0, "flagged": false } }
 ```
 
 `value` per mode: `single` `"opt"` · `multi` `["a","c"]` · `yesnoalt`
@@ -185,6 +196,16 @@ normalisation; `untouched` is `touched !== "1"`. In a design round the entry
 also carries `view` (and `design` for a view tied to a variant). Untouched
 decisions are still reported with their preselected value — Claude treats them
 as "not looked at", not as "agreed".
+
+**Hesitation.** `hesitation.ms` is the dwell on the decision, counted only while
+the stage is visible AND the window focused (timestamps, back-and-forth
+summed); `noteWords` the words of the note (a leading `[tag] ` excluded);
+`revisits` the returns to the stage plus every change of the answer after the
+first. `flagged` is true when at least TWO of: dwell > 2× the median of this
+analysis and ≥ 20 s · note > 12 words · ≥ 2 revisits/changes
+(`hesitationFlag()` below). The closing preset its "Nachschärfen" toggles from
+it; the user's toggle (`sharpen`) overrides the rule. Consumers: `step5-process.md`
+§ Hesitation signal.
 
 **Bake / freeze.** Every value above lives in a named form control, so the
 existing machinery carries it: `collectAllFormFields` ships it in `allFields`,
@@ -236,6 +257,13 @@ function collectModeDecision(el) {
     const ids = text(n).split(',').map(s => s.trim()).filter(Boolean);
     entry.value = ids;
     deviates = ids.join(',') !== rec.replace(/\s+/g, '');
+  } else if (mode === 'points') {
+    const pts = {};
+    ctl.filter(c => (c.name || '').indexOf(n + '.') === 0).forEach(c => { pts[c.name.slice(n.length + 1)] = Math.max(0, Math.round(Number(c.value) || 0)); });
+    entry.value = pts;
+    const want = {};
+    rec.split(/[\s,]+/).filter(Boolean).forEach(t => { const k = t.split(':'); want[k[0]] = Math.max(0, Math.round(Number(k[1]) || 0)); });
+    deviates = Object.keys(pts).concat(Object.keys(want)).some(k => (pts[k] || 0) !== (want[k] || 0));
   } else if (mode === 'verify') {
     const p = picked(n);
     entry.value = p ? p.value : '';
@@ -254,16 +282,38 @@ function collectModeDecision(el) {
   }
   entry.rec = rec;
   entry.deviates = deviates;
+  entry.none = text(n + '-none') === '1';
+  if (entry.none) { entry.value = mode === 'multi' ? [] : mode === 'points' ? {} : ''; entry.deviates = true; }
   entry.untouched = text(n + '-touched') !== '1';
   entry.note = ((noteEl && noteEl.value) || '').trim();
   entry.appliesTo = el.dataset.appliesTo || '';
   entry.finding = el.dataset.finding || '';
   entry.issue = text(n + '-issue') === '1';
   entry.epic = text(n + '-epic');
+  // Hesitation: the page writes { ms, revisits, median[, sharpen] } into dm-{id}-hes.
+  let hs = {};
+  try { hs = JSON.parse(text(n + '-hes') || '{}') || {}; } catch (e) { hs = {}; }
+  const hz = { ms: Math.max(0, Math.round(Number(hs.ms) || 0)), noteWords: typeof noteWordCount === 'function' ? noteWordCount(entry.note) : String(entry.note).split(/\s+/).filter(Boolean).length, revisits: Math.max(0, Math.round(Number(hs.revisits) || 0)), flagged: false };
+  hz.flagged = typeof hs.sharpen === 'boolean' ? hs.sharpen : (typeof hesitationFlag === 'function' && hesitationFlag(hz, Number(hs.median) || 0));
+  entry.hesitation = hz;
   return entry;
 }
 
+/** Words of a note, a leading "[tag] " excluded. */
+function noteWordCount(note) {
+  return String(note || '').replace(/^\s*\[[^\]\n]{1,80}\]\s?/, '').split(/\s+/).filter(Boolean).length;
+}
+
+/** Hesitation flag: at least TWO of — dwell over 2x the analysis median and >= 20 s, a note over 12 words, >= 2 revisits / changes. */
+function hesitationFlag(hz, medianMs) {
+  const slow = hz.ms >= 20000 && hz.ms > 2 * (medianMs || 0);
+  const wordy = hz.noteWords > 12;
+  const back = hz.revisits >= 2;
+  return [slow, wordy, back].filter(Boolean).length >= 2;
+}
+
 function collectModeDecisions(scope) {
+  if (window.conceptAnalysis && typeof window.conceptAnalysis.flush === 'function') window.conceptAnalysis.flush();
   return [...(scope || document).querySelectorAll('[data-decision][data-decision-mode]')].map(collectModeDecision);
 }
 ```
@@ -291,3 +341,79 @@ Core types every engine build must provide (the full ≥ 30 type catalogue with
 | `compare` | `{ "before": { "label": "…", "value": 10 }, "after": { "label": "…", "value": 4 }, "unit": "s" }` |
 | `flow` | `{ "steps": [ { "label": "…", "value": "…" } ] }` |
 
+## Phase 2 answer forms
+
+Five more modes. All sit in the same answer block (raised surface, rows or
+cards, ★ Empfohlen on the recommendation, recommendation preselected, "Keine
+passt?" link, hesitation tracking) and use the control convention of the
+table above; four of them are plain radio decisions, so collect, bake, freeze
+and the gate's preselection check treat them like `single`.
+
+```html
+<!-- picture: 2-4 images; a sketch (inline SVG) or a real excerpt (img / pre). Never variant prototyping. -->
+<div data-options>
+  <label data-opt="flat"><input type="radio" name="dm-d-x" value="flat" checked>
+    <span data-opt-media><svg viewBox="0 0 160 90">…</svg></span>
+    <span data-opt-label>Flat list</span><span data-opt-consequence>One line per hook.</span></label>
+  <label data-opt="real"><input type="radio" name="dm-d-x" value="real">
+    <span data-opt-media><pre>real excerpt of the app</pre></span>…</label>
+</div>
+
+<!-- compare: max 3 options x 3 criteria; the option is the column, a cell is one criterion -->
+<label data-opt="a"><input type="radio" name="dm-d-x" value="a">
+  <span data-opt-label>Cache</span>
+  <span data-opt-cell data-crit="Tokens">-31 M</span>
+  <span data-opt-cell data-crit="Freshness">10 min</span></label>
+
+<!-- chain: every option is one route; its steps render as a chain -->
+<label data-opt="r1"><input type="radio" name="dm-d-x" value="r1">
+  <span data-opt-label>Via the bridge</span>
+  <ol data-opt-steps><li>Hook</li><li data-step-new>Bridge</li><li>Tool</li></ol></label>
+
+<!-- place: a sketch with slots AND the list; both select the same value -->
+<div data-place-sketch><svg viewBox="0 0 200 120">
+  <rect data-slot-for="top" x="10" y="8" width="180" height="26"/>
+  <rect data-slot-for="side" x="10" y="42" width="48" height="70"/></svg></div>
+<div data-options> …radios with the same ids (top, side)… </div>
+
+<!-- points: one hidden input per item, its preset = the recommendation -->
+<div data-options>
+  <div data-opt="speed"><span data-opt-label>Speed</span><span data-opt-consequence>…</span>
+    <input type="hidden" name="dm-d-x.speed" value="5"></div> …
+</div>
+```
+
+| Mode | `data-rec` | `value` | Engine |
+|---|---|---|---|
+| `picture` | option id | option id | cards in a grid; media above the label |
+| `compare` | option id | option id | the options become columns; `data-crit` names the row. Gate warns above 3 options or 3 cells |
+| `chain` | route id | route id | `[data-opt-steps]` renders as arrow-linked steps; `data-step-new` marks a new step |
+| `place` | slot id | slot id | `[data-slot-for="<opt id>"]` on the sketch selects the radio; the list row and the slot highlight each other |
+| `points` | `item:points` pairs, space separated (`speed:5 cost:3 risk:2 reach:3`) | `{ "speed": 5, "cost": 3, … }` (0 for unspent) | buttons 1 · 2 · 3 · 5 · 8 per item (click again = 0); budget `pointsBudget(n) = 3n + 1` (2 → 7, 3 → 10, **4 → 13**, 5 → 16); a live "Übrig: x von y" line; a step that would exceed the budget is disabled |
+
+`points` has no "Keine passt" link (the value is always an answer) and its
+inputs are named `dm-{id}.{item}`; the recommendation preset must be on
+Fibonacci steps and within the budget (gate error `decision-preselect`).
+Gate warnings: `picture-count` (not 2–4), `picture-media` (option without
+`[data-opt-media]`), `compare-size` (> 3 × 3), `chain-steps` (route without
+`[data-opt-steps]`), `place-sketch` / `place-slot` (no sketch, or a slot that
+names no option), `points-count` (not 2–8 items).
+
+**Slider live consequences.** `data-stops='[{"at":4,"text":"…"},{"at":8,"text":"…"}]'`
+on a slider decision: the line under the scale shows the text of the last stop
+at or below the value (the first stop below the first). The ★ marker stays.
+
+**"Davon hängt ab".** The one-line `data-stakes` of the fixed-height question
+message carries the full text as its tooltip.
+
+**Closing → next analysis.** A Full closing offers "Continue with: …" only when
+another analysis follows on the same page and is visible (document order); the
+link opens that analysis at its first stage. No such analysis, no link. (The
+design round's question views are no entries of the analysis; they are not
+linked.)
+
+**Engine safety nets.** Missing `dm-{id}-none` / `-hes` hidden inputs and a
+missing `{id}-note` textarea are added by the engine; `concept-build.js bake`
+injects `-none` / `-hes` into a fragment that lacks them, so `none: true` and
+the hesitation survive the freeze. Author them anyway (gate warning
+`decision-note`); a Lite round needs an `id` (gate warning `lite-id`).

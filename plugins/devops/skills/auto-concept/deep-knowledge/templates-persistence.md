@@ -372,6 +372,16 @@ function saveState() {
     if (el.value === '' && state[_sk]) _draftCleared.push(_sk);
     state[_sk] = el.value;
   });
+  // Engine state of an analysis decision (dm-{id}-none / -hes / -touched, points, order ...):
+  // hidden inputs are never user-typed, so they skip the data-touched guard above and are
+  // keyed by NAME. Always written (also ''): a cleared points item or a withdrawn "none" must
+  // not fall back to the engine's preset after a reload.
+  document.querySelectorAll('input[type="hidden"][name^="dm-"]').forEach(el => {
+    if (!persistable(el) || el.disabled) return;
+    const _hk = 'text:' + _ns + el.name;
+    if (el.value === '' && state[_hk]) _draftCleared.push(_hk);
+    state[_hk] = el.value;
+  });
   document.querySelectorAll('input[type="range"]').forEach(el => {
     if (!persistable(el)) return;
     if (el.id || el.name) state['range:' + (el.id || el.name)] = el.value;
@@ -594,7 +604,9 @@ function restoreState() {
         // The page-wide fallback is what the feedback dock needs — it is an
         // overlay that lives outside section[data-iteration].
         const el = _pick(`[data-comment="${id}"]`)
-          || _pick(`textarea#${CSS.escape(id)}, input#${CSS.escape(id)}`);
+          || _pick(`textarea#${CSS.escape(id)}, input#${CSS.escape(id)}`)
+          // The engine's hidden dm-* state (see saveState): the LIVE round only, never a frozen copy.
+          || (/^dm-/.test(id) ? (_live || document).querySelector(`input[type="hidden"][name="${id}"]:not([disabled])`) : null);
         // Never overwrite a field the user has already typed into during THIS
         // page life. restoreState() is re-entrant (the design layout re-runs
         // it after building the dock, and hydrateDraftFromBridge() runs it
@@ -620,6 +632,9 @@ function restoreState() {
   if (typeof window.refreshDesignOverview === 'function') window.refreshDesignOverview();
   // Same for the document pins' store (§ Document pins).
   if (typeof window.refreshDocumentPins === 'function') window.refreshDocumentPins();
+  // Same for the analysis engine: restored hidden state (none, points, hesitation) and notes
+  // were set by value, so its controls, rail and open composer must re-read them.
+  if (window.conceptAnalysis && typeof window.conceptAnalysis.restored === 'function') window.conceptAnalysis.restored();
   if (typeof refreshMappings === 'function') refreshMappings();
 }
 ```
