@@ -171,7 +171,7 @@ now); the discreet "Als Issue anlegen (ggf. mit Epic)" link sets
 Common to every decision:
 
 - ONE note: `<textarea data-comment="{id}-note">` is the storage target of the persistent composer at the bottom of the stage (the engine hides the textarea; briefing, topic page and closing get a hidden note of their own). A note sent WITH a tag (`[tag] text`, max one) stays on the stage, one WITHOUT advances (not on briefing / closing).
-- "Keine passt? Schreib deine Antwort unten ins Notizfeld." (every mode but `slider` / `order`): a text link under the answer block; sets `dm-{id}-none` = `"1"`, clears the pick and focuses the composer. Payload `none: true`, `value` empty, `deviates: true` — the note carries the answer.
+- "Keine passt? Schreib deine Antwort unten ins Notizfeld." (every mode but `slider` / `order` / `points`): a text link under the answer block; sets `dm-{id}-none` = `"1"`, clears the pick and focuses the composer. Payload `none: true`, `value` empty, `deviates: true` — the note carries the answer.
 - `dm-{id}-touched` (hidden): `""` until the stage was open ≥ 3 s or the user changed something, then `"1"`. A decision whose value is `""` stays **untouched**: the payload says so and the review lists it last.
 - The recommendation is the preselection: the markup ships the `data-rec` option checked / the slider at the value / the order as recommended. A user who only presses "Weiter" after ≥ 3 s has decided "keep the recommendation".
 
@@ -313,6 +313,7 @@ function hesitationFlag(hz, medianMs) {
 }
 
 function collectModeDecisions(scope) {
+  if (window.conceptAnalysis && typeof window.conceptAnalysis.flush === 'function') window.conceptAnalysis.flush();
   return [...(scope || document).querySelectorAll('[data-decision][data-decision-mode]')].map(collectModeDecision);
 }
 ```
@@ -405,6 +406,14 @@ at or below the value (the first stop below the first). The ★ marker stays.
 **"Davon hängt ab".** The one-line `data-stakes` of the fixed-height question
 message carries the full text as its tooltip.
 
-**Closing → next concept entry.** The link follows the concept page's own
-section nav (`.section-nav-item[data-section-id]`): the first item after the
-analysis whose section lies outside it; no nav, no link.
+**Closing → next analysis.** A Full closing offers "Continue with: …" only when
+another analysis follows on the same page and is visible (document order); the
+link opens that analysis at its first stage. No such analysis, no link. (The
+design round's question views are no entries of the analysis; they are not
+linked.)
+
+**Engine safety nets.** Missing `dm-{id}-none` / `-hes` hidden inputs and a
+missing `{id}-note` textarea are added by the engine; `concept-build.js bake`
+injects `-none` / `-hes` into a fragment that lacks them, so `none: true` and
+the hesitation survive the freeze. Author them anyway (gate warning
+`decision-note`); a Lite round needs an `id` (gate warning `lite-id`).

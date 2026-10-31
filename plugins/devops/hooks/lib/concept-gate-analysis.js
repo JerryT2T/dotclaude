@@ -220,6 +220,16 @@ function findAnalysisIssues(html) {
     const n = decisions.filter(d => inside(l, d)).length;
     if (n > LITE_MAX) warn('lite-max', `Lite analysis holds ${n} decisions — more than ${LITE_MAX} belong in a Full analysis`, l.start);
   }
+  // A5b — a Lite round needs its own id (it keys the closing note and the persisted state)
+  for (const l of lites) {
+    if (!attr(l, 'id') && !attr(l, 'data-view')) warn('lite-id', 'Lite analysis has neither an id nor a data-view — give it an id so its state and closing note do not collide with another Lite round', l.start);
+  }
+  // A5c — the composer stores the note in the decision's own textarea
+  for (const d of decisions) {
+    const id = attr(d, 'data-decision');
+    if (!id || !MODES.includes(attr(d, 'data-decision-mode'))) continue;
+    if (!doc.nodes.some(n => n.tag === 'textarea' && attr(n, 'data-comment') === id + '-note' && inside(d, n))) warn('decision-note', `decision "${id}": no <textarea data-comment="${id}-note"> — the composer stores the note there (the engine adds one when missing, but author it)`, d.start);
+  }
 
   // A6 — a quantitative finding wants a visual
   for (const d of decisions) {

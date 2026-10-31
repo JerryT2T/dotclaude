@@ -215,8 +215,8 @@ describe("gate rules A1-A8", () => {
   });
   test("A5 Lite above five decisions warns", () => {
     const q = k => MODES.s.replace(/"s"/g, `"q${k}"`).replace(/dm-s/g, `dm-q${k}`).replace(/s-note/g, `q${k}-note`);
-    expect(kinds(findAnalysisIssues(`<section data-analysis="lite">${[1, 2, 3, 4, 5, 6].map(q).join("")}</section>`), "warnings")).toContain("lite-max");
-    expect(findAnalysisIssues(`<section data-analysis="lite">${[1, 2, 3, 4, 5].map(q).join("")}</section>`).warnings).toEqual([]);
+    expect(kinds(findAnalysisIssues(`<section data-analysis="lite" id="lite">${[1, 2, 3, 4, 5, 6].map(q).join("")}</section>`), "warnings")).toContain("lite-max");
+    expect(findAnalysisIssues(`<section data-analysis="lite" id="lite">${[1, 2, 3, 4, 5].map(q).join("")}</section>`).warnings).toEqual([]);
   });
   test("A6 a quantitative finding without a visual warns; with a palette visual it does not", () => {
     const l3 = inner => MODES.s.replace("</h3>", `</h3><div data-alevel="3" data-title="x"><div data-slot="long">${inner}</div></div>`);

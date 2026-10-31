@@ -105,7 +105,7 @@ html[data-theme="light"] .an-kind { color: var(--an-ac); }
 [data-analysis] [data-opt-consequence] { grid-column: 2; grid-row: 2; font-size: 12.5px; color: var(--an-tx2); }
 [data-analysis] [data-opt-preview] { grid-column: 3; grid-row: 1 / span 2; font-size: 12.5px; color: var(--an-mu); }
 [data-analysis] [data-opt-preview] .an-k-l { color: var(--an-tx2); font-weight: 600; }
-.an-badge { display: inline-block; margin-left: 8px; padding: 0 8px; border-radius: 999px; font-size: 10.5px; font-weight: 700; line-height: 18px; vertical-align: 2px; background: linear-gradient(120deg, var(--an-b2), var(--an-b3)); color: #0d1117; white-space: nowrap; }
+.an-badge { position: relative; z-index: 1; display: inline-block; margin-left: 8px; padding: 0 8px; border-radius: 999px; font-size: 10.5px; font-weight: 700; line-height: 18px; vertical-align: 2px; background: linear-gradient(120deg, var(--an-b2), var(--an-b3)); color: #0d1117; white-space: nowrap; }
 [data-analysis] [data-opt][data-opt="alt"] { min-height: 0; }
 /* yes / no / other as three fields */
 [data-analysis] [data-decision-mode="yesnoalt"] [data-options] { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 4px; }
@@ -175,8 +175,9 @@ html[data-theme="light"] .an-kind { color: var(--an-ac); }
 .an-comp-ed[contenteditable="false"] { cursor: default; }
 .an-tagw { display: inline-block; height: 18px; padding: 0 4px 0 7px; margin-right: 6px; border-radius: 5px; font-size: 12.5px; font-weight: 600; line-height: 18px; vertical-align: 1px; white-space: nowrap; user-select: none; background: rgba(121,192,255,.14); color: var(--an-b3); }
 html[data-theme="light"] .an-tagw { color: var(--an-ac); }
-.an-tagw > em { font-style: normal; margin-left: 5px; padding: 0 3px; border-radius: 3px; color: var(--an-mu); cursor: pointer; }
-.an-tagw > em:hover { background: rgba(255,255,255,.1); color: var(--an-tx); }
+.an-tagw > button { appearance: none; border: 0; background: none; font: inherit; line-height: inherit; margin-left: 5px; padding: 0 3px; border-radius: 3px; color: var(--an-mu); cursor: pointer; }
+.an-tagw > button:hover, .an-tagw > button:focus-visible { background: rgba(255,255,255,.1); color: var(--an-tx); }
+.an-tagw > button:focus-visible { outline: 2px solid var(--an-ac); outline-offset: 1px; }
 .an-comp-b { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--an-s3); color: var(--an-tx2); font-size: 16px; }
 .an-comp-b:disabled { opacity: .4; cursor: default; }
 .an-comp-b[hidden] { display: none; }
@@ -374,8 +375,11 @@ html[data-theme="light"] .an-tagw { color: var(--an-ac); }
 .an-sl-cons { margin-top: 2px; padding: 8px 12px; border-radius: 10px; background: rgba(88,166,255,.08); color: var(--an-tx2); font-size: 13px; line-height: 1.4; }
 /* picture: 2-4 images as cards */
 [data-analysis] [data-decision-mode="picture"] [data-options] { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
-[data-analysis] [data-decision-mode="picture"] [data-opt] { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 10px; }
-[data-analysis] [data-decision-mode="picture"] [data-opt]::before { position: absolute; top: 18px; left: 18px; z-index: 1; background: #1c2230; }
+[data-analysis] [data-decision-mode="picture"] [data-opt] { display: grid; grid-template-columns: 22px minmax(0, 1fr); grid-template-rows: auto auto auto; column-gap: 10px; row-gap: 8px; align-items: center; margin: 0; padding: 10px; text-align: left; }
+[data-analysis] [data-decision-mode="picture"] [data-opt-media] { grid-column: 1 / -1; grid-row: 1; }
+[data-analysis] [data-decision-mode="picture"] [data-opt]::before { grid-column: 1; grid-row: 2; position: static; }
+[data-analysis] [data-decision-mode="picture"] [data-opt-label] { grid-column: 2; grid-row: 2; text-align: left; }
+[data-analysis] [data-decision-mode="picture"] [data-opt-consequence] { grid-column: 1 / -1; grid-row: 3; text-align: left; }
 [data-analysis] [data-opt-media] { display: block; border-radius: 10px; overflow: hidden; background: #0d1117; border: 1px solid var(--an-bd2); max-height: 140px; }
 [data-analysis] [data-opt-media] svg, [data-analysis] [data-opt-media] img { display: block; width: 100%; height: auto; max-height: 140px; object-fit: contain; }
 [data-analysis] [data-opt-media] pre { margin: 0; padding: 10px 12px; font: 11.5px/1.45 ui-monospace, Consolas, monospace; color: var(--an-tx2); overflow: hidden; max-height: 140px; white-space: pre-wrap; }

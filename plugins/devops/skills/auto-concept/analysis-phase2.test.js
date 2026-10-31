@@ -166,13 +166,7 @@ describe("slider live consequences + stakes tooltip + next entry", () => {
     ca.go(inst, inst.stages.findIndex(s => s.kind === "review"));
     return [...doc.querySelectorAll(".an-close .an-link")].map(b => b.textContent).filter(t => /→/.test(t));
   };
-  test("the closing links to the next entry of the concept nav order, not the next sibling", () => {
-    const nav = `<nav><a class="section-nav-item" data-section-id="intro">Intro</a><a class="section-nav-item" data-section-id="briefing">B</a><a class="section-nav-item" data-section-id="t1">T</a><a class="section-nav-item" data-section-id="plan">The plan</a></nav>`;
-    const links = closingLinks(`${nav}<section id="intro" data-nav-label="Intro"></section>${FULL(PICTURE)}<section id="decoy" data-nav-label="Decoy"></section><section id="plan" data-nav-label="The plan"></section>`);
-    expect(links).toHaveLength(1);
-    expect(links[0]).toContain("The plan");
-  });
-  test("without nav items (or none after the analysis) there is no link", () => {
+  test("the nav no longer makes a link: without another analysis on the page the closing has none", () => {
     expect(closingLinks(`${FULL(PICTURE)}<section id="decoy" data-nav-label="Decoy"></section>`)).toEqual([]);
     const nav = `<nav><a class="section-nav-item" data-section-id="briefing">B</a><a class="section-nav-item" data-section-id="t1">T</a></nav>`;
     expect(closingLinks(`${nav}${FULL(PICTURE)}<section id="decoy" data-nav-label="Decoy"></section>`)).toEqual([]);

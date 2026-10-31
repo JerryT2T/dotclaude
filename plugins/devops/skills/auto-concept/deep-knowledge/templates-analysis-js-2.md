@@ -93,12 +93,22 @@
     if (mode === 'place') buildPlace(inst, d, zone);
     // ★ Empfohlen chip behind the label of the recommended option(s); the reason is its tooltip.
     const why = d.dataset.recWhy ? L('Warum: ', 'Why: ') + d.dataset.recWhy : L('Unsere Empfehlung', 'Our recommendation');
+    const recP = mode === 'points' ? recPoints(d.dataset.rec) : null;
     d.querySelectorAll('[data-opt]').forEach((o, i) => {
       if (mode === 'order') return;
       o.querySelectorAll('[data-opt-preview]').forEach(p => { if (!p.querySelector('.an-k-l')) p.insertBefore(h('b', 'an-k-l', L('So sähe das aus: ', 'This would look like: ')), p.firstChild); });
-      if (rec.indexOf(o.getAttribute('data-opt')) >= 0 || o.hasAttribute('data-recommended')) {
+      const item = o.getAttribute('data-opt');
+      // points: data-rec is "item:n" pairs, so the badge shows the recommended points ("★ 5") per item.
+      const isRec = recP ? (recP[item] || 0) > 0 : (rec.indexOf(item) >= 0 || o.hasAttribute('data-recommended'));
+      if (isRec) {
         o.classList.add('an-rec');
-        if (!o.querySelector('.an-badge')) { const b = h('span', 'an-badge', '★ ' + L('Empfohlen', 'Recommended')); b.setAttribute('data-tip', why); b.tabIndex = 0; (o.querySelector('[data-opt-label]') || o).appendChild(b); }
+        if (!o.querySelector('.an-badge')) {
+          const b = h('span', 'an-badge', '★ ' + (recP ? recP[item] : L('Empfohlen', 'Recommended')));
+          b.setAttribute('data-tip', why); b.tabIndex = 0;
+          // The badge sits above the option's click overlay (its tooltip must be reachable) and never picks the row.
+          b.addEventListener('click', ev => { ev.preventDefault(); ev.stopPropagation(); });
+          (o.querySelector('[data-opt-label]') || o).appendChild(b);
+        }
       }
       if (i < 9 && mode !== 'points') tip(o, '', String(i + 1));
     });
@@ -131,13 +141,21 @@
     if (!['slider', 'order', 'points'].includes(mode)) {
       const none = btn('an-none', NONE_TXT());
       none.setAttribute('aria-pressed', 'false');
+      none.disabled = frozenEl(d);
       none.addEventListener('click', () => setNone(inst, d, (ctl1(d, 'dm-' + id + '-none') || {}).value !== '1'));
       d.__none = none;
     }
-    for (const nm of ['-none', '-hes']) if (!ctl1(d, 'dm-' + id + nm)) { const c = h('input'); c.type = 'hidden'; c.name = 'dm-' + id + nm; c.value = ''; d.appendChild(c); }
+    for (const nm of ['-none', '-hes']) if (!ctl1(d, 'dm-' + id + nm)) d.appendChild(newHidden(d, 'dm-' + id + nm, ''));
     // The note textarea is the storage target of the composer (data-comment stays); its 📎
     // bar stays beside it, the composer's 📎 opens it.
-    const note = d.querySelector('[data-comment="' + cssEsc(id + '-note') + '"]');
+    let note = d.querySelector('[data-comment="' + cssEsc(id + '-note') + '"]');
+    // No authored note: the engine adds the storage target, or the composer would drop the text.
+    if (!note) {
+      note = h('textarea');
+      note.setAttribute('data-comment', id + '-note');
+      if (frozenEl(d)) { note.readOnly = true; note.disabled = true; }
+      d.appendChild(note);
+    }
     const att = h('div', 'an-att');
     if (note) {
       note.classList.add('an-note', 'an-vh'); note.rows = 3;
@@ -156,6 +174,7 @@
     const epic = h('input'); epic.type = 'text'; epic.className = 'an-epic'; epic.hidden = true;
     epic.placeholder = L('Epic (optional)', 'Epic (optional)');
     epic.setAttribute('aria-label', 'Epic');
+    if (frozenEl(d)) { iss.disabled = true; epic.disabled = true; epic.readOnly = true; }
     iss.addEventListener('click', () => toggleIssue(inst, d));
     epic.addEventListener('input', () => setHidden(d, '-epic', epic.value.trim()));
     quiet.append(iss, epic);
@@ -175,9 +194,13 @@
     d.insertBefore(qm, am);
     d.insertBefore(fm, qm);
     syncDecision(d);
+    d.__sig = answerSig(d);
   }
+  /** What the user answered, as a string: a change counts only when this really differs. */
+  function answerSig(d) { try { return JSON.stringify(entryOf(d).value); } catch (e) { return ''; } }
   const NONE_TXT = () => L('Keine passt? Schreib deine Antwort unten ins Notizfeld.', 'None fits? Write your answer in the note field below.');
   function setNone(inst, d, on) {
+    if (frozen(inst)) return;
     if (on) {
       d.querySelectorAll('[data-options] input[type=radio], [data-options] input[type=checkbox]').forEach(c => { c.checked = false; });
     }
@@ -187,6 +210,7 @@
     if (on) focusComposer(inst);
   }
   function toggleIssue(inst, d) {
+    if (frozen(inst)) return;
     const on = (ctl1(d, 'dm-' + decId(d) + '-issue') || {}).value !== '1';
     setHidden(d, '-issue', on ? '1' : '');
     if (!on) setHidden(d, '-epic', '');
@@ -267,13 +291,14 @@
     o.sig = o.hid.value;
     o.ol.textContent = '';
     ids.forEach((id, i) => {
-      const li = h('li', 'an-oi'); li.draggable = true; li.tabIndex = 0; li.dataset.id = id;
+      const li = h('li', 'an-oi'); li.draggable = !frozenEl(d); li.tabIndex = 0; li.dataset.id = id;
       const lab = h('span', 'an-ol', optLabel(d, id));
       const c = optCons(optEl(d, id));
       if (c) lab.appendChild(h('small', '', c));
       const bs = h('span', 'an-ob'), up = btn('', '▲'), dn = btn('', '▼');
       up.setAttribute('aria-label', L('Nach oben', 'Move up')); dn.setAttribute('aria-label', L('Nach unten', 'Move down'));
       tip(up, L('Nach oben · Alt+↑', 'Move up · Alt+↑')); tip(dn, L('Nach unten · Alt+↓', 'Move down · Alt+↓'));
+      up.disabled = dn.disabled = frozenEl(d);
       up.addEventListener('click', () => moveItem(inst, d, li, -1)); dn.addEventListener('click', () => moveItem(inst, d, li, 1));
       bs.append(up, dn);
       li.append(h('b', '', String(i + 1)), lab, bs);
@@ -281,6 +306,7 @@
     });
   }
   function moveItem(inst, d, it, dir) {
+    if (frozen(inst)) return;
     const o = d.__order, ref = dir < 0 ? it.previousElementSibling : it.nextElementSibling;
     if (!ref) return;
     if (dir < 0) o.ol.insertBefore(it, ref); else o.ol.insertBefore(ref, it);
@@ -289,6 +315,7 @@
   }
   function writeOrder(inst, d) {
     const o = d.__order;
+    if (frozen(inst)) return;
     const ids = [...o.ol.children].map(li => li.dataset.id);
     [...o.ol.children].forEach((li, i) => { li.firstChild.textContent = String(i + 1); });
     o.sig = ids.join(',');
@@ -310,7 +337,7 @@
     rows.forEach(o => {
       const item = o.getAttribute('data-opt');
       let hid = ctl1(d, 'dm-' + id + '.' + item);
-      if (!hid) { hid = h('input'); hid.type = 'hidden'; hid.name = 'dm-' + id + '.' + item; hid.value = ''; o.appendChild(hid); }
+      if (!hid) { hid = newHidden(d, 'dm-' + id + '.' + item, ''); o.appendChild(hid); }
       if (blank) hid.value = recP[item] ? String(recP[item]) : '';
       hids[item] = hid;
     });
@@ -451,11 +478,18 @@
     if ((e.target.type === 'radio' || e.target.type === 'checkbox') && e.target.checked && e.target.closest('[data-options]')) setHidden(d, '-none', '');
     syncDecision(d);
     if (e.target.classList && e.target.classList.contains('an-epic')) return;
-    if ((/^(radio|checkbox|range)$/.test(e.target.type) || d.dataset.decisionMode === 'points') && !/-(none|touched|issue|epic)$/.test(n)) {
-      // The second and every further change of an answer counts like a revisit (hesitation signal).
-      const r = hesEntry(inst, decId(d));
-      r.changes = (r.changes || 0) + 1;
-      if (r.changes > 1) r.revisits++;
+    // The second and every further CHANGE of the answer counts like a revisit (hesitation signal):
+    // only a 'change' event of an answer control (a radio click fires input + change, a slider drag
+    // many inputs and one change, a note keystroke none of them), and only when the answer differs.
+    const pts = d.dataset.decisionMode === 'points' && n.indexOf('dm-' + decId(d) + '.') === 0;
+    if (e.type === 'change' && (/^(radio|checkbox|range)$/.test(e.target.type) || pts) && !/-(none|touched|issue|epic|hes|alt|fix|text)$/.test(n)) {
+      const sig = answerSig(d);
+      if (sig !== d.__sig) {
+        d.__sig = sig;
+        const r = hesEntry(inst, decId(d));
+        r.changes = (r.changes || 0) + 1;
+        if (r.changes > 1) r.revisits++;
+      }
     }
     if (e.target.type === 'radio' && d.dataset.decisionMode === 'wording' && e.target.value === 'custom') { const t = ctl1(d, 'dm-' + decId(d) + '-text'); if (t) t.focus(); }
     if (answerEmpty(d)) { if (!setHidden(d, '-touched', '')) refresh(inst); return; }
@@ -474,16 +508,46 @@
   // hesitation { ms, noteWords, revisits, flagged }. ms counts ONLY while the stage is
   // visible AND the window focused (timestamps, back-and-forth summed).
   const hesEntry = (inst, id) => inst.hes[id] || (inst.hes[id] = { ms: 0, revisits: 0, changes: 0, since: 0 });
-  const hesLive = inst => !document.hidden && (typeof document.hasFocus !== 'function' || document.hasFocus()) && !inst.root.closest('[hidden]') && inst.root.getClientRects().length > 0;
+  const shown = inst => !inst.root.closest('[hidden]') && inst.root.getClientRects().length > 0;
+  const hesLive = inst => !document.hidden && (typeof document.hasFocus !== 'function' || document.hasFocus()) && shown(inst);
   function hesStart(inst) {
     const st = inst.stages[inst.idx];
     if (!st || st.kind !== 'dec' || frozen(inst) || !hesLive(inst)) return;
     const e = hesEntry(inst, decId(st.el));
     if (!e.since) e.since = Date.now();
   }
-  function hesStop(inst) {
-    const now = Date.now();
-    Object.keys(inst.hes).forEach(id => { const e = inst.hes[id]; if (e.since) { e.ms += Math.max(0, now - e.since); e.since = 0; } });
+  function hesStop(inst, credit) {
+    const now = Date.now(), vis = credit || shown(inst);
+    // A view / iteration tab switch hides the whole analysis: what ran while it was hidden is not dwell.
+    Object.keys(inst.hes).forEach(id => { const e = inst.hes[id]; if (e.since) { if (vis) e.ms += Math.max(0, now - e.since); e.since = 0; } });
+  }
+  /** Reads a stored dm-{id}-hes (a baked round, a reload) into the live record, before the first stage opens. */
+  function loadHes(inst) {
+    inst.decs.forEach(st => {
+      const id = decId(st.el), c = ctl1(st.el, 'dm-' + id + '-hes');
+      if (!c || !c.value) return;
+      let r = null;
+      try { r = JSON.parse(c.value); } catch (e) { r = null; }
+      if (!r || typeof r !== 'object') return;
+      const e = hesEntry(inst, id);
+      if (!e.ms && !e.revisits) { e.ms = Math.max(0, num(r.ms)); e.revisits = Math.max(0, num(r.revisits)); }
+      if (typeof r.sharpen === 'boolean' && !inst.sharpen.has(id)) inst.sharpen.set(id, r.sharpen);
+    });
+  }
+  /** Storage was filled from outside (reload restore, bridge draft): re-read the engine's state and the open stage's note. */
+  function restored() {
+    instances.forEach(inst => {
+      loadHes(inst);
+      refresh(inst);
+      const st = inst.stages[inst.idx], store = storeOf(inst, st);
+      if (!st || !store || !inst.comp) return;
+      const want = store.value || '', have = compText(inst.comp.ed);
+      if (want !== (have ? (inst.tag ? '[' + inst.tag + '] ' : '') + have : '')) loadComposer(inst, st);
+    });
+  }
+  /** Writes every record now (the collect path calls this before reading dm-{id}-hes). */
+  function flushAll() {
+    instances.forEach(inst => { if (inst.__flushing) return; inst.__flushing = true; try { hesFlush(inst); } finally { inst.__flushing = false; } });
   }
   function hesMedian(inst) {
     const v = inst.decs.map(st => (inst.hes[decId(st.el)] || {}).ms || 0).filter(x => x > 0).sort((a, b) => a - b);
@@ -501,8 +565,8 @@
     return h0;
   }
   /** Stops the clock, writes every record, restarts the clock (unless the window left). */
-  function hesFlush(inst, idle) {
-    hesStop(inst);
+  function hesFlush(inst, idle, credit) {
+    hesStop(inst, credit);
     inst.decs.forEach(st => {
       const id = decId(st.el), e = inst.hes[id];
       if (!e && !inst.sharpen.has(id)) return;
@@ -546,8 +610,10 @@
     i = clamp(Number.isFinite(i) ? i : 0, 0, inst.stages.length - 1);
     const prev = inst.stages[inst.idx], st = inst.stages[i];
     hesStop(inst);
-    if (!opt.initial && prev && prev.kind === 'dec') inst.visited.add(decId(prev.el));
-    if (!opt.initial && st.kind === 'dec' && inst.visited.has(decId(st.el))) hesEntry(inst, decId(st.el)).revisits++;
+    // Going to the stage that is already open is no visit (rail item, Shift+Enter, left arrow on the first question ...).
+    const same = i === inst.idx;
+    if (!opt.initial && !same && prev && prev.kind === 'dec') inst.visited.add(decId(prev.el));
+    if (!opt.initial && !same && st.kind === 'dec' && inst.visited.has(decId(st.el))) hesEntry(inst, decId(st.el)).revisits++;
     inst.idx = i;
     inst.maxIdx = Math.max(inst.maxIdx, i);
     // The messages of a stage enter one after another on its FIRST visit only (never with reduced motion).
@@ -594,16 +660,12 @@
   }
 
   /* ================= 8. closing, done ================= */
-  /** The next entry of the surrounding concept in ITS OWN nav order (.section-nav-item[data-section-id]): the first item after the analysis whose section lies outside it. No nav, no link. */
+  /** The next analysis on the page (document order, visible now): the closing offers to continue there. None, no link. */
   function nextEntry(inst) {
-    const items = [...document.querySelectorAll('.section-nav-item[data-section-id]')];
-    const target = it => document.getElementById(it.getAttribute('data-section-id'));
-    let at = -1;
-    items.forEach((it, i) => { const t = target(it); if (t && inst.root.contains(t)) at = i; });
-    if (at < 0) return null;
-    for (let i = at + 1; i < items.length; i++) {
-      const t = target(items[i]);
-      if (t && !inst.root.contains(t)) return { id: t.id, label: (t.getAttribute('data-nav-label') || items[i].textContent || '').trim(), item: items[i] };
+    const k = instances.indexOf(inst);
+    for (let i = k + 1; i < instances.length; i++) {
+      const o = instances[i];
+      if (o !== inst && !frozen(o) && !o.root.contains(inst.root) && shown(o)) return { inst: o, label: (o.root.getAttribute('data-nav-label') || o.root.id || L('Analyse', 'Analysis')).trim() };
     }
     return null;
   }
@@ -638,12 +700,15 @@
       tip(dw, L('Verweildauer ', 'Time spent ') + sec + ' s · ' + x.hs.noteWords + ' ' + L('Wörter Notiz', 'note words') + ' · ' + x.hs.revisits + ' ' + L('Rückkehr/Änderungen', 'revisits/changes') + ' · ' + L('Markiert ab zwei von: Zeit über dem Doppelten des Medians (mind. 20 s), Notiz über 12 Wörtern, mind. 2 Rückkehren.', 'Flagged at two of: time over twice the median (at least 20 s), note over 12 words, at least 2 revisits.'));
       const tg = btn('an-tg', L('Nachschärfen', 'Sharpen'));
       tg.setAttribute('aria-pressed', x.hs.flagged ? 'true' : 'false');
+      tg.disabled = frozen(inst);
       tip(tg, L('Diese Frage in der nächsten Runde nachschärfen', 'Sharpen this question in the next round'));
       tg.addEventListener('click', () => {
+        if (frozen(inst)) return;
         const on = tg.getAttribute('aria-pressed') !== 'true';
         inst.sharpen.set(id, on);
         const tagText = L('Nachschärfen · ', 'Sharpen · ') + (x.s.el.dataset.label || id);
-        setTag(inst, on ? tagText : (inst.tag === tagText ? '' : inst.tag));
+        // One shared note: once text exists under another tag, that tag stays (the text is not re-labelled).
+        if (on) { if (!inst.tag || !compText(inst.comp.ed)) setTag(inst, tagText); } else if (inst.tag === tagText) setTag(inst, '');
         composeSync(inst);
         if (on) { inst.comp.el.classList.remove('an-glow'); void inst.comp.el.offsetWidth; inst.comp.el.classList.add('an-glow'); }
         hesFlush(inst);
@@ -663,7 +728,8 @@
     if (nx) {
       const lk = btn('an-link', L('Weiter zu: ', 'Continue with: ') + nx.label + ' →');
       lk.addEventListener('click', () => {
-        nx.item.click();
+        go(nx.inst, 0);
+        if (typeof nx.inst.root.scrollIntoView === 'function') nx.inst.root.scrollIntoView({ block: 'nearest' });
       });
       wrap.appendChild(lk);
     }
@@ -768,8 +834,9 @@
     const radios = [...d.querySelectorAll('[data-options] input[type=radio]')];
     if (!radios.length) return false;
     const i = radios.findIndex(r => r.checked);
-    const n = radios[clamp((i < 0 ? 0 : i) + dir, 0, radios.length - 1)];
-    n.click();
+    const j = clamp((i < 0 ? 0 : i) + dir, 0, radios.length - 1);
+    if (i >= 0 && j === i) return true;   // at the edge: re-clicking the checked radio would deselect it
+    radios[j].click();
     return true;
   }
   document.addEventListener('keydown', e => {
@@ -821,15 +888,23 @@
   window.addEventListener('focus', () => instances.forEach(hesStart));
   document.addEventListener('visibilitychange', () => instances.forEach(i => (document.hidden ? hesFlush(i, true) : hesStart(i))));
   window.addEventListener('pagehide', () => instances.forEach(i => hesFlush(i, true)));
+  // A design view / iteration tab switch hides the analysis without a focus or visibility event: the clock follows the root.
+  function watchShown(inst) {
+    if (typeof IntersectionObserver !== 'function') return;
+    inst.io = new IntersectionObserver(es => { const on = es.some(e => e.isIntersecting); if (on) hesStart(inst); else hesFlush(inst, true, true); });
+    inst.io.observe(inst.root);
+  }
 
   /* ================= 10. boot ================= */
   function init(scope) {
     (scope || document).querySelectorAll('[data-analysis]').forEach(r => {
       if (r.parentElement && r.parentElement.closest('[data-analysis]')) return;
-      if (!r.__an) setup(r);
+      if (!r.__an) { const inst = setup(r); watchShown(inst); }
     });
+    // The first restoreState() ran before the engine created its hidden state: once more, now that it exists.
+    if (typeof restoreState === 'function' && instances.length) restoreState();
   }
-  window.conceptAnalysis = { init, setup, go, step, refresh, markTouched, renderViz, instances, TOUCH_MS, hesFlush, setTag, sendNote, tagFromClick };
+  window.conceptAnalysis = { init, setup, go, step, refresh, restored, flush: flushAll, markTouched, renderViz, instances, TOUCH_MS, hesFlush, setTag, sendNote, tagFromClick };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => { init(); setTimeout(() => instances.forEach(refresh), 500); });
   else { init(); setTimeout(() => instances.forEach(refresh), 500); }
 })();

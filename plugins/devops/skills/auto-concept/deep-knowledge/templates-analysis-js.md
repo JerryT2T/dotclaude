@@ -201,10 +201,20 @@ What the code does, in the order of the file:
     el.dispatchEvent(new Event('input', { bubbles: true }));
     el.dispatchEvent(new Event('change', { bubbles: true }));
   }
+  // A frozen (baked) round is read-only: every control the engine creates is born disabled.
+  // Hidden dm-* inputs (state of the engine: -none, -hes, points, order ...) persist through
+  // saveState() / restoreState() by name (templates-persistence.md).
+  const frozenEl = el => !!(el.closest && el.closest('[data-baked]'));
+  function newHidden(d, name, value) {
+    const c = h('input');
+    c.type = 'hidden'; c.name = name; c.value = value || '';
+    if (frozenEl(d)) c.disabled = true;
+    return c;
+  }
   function setHidden(d, suffix, value) {
     const name = 'dm-' + decId(d) + suffix;
     let c = ctl1(d, name);
-    if (!c) { c = h('input'); c.type = 'hidden'; c.name = name; d.appendChild(c); }
+    if (!c) { c = newHidden(d, name, ''); d.appendChild(c); }
     if (c.value === value || c.disabled) return false;
     c.value = value;
     fire(c);
@@ -316,7 +326,7 @@ What the code does, in the order of the file:
   function setup(root) {
     if (root.__an) return root.__an;
     const lite = root.getAttribute('data-analysis') === 'lite';
-    const inst = { root, lite, stages: [], groups: [], idx: 0, timers: [], visited: new Set(), seen: new Set(), decs: [], maxIdx: 0, touchTimer: 0, hes: {}, sharpen: new Map(), tag: '', key: root.id || 'analysis' };
+    const inst = { root, lite, stages: [], groups: [], idx: 0, timers: [], visited: new Set(), seen: new Set(), decs: [], maxIdx: 0, touchTimer: 0, hes: {}, sharpen: new Map(), tag: '', key: root.id || (root.closest('[data-view]') || root).getAttribute('data-view') || ('analysis' + (instances.length + 1)) };
     root.__an = inst;
     instances.push(inst);
     // A lite round is a question view of the page: it counts as answered once EVERY decision is
@@ -359,6 +369,7 @@ What the code does, in the order of the file:
     root.insertBefore(inst.peekUp, root.firstChild);
     root.append(inst.peekDn, inst.stores);
     inst.decs.forEach(st => prepDecision(inst, st));
+    loadHes(inst);
     if (inst.brief) prepBrief(inst);
     inst.groups.forEach(g => prepIntro(inst, g));
     buildNav(inst);
@@ -487,7 +498,7 @@ What the code does, in the order of the file:
   /** Storage target: the open decision's own data-comment note; every other stage gets a hidden one. */
   function storeOf(inst, st) {
     if (!st) return null;
-    if (st.kind === 'dec') return st.el.querySelector('.an-note');
+    if (st.kind === 'dec') return st.el.querySelector('.an-note') || st.el.querySelector('[data-comment$="-note"]');
     if (!st.store) {
       const key = st.kind === 'topic' ? st.topic.id : st.kind === 'brief' ? (st.el.id || 'briefing') : inst.key + '-closing';
       const t = h('textarea', 'an-note an-vh');
@@ -505,7 +516,7 @@ What the code does, in the order of the file:
     c.querySelectorAll('br').forEach(b => b.replaceWith('\n'));
     return c.textContent.replace(/ /g, ' ').replace(/\s+$/, '');
   }
-  const frozen = inst => !!inst.root.closest('[data-baked]');
+  const frozen = inst => frozenEl(inst.root);
   function buildComposer(inst) {
     const el = h('div', 'an-comp'), ed = h('div', 'an-comp-ed');
     ed.contentEditable = frozen(inst) ? 'false' : 'true';
@@ -528,6 +539,7 @@ What the code does, in the order of the file:
     inst.comp = { el, ed, att, send };
     ed.addEventListener('input', () => composeSync(inst));
     ed.addEventListener('keydown', e => {
+      if (e.target.closest && e.target.closest('.an-tagw')) return;   // the tag's x is a real button: Enter / Space activate it
       if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.isComposing) { e.preventDefault(); e.stopPropagation(); sendNote(inst); }
       else if (e.key === 'Backspace' && !compText(ed) && inst.tag) { e.preventDefault(); setTag(inst, ''); }
     });
@@ -536,16 +548,23 @@ What the code does, in the order of the file:
   }
   /** Max ONE tag, default none: a small inline label (with ×) before the first word. */
   function setTag(inst, label) {
+    if (frozen(inst)) return;
+    paintTag(inst, label);
+  }
+  /** Draws the tag (also on a frozen round, where it only shows the baked one). */
+  function paintTag(inst, label) {
     const ed = inst.comp.ed;
     let t = ed.querySelector('.an-tagw');
     inst.tag = label || '';
     if (!label) { if (t) t.remove(); } else {
       if (!t) { t = h('span', 'an-tagw'); t.contentEditable = 'false'; ed.insertBefore(t, ed.firstChild); }
       t.textContent = '';
-      const x = h('em', '', '×');
-      x.setAttribute('role', 'button');
+      const x = btn('', '×');
       x.setAttribute('aria-label', L('Tag entfernen', 'Remove tag'));
-      x.addEventListener('mousedown', ev => { ev.preventDefault(); setTag(inst, ''); composeSync(inst); });
+      tip(x, L('Tag entfernen', 'Remove tag'));
+      x.disabled = frozen(inst);
+      x.addEventListener('mousedown', ev => ev.preventDefault());   // keeps the caret in the note
+      x.addEventListener('click', () => { setTag(inst, ''); composeSync(inst); focusComposer(inst); });
       t.append(document.createTextNode(label), x);
     }
     ed.dataset.empty = !compText(ed) && !inst.tag ? '1' : '';
@@ -567,7 +586,7 @@ What the code does, in the order of the file:
     inst.tag = '';
     if (m) { v = v.slice(m[0].length); }
     if (v) ed.appendChild(document.createTextNode(v));
-    setTag(inst, m ? m[1] : '');
+    paintTag(inst, m ? m[1] : '');
     ed.dataset.empty = !v && !inst.tag ? '1' : '';
     ed.contentEditable = frozen(inst) ? 'false' : 'true';
     inst.comp.att.hidden = !(st.kind === 'dec' && st.el.querySelector('.attach-btn'));
@@ -584,6 +603,7 @@ What the code does, in the order of the file:
     composeSync(inst);
     const st = inst.stages[inst.idx], text = compText(inst.comp.ed);
     if (!text || frozen(inst)) return false;
+    if (st.kind === 'dec' && !storeOf(inst, st)) return false;   // no storage target: never advance and drop the note
     inst.comp.el.classList.remove('an-sent'); void inst.comp.el.offsetWidth; inst.comp.el.classList.add('an-sent');
     if (!inst.tag && st.kind !== 'brief' && st.kind !== 'review' && st.kind !== 'done') step(inst, 1);
     return true;

@@ -420,6 +420,30 @@ function modeFields(fragment, decisions) {
   return out;
 }
 
+/**
+ * The engine's hidden dm-{id}-none / -hes are not required by authoring or the gate, so a
+ * fragment may lack them; bakeFields only rewrites controls that exist. Inject the missing
+ * ones (when the payload carries a value) so `none: true` and the hesitation survive the freeze.
+ */
+function ensureEngineInputs(fragment, fields) {
+  if (!fields || typeof fields !== 'object') return fragment;
+  let out = fragment;
+  for (const key of Object.keys(fields)) {
+    const m = /^dm-(.+)-(none|hes)$/.exec(key);
+    if (!m || !fields[key]) continue;
+    const spans = opaqueSpans(out);
+    const named = [...out.matchAll(tagRe('input'))].some(t => !inSpan(spans, t.index) && getAttr(t[2], 'name') === key);
+    if (named) continue;
+    const idRe = m[1].replace(/[^\w-]/g, '\\$&');
+    const open = new RegExp(`<([a-z][a-z0-9]*)\\b${ATTRS}\\sdata-decision=(?:"${idRe}"|'${idRe}')${ATTRS}>`, 'i');
+    const hit = open.exec(out);
+    if (!hit || inSpan(spans, hit.index)) continue;
+    const at = hit.index + hit[0].length;
+    out = `${out.slice(0, at)}<input type="hidden" name="${key}" value="">${out.slice(at)}`;
+  }
+  return out;
+}
+
 function bake(fragment, payload, opts = {}) {
   const notes = [];
   if (opts.unanswered) {
@@ -432,7 +456,7 @@ function bake(fragment, payload, opts = {}) {
   if ((!fields || !Object.keys(fields).length) && hasKeyedControls(fragment)) {
     notes.push('the payload carries no allFields, so no control value was written (a stored -decisions.json summary is not a /decisions payload)');
   }
-  let out = bakeFields(fragment, fields, notes);
+  let out = bakeFields(ensureEngineInputs(fragment, fields), fields, notes);
   out = bakeMappings(out, payload && payload.mappings, notes);
   out = bakeFrozenFeedback(out, payload);
   out = replaceRootAttrs(out, a => setAttr(a, 'data-baked', true));

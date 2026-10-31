@@ -30,6 +30,8 @@ them. Note that the dock lives OUTSIDE `section[data-iteration]`, so
 ```javascript
 function collectAllFormFields(scope) {
   const fields = {};
+  // The analysis engine writes the dwell of the open stage (dm-{id}-hes) only on stage changes: flush it first.
+  if (window.conceptAnalysis && typeof window.conceptAnalysis.flush === 'function') window.conceptAnalysis.flush();
   // Catch-all: every named input, select, textarea inside scope.
   scope.querySelectorAll('input, select, textarea').forEach(el => {
     // Device-view frames are CLONES of the mockup (§ Responsive device views)
