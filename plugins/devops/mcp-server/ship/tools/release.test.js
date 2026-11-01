@@ -1418,7 +1418,9 @@ describe("ship_release — automatic version-file rebase", () => {
 
 describe("ship_release — #949 re-enable paused workflows before the PR push", () => {
   let dir;
-  const UNTIL = "2026-11-01T00:00:00.000Z";
+  // Always in the future: a fixed date turned the "still live" cases red the
+  // day it passed (2026-11-01).
+  const UNTIL = new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString();
   const pushOrder = () => gitLib.gitArgs.mock.invocationCallOrder[gitLib.gitArgs.mock.calls.findIndex((c) => Array.isArray(c[0]) && c[0][0] === "push" && c[0].includes("-u"))];
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), "rel-guard-"));
