@@ -1,0 +1,181 @@
+{
+  "template": "design",
+  "action": "iterate",
+  "decisions": [
+    {
+      "id": "r6-set",
+      "label": "Antwortformen",
+      "mode": "multi",
+      "value": [
+        "pics",
+        "mx",
+        "flow",
+        "place",
+        "alloc"
+      ],
+      "rec": "pics mx flow place alloc",
+      "deviates": false,
+      "untouched": true,
+      "note": "",
+      "appliesTo": "alle Analysen",
+      "finding": "f-r6-set",
+      "issue": false,
+      "epic": "",
+      "view": "v-r6"
+    },
+    {
+      "id": "r6-alloc",
+      "label": "Skala beim Punkte verteilen",
+      "mode": "single",
+      "value": "fib",
+      "rec": "fib",
+      "deviates": false,
+      "untouched": true,
+      "note": "",
+      "appliesTo": "die Form Punkte verteilen",
+      "finding": "f-r6-alloc",
+      "issue": false,
+      "epic": "",
+      "view": "v-r6"
+    }
+  ],
+  "comments": {
+    "general": {
+      "text": "das näpchste concpet gern klein, rein auf die änderungen bzgl. inhaltsverzeichnis nochmal bezogen, bei dem rest vertraue ich dir mit meinen notizen die ich dir mitgegebnen habe",
+      "attachments": []
+    },
+    "items": [
+      {
+        "id": "anno-r6-r6-s1-a1",
+        "text": "super ja, gern dabei aber auch berückischitgen, dass es nicht mit fab elemente von devops concept überlappt, ggf. gibt es einfach mehr punkte auf gleich langer linie, mach dafür mal ein maximal besipiel mit voller themneanzahl und voller fragenanzahl (7x7).\n\nAußerdem wenn man  drüber hovered soll man immer auf einem navigationsitem sein und nicht in einem zwischenraum (nicht visuell aber vom fokus her) sodass man immer iens anklicken würde - check dahingehend auch nochmal ob der richtige cursorg enommen wird, weil aktuell ist es ein input cursor obwohl ich ja was auswähle xD von windows / browser...",
+        "attachments": []
+      },
+      {
+        "id": "anno-r6-r6-s3-a1",
+        "text": "gern als zwei modi, skizzen vs real (bevorzugt skizzen) - aber manchmal macht nur real sinn! Aber wichtig, das ist kein varianten design pßrotottyping wie devops concept sonst es amcht, wenn es das wrüde müsste das eher in das devops concept varianten prrototyping gebaut werden und übergeben, das bitte kritisch an claude gebne!",
+        "attachments": []
+      },
+      {
+        "id": "anno-r6-r6-s4-a1",
+        "text": "sieht gut aus! wobei die titel und auswahl zu weit weg von anderen visualisierungen wie die e ausgewählt sijnd, ich galueb das ist die form hmmm",
+        "attachments": []
+      },
+      {
+        "id": "anno-r6-r6-s5-a1",
+        "text": "ja schon nützlich!",
+        "attachments": []
+      },
+      {
+        "id": "anno-r6-r6-s6-a1",
+        "text": "gute idee! aber auch anklickbar die optionen rechts daneben bitte alternativ!",
+        "attachments": []
+      },
+      {
+        "id": "anno-r6-r6-s7-a1",
+        "text": "ja klingt gut!",
+        "attachments": []
+      },
+      {
+        "id": "anno-r6-r6-s8-a2",
+        "text": "sehr gut",
+        "attachments": []
+      }
+    ],
+    "designs": {},
+    "screens": {},
+    "views": {}
+  },
+  "annotations": [
+    {
+      "id": "r6-r6-s1-a1",
+      "screen": "r6-s1",
+      "design": "r6",
+      "question": "Zugeklappt nur leuchtende Punkte auf einer feinen Linie, ohne Kasten. Dezent genug? Fahr mit der Maus darüber, es ist echt.",
+      "answer": "super ja, gern dabei aber auch berückischitgen, dass es nicht mit fab elemente von devops concept überlappt, ggf. gibt es einfach mehr punkte auf gleich langer linie, mach dafür mal ein maximal besipiel mit voller themneanzahl und voller fragenanzahl (7x7).\n\nAußerdem wenn man  drüber hovered soll man immer auf einem navigationsitem sein und nicht in einem zwischenraum (nicht visuell aber vom fokus her) sodass man immer iens anklicken würde - check dahingehend auch nochmal ob der richtige cursorg enommen wird, weil aktuell ist es ein input cursor obwohl ich ja was auswähle xD von windows / browser..."
+    },
+    {
+      "id": "r6-r6-s3-a1",
+      "screen": "r6-s3",
+      "design": "r6",
+      "question": "Bildauswahl: drei Mini-Skizzen. Reicht so eine Skizze, oder braucht es echte Ausschnitte?",
+      "answer": "gern als zwei modi, skizzen vs real (bevorzugt skizzen) - aber manchmal macht nur real sinn! Aber wichtig, das ist kein varianten design pßrotottyping wie devops concept sonst es amcht, wenn es das wrüde müsste das eher in das devops concept varianten prrototyping gebaut werden und übergeben, das bitte kritisch an claude gebne!"
+    },
+    {
+      "id": "r6-r6-s4-a1",
+      "screen": "r6-s4",
+      "design": "r6",
+      "question": "Vergleich: höchstens 3 Optionen × 3 Merkmale mit Punkten statt Zahlen, eine Spalte wird gewählt. Passt das für deine Matrix-Fälle?",
+      "answer": "sieht gut aus! wobei die titel und auswahl zu weit weg von anderen visualisierungen wie die e ausgewählt sijnd, ich galueb das ist die form hmmm"
+    },
+    {
+      "id": "r6-r6-s5-a1",
+      "screen": "r6-s5",
+      "design": "r6",
+      "question": "Weg / Kette: jede Option zeigt ihren Ablauf. Nützlich für Herkunft oder Datenfluss?",
+      "answer": "ja schon nützlich!"
+    },
+    {
+      "id": "r6-r6-s6-a1",
+      "screen": "r6-s6",
+      "design": "r6",
+      "question": "Platzierung: Fläche auf einer Skizze anklicken. Verständlich?",
+      "answer": "gute idee! aber auch anklickbar die optionen rechts daneben bitte alternativ!"
+    },
+    {
+      "id": "r6-r6-s7-a1",
+      "screen": "r6-s7",
+      "design": "r6",
+      "question": "Punkte verteilen in groben Stufen (1, 2, 3, 5, 8) bei festem Budget von 13 Punkten. Klug genug?",
+      "answer": "ja klingt gut!"
+    },
+    {
+      "id": "r6-r6-s8-a2",
+      "screen": "r6-s8",
+      "design": "r6",
+      "question": "Danach „Jetzt umsetzen“ oder „Nächste Runde“, und falls es im Concept noch etwas gibt, der Sprung dorthin. So?",
+      "answer": "sehr gut"
+    }
+  ],
+  "userPins": [
+    {
+      "id": "up-mvwbkhdiz2tw",
+      "design": "r6",
+      "screen": "r6-s2",
+      "x": 95.9,
+      "y": 20.3,
+      "target": "span.mock-r6-grp \"Thema Cache\"",
+      "text": "Thema Cache ist doch auch eine seite, warum nicht einfach in dem punkt den punkt präfixen mit dem Wort Thema was auch visuell font style ja dann anders aussieht.",
+      "attachments": []
+    },
+    {
+      "id": "up-mvwbma2na3d1",
+      "design": "r6",
+      "screen": "r6-s3",
+      "x": 30.6,
+      "y": 15.2,
+      "target": "svg",
+      "text": "dieser schjwarz und farbgi ring darum, irgendwie altbacken, vllt. beim aktuellen nachricht einfach als glwo? und sonst nur der rund kreis!",
+      "attachments": []
+    },
+    {
+      "id": "up-mvwbrqahxdqp",
+      "design": "r6",
+      "screen": "r6-s8",
+      "x": 33.3,
+      "y": 85.7,
+      "target": "span.mock-r6-tag \"🏷 Cache-Größe ×\"",
+      "text": "Das sollte dann vertikal keliner und ohne icon einfach in dem inputfeld stehen was dann schon fokussiert ist (sprich keine hinweise mehr angeziegt werden), sonst bläht das hier zu weit auf!. \nAlso einfach als wäre es das erste wort, aber halt als label und man tippt erst danach",
+      "attachments": []
+    },
+    {
+      "id": "up-mvwbszeffcg6",
+      "design": "r6",
+      "screen": "r6-s8",
+      "x": 36.9,
+      "y": 90,
+      "target": "small \"Gilt für diese Seite · Enter = Zeilenumb\"",
+      "text": "den input feld hinweis bitte immer einzeilig machen!",
+      "attachments": []
+    }
+  ]
+}
