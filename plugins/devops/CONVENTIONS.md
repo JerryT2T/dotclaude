@@ -223,7 +223,7 @@ These live at the plugin root level:
 deep-knowledge/
 ├── INDEX.md                           ← Auto-generated topic map (read this FIRST)
 ├── test-strategy.md                   ← When/how to test (used by completion flow)
-├── visual-verification.md             ← Preview methods: screenshot, simulated, etc.
+├── visual-verification.md             ← Verification methods: screenshot, simulated, etc.
 └── {topic}.md                         ← Any cross-cutting concern
 ```
 

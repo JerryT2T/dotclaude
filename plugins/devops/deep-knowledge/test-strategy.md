@@ -29,9 +29,9 @@ no "browser not needed" exit for web tech.
 - Static `index.html` or equivalent entry exists
 
 **Testing path (first that applies):**
-1. Dev server already running → navigate + snapshot via `$BROWSER_TOOL` (Preview is primary when the Edge extension is off — see browser-tool-strategy.md)
+1. Dev server already running → navigate + snapshot via `$BROWSER_TOOL` (the built-in pane for localhost — see browser-tool-strategy.md)
 2. Dev server startable via `npm run dev` / `preview_start` → start, then snapshot
-3. Static HTML → open via `file:///` in Edge (Claude-in-Chrome extension)
+3. Static HTML → open via `file:///` in the built-in pane
 4. Packaged Electron/Tauri renderer → see "Electron/Native UI" rule below
 
 **Mocks are expected.** Missing backends, disabled auth, stubbed API responses,
@@ -57,7 +57,7 @@ project with auth SHOULD provide a **local test user** for development testing:
   fixture the local stack loads exclusively) and MUST NOT appear in production
   migrations, seeds, or deployed data. **A full-permission account reaching prod is
   a critical vulnerability — its prod-exclusion is a hard rule, not a preference.**
-- **Pairs with Preview persistence.** Log in once as the local test user in the
+- **Pairs with pane session persistence.** Log in once as the local test user in the
   active browser tool; the session persists per-baseRepo across worktrees and chats
   (see [preview-testing.md](preview-testing.md)), so authenticated Light checks run
   without re-login.
@@ -68,8 +68,8 @@ project with auth SHOULD provide a **local test user** for development testing:
 
 ## Electron / Native UI — Dev-Browser + User-Final-Test
 
-Packaged Electron, Tauri, native-UI hybrid apps cannot be reached by Chrome-MCP /
-Playwright / Preview once bundled — those tools operate on Edge or on a spawned
+Packaged Electron, Tauri, native-UI hybrid apps cannot be reached by the pane / Chrome-MCP /
+Playwright once bundled — those tools operate on a browser view, Edge or a spawned
 browser instance, not inside the app's own webview. Testing therefore splits:
 
 **During development (automated):**
@@ -157,11 +157,11 @@ For UI changes that need verification but don't warrant desktop takeover,
 use **accessibility snapshots** to verify structure and content without
 screenshots or computer-use:
 
-1. Ensure dev server is running (Preview, or manually started)
+1. Ensure dev server is running (built-in pane, or manually started)
 2. Navigate to the relevant page
-3. Take a **snapshot** (`preview_snapshot` / `browser_snapshot` / `read_page`)
+3. Take a **snapshot** (`read_page` / `get_page_text` / `browser_snapshot`)
 4. Verify: elements present, text correct, interactive state as expected
-5. Optionally: use `preview_inspect` for CSS property verification (colors,
+5. Optionally: use `javascript_tool` (`getComputedStyle`) for CSS property verification (colors,
    spacing, fonts) — more accurate than screenshots for style checks
 
 This is the **default** for browser-based UI testing. It works in all modes

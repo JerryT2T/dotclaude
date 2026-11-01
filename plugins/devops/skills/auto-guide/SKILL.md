@@ -88,7 +88,7 @@ Announce once in chat, then go quiet until the guide ends:
 Only the Claude-in-Chrome extension in the user's Edge qualifies: the site is
 third-party and needs the user's logins. Preview is localhost-only and
 Playwright has no user context — **no waterfall here**. Computer-use is
-never used (`{PLUGIN_ROOT}/deep-knowledge/browser-tool-strategy.md` § Edge Credo).
+never used (`{PLUGIN_ROOT}/deep-knowledge/browser-tool-strategy.md` § Edge rules).
 
 1. `tabs_context_mcp({ createIfEmpty: true })`. Reuse a tab only if it is
    one **this guide created earlier in this session** (its id is in your

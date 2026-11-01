@@ -401,7 +401,7 @@ Open the page in the browser and monitor for the submit signal.
 Follow the open + monitor bridge in
 `skills/auto-concept/deep-knowledge/bridge-server.md` (server launch,
 Edge-open, heartbeat + decision polling), respecting the
-**Edge Credo** (`{PLUGIN_ROOT}/deep-knowledge/browser-tool-strategy.md` § Edge Credo):
+**Edge rules** (`{PLUGIN_ROOT}/deep-knowledge/browser-tool-strategy.md` § Edge rules):
 new tab in running Edge, user's profile context, Claude extension for interaction.
 
 ```bash

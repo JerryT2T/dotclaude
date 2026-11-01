@@ -14,22 +14,22 @@
     },
     {
       "step": 2,
-      "tool": "$BROWSER_TOOL probe — Chrome-MCP (Edge, if connected) → Preview → Playwright",
-      "purpose": "Resolve the active browser tool. Chrome-MCP (Edge) stays primary when the extension is connected; otherwise Preview is primary for this localhost app (persists login per-baseRepo). Playwright is the next fallback. Never computer-use, never plain Chrome (see deep-knowledge/browser-tool-strategy.md)."
+      "tool": "$BROWSER_TOOL probe — built-in pane → Chrome-MCP (Edge) → Playwright",
+      "purpose": "Resolve the active browser tool. The built-in pane is primary for this localhost app (persists login per-baseRepo); Chrome-MCP in Edge is the swap target. Playwright is the last fallback. Never computer-use, never plain Chrome (see deep-knowledge/browser-tool-strategy.md)."
     },
     {
       "step": 3,
-      "tool": "$BROWSER_TOOL snapshot (read_page / browser_snapshot / preview_snapshot)",
+      "tool": "$BROWSER_TOOL snapshot (read_page / get_page_text / browser_snapshot)",
       "purpose": "Verify DOM content, element presence, and ARIA state"
     },
     {
       "step": 4,
-      "tool": "$BROWSER_TOOL console + network read (read_console_messages + read_network_requests / browser_console_messages + browser_network_requests / preview_console_logs)",
+      "tool": "$BROWSER_TOOL console + network read (read_console_messages + read_network_requests / browser_console_messages + browser_network_requests)",
       "purpose": "Catch runtime JS errors and failed/4xx/5xx requests the snapshot cannot reveal"
     },
     {
       "step": 5,
-      "tool": "$BROWSER_TOOL set viewport + screenshot (javascript_tool / browser_evaluate / preview_eval, then screenshot)",
+      "tool": "$BROWSER_TOOL set viewport + screenshot (resize_window preset + colorScheme, or javascript_tool / browser_evaluate for exact sizes, then screenshot)",
       "purpose": "iPhone SE (375x667) — visual layout, mobile iOS"
     },
     {

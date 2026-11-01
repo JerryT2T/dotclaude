@@ -33,7 +33,7 @@ structured is reachable.
 
 | Surface | Read via | Example targets |
 |---------|----------|-----------------|
-| **DOM** | Preview / Chrome-MCP (Edge) / Playwright — snapshot, then screenshot | web apps, Electron/Tauri/WebView renderers, PWAs |
+| **DOM** | Built-in pane / Chrome-MCP (Edge) / Playwright — snapshot, then screenshot | web apps, Electron/Tauri/WebView renderers, PWAs |
 | **Text** | terminal / PTY capture (Bash) | CLI tools, TUIs (ncurses) |
 | **a11y / UIA tree** | *(no reader tool ships in this plugin today → falls through to pixels)* | native GUI: WPF, Qt, WinForms, Cocoa |
 | **Pixels** | computer-use (screenshot + click) | games, canvas/GPU UIs, native GUI without a reader |
@@ -80,15 +80,15 @@ the web responsive breakpoints. An Electron window is never 375 px wide.
 
 Always escalate from the cheapest read upward; never skip a tier without a
 documented reason. The capability matters, not the specific tool — these tier
-names are tool-agnostic so the same order holds for Preview, Chrome-MCP, and
-Playwright alike. Tool **precedence** for a localhost DOM surface is set in
-[browser-tool-strategy.md](browser-tool-strategy.md): Chrome-MCP when the Edge
-extension is connected, otherwise Preview, then Playwright.
+names are tool-agnostic so the same order holds for the built-in pane, Chrome-MCP, and
+Playwright alike. Tool **choice** per use case (pane for localhost / public,
+Chrome-MCP in Edge for logged-in sites, Playwright last) is set in
+[browser-tool-strategy.md](browser-tool-strategy.md).
 
 | Tier | Capability | DOM tools (examples) | Text tools |
 |------|-----------|----------------------|------------|
-| 1 — Structured read | DOM/text + ARIA + console + network | `preview_snapshot` / `read_page` / `browser_snapshot` **+** console + network read | terminal stdout capture |
-| 2 — Rendered read | rendered pixels (layout, colour, icons) | `preview_screenshot` / `take_screenshot` — only when pixels matter | — |
+| 1 — Structured read | DOM/text + ARIA + console + network | `read_page` / `get_page_text` / `browser_snapshot` **+** console + network read | terminal stdout capture |
+| 2 — Rendered read | rendered pixels (layout, colour, icons) | `computer` screenshot / `browser_take_screenshot` — only when pixels matter | — |
 | 3 — Interaction | click / fill / eval | DOM click/fill/eval | scripted input |
 | 4 — Pixel control | full pixel drive | computer-use — **Full / no-DOM only**, never autonomous on a DOM surface | computer-use |
 
@@ -105,7 +105,7 @@ absence of runtime errors — always read console + network alongside a snapshot
 2. If not → detect + pin the profile per [test-plan.md](test-plan.md) (populates the cache).
 3. Run the **Light** verification for the profile's surface — automatically,
    for every code change (enforced by the browser/light gate, not advisory).
-4. For a DOM surface, resolve the concrete browser tool via the waterfall in
+4. For a DOM surface, resolve the concrete browser tool via
    [browser-tool-strategy.md](browser-tool-strategy.md). Computer-use is never a
    DOM-surface tool.
 5. Escalate Light tiers Structured → Rendered → Interaction only as needed.
@@ -142,8 +142,8 @@ flag, Full stays user-gated.
 ## Decision Matrix
 
 Use the intersection of project profile and change scope to determine the
-tool-chain. "DOM tools" resolves to the browser waterfall (Preview / Chrome-MCP
-in Edge / Playwright) per [browser-tool-strategy.md](browser-tool-strategy.md).
+tool-chain. "DOM tools" resolves to the browser tool for the use case (built-in pane /
+Chrome-MCP in Edge / Playwright) per [browser-tool-strategy.md](browser-tool-strategy.md).
 
 | Profile \ Change scope | `style-only` | `component-logic` | `data-model` | `config` | `build/infra` |
 |------------------------|-------------|-------------------|--------------|----------|---------------|
@@ -280,5 +280,5 @@ exactly like an edit of that file.
 |-------|------|
 | Edge profile details (main vs scraper) | [edge-profiles.md](edge-profiles.md) |
 | Responsive viewport testing via DevTools | [responsive-testing.md](responsive-testing.md) |
-| Browser tool waterfall (Chrome-MCP → Preview → Playwright) | [browser-tool-strategy.md](browser-tool-strategy.md) |
+| Browser tool choice + probe order (pane / Chrome-MCP / Playwright) | [browser-tool-strategy.md](browser-tool-strategy.md) |
 | Computer-use desktop takeover flow | [desktop-testing.md](desktop-testing.md) |

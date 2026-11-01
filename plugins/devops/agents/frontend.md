@@ -60,9 +60,9 @@ Work in checkpoints: commit `wip(<scope>): <what>` after every green sub-step an
 - Keep **project docs** current: when your change adds a feature, alters a flow, or changes architecture, update the affected `docs/`, README prose, or architecture docs in the same change (proportional — trivial changes need none). See `{PLUGIN_ROOT}/deep-knowledge/documentation-maintenance.md`. Project docs only, not code comments (code-defaults.md still applies).
 - Always verify visual output in a real browser (follow
   `{PLUGIN_ROOT}/deep-knowledge/test-strategy.md` § Web Tech → Always Browser-Test)
-  with whichever browser tool is connected: the Claude browser pane
-  (`mcp__Claude_Browser__*`), Claude in Chrome (`mcp__claude-in-chrome__*`), or
-  Playwright. None connected → say so in the handoff instead of claiming a
+  with the Claude browser pane (`mcp__Claude_Browser__*`) for localhost / file://;
+  Claude in Chrome (`mcp__claude-in-chrome__*`) only for logged-in sites; Playwright
+  last (see `{PLUGIN_ROOT}/deep-knowledge/browser-tool-strategy.md`). None connected → say so in the handoff instead of claiming a
   visual check. Mocks for missing backends/APIs are expected. For
   Electron/Tauri renderers, mount the renderer HTML with main-process calls mocked.
 - Follow existing component patterns in the project
