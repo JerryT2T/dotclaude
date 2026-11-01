@@ -2,11 +2,9 @@
 name: auto-fix
 version: 0.4.0
 description: >-
-  Root-cause-first bug fix: read logs and stack traces, name the broken
-  invariant, fix it, report file:line. On request only — typed /auto-fix or
-  asked for by name, or a Fix button prompt. Never auto-loaded: A/B evals
-  (6 bug cases) showed no gain over fixing inline, so nothing routes a bug
-  report here.
+  Root-cause-first bug fix that reports file:line. On request only (typed
+  /auto-fix, asked for by name, or a Fix button prompt); a plain bug report is
+  fixed inline, not here.
 layer: 2
 invokes: [auto-agents]
 user-invocable: false

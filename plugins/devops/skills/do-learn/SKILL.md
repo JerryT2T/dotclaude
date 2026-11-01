@@ -2,18 +2,13 @@
 name: do-learn
 version: 0.4.0
 description: >-
-  Capture a long-term learning/correction and route it to the correct project-
-  specific instructions (skill, skill-extension, deep-knowledge, scheduled-task
-  runbook, or as a last resort CLAUDE.md) — NOT to personal feedback memory.
-  Also prunes now-duplicate `feedback_*.md` entries with confirmation. Routing
-  is one decision matrix (Step 2); per-branch execution lives in
-  `deep-knowledge/routing-details.md`. Triggers ONLY on explicit invocation:
-  "/do-learn", "devops learn" (also misspelt — "devos learn",
-  "/devops-learn" — and also when it sits at the END of a task prompt: the task
-  runs AND the capture runs, in the same turn, never dropped), "lerne das",
-  "merk dir das fürs Projekt", "remember this for the project", "capture
-  learning". Do NOT trigger for one-off conversational corrections or for
-  personal feedback memory.
+  Capture a long-term learning and route it into the right project
+  instructions (skill, extension, deep-knowledge, runbook, CLAUDE.md last),
+  NOT personal feedback memory. Explicit invocation only, also when it sits at
+  the END of a task prompt: the task runs AND the capture runs, in the same
+  turn, never dropped. Do NOT trigger for: one-off conversational corrections.
+  Triggers on: "/do-learn", "devops learn", "devos learn", "lerne das", "merk
+  dir das fürs Projekt", "remember this for the project".
 layer: 1
 invokes: [auto-issue]
 triggers:

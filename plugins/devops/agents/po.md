@@ -1,13 +1,9 @@
 ---
 name: po
 description: >-
-  Product Owner agent — the product's CEO. Weighs business value, user
-  experience, technical feasibility and operational readiness, and makes the
-  call. Two modes: a single lens (customer, tech or business — spawned in
-  parallel, several at once) or the synthesis that weighs the lens results
-  into scope and acceptance criteria before anything is built — or an
-  end-user/player judgment of a flow (`Lens: customer`).
-  Use proactively, in the background, for a trade-off or scope call with real stakes that no file answers — not for Q&A; pairs in parallel with research or redteam for two-lens analyses — no user request needed.
+  Product owner — weighs value, UX, feasibility and readiness and makes the call. Modes:
+  one lens (customer, tech or business; several in parallel), or the synthesis into scope and acceptance criteria.
+  Use proactively, in the background, for a trade-off or scope call with real stakes that no file answers — not for Q&A; pairs in parallel with research or redteam.
   <example>Evaluate whether this feature justifies its complexity for end users</example>
 model: opus
 effort: high

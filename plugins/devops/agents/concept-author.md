@@ -1,11 +1,8 @@
 ---
 name: concept-author
 description: >-
-  Concept round author — writes ONE follow-up round of an auto-concept page as
-  a fragment (docs/concepts/{name}/rounds/NN.html) from a round brief, builds
-  the page with scripts/concept-build.js until the gate passes, and returns a
-  short report. Keeps the session's context small over many rounds. Not
-  proactive — spawned only by the auto-concept skill (Step 5c, rounds 2+).
+  Writes ONE follow-up round of an auto-concept page as a fragment and builds
+  it until the gate passes. Not proactive — spawned only by the auto-concept skill (Step 5c, rounds 2+).
   <example>Write round 4 of docs/concepts/20261013-1200-billing from briefs/04.md</example>
 model: opus
 effort: high

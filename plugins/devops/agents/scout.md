@@ -1,11 +1,8 @@
 ---
 name: scout
 description: >-
-  Scout agent — read-only locator for codebase sweeps: finds files, callers,
-  config and patterns across many files and returns only the conclusion with
-  file:line references. Cheap by design (haiku, medium effort) — the devops
-  replacement for Explore, whose model and effort follow the session.
-  Use proactively, in the background, for a sweep over more than ~10 files or a "where/how is X wired?" question — no user request needed.
+  Read-only locator for codebase sweeps — finds files, callers, config and patterns, returns only the conclusion with file:line references. Cheap (haiku); the devops replacement for Explore.
+  Use proactively, in the background, for a sweep over more than ~10 files or a "where/how is X wired?" question.
   <example>Find every caller of renderAgentCard and how its lang is chosen</example>
 model: haiku
 effort: medium

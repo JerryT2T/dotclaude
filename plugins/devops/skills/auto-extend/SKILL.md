@@ -2,9 +2,8 @@
 name: auto-extend
 version: 0.2.0
 description: >-
-  Interactively scaffold or adapt a project-level extension for any plugin skill.
-  Lists available skills, checks for existing extensions, and creates or opens
-  the correct files. Triggers on: "extend skill", "customize skill", "skill extension".
+  Scaffold or adapt a project-level extension for a plugin skill. Triggers on:
+  "extend skill", "customize skill", "skill extension".
 layer: 2
 invokes: []
 user-invocable: false

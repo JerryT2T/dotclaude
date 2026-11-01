@@ -1,9 +1,8 @@
 ---
 name: qa
 description: >-
-  Quality assurance agent — runs tests, verifies builds, takes screenshots,
-  and validates changes in parallel while other work continues.
-  Use proactively, in the background, for a full test suite or build verification after non-trivial code changes, and as the escalation step for a recurring bug (delegation policy) — no user request needed.
+  QA agent — runs tests, verifies builds, takes screenshots, validates changes.
+  Use proactively, in the background, for a full test suite or build verification after non-trivial code changes, and as the escalation step for a recurring bug.
   <example>Run the tests and check for console errors</example>
 model: sonnet
 effort: medium

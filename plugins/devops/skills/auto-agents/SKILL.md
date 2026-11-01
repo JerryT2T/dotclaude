@@ -2,17 +2,12 @@
 name: auto-agents
 version: 0.13.0
 description: >-
-  The single execution path for everything that implements — do-run,
-  auto-concept (implement), auto-fix, auto-harden, auto-polish — and for a
-  yes to Claude's full-ceremony offer. Applies the always-on delegation
-  policy tiers (inline · 1 agent · parallel · full ceremony), reads plan and
-  usage via get_usage, shows one agent card (waves · task · model · effort) and
-  runs the waves; full ceremony keeps plan → confirm → waves → gates →
-  synthesis. Invokes no skill: shipping or a concept page is handed back to
-  the caller. Triggers on: "run agents", "use agents", "orchestrate",
-  "parallel agents", "multi-agent", "delegate to agents", "agent workflow",
-  or the user saying yes to Claude's offer. Do NOT trigger for: simple edits,
-  quick fixes, explanations, or single-agent research.
+  Single execution path for all implementing work (do-run, auto-concept,
+  auto-fix, auto-harden, auto-polish) and for a yes to Claude's full-ceremony
+  offer: picks the delegation tier, shows one agent card, runs the waves. Do
+  NOT trigger for: simple edits, quick fixes, explanations, single-agent
+  research. Triggers on: "run agents", "orchestrate", "parallel agents",
+  "multi-agent".
 layer: 5
 invokes: []
 user-invocable: false

@@ -2,20 +2,14 @@
 name: do-ship
 version: 0.16.0
 description: >-
-  End-to-end shipping in ONE deterministic MCP call: ship_run drives preflight,
-  rebase, build, CHANGELOG + version bump, release, cleanup and hygiene in code;
-  the model only makes the decisions (bump, CHANGELOG text, Codex verdict,
-  conflicts) and renders the completion card as the last action.
-  Supports hierarchical merges (sub-branch → feature → main).
-  Use when work is ready to land. Ships to alpha; naming beta or stable
-  ("ship stable", "promote to beta", "auf stable heben") ships anything
-  unshipped first, then promotes by re-tagging the SAME commit via
-  ship_promote (formerly the promote skill) — never rebuilds, never bumps,
-  never autonomous. Runs auto-harden and auto-polish diff-scoped at ship.
-  Do NOT trigger during coding/debugging, for commits without shipping, or
-  for plugin updates (/auto-update).
-  Triggers on: "ship it", "push and merge", "release", "promote", "promotion",
-  "channel release", "auf stable heben", "promote to beta", "promote to stable".
+  Ship finished work in one deterministic call (build, CHANGELOG, version
+  bump, release, cleanup), also sub-branch → feature merges; renders the
+  completion card last. Ships to alpha; naming beta or stable ships anything
+  unshipped first, then promotes by re-tagging the SAME commit: never
+  rebuilds, never bumps, never autonomous. Do NOT trigger during
+  coding/debugging, for commits without shipping, or for plugin updates
+  (auto-update). Triggers on: "ship it", "push and merge", "release", "promote
+  to stable", "auf stable heben".
 layer: 3
 invokes: [auto-harden, auto-polish]
 triggers:

@@ -1,12 +1,9 @@
 ---
 name: feature
 description: >-
-  Feature agent — takes ONE feature from brief to built result in its own
-  worktree: elaborates it first when the brief has no acceptance criteria
-  (po lenses in parallel, then a po synthesis that weighs them), then builds
-  it — itself, or through domain agents when it spans several — verifies it
-  with qa and merges the parts back into its integration branch.
-  Never spawn proactively — the full-ceremony path is /do-run (which executes through auto-agents), offered to the user first.
+  Takes ONE feature from brief to built result in its own worktree: elaborates,
+  builds (itself or via domain agents), verifies with qa, merges back.
+  Never spawn proactively — the full-ceremony path is /do-run, offered to the user first.
   <example>Implement the video filter feature end-to-end</example>
 model: opus
 effort: medium

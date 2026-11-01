@@ -2,18 +2,15 @@
 name: do-run
 version: 0.3.0
 description: >-
-  Door for every run of work bigger than one edit. Asks one short question
-  set (what · how · scope · passes), then implements the prompt through the
-  agent execution path, works off the planned GitHub backlog (milestones or
-  loose issues — refine, implement, test, ship each item), runs fully
-  autonomous while the user is away or goes to bed (optional PC shutdown), burns the
-  remaining weekly budget as depth per task (ONLY on the literal /do-run
-  burn or /run-burn or the "Budget verbrennen" answer, never from wording
-  such as burn, budget, limit or token), rethinks a stuck area from scratch
-  (code-blind lens agents; decided alone, a concept page only for a real
-  fork), or runs a full-spectrum audit with evidence for every finding.
-  Do NOT trigger for: a single known bug (auto-fix), a pure consistency or
-  UI pass, a security-only review, repo/branch hygiene, shipping, or a quick edit.
+  Door for every run of work bigger than one edit: one short question set,
+  then implement the prompt, work off the GitHub backlog, run autonomously
+  while the user is away or asleep, burn the remaining weekly budget as depth
+  (ONLY on the literal /do-run burn or /run-burn or the "Budget verbrennen"
+  answer, never from wording such as burn, budget, limit or token), rethink a
+  stuck area from scratch (decided alone, a concept page only for a real
+  fork), or run a full audit with evidence per finding. Do NOT trigger for: a
+  single known bug, a pure consistency or UI pass, a security-only review,
+  repo/branch hygiene, shipping, or a quick edit.
 when_to_use: >-
   Triggers: "backlog abarbeiten", "arbeite den backlog ab", "backlog runner",
   "run the backlog", "milestones abarbeiten", "arbeite die milestones ab",
