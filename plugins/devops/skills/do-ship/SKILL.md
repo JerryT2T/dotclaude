@@ -9,7 +9,7 @@ description: >-
   rebuilds, never bumps, never autonomous. Do NOT trigger during
   coding/debugging, for commits without shipping, or for plugin updates
   (auto-update). Triggers on: "ship it", "push and merge", "release", "promote
-  to stable", "auf stable heben".
+  to beta", "promote to stable", "auf stable heben".
 layer: 3
 invokes: [auto-harden, auto-polish]
 triggers:
