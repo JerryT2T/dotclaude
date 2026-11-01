@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.340.1] — 2026-11-01
+
+### Changed
+- Skills: progressive disclosure for `auto-concept`, `auto-agents`, `do-batch`, `auto-cleanup` and `auto-harden` — branches only some runs take (do-batch Step 4, the burn conveyor, the permission audit, the `--report` entry, the open-PR detail, the ship-path spec, …) moved verbatim into `skills/<skill>/deep-knowledge/` behind full-path pointers; the five `SKILL.md` files shrink 138 → 115 KB (−17 %, ≈ 5.7k tokens).
+- Skill-local docs are named by their full `{PLUGIN_ROOT}/skills/<skill>/deep-knowledge/…` path; a bare `deep-knowledge/x.md` was resolved against the plugin root and missed.
+
+### Added
+- Eval cases `skills/do-batch/go-merge` and `skills/auto-agents/ceremony-plan`; A/B record `evals/trims/progressive-disclosure.md`.
+
 ## [0.340.0] — 2026-11-01
 
 ### Added
