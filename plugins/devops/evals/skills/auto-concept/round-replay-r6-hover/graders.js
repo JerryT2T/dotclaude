@@ -19,6 +19,7 @@
 //   elementFromPoint, getBoundingClientRect, getComputedStyle, .hover(,
 //   mouse.move, "hover" next to a node/Edge call). Rest-state screenshots
 //   alone do not count.
+// - toc-max-example-7x7 (outcome): a rail with >= 49 items exists (the 7x7 maximum).
 // - toc-no-fab-overlap-on-hover / toc-cursor-pointer / toc-hover-no-dead-gap
 //   (outcome): check-toc.js opens the BUILT page in headless system Edge via
 //   playwright-core, takes the live round and measures every TOC rail with a
@@ -70,6 +71,11 @@ module.exports = (g) => ({
   "toc-no-fab-overlap-on-hover": outcome((r) => r.overlap),
   "toc-cursor-pointer": outcome((r) => r.cursor),
   "toc-hover-no-dead-gap": outcome((r) => r.gaps),
+  // The 7x7 maximum example the user asked for in round 6: a rail with the full
+  // load (1 + 7 topics x (1 + 7 questions) + 1 = 58 items; >= 49 = 7x7 questions
+  // alone) must be on a screen, so the other three checks run on the real worst
+  // case instead of a 10-dot toy.
+  "toc-max-example-7x7": (ctx) => { const res = browserCheck(ctx); return res ? res.maxItems >= 49 : null; },
   "brief-verbatim": R.briefVerbatim(["fab elemente", "7x7", "zwischenraum", "input cursor"]),
 });
 
