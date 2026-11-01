@@ -287,6 +287,12 @@
       },
       {
         "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use/post.backup.routine.js\"", "timeout": 10 }
+        ],
+        "matcher": "mcp__scheduled-tasks__(create|update)_scheduled_task|RemoteTrigger"
+      },
+      {
+        "hooks": [
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use/post.test.record.js\"", "timeout": 40 }
         ],
         "matcher": "Bash|PowerShell"

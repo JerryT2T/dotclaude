@@ -67,7 +67,7 @@
         "hooks": [
           { "type": "command", "command": "command -v node >/dev/null 2>&1 || { echo '{\"systemMessage\":\"devops inactive: node/git missing\"}'; exit 0; }; node \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch/dispatch.js\" PostToolUse", "timeout": 65 }
         ],
-        "matcher": "^(?!(?:Read|Glob|Grep)$|mcp__ccd_)|Write|Edit|NotebookEdit|Write|Edit|Edit|Write|AskUserQuestion|Skill|Agent|Edit|Write|NotebookEdit|Bash|PowerShell|mcp__plugin_devops_dotclaude__ship_release|mcp__plugin_devops_dotclaude__ship_run|mcp__plugin_devops_dotclaude__render_completion_card|mcp__.*__merge_pull_request|AskUserQuestion|ExitPlanMode|Skill|AskUserQuestion|Skill|Skill|Bash|PowerShell|Bash|PowerShell|EnterWorktree"
+        "matcher": "^(?!(?:Read|Glob|Grep)$|mcp__ccd_)|Write|Edit|NotebookEdit|Write|Edit|Edit|Write|AskUserQuestion|Skill|Agent|Edit|Write|NotebookEdit|Bash|PowerShell|mcp__plugin_devops_dotclaude__ship_release|mcp__plugin_devops_dotclaude__ship_run|mcp__plugin_devops_dotclaude__render_completion_card|mcp__.*__merge_pull_request|AskUserQuestion|ExitPlanMode|Skill|AskUserQuestion|Skill|Skill|Bash|PowerShell|Bash|PowerShell|EnterWorktree|mcp__scheduled-tasks__(create|update)_scheduled_task|RemoteTrigger"
       },
       {
         "hooks": [
