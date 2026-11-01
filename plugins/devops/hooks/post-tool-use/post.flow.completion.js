@@ -291,7 +291,7 @@ function archiveLines() {
   return [
     '[SESSION ARCHIVE] Card shown and the ship is done — the session archives itself now.',
     'Make exactly ONE more tool call: mcp__ccd_session_mgmt__archive_session {session_id:"self"}.',
-    'No text before or after it. Tool unavailable or failing: end the response silently.',
+    'No text before or after it. Tool unavailable, failing or not called: end the response silently — never a summary instead.',
     NO_OUTPUT_NUDGE_REPLY,
   ];
 }
