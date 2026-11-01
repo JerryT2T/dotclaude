@@ -176,7 +176,7 @@ function checklist(round, items, repeats) {
     '',
   ];
   for (const it of items) {
-    const tags = [...it.state, ...it.patterns].join(', ');
+    const tags = [...new Set([...it.state, ...it.patterns])].join(', ');
     const r = rep.get(it.id);
     lines.push(`- [ ] \`${it.id}\` (${it.kind}; ${tags})${r ? ` REPEAT of round ${r.round} \`${r.prevId}\`` : ''}`);
     lines.push(`  > ${oneLine(it.text, 400)}`);
@@ -207,7 +207,7 @@ function readJson(file) {
 /** The whole run as a pure-ish function: returns { round, items, repeats, file, stdout }. */
 function run(opts) {
   const payload = readJson(opts.payload);
-  const round = opts.round || payload.iteration;
+  const round = opts.round || Number(payload.iteration);
   if (!Number.isInteger(round) || round < 1) throw new Error('payload has no iteration; pass --round N');
   const dir = path.resolve(opts.dir);
   const decisionsFile = opts.decisions || `${dir.replace(/[\\/]+$/, '')}-decisions.json`;
