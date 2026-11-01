@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.336.3] — 2026-11-01
+
+### Changed
+- **Card gate**: the reminder that a turn ended without a completion card is about half as long while the plugin's server runs; the full offline instructions stay for a session whose server is down.
+
 ## [0.336.2] — 2026-11-01
 
 ### Fixed

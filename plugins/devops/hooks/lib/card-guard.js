@@ -803,6 +803,9 @@ const CARD_VARIANT_REFERENCE =
   'state: { pushed: true, merged: "main", pr: { number, title }, commit }, cta: { vOld, vNew, bump }, ' +
   'delivery: { pr, ship: { version, base } }.';
 
+const CARD_VARIANT_NAMES =
+  'Variants: ship-successful|ready|released|ship-blocked|test|test-minimal|analysis|aborted|fallback|ready-files|paused.';
+
 function renderLadderLines(pluginRoot, { completionMcpDown } = {}) {
   const offline = [
     `  node "${offlineRendererPath(pluginRoot)}" --render-card <payload.json>`,
@@ -830,15 +833,20 @@ function renderLadderLines(pluginRoot, { completionMcpDown } = {}) {
       'then ToolSearch (select:mcp__plugin_devops_dotclaude__render_completion_card).',
     ];
   }
+  // The server is alive: the offline path is the rare fallback, so it gets
+  // the command and its contract in short — the field and variant shapes
+  // are in the tool description, and the CLI prints every payload problem
+  // on exit 2 (#994: this block went out on most turn ends at ~2.5k chars).
   return [
-    'Call `mcp__plugin_devops_dotclaude__render_completion_card` NOW as the FIRST action.',
-    'If the direct call fails with "tool not found", fall back to ToolSearch:',
-    '  select:mcp__plugin_devops_dotclaude__render_completion_card',
-    '',
-    'If ToolSearch ALSO cannot find it because the MCP server never connected this',
-    'session (CONNECT_TIMEOUT / "failed to connect"), the card is still required —',
-    'render it offline through the same renderer, via Bash:',
-    ...offline,
+    'Call `mcp__plugin_devops_dotclaude__render_completion_card` NOW as the FIRST action',
+    '(not loaded → ToolSearch select:mcp__plugin_devops_dotclaude__render_completion_card).',
+    'MCP server never connected (CONNECT_TIMEOUT / "failed to connect") → the card is still',
+    'required; render it offline via Bash:',
+    `  node "${offlineRendererPath(pluginRoot)}" --render-card <payload.json>`,
+    'payload.json = the tool arguments (same names, incl. "session_id"). Relay stdout VERBATIM,',
+    'follow the [SESSION TITLE] block on stderr. Exit 2 lists the payload problems — fix them,',
+    'never relay a generic card instead.',
+    CARD_VARIANT_NAMES,
   ];
 }
 

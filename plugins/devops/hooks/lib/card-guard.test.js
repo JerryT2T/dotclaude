@@ -1571,6 +1571,16 @@ describe("buildBlockReason", () => {
     );
   });
 
+  // #994: this block reaches the model on most card-less turn ends.
+  test("stays compact while the server is alive; the MCP-down variant keeps the full shapes", () => {
+    const alive = buildBlockReason("/p");
+    expect(alive.length).toBeLessThanOrEqual(1500);
+    expect(alive).not.toContain("Shapes:");
+    const down = buildBlockReason("/p", { completionMcpDown: true });
+    expect(down).toContain("Shapes:");
+    expect(down).toContain('a shipped PR is "ship-successful"');
+  });
+
   test("falls back to the env placeholder when no plugin root is known", () => {
     const r = buildBlockReason();
     expect(r).toContain('node "$CLAUDE_PLUGIN_ROOT/mcp-server/index.js" --render-card');
