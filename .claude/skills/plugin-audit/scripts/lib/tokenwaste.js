@@ -191,6 +191,7 @@ function cronField(f, lo, hi) {
     const a = m[1] === '*' ? lo : Number(m[2]);
     const b = m[1] === '*' ? hi : m[3] !== undefined ? Number(m[3]) : m[4] ? hi : a;
     const step = Number(m[4] || 1);
+    if (step < 1) return null; // `*/0` would never advance
     for (let v = a; v <= b; v += step) out.add(v);
   }
   return out.size;
@@ -353,7 +354,8 @@ function tokenLog({ logFile }) {
 function pruneTokenLog(logFile, untilTs) {
   if (!logFile || !untilTs) return null;
   try {
-    const text = fs.readFileSync(logFile, 'utf8');
+    const raw = fs.readFileSync(logFile);
+    const text = raw.toString('utf8');
     const keep = []; let dropped = 0;
     for (const line of text.split('\n')) {
       if (!line.trim()) continue;
@@ -361,7 +363,10 @@ function pruneTokenLog(logFile, untilTs) {
       try { ts = JSON.parse(line).ts; } catch { /* broken line: dropped */ }
       if (typeof ts === 'string' && ts > untilTs) keep.push(line); else dropped++;
     }
-    fs.writeFileSync(logFile, keep.length ? `${keep.join('\n')}\n` : '');
+    // A hook may append while this runs: carry over what arrived since the read.
+    let since = '';
+    try { since = fs.readFileSync(logFile).subarray(raw.length).toString('utf8'); } catch { /* gone: nothing to carry */ }
+    fs.writeFileSync(logFile, (keep.length ? `${keep.join('\n')}\n` : '') + since);
     return { kept: keep.length, dropped };
   } catch { return null; }
 }

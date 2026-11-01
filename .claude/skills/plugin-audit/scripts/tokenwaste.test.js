@@ -111,6 +111,7 @@ describe('cronRunsPerDay', () => {
     expect(TW.cronRunsPerDay('0 1,3,5,7-18 * * *')).toBe(15);
     expect(TW.cronRunsPerDay('*/5 * * * *')).toBe(288);
     expect(TW.cronRunsPerDay('nonsense')).toBeNull();
+    expect(TW.cronRunsPerDay('*/0 * * * *')).toBeNull();
   });
 });
 
