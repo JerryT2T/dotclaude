@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.339.0] — 2026-11-01
+
+### Added
+- **Completion card**: a page Claude built for you to try (a demo, a preview) shows as a clickable link on the card, like the concept page link.
+- **Concept analysis pages**: Ctrl+click places a note on questions, answer rows and messages, as on every other concept page.
+
+### Changed
+- **Concept analysis pages**: only the chat scrolls — the note field stays in place and the page never scrolls sideways; each step opens at its top and glides softly from the finding to the question and answer, and your own scrolling always wins.
+- **Concept analysis pages**: a note on the briefing, a topic or the closing stays on that page; on a question a note without a tag takes the current choice and moves on.
+- **Concept analysis pages**: rebuilt "Punkte verteilen", roomier right-hand navigation with smooth hover, a closing that opens with a short message and uses the same buttons as the concept menu, and cleaner compare, picture and placement forms.
+- **Concept analysis pages**: the finding only shows the finding — hints about how to answer sit in the answer block.
+
 ## [0.338.0] — 2026-11-01
 
 ### Added
