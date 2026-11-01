@@ -65,7 +65,7 @@ the gate never depend on it.
       <p data-applies>Gilt für: alle Hooks</p>
       <p data-situation>Today 80 % of cache hits fall within 10 min, yet every entry lives 24 h.</p>
       <h3 data-question>How long may a cached answer live?</h3>
-      <p data-context>One sentence of background under the question.</p>
+      <p data-context>Optional: one sentence about answering — a hint at the top of the answer block, never part of the finding.</p>
       <p data-stakes>Token use of every hook and how fresh their answers are.</p>
       <div data-options>
         <label data-opt="short" data-recommended>
@@ -124,7 +124,7 @@ Attribute reference:
 | `data-finding-quant="true\|false"` | decision | overrides the gate's guess whether the finding is quantitative |
 | `data-situation` | inside a decision | Ausgangslage: 1–2 sentences above the question, what the analysis found for it (gate A9 warns when missing) |
 | `data-stakes` | inside a decision | optional "Davon hängt ab" line below the context |
-| `data-question`, `data-context`, `data-options`, `data-opt`, `data-opt-label`, `data-opt-consequence`, `data-recommended` | inside a decision | question (a real question), one background sentence, answer rows (outcome verb + consequence line), the ★ option |
+| `data-question`, `data-context`, `data-options`, `data-opt`, `data-opt-label`, `data-opt-consequence`, `data-recommended` | inside a decision | question (a real question), one answering hint (answer block, never in the finding), answer rows (outcome verb + consequence line), the ★ option |
 
 ### Lite
 
