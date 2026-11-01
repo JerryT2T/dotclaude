@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.337.1] — 2026-11-01
+
+### Changed
+- **Browser tools**: one tool per use case. The built-in browser pane is the default for your local app, tests and public pages. Claude-in-Chrome in Edge is used only for sites you are logged in to, uploads and flows you watch. Playwright stays the last fallback.
+
 ## [0.337.0] — 2026-11-01
 
 ### Added
