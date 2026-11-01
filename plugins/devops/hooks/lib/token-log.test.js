@@ -76,7 +76,17 @@ describe("usage per turn (Stop)", () => {
     const all = TL.usageSince(text, null);
     expect(all.sum).toEqual({ calls: 3, input: 6, cacheRead: 300, cacheWrite: 30, output: 18 });
     expect(all.last).toBe("a4");
-    expect(TL.usageSince(text, "a3").sum).toMatchObject({ calls: 1, input: 3, output: 7 });
+    expect(TL.usageSince(text, { uuid: "a3" }).sum).toMatchObject({ calls: 1, input: 3, output: 7 });
+  });
+
+  test("a marker that left the tail counts only calls newer than its timestamp", () => {
+    const text = [
+      assistant("b1", "n1", u(1, 1), { timestamp: "2026-11-01T10:00:00.000Z" }),
+      assistant("b2", "n2", u(2, 2), { timestamp: "2026-11-01T10:05:00.000Z" }),
+    ].join("\n");
+    const r = TL.usageSince(text, { uuid: "gone", ts: "2026-11-01T10:01:00.000Z" });
+    expect(r.sum).toMatchObject({ calls: 1, input: 2 });
+    expect(r.lastTs).toBe("2026-11-01T10:05:00.000Z");
   });
 
   test("two Stops of one session count each call once", () => {

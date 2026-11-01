@@ -67,19 +67,24 @@ function sizeOf(v) {
 }
 
 /**
- * Sum of the main-thread assistant usage after the line with `afterUuid`
- * (all of the tail when it is not found). Returns the newest uuid too.
+ * Sum of the main-thread assistant usage after the line with `after.uuid`.
+ * When that line is no longer in the tail (a turn longer than TAIL_BYTES),
+ * only lines newer than `after.ts` count, so no call is counted twice.
+ * Returns the newest uuid and timestamp too.
  * @param {string} text JSONL tail (may start mid-line)
- * @param {string|null} afterUuid
+ * @param {{uuid?:string|null, ts?:string|null}|null} after
  */
-function usageSince(text, afterUuid) {
+function usageSince(text, after) {
   const sum = { calls: 0, input: 0, cacheRead: 0, cacheWrite: 0, output: 0 };
   let last = null;
+  let lastTs = null;
   const lines = String(text || '').split('\n');
   let start = 0;
-  if (afterUuid) {
-    const at = lines.findIndex((l) => l.includes(`"uuid":"${afterUuid}"`));
+  let minTs = null;
+  if (after && after.uuid) {
+    const at = lines.findIndex((l) => l.includes(`"uuid":"${after.uuid}"`));
     if (at >= 0) start = at + 1;
+    else minTs = after.ts || null;
   }
   const seen = new Set();
   for (let i = start; i < lines.length; i++) {
@@ -88,7 +93,9 @@ function usageSince(text, afterUuid) {
     let o;
     try { o = JSON.parse(line); } catch { continue; }
     if (o.type !== 'assistant' || o.isSidechain) continue;
+    if (minTs && !(typeof o.timestamp === 'string' && o.timestamp > minTs)) continue;
     last = o.uuid || last;
+    lastTs = o.timestamp || lastTs;
     // One API call can be split over several lines (one per content block)
     // that repeat the same usage: count each message id once.
     const id = o.message && o.message.id;
@@ -101,7 +108,7 @@ function usageSince(text, afterUuid) {
     sum.cacheWrite += u.cache_creation_input_tokens || 0;
     sum.output += u.output_tokens || 0;
   }
-  return { sum, last };
+  return { sum, last, lastTs };
 }
 
 function readTail(file) {
@@ -162,10 +169,13 @@ function recordEvent(event, payload, results, opts = {}) {
       const { sessionFile, writeSessionFile } = require('./session-id');
       const marker = sessionFile('dotclaude-token-log-last', p.session_id);
       let after = null;
-      try { after = fs.readFileSync(marker, 'utf8').trim() || null; } catch { /* first Stop */ }
-      const { sum, last } = usageSince(readTail(p.transcript_path), after);
+      try {
+        const [uuid, ts] = fs.readFileSync(marker, 'utf8').trim().split('\t');
+        if (uuid) after = { uuid, ts: ts || null };
+      } catch { /* first Stop */ }
+      const { sum, last, lastTs } = usageSince(readTail(p.transcript_path), after);
       if (sum.calls) rec.usage = sum;
-      if (last) try { writeSessionFile(marker, last); } catch { /* next Stop counts again */ }
+      if (last) try { writeSessionFile(marker, `${last}\t${lastTs || ''}`); } catch { /* next Stop counts again */ }
     }
     if (!rec.ctx && !rec.usage && !rec.result) return null;
     append(file, rec);
