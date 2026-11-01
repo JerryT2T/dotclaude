@@ -51,7 +51,7 @@ function browserCheck(ctx) {
   const html = R.builtPage(ctx.workdir);
   if (!html) return null;
   if (cache.has(html)) return cache.get(html);
-  const r = spawnSync(process.execPath, [path.join(__dirname, "check-toc.js"), html], { encoding: "utf8", timeout: 600000 });
+  const r = spawnSync(process.execPath, [path.join(__dirname, "check-toc.js"), html], { encoding: "utf8", timeout: 600000, windowsHide: true });
   let res = null;
   try { res = JSON.parse(String(r.stdout || "").trim().split("\n").pop()); } catch { /* res stays null */ }
   if (res && (res.unavailable || res.error)) res = null;
