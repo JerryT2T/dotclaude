@@ -2,7 +2,7 @@
 name: redteam
 description: >-
   Adversarial reviewer — finds failure modes and hidden risks in a plan or change, with file/line references; report-only, does NOT fix code.
-  Spawn in the background once the inline pre-mortem hits a higher-stakes trigger (migration, auth, breaking contract, destructive op); never as a first reflex.
+  Spawn in the background once the inline pre-mortem hits a higher-stakes trigger (migration, auth, breaking contract, destructive op); never as a first reflex — no user request needed.
   <example>Red-team this migration plan for race conditions and partial-failure modes</example>
 model: opus
 effort: high

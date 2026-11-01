@@ -2,7 +2,7 @@
 name: scout
 description: >-
   Read-only locator for codebase sweeps — finds files, callers, config and patterns, returns only the conclusion with file:line references. Cheap (haiku); the devops replacement for Explore.
-  Use proactively, in the background, for a sweep over more than ~10 files or a "where/how is X wired?" question.
+  Use proactively, in the background, for a sweep over more than ~10 files or a "where/how is X wired?" question — no user request needed.
   <example>Find every caller of renderAgentCard and how its lang is chosen</example>
 model: haiku
 effort: medium
