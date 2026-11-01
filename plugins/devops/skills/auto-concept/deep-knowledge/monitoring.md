@@ -191,7 +191,7 @@ flips the panel locally as a safety-net — when a reload counter advance
 has been observed OR a long stale timeout elapses. See `templates-submit-journey.md`
 § Panel State Reset for the client contract.
 
-**WARNING:** NEVER use `get_page_text`, `browser_snapshot`, or `preview_snapshot`
+**WARNING:** NEVER use `get_page_text`, `read_page`, or `browser_snapshot`
 to read decisions. Concept pages contain large inline CSS/JS (self-contained HTML).
 These "read page" tools strip scripts and may fail with "page body too large".
 

@@ -14,7 +14,7 @@ Quick-reference for all deep-knowledge topics. Read this FIRST to find the right
 | [api-credits.md](api-credits.md) | API Credits (opt-in) | Run devops' read-only side work on the monthly Claude API credit of a Max/Tea... |
 | [autonomous-execution.md](autonomous-execution.md) | Autonomous Execution — Gate, Guardrails, Late-Permission Protocol | Detailed execution rules for do-run autonomous mode Step 5. Read this at the ... |
 | [browser-file-urls.md](browser-file-urls.md) | Browser File URLs (Windows + Git-Bash) | Cross-cutting rule: whenever a skill opens a local HTML file in a browser |
-| [browser-tool-strategy.md](browser-tool-strategy.md) | Browser Tool Strategy | > **Single-Source-of-Truth for test autonomy decisions:** see [test-autonomy.... |
+| [browser-tool-strategy.md](browser-tool-strategy.md) | Browser Tool Strategy | Which browser tool a skill, agent or hook uses, and the guards around it. The |
 | [claude-desktop-app-setup.md](claude-desktop-app-setup.md) | Claude Desktop App Setup (Windows) | Windows-specific reference for Claude Desktop App launcher configuration and ... |
 | [claude-directory-structure.md](claude-directory-structure.md) | Claude Directory Structure Convention | All Claude Code configuration belongs inside `.claude/`. Nothing Claude-specific |
 | [code-defaults.md](code-defaults.md) | Code Defaults | Standard coding conventions enforced across all projects using the devops plu... |
@@ -43,7 +43,7 @@ Quick-reference for all deep-knowledge topics. Read this FIRST to find the right
 | [plugin-behavior.md](plugin-behavior.md) | Plugin Behavior Rules | Core behavioral rules enforced by the devops plugin. |
 | [plugin-scope-routing.md](plugin-scope-routing.md) | Plugin Scope Routing — Where a Fix Belongs | Cross-cutting rule for every skill, hook, and agent: a devops-plugin defect f... |
 | [pre-mortem.md](pre-mortem.md) | Pre-Mortem / Red-Team Self-Critique | Cross-cutting rule for reducing blind spots before non-trivial changes. |
-| [preview-testing.md](preview-testing.md) | Claude Preview — Capabilities & Hard Limits | Canonical reference for **Claude Preview** (`preview_*`), the primary localhost |
+| [preview-testing.md](preview-testing.md) | Built-in Browser Pane — Capabilities & Limits | Canonical reference for the Desktop **built-in browser pane** |
 | [project-setup.md](project-setup.md) | Project Setup — Repo Hygiene | How to audit or initialize a project's repository structure: .gitignore, LICE... |
 | [readme-standards.md](readme-standards.md) | README Standards | How to create, rewrite or substantially update a README.md: a polished, moder... |
 | [responsive-testing.md](responsive-testing.md) | Responsive Testing — Multi-Viewport Verification | Multi-device web apps require verification at phone, tablet, and desktop |

@@ -240,12 +240,13 @@ including the **Edge Credo** (§ Edge Credo — Hard Rules):
 **Browser probing is MANDATORY when any web-tech gate signal is true** (see
 `{PLUGIN_ROOT}/deep-knowledge/test-strategy.md` § Web Tech → Always Browser-Test). This includes
 Electron/Tauri: their renderer is web tech and must be verified in a browser with
-mocks, even though the packaged app itself cannot be driven via Chrome-MCP. Never
+mocks, even though the packaged app itself cannot be driven via a browser tool. Never
 skip browser probing with "Electron app, no preview server" — the renderer still
 needs browser-based component verification.
 
-Run the waterfall probe (Chrome MCP → Preview → Playwright), set `$BROWSER_TOOL`
-to the first responder. If none respond → show the error block from the strategy
+Run the probe in the order of the use case (localhost/public: pane → Chrome-MCP → Playwright;
+logged-in external: Chrome-MCP → pane → Playwright), set `$BROWSER_TOOL`
+(`pane|chrome-mcp|playwright`) to the first responder. If none respond → show the error block from the strategy
 doc and abort browser-dependent work. Never use computer-use for browser tasks.
 
 Mark `[--] Browser nicht benötigt` ONLY for pure non-UI work (CLI tool without
@@ -289,7 +290,7 @@ trigger a lightweight read-only call to each to prime the permission.
 ### 3e — Confirmation Checklist
 Display a checklist of all primed permissions:
 ```
-[OK] Browser: {$BROWSER_TOOL} aktiv (Chrome MCP / Playwright / Preview)
+[OK] Browser: {$BROWSER_TOOL} aktiv (pane / chrome-mcp / playwright)
 [OK] Computer-Use: {app1, app2} genehmigt  (nur wenn Desktop-Modus)
 [OK] Dateisystem: Lesen/Schreiben genehmigt
 [OK] Shell: Bash genehmigt

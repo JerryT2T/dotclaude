@@ -58,7 +58,7 @@ Work in checkpoints: commit `wip(<scope>): <what>` after every green sub-step an
 - Create Code Connect mappings (`send_code_connect_mappings`) to link Figma ↔ code
 - Write component specs that the Frontend agent can implement directly
 - Verify implementation matches design with a browser screenshot
-  (Claude browser pane, Claude in Chrome or Playwright — whichever is connected)
+  (Claude browser pane for localhost, Claude in Chrome for logged-in sites, Playwright last — see browser-tool-strategy.md)
 
 ## Game projects
 

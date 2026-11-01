@@ -445,7 +445,7 @@ Continues [bridge-server.md](bridge-server.md) (timestamp convention, steps 1 to
    the first quoted argument as a window title.
 
    **NEVER substitute one of these instead of the shell command above:**
-   - `preview_start` / `preview_*` (`mcp__Claude_Browser__*`, formerly `mcp__Claude_Preview__*`) — sandboxed iframe,
+   - the built-in pane (`mcp__Claude_Browser__*` — `preview_start`, `navigate`; formerly `mcp__Claude_Preview__*`) — sandboxed iframe,
      no heartbeat, user cannot use it as the concept page.
    - `mcp__plugin_playwright_playwright__browser_navigate` — opens a
      separate Playwright-controlled browser the user does not see.

@@ -9,7 +9,7 @@ How to verify changes visually. Referenced by the completion flow hook.
 
 | Change type | Verification method |
 |---|---|
-| **UI component / web page** | Preview screenshot or browser screenshot |
+| **UI component / web page** | Built-in pane screenshot or browser screenshot |
 | **CLI / terminal output** (completion card, log format) | Simulated example in markdown code block |
 | **Formatted text** (markdown, tables) | Render directly in chat |
 | **Config / data structure** | Show resulting JSON/YAML inline |
@@ -17,7 +17,7 @@ How to verify changes visually. Referenced by the completion flow hook.
 
 ## Screenshot previews
 
-1. Preview server running → `preview_screenshot`
+1. Dev server running in the built-in pane → `computer` screenshot
 2. Browser tab open → `computer` screenshot
 3. Neither available but startable → start server first, then screenshot
 4. Not visually testable → skip, explain what was verified instead
@@ -29,9 +29,8 @@ to verify DOM structure, text content, element roles, and interactive state:
 
 | Tool | Snapshot call |
 |------|-------------|
-| Chrome MCP | `read_page` |
+| Built-in pane / Chrome MCP | `read_page` |
 | Playwright | `browser_snapshot` |
-| Preview | `preview_snapshot` |
 
 Snapshots are **preferred over screenshots** for verifying:
 - Element presence/absence (button rendered, modal visible)

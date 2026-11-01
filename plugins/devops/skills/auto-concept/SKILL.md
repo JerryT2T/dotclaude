@@ -228,7 +228,7 @@ a new tab — NEVER open a separate browser window.
 The concept page MUST be opened in the user's **real Edge browser** via the
 OS shell. **Forbidden alternatives** that will produce a broken session:
 
-- ❌ **Never** use `preview_start` / `preview_*` (`mcp__Claude_Browser__*`, formerly `mcp__Claude_Preview__*`) to
+- ❌ **Never** use the built-in pane (`mcp__Claude_Browser__*` — `preview_start`, `navigate`; formerly `mcp__Claude_Preview__*`) to
   display the page — a sandboxed iframe with no heartbeat or polling.
 - ❌ **Never** use `mcp__plugin_playwright_playwright__browser_navigate`
   — its own browser instance, invisible to the user.

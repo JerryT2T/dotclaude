@@ -91,7 +91,7 @@ For every declared surface:
    Works in foreground, background, and autonomous mode.
 2. Open `url` in the **separate Edge testing window** (per the Edge Credo).
 3. Read the **rendered** version marker. Use **Eval JS** (`javascript_tool` /
-   `browser_evaluate` / `preview_eval`) to read structured data
+   `browser_evaluate`) to read structured data
    (`document.querySelector(selector)?.textContent` or the documented attribute)
    — NOT "read page", which strips scripts and misses client-rendered values.
 4. Assert the rendered value contains the shipped version (`vNew` / tag).

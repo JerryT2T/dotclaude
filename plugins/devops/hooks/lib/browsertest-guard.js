@@ -286,10 +286,10 @@ function needsLightVerification(profileClass, filePath, carveOuts, domPaths) {
 const BROWSER_MCP_RE =
   /^mcp__(Claude_in_Chrome__|claude-in-chrome__|Claude_Browser__|Claude_Preview__preview_|plugin_playwright_playwright__browser_)/;
 const BROWSER_SHORT_RE =
-  /^(preview_(snapshot|screenshot|eval|click|fill|console_logs|inspect|navigate|start|logs|network)|browser_(navigate|snapshot|take_screenshot|click|evaluate|console_messages|network_requests|type|fill_form|wait_for))/;
+  /^(preview_(snapshot|screenshot|eval|click|fill|console_logs|inspect|navigate|start|logs|network|list|stop)|browser_(navigate|snapshot|take_screenshot|click|evaluate|console_messages|network_requests|type|fill_form|wait_for))/;
 
 /**
- * Did a browser tool run? Any Chrome-MCP / Playwright / Preview call counts.
+ * Did a browser tool run? Any pane / Chrome-MCP / Playwright call counts.
  * @param {string} toolName
  * @returns {boolean}
  */
@@ -819,12 +819,12 @@ function domReason() {
     'this is mandatory for web tech. Do this FIRST, before the completion card:',
     '',
     '1. Make the changed view reachable: dev server (npm run dev) or a file:// URL in Edge.',
-    '2. Verify via Chrome-MCP (Edge) when the extension is connected; otherwise via',
-    '   Claude Preview (PRIMARY for the localhost app), then Playwright. Never plain Chrome,',
-    '   never computer-use for browser work (see browser-tool-strategy.md).',
-    '3. Snapshot the DOM (read_page / browser_snapshot / preview_snapshot) AND read',
+    '2. Verify via the built-in browser pane (mcp__Claude_Browser__*) for the localhost /',
+    '   file:// app; Claude-in-Chrome (Edge) only for logged-in external sites; Playwright',
+    '   last. Never plain Chrome, never computer-use for browser work (see browser-tool-strategy.md).',
+    '3. Snapshot the DOM (read_page / browser_snapshot) AND read',
     '   console + network errors (read_console_messages + read_network_requests /',
-    '   browser_console_messages + browser_network_requests / preview_console_logs).',
+    '   browser_console_messages + browser_network_requests).',
     '4. Mocks for missing backends are expected — exercise the changed view.',
   ];
 }
