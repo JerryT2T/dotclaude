@@ -208,6 +208,12 @@ describe("prompt.issue.detect — first-prompt matching runs in the hook (issue-
     expect(r.stdout).toBe("");
   });
 
+  test("no git remote → nothing at all, no match_issues instruction (#996)", () => {
+    const r = run("dark mode toggle settings", "m-noremote");
+    expect(r.code).toBe(0);
+    expect(r.stdout).toBe("");
+  });
+
   test("no cache for this repo → the old match_issues instruction", () => {
     withRemote();
     const r = run("dark mode toggle settings", "m-nocache");
