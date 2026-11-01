@@ -53,36 +53,11 @@ concept the user wants. Three modes exist:
 
 ## Report-only entry (`--report`) — the Abschluss without a prior concept
 
-Other skills call `auto-concept --report` as the step **after an
-implementation** that had no concept page (`do-run`, `auto-fix`, `do-backlog`,
-`do-audit`): the user gets the same Abschluss page, bridge and close-out FAB a
-concept ends with, but the page has exactly one round — the final report.
-Steps 0.5 to 1 and Step 5's iterate/implement branches do not apply.
+Only for `auto-concept --report` (another skill calls it after an
+implementation that had no concept page); every other invocation skips this
+section.
 
-1. **Open only when there is something to do.** The page exists only if at
-   least one of these is true: a Fund out of scope (admission gate: `found`
-   only), a 🧪 test the user must do, a 👉 hand-off, or an open ship decision
-   (work is committed but not shipped). Otherwise skip the page, the bridge and
-   Edge entirely: the completion card alone ends the run. After a
-   devops-concept implementation the Abschluss is mandatory (the report is
-   appended to that concept instead; this entry is not used).
-2. **Scaffold.** `node "{PLUGIN_ROOT}/scripts/concept-build.js" init docs/concepts/{date}-{slug} --report --title "<what was done>" --locale <de|en>`
-   (in the caller's worktree). Round 01 is a final-report skeleton
-   (`data-iteration="1" data-iteration-template="free" data-final-report`).
-3. **Author the report from the implementation context** — what was done, the
-   commit(s), tests actually run, QA evidence, the Funde / 🧪 / 👉 rows with
-   their pre-selection (`deep-knowledge/step5-update-page.md` § Final-report
-   append and `deep-knowledge/step5-finalize.md` § E). The run's decision
-   journal, if any, goes short into the dev fold. Replace every TODO
-   placeholder, then `build` (gate), as in Step 2.
-4. **Step 3 unchanged** (bridge, pulser, waker, real Edge), then Steps 4–5 with
-   the page's only legal action, `finalize` (parts A–E as above; B builds the
-   Funde the user routed to "Jetzt umsetzen", C ships on the "Abschließen &
-   shippen" button). Under autonomous callers the page waits for the user's
-   return; the caller's completion card is rendered by the caller after Step 6a.
-5. **Scope.** Decisions about backlog issues and audit proposals stay concept
-   pages with decision rounds (`/do-backlog`, `/do-audit`); this entry is
-   never used for them, only for the Abschluss after their implementation.
+**Before executing this step, Read `deep-knowledge/step0-report.md` § Report-only entry completely** — open the page only when there is something to do (else the card alone ends the run), `concept-build.js init --report`, the report authored from the implementation context, Step 3 unchanged with `finalize` as the only legal action, and the scope (never for backlog or audit decisions).
 
 ## Step 1 — Pick Template, then Content Variant
 
@@ -99,29 +74,8 @@ Steps 0.5 to 1 and Step 5's iterate/implement branches do not apply.
 
 **Before executing this step, Read `deep-knowledge/step1-templates.md` § 1a · Design iteration authoring completely** — click-dummy wiring, screens as states, competing designs, single-screen, design system, annotation layer, optional views and the view-vs-decision-iteration rule of thumb.
 
-   **≥2 designs → the variant overview.** Each design carries
-   `data-design-motto`, `data-design-traits` (exactly three genuine
-   differences), `data-design-icon` and optionally `data-design-color`,
-   `data-design-overlay` (anchor) and `data-design-overlay-tone="warm"`; the
-   engine turns them into the overview carousel (overlay on a large live
-   preview, questions as the last slide), the header and the quick nav. The
-   iteration says `data-design-set="alternatives"` (same thing, different
-   takes — the usual case) or `"topics"`. Only on `alternatives` the
-   user may star one design as **Favourite** (`favorite` in the payload,
-   optional, at most one): it is the starting point of the next round, and
-   comments on the other designs are still applied; without one Claude
-   decides from the comments (step5-process.md § 5a → Favourite and user
-   pins).
-
-   **Orthogonality — a view never re-asks the design choice.** The call
-   *between* the designs is made in the 💬 dock (per-design and per-screen
-   textareas); that is the whole point of showing them side by side. A
-   `decision` / `comparison` view therefore asks something that stays the
-   same whichever design wins — a data model, a sync strategy, a library, a
-   naming scheme. It never lists the designs, or the traits that
-   distinguish them ("sidebar as in A" vs "tabs as in B"), as its
-   alternatives; it never argues for or against one design in its prose;
-   and it never pre-decides a design through its default selection.
+   **≥2 designs → the variant overview; a view never re-asks the design choice.**
+**Before executing this step, Read `deep-knowledge/step1-templates.md` § 1a · Variant overview and orthogonality completely** — the per-design `data-design-*` attributes the overview carousel is built from, `data-design-set`, the optional Favourite, and why a `decision` / `comparison` view only asks what stays the same whichever design wins.
 **Before executing this step, Read `deep-knowledge/step1-templates.md` § 1a · Orthogonality test completely** — the pre-authoring test, the one-line "needed by" exception and gate P31.
 
 2. **Are there ≥2 substantive non-visual alternatives?**
@@ -332,15 +286,7 @@ re-shipping.
 
 ### C · Ship (`ship.run === true`)
 
-0. **Stage the disposition first, index only.** Apply the payload's `disposition`
-   (stored in part A step 2) to the git index and commit it on the branch
-   (`chore(concept): close out {slug}`) before the ship, so the release
-   carries it — a disposition applied after `ship_release` is left
-   uncommitted on the branch. Every file stays on disk where the bridge
-   serves it; an untracked `discard` set goes into the local git exclude so
-   the ship's clean-tree check passes (#931); Step 6a does the on-disk part
-   after the stop:
-**Before executing this step, Re-Read `deep-knowledge/step5-finalize.md` § C · Disposition staging per mode completely on every round — even if read earlier in this session** — what the index-only staging does per `disposition` mode; the durable-store copy and the Step 6a table it cites are in `deep-knowledge/step6-closeout.md` § Disposition, cleanup procedure and disposition tables.
+**Before executing this step, Re-Read `deep-knowledge/step5-finalize.md` § C · Disposition staging per mode completely on every round — even if read earlier in this session** — step 0: stage the `disposition` first, index only, committed on the branch before the ship; what the index-only staging does per `disposition` mode; the durable-store copy and the Step 6a table it cites are in `deep-knowledge/step6-closeout.md` § Disposition, cleanup procedure and disposition tables.
 1. Run the full ship pipeline via the `do-ship` skill (ship_preflight →
    ship_build → ship_version_bump → ship_release → ship_cleanup) with
    `--card-data` in its args (`step5-finalize.md` § C). The execute click authorises the ship; it does NOT waive the gates `ship` already
@@ -364,16 +310,7 @@ re-shipping.
 
 ### D · Close out
 
-**Before executing this step, Re-Read `deep-knowledge/step5-finalize.md` § D · Reload and reset per disposition completely on every round — even if read earlier in this session** — `data-closed`, reload-before-reset for keep / gitignore, reset-only for discard.
-2. Proceed to Step 6a with the payload's `disposition` (stored in part A step 2). Treat
-   this submission as the explicit "fertig" signal from the user. Step 6a
-   stops the bridge, the pulser and the waker and waits until all three are
-   gone — that happens BEFORE any final card, so no exit notification can
-   arrive after it.
-3. **Card selection — only after the stop:** if part C ran successfully, the
-   `do-ship` ship card (held back per part C step 4) is the authoritative
-   closing artefact and you MUST NOT render a second concept completion card
-   (duplicate summary). Otherwise render the concept card per Step 6b.
+**Before executing this step, Re-Read `deep-knowledge/step5-finalize.md` § D · Reload and reset per disposition completely on every round — even if read earlier in this session** — then Step 6a, and the card choice only after the stop (the held-back ship card, or the concept card); `data-closed`, reload-before-reset for keep / gitignore, reset-only for discard.
 
 ### E · Tests and hand-offs (`tests[]`, `handoffs[]`)
 
@@ -394,13 +331,7 @@ the browser to reload. This is the ONLY update path — every "append a section 
 For `action: "iterate"` → append a regular iteration section.
 For `action: "implement"` → append a **final-report section** (one-time,
 see § "Final-report append (implement only)" below).
-For `action: "implement"` that Step 5b step 0 diverted → append a **regular
-iteration section carrying `data-reality-check` and
-`data-reality-head="<examined sha>"`** instead, with the
-`{{iteration.reality_tab}}` label on its tab and the `.reality-banner`
-explainer as its first child. Everything else about the append is identical to
-a normal iteration, including the append checklist and the `/reset` ordering.
-**Before executing this step, Re-Read `deep-knowledge/step5-update-page.md` § Reality-check round — template and markers completely on every round — even if read earlier in this session** — the forced round keeps the concept template, and both markers are read back before `/reload`.
+**Before executing this step, Re-Read `deep-knowledge/step5-update-page.md` § Reality-check round — template and markers completely on every round — even if read earlier in this session** — an `implement` that Step 5b step 0 diverted appends a regular iteration carrying `data-reality-check` / `data-reality-head` instead; the forced round keeps the concept template, and both markers are read back before `/reload`.
 For `action: "finalize"` → no new section; rewrite the existing final-report
 fragment in place and `build` (linked `[Issue #NNN]` labels for routed items, a shipped note
 when part B ran) and POST `/reload`.

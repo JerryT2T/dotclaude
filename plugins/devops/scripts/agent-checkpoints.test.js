@@ -11,6 +11,7 @@ import { describe, test, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { readSkill as readAgentsSkill } from "../skills/auto-agents/skill-source.js";
 
 const plugin = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (...p) => readFileSync(join(plugin, ...p), "utf8").replace(/\r\n/g, "\n");
@@ -78,7 +79,7 @@ describe("every run carries it", () => {
   });
 
   test("the conveyor and backlog never merge into main — the script refuses it", () => {
-    expect(read("skills", "auto-agents", "SKILL.md")).toMatch(/The integration branch is never `main`, `master` or\s+the default branch while the session works on a feature branch/);
+    expect(readAgentsSkill()).toMatch(/The integration branch is never `main`, `master` or\s+the default branch while the session works on a feature branch/);
     const backlog = read("skills", "do-run", "modes", "backlog.md");
     expect(backlog).toMatch(/--integration-branch=<this issue's branch>/);
     expect(backlog).toMatch(/state integration --branch=<its branch>/);
@@ -93,7 +94,7 @@ describe("every run carries it", () => {
   });
 
   test("the burn conveyor reuses the general rule instead of its own copy", () => {
-    expect(read("skills", "auto-agents", "SKILL.md")).toMatch(/the checkpoint rule every implementing agent gets/);
+    expect(readAgentsSkill()).toMatch(/the checkpoint rule every implementing agent gets/);
     expect(read("skills", "do-run", "modes", "burn", "deep-knowledge", "burn-scheduler.md")).toMatch(/commit-conventions\.md` § Checkpoint\s+commits/);
   });
 });

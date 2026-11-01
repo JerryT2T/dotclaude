@@ -9,6 +9,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { readSkill as readAgentsSkill } from "../auto-agents/skill-source.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const read = (p) => readFileSync(p, "utf8").replace(/\r\n/g, "\n");
@@ -19,7 +20,7 @@ const doRunQuestions = read(join(here, "deep-knowledge", "questions.md"));
 const doRunExecution = read(join(here, "deep-knowledge", "execution.md"));
 const backlog = read(join(here, "modes", "backlog.md"));
 const autonomous = read(join(here, "modes", "autonomous.md"));
-const autoAgents = read(join(here, "..", "auto-agents", "SKILL.md"));
+const autoAgents = readAgentsSkill();
 const doBatch = read(join(here, "..", "do-batch", "SKILL.md"));
 const runContractDoc = read(join(here, "..", "..", "deep-knowledge", "run-contract.md"));
 

@@ -119,6 +119,15 @@ because the session feels like it is ending.
 
 ## C · Disposition staging per mode
 
+0. **Stage the disposition first, index only.** Apply the payload's `disposition`
+   (stored in part A step 2) to the git index and commit it on the branch
+   (`chore(concept): close out {slug}`) before the ship, so the release
+   carries it — a disposition applied after `ship_release` is left
+   uncommitted on the branch. Every file stays on disk where the bridge
+   serves it; an untracked `discard` set goes into the local git exclude so
+   the ship's clean-tree check passes (#931); Step 6a does the on-disk part
+   after the stop:
+
    - `keep`, no `moveTo` → `git add` the source folder `{date}-{slug}/`
      (plus the attachments copy + `git add` from `step6-closeout.md` → Also
      dispose of the durable store).
@@ -230,6 +239,16 @@ asks to close out a concept that is closed a minute later. Details:
    When the concept wrote code, Step 6a moves the spec
    into the local store instead of deleting it (`step6-closeout.md` § Keep
    the spec after code landed, #936).
+
+2. Proceed to Step 6a with the payload's `disposition` (stored in part A step 2). Treat
+   this submission as the explicit "fertig" signal from the user. Step 6a
+   stops the bridge, the pulser and the waker and waits until all three are
+   gone — that happens BEFORE any final card, so no exit notification can
+   arrive after it.
+3. **Card selection — only after the stop:** if part C ran successfully, the
+   `do-ship` ship card (held back per part C step 4) is the authoritative
+   closing artefact and you MUST NOT render a second concept completion card
+   (duplicate summary). Otherwise render the concept card per Step 6b.
 
 ## E · Tests and hand-offs
 

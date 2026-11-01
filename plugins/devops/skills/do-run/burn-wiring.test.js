@@ -10,6 +10,7 @@ import { describe, test, expect } from "vitest";
 import { readFileSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { readSkill as readAgentsSkill } from "../auto-agents/skill-source.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const plugin = join(here, "..", "..");
@@ -22,7 +23,7 @@ const scheduler = read("skills", "do-run", "modes", "burn", "deep-knowledge", "b
 const composite = read("skills", "do-run", "modes", "burn", "deep-knowledge", "composite-prompt.md");
 const autonomous = read("skills", "do-run", "modes", "autonomous.md");
 const backlog = read("skills", "do-run", "modes", "backlog.md");
-const agents = read("skills", "auto-agents", "SKILL.md");
+const agents = readAgentsSkill();
 // the per-hook roster (hooks.json registers one dispatcher per event)
 const hooks = JSON.parse(read("hooks", "dispatch", "manifest.json"));
 

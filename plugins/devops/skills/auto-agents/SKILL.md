@@ -23,7 +23,7 @@ Every skill that implements executes through this one: `do-run`,
 `auto-concept` (implement click and close-out follow-ups), `auto-fix`,
 `auto-harden`, `auto-polish`. It decides *how* the work runs — inline, one
 agent, parallel agents or the full wave ceremony — by the always-on
-delegation policy (`deep-knowledge/agent-proactivity.md`), shows what it is
+delegation policy (`{PLUGIN_ROOT}/deep-knowledge/agent-proactivity.md`), shows what it is
 about to run, runs it, and returns the result to its caller.
 
 **This skill invokes no skill.** It sits at the bottom of the call graph
@@ -103,14 +103,14 @@ question via `AskUserQuestion`. Use the wording matching the active
 - de: "Was genau soll orchestriert werden? (Feature, Refactoring, Bugfix, Research...)"
 
 Analyse domains touched, complexity, dependencies and risk, then pick the
-tier from the table in `deep-knowledge/agent-proactivity.md` — the same
+tier from the table in `{PLUGIN_ROOT}/deep-knowledge/agent-proactivity.md` — the same
 table the policy hook applies to prompts that use no skill:
 
 | Tier | Signal (short form — the policy doc is authoritative) | Here |
 |---|---|---|
 | **Inline** | 1 domain, quick fix, ≤ ~5 files | The session does the work itself. No agent, no agent card. |
 | **1 agent** | a conclusion whose path would flood the conversation (research, sweep, full test run, redteam, po) | One background agent; the session keeps working. |
-| **Parallel** | two analysis lenses; or implementing agents in parallel | Spawn in one message, ~5–15 tool calls each. Parallel **implementers** need a yes: the caller's invocation is that yes for `do-run`, `auto-concept` (implement click) and `--autonomous` passes; for `auto-fix` and a direct call, offer it in one sentence first. How many per wave: `deep-knowledge/agent-orchestration.md` § Parallel implementers per wave (one per disjoint ownership bundle, ceiling 5 coupled / 10 isolated). |
+| **Parallel** | two analysis lenses; or implementing agents in parallel | Spawn in one message, ~5–15 tool calls each. Parallel **implementers** need a yes: the caller's invocation is that yes for `do-run`, `auto-concept` (implement click) and `--autonomous` passes; for `auto-fix` and a direct call, offer it in one sentence first. How many per wave: `{PLUGIN_ROOT}/deep-knowledge/agent-orchestration.md` § Parallel implementers per wave (one per disjoint ownership bundle, ceiling 5 coupled / 10 isolated). |
 | **Full ceremony** | 3+ domains, a feature end-to-end, high-risk change | Steps 3–6 in full. |
 
 Hard stop ("nur", "schnell", "keine Agents") → Inline; hard go ("mit
@@ -125,13 +125,13 @@ loading this skill would only add a round of reading. **Not when the caller
 is a do-run run** (`--from=do-run`): the run contract's `auto-agents`
 obligation requires this skill for every `prompt` / `backlog` run, Inline
 included, so the tier decision — and that it was made — is always visible
-(`deep-knowledge/run-contract.md`). Everything above Inline goes through
+(`{PLUGIN_ROOT}/deep-knowledge/run-contract.md`). Everything above Inline goes through
 here regardless of caller.
 
 ### 2.2 Agent selection
 
 Select agents using the roster, criteria, and complexity tiers from
-`deep-knowledge/agent-orchestration.md` § Agent Selection.
+`{PLUGIN_ROOT}/deep-knowledge/agent-orchestration.md` § Agent Selection.
 
 **Implementers spawn on `model: sonnet`** — no `sonnet → opus` for a
 well-specified bundle; opus only for design-heavy/ambiguous work and only in
@@ -143,47 +143,13 @@ Both: same doc § Model override rules and § Parallel implementers, item 6.
 ### 2.3 Permission audit (parallel and full ceremony)
 
 Before spawning more than one agent, scan recent sessions for MCP tools that
-were used but are NOT covered by the current `~/.claude/settings.json`
-allow-list. Prevents permission prompts from interrupting wave execution —
-especially painful with parallel agents.
+were used but are NOT covered by the `~/.claude/settings.json` allow-list.
 
-```bash
-node "{PLUGIN_ROOT}/scripts/permission-audit.js" --days=7 --quiet
-```
-
-Parse the JSON `suggestions` array:
-
-- **Empty** → skip silently.
-- **Non-empty** → present ALL suggestions in **one** `AskUserQuestion`
-  multi-select. Never auto-apply — every rule needs user confirmation,
-  to prevent log-forgery from seeding the allow-list. Each option =
-  one suggested rule, labeled with its risk marker:
-  - 🟢 low: user-installed plugin/runtime MCPs (`mcp__plugin_*`, `mcp__ccd_*`)
-  - 🟡 medium: third-party / unknown MCPs — include the rationale text
-
-  Pre-recommend the 🟢 ones in the description. Header: "Permissions",
-  question: "Diese MCP-Tools wurden zuletzt genutzt aber sind nicht erlaubt.
-  Welche zur Allow-Liste hinzufügen?"
-
-  Apply the user's selection via Bash (NOT the Edit tool — settings.json is
-  tamper-protected; the script writes directly via Node `fs.writeFileSync`):
-
-  ```bash
-  node "{PLUGIN_ROOT}/scripts/permission-audit.js" --apply="<rule1>,<rule2>" --quiet
-  ```
-
-  The script re-validates each `--apply` rule against its own freshly-computed
-  suggestions and rejects anything not in the list (defense in depth).
-
-Under `--mode=background` with a `--from`, do not ask: the user may be away
-(`do-run` "Autonom"), and a pending prompt would stall the run. List the
-suggestions in the result's `open` field (Step 7) instead. The audit is read-only on no findings — never blocks the flow when
-there's nothing to fix.
+**Before executing this step, Read `{PLUGIN_ROOT}/skills/auto-agents/deep-knowledge/permission-audit.md` completely** — the audit script, one multiSelect `AskUserQuestion` (never auto-apply, every rule needs the user), applying via the script and never the Edit tool, and no question under `--mode=background` with a `--from` (the suggestions go into `open`).
 
 ## Step 3 — Present Plan
 
-**Full ceremony only.** Present the orchestration plan to the user. Use the headings/labels for the
-active `[ui-locale: ...]` (defaults to `en`):
+**Full ceremony only.** Present the orchestration plan to the user. Use the headings/labels for the active `[ui-locale: ...]` (defaults to `en`):
 
 | Key             | en                            | de                             |
 |-----------------|-------------------------------|--------------------------------|
@@ -210,7 +176,7 @@ Template (`{key}` → resolved per locale):
 
 **The agents** are the Step 5 plan card, not a hand-drawn table: waves as
 sections, model and effort resolved by the script (Model & Effort Defaults
-in `deep-knowledge/agent-orchestration.md`), a model override shown as
+in `{PLUGIN_ROOT}/deep-knowledge/agent-orchestration.md`), a model override shown as
 `default → override` — the Agent tool has no effort parameter, so effort
 never carries an arrow.
 
@@ -239,30 +205,9 @@ Accept:
 
 The mode normally arrives as `--mode` (Step 1). Ask only when this skill was
 invoked directly — no `--from`, no `--mode` — and the tier is full ceremony.
-Ask after the plan is confirmed, via `AskUserQuestion`, in the version
-matching the active `[ui-locale: ...]`:
+Ask after the plan is confirmed, via `AskUserQuestion`.
 
-**en:**
-```
-question: "How should the agents work?"
-header: "Mode"
-options:
-  - label: "Background (recommended)"
-    description: "Agents run autonomously. Single final report at the end."
-  - label: "Interactive"
-    description: "You are involved on design/concept decisions — agents return their forks, I ask you between waves (short trade-offs as a question, a richer comparison as an open decision). Expect ≥1 checkpoint per wave."
-```
-
-**de:**
-```
-question: "Wie sollen die Agents arbeiten?"
-header: "Modus"
-options:
-  - label: "Hintergrund (Recommended)"
-    description: "Agents arbeiten autonom. Am Ende ein Gesamtbericht."
-  - label: "Interaktiv"
-    description: "Du entscheidest bei Design-/Konzeptfragen mit — Agents geben ihre Gabelungen zurück, ich frage dich zwischen den Waves (kurze Trade-offs als Frage, ein größerer Vergleich als offene Entscheidung). Rechne mit ≥1 Checkpoint pro Wave."
-```
+**Before executing this step, Read `{PLUGIN_ROOT}/skills/auto-agents/deep-knowledge/mode-question.md` completely** — the en / de question (Background recommended, Interactive with ≥1 checkpoint per wave).
 
 Store the result as `$EXEC_MODE` (`background` or `interactive`).
 
@@ -331,13 +276,13 @@ Shown once at the start and again after a resume or a lane change.
 
 ## Step 6 — Execution
 
-Follow `deep-knowledge/agent-orchestration.md` § Wave Execution for spawning mechanics,
+Follow `{PLUGIN_ROOT}/deep-knowledge/agent-orchestration.md` § Wave Execution for spawning mechanics,
 agent prompt template (now incl. per-agent effort budget, stopping criteria, and
 distinct scope boundary), branch strategy, and single-agent shortcut. Between waves,
 apply § Inter-Wave Verification Gate — verify each wave's handoff before the next
 wave builds on it (the cascading-error guard).
 
-Collaboration protocol (handoffs, merge order): `deep-knowledge/agent-collaboration.md`.
+Collaboration protocol (handoffs, merge order): `{PLUGIN_ROOT}/deep-knowledge/agent-collaboration.md`.
 
 Per tier:
 
@@ -364,78 +309,12 @@ Per tier:
   (Step 7). The caller opens the concept page and re-enters this skill with
   the answer.
 
-QA Wave testing protocol and single-agent shortcut: see `deep-knowledge/agent-orchestration.md`
+QA Wave testing protocol and single-agent shortcut: see `{PLUGIN_ROOT}/deep-knowledge/agent-orchestration.md`
 § QA Wave — Testing Protocol and § Single-Agent Shortcut.
 
 ### Burn conveyor (`--burn`)
 
-The burn's budget, 5-hour window, reserve and resume rules are code in
-`scripts/burn-plan.js` (rationale:
-`{PLUGIN_ROOT}/skills/do-run/modes/burn/deep-knowledge/burn-scheduler.md`).
-This loop only executes its decisions — it never counts lanes, estimates a
-cost or overrides a model by itself. `B` below is
-`node "{PLUGIN_ROOT}/scripts/burn-plan.js" … --state=<the --burn path>`.
-
-Loop until the gate says `finish`, `pause` or `stop`:
-
-1. **`B gate`** → one JSON decision:
-   - `spawn` — the task is already claimed. Spawn one agent for it: role by
-     the task, `model` from `models[<role>]` when present, the Autonomous
-     directive, the tool-call ceiling `toolCalls`, the task's `branch` when
-     it resumes a wip branch (and its `salvage` patch to apply first), and
-     the checkpoint rule every implementing agent gets
-     (`deep-knowledge/agent-orchestration.md` § Agent Prompt Template, item
-     4) with the scope `burn`. `foreground:
-     true` → foreground spawn; else `run_in_background: true`. Right after
-     the spawn: `B state agent <id> --agent-id=<id> --agent=<role>
-     --branch=<b> --worktree=<w>`. A spawn that fails → `B state requeue
-     <id>`. Then gate again (another lane may be free).
-   - `wait` — lanes full, a file conflict, the window or a drain: wait for
-     the next agent completion.
-   - `hold` — usage unreadable: gate again after the next completion or in a
-     minute; the gate itself moves to blind mode and then to a drain.
-   - `pause` — nothing fits the 5-hour window: when `resumeCron` is set, arm
-     `CronCreate` one-shot at it with the prompt `BURN_RESUME: window reset`,
-     then `B state resume-cron --for=<resumeAt> --job=<jobId>`. Report
-     "pausiert bis `resumeAtLocal`" (without a cron: "— mit »weiter« geht es
-     danach weiter") and end the turn.
-   - `finish` / `stop` — leave the loop (Step 7).
-   - `rearmResumeCron` present on any decision — arm it the same way
-     (`--for=<windowResetAt>`).
-2. **On each completion** (one merge at a time):
-   `passes` included `redteam` and the diff is substantive → one redteam
-   review of the task diff; a high-severity finding goes back to the same
-   agent once (`SendMessage`). Then targeted tests for the changed modules,
-   merge the sub-branch into the integration branch, then remove that
-   sub-agent's worktree and branch right away (see "Remove after merge"
-   below), `git push -u origin
-   <integration branch>` (non-force; no PR), `B state land <id>
-   --sha=<merge sha>`. The push is skipped — the merge stays local, `state
-   land` gets `--pushed=false` — when the repo has no remote or the
-   integration branch is the session's own `main`: that push is the ship's. The integration branch is never `main`, `master` or
-   the default branch while the session works on a feature branch — `init`
-   and `state integration` refuse them unless the session itself is on that
-   branch; otherwise `main` is reached only by shipping, which is the
-   caller's decision (Step 7). A task that cannot be made green → `B state fail <id>
-   --reason=…` (or `requeue` when the cause is external).
-   **Remove after merge** — once the merge is verified (sub tip is an
-   ancestor of the integration branch, worktree clean) the next step is
-   `node "{PLUGIN_ROOT}/scripts/integration-check.js" --integration
-   <integration-branch> --sub <sub-branch|path> --remove --now`. `--now` skips
-   only the ≥30 min idle wait; landed, clean, own-commits, live-session,
-   ignored-file and lock checks (a dead pid's lock is lifted) still apply; a
-   kept worktree (`kept` in the output) is retried by the Step 7 sweep. Do
-   not leave agent worktrees for the end of the run.
-3. **Before removing any worktree** → `B prune-check --branch=<b>
-   --worktree=<w>`; exit 1 means keep it.
-4. After the loop: the full QA run as an ordinary last task (not a gate),
-   then `B state finish --status=<COMPLETED|INTERRUPTED|BLOCKED>` — it also
-   records the run's calibration sample.
-
-A usage limit that stops this session mid-loop is not handled here: the next
-prompt carries a `[burn-resume]` block from `prompt.burn.resume` (question
-on a manual nudge, policy on an automatic resume). Its steps end by
-re-entering this loop.
+**Before executing this step, Read `{PLUGIN_ROOT}/skills/auto-agents/deep-knowledge/burn-conveyor.md` completely** — the `burn-plan.js gate` loop (`spawn` / `wait` / `hold` / `pause` / `finish` / `stop`), landing each task (redteam, tests, merge, remove after merge, push, `B state land`), `B prune-check` before any worktree removal, and `B state finish`. This loop only executes the gate's decisions — it never counts lanes, estimates a cost or overrides a model by itself.
 
 ## Step 7 — Return to the caller
 
@@ -488,7 +367,7 @@ calls this skill again with the answer.
   is an instruction to the caller, not an action here.
 - **Follow handoff protocol** — every agent-to-agent transition uses structured handoffs
 - If the user says "just do it" without agents → respect that, don't orchestrate
-- The tier decision follows `deep-knowledge/agent-proactivity.md`; a caller
+- The tier decision follows `{PLUGIN_ROOT}/deep-knowledge/agent-proactivity.md`; a caller
   that invoked this skill never re-litigates it, and neither does this skill
   once the user said yes to a ceremony.
 - **Under `--burn` the gate decides every spawn** — never spawn around it,
