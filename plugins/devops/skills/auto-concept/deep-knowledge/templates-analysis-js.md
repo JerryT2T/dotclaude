@@ -19,9 +19,10 @@ What the code does, in the order of the file:
    pane animates, the messages below fade out and back in).
 3. `setup(root)` — one instance per `[data-analysis]`: the stage list
    (briefing, topic pages, decisions, closing), the right rail (Full) /
-   progress dots (Lite), the peeks (previous stage above, next below) and the
-   persistent composer. A decision stage is three messages — finding,
-   question (fixed height), answer block (capped at ≈ 45 % of the viewport) —
+   progress dots (Lite), the peek (next stage below) and the persistent
+   composer. A decision stage is three messages — finding, question (fixed
+   height), answer block — revealed one by one on the first visit (`enterSeq`,
+   `glide`: soft auto-scroll that never passes the question; user scroll wins) —
    built by `prepDecision()` together with the mode widgets (slider, sortable
    order, inline alt / fix / custom fields). The round's `.iteration-intro`
    moves into the briefing.
@@ -278,8 +279,7 @@ What the code does, in the order of the file:
       c.querySelectorAll('[data-viz-done]').forEach(e => e.removeAttribute('data-viz-done'));
       while (c.firstChild) pane.appendChild(c.firstChild);
     }
-    const ctx = d.querySelector('[data-context]');
-    if (ctx) pane.appendChild(ctx);
+    // The finding is only the finding: [data-context] speaks about the answer, so it sits in the answer block.
     renderViz(pane, 'long');
     const ex = src && src.querySelector('[data-example]');
     if (!ex) { bub.appendChild(pane); return m; }
@@ -364,9 +364,8 @@ What the code does, in the order of the file:
     inst.stages.push({ kind: lite ? 'done' : 'review', el: end });
     inst.seq = inst.stages.slice();
     inst.stores = h('div', 'an-stores');
-    inst.peekUp = h('div', 'an-peek an-peek-up');
+    // Only the NEXT stage peeks in (below); a faded previous-stage peek above read as cut off.
     inst.peekDn = h('div', 'an-peek an-peek-dn');
-    root.insertBefore(inst.peekUp, root.firstChild);
     root.append(inst.peekDn, inst.stores);
     inst.decs.forEach(st => prepDecision(inst, st));
     loadHes(inst);
@@ -374,6 +373,13 @@ What the code does, in the order of the file:
     inst.groups.forEach(g => prepIntro(inst, g));
     buildNav(inst);
     buildComposer(inst);
+    if (!lite) {   // the stage messages scroll in their own container; title and composer stay fixed
+      const chat = h('div', 'an-chat');
+      [...root.children].forEach(c => { if (c !== inst.comp.el && c !== inst.stores && !c.classList.contains('an-rail')) chat.appendChild(c); });
+      root.insertBefore(chat, inst.comp.el);
+      inst.chat = chat;
+      watchUserScroll(inst);
+    }
     root.addEventListener('input', e => onEdit(inst, e));
     root.addEventListener('change', e => onEdit(inst, e));
     root.addEventListener('click', e => {
@@ -386,7 +392,7 @@ What the code does, in the order of the file:
     return inst;
   }
 
-  /** Right rail: dots on a hairline, fixed 18 px rows, topics carry a "THEMA" prefix. Lite keeps its progress dots. */
+  /** Right rail: dots on a hairline, fixed 24 px rows (+ a lead-in per group), topics carry a "THEMA" prefix. Lite keeps its progress dots. */
   function buildNav(inst) {
     const old = inst.root.querySelector(':scope > .an-rail, :scope > .an-lhead');
     if (old) old.remove();
@@ -406,9 +412,11 @@ What the code does, in the order of the file:
     }
     const nav = h('nav', 'an-rail');
     nav.setAttribute('aria-label', L('Fortschritt', 'Progress'));
-    inst.stages.forEach(st => {
+    inst.stages.forEach((st, k) => {
       const edge = st.kind === 'brief' || st.kind === 'review';
-      const b = btn('an-ri' + (st.kind === 'topic' ? ' an-ri-topic' : edge ? ' an-ri-edge' : ''));
+      // A group starts with a topic, the closing, or a question right after the briefing: it gets the lead-in.
+      const gs = k > 0 && (st.kind === 'topic' || st.kind === 'review' || (st.kind === 'dec' && inst.stages[k - 1].kind === 'brief'));
+      const b = btn('an-ri' + (st.kind === 'topic' ? ' an-ri-topic' : edge ? ' an-ri-edge' : '') + (gs ? ' an-ri-gs' : ''));
       b.dataset.go = String(inst.stages.indexOf(st));
       b.style.setProperty('--dc', st.group ? st.group.color : BLUE);
       const prefix = st.kind === 'topic' ? L('Thema', 'Topic') : '';
@@ -583,6 +591,7 @@ What the code does, in the order of the file:
     let v = store ? store.value : '';
     const m = TAGRE.exec(v);
     ed.textContent = '';
+    ed.dataset.ph = L('Notiz an devops … (optional)', 'Note to devops … (optional)');   // a question with "Keine passt" re-sets it (syncDecision)
     inst.tag = '';
     if (m) { v = v.slice(m[0].length); }
     if (v) ed.appendChild(document.createTextNode(v));
@@ -605,7 +614,8 @@ What the code does, in the order of the file:
     if (!text || frozen(inst)) return false;
     if (st.kind === 'dec' && !storeOf(inst, st)) return false;   // no storage target: never advance and drop the note
     inst.comp.el.classList.remove('an-sent'); void inst.comp.el.offsetWidth; inst.comp.el.classList.add('an-sent');
-    if (!inst.tag && st.kind !== 'brief' && st.kind !== 'review' && st.kind !== 'done') step(inst, 1);
+    // Only a question advances (an untagged note accepts the current choice / recommendation); briefing, topic intro and closing never do.
+    if (!inst.tag && st.kind === 'dec') { markTouched(st.el); step(inst, 1); }
     return true;
   }
   /** A click on a finding / question / topic sets the tag (selecting text does not). */

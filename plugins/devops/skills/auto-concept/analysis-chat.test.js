@@ -110,6 +110,25 @@ describe("persistent composer", () => {
     expect(doc.querySelector("#q1 .an-note").value).toBe("hello there");
     expect(inst.comp.ed.textContent).toBe("");           // the next stage starts with an empty composer
   });
+  test("an untagged note on a question accepts it; topic intro and closing never advance", () => {
+    const { w, ca } = page(FULL);
+    const inst = ca.instances[0];
+    const ti = inst.stages.findIndex(s => s.kind === "topic");
+    ca.go(inst, ti);
+    type(w, inst, "on the topic");
+    ca.sendNote(inst);
+    expect(inst.idx).toBe(ti);
+    const di = inst.stages.findIndex(s => s.kind === "dec");
+    ca.go(inst, di);
+    type(w, inst, "ok");
+    ca.sendNote(inst);
+    expect(inst.idx).toBeGreaterThan(di);
+    ca.go(inst, inst.stages.findIndex(s => s.kind === "review"));
+    type(w, inst, "closing");
+    const ri = inst.idx;
+    ca.sendNote(inst);
+    expect(inst.idx).toBe(ri);
+  });
   test("tagged: the note stays on the stage, one tag at most, the tag comes back on return", () => {
     const { doc, w, ca } = page(LITE);
     const inst = ca.instances[0];
@@ -150,5 +169,18 @@ describe("persistent composer", () => {
     const inst = ca.instances[0];
     expect(inst.comp.ed.contentEditable).toBe("false");
     expect(inst.comp.send.disabled).toBe(true);
+  });
+});
+
+describe("the finding is only the finding", () => {
+  test("[data-context] (an answering hint) sits in the answer block, never in the finding message", () => {
+    const html = LITE.replace('<h3 data-question>Q q1?</h3>', '<h3 data-question>Q q1?</h3><p data-context>Klick auf die Skizze oder die Liste.</p>');
+    const { doc } = page(html);
+    const d = doc.getElementById("q1");
+    const ctx = d.querySelector("[data-context]");
+    expect(ctx).toBeTruthy();
+    expect(ctx.closest(".an-ans")).toBeTruthy();
+    expect(ctx.closest(".an-m-find")).toBeNull();
+    expect(ctx.classList.contains("an-ans-hint")).toBe(true);
   });
 });

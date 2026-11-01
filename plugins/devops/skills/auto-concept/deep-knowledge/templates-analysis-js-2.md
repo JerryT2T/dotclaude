@@ -187,7 +187,10 @@
     if (stakes) qb.appendChild(stakes);
     qm.appendChild(qb);
     const am = h('div', 'an-m-a'), ans = h('div', 'an-ans');
-    ans.append(h('div', 'an-kind', L(KIND[mode][0], KIND[mode][1])), zone);
+    ans.appendChild(h('div', 'an-kind', L(KIND[mode][0], KIND[mode][1])));
+    const ctx = d.querySelector('[data-context]');
+    if (ctx) { ctx.classList.add('an-ans-hint'); ans.appendChild(ctx); }
+    ans.appendChild(zone);
     if (d.__none) ans.appendChild(d.__none);
     am.append(ans, foot, att);
     d.insertBefore(am, d.firstChild);
@@ -379,7 +382,7 @@
     const spent = ptsSpent(d), left = p.budget - spent;
     p.left.innerHTML = L('Übrig: ', 'Left: ') + '<b>' + left + '</b> ' + L('von ', 'of ') + p.budget + L(' Punkten', ' points');
     p.left.classList.toggle('an-pts-zero', left === 0);
-    p.fill.style.width = clamp(spent / p.budget * 100, 0, 100) + '%';
+    p.fill.style.width = clamp(left / p.budget * 100, 0, 100) + '%';   // shows what is LEFT: an empty bar = all handed out
     Object.keys(p.rows).forEach(k => {
       const cur = ptsOf(d, k), r = p.rows[k];
       r.o.classList.toggle('is-on', cur > 0);
@@ -438,7 +441,8 @@
       d.__none.textContent = on ? '✓ ' + L('Keine passt — deine Antwort steht im Notizfeld unten', 'None fits — your answer is in the note field below') : NONE_TXT();
       d.classList.toggle('an-is-none', on);
       const i0 = instances.find(i => i.root.contains(d));
-      if (i0 && i0.comp) i0.comp.ed.dataset.ph = on ? L('Deine Antwort, da keine Option passt …', 'Your answer, since no option fits …') : L('Notiz an devops … (optional)', 'Note to devops … (optional)');
+      // Only the OPEN question owns the composer's placeholder (refresh() syncs every decision).
+      if (i0 && i0.comp && (i0.stages[i0.idx] || {}).el === d) i0.comp.ed.dataset.ph = on ? L('Deine Antwort, da keine Option passt …', 'Your answer, since no option fits …') : L('Notiz an devops … (optional)', 'Note to devops … (optional)');
     }
     d.querySelectorAll('.an-inl').forEach(w => {
       const on = !!checked && w.dataset.when.split('|').indexOf(checked.value) >= 0;
@@ -498,7 +502,6 @@
   function refresh(inst) {
     inst.decs.forEach(st => syncDecision(st.el));
     refreshNav(inst);
-    if (inst.root.querySelector(':scope > .an-review:not(.an-off)')) fillReview(inst, inst.stages.find(s => s.kind === 'review'));
     if (typeof updateSectionNavState === 'function') updateSectionNavState();
   }
 
@@ -586,20 +589,12 @@
     if (!st || st.kind !== 'dec' || !canTouch(inst) || answerEmpty(st.el)) return;
     inst.touchTimer = setTimeout(() => { if (inst.stages[inst.idx] === st && canTouch(inst)) markTouched(st.el); }, TOUCH_MS);
   }
-  /** Previous stage hinted above (its question and your answer, calm), the next one below, both fading out. */
+  /** The next stage peeks in below ("Als Nächstes: …", a click goes there). */
   function peeks(inst, st) {
-    const k = inst.seq.indexOf(st), prev = inst.seq[k - 1], next = inst.seq[k + 1];
-    const up = inst.peekUp, dn = inst.peekDn;
-    up.textContent = ''; dn.textContent = '';
-    up.hidden = !prev; dn.hidden = !next;
-    if (prev) {
-      up.dataset.go = String(inst.stages.indexOf(prev));
-      if (prev.kind === 'dec') {
-        const q = prev.el.querySelector('[data-question]');
-        up.appendChild(h('div', 'an-settled an-settled-q', q ? q.textContent : stageLabel(inst, prev)));
-        up.appendChild(h('div', 'an-settled an-settled-a', valueText(prev.el, entryOf(prev.el))));
-      } else up.appendChild(h('div', 'an-peek-t', stageLabel(inst, prev)));
-    }
+    const k = inst.seq.indexOf(st), next = inst.seq[k + 1];
+    const dn = inst.peekDn;
+    dn.textContent = '';
+    dn.hidden = !next;
     if (next) {
       dn.dataset.go = String(inst.stages.indexOf(next));
       dn.append(document.createTextNode(L('Als Nächstes: ', 'Next: ')), h('b', '', stageLabel(inst, next)));
@@ -619,6 +614,10 @@
     // The messages of a stage enter one after another on its FIRST visit only (never with reduced motion).
     const first = !inst.seen.has(i) && !reduced();
     inst.seen.add(i);
+    // A running enter sequence ends with the stage: its pending messages simply show.
+    inst.timers.forEach(clearTimeout);
+    inst.timers = [];
+    inst.root.querySelectorAll('.an-wait, .an-enter').forEach(n => n.classList.remove('an-wait', 'an-enter'));
     inst.stages.forEach(s => { s.el.classList.toggle('an-off', s !== st); s.el.classList.remove('an-first'); });
     inst.groups.forEach(g => g.topic.classList.toggle('an-off', st.group !== g));
     if (inst.brief) inst.brief.classList.toggle('an-off', st.kind !== 'brief');
@@ -626,15 +625,18 @@
     if (st.kind === 'topic') fillIntro(inst, st);
     else if (st.kind === 'review') fillReview(inst, st);
     else if (st.kind === 'done') fillDone(inst, st);
-    if (first) {
-      st.el.classList.add('an-first');
-      if (st.kind === 'dec') setTimeout(() => pulse(st.el), 1100);
-    }
+    // Every stage opens at its top: the finding is what the user sees first.
+    if (inst.chat) { inst.userScroll = false; inst.chat.scrollTop = 0; }
     // First stage: no way back — hidden, not dimmed; visibility keeps its space so Weiter stays put (#962).
     const firstSt = st === inst.seq[0];
     inst.root.querySelectorAll('.an-back').forEach(x => { x.disabled = firstSt; x.style.visibility = firstSt ? 'hidden' : ''; });
     peeks(inst, st);
     loadComposer(inst, st);
+    fitChat(inst);
+    if (first) {
+      st.el.classList.add('an-first');
+      if (st.kind === 'dec') enterSeq(inst, st);
+    }
     if (st.kind === 'dec') syncDecision(st.el);
     refreshNav(inst);
     if (typeof updateSectionNavState === 'function') updateSectionNavState();
@@ -648,6 +650,78 @@
     if (navItem && typeof setActiveNavItem === 'function') setActiveNavItem(navItem);
     inst.root.dispatchEvent(new CustomEvent('conceptanalysis:stage', { bubbles: true, detail: { index: i, kind: st.kind } }));
   }
+  /** The chat fills the rest of the viewport below the title, so the composer sits at the same y on every stage. */
+  function fitChat(inst) {
+    if (inst.lite) return;
+    const cc = inst.root.closest('.concept-content'), se = document.scrollingElement;
+    const top = inst.root.getBoundingClientRect().top + (se ? se.scrollTop : 0) + (cc ? cc.scrollTop : 0);
+    const padB = parseFloat(getComputedStyle(cc || document.body).paddingBottom) || 0;
+    const avail = window.innerHeight - top - padB;
+    inst.root.style.height = Math.max(320, Math.floor(avail)) + 'px';
+  }
+  /** First visit of a question: finding now, question after 2.7 s, answer block (+ "Als Nächstes") after 5.4 s.
+   *  A message that has not entered is display:none, so no empty area waits below; each entry
+   *  glides the chat down just far enough to show it - unless the user scrolled (user scroll wins). */
+  const ENTER_GAP = 2700;
+  function enterSeq(inst, st) {
+    const parts = [st.el.querySelector(':scope > .an-m-find'), st.el.querySelector(':scope > .an-m-q'), st.el.querySelector(':scope > .an-m-a')].filter(Boolean);
+    if (!parts.length) return;
+    const tail = [inst.peekDn];
+    parts.slice(1).concat(tail).forEach(n => n.classList.add('an-wait'));
+    parts[0].classList.add('an-enter');
+    parts.slice(1).forEach((n, i) => {
+      inst.timers.push(setTimeout(() => {
+        if (inst.stages[inst.idx] !== st) return;
+        n.classList.remove('an-wait');
+        n.classList.add('an-enter');
+        if (n === parts[parts.length - 1]) tail.forEach(t => t.classList.remove('an-wait'));
+        glide(inst, n, parts[Math.min(i + 1, 1)]);   // the answer never pushes the question out of view
+      }, ENTER_GAP * (i + 1)));
+    });
+    if (parts.length === 1) tail.forEach(t => t.classList.remove('an-wait'));
+    inst.timers.push(setTimeout(() => { if (inst.stages[inst.idx] === st) pulse(st.el); }, 1650));
+  }
+  /** Soft scroll of the chat until the message that just entered is fully visible - but never past the
+   *  top of `keep` (the question stays in view while its answer block enters). */
+  function glide(inst, el, keep) {
+    const c = inst.chat;
+    if (!c || inst.userScroll) return;
+    // Layout positions (offsetTop ignores the enter transform the message still carries).
+    const at = n => { let y = 0; while (n && n !== c) { y += n.offsetTop; n = n.offsetParent; } return y; };
+    const from = c.scrollTop, max = c.scrollHeight - c.clientHeight, top = at(el);
+    const toBottom = top + el.offsetHeight + 16 - c.clientHeight, toTop = (keep && keep !== el ? at(keep) : top) - 12;
+    const to = clamp(Math.min(toBottom, toTop), 0, Math.max(0, max));
+    if (to <= from + 1) return;
+    if (reduced() || typeof requestAnimationFrame !== 'function') { c.scrollTop = to; return; }
+    const t0 = performance.now(), dur = 900;
+    inst.autoTop = from;
+    inst.gliding = true;
+    let ran = false;
+    const frame = now => {
+      ran = true;
+      if (inst.userScroll || !inst.gliding) { inst.gliding = false; return; }
+      const p = Math.min(1, (now - t0) / dur), e = p < .5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+      c.scrollTop = from + (to - from) * e;
+      inst.autoTop = c.scrollTop;
+      if (p < 1) requestAnimationFrame(frame); else inst.gliding = false;
+    };
+    requestAnimationFrame(frame);
+    // No frames (a background tab throttles them): land on the target instead of staying put.
+    setTimeout(() => { if (!ran && inst.gliding && !inst.userScroll) { inst.gliding = false; c.scrollTop = to; } }, 250);
+  }
+  /** Any scroll the user does himself (wheel, touch, scrollbar, keys) stops the auto-scroll for this stage. */
+  function watchUserScroll(inst) {
+    const c = inst.chat;
+    if (!c) return;
+    const stop = () => { inst.userScroll = true; inst.gliding = false; };
+    c.addEventListener('wheel', stop, { passive: true });
+    c.addEventListener('touchmove', stop, { passive: true });
+    c.addEventListener('pointerdown', e => { if (e.target === c) stop(); });   // the scrollbar
+    c.addEventListener('keydown', e => { if (/^(PageUp|PageDown|Home|End| )$/.test(e.key) && !(e.target && e.target.isContentEditable)) stop(); });
+    // A scroll position the glide did not set is the user's (scrollbar drag, middle-click autoscroll ...).
+    c.addEventListener('scroll', () => { if (inst.gliding && Math.abs(c.scrollTop - inst.autoTop) > 3) stop(); }, { passive: true });
+  }
+  window.addEventListener('resize', () => instances.forEach(fitChat));
   function step(inst, dir) {
     const cur = inst.stages[inst.idx];
     const k = inst.seq.indexOf(cur);
@@ -669,22 +743,24 @@
     }
     return null;
   }
-  /** Closing: headline result, every question with its dwell bar and a "Nachschärfen" toggle (preset from the hesitation signal). */
+  /** Closing: a devops message ("Abschluss" meta line, like every question) introduces the list of every
+   *  question with its dwell bar and a "Nachschärfen" toggle (preset from the hesitation signal); below it
+   *  Zurück and the ☰ panel's two journey buttons. No counts, no deviation summary. */
   function fillReview(inst, st) {
     const el = st.el;
     const keepFocus = el.contains(document.activeElement) ? document.activeElement.className : '';
     el.textContent = '';
     const stats = inst.decs.map(s => ({ s, e: entryOf(s.el), hs: hesOf(inst, s) }));
-    const un = stats.filter(x => x.e.untouched), dev = stats.filter(x => x.e.deviates);
     const max = Math.max.apply(null, stats.map(x => x.hs.ms).concat([1]));
     const wrap = h('div', 'an-close');
-    wrap.appendChild(h('div', 'an-eyebrow', inst.root.getAttribute('data-nav-label') || L('Abschluss', 'Closing')));
-    const big = h('div', 'an-big');
-    big.append(document.createTextNode(String(stats.length - un.length)), h('small', '', ' / ' + stats.length));
-    wrap.appendChild(big);
-    wrap.appendChild(h('p', 'an-claim', dev.length
-      ? dev.length + ' ' + L('Antworten weichen von der Empfehlung ab.', 'answers differ from the recommendation.')
-      : L('Alles wie empfohlen.', 'Everything as recommended.')));
+    const m = msg('an-m-close'), bub = h('div', 'an-bub');
+    bub.appendChild(h('div', 'an-meta', L('Abschluss', 'Closing')));
+    bub.appendChild(h('p', 'an-close-t', stats.some(x => x.hs.flagged)
+      ? L('Bei diesen Fragen würde ich im nächsten Schritt noch genauer hinschauen — vorgemerkt sind die, bei denen du gezögert hast:', 'These are the questions I would look at more closely in the next step — marked are the ones you hesitated on:')
+      : L('Bei keiner Frage hast du sichtbar gezögert. Merk vor, wo ich im nächsten Schritt noch genauer hinschauen soll:', 'You did not visibly hesitate on any question. Mark where I should look more closely in the next step:')));
+    m.appendChild(bub);
+    wrap.appendChild(m);
+    const body = h('div', 'an-close-body');
     const list = h('div', 'an-sig');
     stats.forEach(x => {
       const id = decId(x.s.el), row = h('div', 'an-sigrow');
@@ -712,18 +788,23 @@
         composeSync(inst);
         if (on) { inst.comp.el.classList.remove('an-glow'); void inst.comp.el.offsetWidth; inst.comp.el.classList.add('an-glow'); }
         hesFlush(inst);
-        fillReview(inst, st);
+        // In place: re-rendering the closing on every toggle made it flicker and lose its scroll.
+        tg.setAttribute('aria-pressed', on ? 'true' : 'false');
+        dw.classList.toggle('an-warn', on);
       });
       row.append(h('i'), name, dw, tg);
       list.appendChild(row);
     });
-    wrap.appendChild(list);
+    body.appendChild(list);
+    const foot = h('div', 'an-foot'), go2 = h('div', 'an-go');
+    const back = btn('an-back', L('Zurück', 'Back'));
+    tip(back, '', '⇧+Enter');
+    back.addEventListener('click', () => step(inst, -1));
     const acts = h('div', 'an-fabs');
     doneSubmitButtons().forEach(b => acts.appendChild(b));
-    const back = btn('an-back', L('Zurück', 'Back'));
-    back.addEventListener('click', () => step(inst, -1));
-    acts.insertBefore(back, acts.firstChild);
-    wrap.appendChild(acts);
+    go2.append(back, acts);
+    foot.appendChild(go2);
+    body.appendChild(foot);
     const nx = nextEntry(inst);
     if (nx) {
       const lk = btn('an-link', L('Weiter zu: ', 'Continue with: ') + nx.label + ' →');
@@ -731,8 +812,9 @@
         go(nx.inst, 0);
         if (typeof nx.inst.root.scrollIntoView === 'function') nx.inst.root.scrollIntoView({ block: 'nearest' });
       });
-      wrap.appendChild(lk);
+      body.appendChild(lk);
     }
+    wrap.appendChild(body);
     el.appendChild(wrap);
     if (keepFocus) { const f = el.querySelector('.' + keepFocus.split(' ')[0]); if (f) f.focus({ preventScroll: true }); }
   }
@@ -770,27 +852,27 @@
   // with it), the second submits; a pause of 5 s or Escape re-locks.
   function doneSubmitButtons() {
     const q = id => document.getElementById(id);
-    // The concept FAB menu's two actions, adapted: pill FABs (icon disc + label), the
-    // round's own accent for the next round, the warning tint for the one-way implement.
-    const fab = (cls, icon, label) => {
-      const b = btn('an-fab ' + cls);
-      b.append(h('span', 'an-fab-i', icon), h('span', 'an-fab-l', label));
-      b.setLabel = t => { b.querySelector('.an-fab-l').textContent = t; };
-      return b;
-    };
-    const next = fab('an-fab-main', '→', L('Zur nächsten Runde', 'To the next round'));
+    // The ☰ panel's two journey buttons, same look (templates-panel-state-3.md § Journey row):
+    // the blue "👉 Zur nächsten Runde" pill and the gold implement pill - icon disc, label and the
+    // "keine weitere Runde" line. Its lock is the first click here: 🔒 -> 🔓 "Sicher? Nochmal klicken".
+    const next = btn('an-fab an-fab-main', '👉 ' + L('Zur nächsten Runde', 'To the next round'));
     next.dataset.anAct = 'iterate';
-    tip(next, L('Antworten absenden, Claude denkt die nächste Runde', 'Submit and let Claude rethink the next round'), '');
+    tip(next, L('Deine Auswahl geht in die nächste Runde. Es wird kein Code geschrieben.', 'Your choices go into the next round. No code is written.'));
     next.addEventListener('click', () => { const t = q('submit-iterate-btn'); if (t && !t.disabled) t.click(); });
-    const impl = fab('an-fab-warn', '⚠', L('Jetzt umsetzen', 'Implement now'));
+    const impl = btn('an-fab an-fab-impl');
+    const ico = h('span', 'an-fab-i', '🔒'), lab = h('span', 'an-fab-l'), lb = h('b'), ls = h('small');
+    lab.append(lb, ls);
+    impl.append(ico, lab);
+    impl.setLabel = (t, s, i) => { lb.textContent = t; ls.textContent = s; ico.textContent = i; };
     impl.dataset.anAct = 'implement';
     impl.dataset.armed = 'false';
-    const idle = L('Jetzt umsetzen', 'Implement now');
+    const idle = () => impl.setLabel(L('Jetzt umsetzen', 'Implement now'), L('keine weitere Runde', 'no further round'), '🔒');
+    idle();
     let timer = 0;
     const lock = () => {
       clearTimeout(timer);
       if (impl.dataset.armed !== 'true') return;
-      impl.dataset.armed = 'false'; impl.setLabel(idle);
+      impl.dataset.armed = 'false'; idle();
       impl.setAttribute('data-tip', L('Zweimal klicken: keine weitere Runde, direkt umsetzen', 'Click twice: no further round, implement right away'));
       if (typeof setJourneyUnlocked === 'function') setJourneyUnlocked(false);
     };
@@ -798,7 +880,7 @@
     impl.addEventListener('click', () => {
       if (impl.dataset.armed !== 'true') {
         impl.dataset.armed = 'true';
-        impl.setLabel(L('Sicher? Nochmal klicken', 'Sure? Click again'));
+        impl.setLabel(L('Sicher? Nochmal klicken', 'Sure? Click again'), L('setzt ohne weitere Runde um', 'implements without another round'), '🔓');
         impl.setAttribute('data-tip', L('Zweiter Klick setzt um', 'The second click implements'));
         if (typeof setJourneyUnlocked === 'function') setJourneyUnlocked(true);
         // setJourneyUnlocked() parks focus on the dock button after its
@@ -808,7 +890,7 @@
         return;
       }
       clearTimeout(timer);
-      impl.dataset.armed = 'false'; impl.setLabel(idle);
+      impl.dataset.armed = 'false'; idle();
       const t = q('submit-implement-btn'); if (t && !t.disabled) t.click();
     });
     impl.addEventListener('keydown', e => { if (e.key === 'Escape' && impl.dataset.armed === 'true') { e.stopPropagation(); lock(); } });
