@@ -10,6 +10,7 @@ const { sha256 } = require('./lib/backup-scan.js');
 
 const FAKE_TOKEN = 'ghp_' + 'a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8';
 const NOW = () => new Date('2026-10-19T12:30:00.000Z');
+const day = (d, h = 12) => () => new Date(Date.UTC(2026, 9, d, h, 0, 0));
 
 let tmp;
 let home;
@@ -58,14 +59,14 @@ afterEach(() => {
 const INCLUDED = [
   'CLAUDE.md', 'settings.json', 'settings.local.json', 'keybindings.json', 'output-styles/s.md',
   'agents/a.md', 'skills/mine/SKILL.md', 'commands/x.md', 'projects/p1/memory/MEMORY.md',
-  'scripts/foo.js', 'statusline-x.js', 'statusline.sh', 'delegation.json', 'devops-config.json',
+  'scripts/foo.js', 'scheduled-tasks/t/SKILL.md', 'routine-snapshots/cloud/trig_1.json', 'statusline-x.js', 'statusline.sh', 'delegation.json', 'devops-config.json',
   '.backupallow', '.gitignore',
 ];
 const EXCLUDED = [
   '.credentials.json', 'devops-api.env', 'projects/p1/chat.jsonl', 'projects/p1/notes.txt', 'cache/x',
   'plugins/m/y.js', 'history.jsonl', 'skills/synced/a.md', 'file-history/a', 'foo.log', 'my-token.json',
   'skills/mine/secret.md', 'projects/p1/memory/credentials.md', 'random.txt', 'home-backup-report.json',
-  'home-backup-report.txt', 'home-backup.log', 'debug/x', 'edge-1-profile/x', 'sub/.env', 'agents/prod.env',
+  'home-backup-report.txt', 'home-backup.log', 'home-backup.lock', 'home-backup.rerun', 'home-backup-state.json', 'debug/x', 'edge-1-profile/x', 'sub/.env', 'agents/prod.env',
   'telemetry/t', 'todos/t', 'logs/l', 'backups/b', 'statsig/s', 'ide/i', 'session-env/e', 'shell-snapshots/s',
 ];
 
@@ -131,8 +132,50 @@ describe('run', () => {
     expect(remoteCommits()).toHaveLength(1);
     expect(notify).not.toHaveBeenCalled();
     write('CLAUDE.md', 'two\n');
-    expect(hb.runBackup(opts()).status).toBe('pushed');
+    expect(hb.runBackup(opts({ now: day(20) })).status).toBe('pushed');
     expect(remoteCommits()).toHaveLength(2);
+  });
+
+  it('keeps one version per day: a same-day change replaces that day\'s commit, also on the remote', () => {
+    prepareHome();
+    write('CLAUDE.md', 'morning\n');
+    hb.runBackup(opts({ now: day(19, 8) }));
+    write('CLAUDE.md', 'evening\n');
+    expect(hb.runBackup(opts({ now: day(19, 20) })).status).toBe('pushed');
+    expect(remoteCommits()).toHaveLength(1);
+    expect(sh('git', ['--git-dir', bare, 'show', 'main:CLAUDE.md'], tmp).stdout).toBe('evening\n');
+  });
+
+  it('retention: the newest state plus versions from keepDays different days, older ones cut everywhere', () => {
+    prepareHome();
+    for (const d of [10, 11, 12, 13, 14, 15]) {
+      write('CLAUDE.md', `day ${d}\n`);
+      expect(hb.runBackup(opts({ now: day(d) })).status).toBe('pushed');
+    }
+    const subjects = remoteCommits().map((c) => c.split('|').pop());
+    expect(subjects).toEqual(['15', '14', '13', '12'].map((d) => `backup: 2026-10-${d}T12:00:00.000Z`));
+    expect(sh('git', ['rev-list', '--count', '--all'], claude).stdout.trim()).toBe('4');
+    expect(sh('git', ['show', 'HEAD~3:CLAUDE.md'], claude).stdout).toBe('day 12\n');
+    expect(sh('git', ['status', '--porcelain'], claude).stdout.trim()).toBe('');
+  });
+
+  it('a run while another one works only leaves a rerun marker', () => {
+    prepareHome();
+    write('CLAUDE.md', 'x\n');
+    fs.writeFileSync(path.join(claude, 'home-backup.lock'), '1');
+    expect(hb.runBackup(opts())).toMatchObject({ code: 0, status: 'busy' });
+    expect(fs.existsSync(path.join(claude, 'home-backup.rerun'))).toBe(true);
+    expect(remoteFiles()).toEqual([]);
+  });
+
+  it('refreshes its own outdated .gitignore, never a hand-made one', () => {
+    prepareHome();
+    const gi = path.join(claude, '.gitignore');
+    fs.writeFileSync(gi, hb.renderGitignore().replace('!/routine-snapshots/\n', ''));
+    write('routine-snapshots/cloud/trig_1.json', '{}\n');
+    hb.runBackup(opts());
+    expect(fs.readFileSync(gi, 'utf8')).toBe(hb.renderGitignore());
+    expect(remoteFiles()).toContain('routine-snapshots/cloud/trig_1.json');
   });
 
   it('blocks on a secret: nothing committed, remote untouched, report without value, notified', () => {
@@ -260,6 +303,122 @@ describe('run', () => {
   });
 });
 
+describe('targets', () => {
+  const useTarget = (key, value) => {
+    prepareHome();
+    sh('git', ['remote', 'remove', 'origin'], claude);
+    config.setValue('homeBackup.target', key, 'global', home, { home });
+    if (value) config.setValue(`homeBackup.${{ folder: 'path', rclone: 'remote' }[key]}`, value, 'global', home, { home });
+  };
+
+  it('folder: one dated full copy per day, the newest replaces that day, older days deleted', () => {
+    const dest = path.join(tmp, 'nas', 'claude');
+    useTarget('folder', dest);
+    write('agents/a.md', 'a\n');
+    for (const d of [10, 11, 12, 13, 14]) {
+      write('CLAUDE.md', `day ${d}\n`);
+      expect(hb.runBackup(opts({ now: day(d) })).status).toBe('delivered');
+    }
+    write('CLAUDE.md', 'day 14 late\n');
+    hb.runBackup(opts({ now: day(14, 20) }));
+    expect(fs.readdirSync(dest).sort()).toEqual(['2026-10-11', '2026-10-12', '2026-10-13', '2026-10-14']);
+    expect(fs.readFileSync(path.join(dest, '2026-10-14', 'CLAUDE.md'), 'utf8')).toBe('day 14 late\n');
+    expect(fs.readFileSync(path.join(dest, '2026-10-11', 'agents', 'a.md'), 'utf8')).toBe('a\n');
+    expect(fs.existsSync(path.join(dest, '2026-10-14', '.git'))).toBe(false);
+    expect(hb.runBackup(opts({ now: day(14, 21) })).status).toBe('unchanged');
+  });
+
+  it('folder: a deleted day folder is written again on the next run', () => {
+    const dest = path.join(tmp, 'drive');
+    useTarget('folder', dest);
+    write('CLAUDE.md', 'x\n');
+    hb.runBackup(opts());
+    fs.rmSync(path.join(dest, '2026-10-19'), { recursive: true });
+    hb.runBackup(opts());
+    expect(fs.existsSync(path.join(dest, '2026-10-19', 'CLAUDE.md'))).toBe(true);
+  });
+
+  it('command: gets the snapshot folder, day and keep count in its environment', () => {
+    const out = path.join(tmp, 'cmd-out.txt');
+    useTarget('command');
+    config.setValue('homeBackup.command', 'node -e "1"', 'global', home, { home });
+    write('CLAUDE.md', 'rules\n');
+    const calls = [];
+    const run = (cmd, args, o = {}) => {
+      if (o.shell) {
+        calls.push(o);
+        fs.writeFileSync(out, fs.readFileSync(path.join(o.env.HOME_BACKUP_DIR, 'CLAUDE.md'), 'utf8'));
+        return { status: 0, stdout: '', stderr: '' };
+      }
+      return hb.defaultRun(cmd, args, o);
+    };
+    expect(hb.runBackup(opts({ run })).status).toBe('delivered');
+    expect(calls).toHaveLength(1);
+    expect(calls[0].env).toMatchObject({ HOME_BACKUP_DAY: '2026-10-19', HOME_BACKUP_KEEP_DAYS: '4' });
+    expect(fs.readFileSync(out, 'utf8')).toBe('rules\n');
+    expect(fs.existsSync(calls[0].env.HOME_BACKUP_DIR)).toBe(false);
+    hb.runBackup(opts({ run }));
+    expect(calls).toHaveLength(1);
+  });
+
+  it('command: a failing command is reported and retried on the next run', () => {
+    useTarget('command');
+    config.setValue('homeBackup.command', 'exit 3', 'global', home, { home });
+    write('CLAUDE.md', 'rules\n');
+    expect(hb.runBackup(opts())).toMatchObject({ code: 1, status: 'error' });
+    expect(notify).toHaveBeenCalledTimes(1);
+  });
+
+  it('rclone: syncs the day folder and purges days beyond keepDays', () => {
+    useTarget('rclone', 'gdrive:claude-home-backup');
+    write('CLAUDE.md', 'rules\n');
+    const calls = [];
+    const run = (cmd, args, o = {}) => {
+      if (cmd !== 'rclone') return hb.defaultRun(cmd, args, o);
+      calls.push(args.join(' '));
+      if (args[0] === 'sync') expect(fs.existsSync(path.join(args[1], 'CLAUDE.md'))).toBe(true);
+      if (args[0] === 'lsf') return { status: 0, stdout: '2026-10-19/\n2026-10-15/\n2026-10-12/\n2026-10-10/\n2026-10-01/\nother/\n', stderr: '' };
+      return { status: 0, stdout: '', stderr: '' };
+    };
+    expect(hb.runBackup(opts({ run })).status).toBe('delivered');
+    expect(calls[0]).toMatch(/^sync .+ gdrive:claude-home-backup\/2026-10-19$/);
+    expect(calls.filter((c) => c.startsWith('purge'))).toEqual(['purge gdrive:claude-home-backup/2026-10-01']);
+  });
+
+  it('drive: finds the Google Drive for Desktop folder', () => {
+    const exists = (p) => p === 'G:\\Meine Ablage';
+    expect(hb.findDriveFolder({ home, platform: 'win32' }, exists)).toBe(path.join('G:\\Meine Ablage', hb.DRIVE_FOLDER));
+    expect(hb.findDriveFolder({ home, platform: 'linux' }, () => false)).toBeNull();
+  });
+
+  it('setup --target folder needs no gh and keeps no origin', () => {
+    const dest = path.join(tmp, 'nas');
+    fs.mkdirSync(claude, { recursive: true });
+    write('CLAUDE.md', 'rules\n');
+    let cron = null;
+    const run = (cmd, args, o = {}) => {
+      if (cmd === 'crontab') {
+        if (args[0] === '-l') return cron === null ? { status: 1, stdout: '', stderr: '' } : { status: 0, stdout: cron, stderr: '' };
+        cron = o.input;
+        return { status: 0, stdout: '', stderr: '' };
+      }
+      if (cmd === 'git') return hb.defaultRun(cmd, args, o);
+      throw new Error(`unexpected spawn: ${cmd}`);
+    };
+    const res = hb.setup(opts({ run, platform: 'linux', target: 'folder', path: dest }));
+    expect(res).toMatchObject({ code: 0, status: 'delivered' });
+    expect(config.load(home, { home }).values.homeBackup).toMatchObject({ enabled: true, target: 'folder', path: dest });
+    expect(sh('git', ['remote'], claude).stdout.trim()).toBe('');
+    expect(fs.existsSync(path.join(dest, '2026-10-19', 'CLAUDE.md'))).toBe(true);
+    expect(hb.setup(opts({ run, platform: 'linux', target: 'folder', path: path.join(claude, 'x') })).code).toBe(1);
+  });
+
+  it('parses setup flags', () => {
+    expect(hb.parseArgs(['setup', '--target', 'rclone', '--remote', 'gd:x', '--keep-days', '7', '--on-routine-change', 'auto']))
+      .toEqual({ command: 'setup', target: 'rclone', remote: 'gd:x', keepDays: 7, onRoutineChange: 'auto' });
+  });
+});
+
 describe('scan', () => {
   it('lists hits as file, line, rule without values', () => {
     prepareHome();
@@ -320,7 +479,7 @@ describe('setup, disable, status', () => {
     expect(fs.readFileSync(path.join(claude, '.gitignore'), 'utf8')).toBe(hb.renderGitignore());
     expect(sh('git', ['remote', 'get-url', 'origin'], claude).stdout.trim()).toBe('https://github.com/octo/claude-home.git');
     const cfg = config.load(home, { home }).values.homeBackup;
-    expect(cfg).toEqual({ enabled: true, repo: 'octo/claude-home' });
+    expect(cfg).toMatchObject({ enabled: true, repo: 'octo/claude-home', target: 'github', keepDays: 4 });
     expect(cron).toContain('# devops:home-backup');
     expect(cron).toContain('30 12 * * *');
     expect(cron).toContain('home-backup.js');
