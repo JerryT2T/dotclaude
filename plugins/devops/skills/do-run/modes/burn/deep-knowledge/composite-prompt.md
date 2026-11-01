@@ -43,8 +43,8 @@ auto-agents mit --burn={project root}/BURN-STATE.json — Conveyor statt Waves
 6. pause → Cron aus dem Gate armen (state resume-cron), Report „pausiert bis …", Turn beenden
 7. finish → voller QA-Lauf als letzter Task (kein Gate), dann Report
 
-### Browser — Edge Credo
-- Alle Browser-Interaktion folgt dem Edge Credo (deep-knowledge/browser-tool-strategy.md § Edge Credo)
+### Browser
+- Tool-Wahl nach deep-knowledge/browser-tool-strategy.md: Browser-Pane für localhost, Claude-in-Chrome (Edge) nur für eingeloggte Seiten, dort gelten die § Edge rules
 
 ### Nie
 - Lanes, Reserve oder Profil selbst ändern — nur burn-plan.js

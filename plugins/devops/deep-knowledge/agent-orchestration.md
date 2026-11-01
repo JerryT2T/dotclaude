@@ -469,16 +469,16 @@ If any web-tech gate signal is true (HTML/CSS/JS framework files changed, UI dep
 in `package.json`, static `index.html` present) → browser verification is
 **required**, mocks are expected. No "browser not needed" exit for web tech.
 
-- **Orchestrator** (before spawning QA): probe the browser tool waterfall from
-  `deep-knowledge/browser-tool-strategy.md` (Chrome MCP → Preview → Playwright).
-  Set `$BROWSER_TOOL` to the first responder. If Preview is selected, start a
+- **Orchestrator** (before spawning QA): probe the browser tool for the use case per
+  `deep-knowledge/browser-tool-strategy.md` (pane for localhost, Chrome MCP in
+  Edge for logged-in sites, Playwright last).
+  Set `$BROWSER_TOOL` to the first responder. If the pane is selected, start a
   server via `preview_start` and capture `$SERVER_ID`. If no dev server exists,
   fall back to opening static HTML via `file:///`.
 - **QA agent** uses whichever tool the orchestrator selected:
-  - Chrome MCP: `computer` (screenshot), `read_page`
+  - Pane / Chrome MCP: `computer` (screenshot), `read_page`
   - Playwright: `browser_take_screenshot`, `browser_snapshot`
-  - Preview: `preview_screenshot`, `preview_snapshot` (pass `serverId`)
-- All three are DOM/protocol-based — no desktop takeover, no user interruption.
+- All are DOM/protocol-based — no desktop takeover, no user interruption.
 - Skip only for genuinely non-UI changes (pure config, scripts, docs, backend-only).
 
 **4. Electron / Native UI — Dev-Browser + User-Final-Test**

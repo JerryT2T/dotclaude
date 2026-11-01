@@ -29,11 +29,11 @@ missing, disabled or at its usage limit, so the review never holds you up.
 - **Browser-verify web tech changes** (see `{PLUGIN_ROOT}/deep-knowledge/test-strategy.md`
   § Web Tech → Always Browser-Test). Mandatory when HTML/CSS/JS framework files
   changed — mocks for missing backends are expected. No "browser not needed" exit.
-  Use the **Claude-in-Chrome extension in Edge** (`mcp__claude-in-chrome__*`:
-  `navigate`, `read_page`, `javascript_tool`) when it is connected; otherwise the
-  **Claude browser pane** for the project's own localhost app
-  (`mcp__Claude_Browser__*`: `preview_start`, `read_page`, `computer` screenshot,
-  `read_console_messages`). Playwright is the next fallback. None of them
+  Use the **Claude browser pane** (`mcp__Claude_Browser__*`: `preview_start`,
+  `read_page`, `computer` screenshot, `read_console_messages`) for the project's
+  own localhost / file:// app and public pages; **Claude-in-Chrome in Edge**
+  (`mcp__claude-in-chrome__*`) only for logged-in external sites and uploads.
+  Playwright is the last fallback. None of them
   connected → report `browser: unavailable` as a finding, never a silent pass.
   Never plain Chrome, never computer-use for browser work
   (see `{PLUGIN_ROOT}/deep-knowledge/browser-tool-strategy.md`).

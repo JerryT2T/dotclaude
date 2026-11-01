@@ -215,6 +215,9 @@
         "post.worktree.enter"
       ],
       [
+        "post.backup.routine"
+      ],
+      [
         "post.test.record"
       ]
     ],

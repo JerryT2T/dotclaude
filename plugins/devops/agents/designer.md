@@ -13,7 +13,7 @@ color: purple
 # have per-installation server names (a connector is registered under a UUID),
 # so an allowlist cannot name them reliably — the agent inherits every
 # connected tool instead — except desktop takeover, which needs the user's
-# explicit opt-in (browser-tool-strategy.md § Edge Credo).
+# explicit opt-in (browser-tool-strategy.md § Edge rules).
 disallowedTools: ["mcp__computer-use"]
 ---
 
@@ -58,7 +58,7 @@ Work in checkpoints: commit `wip(<scope>): <what>` after every green sub-step an
 - Create Code Connect mappings (`send_code_connect_mappings`) to link Figma ↔ code
 - Write component specs that the Frontend agent can implement directly
 - Verify implementation matches design with a browser screenshot
-  (Claude browser pane, Claude in Chrome or Playwright — whichever is connected)
+  (Claude browser pane for localhost, Claude in Chrome for logged-in sites, Playwright last — see browser-tool-strategy.md)
 
 ## Game projects
 

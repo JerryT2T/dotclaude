@@ -180,7 +180,7 @@ with "(empfohlen)" in its label.
 This question only controls whether computer-use (mouse/keyboard takeover) is used
 for **native apps**. Browser tools (`$BROWSER_TOOL` from Step 3b) work in both modes
 and never occupy the desktop. Never fall back to computer-use for browser tasks —
-see `{PLUGIN_ROOT}/deep-knowledge/browser-tool-strategy.md` (§ Edge Credo applies identically
+see `{PLUGIN_ROOT}/deep-knowledge/browser-tool-strategy.md` (§ Edge rules applies identically
 in autonomous mode).
 
 In `analyze` mode, desktop is only used for visual inspection (screenshots), never for interaction.
@@ -231,21 +231,23 @@ Then take a test `mcp__computer-use__screenshot` to confirm access works.
 ### 3b — Browser Tools
 
 Follow the **Browser Tool Strategy** (`{PLUGIN_ROOT}/deep-knowledge/browser-tool-strategy.md`),
-including the **Edge Credo** (§ Edge Credo — Hard Rules):
-- Edge only, Claude extension by default — computer-use for browser only if user chose "Desktop übernehmen"
-- Always use the user's installed Edge with their profile/login context
-- New tab in existing Edge window — never a new Edge window
+its decision table and guards:
+- Built-in pane for the localhost / file:// app; Claude-in-Chrome in Edge only for
+  logged-in sites, uploads and watched flows — there the § Edge rules apply (user's
+  Edge profile, separate test window, one tab group)
+- Computer-use for a browser only if the user chose "Desktop übernehmen"
 - These rules apply in BOTH foreground and background/autonomous mode
 
 **Browser probing is MANDATORY when any web-tech gate signal is true** (see
 `{PLUGIN_ROOT}/deep-knowledge/test-strategy.md` § Web Tech → Always Browser-Test). This includes
 Electron/Tauri: their renderer is web tech and must be verified in a browser with
-mocks, even though the packaged app itself cannot be driven via Chrome-MCP. Never
+mocks, even though the packaged app itself cannot be driven via a browser tool. Never
 skip browser probing with "Electron app, no preview server" — the renderer still
 needs browser-based component verification.
 
-Run the waterfall probe (Chrome MCP → Preview → Playwright), set `$BROWSER_TOOL`
-to the first responder. If none respond → show the error block from the strategy
+Run the probe in the order of the use case (localhost/public: pane → Chrome-MCP → Playwright;
+logged-in external: Chrome-MCP → pane → Playwright), set `$BROWSER_TOOL`
+(`pane|chrome-mcp|playwright`) to the first responder. If none respond → show the error block from the strategy
 doc and abort browser-dependent work. Never use computer-use for browser tasks.
 
 Mark `[--] Browser nicht benötigt` ONLY for pure non-UI work (CLI tool without
@@ -289,7 +291,7 @@ trigger a lightweight read-only call to each to prime the permission.
 ### 3e — Confirmation Checklist
 Display a checklist of all primed permissions:
 ```
-[OK] Browser: {$BROWSER_TOOL} aktiv (Chrome MCP / Playwright / Preview)
+[OK] Browser: {$BROWSER_TOOL} aktiv (pane / chrome-mcp / playwright)
 [OK] Computer-Use: {app1, app2} genehmigt  (nur wenn Desktop-Modus)
 [OK] Dateisystem: Lesen/Schreiben genehmigt
 [OK] Shell: Bash genehmigt

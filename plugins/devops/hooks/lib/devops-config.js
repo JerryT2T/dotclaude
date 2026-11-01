@@ -145,6 +145,30 @@ const SCHEMA = Object.freeze({
       type: 'string', default: '', globalOnly: true, pattern: /^[A-Za-z0-9-]+\/(?!\.+$)[A-Za-z0-9._-]+$/,
       doc: 'The private backup repo as <owner>/<name>, e.g. Jerry0022/claude-home.',
     }),
+    target: Object.freeze({
+      type: 'enum', default: 'github', globalOnly: true, values: Object.freeze(['github', 'folder', 'rclone', 'command']),
+      doc: 'Where the backup goes: github = the private repo, folder = a local/NAS/Google-Drive-for-Desktop folder, rclone = an rclone remote (Google Drive, OneDrive, S3, SFTP …), command = your own command.',
+    }),
+    path: Object.freeze({
+      type: 'string', default: '', globalOnly: true,
+      doc: 'target folder: the backup folder (local disk, NAS share, a synced Google Drive folder). One dated full copy per day lands in it.',
+    }),
+    remote: Object.freeze({
+      type: 'string', default: '', globalOnly: true, pattern: /^[A-Za-z0-9_.-]+:[^\s]*$/,
+      doc: 'target rclone: the rclone remote and folder, e.g. gdrive:claude-home-backup.',
+    }),
+    command: Object.freeze({
+      type: 'string', default: '', globalOnly: true,
+      doc: 'target command: a shell command that receives the snapshot folder in HOME_BACKUP_DIR (see deep-knowledge/home-backup.md).',
+    }),
+    keepDays: Object.freeze({
+      type: 'integer', default: 4, min: 1, max: 365, globalOnly: true,
+      doc: 'Versions kept: the newest state plus older ones, at most one per day, from this many different days; older ones are deleted automatically.',
+    }),
+    onRoutineChange: Object.freeze({
+      type: 'enum', default: 'ask', globalOnly: true, values: Object.freeze(['ask', 'auto', 'off']),
+      doc: 'When a recurring routine is created or changed: ask = offer a backup once per session, auto = back up silently right away, off = only the daily run.',
+    }),
   }),
   frustratedMode: Object.freeze({
     suggest: Object.freeze({

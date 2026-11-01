@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.338.0] — 2026-11-01
+
+### Added
+- Home backup targets beyond GitHub: `folder` (local disk, NAS, Google Drive for Desktop via `--target drive`), `rclone` remotes and an own `command`.
+- Retention: the newest state plus one version per day from `homeBackup.keepDays` (default 4) days. A same-day run replaces that day's version, and older versions are deleted automatically.
+- Hook `post.backup.routine`: creating or changing a recurring scheduled task or cloud routine triggers the backup (`homeBackup.onRoutineChange` ask | auto | off). Cloud routines are also saved as JSON under `~/.claude/routine-snapshots/cloud/`.
+
+### Changed
+- The GitHub target pushes with `--force-with-lease` so the retention can cut old history. A run lock with a rerun marker means a burst of triggers costs one extra pass.
+
+## [0.337.1] — 2026-11-01
+
+### Changed
+- **Browser tools**: one tool per use case. The built-in browser pane is the default for your local app, tests and public pages. Claude-in-Chrome in Edge is used only for sites you are logged in to, uploads and flows you watch. Playwright stays the last fallback.
+
 ## [0.337.0] — 2026-11-01
 
 ### Added

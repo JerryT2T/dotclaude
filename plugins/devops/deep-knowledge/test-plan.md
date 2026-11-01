@@ -137,7 +137,7 @@ Detection: marker: vite.config.ts
 
 Tool chain (in order):
   1. Bash(npm run dev -- --port 5173) → start dev server
-  2. $BROWSER_TOOL probe → Chrome-MCP (Edge, if connected) → Preview → Playwright
+  2. $BROWSER_TOOL probe → built-in pane → Chrome-MCP (Edge) → Playwright
   3. $BROWSER_TOOL snapshot → element and text verification
   4. $BROWSER_TOOL console + network read → runtime JS errors + failed requests
   5. $BROWSER_TOOL set viewport iPhone SE (375×667) + screenshot
@@ -150,10 +150,9 @@ Blocked: computer-use
 Must-ask triggers: none
 ```
 
-`$BROWSER_TOOL` resolves via the waterfall in
-`deep-knowledge/browser-tool-strategy.md` — Chrome-MCP (Claude extension in Edge)
-primary **when connected**, else **Preview** for the localhost app, then
-Playwright. The console + network read step is mandatory: a clean snapshot does
+`$BROWSER_TOOL` (`pane` / `chrome-mcp` / `playwright`) resolves per
+`deep-knowledge/browser-tool-strategy.md` — the built-in pane for the localhost
+app, Chrome-MCP in Edge for logged-in external sites, Playwright last. The console + network read step is mandatory: a clean snapshot does
 not prove the absence of runtime errors.
 
 ## Pin — write the session cache

@@ -24,13 +24,14 @@ than iPads — both can trigger layout regressions that iOS-only testing misses.
 
 ## How to Activate — by `$BROWSER_TOOL`
 
-**Preview (`$BROWSER_TOOL = preview`) — preferred for localhost apps.** Use the
-native `preview_resize` tool: it sets the viewport directly. Use a preset
-(`mobile` / `tablet` / `desktop`) or pass exact `width`/`height` for the five
-viewports below, plus `colorScheme` (`light`/`dark`) for dark-mode checks. No JS
-hack needed.
+**Built-in pane (`$BROWSER_TOOL = pane`) — preferred for localhost apps.** Use the
+native `resize_window` tool: it sets the viewport directly. Pass a `preset`
+(`mobile` / `tablet` / `desktop`), or `width` + `height` together for an exact
+size from the five viewports below, and `colorScheme` (`light`/`dark`) for
+dark-mode checks. Reset with `preset: "desktop"` when done. Chrome-MCP also exposes `resize_window`;
+Playwright uses `browser_resize`.
 
-**Chrome-MCP / Playwright.** Use `javascript_tool` / `browser_evaluate` to resize
+**Exact dimensions / fallback.** Use `javascript_tool` / `browser_evaluate` to resize
 the viewport before taking a screenshot or snapshot. The snippet below resizes
 both the window and the document root so that CSS media queries fire correctly
 for visual tests.
@@ -74,10 +75,10 @@ To restore default desktop size after a viewport test, call the snippet with
 1. Navigate to the page (`navigate` or `preview_start` depending on profile).
 2. For each viewport in order (mobile-ios → mobile-android → tablet-ios →
    tablet-android → desktop):
-   a. Resize: `preview_resize` (Preview) or the resize snippet via
-      `javascript_tool` / `browser_evaluate` (Chrome-MCP / Playwright).
-   b. Call `preview_snapshot` to verify content and DOM structure.
-   c. Call `preview_screenshot` to capture visual layout.
+   a. Resize: `resize_window` (pane / Chrome-MCP) or the resize snippet via
+      `javascript_tool` / `browser_evaluate` (exact size / Playwright).
+   b. Call `read_page` / `browser_snapshot` to verify content and DOM structure.
+   c. Call `computer` screenshot / `browser_take_screenshot` to capture visual layout.
 3. Compare states — flag regressions where content overflows, is hidden, or
    breaks layout at a given breakpoint.
 4. Restore desktop viewport (1280 × 800) when done.

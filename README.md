@@ -1,6 +1,6 @@
 # dotclaude
 
-**Version: 0.337.0**
+**Version: 0.338.0**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
 
@@ -26,7 +26,7 @@ keep git clean, block risky moves and stop context waste.
 - **Runs while you are away** — `/do-run` works off a backlog, a task or the leftover weekly budget, and ships each item
 - **Per-project tuning** — extend any skill with a `reference.md`, no fork
 
-<!--devops:count:hooks-->102<!--/devops:count:hooks--> hooks ·
+<!--devops:count:hooks-->103<!--/devops:count:hooks--> hooks ·
 <!--devops:count:skills-->15<!--/devops:count:skills--> skills ·
 <!--devops:count:agents-->12<!--/devops:count:agents--> agents ·
 ~0.7M tokens/week overhead (1–4 % of a Max plan), paid back 1.5–6× by the
@@ -317,7 +317,7 @@ All off by default. Turn each on by saying the phrase in a session.
 |---|---|---|---|
 | [Codex review](#codex) | Second-AI code review before each ship | install [codex-plugin-cc](https://github.com/openai/codex-plugin-cc) | on the OpenAI side |
 | [API credits](#claude-api-credits) | Read-only side work runs on your plan's monthly API credit first | "nutze mein API-Guthaben" | moves work off the plan |
-| [Home backup](#claude-home-backup) | Daily push of `~/.claude` to a private GitHub repo, secret-scanned | "richte Home-Backup ein" | 0 after setup |
+| [Home backup](#claude-home-backup) | Daily backup of `~/.claude` and your routines to a private GitHub repo, Google Drive, a NAS or your own command — secret-scanned, newest + 3 daily versions | "richte Home-Backup ein" | 0 after setup |
 | [WIP watch](#wip-watch) | Weekly scan for un-landed branches, stashes, broken worktrees | "WIP-Wächter an" | 0 |
 
 <a name="codex"></a>
@@ -368,14 +368,19 @@ guardrail. Runbook: [`api-credits.md`](plugins/devops/deep-knowledge/api-credits
 <summary><strong>Claude home backup</strong></summary>
 
 Settings, `CLAUDE.md`, agents, your skills and commands, project memory and
-helper scripts live only in `~/.claude`. The backup pushes them to a
-**private** GitHub repo (default `<you>/claude-home`) once a day via Task
-Scheduler / crontab — a plain node script, no Claude call.
+helper scripts and your routines live only in `~/.claude` (cloud routines only
+on the server). The backup copies them once a day via Task Scheduler / crontab —
+a plain node script, no Claude call — to one target: a **private** GitHub repo
+(default `<you>/claude-home`), a folder (local disk, NAS share, Google Drive for
+Desktop), an `rclone` remote (Google Drive, OneDrive, S3 …) or your own command.
+
+- **Versions:** the newest state plus one version per day from the three previous days with changes; older ones are deleted automatically.
+- **Routines:** creating or changing a recurring routine (Desktop scheduled task or cloud routine) offers a backup right away — or runs it silently with `homeBackup.onRoutineChange auto`.
 
 - **Never included:** `.credentials.json`, `*token*` / `*secret*` / `*credential*` / `.env` files, transcripts, caches, `plugins/`, browser profiles, logs.
 - **Before every commit** each file is scanned for secrets (private keys, `sk-` / `ghp_` / `AKIA` tokens, JWTs, `password=` values) and private data (e-mail, phone, IBAN, card numbers). A hit commits nothing and leaves `~/.claude/home-backup-report.txt` (file, line, rule — never the value); allow a finding on purpose in `~/.claude/.backupallow`.
-- **On:** "richte Home-Backup ein" · **off:** "Home-Backup aus" (the repo stays).
-- **Restore:** install Claude Code, move the fresh `~/.claude` aside, `git clone https://github.com/<you>/claude-home ~/.claude`, `claude plugin update`, then `/login`.
+- **On:** "richte Home-Backup ein" · **off:** "Home-Backup aus" (the backup stays).
+- **Restore:** install Claude Code, move the fresh `~/.claude` aside, `git clone https://github.com/<you>/claude-home ~/.claude` (or copy a dated folder back), `claude plugin update`, then `/login`.
 
 Runbook: [`home-backup.md`](plugins/devops/deep-knowledge/home-backup.md).
 
@@ -518,7 +523,7 @@ A different stack: extend the skills per project — see [Customize](#customize)
 </details>
 
 <details>
-<summary><strong>Hooks</strong> — <!--devops:count:hooks-->102<!--/devops:count:hooks--> hooks by lifecycle and by category</summary>
+<summary><strong>Hooks</strong> — <!--devops:count:hooks-->103<!--/devops:count:hooks--> hooks by lifecycle and by category</summary>
 
 ```
 SessionStart  ──>  UserPromptSubmit  ──>  PreToolUse  ──>  PostToolUse  ──>  Stop
@@ -639,6 +644,7 @@ SessionStart  ──>  UserPromptSubmit  ──>  PreToolUse  ──>  PostToolU
 - `post.project.setup` — Runs `ss.project.setup`'s logic right after a mid-session `git init` instead of waiti…
 - `post.governor.clear` — Clears the foreground marker pre.governor.gate recorded for this tool call: Claude no…
 - `post.worktree.enter` — Carries this session's live do-run contract along when the session moves from the rep…
+- `post.backup.routine` — Backs up a RECURRING routine right after it was created or changed — a Desktop schedu…
 - `post.test.record` — Records a green FULL vitest run Claude made by hand (`npm test`, `npx vitest run`, no…
 
 #### Stop — runs when Claude finishes responding
@@ -777,6 +783,7 @@ SessionStart  ──>  UserPromptSubmit  ──>  PreToolUse  ──>  PostToolU
 - `ss.ci.workflows.sweep` *(SessionStart)*
 - `pre.test.fullguard` *(PreToolUse)*
 - `pre.redirect.scope` *(PreToolUse)*
+- `post.backup.routine` *(PostToolUse)*
 - `post.test.record` *(PostToolUse)*
 <!--/devops:block:hook-categories-->
 
@@ -814,7 +821,7 @@ plugins/
 │   ├── .claude-plugin/plugin.json ← Plugin manifest (SemVer, tags v0.x.y)
 │   ├── .mcp.json                  ← MCP servers: completion card, ship, issues
 │   ├── CONVENTIONS.md             ← Naming, versioning, extension rules
-│   ├── hooks/                     ← <!--devops:count:hooks-->102<!--/devops:count:hooks--> hooks (JS) registered in hooks/dispatch/manifest.json
+│   ├── hooks/                     ← <!--devops:count:hooks-->103<!--/devops:count:hooks--> hooks (JS) registered in hooks/dispatch/manifest.json
 │   ├── skills/                    ← <!--devops:count:skills-->15<!--/devops:count:skills--> skill definitions (SKILL.md)
 │   ├── agents/                    ← <!--devops:count:agents-->12<!--/devops:count:agents--> agent definitions
 │   ├── mcp-server/                ← Card renderer + Desktop widget, ship tools, issue matching

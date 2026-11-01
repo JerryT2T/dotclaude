@@ -171,13 +171,19 @@ describe("machine-level opt-ins: string, enum and list settings (homeBackup, wip
   test("defaults are off and typed", () => {
     const home = mkTmp("cfg-home-");
     const v = cfg.load(home, { home }).values;
-    expect(v.homeBackup).toEqual({ enabled: false, repo: "" });
+    expect(v.homeBackup).toEqual({
+      enabled: false, repo: "", target: "github", path: "", remote: "", command: "", keepDays: 4, onRoutineChange: "ask",
+    });
     expect(v.wipWatch).toEqual({ enabled: false, roots: ["~/IdeaProjects"], day: "sun", discardAfterWeeks: 8 });
   });
 
   test("parseValue: repo pattern, weekday words, comma lists", () => {
     expect(cfg.parseValue("homeBackup.repo", " Jerry0022/claude-home ")).toBe("Jerry0022/claude-home");
     expect(() => cfg.parseValue("homeBackup.repo", "not a repo")).toThrow(/expected text matching/);
+    expect(cfg.parseValue("homeBackup.remote", "gdrive:claude-home-backup")).toBe("gdrive:claude-home-backup");
+    expect(() => cfg.parseValue("homeBackup.remote", "no colon")).toThrow(/expected text matching/);
+    expect(cfg.parseValue("homeBackup.onRoutineChange", "auto")).toBe("auto");
+    expect(() => cfg.parseValue("homeBackup.target", "ftp")).toThrow(/one of github/);
     expect(cfg.parseValue("wipWatch.day", "Sunday")).toBe("sun");
     expect(() => cfg.parseValue("wipWatch.day", "someday")).toThrow(/one of mon/);
     expect(cfg.parseValue("wipWatch.roots", "~/IdeaProjects, D:/code ,")).toEqual(["~/IdeaProjects", "D:/code"]);

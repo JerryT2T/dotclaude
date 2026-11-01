@@ -23,7 +23,7 @@ All three conditions must be true:
 1. **5+ code edits** in the current session (tracked by `post.flow.completion` hook)
 2. **test variant** selected (code edits + app-relevant work)
 3. **UI project detected** — at least one of:
-   - Preview server already running (`preview_list` returns active server)
+   - Dev server already running in the built-in pane (`preview_list` returns active server)
    - `package.json` has dev/start script with UI deps (react, vue, angular,
      next, nuxt, vite, svelte, solid, astro, electron, tauri, remix, gatsby)
    - Project contains `index.html`, `App.tsx`, `App.vue`, or similar entry points
@@ -67,7 +67,7 @@ Warning (in question text, MANDATORY):
 
 Call `request_access` with the required applications:
 
-- **Microsoft Edge** (the ONLY browser — see `browser-tool-strategy.md` § Edge Credo)
+- **Microsoft Edge** (the ONLY browser — see `browser-tool-strategy.md` § Edge rules)
 - Any other application visible in the test (if known)
 
 Reason: "Automatische visuelle Tests der UI-Änderungen durchführen"
@@ -76,7 +76,7 @@ If the user denies access → fall back to manual test steps. Do not ask again.
 
 ### Step 2 — Ensure App is Running
 
-- Check if preview server is already running (`preview_list`)
+- Check if the dev server is already running in the pane (`preview_list`)
 - If not → start it (`preview_start` or appropriate dev command)
 - Wait for the app to be accessible
 
@@ -148,5 +148,5 @@ If the project has no UI (pure backend, CLI tool, library) → skip desktop
 testing entirely. Use unit/integration tests from `ship_build` instead.
 
 Exception: CLI tools with terminal output can be visually verified via
-`preview_screenshot` of the terminal — but this does not require desktop
+a screenshot of the terminal — but this does not require desktop
 takeover and should use the standard visual verification flow instead.
