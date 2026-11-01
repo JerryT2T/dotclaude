@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.336.2] — 2026-11-01
+
+### Fixed
+- **Budget line**: an unchanged `[budget]` line is no longer repeated on every prompt of a session; it comes again when the reading changes or after a compaction.
+- **Issue detection**: a folder without git or without a remote gets no `match_issues` instruction on its first prompt.
+
 ## [0.336.1] — 2026-11-01
 
 ### Fixed
