@@ -643,7 +643,7 @@ function checkDirDelete(d, cwd, gitFor) {
   return { ok: true };
 }
 
-function decide({ command, cwd, state, gitFor, mergedHeads }) {
+function decide({ command, cwd, state, gitFor, mergedHeads, budgetMs = CHAIN_BUDGET_MS }) {
   if (!state) return null;
   const parsed = parseDeletes(command, cwd);
   const { unresolved } = parsed;
@@ -673,7 +673,7 @@ function decide({ command, cwd, state, gitFor, mergedHeads }) {
     return { block: [head, `Delete refused: ${why}`, NO_ANSWER_RULE, HOW_TO_CONFIRM].join('\n') };
   }
   const headCache = new Map();
-  const deadline = Date.now() + CHAIN_BUDGET_MS;
+  const deadline = Date.now() + budgetMs;
   const notLanded = deletes.filter(d => d.kind !== 'worktree' && d.kind !== 'dir'
     && !state.unmerged.some(a => (a.exact ? a.scope === d.target : namesBranch(a.scope, d.target)))
     && !hasLanded(gitFor(d.dir), d, { cwd: d.dir, mergedHeads, cache: headCache, deadline }));
