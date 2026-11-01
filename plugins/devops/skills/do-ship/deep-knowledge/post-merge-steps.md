@@ -85,11 +85,13 @@ Each surface: `{ name, url, selector, expected }` where `expected` may use the
 
 For every declared surface:
 
-1. Pick the browser tool via the waterfall in
-   `{PLUGIN_ROOT}/deep-knowledge/browser-tool-strategy.md` (Claude-in-Chrome in Edge first).
+1. Pick the browser tool by the decision table in
+   `{PLUGIN_ROOT}/deep-knowledge/browser-tool-strategy.md`: a public deployed page →
+   the built-in pane; a surface behind a login → Claude-in-Chrome in Edge.
    This is a live post-deploy read — see `{PLUGIN_ROOT}/deep-knowledge/test-autonomy.md`.
    Works in foreground, background, and autonomous mode.
-2. Open `url` in the **separate Edge testing window** (per the Edge rules).
+2. Open `url` in the pane, or — for a login surface — in the **separate Edge testing
+   window** (per the Edge rules).
 3. Read the **rendered** version marker. Use **Eval JS** (`javascript_tool` /
    `browser_evaluate`) to read structured data
    (`document.querySelector(selector)?.textContent` or the documented attribute)
