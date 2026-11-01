@@ -2,20 +2,13 @@
 name: auto-cleanup
 version: 0.8.0
 description: >-
-  Repository branch hygiene of the current project on an interactive concept
-  page: unmerged branches, stale locals with deleted remotes, active sessions
-  (worktrees), open PRs that still need to land, verify work landed in main.
-  Filters, 2-state delete controls, a ship queue for open PRs (each landed via
-  do-ship, one after another, as if shipped from its own session), inline
-  detail expand, and an Apply-Manifest + Dry-Run-Confirm before executing
-  anything. Offered by the completion card after a successful ship or promote
-  when too many branches/worktrees pile up (ship_hygiene); old leftovers that
-  provably landed are removed by ship_hygiene without this page.
-  Triggers on: "repo health", "branch cleanup", "branch hygiene", "branches
-  aufräumen", "worktrees aufräumen", "offene PRs landen", "open PRs shippen",
-  "WIP-Report aufräumen", or a yes to the card's cleanup hint. Do NOT trigger for: code cleanup or
-  refactoring, project setup (.gitignore, LICENSE), or the branch the current
-  ship removes anyway.
+  Branch hygiene of the current project on an interactive page: stale and
+  unmerged branches, worktrees, open PRs to land via do-ship, landed-in-main
+  checks; shows an Apply-Manifest + Dry-Run-Confirm before executing anything.
+  Do NOT trigger for: code cleanup or refactoring, project setup (.gitignore,
+  LICENSE), or the branch the current ship removes anyway. Triggers on: "repo
+  health", "branch cleanup", "branches aufräumen", "worktrees aufräumen", or a
+  yes to the card's cleanup hint.
 layer: 0
 invokes: [auto-concept, do-ship]
 user-invocable: false

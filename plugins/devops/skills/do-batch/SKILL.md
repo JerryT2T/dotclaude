@@ -2,13 +2,11 @@
 name: do-batch
 version: 0.9.0
 description: >-
-  Collect mode — a UserPromptSubmit hook parks each prompt in
-  `.claude/batch.md` instead of executing it (no model turn), until an
-  execute marker merges the whole set into ONE feasibility-checked plan and
-  hands it on — to auto-concept when it still needs decisions, to do-run
-  (--from=do-batch) when it is ready to implement. Triggers on "/do-batch",
-  "sammelmodus", "collect mode", "batch mode", "erstmal sammeln", "nicht sofort umsetzen". Do NOT trigger for normal work,
-  for backlog execution (/do-run backlog), or for issue creation (/auto-issue).
+  Collect mode: following prompts are parked, not executed, until an execute
+  marker merges them into one checked plan for auto-concept or do-run. Do NOT
+  trigger for: normal work, backlog execution (do-run backlog), issue
+  creation. Triggers on: "/do-batch", "sammelmodus", "collect mode", "erstmal
+  sammeln".
 layer: 0
 invokes: [do-run, auto-concept]
 triggers:

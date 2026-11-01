@@ -2,18 +2,12 @@
 name: auto-issue
 version: 0.3.0
 description: >-
-  Create GitHub issues — or refine / update existing ones — with enforced title
-  format, labels, and optional milestone and project board integration. Also
-  handles milestone creation and naming. The single owner of every issue write
-  in this plugin: skills, agents and hooks that need an issue created or edited
-  delegate here instead of calling `gh issue create` / `gh issue edit`. Use
-  when the user wants to create a GitHub issue, refine or change an existing
-  one, plan a milestone, or manage issue lifecycle. Triggers on: "neues Issue",
-  "create issue", "Issue erstellen", "mach ein Issue", "new issue", "refine
-  issue", "Issue refinen", "Issue ergänzen", "Issue anpassen", "update issue",
-  "milestone planen", "plan a milestone".
-  Do NOT trigger for: PR creation (use /do-ship), plain commits,
-  or code implementation.
+  Create, refine or update GitHub issues and milestones with enforced title
+  format and labels. The single owner of every issue write: skills, agents and
+  hooks delegate here instead of calling `gh issue create` / `gh issue edit`.
+  Do NOT trigger for: PR creation (do-ship), commits, implementation. Triggers
+  on: "create issue", "neues Issue", "refine issue", "Issue anpassen",
+  "milestone planen".
 layer: 5
 invokes: []
 user-invocable: false

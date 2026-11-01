@@ -101,8 +101,8 @@ export function archiveInstruction() {
     "Show the card widget as usual — nothing changes before it. The hook answering the " +
     "show_widget call then releases exactly one more tool call: " +
     'mcp__ccd_session_mgmt__archive_session {session_id:"self"}. Make that call only when the hook ' +
-    "says so, with no text before or after it. If the tool is unavailable or fails: skip silently — " +
-    "no retry, no note. Turned off with the devops setting ship.archiveAfterShip."
+    "says so, with no text before or after it. If the tool is unavailable, fails or is not called: " +
+    "skip silently — no retry, no note, no summary instead. Turned off with the devops setting ship.archiveAfterShip."
   );
 }
 

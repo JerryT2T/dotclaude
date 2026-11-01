@@ -1,10 +1,8 @@
 ---
 name: core
 description: >-
-  Core/Backend agent — implements business logic, services, data models,
-  APIs, system infrastructure and platform integration (Windows tray,
-  installers, registry, native APIs). The backbone that other agents build on.
-  Spawn proactively only alongside another domain agent (parallel tier, e.g. with frontend) — single-domain backend work stays inline.
+  Core/backend agent — services, data models, APIs, infrastructure, platform integration.
+  Spawn proactively only alongside another domain agent (parallel tier, e.g. with frontend); single-domain backend work stays inline.
   <example>Create the user service with CRUD operations</example>
 model: sonnet
 effort: medium

@@ -2,11 +2,9 @@
 name: auto-setup
 version: 0.1.0
 description: >-
-  First-run setup guide for the devops plugin: a short series of
-  AskUserQuestion boxes (Quiet output style, plan detection, API credit, agent
-  delegation, language). Offered once at the first start by ss.setup.firstrun,
-  re-runnable any time. Triggers on: "devops setup", "setup guide",
-  "plugin einrichten", "devops einrichten", "devops konfigurieren".
+  First-run setup guide for the devops plugin (output style, plan, API credit,
+  agent delegation, language); re-runnable any time. Triggers on: "devops
+  setup", "setup guide", "devops einrichten".
 layer: 0
 invokes: []
 user-invocable: false

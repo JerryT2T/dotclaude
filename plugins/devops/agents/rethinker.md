@@ -1,11 +1,8 @@
 ---
 name: rethinker
 description: >-
-  Code-blind fresh-approach ideation agent — rethinks a stuck app or section
-  from scratch through one lens (product-value, ux-design, enduser-feel, or
-  architecture). Receives ONLY a code-free Rethink Brief; has no file tools
-  by design, so the current implementation cannot anchor its thinking.
-  Spawned in parallel (one per lens) by /do-run rethink Step 4.
+  Code-blind ideation agent — rethinks a stuck app or section from scratch through one lens
+  (product-value, ux-design, enduser-feel, architecture); gets only a code-free brief, no file tools.
   Not proactive — spawned only by /do-run rethink.
   <example>Rethink the onboarding flow through the ux-design lens</example>
 model: opus

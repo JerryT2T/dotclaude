@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.339.2] — 2026-11-01
+
+### Fixed
+- Quiet style: nothing follows the completion card. When `wrap_up` shows the app's own buttons, at most two sentences and one question may follow. A session-archive call that is not made also ends the turn silently, without a summary.
+
+## [0.339.1] — 2026-11-01
+
+### Changed
+- **Leaner skill and agent descriptions**: the skill and agent lists every session loads are about 40 % shorter. Triggers, boundaries and safety rules are unchanged, verified by A/B evals.
+
 ## [0.339.0] — 2026-11-01
 
 ### Added

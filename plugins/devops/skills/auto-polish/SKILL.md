@@ -3,16 +3,10 @@ name: auto-polish
 version: 0.5.0
 description: >-
   UI refinement pass: visual consistency (spacing, tokens, typography, icons,
-  colors), state-visuals, UI-side functionality checks, the standing UI
-  rules from {PLUGIN_ROOT}/deep-knowledge/ui-defaults.md (app style, tooltips, dropdowns,
-  spacing, hotkeys, scrollbars), and small demonstrably UI-related backend fixes. Structural UI
-  changes only with user approval; `--autonomous` skips prompts but keeps
-  the "structural changes flagged not applied" rule. `--invoked-by=ship` is
-  the narrow rules-only path /do-ship calls: static checks on the diff, no
-  agents, no browser, report-only. Triggers on: "polish", "ui polish", "ui
-  angleichen", "design konsistenz", "feinschliff", "visuell aufräumen",
-  "design pass". Do NOT trigger for: backend-only work, feature
-  implementation, theme/style overhaul.
+  colors), state-visuals, UI checks and the standing UI rules. Structural UI
+  changes only with user approval. Do NOT trigger for: backend-only work,
+  feature implementation, theme overhaul. Triggers on: "polish", "ui polish",
+  "feinschliff", "design konsistenz", "design pass".
 layer: 4
 invokes: [auto-agents]
 user-invocable: false
