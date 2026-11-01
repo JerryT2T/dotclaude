@@ -228,6 +228,32 @@ with an overview table carrying a recommendation column and jump links
    ≥1 design — an iteration that is only questions is a `decision`
    iteration, not a `design` one with zero designs.
 
+## 1a · Variant overview and orthogonality
+
+   **≥2 designs → the variant overview.** Each design carries
+   `data-design-motto`, `data-design-traits` (exactly three genuine
+   differences), `data-design-icon` and optionally `data-design-color`,
+   `data-design-overlay` (anchor) and `data-design-overlay-tone="warm"`; the
+   engine turns them into the overview carousel (overlay on a large live
+   preview, questions as the last slide), the header and the quick nav. The
+   iteration says `data-design-set="alternatives"` (same thing, different
+   takes — the usual case) or `"topics"`. Only on `alternatives` the
+   user may star one design as **Favourite** (`favorite` in the payload,
+   optional, at most one): it is the starting point of the next round, and
+   comments on the other designs are still applied; without one Claude
+   decides from the comments (step5-process.md § 5a → Favourite and user
+   pins).
+
+   **Orthogonality — a view never re-asks the design choice.** The call
+   *between* the designs is made in the 💬 dock (per-design and per-screen
+   textareas); that is the whole point of showing them side by side. A
+   `decision` / `comparison` view therefore asks something that stays the
+   same whichever design wins — a data model, a sync strategy, a library, a
+   naming scheme. It never lists the designs, or the traits that
+   distinguish them ("sidebar as in A" vs "tabs as in B"), as its
+   alternatives; it never argues for or against one design in its prose;
+   and it never pre-decides a design through its default selection.
+
 ## 1a · Orthogonality test
 
    Test before authoring: if the alternatives would collapse into

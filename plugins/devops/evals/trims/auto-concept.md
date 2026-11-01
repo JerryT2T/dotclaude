@@ -185,3 +185,122 @@ auto-concept, concept-gate, session-start and scripts suites pass, except
 `concept-build.test.js` (also fails on `origin/main`'s copies of both files)
 and `burn-plan.robustness.git.test.js` / `git-sync.conflicts.test.js`, which
 read neither file.
+
+---
+
+# Pass 2 — Opus 5.5 rule model
+
+Model: contracts up front, verification after each round, depth only on a
+repetition. Basis: Anthropic's Opus 5.5 / Fable 5 / skill best-practice
+guidance (minimal instructions, one-level references, "Run x.js" vs "See
+x.md", tools instead of generic verify lines, fresh-context verifiers, no
+emphasis caps) and the real concept `20261030-1850-analyse-redesign`, where the
+user repeated four remarks across rounds that rest-state screenshots never
+showed (FAB overlap on hover R6→R7, single-line label/input R6→R8, cursor
+R6→R8, visual highlight R2→R4).
+
+## Skill
+
+| Field | Value |
+|---|---|
+| Skill | `devops:auto-concept` (`plugins/devops/skills/auto-concept/SKILL.md`) |
+| Lines before → after | 495 → 481 (`wc -l`; body < 500) |
+| Words before → after | 5,141 → 4,738 (−8 %, `wc -w`; adds the coverage step, patterns list, repeat depth and read list; drops the pointer mandate prose; moves two blocks out) |
+| Mandatory per-round read before | SKILL.md + 26 "Re-Read … completely on every round" sections = 5,141 + 10,852 = **15,993 words** (plus `validation-gate.md`, 9,446, named in Step 2 for every build: ≈ 25.4 k) |
+| Mandatory per-round read after | SKILL.md + the 7-entry "A feedback round reads" list = 4,738 + 3,053 = **7,791 words** (−51 %); everything else on demand |
+| Variant A | `--a-ref origin/main` (a0efaa0f, incl. #1001/#1007) |
+| Variant B | this branch |
+| Runs per variant | 2 (5 cases; results `evals/results/ab-2026-11-01T14-07-26-867Z`, not committed) |
+
+## Removed or rewritten instructions
+
+| # | Excerpt (removed / rewritten text) | Reason | A/B result |
+|---|---|---|---|
+| P2-1 | 54× "**Before executing this step, Read `…` § … completely** — …" | mandate → reference "See `…` § …. <what it holds>."; read when the step needs it (one level deep) | batch A/B below: no grader regressed |
+| P2-2 | 26× "Re-Read … completely on every round — even if read earlier in this session" | forced ≈ 10.9 k words of re-reading per round, including finalize parts A–E, legacy actions and implement detail an `iterate` round never runs; replaced by a 7-section round read list and "re-read only after a compaction" | batch A/B below: no grader regressed |
+| P2-3 | "Order of evaluation (mandatory, per iteration)" | emphasis; "first match wins" is the contract | batch A/B below: no grader regressed |
+| P2-4 | "it is MANDATORY on every section you append" | caps → "required"; gate 12b still enforces it | batch A/B below: no grader regressed |
+| P2-5 | "### Engine source (mandatory — …)", "### Post-Generation Validation (mandatory gate)" | heading emphasis; "If ANY pattern is missing → DO NOT open the page." stays verbatim | batch A/B below: no grader regressed |
+| P2-6 | "NEVER open a separate browser window", "MUST be opened in the user's real Edge" | caps → plain; the forbidden-alternatives list and the `### MANDATORY — Real Edge browser only` heading (test-pinned contract) stay | batch A/B below: no grader regressed |
+| P2-7 | "you MUST NOT render a second concept completion card", "Output … VERBATIM as the LAST thing" | caps → plain wording, same rule | batch A/B below: no grader regressed |
+| P2-8 | Report-only entry steps 1–5 | moved verbatim to `deep-knowledge/step0-report-entry.md` § Report-only entry · steps; only `--report` runs read it | batch A/B below: no grader regressed |
+| P2-9 | Step 1a "≥2 designs → the variant overview" + "Orthogonality — a view never re-asks …" | moved verbatim to `step1-templates.md` § 1a · Variant overview and orthogonality; the pointer line keeps the rule summary | batch A/B below: no grader regressed |
+
+## Added
+
+| # | Text | Why |
+|---|---|---|
+| P2-A1 | "How this skill reads" + "A feedback round reads" list | names the small set a round needs; "Run x.js" = execute, use the output |
+| P2-A2 | Step 5c "Coverage before `/reload`": run `scripts/concept-coverage.js`, fill every evidence slot of `checks/NN.md` with a tool result from this session showing the element in the named state (hover, FAB rects, computed cursor, focus / scroll / transition) | the session verifies with a tool, not a generic "double-check" line; a rest-state screenshot counts for `rest` only |
+| P2-A3 | "Patterns to avoid" (hover overlap with ☰ / 💬, label vs input, cursor, highlight answered with a tweak) | the four observed misses; grows from REPEAT findings |
+| P2-A4 | "On a `REPEAT …` line": fresh-context `qa` reviewer with both remarks + the page, fix in this round, `do-learn`, replay eval case modelled on `round-replay-r6-hover` | depth only where the cheap path already failed once |
+| P2-A5 | `step5-update-page.md` § 5c · Append procedure step 4.5 (coverage between `build` and `/reload`) | the numbered procedure and SKILL.md keep one order |
+
+## Kept instructions that looked prescriptive
+
+| # | Excerpt | Why kept |
+|---|---|---|
+| P2-K1 | "**Order matters — `/reset` is the LAST step, NOT the first.**" | bridge contract (duplicate submission); test-pinned |
+| P2-K2 | "**If ANY pattern is missing → DO NOT open the page.**" | gate contract; test-pinned |
+| P2-K3 | "**Fixed execution order — A … D (cleanup).** Never reorder", "The ship card comes last", force-push confirmation | irreversible-action ordering; test-pinned |
+| P2-K4 | forbidden browser alternatives incl. the no-clipboard rule | hook-enforced (`post.concept.gate`); test-pinned |
+| P2-K5 | "**Do NOT modify code, files, or external systems**" (iterate), UNPROCESSED guard, reality-check POST | irreversible-action guards; test-pinned |
+| P2-K6 | every deep-knowledge `templates-*.md` | parsed by `scripts/concept-build.js`; untouched |
+
+## Test pins changed
+
+| Test | Change | Why |
+|---|---|---|
+| `skill-source.js` `POINTER` | matches "See `deep-knowledge/x.md` § Y. …" | new pointer form; `readSkill()` still joins every section losslessly |
+| `skill-source.test.js` "Step 5 pointers demand a re-read on every round" | replaced by "the feedback-round read list is short and names existing step sections" | guarded the removed mandate prose (P2-2), not a contract |
+| `skill-source.test.js` pointer checks | regex → new form; "no pointer left" compares against SKILL.md's own pointer lines | format change |
+| `skill-source.test.js` (new) | Step 5c names the coverage command, the evidence rule, REPEAT handling and the replay template | pins the new contract |
+| `template-continuity.test.js` | `/MANDATORY\|mandatory/` → `/MANDATORY\|mandatory\|required/` | P2-4 wording; the requirement stays pinned |
+
+## Coverage / repeat script on the real data
+
+`concept-coverage.js` replayed on `20261030-1850-analyse-redesign-decisions.json`
+(each round against all earlier ones, threshold 0.38):
+
+| Round | REPEAT line | True repeat? |
+|---|---|---|
+| R4 | `r4-s1 ~ round 3 r3-q2-s3-a3` (animate in sequence) | yes — R3 asked for the same sequenced animation |
+| R7 | `r7-s2 ~ round 6 r6-r6-s1-a1` (hover overlap) | yes |
+| R7 | `up-mvwc7h7kyhdo ~ round 6 r6-r6-s1-a1` (FAB overlap) | yes (required case) |
+| R7 | `up-mvwcb33wnu69 ~ round 6 up-mvwbszeffcg6` (single-line input) | yes |
+| R8 | `r8-r8-s3-a1 ~ round 7 up-mvwcb33wnu69` (label inline, single line) | yes |
+
+No praise remark ("super!", "perfekt!", "ja sehr gut!") is flagged: praise
+words are stopwords, and a remark needs ≥ 3 content stems plus a shared
+anchor. Not caught: R2→R4 "visual highlight" (no shared vocabulary:
+"kreativer in der Darstellung" vs "noch nicht das Highlight"); the patterns
+list covers it instead.
+
+## A/B (2026-11-01, 2 runs per variant, `--timeout-min 20`)
+
+| Case · grader | A (main) | B (pass 2) |
+|---|---|---|
+| decision-page · all 8 | 2/2 | 2/2 |
+| round-comment-fidelity · all 10 | 0/0 (2× timeout 20 min) | 2/2 |
+| round-keep-option-open · all 9 | 2/2 | 2/2 |
+| round-reopen-breadth · brief-verbatim | 0/2 | 2/2 |
+| round-reopen-breadth · other 7 | 2/2 | 2/2 |
+| round-replay-r6-hover · state-check-ran | 0/2 | 1/1 (1× timeout 20 min) |
+| round-replay-r6-hover · toc-no-fab-overlap-on-hover | 2/2 | 1/1 |
+| round-replay-r6-hover · toc-cursor-pointer | 2/2 | 1/1 |
+| round-replay-r6-hover · toc-hover-no-dead-gap | 0/2 | 0/1 |
+| round-replay-r6-hover · brief-verbatim | 1/2 | 0/1 |
+
+Totals: A 10 runs, 2 errors, 17.5 M tokens, $18.94, mean 666 s · B 10 runs,
+1 error, 17.8 M tokens, $17.99, mean 605 s (−9 %). Cache reads dominate the
+token count, so the −51 % mandatory read shows up as time, not as tokens.
+
+## Verdict
+
+Keep. No grader got worse; B adds the state check the real concept lacked
+(0/2 → 1/1), carries the user's words into the brief (0/2 → 2/2 on
+reopen-breadth) and finished the comment-fidelity case that A timed out on
+twice. Caveats: the FAB-overlap grader no longer discriminates, because
+#1007 fixed that rail on main, so both variants pass it; `toc-hover-no-dead-gap`
+fails on both and needs recalibrating before it can gate anything; B's
+replay run 2 hit the 20-minute timeout, so the replay case has 1 valid B run.
