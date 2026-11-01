@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook pre.ask.title
- * @version 0.2.0
+ * @version 0.2.1
  * @event PreToolUse
  * @plugin devops
  * @matcher AskUserQuestion|ExitPlanMode|mcp__ccd_session__start_session
@@ -11,7 +11,9 @@
  *   title in the same message) refuses the call once per turn with the exact
  *   set call to send alongside the repeated call. Rules:
  *   lib/ask-title.js. Silent inside a subagent, for a batch title and when
- *   the title is unknown (no Desktop app). Fail-open.
+ *   the title is unknown (no Desktop app). Fail-open. Normally nothing to
+ *   refuse: prompt.flow.title-work already names the exact question-title
+ *   call with its turn-start title line; this block is the safety net.
  */
 
 require('../lib/plugin-guard');

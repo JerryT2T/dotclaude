@@ -495,3 +495,51 @@ describe("locale line carries the instruction for German", () => {
     expect(ctx.split("\n")[0]).toBe("[ui-locale: de] Antworte auf Deutsch, auch wenn Tool-, Hook-, Agent- oder Benachrichtigungstext englisch ist.");
   });
 });
+
+describe("ui-defaults.md: body only on an explicit ask, pointer on a bare UI word (P6)", () => {
+  const BODY = "--- deep-knowledge/ui-defaults.md ---";
+  function runSid(prompt, sid, home) {
+    const cwd = emptyProject();
+    const env = { ...process.env, CLAUDE_PLUGIN_ROOT: PLUGIN_ROOT, TMP: TMP_ROOT, TEMP: TMP_ROOT, TMPDIR: TMP_ROOT, HOME: home, USERPROFILE: home };
+    const r = spawnSync(process.execPath, [HOOK], { input: JSON.stringify({ session_id: sid, prompt, cwd }), cwd, env, encoding: "utf8" });
+    return r.stdout ? JSON.parse(r.stdout).hookSpecificOutput.additionalContext : "";
+  }
+  const POINTER = /\[deep-knowledge pointer\] deep-knowledge\/ui-defaults\.md/;
+
+  test.each([
+    "welche ui regeln gelten für den neuen Dialog?",
+    "check the ui defaults before you build the settings page",
+    "mach einen design check für die Toolbar",
+  ])("explicit UI-rules prompt injects the body: %s", (prompt) => {
+    const ctx = runHook(prompt);
+    expect(ctx).toContain(BODY);
+  });
+
+  test.each([
+    "Kannst du den Tooltip im Header etwas größer machen?",
+    "add a hotkey for the export button in the toolbar",
+    "wie lege ich einen git shortcut für den rebase an?",
+    "der Dropdown im Filter springt beim Scrollen",
+  ])("a bare UI word gets a pointer, not 29 KB: %s", (prompt) => {
+    const ctx = runHook(prompt);
+    expect(ctx).toMatch(POINTER);
+    expect(ctx).not.toContain(BODY);
+  });
+
+  test.each([
+    "Fix the failing retry logic in the upload queue, please",
+    "wie ist der Stand von der Migration auf postgres?",
+    "<system-reminder>worktree tooltip-shortcut-dropdown</system-reminder>\nwas macht der Backup-Job eigentlich?",
+  ])("no UI work, nothing: %s", (prompt) => {
+    const ctx = runHook(prompt);
+    expect(ctx).not.toContain("ui-defaults.md");
+  });
+
+  test("the pointer comes once; a later explicit ask still gets the body", () => {
+    const h = proHome();
+    const sid = `vitest-ui-pointer-${process.pid}-${Date.now()}`;
+    expect(runSid("Kannst du den Tooltip im Header etwas größer machen?", sid, h)).toMatch(POINTER);
+    expect(runSid("Und der Tooltip im Footer bitte genauso, danke dir", sid, h)).not.toContain("ui-defaults.md");
+    expect(runSid("welche ui regeln gelten dafür eigentlich genau?", sid, h)).toContain(BODY);
+  });
+});

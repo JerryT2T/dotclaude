@@ -1,6 +1,6 @@
 /**
  * @module session-title
- * @version 0.5.0
+ * @version 0.6.0
  * @description Reads the session's CURRENT sidebar title straight from the
  *   transcript and computes the next one, so a title instruction can hand
  *   Claude the exact `set_session_title` value instead of a
@@ -221,6 +221,60 @@ function readCurrentTitle(transcriptPath, { maxBytes = 4 * 1024 * 1024, chunk = 
   }
 }
 
+/**
+ * The Desktop app's title sidecar next to the transcript
+ * (`<projects>/<slug>/<sessionId>/custom-title.json`, `{"customTitle": …}` —
+ * the same file lib/stale-titles.js reads), or null. It can exist before the
+ * transcript carries any `custom-title` entry (a session's first prompt).
+ *
+ * @param {string|undefined} transcriptPath hook input `transcript_path`
+ * @returns {string|null}
+ */
+function readSidecarTitle(transcriptPath) {
+  if (!transcriptPath || !/\.jsonl$/.test(transcriptPath)) return null;
+  try {
+    const file = path.join(transcriptPath.replace(/\.jsonl$/, ''), 'custom-title.json');
+    const o = JSON.parse(fs.readFileSync(file, 'utf8'));
+    return o && typeof o.customTitle === 'string' ? o.customTitle : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The title from the transcript tail, else from the app's sidecar, else null. */
+function readKnownTitle(transcriptPath) {
+  const t = readCurrentTitle(transcriptPath);
+  return t !== null ? t : readSidecarTitle(transcriptPath);
+}
+
+/**
+ * True when the transcript shows no earlier user prompt than the current one
+ * (a path whose file is missing, or at most one prompt entry in a small
+ * file): such a session's
+ * title can only be the app's own summary — no state prefix to strip yet.
+ *
+ * @param {string|undefined} transcriptPath
+ * @param {number} [maxBytes] larger files count as "not fresh"
+ */
+function isFreshSession(transcriptPath, maxBytes = 256 * 1024) {
+  if (!transcriptPath) return false; // no transcript at all: nothing is known
+  let text;
+  try {
+    if (fs.statSync(transcriptPath).size > maxBytes) return false;
+    text = fs.readFileSync(transcriptPath, 'utf8');
+  } catch { return true; }
+  let prompts = 0;
+  for (const line of text.split('\n')) {
+    if (!line.includes('"type":"user"')) continue;
+    let e; try { e = JSON.parse(line); } catch { continue; }
+    if (!e || e.type !== 'user' || e.isMeta === true || e.isSidechain) continue;
+    const c = e.message && e.message.content;
+    const prompt = typeof c === 'string' || (Array.isArray(c) && c.some((b) => b && b.type !== 'tool_result'));
+    if (prompt && ++prompts > 1) return false;
+  }
+  return true;
+}
+
 /** Claude Code's project-dir name for `cwd`: every non-alphanumeric char
  *  becomes '-' (`C:\a\.b` → `C---a--b`). */
 function projectSlug(cwd) {
@@ -256,6 +310,9 @@ function findTranscript(sessionId, home = os.homedir(), cwd = undefined) {
 }
 
 module.exports = {
+  readSidecarTitle,
+  readKnownTitle,
+  isFreshSession,
   staleWorkTitle,
   lastTitlePrefix,
   projectSlug,

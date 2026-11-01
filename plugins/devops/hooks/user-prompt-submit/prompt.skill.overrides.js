@@ -18,7 +18,7 @@
 require('../lib/plugin-guard');
 
 const { runHook } = require('../lib/hook-input');
-const { overrideBlock, recordOverrides, clearRendered } = require('../lib/skill-overrides');
+const { overrideBlock, recordOverrides, clearRendered, textOnce } = require('../lib/skill-overrides');
 const { commandsIn } = require('./prompt.run.contract');
 
 /**
@@ -29,7 +29,7 @@ const { commandsIn } = require('./prompt.run.contract');
 function main(hook, opts = {}) {
   if (!hook) return null;
   try { clearRendered(hook.session_id, { dir: opts.dir }); } catch { /* advisory */ }
-  const prompt = typeof hook.prompt === 'string' ? hook.prompt : '';
+  const prompt = require('../lib/prompt-text').userText(hook);
   const texts = [];
   for (const cmd of commandsIn(prompt)) {
     const block = overrideBlock(cmd.name, {
@@ -40,7 +40,7 @@ function main(hook, opts = {}) {
     });
     if (!block) continue;
     try { recordOverrides(hook.session_id, block.record, { dir: opts.dir }); } catch { /* advisory */ }
-    texts.push(block.text);
+    texts.push(textOnce(hook.session_id, block, { dir: opts.dir }));
   }
   return texts.length ? { context: texts.join('\n\n') } : null;
 }

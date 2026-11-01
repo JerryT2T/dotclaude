@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook post.flow.completion
- * @version 0.33.0
+ * @version 0.34.0
  * @event PostToolUse
  * @plugin devops
  * @description Keeps the completion-card contract in Claude's context: on the
@@ -23,6 +23,32 @@
  *   background-launch `pending` hint, the concept-bridge hint once per session,
  *   "card already rendered" once per render; the render's own result adds nothing.
  *
+ *   Card reminder model (0.34.0) — one copy of each part, at the moment it acts:
+ *     - Static rules: ONLY the render_completion_card tool description (cached
+ *       system prompt; also names the offline fallback for a server that
+ *       never connected). Never repeated by a hook.
+ *     - Turn start (first tool call, once per prompt, contractDue): the
+ *       dynamic call — session_id, cwd — in one line; the offline renderer
+ *       path only when the heartbeat says the server is down (then the tool
+ *       description is not loaded). The "never connected" line it used to add
+ *       on every turn duplicated the tool description.
+ *     - Turn end (turnEndLines): ONE short "card now" line when the turn
+ *       signals its end — mcp__ccd_turn__wrap_up (whose result asks for a
+ *       closing message the card must replace), or a TodoWrite / update_plan
+ *       whose every item is completed. Once per prompt, never after a card,
+ *       never in the call that already carried the turn-start line.
+ *     - Safety net: stop.flow.guard (card required / relay / text after card)
+ *       and the pre-render gates (lib/card-pregate.js) stay as they are.
+ *   History behind it (git log -p): until #534 (2026-09-25) every reminder
+ *   went to plain stdout and never reached the model, so the Stop gate was
+ *   the only enforcement; #534 delivered it as additionalContext but only on
+ *   the turn's first call (repeating it per call bloated the context);
+ *   #586 / card-pregate moved the Stop gate's payload checks to the render
+ *   call, because each Stop block cost a second render (~3.5k tokens). What
+ *   was left: the card-required Stop block (155 of 171 Stop blocks in 30
+ *   days) — the reminder sat at the turn's START, far from where a long turn
+ *   ends, and wrap_up's "write your closing message" won. The turn-end line
+ *   lands exactly there.
  *   The text goes out as `hookSpecificOutput.additionalContext`. Plain stdout
  *   of a PostToolUse hook never reaches the model — it only shows in transcript
  *   mode (CONVENTIONS.md). Verified live 2026-09-25 in the Desktop app
@@ -232,7 +258,7 @@ const LAUNCH_NOUN = {
 };
 
 /** Marker: the concept-bridge hint went out this session (server, pulser and waker share it). */
-const CONCEPT_INFRA_HINT_FLAG = 'dotclaude-devops-concept-infra-hinted';
+const CONCEPT_INFRA_HINT_FLAG = 'conceptInfraHinted'; // lib/turn-state.js key
 
 /** The code edit on which the ship nudge and the desktop-testing prompt fire. */
 const SHIP_NUDGE_EDITS = 5;
@@ -759,6 +785,7 @@ function completionCardLines(hook, toolName, isCodeEdit, editCount, scheduledTas
 
   lines.push(...backgroundLaunchLines(hook));
   lines.push(...editMilestoneLines(hook, isCodeEdit, editCount));
+  if (!cardContract && !scheduledTask) lines.push(...turnEndLines(hook, toolName));
   return { lines, cardContract };
 }
 
@@ -915,9 +942,9 @@ function cardRenderedLines(hook) {
   // 0.214.x): the flag's content is the render's timestamp, so a new render
   // earns the reminder again. The Stop gate still checks the card itself.
   const stamp = String(rendered.content || '').trim();
-  const hintFile = sessionFile('dotclaude-devops-card-rendered-hinted', hook.session_id);
-  try { if (fs.readFileSync(hintFile, 'utf8').trim() === stamp) return []; } catch { /* first hint */ }
-  try { writeSessionFile(hintFile, stamp); } catch { /* best effort — hint again next call */ }
+  const turnState = guardedRequire('../lib/turn-state');
+  if ((turnState.get(hook.session_id, 'cardRenderedHinted') || '').trim() === stamp) return [];
+  try { turnState.set(hook.session_id, 'cardRenderedHinted', stamp); } catch { /* best effort — hint again next call */ }
   return [
     '[completion-flow] Card already rendered this turn — render a new one only if the outcome changed.',
   ];
@@ -947,11 +974,48 @@ function cardContractLines(hook, scheduledTask) {
 
   lines.push(
     `COMPLETION CARD when ALL work is done: call mcp__plugin_devops_dotclaude__render_completion_card (rules: its tool description; ToolSearch select: if not loaded) with session_id:"${hook.session_id || ''}", cwd:"${hook.cwd || ''}", lang.`,
-    completionDown
-      ? `The completion MCP server is NOT running (heartbeat dead) — render offline FIRST: ${offline}.`
-      : `MCP server never connected: render offline instead, never skip the card: ${offline}.`,
   );
+  // Server alive → its tool description carries the offline fallback; only a
+  // dead heartbeat (description possibly never loaded) needs the path here.
+  if (completionDown) lines.push(`The completion MCP server is NOT running (heartbeat dead) — render offline FIRST: ${offline}.`);
   return lines;
+}
+
+/** lib/turn-state.js key: the prompt whose turn-end card line went out. */
+const TURN_END_KEY = 'cardEndHinted';
+const DONE_STATUS = /^(completed|complete|done)$/i;
+
+/**
+ * The tool call says the turn is ending: 'wrap_up' (the app's closing-message
+ * tool), 'plan' (a TodoWrite / update_plan with every item completed), or null.
+ */
+function turnEndSignal(toolName, input) {
+  if (/^mcp__ccd_turn__wrap_up$/.test(toolName)) return 'wrap_up';
+  let items = null;
+  if (toolName === 'TodoWrite') items = input && input.todos;
+  else if (/^mcp__ccd_turn__update_plan$/.test(toolName) && input && typeof input === 'object') {
+    items = Object.values(input).find((v) => Array.isArray(v) && v.some((i) => i && typeof i === 'object' && 'status' in i)) || null;
+  }
+  if (!Array.isArray(items) || items.length === 0) return null;
+  return items.every((i) => i && DONE_STATUS.test(String(i.status || ''))) ? 'plan' : null;
+}
+
+/**
+ * 2f. One short "card now" line when the turn signals its end — once per
+ * prompt, never after a card was rendered (see the header: reminder model).
+ */
+function turnEndLines(hook, toolName) {
+  const signal = turnEndSignal(toolName, hook.tool_input);
+  if (!signal || isGuideActive(hook.cwd)) return [];
+  if (readSessionFile('dotclaude-devops-card-rendered', hook.session_id, { exact: true }) !== null) return [];
+  const turnState = guardedRequire('../lib/turn-state');
+  const id = currentPromptId(hook) || '-';
+  if (turnState.get(hook.session_id, TURN_END_KEY) === id) return [];
+  try { turnState.set(hook.session_id, TURN_END_KEY, id); } catch { /* best effort — may repeat once */ }
+  const call = `mcp__plugin_devops_dotclaude__render_completion_card (session_id:"${hook.session_id || ''}", cwd:"${hook.cwd || ''}")`;
+  return [signal === 'wrap_up'
+    ? `[completion-flow] Turn ending: the completion card IS the closing message — ${call} now, show it, nothing after it.`
+    : `[completion-flow] Last plan step done: no work left → end with ${call} now (no closing text).`];
 }
 
 /**
@@ -964,9 +1028,9 @@ function backgroundLaunchLines(hook) {
   if (launched && launched.kind === 'concept-infra') {
     // Plumbing of one concept: server, pulser and waker each start a task, but the
     // hint is the same — once per session (the full rule is in the card tool description).
-    const hinted = sessionFile(CONCEPT_INFRA_HINT_FLAG, hook.session_id);
-    if (fs.existsSync(hinted)) return [];
-    try { writeSessionFile(hinted, '1'); } catch { /* best effort — hint again next time */ }
+    const turnState = guardedRequire('../lib/turn-state');
+    if (turnState.get(hook.session_id, CONCEPT_INFRA_HINT_FLAG) !== null) return [];
+    try { turnState.set(hook.session_id, CONCEPT_INFRA_HINT_FLAG, '1'); } catch { /* best effort — hint again next time */ }
     return [
       `[concept] Bridge infrastructure (${launched.name}) is not pending work: never list it under \`pending\`; ` +
       'while the concept page is open, cards carry `concept: { phase }` instead.',
@@ -1149,3 +1213,5 @@ if (require.main === module) {
   // The try: a lib that fails to load never surfaces as a hook failure.
   try { require('../lib/hook-input').runHook(main, { event: 'PostToolUse' }); } catch { /* fail open */ }
 }
+
+module.exports = { main, turnEndSignal };

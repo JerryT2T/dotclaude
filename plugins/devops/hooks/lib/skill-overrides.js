@@ -41,6 +41,7 @@
  *   the skill, not an override of it, so nothing is injected.
  */
 
+const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -334,6 +335,43 @@ function overrideBlock(rawSkill, opts = {}) {
 }
 
 // ---------------------------------------------------------------------------
+// Once per skill per session: the block text is the same on every run
+// ---------------------------------------------------------------------------
+
+const SEEN_PREFIX = 'dotclaude-devops-skill-overrides-seen';
+
+function seenPath(sessionId, dir) {
+  return path.join(dir || os.tmpdir(), `${SEEN_PREFIX}-${sessionId || 'unknown'}`);
+}
+
+/**
+ * The text to inject for `block`: the full block the first time this session
+ * sees this skill's exact override text, a one-line reminder afterwards (the
+ * block is still in context until a compaction — `forgetSeen` then). The
+ * reminder keeps "binding for this run"; a changed override file is new text
+ * and goes in full. Fails open: an unreadable or unwritable marker sends it all.
+ */
+function textOnce(sessionId, block, { dir } = {}) {
+  if (!block || !block.record) return block ? block.text : '';
+  const file = seenPath(sessionId, dir);
+  const hash = crypto.createHash('sha1').update(block.text).digest('hex').slice(0, 12);
+  let seen = {};
+  try { seen = JSON.parse(fs.readFileSync(file, 'utf8')) || {}; } catch { /* first time */ }
+  const skill = block.record.skill;
+  if (seen[skill] === hash) {
+    return `[skill-overrides] ${skill}: unchanged since earlier in this session — the same overrides stay binding for this run.`;
+  }
+  seen[skill] = hash;
+  try { fs.writeFileSync(file, JSON.stringify(seen), 'utf8'); } catch { /* send anyway */ }
+  return block.text;
+}
+
+/** A compaction dropped the injected blocks: send them in full once more. */
+function forgetSeen(sessionId, { dir } = {}) {
+  try { fs.unlinkSync(seenPath(sessionId, dir)); } catch { /* nothing sent yet */ }
+}
+
+// ---------------------------------------------------------------------------
 // Per-session record → the completion card line
 // ---------------------------------------------------------------------------
 
@@ -446,6 +484,8 @@ module.exports = {
   parseOverride,
   resolveOverrides,
   overrideBlock,
+  textOnce,
+  forgetSeen,
   recordPath,
   readRecordFile,
   recordOverrides,

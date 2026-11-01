@@ -182,6 +182,7 @@ function main() {
         require('../lib/run-once').releaseOnce('prompt-delegation-nudge', hook.session_id);
         fs.unlinkSync(require('../lib/session-id').sessionFile('dotclaude-devops-card-contract-sent', hook.session_id));
       } catch { /* marker already gone */ }
+      try { require('../lib/skill-overrides').forgetSeen(hook.session_id); } catch { /* advisory */ }
       // The dispatched docs and pointers left context with the compaction too.
       // So did the docs and the last budget line the dispatcher sent.
       for (const marker of ['dotclaude-dk-injected', 'dotclaude-budget-line-sent']) {
