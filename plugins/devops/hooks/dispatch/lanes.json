@@ -57,6 +57,9 @@
         "ss.orphan.nudge"
       ],
       [
+        "ss.backup.stale"
+      ],
+      [
         "ss.ship.verify"
       ],
       [

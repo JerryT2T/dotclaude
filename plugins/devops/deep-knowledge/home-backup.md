@@ -16,24 +16,28 @@ A daily OS-scheduler job (Task Scheduler on Windows, crontab elsewhere; 12:30, c
 1. stages only what the generated `~/.claude/.gitignore` allows (deny by default; credentials, `*.jsonl` transcripts, caches, plugin dirs, anything named `*token*`/`*secret*`/`*credential*`, `*.env` are never staged — enforced again in code, symlinks/junctions are skipped),
 2. does nothing, silently, when nothing changed,
 3. scans every staged file for secrets (keys, tokens, private keys, credential assignments) and private data (e-mail, phone, IBAN, credit card),
-4. on **any** hit: unstages everything, commits and pushes nothing, writes `~/.claude/home-backup-report.txt` + `.json` (file, line, rule — never the value) and raises a desktop notification,
+4. on a hit: unstages **just the files with hits**; the rest is committed and delivered (status `partial`, exit 0). Only when every changed file has a hit nothing is committed or pushed (`blocked`, exit 1). Either way it writes `~/.claude/home-backup-report.txt` + `.json` (file, line, rule — never the value) and raises a desktop notification,
 5. otherwise commits `backup: <ISO date>` as `claude-home-backup <noreply@localhost>` (never the user's e-mail) — a second change on the same day **amends** that day's commit —,
-6. applies retention, then delivers to the target.
+6. delivers to the target, and only after a successful delivery applies retention.
 
 `~/.claude/.git` is the staging engine for every target; only `github` has a remote.
 
-## Retention — newest state + one version per day
+## Retention — daily window + weekly anchors
 
-Kept: the newest state plus older versions, at most one per day, from `homeBackup.keepDays` (default **4**) different days — the latest full copy and the three previous days that had changes. Older versions are deleted automatically:
+Kept: the newest state plus older versions, at most one per day, from `homeBackup.keepDays` (default **14**) different days, plus the **first state of each of the last `homeBackup.keepWeeks`** (default **4**, `0` = off) ISO weeks (weekly anchors). One pure function (`scripts/lib/backup-retention.js`) decides for every target. Older versions are deleted automatically, **only after the new state was delivered** — a failed delivery never prunes anything:
 
-- `github`: the local history is rebuilt from the kept trees (`commit-tree`), older commits are expired and `gc --prune=now`ed, the push is `--force-with-lease`. The backup repo is a dedicated repo — never point it at a project repo.
-- `folder`: one plain full copy per day in `<path>/YYYY-MM-DD/` (no `.git`), written to a temp folder and renamed; day folders beyond `keepDays` are deleted. Only `YYYY-MM-DD` folders are touched.
-- `rclone`: `rclone sync <snapshot> <remote>/YYYY-MM-DD`, then `rclone purge` of the day folders beyond `keepDays`.
-- `command`: the command gets the snapshot; retention is its job (it receives `HOME_BACKUP_KEEP_DAYS`).
+- `github`: push the new head first; then the local history is rebuilt from the kept trees (`commit-tree`), old commits are expired and `gc --prune=now`ed, and a second `--force-with-lease` push cuts the remote. A failing second push is a warning; the next run pushes the pruned head. The backup repo is a dedicated repo — never point it at a project repo.
+- `folder`: one plain full copy per day in `<path>/YYYY-MM-DD/` (no `.git`), written to a temp folder and renamed. Day folders not kept are deleted — **only if the marker file `.claude-home-backup` exists in `<path>`**. `setup` writes it; an empty folder is claimed on first delivery. A non-empty folder without the marker is never cleaned: the run still delivers, the report (kind `warning`) and log name the missing marker.
+- `rclone`: `rclone sync <snapshot> <remote>/YYYY-MM-DD`, then `rclone purge` of the day folders not kept; a failing purge is a warning (report + log), the run still counts as delivered.
+- `command`: the command gets the snapshot; retention is its job (it receives `HOME_BACKUP_KEEP_DAYS` and `HOME_BACKUP_KEEP_WEEKS`).
 
 Nothing changed → nothing is written and no version is spent: versions count days *with* a change, not calendar days.
 
-Switches live in devops-config (global only): `homeBackup.enabled`, `target`, `repo` / `path` / `remote` / `command`, `keepDays`, `onRoutineChange`.
+Switches live in devops-config (global only): `homeBackup.enabled`, `target`, `repo` / `path` / `remote` / `command`, `keepDays`, `keepWeeks`, `onRoutineChange`.
+
+The run lock is considered stale after 40 minutes.
+
+**Reminders:** the toast repeats only when the findings change — plus once per 3 days while the last clean backup (`lastSuccessAt` in `home-backup-state.json`) is 3+ days old. The SessionStart hook `ss.backup.stale` prints one line when `homeBackup.enabled` and the last clean backup is older than 2 days, naming the reason from the report (e.g. `blockiert: CLAUDE.md:12 (email)`, never the value) and pointing to "Home-Backup Status". Silent otherwise.
 
 **Token cost:** the daily run and every routine-triggered run cost nothing. Only the one-time setup conversation costs tokens — well under 0.1 % of a Pro plan's weekly usage — plus, with `onRoutineChange ask`, one line once per session.
 
@@ -67,7 +71,7 @@ Optional on every form: `--keep-days <n>`, `--on-routine-change ask|auto|off`. S
 
 `drive` looks for Google Drive for Desktop (`<letter>:\My Drive` / `Meine Ablage` on Windows, `~/Library/CloudStorage/GoogleDrive-*` on macOS, `~/Google Drive`) and uses `<that>/claude-home-backup`. None found → offer installing Drive for Desktop, or `rclone` (the user runs `rclone config` once — interactive OAuth; use the auto-guide skill). A NAS share must be reachable when the job runs; a failed write reports and notifies like a failed push, the next run retries.
 
-**Own command** (`command`): runs through the shell inside the snapshot folder with `HOME_BACKUP_DIR` (full copy, no `.git`), `HOME_BACKUP_DAY` (`YYYY-MM-DD`), `HOME_BACKUP_KEEP_DAYS`, `HOME_BACKUP_COMMIT`. Exit ≠ 0 → report + notification, retried next run. Example (Windows): `robocopy "%HOME_BACKUP_DIR%" "E:\backup\%HOME_BACKUP_DAY%" /MIR & exit /b 0`.
+**Own command** (`command`): runs through the shell inside the snapshot folder with `HOME_BACKUP_DIR` (full copy, no `.git`), `HOME_BACKUP_DAY` (`YYYY-MM-DD`), `HOME_BACKUP_KEEP_DAYS`, `HOME_BACKUP_KEEP_WEEKS`, `HOME_BACKUP_COMMIT`. Exit ≠ 0 → report + notification, retried next run. Example (Windows): `robocopy "%HOME_BACKUP_DIR%" "E:\backup\%HOME_BACKUP_DAY%" /MIR & exit /b 0`.
 
 For `github` it verifies `gh auth status`, creates the private repo if missing (refuses an existing public one) and refuses a `~/.claude` repo with a different origin. Every target: `git init` in `~/.claude`, `.gitignore`, the daily job, the switch, the first run; a `folder` inside `~/.claude` is refused. Safe to re-run: it fixes, never duplicates. Report the result in one or two lines: target, job time, first-run outcome (`pushed`, `delivered`, `unchanged` or `blocked`).
 
@@ -84,9 +88,9 @@ The job runs the launcher `~/.claude/devops-jobs/home-backup.js` (not in the bac
 | "was würde gesichert / prüfen" | `node "{PLUGIN_ROOT}/scripts/home-backup.js" scan` — dry run of both scans, prints file:line rule |
 | run now | `node "{PLUGIN_ROOT}/scripts/home-backup.js" run` |
 
-## A scan hit (notification "Home-Backup blockiert")
+## A scan hit (notification "Home-Backup blockiert" / "teilweise")
 
-Read `~/.claude/home-backup-report.txt`. Show the user each hit as file, line, rule — **never print the matched value**; if they want to see it they open the file themselves. The user decides, per hit:
+Read `~/.claude/home-backup-report.txt` (kind `partial`: the listed files were skipped, everything else is backed up). Show the user each hit as file, line, rule — **never print the matched value**; if they want to see it they open the file themselves. The user decides, per hit:
 
 - **Remove or redact** the data in the file (then the next run goes through), or
 - **Allow** it deliberately in `~/.claude/.backupallow` (gitignore-like, one entry per line):

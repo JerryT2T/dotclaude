@@ -172,7 +172,7 @@ describe("machine-level opt-ins: string, enum and list settings (homeBackup, wip
     const home = mkTmp("cfg-home-");
     const v = cfg.load(home, { home }).values;
     expect(v.homeBackup).toEqual({
-      enabled: false, repo: "", target: "github", path: "", remote: "", command: "", keepDays: 4, onRoutineChange: "ask",
+      enabled: false, repo: "", target: "github", path: "", remote: "", command: "", keepDays: 14, keepWeeks: 4, onRoutineChange: "ask",
     });
     expect(v.wipWatch).toEqual({ enabled: false, roots: ["~/IdeaProjects"], day: "sun", discardAfterWeeks: 8 });
   });

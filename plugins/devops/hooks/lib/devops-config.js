@@ -162,8 +162,12 @@ const SCHEMA = Object.freeze({
       doc: 'target command: a shell command that receives the snapshot folder in HOME_BACKUP_DIR (see deep-knowledge/home-backup.md).',
     }),
     keepDays: Object.freeze({
-      type: 'integer', default: 4, min: 1, max: 365, globalOnly: true,
-      doc: 'Versions kept: the newest state plus older ones, at most one per day, from this many different days; older ones are deleted automatically.',
+      type: 'integer', default: 14, min: 1, max: 365, globalOnly: true,
+      doc: 'Versions kept: the newest state plus older ones, at most one per day, from this many different days; older ones are deleted automatically (after a successful delivery).',
+    }),
+    keepWeeks: Object.freeze({
+      type: 'integer', default: 4, min: 0, max: 52, globalOnly: true,
+      doc: 'Weekly anchors on top of keepDays: the first state of each of the last N ISO weeks is kept too. 0 = off.',
     }),
     onRoutineChange: Object.freeze({
       type: 'enum', default: 'ask', globalOnly: true, values: Object.freeze(['ask', 'auto', 'off']),
