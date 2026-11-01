@@ -2,7 +2,7 @@
 name: po
 description: >-
   Product owner — weighs value, UX, feasibility and readiness and makes the call. Modes:
-  one lens (customer, tech or business; several in parallel), or the synthesis into scope and acceptance criteria.
+  one lens (customer, tech or business; several in parallel), or the synthesis into scope and acceptance criteria, or an end-user judgment of a flow (`Lens: customer`).
   Use proactively, in the background, for a trade-off or scope call with real stakes that no file answers — not for Q&A; pairs in parallel with research or redteam.
   <example>Evaluate whether this feature justifies its complexity for end users</example>
 model: opus
