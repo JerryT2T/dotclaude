@@ -33,6 +33,15 @@ describe('plugin-audit trigger', () => {
   it('a promotion (same version) never runs', () => {
     expect(shouldRun({ prevVersion: '0.290.0', newVersion: '0.290.0', last: null }).run).toBe(false);
   });
+  it('monthly (#1000): a ship inside a decade runs when the last audit is 30+ days old', () => {
+    const now = Date.parse('2026-11-01T12:00:00Z');
+    const last = { version: '0.330.0', decade: 33, ranAt: '2026-10-01T11:00:00Z' };
+    const r = shouldRun({ prevVersion: '0.336.3', newVersion: '0.337.0', last, now });
+    expect(r.run).toBe(true);
+    expect(r.reason).toMatch(/31 days ago/);
+    expect(shouldRun({ prevVersion: '0.336.3', newVersion: '0.337.0', last: { ...last, ranAt: '2026-10-20T00:00:00Z' }, now }).run).toBe(false);
+    expect(shouldRun({ prevVersion: '0.337.0', newVersion: '0.337.0', last, now }).run).toBe(false);
+  });
   it('unparseable versions do not run', () => {
     expect(shouldRun({ prevVersion: 'x', newVersion: '0.290.0' }).run).toBe(false);
   });
