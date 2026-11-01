@@ -191,4 +191,19 @@ describe("ss.knowledge.index — compaction", () => {
     expect(JSON.parse(resumed).hookSpecificOutput.additionalContext).toMatch(/^\[budget\] plan unknown · usage unknown → ask-before-parallel/);
     expect(run("resume")).toContain("[budget]"); // no run-once on resume
   });
+
+  test("a compact start forgets the dispatched docs, so they can be pointed to again (#997)", () => {
+    const { spawnSync } = require("node:child_process");
+    const { sessionFile, writeSessionFile } = require("../lib/session-id.js");
+    const hook = path.join(PLUGIN_ROOT, "hooks", "session-start", "ss.knowledge.index.js");
+    const sid = `vitest-compact-dk-${process.pid}-${Date.now()}`;
+    const marker = sessionFile("dotclaude-dk-injected", sid);
+    writeSessionFile(marker, "browser-tool-strategy.md");
+    spawnSync(process.execPath, [hook], {
+      input: JSON.stringify({ session_id: sid, source: "compact" }),
+      env: { ...process.env, CLAUDE_PLUGIN_ROOT: PLUGIN_ROOT },
+      encoding: "utf8",
+    });
+    expect(fs.existsSync(marker)).toBe(false);
+  });
 });

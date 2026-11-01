@@ -46,11 +46,24 @@ const { DISPATCH_CONTEXT_CHARS } = require('../lib/context-cap');
 const { runOnce } = require('../lib/run-once');
 const features = require('../lib/features');
 
+/** Longest gap a `.*` in a TOPIC_MAP pattern may span. */
+const GAP_CHARS = 24;
+// Any character but a line break or a sentence end ("." before a space, "!", "?").
+const GAP = `(?:(?!\\.\\s)[^\\n!?]){0,${GAP_CHARS}}`;
+// A doc over this size goes in as a pointer unless its topic is `full`.
+const POINTER_OVER_BYTES = 3072;
+
 /**
  * Topic-to-file keyword map.
- * Each entry: { file, patterns (RegExp[]), specificity }
+ * Each entry: { file, patterns (RegExp[]), specificity, full? }
  * specificity: higher = more specific pattern, prioritized when cap applies.
- * Patterns are tested against the lowercased user prompt.
+ * full: the doc carries rules the model applies without knowing it needs them
+ *   (UI, Windows, test, code defaults) — it goes in as text at any size. Every
+ *   other doc over POINTER_OVER_BYTES goes in as a one-line pointer (#997).
+ * Patterns are tested against the lowercased user prompt. A `.*` gap is
+ * bounded to GAP_CHARS within one sentence (boundGaps): unbounded, "CLAUDE.md
+ * … parent directories" pulled the directory doc and "devops plugin … mit den
+ * Regelungen" the 17 KB plugin-behavior doc (#997).
  */
 const TOPIC_MAP = [
   {
@@ -76,16 +89,19 @@ const TOPIC_MAP = [
   {
     file: 'code-defaults.md',
     specificity: 2,
+    full: true,
     patterns: [/\bcode.*default/i, /\bcoding.*convention/i, /\bstyle.*guide/i],
   },
   {
     file: 'ui-defaults.md',
     specificity: 2,
+    full: true,
     patterns: [/\bui.*(?:default|rule|convention|regel)/i, /\btooltip/i, /\bdropdown/i, /\bhotkey/i, /\bshortcut/i, /\btastenk/i, /\bkeyboard.*(?:nav|access|shortcut)/i, /\bdesign.*(?:rule|regel|check)/i, /\bscroll.?bar/i],
   },
   {
     file: 'windows-platform.md',
     specificity: 2,
+    full: true,
     patterns: [/\bsystem.?tray\b/i, /\btray.?icon/i, /\b(?:windows|msi|exe).{0,12}installer\b/i, /\bregistry.?(?:key|schlüssel|eintrag)/i, /\bhk(?:cu|lm)\b/i, /\baumid\b/i, /\bmsix\b/i, /\bnsis\b/i, /\bfile.?association/i, /\bdateizuordnung/i],
   },
   {
@@ -151,6 +167,7 @@ const TOPIC_MAP = [
   {
     file: 'test-strategy.md',
     specificity: 2,
+    full: true,
     patterns: [/\btest.*strateg/i, /\bwann.*test/i, /\btest.*ausf[uü]hr/i],
   },
   {
@@ -161,9 +178,15 @@ const TOPIC_MAP = [
   {
     file: 'visual-verification.md',
     specificity: 2,
+    full: true,
     patterns: [/\bvisual.*verif/i, /\bscreenshot.*check/i, /\bvisuell.*pr[uü]f/i],
   },
-];
+].map(boundGaps);
+
+/** The topic with every unescaped `.*` of its patterns bounded to GAP. */
+function boundGaps(topic) {
+  return { ...topic, patterns: topic.patterns.map((re) => new RegExp(re.source.replace(/(?<!\\)\.\*/g, GAP), re.flags)) };
+}
 
 // Per-prompt delegation nudge (see compose step 4). Mirrors the tier table in
 // deep-knowledge/agent-proactivity.md — keep the two in sync.
@@ -323,16 +346,29 @@ process.stdin.on('end', () => {
   // Read the matched docs; which of them fit is decided below, once the rest
   // of the payload is known (lib/context-cap).
   const docs = [];
+  const docPointers = [];
   for (const topic of candidates) {
-    if (docs.length >= MAX_INJECT_PER_PROMPT) break;
+    if (docs.length + docPointers.length >= MAX_INJECT_PER_PROMPT) break;
     const filePath = path.join(dkDir, topic.file);
     if (!fs.existsSync(filePath)) continue;
-    try { docs.push({ file: topic.file, content: fs.readFileSync(filePath, 'utf8').trim() }); }
-    catch { /* unreadable doc: skip it */ }
+    let content;
+    try { content = fs.readFileSync(filePath, 'utf8').trim(); }
+    catch { continue; /* unreadable doc: skip it */ }
+    const bytes = Buffer.byteLength(content, 'utf8');
+    if (!topic.full && bytes > POINTER_OVER_BYTES) {
+      // The matched phrase lets the model judge whether the read is worth it.
+      const hit = topic.patterns.map((re) => re.exec(userMessage)).find(Boolean);
+      const phrase = hit ? hit[0].trim().slice(0, 60) : '';
+      const tokens = Math.round(bytes / 400) / 10;
+      docPointers.push(`[deep-knowledge pointer] deep-knowledge/${topic.file} (~${tokens}k tokens) matched "${phrase}" — read ${path.join(dkDir, topic.file).replace(/\\/g, '/')} only if the prompt is about that topic.`);
+      injected.add(topic.file);
+      continue;
+    }
+    docs.push({ file: topic.file, content });
   }
 
   // Pointers for the retired skills' docs (one line each, not the body).
-  const pointers = [];
+  const pointers = [...docPointers];
   try {
     const home = process.env.HOME || process.env.USERPROFILE || '';
     for (const hit of nonUser ? [] : matchPointers(rawMessage)) {
