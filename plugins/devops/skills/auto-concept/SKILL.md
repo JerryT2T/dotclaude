@@ -28,7 +28,7 @@ and monitor for user decisions.
 
 ## How this skill reads
 
-Each step keeps its contract here and names the section that holds the detail: `See deep-knowledge/x.md § Y. …` — read it when you reach that step and the detail is not already in your context; skip sections for branches you are not on (another template, a fallback, another `action`). `Run x.js` means execute it and use its output; do not read the script.
+Each step keeps its contract here and names the deep-knowledge section that holds the detail in a `See …` line — read it when you reach that step and the detail is not already in your context; skip sections for branches you are not on (another template, a fallback, another `action`). A `Run node …` line means execute the script and use its output; do not read the script.
 
 **A feedback round reads** (Step 5, `iterate` / `next-stage`) — these, and
 others only when the payload needs them (attachments, a mapping, an implement):
