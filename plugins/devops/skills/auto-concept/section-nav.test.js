@@ -168,14 +168,9 @@ describe("Kompass tree — source contracts", () => {
     expect(guard).toBeGreaterThan(-1);
     expect(guard).toBeLessThan(reveal.indexOf("nearestScrollBox("));
     expect(fnSource("setActiveNavItem")).toContain("openNavGroupFor(item)");
-    expect(fnSource("setActiveNavItem")).toContain("[data-here-section]");
-    expect(fnSource("setActiveNavItem")).toContain("updateHereRoundParenthesis(item)");
-  });
-
-  test("updateHereRoundParenthesis only appends the variant label under a data-variant reading line", () => {
-    const fn = fnSource("updateHereRoundParenthesis");
-    expect(fn).toContain("item.hasAttribute('data-variant')");
-    expect(fn).toContain("hereRoundBase");
+    // the highlighted entry is the "you are here" — the head never repeats it
+    expect(fnSource("setActiveNavItem")).not.toContain("[data-here-section]");
+    expect(md).not.toContain("function updateHereRoundParenthesis");
   });
 
   test("the markup stays a flat chip list — no hand-built tree in any skeleton", () => {
@@ -208,7 +203,7 @@ describe("Kompass tree — source contracts", () => {
     }
     expect(gate).toMatch(/\| 59 \| `buildIterationTree`/);
     expect(gate).toMatch(/\| 60 \| `NAV_GROUP_OVER_ENTRIES`/);
-    expect(gate).toMatch(/\| 61 \| `data-here-section`/);
+    expect(gate).toMatch(/\| 61 \| `openNavGroupFor`/);
     expect(gate).toMatch(/\| 40 \| `revealNavItem` — AND `getClientRects\(\)\.length === 0`/);
     expect(iterRules).toContain("## The panel tree");
     expect(iterRules).toMatch(/7\. ☐ The new chip is ONE plain/);
@@ -283,7 +278,6 @@ function page(rounds) {
     fnSource("updateSectionNavState"),
     fnSource("installScrollSpy"),
     fnSource("setActiveNavItem"),
-    fnSource("updateHereRoundParenthesis"),
     fnSource("nearestScrollBox"),
     fnSource("revealNavItem"),
     fnSource("updateScrollSpy"),
@@ -584,20 +578,16 @@ describe("Kompass tree — behaviour (reference JS on jsdom)", () => {
     expect(context.open, "the accordion closed the other one").toBe(false);
   });
 
-  test("the spy writes the 'you are here' breadcrumb and the head's parenthesis, only for a variant entry", () => {
+  test("the head keeps the concept name whatever entry sits under the reading line", () => {
     const p = page([R(1, { live: true, selected: true, entries: 4, kinds: 1 })]);
     p.window.buildSectionNav();
-    const here = p.document.querySelector("[data-here-section]");
-    expect(here.hidden).toBe(false);
+    expect(p.document.querySelector("[data-here-section]")).toBeNull();
     const round = p.document.querySelector("[data-here-round]");
     round.textContent = "Iteration 1";
-    delete round.dataset.hereRoundBase;
-    const contextItem = p.document.querySelector(".section-nav-item:not([data-variant])");
-    p.window.setActiveNavItem(contextItem);
+    p.window.setActiveNavItem(p.document.querySelector(".section-nav-item:not([data-variant])"));
     expect(round.textContent).toBe("Iteration 1");
-    const variantItem = p.document.querySelector(".section-nav-item[data-variant]");
-    p.window.setActiveNavItem(variantItem);
-    expect(round.textContent).toBe("Iteration 1 (" + variantItem.querySelector(".section-nav-label").textContent + ")");
+    p.window.setActiveNavItem(p.document.querySelector(".section-nav-item[data-variant]"));
+    expect(round.textContent).toBe("Iteration 1");
   });
 
   test("a hidden entry cannot drag the scroll box: revealNavItem returns before measuring", () => {

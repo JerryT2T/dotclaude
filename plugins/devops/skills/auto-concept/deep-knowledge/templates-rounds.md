@@ -317,11 +317,8 @@ function showIteration(n) {
   // plus, on a frozen tab, the compact "↩ zur Runde N" link back to the live
   // round. The label comes from data-tab-label when the summary line has
   // been added to the chip (buildSectionNav), otherwise from the chip text
-  // itself. The reading-line parenthesis (updateHereRoundParenthesis) is
-  // re-applied by the scroll spy right after this, off the fresh base.
-  // The round label sits in the .panel-head row (one line with the 🕘 chip,
-  // theme toggle and ✕); the sub-line stays in #panel-here — hence the
-  // document-wide lookup for the label and the box-scoped one for the rest.
+  // itself. The round label sits in the .panel-head row (one line with the
+  // 🕘 chip, theme toggle and ✕), hence the document-wide lookup.
   const here = document.getElementById('panel-here');
   if (here) {
     const hereTab = document.querySelector('.iteration-tab[data-iteration="' + n + '"]');
@@ -339,13 +336,8 @@ function showIteration(n) {
       const phase = finalTab ? '🏁 {{final.phase}}' : (named || '🧭 ' + label);
       round.dataset.phase = finalTab ? 'final' : (named ? 'concept' : 'round');
       if (named) round.dataset.tip = named; else delete round.dataset.tip;
-      round.dataset.hereRoundBase = phase + (isLive ? '' : ' · {{nav.archived}}');
-      round.textContent = round.dataset.hereRoundBase;
+      round.textContent = phase + (isLive ? '' : ' · {{nav.archived}}');
     }
-    // The final report drops the second head line entirely — the close-out
-    // inbox is the panel body there.
-    const section = here.querySelector('[data-here-section]');
-    if (section && isFinal) section.hidden = true;
     const back = document.getElementById('panel-here-back');
     if (back) {
       back.hidden = !!isLive;

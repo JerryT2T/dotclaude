@@ -313,14 +313,16 @@ const FULL = `<section data-iteration="1" data-iteration-template="decision" dat
 describe("chat flow Full round", () => {
   const withExample = FULL.replace('<div data-alevel="3" data-title="T-a1"><div data-slot="short"><p>s</p></div><div data-slot="long"><p>l</p></div></div>',
     '<div data-alevel="3" data-title="T-a1"><div data-slot="short"><p>s</p></div><div data-slot="long"><p>l</p></div><div data-example><pre>real excerpt</pre></div></div>');
-  test("a decision stage is three messages: finding, question (fixed height), answer block (capped)", () => {
+  test("a decision stage is three messages: finding, question (min height, never clipped), answer block (capped)", () => {
     const { doc } = page(FULL);
     const d = doc.getElementById("a1");
     expect([...d.children].slice(0, 3).map(c => c.classList.contains("an-m-find") ? "find" : c.classList.contains("an-m-q") ? "q" : c.classList.contains("an-m-a") ? "a" : "?")).toEqual(["find", "q", "a"]);
     expect(d.querySelector(".an-m-q [data-question]")).toBeTruthy();
     expect(d.querySelector(".an-m-a .an-ans [data-options]")).toBeTruthy();
     expect(d.querySelector(".an-av").getAttribute("data-tip")).toBe("devops");
-    expect(CSS).toMatch(/\.an-qb \{ height: 92px;/);
+    expect(CSS).toMatch(/\.an-qb \{ min-height: 92px;/);
+    expect(CSS).not.toMatch(/\.an-qb \{[^}]*overflow: hidden/);
+    expect(CSS).not.toMatch(/\[data-stakes\] \{[^}]*text-overflow: ellipsis/);
     expect(CSS).toMatch(/\.an-ans \{ padding: 8px;/);
     expect(CSS).toMatch(/\.an-enh \{[^}]*max-width: 780px/);
   });

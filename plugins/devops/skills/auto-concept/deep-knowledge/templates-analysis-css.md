@@ -15,9 +15,10 @@ neutral / light blue.
 
 ```css
 [data-analysis] {
-  --an-bg: #0d1117; --an-s1: #151b23; --an-s2: #1b2230; --an-s3: #252d3b;
-  --an-bd: rgba(240,246,252,.08); --an-bd2: rgba(240,246,252,.15);
-  --an-tx: #f0f6fc; --an-tx2: #c9d1d9; --an-mu: #9198a1; --an-mu2: #6e7681;
+  /* dimmed ground, off-white text (never pitch black: halation, eye strain) */
+  --an-bg: #1c2128; --an-s1: #22272e; --an-s2: #2a313a; --an-s3: #353d48;
+  --an-bd: rgba(205,217,229,.10); --an-bd2: rgba(205,217,229,.18);
+  --an-tx: #e6edf3; --an-tx2: #cdd9e5; --an-mu: #a2abb6; --an-mu2: #8b949e;
   --an-ac: #2f81f7; --an-ac-soft: rgba(47,129,247,.14);
   --an-ok: #3fb950; --an-ok2: #7ee787; --an-warn: #d29922; --an-gold: #f2cc60;
   --an-li: #79c0ff; --an-li-soft: rgba(121,192,255,.1);
@@ -45,6 +46,10 @@ html[data-theme="light"] [data-analysis] {
 [data-analysis] { --c: #79c0ff; --an-b1: #58a6ff; --an-b2: #79c0ff; --an-b3: #a5d6ff; --an-b4: #388bfd; }
 .an-enh { box-sizing: border-box; position: relative; display: flex; flex-direction: column; max-width: 780px; margin: 0 auto; padding: 40px 24px 36px; }
 .an-enh > * { flex: 0 0 auto; }
+/* a live Full analysis gives the chat the height: no subtitle, the title up top */
+.concept-content:has(section[data-analysis="full"][data-active]) { padding-top: 0.75rem; }
+.concept-content:has(section[data-analysis="full"][data-active]) > header .subtitle { display: none; }
+.concept-content:has(section[data-analysis="full"][data-active]) > header h1 { margin: 0.25rem 0 0.25rem; }
 .an-enh:not(.an-lite) { overflow: hidden; padding-bottom: 28px; }
 .an-chat { position: relative; flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable both-edges; display: flex; flex-direction: column; padding-bottom: 8px; }
 .an-chat > * { flex: 0 0 auto; }
@@ -86,10 +91,11 @@ section[data-view].an-lite { max-width: none; margin: 0; border: 0; border-radiu
 .an-tab > i { font-style: normal; font-size: 20px; line-height: 1; }
 .an-tab:hover { color: var(--an-tx); }
 .an-tab.an-on { background: var(--an-s3); color: var(--an-tx); }
-/* the question: FIXED height (question + one "Davon hängt ab" line) */
-.an-qb { height: 92px; display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
+/* the question: a calm minimum height (question + one "Davon hängt ab" line) that
+   GROWS with its text — never clips. Authoring keeps it at two lines + one (gate A10). */
+.an-qb { min-height: 92px; display: flex; flex-direction: column; justify-content: center; }
 [data-analysis] [data-question] { margin: 0; font-size: 21px; font-weight: 700; letter-spacing: -.015em; line-height: 1.25; color: var(--an-tx); }
-[data-analysis] [data-stakes] { margin-top: 4px; font-size: 13.5px; line-height: 1.4; color: var(--an-mu); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+[data-analysis] [data-stakes] { margin-top: 4px; font-size: 13.5px; line-height: 1.4; color: var(--an-mu); overflow-wrap: anywhere; }
 [data-analysis] [data-stakes] .an-k-l { color: var(--an-tx2); font-weight: 650; }
 /* the answer block: a raised surface, capped so it never pushes the question out of view */
 .an-m-a { margin: 16px 0 0 42px; transition: opacity .18s ease; }
@@ -395,6 +401,10 @@ html[data-theme="light"] .an-tagw { color: var(--an-ac); }
 @keyframes an-in { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
 @keyframes an-read { 0%, 15% { box-shadow: 0 0 0 0 rgba(121,192,255,0); } 35%, 70% { box-shadow: 0 0 0 2px rgba(121,192,255,.45), 0 0 34px rgba(121,192,255,.18); } 100% { box-shadow: 0 0 0 0 rgba(121,192,255,0); } }
 @keyframes an-pulse { 50% { filter: brightness(1.5); box-shadow: 0 0 12px var(--c); } }
+/* an empty send on the closing points at "Zur nächsten Runde" (it never clicks it) */
+.an-point { animation: an-point 0.8s ease-in-out 3; }
+@keyframes an-point { 0%, 100% { box-shadow: 0 0 0 0 rgba(121,192,255,0); } 50% { box-shadow: 0 0 0 3px rgba(121,192,255,.75), 0 0 26px rgba(121,192,255,.45); } }
+@media (prefers-reduced-motion: reduce) { .an-point { animation: none; outline: 3px solid rgba(121,192,255,.75); outline-offset: 2px; } }
 @keyframes an-comp-glow { 0% { box-shadow: 0 0 0 0 rgba(121,192,255,0); } 30% { box-shadow: 0 0 0 2px rgba(121,192,255,.55), 0 0 28px rgba(121,192,255,.3); } 100% { box-shadow: 0 0 0 0 rgba(121,192,255,0); } }
 /* slider: live consequence along the scale */
 .an-sl-cons { margin-top: 2px; padding: 8px 12px; border-radius: 10px; background: rgba(88,166,255,.08); color: var(--an-tx2); font-size: 13px; line-height: 1.4; }

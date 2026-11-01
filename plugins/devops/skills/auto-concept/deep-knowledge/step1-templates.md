@@ -375,15 +375,16 @@ deviation summary.
 **The chat flow (Full + Lite).** Every stage is a centred column (≈ 780 px) of
 messages: the devops avatar (∞) left, your answer right-aligned. A question
 stage is three messages that enter one after another on its first visit —
-the finding (variable height), the question (fixed height: question + one
-"Davon hängt ab" line), the answer block (rows with label + consequence, ★
+the finding (variable height), the question (question + one
+"Davon hängt ab" line; it grows, never clips), the answer block (rows with label + consequence, ★
 Empfohlen preselected); while they enter, the chat glides down only as far
 as the newest message needs, never past the question, and a scroll of the
 user's own stops it. Only the next stage peeks in below. The
 right rail lists briefing, topics and questions (hover enlarges the label
 under the mouse), the persistent composer sits at the bottom. Author for
 that budget: the round's `.iteration-intro` is one heading + one sentence,
-questions fit two lines, option consequences one or two.
+questions ≤ 100 characters (two lines), `data-stakes` ≤ 90 characters (one
+line; gate A10 warns above either), option consequences one or two lines.
 
 **Themenfelder.** A Full has **1–7** topics with **3–7** questions each, topic
 titles **≤ 5 words** (gate A4 warns outside). Group by what the decisions

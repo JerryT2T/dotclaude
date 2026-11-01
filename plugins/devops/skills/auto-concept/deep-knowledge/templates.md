@@ -44,7 +44,7 @@ Index of the concept engine reference: the three templates (decision, design, fr
 | 36 | [templates-submit-js-2.md](templates-submit-js-2.md) | 569 | Two-Button Submit — JS (continued) |
 | 37 | [templates-submit-js-3.md](templates-submit-js-3.md) | 282 | Two-Button Submit — JS (continued) |
 | 38 | [templates-submit-journey.md](templates-submit-journey.md) | 543 | Journey row · Panel State Reset · Submit Progress Steps |
-| 39 | [templates-utilities.md](templates-utilities.md) | 268 | App Tooltips · Theme Toggle |
+| 39 | [templates-utilities.md](templates-utilities.md) | 503 | App Tooltips · Theme Toggle · Neural Backdrop |
 | 40 | [templates-heartbeat.md](templates-heartbeat.md) | 597 | Claude Connection Heartbeat (HTTP Bridge) |
 | 41 | [templates-rounds.md](templates-rounds.md) | 447 | Iteration Tabs |
 | 42 | [templates-final-report.md](templates-final-report.md) | 499 | Final Report Panel · Design System |

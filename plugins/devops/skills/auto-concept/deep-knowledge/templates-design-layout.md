@@ -272,7 +272,6 @@
       <!-- Same four-part anatomy as § Common Structure (here / scroll box /
            status / foot) — only the containing aside differs. -->
       <div class="panel-here" id="panel-here">
-        <span class="panel-here-section" data-here-section hidden></span>
         <div class="panel-here-rounds-list" id="panel-here-rounds-list" hidden role="list">
           <!-- auto-populated by buildRoundsChip() -->
         </div>

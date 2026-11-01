@@ -129,6 +129,25 @@ describe("persistent composer", () => {
     ca.sendNote(inst);
     expect(inst.idx).toBe(ri);
   });
+  test("an empty send is Weiter / Los geht's; on the closing it only points at the next-round button", () => {
+    const { doc, ca } = page(FULL);
+    const inst = ca.instances[0];
+    expect(inst.stages[inst.idx].kind).toBe("brief");
+    expect(ca.sendNote(inst)).toBe(true);
+    expect(inst.stages[inst.idx].kind).not.toBe("brief");
+    const di = inst.stages.findIndex(s => s.kind === "dec");
+    ca.go(inst, di);
+    expect(ca.sendNote(inst)).toBe(true);
+    expect(inst.idx).toBeGreaterThan(di);
+    const btn = doc.createElement("button");
+    btn.id = "panel-toggle";
+    doc.body.appendChild(btn);
+    ca.go(inst, inst.stages.findIndex(s => s.kind === "review"));
+    const ri = inst.idx;
+    expect(ca.sendNote(inst)).toBe(false);
+    expect(inst.idx).toBe(ri);
+    expect(btn.classList.contains("an-point")).toBe(true);
+  });
   test("tagged: the note stays on the stage, one tag at most, the tag comes back on return", () => {
     const { doc, w, ca } = page(LITE);
     const inst = ca.instances[0];

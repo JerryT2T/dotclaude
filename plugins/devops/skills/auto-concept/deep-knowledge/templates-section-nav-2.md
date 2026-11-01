@@ -187,8 +187,6 @@ function buildSectionNav() {
   });
   // The tree now lives inside the scroll box on its own — the live round's
   // TOC only; the other rounds moved to the head's rounds list.
-  const hereSection = document.querySelector('[data-here-section]');
-  if (hereSection) hereSection.hidden = !sections.length;
   updateSectionNavState();
   // Reset the manual-close grace on every rebuild. The groups themselves are
   // brand new DOM nodes each time (nav.innerHTML = '' above), so old WeakMap
@@ -367,34 +365,11 @@ function setActiveNavItem(item) {
   item.classList.add('is-active');
   item.setAttribute('aria-current', 'true');
   _lastActiveSectionId = item.dataset.sectionId || null;
-  // "You are here" breadcrumb in the pinned head (§ Common Structure) — the
-  // final report has no second head line at all (showIteration hides it).
-  const here = document.querySelector('[data-here-section]');
-  if (here && !document.body.classList.contains('viewing-final')) {
-    const label = item.querySelector('.section-nav-label');
-    here.textContent = '› ' + (label ? label.textContent : '');
-    here.hidden = false;
-  }
-  updateHereRoundParenthesis(item);
+  // The highlighted entry IS the "you are here": the head names only the
+  // concept / round, never the section under the reading line (no "› entry"
+  // sub-line, no "(Variante)" parenthesis — both repeated this entry).
   openNavGroupFor(item);
   revealNavItem(item);
-}
-
-// Head line reads "{{iteration.tab}} N (Variante)": the parenthesis names the
-// variant under the reading line, and ONLY when that section carries a
-// variant bi-state — general/context sections never get one.
-function updateHereRoundParenthesis(item) {
-  const round = document.querySelector('[data-here-round]');
-  if (!round) return;
-  if (round.dataset.hereRoundBase == null) round.dataset.hereRoundBase = round.textContent;
-  const base = round.dataset.hereRoundBase;
-  const isVariant = item && item.hasAttribute('data-variant');
-  if (isVariant) {
-    const label = item.querySelector('.section-nav-label');
-    round.textContent = base + ' (' + (label ? label.textContent : '') + ')';
-  } else {
-    round.textContent = base;
-  }
 }
 
 // Nearest ancestor that actually scrolls. Returns null when nothing between

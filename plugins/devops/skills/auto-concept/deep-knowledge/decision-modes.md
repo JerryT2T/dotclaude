@@ -24,7 +24,7 @@ what is preselected → Weiter.
 | # | Field | Markup (`templates-analysis.md`) | Rule |
 |---|---|---|---|
 | 1 | **Gilt für** | `data-applies-to` + quiet line `[data-applies]` | Where it acts — screen, skill, file, project, "nur diese Runde". Quiet text above the question, **not a label or chip** |
-| 2 | **Frage** | `[data-question]` | A real question ending in "?", naming the object. The loudest element of the card (largest type, 1–2 lines). Never a statement ("Keine Testläufe") |
+| 2 | **Frage** | `[data-question]` | A real question ending in "?", naming the object. The loudest element of the card (largest type, ≤ 100 characters = two lines; gate A10). Never a statement ("Keine Testläufe") |
 | 3 | **Ein Satz Kontext** | `[data-context]` | One quiet line of background — answers "why am I asked this?". Everything else stands in the analysis column |
 | 4 | **Befund** | `data-finding` + the L3 block (`data-alevel="3"`) | The finding the decision rests on, shown in the right third; its display comes from `analysis-palette.md` |
 | 5 | **Antworten** | `[data-options]`, `[data-opt]`, `[data-opt-label]`, `[data-opt-consequence]` | In the fitting mode; each option = an outcome label with a verb + one consequence line. They answer exactly this question |
