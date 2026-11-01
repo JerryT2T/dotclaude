@@ -3,7 +3,7 @@
      It MUST be written at generation time with the active iteration's
      data-iteration-template value (normalised), otherwise the page paints the
      wrong layout for one frame before showIteration() runs. -->
-<html lang="de" data-theme="dark" data-page-version="2026-11-01T16:38:04" data-template="decision">
+<html lang="de" data-theme="dark" data-page-version="2026-11-01T16:38:04" data-template="free">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -5182,7 +5182,8 @@ button.an-tr:hover { background: var(--an-s2); }
       </header>
 
       <main>
-<section data-iteration="1" data-iteration-template="decision" data-analysis="full" id="iter-1" data-active>
+<section data-iteration="1" data-iteration-template="decision" data-analysis="full" data-baked id="iter-1" hidden>
+  <script type="application/json" data-frozen-feedback>{"general":{"text":"","attachments":[]}}</script>
 
   <section id="briefing" data-analysis-briefing data-nav-label="Briefing">
     <p data-briefing-what>Architektur-Review des devops-Plugins auf Basis von 406 Claude-Code-Transcripts aus 30 Tagen (meist die installierte v0.326) und Hook-Telemetrie: Sieben Vorschläge, die Kontext und Blockrunden senken.</p>
@@ -5222,26 +5223,26 @@ button.an-tr:hover { background: var(--an-s2); }
       <p data-context>Heute holt Claude den Titel per get_session und entfernt ihn wieder; lib/session-title.js kann ihn schon berechnen. Aufwand: klein.</p>
       <div data-options>
         <label data-opt="yes" data-recommended>
-          <input type="radio" name="dm-d-p1" value="yes" checked>
+          <input type="radio" name="dm-d-p1" value="yes" checked disabled>
           <span data-opt-label>Ja, Titel direkt berechnen</span>
           <span data-opt-consequence>Spart bis zu 89 k Tokens je 30 Tage und 1–2 Tool-Calls je Turn; ohne App-Titel im Transcript bleibt die lange Form.</span>
         </label>
         <label data-opt="no">
-          <input type="radio" name="dm-d-p1" value="no">
+          <input type="radio" name="dm-d-p1" value="no" disabled>
           <span data-opt-label>Nein, das Ritual bleibt</span>
           <span data-opt-consequence>Alles wie heute: 300 Erinnerungen, 89 k Tokens, get_session plus Strip-Anweisung.</span>
         </label>
         <label data-opt="alt">
-          <input type="radio" name="dm-d-p1" value="alt">
+          <input type="radio" name="dm-d-p1" value="alt" disabled>
           <span data-opt-label>Anders …</span>
           <span data-opt-consequence>Du sagst in einem Satz, was stattdessen gelten soll.</span>
         </label>
       </div>
-      <input type="text" name="dm-d-p1-alt" placeholder="Was stattdessen?" value="">
-      <textarea data-comment="d-p1-note" placeholder="Notiz (optional)"></textarea>
-      <input type="hidden" name="dm-d-p1-touched" value="">
-      <input type="hidden" name="dm-d-p1-issue" value="">
-      <input type="hidden" name="dm-d-p1-epic" value="">
+      <input type="text" name="dm-d-p1-alt" placeholder="Was stattdessen?" value="" readonly disabled>
+      <textarea data-comment="d-p1-note" placeholder="Notiz (optional)" readonly disabled></textarea>
+      <input type="hidden" name="dm-d-p1-touched" value="1" disabled>
+      <input type="hidden" name="dm-d-p1-issue" value="" disabled>
+      <input type="hidden" name="dm-d-p1-epic" value="" disabled>
       <div data-alevel="3" data-title="P1 · Titel ohne Ritual">
         <div data-slot="short">Die Titel-Erinnerung kostet 89 k Tokens in 300 Turns.<div data-viz="kpi" data-viz-spec='{"value":"89 k","unit":"Tokens","label":"title-work, 300× in 30 Tagen"}'></div></div>
         <div data-slot="long">
@@ -5261,26 +5262,26 @@ button.an-tr:hover { background: var(--an-s2); }
       <p data-context>Dieselbe Regel steht bis zu viermal im Kontext und driftet auseinander. Zu den ersten Schritten empfohlen.</p>
       <div data-options>
         <label data-opt="yes" data-recommended>
-          <input type="radio" name="dm-d-p5" value="yes" checked>
+          <input type="radio" name="dm-d-p5" value="yes" checked disabled>
           <span data-opt-label>Ja, ein Besitzer je Regel</span>
           <span data-opt-consequence>Die anderen drei Stellen kürzen auf eine Verweiszeile; weniger Tokens je Session, kein Drift mehr.</span>
         </label>
         <label data-opt="no">
-          <input type="radio" name="dm-d-p5" value="no">
+          <input type="radio" name="dm-d-p5" value="no" disabled>
           <span data-opt-label>Nein, Duplikate bleiben</span>
           <span data-opt-consequence>Die Regeln bleiben an bis zu vier Orten und müssen weiter parallel gepflegt werden.</span>
         </label>
         <label data-opt="alt">
-          <input type="radio" name="dm-d-p5" value="alt">
+          <input type="radio" name="dm-d-p5" value="alt" disabled>
           <span data-opt-label>Anders …</span>
           <span data-opt-consequence>Du sagst in einem Satz, was stattdessen gelten soll.</span>
         </label>
       </div>
-      <input type="text" name="dm-d-p5-alt" placeholder="Was stattdessen?" value="">
-      <textarea data-comment="d-p5-note" placeholder="Notiz (optional)"></textarea>
-      <input type="hidden" name="dm-d-p5-touched" value="">
-      <input type="hidden" name="dm-d-p5-issue" value="">
-      <input type="hidden" name="dm-d-p5-epic" value="">
+      <input type="text" name="dm-d-p5-alt" placeholder="Was stattdessen?" value="" readonly disabled>
+      <textarea data-comment="d-p5-note" placeholder="Notiz (optional)" readonly disabled></textarea>
+      <input type="hidden" name="dm-d-p5-touched" value="1" disabled>
+      <input type="hidden" name="dm-d-p5-issue" value="" disabled>
+      <input type="hidden" name="dm-d-p5-epic" value="" disabled>
       <div data-alevel="3" data-title="P5 · Eine Quelle pro Regel">
         <div data-slot="short">Bis zu vier Orte pro Regel, jeder kostet Kontext.<div data-viz="kpi" data-viz-spec='{"value":"4","unit":"Orte","label":"bis zu je Regel"}'></div></div>
         <div data-slot="long">
@@ -5300,26 +5301,26 @@ button.an-tr:hover { background: var(--an-s2); }
       <p data-context>Beide laufen in über 100 Sessions. ui-defaults dann nur bei UI-Prompts, skill-overrides nur, wenn für den aufgerufenen Skill ein Override existiert. Nach P1 und P3 umsetzen.</p>
       <div data-options>
         <label data-opt="yes" data-recommended>
-          <input type="radio" name="dm-d-p6" value="yes" checked>
+          <input type="radio" name="dm-d-p6" value="yes" checked disabled>
           <span data-opt-label>Ja, Trigger schärfen</span>
           <span data-opt-consequence>ui-defaults nur bei UI-Prompts, skill-overrides nur bei vorhandenem Override; bis zu 137 k Tokens weniger in 30 Tagen.</span>
         </label>
         <label data-opt="no">
-          <input type="radio" name="dm-d-p6" value="no">
+          <input type="radio" name="dm-d-p6" value="no" disabled>
           <span data-opt-label>Nein, Trigger bleiben breit</span>
           <span data-opt-consequence>Beide Regeln stehen weiter in jeder passenden Session, auch ohne Bedarf.</span>
         </label>
         <label data-opt="alt">
-          <input type="radio" name="dm-d-p6" value="alt">
+          <input type="radio" name="dm-d-p6" value="alt" disabled>
           <span data-opt-label>Anders …</span>
           <span data-opt-consequence>Du sagst in einem Satz, was stattdessen gelten soll.</span>
         </label>
       </div>
-      <input type="text" name="dm-d-p6-alt" placeholder="Was stattdessen?" value="">
-      <textarea data-comment="d-p6-note" placeholder="Notiz (optional)"></textarea>
-      <input type="hidden" name="dm-d-p6-touched" value="">
-      <input type="hidden" name="dm-d-p6-issue" value="">
-      <input type="hidden" name="dm-d-p6-epic" value="">
+      <input type="text" name="dm-d-p6-alt" placeholder="Was stattdessen?" value="" readonly disabled>
+      <textarea data-comment="d-p6-note" placeholder="Notiz (optional)" readonly disabled></textarea>
+      <input type="hidden" name="dm-d-p6-touched" value="1" disabled>
+      <input type="hidden" name="dm-d-p6-issue" value="" disabled>
+      <input type="hidden" name="dm-d-p6-epic" value="" disabled>
       <div data-alevel="3" data-title="P6 · Breite Injektionen schärfen">
         <div data-slot="short">Zwei breite Injektionen kosten zusammen 137 k Tokens.<div data-viz="kpi" data-viz-spec='{"value":"137 k","unit":"Tokens","label":"ui-defaults + skill-overrides"}'></div></div>
         <div data-slot="long">
@@ -5350,26 +5351,26 @@ button.an-tr:hover { background: var(--an-s2); }
       <p data-context>Trotz 698 Erinnerungen am Turn-Start meldet der Stop-Hook 155-mal „Karte noch nicht gerendert“: Sie bleibt nicht hängen. Aufwand: mittel.</p>
       <div data-options>
         <label data-opt="yes" data-recommended>
-          <input type="radio" name="dm-d-p3" value="yes" checked>
+          <input type="radio" name="dm-d-p3" value="yes" checked disabled>
           <span data-opt-label>Ja, Erinnerung vor das Turn-Ende verlegen</span>
           <span data-opt-consequence>Nach wrap_up bzw. beim letzten Plan-Schritt; die Turn-Start-Kopie (bis zu 107 k Tokens) entfällt, Ziel: weniger der 155 Blocks.</span>
         </label>
         <label data-opt="no">
-          <input type="radio" name="dm-d-p3" value="no">
+          <input type="radio" name="dm-d-p3" value="no" disabled>
           <span data-opt-label>Nein, Turn-Start-Erinnerung bleibt</span>
           <span data-opt-consequence>698 Erinnerungen und 155 Blocks wie heute.</span>
         </label>
         <label data-opt="alt">
-          <input type="radio" name="dm-d-p3" value="alt">
+          <input type="radio" name="dm-d-p3" value="alt" disabled>
           <span data-opt-label>Anders …</span>
           <span data-opt-consequence>Du sagst in einem Satz, was stattdessen gelten soll.</span>
         </label>
       </div>
-      <input type="text" name="dm-d-p3-alt" placeholder="Was stattdessen?" value="">
-      <textarea data-comment="d-p3-note" placeholder="Notiz (optional)"></textarea>
-      <input type="hidden" name="dm-d-p3-touched" value="">
-      <input type="hidden" name="dm-d-p3-issue" value="">
-      <input type="hidden" name="dm-d-p3-epic" value="">
+      <input type="text" name="dm-d-p3-alt" placeholder="Was stattdessen?" value="" readonly disabled>
+      <textarea data-comment="d-p3-note" placeholder="Notiz (optional)" readonly disabled>also das untersuche nochmal genau, ggf. auch mit tests, wir hatten doch extra zuletzt zum start viel davon gemoved, dann ganz am ende die evaluierung, jetzt vor dem letzten turn. Also für mich alles ok,k aber was ist das effizienteste modell, was nix doppelt macht aber auch nicht ide karte vergisst!</textarea>
+      <input type="hidden" name="dm-d-p3-touched" value="1" disabled>
+      <input type="hidden" name="dm-d-p3-issue" value="" disabled>
+      <input type="hidden" name="dm-d-p3-epic" value="" disabled>
       <div data-alevel="3" data-title="P3 · Karten-Erinnerung zur rechten Zeit">
         <div data-slot="short">698 Erinnerungen, trotzdem 155 Blocks wegen fehlender Karte.<div data-viz="kpi" data-viz-spec='{"value":"155","unit":"Blocks","label":"Karte fehlt, von 171 Stop-Blocks"}'></div></div>
         <div data-slot="long">
@@ -5389,26 +5390,26 @@ button.an-tr:hover { background: var(--an-s2); }
       <p data-context>Heute blockiert pre.ask.title den Aufruf, bis der Titel-Call in derselben Nachricht steht. Nach P1 und P3 umsetzen.</p>
       <div data-options>
         <label data-opt="yes" data-recommended>
-          <input type="radio" name="dm-d-p2" value="yes" checked>
+          <input type="radio" name="dm-d-p2" value="yes" checked disabled>
           <span data-opt-label>Ja, Aufruf erlauben und per Hinweis nachziehen</span>
           <span data-opt-consequence>Der Titelkopf kommt früher mit der Erinnerung oder als PostToolUse-Hinweis; 39 Zusatzrunden entfallen.</span>
         </label>
         <label data-opt="no">
-          <input type="radio" name="dm-d-p2" value="no">
+          <input type="radio" name="dm-d-p2" value="no" disabled>
           <span data-opt-label>Nein, Block bleibt</span>
           <span data-opt-consequence>39 Blocks in 30 Tagen, dafür steht der Titel sicher vor dem Aufruf.</span>
         </label>
         <label data-opt="alt">
-          <input type="radio" name="dm-d-p2" value="alt">
+          <input type="radio" name="dm-d-p2" value="alt" disabled>
           <span data-opt-label>Anders …</span>
           <span data-opt-consequence>Du sagst in einem Satz, was stattdessen gelten soll.</span>
         </label>
       </div>
-      <input type="text" name="dm-d-p2-alt" placeholder="Was stattdessen?" value="">
-      <textarea data-comment="d-p2-note" placeholder="Notiz (optional)"></textarea>
-      <input type="hidden" name="dm-d-p2-touched" value="">
-      <input type="hidden" name="dm-d-p2-issue" value="">
-      <input type="hidden" name="dm-d-p2-epic" value="">
+      <input type="text" name="dm-d-p2-alt" placeholder="Was stattdessen?" value="" readonly disabled>
+      <textarea data-comment="d-p2-note" placeholder="Notiz (optional)" readonly disabled></textarea>
+      <input type="hidden" name="dm-d-p2-touched" value="1" disabled>
+      <input type="hidden" name="dm-d-p2-issue" value="" disabled>
+      <input type="hidden" name="dm-d-p2-epic" value="" disabled>
       <div data-alevel="3" data-title="P2 · Ask-Titel ohne Block-Runde">
         <div data-slot="short">39 Blocks kosten 39 zusätzliche Runden.<div data-viz="kpi" data-viz-spec='{"value":"39","unit":"Blocks","label":"= 39 Zusatzrunden in 30 Tagen"}'></div></div>
         <div data-slot="long">
@@ -5439,26 +5440,26 @@ button.an-tr:hover { background: var(--an-s2); }
       <p data-context>Die Rohdatei rotiert bei 1 MB und behält nur ≈ 11 Minuten. Rollup je Hook: Läufe, Blocks, Ausgabezeichen, p50 und p95. Aufwand: mittel.</p>
       <div data-options>
         <label data-opt="yes" data-recommended>
-          <input type="radio" name="dm-d-p7" value="yes" checked>
+          <input type="radio" name="dm-d-p7" value="yes" checked disabled>
           <span data-opt-label>Ja, Tages-Rollup je Hook</span>
           <span data-opt-consequence>30 Tage Daten statt ≈ 11 Minuten; Basis, um die Wirkung von P1 bis P6 zu prüfen.</span>
         </label>
         <label data-opt="no">
-          <input type="radio" name="dm-d-p7" value="no">
+          <input type="radio" name="dm-d-p7" value="no" disabled>
           <span data-opt-label>Nein, nur die Rohdatei</span>
           <span data-opt-consequence>Audits stützen sich weiter auf Transcripts und die letzten ≈ 11 Minuten.</span>
         </label>
         <label data-opt="alt">
-          <input type="radio" name="dm-d-p7" value="alt">
+          <input type="radio" name="dm-d-p7" value="alt" disabled>
           <span data-opt-label>Anders …</span>
           <span data-opt-consequence>Du sagst in einem Satz, was stattdessen gelten soll.</span>
         </label>
       </div>
-      <input type="text" name="dm-d-p7-alt" placeholder="Was stattdessen?" value="">
-      <textarea data-comment="d-p7-note" placeholder="Notiz (optional)"></textarea>
-      <input type="hidden" name="dm-d-p7-touched" value="">
-      <input type="hidden" name="dm-d-p7-issue" value="">
-      <input type="hidden" name="dm-d-p7-epic" value="">
+      <input type="text" name="dm-d-p7-alt" placeholder="Was stattdessen?" value="" readonly disabled>
+      <textarea data-comment="d-p7-note" placeholder="Notiz (optional)" readonly disabled></textarea>
+      <input type="hidden" name="dm-d-p7-touched" value="1" disabled>
+      <input type="hidden" name="dm-d-p7-issue" value="" disabled>
+      <input type="hidden" name="dm-d-p7-epic" value="" disabled>
       <div data-alevel="3" data-title="P7 · Telemetrie mit Gedächtnis">
         <div data-slot="short">Die Rohdatei hält nur ≈ 11 Minuten Historie.<div data-viz="kpi" data-viz-spec='{"value":"≈ 11 min","unit":"Historie","label":"heute, Ziel 30 Tage"}'></div></div>
         <div data-slot="long">
@@ -5478,26 +5479,26 @@ button.an-tr:hover { background: var(--an-s2); }
       <p data-context>Heute sind es ≈ 10 Marker-Dateien, die zwischen Hooks auseinanderlaufen können. Reines Refactoring, größerer Diff, kein Token-Effekt. Nach P1 und P3 umsetzen, weil beide die Marker anfassen.</p>
       <div data-options>
         <label data-opt="yes" data-recommended>
-          <input type="radio" name="dm-d-p4" value="yes" checked>
+          <input type="radio" name="dm-d-p4" value="yes" checked disabled>
           <span data-opt-label>Ja, ein State pro Session</span>
           <span data-opt-consequence>Eine Lib statt ≈ 10 Marker-Dateien; weniger Drift, aber größerer Diff und kein Token-Effekt.</span>
         </label>
         <label data-opt="no">
-          <input type="radio" name="dm-d-p4" value="no">
+          <input type="radio" name="dm-d-p4" value="no" disabled>
           <span data-opt-label>Nein, Marker-Dateien bleiben</span>
           <span data-opt-consequence>Kein Umbau; Drift-Risiko zwischen den Hooks bleibt, jede Änderung fasst weiter mehrere Marker an.</span>
         </label>
         <label data-opt="alt">
-          <input type="radio" name="dm-d-p4" value="alt">
+          <input type="radio" name="dm-d-p4" value="alt" disabled>
           <span data-opt-label>Anders …</span>
           <span data-opt-consequence>Du sagst in einem Satz, was stattdessen gelten soll.</span>
         </label>
       </div>
-      <input type="text" name="dm-d-p4-alt" placeholder="Was stattdessen?" value="">
-      <textarea data-comment="d-p4-note" placeholder="Notiz (optional)"></textarea>
-      <input type="hidden" name="dm-d-p4-touched" value="">
-      <input type="hidden" name="dm-d-p4-issue" value="">
-      <input type="hidden" name="dm-d-p4-epic" value="">
+      <input type="text" name="dm-d-p4-alt" placeholder="Was stattdessen?" value="" readonly disabled>
+      <textarea data-comment="d-p4-note" placeholder="Notiz (optional)" readonly disabled></textarea>
+      <input type="hidden" name="dm-d-p4-touched" value="1" disabled>
+      <input type="hidden" name="dm-d-p4-issue" value="" disabled>
+      <input type="hidden" name="dm-d-p4-epic" value="" disabled>
       <div data-alevel="3" data-title="P4 · Ein Turn-State statt Marker">
         <div data-slot="short">18 Dateien und ≈ 6,5 k Zeilen für Karte und Titel.<div data-viz="kpi" data-viz-spec='{"value":"≈ 6,5 k","unit":"Zeilen","label":"in 18 Dateien (Karte + Titel)"}'></div></div>
         <div data-slot="long">
@@ -5508,6 +5509,124 @@ button.an-tr:hover { background: var(--an-s2); }
       </div>
     </section>
   </section>
+</section>
+
+<section id="iter-2" data-iteration="2" data-iteration-template="free" data-final-report data-active>
+  <div class="fr-head">
+    <span class="fr-phase">🏁 Abschluss</span>
+    <h2 class="fr-title">Hook-Governance &amp; Regel-Duplikate</h2>
+  </div>
+
+  <ol class="fr-flow">
+    <li>Prompt-Hooks lesen nur noch getippten Text</li>
+    <li>Read/Glob/Grep laufen in einer Fast-Lane</li>
+    <li>Titel und Karte ohne Ritual und ohne doppelte Erinnerung</li>
+    <li>Telemetrie merkt sich 60 Tage</li>
+  </ol>
+
+  <p class="fr-label">Was getan wurde</p>
+  <p class="fr-sentence">Die Hooks melden sich seltener und gezielter, ohne dass eine Prüfung entfällt.</p>
+
+  <div class="fr-cols">
+    <div class="fr-card">
+      <p class="fr-label">Was kam raus</p>
+      <ul class="fr-wins">
+        <li><span class="fr-win-icon" aria-hidden="true">🏷️</span><span>Der Titel-Hinweis im ersten Prompt hat <b>502 statt 2105 Zeichen</b> und nennt meist gleich den fertigen Aufruf.</span></li>
+        <li><span class="fr-win-icon" aria-hidden="true">🃏</span><span>Die Karten-Erinnerung kommt <b>einmal am Start, einmal am Ende</b>, und die Regeln stehen nur noch in der Tool-Beschreibung.</span></li>
+        <li><span class="fr-win-icon" aria-hidden="true">🎯</span><span>UI-Regeln und Skill-Overrides kommen <b>nur noch, wenn sie gebraucht werden</b>.</span></li>
+      </ul>
+    </div>
+    <div class="fr-card">
+      <p class="fr-label">Was es aushält</p>
+      <div class="fr-meters">
+        <div class="fr-meter" data-met="true" style="--fr-tested: 100%; --fr-target: 100%">
+          <span class="fr-meter-name">⚡ Performance</span>
+          <b class="fr-meter-value">2 statt 4</b>
+          <div class="fr-meter-bar" aria-hidden="true"></div>
+          <p class="fr-meter-context">Node-Starts pro Read. Ziel: ein Prozess pro Event (geschätzt). <span class="fr-meter-verdict">✓ Ziel erreicht</span></p>
+        </div>
+        <div class="fr-meter" data-met="true" style="--fr-tested: 100%; --fr-target: 100%">
+          <span class="fr-meter-name">🛡 Stabilität</span>
+          <b class="fr-meter-value">11 483</b>
+          <div class="fr-meter-bar" aria-hidden="true"></div>
+          <p class="fr-meter-context">Tests grün, Lint sauber. Ziel: keine Regression (geschätzt). <span class="fr-meter-verdict">✓ Ziel erreicht</span></p>
+        </div>
+        <div class="fr-meter" data-met="false" style="--fr-tested: 15%; --fr-target: 60%">
+          <span class="fr-meter-name">🧩 Wartbarkeit</span>
+          <b class="fr-meter-value">22 / 148</b>
+          <div class="fr-meter-bar" aria-hidden="true"></div>
+          <p class="fr-meter-context">So viele der Stop-Blöcke „Karte fehlt“ der letzten 30 Tage fängt der neue Hinweis am Turn-Ende direkt ab; den Rest fängt weiter der Stop-Gate. Ziel: mehr als die Hälfte (geschätzt). <span class="fr-meter-verdict">▲ 52 Blöcke fehlen bis Ziel</span></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="fr-depth">
+    <p class="fr-label">Prüftiefe</p>
+    <p class="fr-ladder-top">Zusammenspiel<small>Stufe 3 von 7</small></p>
+    <ol class="fr-ladder">
+      <li data-level="1" data-state="done">Code-Check</li>
+      <li data-level="2" data-state="done">Trockentest</li>
+      <li data-level="3" data-state="done">Zusammenspiel</li>
+      <li data-level="4" data-state="open">Lokal durchgespielt</li>
+      <li data-level="5" data-state="na">Prod-Build geprüft</li>
+      <li data-level="6" data-state="open">Live vertestet</li>
+      <li data-level="7" data-state="you">Von dir abgenommen</li>
+    </ol>
+    <p class="fr-ladder-foot">Die Hooks laufen erst nach Ship und Plugin-Update in echten Sessions. Bis dahin decken Unit- und Integrationstests sie ab. Bei P5 ist der Delegations-Nudge noch offen: Er ist in rund 60 Eval-Fällen wörtlich eingebettet, und Kürzen geht nur mit einem Eval-A/B-Lauf. Das läuft in der Skill-Verschlankungs-Session.</p>
+  </div>
+
+  <details class="fr-fold" data-open-questions>
+    <summary>🔍 2 Funde unterwegs</summary>
+    <ul class="fr-funde">
+      <li data-oq-id="oq-concept-launcher"
+          data-issue-title="[CHORE] One launcher script for the concept bridge start"
+          data-issue-type="chore"
+          data-issue-body="Opening a concept page means reading ~56 KB of bridge procedure (bridge-server.md, bridge-server-state.md, step3-open-browser.md) for steps that are fully mechanical: port pick, state file, drift baseline, server + pulser + waker launch, heartbeat round-trip, 200 gate, Edge open. A single scripts/concept-open.js (printing the two watcher commands to launch in the background) would cut that reading to a few lines. Found during the hook-governance concept."
+          data-issue-module="auto-concept"
+          data-oq-origin="found"
+          data-route-default="issue"
+          data-route-reason="groß">
+        <span class="oq-label">Ein Startskript für die Concept-Bridge</span>
+        <dl class="fr-fkv">
+          <dt>Was</dt><dd>Jede Concept-Seite liest rund 56 KB Verfahren für rein mechanische Schritte.</dd>
+          <dt>Wo</dt><dd>auto-concept, Bridge-Start</dd>
+          <dt>Warum vorbelegt</dt><dd>📌 Issue — eigener Umbau im Skill-Bereich, den gerade die Verschlankungs-Session bearbeitet.</dd>
+        </dl>
+      </li>
+      <li data-oq-id="oq-burn-flake"
+          data-issue-title="[BUG] burn-plan robustness gate test flaky under load"
+          data-issue-type="bug"
+          data-issue-body="plugins/devops/scripts/burn-plan.robustness.git.test.js:287 expected 3 concurrent 'spawn' decisions and got 2 during a full npm test under heavy RAM pressure; passes alone (28/28). Likely a timing-dependent lock in the concurrent gate test."
+          data-issue-module="do-run"
+          data-oq-origin="found"
+          data-route-default="issue"
+          data-route-reason="flaky">
+        <span class="oq-label">Wackeliger burn-plan-Test unter Last</span>
+        <dl class="fr-fkv">
+          <dt>Was</dt><dd>Der Concurrency-Test erwartet 3 Spawns und bekommt unter Last 2.</dd>
+          <dt>Wo</dt><dd>scripts/burn-plan.robustness.git.test.js</dd>
+          <dt>Warum vorbelegt</dt><dd>📌 Issue — fremder Bereich, einzeln grün.</dd>
+        </dl>
+      </li>
+    </ul>
+  </details>
+
+  <section data-tests hidden aria-label="Du testest">
+    <ul>
+      <li data-todo-id="t-live-session" data-crit="mid" data-guide="">Nach dem Update eine Session: Titel und Karte</li>
+    </ul>
+  </section>
+
+  <details class="fr-fold">
+    <summary>🛠 Für Entwickler</summary>
+    <ul class="fr-dev">
+      <li>Commits <code>980a324e</code>, <code>17a9c37a</code> · Branch <code>claude/plugin-architecture-review-a0aae6</code></li>
+      <li><code>hooks/lib/prompt-text.js</code>, <code>hooks/lib/turn-state.js</code>, <code>hooks/dispatch/dispatch.js</code> (Fast-Lane), <code>scripts/hook-telemetry-report.js</code></li>
+      <li>Tests: 11 483 grün, 1 übersprungen · Lint sauber</li>
+      <li>Datenbasis: 30 Tage, 406 Transkripte; P3-Analyse: 137 von 148 Karten-Blöcken hatten Tool-Aufrufe, 22 davon nach wrap_up</li>
+    </ul>
+  </details>
 </section>
 </main>
     </div>
@@ -5600,7 +5719,8 @@ button.an-tr:hover { background: var(--an-s2); }
              <section data-iteration="N">, appended by string edit
              (iteration-rules.md § Iteration append checklist). -->
         <nav class="iteration-tabs" role="tablist" aria-label="Runden">
-<button class="iteration-tab" role="tab" data-iteration="1" aria-selected="true" aria-controls="iter-1">Runde 1</button>
+<button class="iteration-tab" role="tab" data-iteration="1" aria-selected="false" aria-controls="iter-1">Runde 1</button>
+<button class="iteration-tab" role="tab" data-final-report data-iteration="2" aria-selected="true" aria-controls="iter-2">Abschlussbericht</button>
 </nav>
 
         <!-- Section TOC — auto-populated from EVERY top-level <section id="..."
