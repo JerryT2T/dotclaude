@@ -137,6 +137,7 @@ pin → `stable`. A missing `features.json` means nothing is registered.
 | Name | minChannel | Since | Status |
 |---|---|---|---|
 | `batch` | alpha | 0.304.0 | Message Batches API for unattended read-only jobs on the API credit |
+| `token-log` | alpha | unreleased | Local log of the characters each hook hands the model and the API usage per turn (`~/.claude/devops-token-log.jsonl`, 0 model tokens); the plugin audit reads and prunes it |
 | `frustrated-mode` | alpha | unreleased | Detects a stuck session, offers a read-only analysis and a plan, hands off only after approval (opt-out `frustratedMode.suggest`, never ships) |
 
 Keep this table in sync with `features.json`.

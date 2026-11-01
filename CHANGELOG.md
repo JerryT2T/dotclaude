@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.337.0] — 2026-11-01
+
+### Added
+- **Token log (alpha)**: the plugin counts locally, without spending model tokens, how many characters each hook hands the model and the API usage of every turn, in `~/.claude/devops-token-log.jsonl`.
+
 ## [0.336.3] — 2026-11-01
 
 ### Changed
