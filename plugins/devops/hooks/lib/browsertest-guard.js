@@ -818,7 +818,7 @@ function domReason() {
     'Per deep-knowledge/test-autonomy.md (DOM surface → Light = browser snapshot)',
     'this is mandatory for web tech. Do this FIRST, before the completion card:',
     '',
-    '1. Make the changed view reachable: dev server (npm run dev) or a file:// URL in Edge.',
+    '1. Make the changed view reachable: dev server (npm run dev) or a file:// URL in the pane.',
     '2. Verify via the built-in browser pane (mcp__Claude_Browser__*) for the localhost /',
     '   file:// app; Claude-in-Chrome (Edge) only for logged-in external sites; Playwright',
     '   last. Never plain Chrome, never computer-use for browser work (see browser-tool-strategy.md).',
