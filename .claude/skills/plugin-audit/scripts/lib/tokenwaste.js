@@ -308,7 +308,10 @@ function summarizeTokenLog(text, { top = 8 } = {}) {
     let r; try { r = JSON.parse(line); } catch { continue; }
     if (!r || typeof r !== 'object') continue;
     lines++;
-    if (typeof r.ts === 'string') { firstTs = firstTs || r.ts; lastTs = r.ts; }
+    if (typeof r.ts === 'string') {
+      if (!firstTs || r.ts < firstTs) firstTs = r.ts;
+      if (!lastTs || r.ts > lastTs) lastTs = r.ts;
+    }
     events[r.event] = (events[r.event] || 0) + (r.ctx || 0);
     for (const [h, n] of Object.entries(r.hooks || {})) {
       const k = `${r.event}:${h}`;
@@ -349,26 +352,34 @@ function tokenLog({ logFile }) {
  * Drop every token-log line stamped at or before `untilTs` — the lines the
  * audit summarised. Newer lines (written while the audit ran) stay; a line
  * without a readable timestamp is dropped. Never throws.
+ *
+ * Hooks append to the log at any moment, so the file is never rewritten in
+ * place: it is renamed aside first (the next hook append starts a new file),
+ * filtered, and the kept lines are appended back the same way a hook writes.
+ * Order may change; summarizeTokenLog uses the min/max timestamp, not the
+ * line order. A failed rename (file busy) prunes nothing.
  * @returns {{kept:number, dropped:number}|null}
  */
 function pruneTokenLog(logFile, untilTs) {
   if (!logFile || !untilTs) return null;
+  const aside = `${logFile}.pruning-${process.pid}`;
+  try { fs.renameSync(logFile, aside); } catch { return null; }
   try {
-    const raw = fs.readFileSync(logFile);
-    const text = raw.toString('utf8');
     const keep = []; let dropped = 0;
-    for (const line of text.split('\n')) {
+    for (const line of fs.readFileSync(aside, 'utf8').split('\n')) {
       if (!line.trim()) continue;
       let ts = null;
       try { ts = JSON.parse(line).ts; } catch { /* broken line: dropped */ }
       if (typeof ts === 'string' && ts > untilTs) keep.push(line); else dropped++;
     }
-    // A hook may append while this runs: carry over what arrived since the read.
-    let since = '';
-    try { since = fs.readFileSync(logFile).subarray(raw.length).toString('utf8'); } catch { /* gone: nothing to carry */ }
-    fs.writeFileSync(logFile, (keep.length ? `${keep.join('\n')}\n` : '') + since);
+    if (keep.length) fs.appendFileSync(logFile, `${keep.join('\n')}\n`);
+    fs.rmSync(aside, { force: true });
     return { kept: keep.length, dropped };
-  } catch { return null; }
+  } catch {
+    // Put the aside file back rather than lose it.
+    try { fs.appendFileSync(logFile, fs.readFileSync(aside)); fs.rmSync(aside, { force: true }); } catch { /* left aside */ }
+    return null;
+  }
 }
 
 /**

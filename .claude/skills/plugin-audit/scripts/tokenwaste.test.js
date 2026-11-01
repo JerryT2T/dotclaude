@@ -139,6 +139,13 @@ describe('token log (#1002): summary and prune', () => {
     expect(TW.pruneTokenLog(file, '2026-11-01T10:02:00.000Z')).toEqual({ kept: 1, dropped: 4 });
     expect(fs.readFileSync(file, 'utf8')).toContain('10:05:00');
     expect(TW.pruneTokenLog(path.join(TMP, 'missing.jsonl'), 'x')).toBeNull();
+    expect(fs.readdirSync(TMP).some((f) => f.includes('.pruning-'))).toBe(false);
+  });
+
+  it('min/max timestamps do not depend on line order (a prune may reorder)', () => {
+    const s = TW.summarizeTokenLog([lines[3], lines[0]].join('\n'));
+    expect(s.firstTs).toBe('2026-11-01T10:00:00.000Z');
+    expect(s.lastTs).toBe('2026-11-01T10:02:00.000Z');
   });
 
   it('audit --record prunes the log up to the newest timestamp the run read', async () => {
