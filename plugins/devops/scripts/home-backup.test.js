@@ -148,6 +148,8 @@ describe('run', () => {
 
   it('retention: the newest state plus versions from keepDays different days, older ones cut everywhere', () => {
     prepareHome();
+    config.setValue('homeBackup.keepDays', 4, 'global', home, { home });
+    config.setValue('homeBackup.keepWeeks', 0, 'global', home, { home });
     for (const d of [10, 11, 12, 13, 14, 15]) {
       write('CLAUDE.md', `day ${d}\n`);
       expect(hb.runBackup(opts({ now: day(d) })).status).toBe('pushed');
@@ -180,11 +182,12 @@ describe('run', () => {
 
   it('blocks on a secret: nothing committed, remote untouched, report without value, notified', () => {
     prepareHome();
-    write('CLAUDE.md', 'clean\n');
+    sh('git', ['add', '-A'], claude);
+    sh('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-q', '-m', 'base'], claude);
     write('agents/leak.md', `line one\nmy token ${FAKE_TOKEN}\n`);
     const res = hb.runBackup(opts());
     expect(res).toMatchObject({ code: 1, status: 'blocked' });
-    expect(sh('git', ['rev-parse', '--verify', '-q', 'HEAD'], claude).status).not.toBe(0);
+    expect(sh('git', ['rev-list', '--count', 'HEAD'], claude).stdout.trim()).toBe('1');
     expect(sh('git', ['diff', '--cached', '--name-only'], claude).stdout.trim()).toBe('');
     expect(remoteFiles()).toEqual([]);
 
@@ -209,6 +212,7 @@ describe('run', () => {
     fs.rmSync(path.join(claude, 'agents/leak2.md'));
 
     fs.rmSync(path.join(claude, 'agents/leak.md'));
+    write('CLAUDE.md', 'clean\n');
     expect(hb.runBackup(opts()).status).toBe('pushed');
     expect(fs.existsSync(path.join(claude, hb.REPORT_JSON))).toBe(false);
     expect(remoteFiles()).toContain('CLAUDE.md');
@@ -216,6 +220,8 @@ describe('run', () => {
 
   it('blocks on private data and on unscannable binaries', () => {
     prepareHome();
+    sh('git', ['add', '-A'], claude);
+    sh('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-q', '-m', 'base'], claude);
     write('agents/mail.md', 'contact jane.doe@example.org\n');
     write('commands/blob.bin', Buffer.from([0, 1, 2, 3]));
     const res = hb.runBackup(opts());
@@ -314,6 +320,8 @@ describe('targets', () => {
   it('folder: one dated full copy per day, the newest replaces that day, older days deleted', () => {
     const dest = path.join(tmp, 'nas', 'claude');
     useTarget('folder', dest);
+    config.setValue('homeBackup.keepDays', 4, 'global', home, { home });
+    config.setValue('homeBackup.keepWeeks', 0, 'global', home, { home });
     write('agents/a.md', 'a\n');
     for (const d of [10, 11, 12, 13, 14]) {
       write('CLAUDE.md', `day ${d}\n`);
@@ -321,7 +329,7 @@ describe('targets', () => {
     }
     write('CLAUDE.md', 'day 14 late\n');
     hb.runBackup(opts({ now: day(14, 20) }));
-    expect(fs.readdirSync(dest).sort()).toEqual(['2026-10-11', '2026-10-12', '2026-10-13', '2026-10-14']);
+    expect(fs.readdirSync(dest).sort()).toEqual(['.claude-home-backup', '2026-10-11', '2026-10-12', '2026-10-13', '2026-10-14']);
     expect(fs.readFileSync(path.join(dest, '2026-10-14', 'CLAUDE.md'), 'utf8')).toBe('day 14 late\n');
     expect(fs.readFileSync(path.join(dest, '2026-10-11', 'agents', 'a.md'), 'utf8')).toBe('a\n');
     expect(fs.existsSync(path.join(dest, '2026-10-14', '.git'))).toBe(false);
@@ -354,7 +362,7 @@ describe('targets', () => {
     };
     expect(hb.runBackup(opts({ run })).status).toBe('delivered');
     expect(calls).toHaveLength(1);
-    expect(calls[0].env).toMatchObject({ HOME_BACKUP_DAY: '2026-10-19', HOME_BACKUP_KEEP_DAYS: '4' });
+    expect(calls[0].env).toMatchObject({ HOME_BACKUP_DAY: '2026-10-19', HOME_BACKUP_KEEP_DAYS: '14', HOME_BACKUP_KEEP_WEEKS: '4' });
     expect(fs.readFileSync(out, 'utf8')).toBe('rules\n');
     expect(fs.existsSync(calls[0].env.HOME_BACKUP_DIR)).toBe(false);
     hb.runBackup(opts({ run }));
@@ -371,6 +379,8 @@ describe('targets', () => {
 
   it('rclone: syncs the day folder and purges days beyond keepDays', () => {
     useTarget('rclone', 'gdrive:claude-home-backup');
+    config.setValue('homeBackup.keepDays', 4, 'global', home, { home });
+    config.setValue('homeBackup.keepWeeks', 0, 'global', home, { home });
     write('CLAUDE.md', 'rules\n');
     const calls = [];
     const run = (cmd, args, o = {}) => {
@@ -410,7 +420,13 @@ describe('targets', () => {
     expect(config.load(home, { home }).values.homeBackup).toMatchObject({ enabled: true, target: 'folder', path: dest });
     expect(sh('git', ['remote'], claude).stdout.trim()).toBe('');
     expect(fs.existsSync(path.join(dest, '2026-10-19', 'CLAUDE.md'))).toBe(true);
+    expect(fs.existsSync(path.join(dest, hb.FOLDER_MARKER))).toBe(true);
     expect(hb.setup(opts({ run, platform: 'linux', target: 'folder', path: path.join(claude, 'x') })).code).toBe(1);
+    const foreign = path.join(tmp, 'photos');
+    fs.mkdirSync(path.join(foreign, '2026-01-01'), { recursive: true });
+    fs.writeFileSync(path.join(foreign, 'notes.txt'), 'x');
+    expect(hb.setup(opts({ run, platform: 'linux', target: 'folder', path: foreign })).code).toBe(1);
+    expect(fs.existsSync(path.join(foreign, hb.FOLDER_MARKER))).toBe(false);
   });
 
   it('parses setup flags', () => {
@@ -479,7 +495,7 @@ describe('setup, disable, status', () => {
     expect(fs.readFileSync(path.join(claude, '.gitignore'), 'utf8')).toBe(hb.renderGitignore());
     expect(sh('git', ['remote', 'get-url', 'origin'], claude).stdout.trim()).toBe('https://github.com/octo/claude-home.git');
     const cfg = config.load(home, { home }).values.homeBackup;
-    expect(cfg).toMatchObject({ enabled: true, repo: 'octo/claude-home', target: 'github', keepDays: 4 });
+    expect(cfg).toMatchObject({ enabled: true, repo: 'octo/claude-home', target: 'github', keepDays: 14 });
     expect(cron).toContain('# devops:home-backup');
     expect(cron).toContain('30 12 * * *');
     expect(cron).toContain('home-backup.js');
@@ -529,5 +545,230 @@ describe('setup, disable, status', () => {
     expect(fs.existsSync(path.join(claude, '.git'))).toBe(true);
     expect(hb.status(setupOpts()).lines).toEqual(expect.arrayContaining(['enabled: false', 'job registered: false']));
     expect(hb.runBackup(setupOpts()).status).toBe('disabled');
+  });
+});
+
+describe('retention: weekly anchors, prune after delivery, marker guard', () => {
+  const setKeep = (days, weeks) => {
+    config.setValue('homeBackup.keepDays', days, 'global', home, { home });
+    config.setValue('homeBackup.keepWeeks', weeks, 'global', home, { home });
+  };
+  const folderTarget = (dest) => {
+    prepareHome();
+    sh('git', ['remote', 'remove', 'origin'], claude);
+    config.setValue('homeBackup.target', 'folder', 'global', home, { home });
+    config.setValue('homeBackup.path', dest, 'global', home, { home });
+  };
+  const runFailing = (match) => (cmd, args, o = {}) => (match(cmd, args)
+    ? { status: 1, stdout: '', stderr: 'boom' }
+    : hb.defaultRun(cmd, args, o));
+  const chainLen = () => Number(sh('git', ['rev-list', '--count', 'HEAD'], claude).stdout.trim());
+  const reportOf = () => JSON.parse(fs.readFileSync(path.join(claude, hb.REPORT_JSON), 'utf8'));
+
+  it('github: keeps the first state of each recent ISO week next to the daily window', () => {
+    prepareHome();
+    setKeep(2, 4);
+    for (const d of [5, 6, 7, 12, 13, 14]) {
+      write('CLAUDE.md', 'day ' + d + '\n');
+      expect(hb.runBackup(opts({ now: day(d) })).status).toBe('pushed');
+    }
+    const days = (lines) => lines.map((c) => c.split('|').pop().slice(16, 18));
+    expect(days(remoteCommits())).toEqual(['14', '13', '12', '05']);
+    expect(chainLen()).toBe(4);
+  });
+
+  it('github: a failed push prunes nothing; the next good run delivers, then prunes', () => {
+    prepareHome();
+    setKeep(2, 0);
+    for (const d of [10, 11]) {
+      write('CLAUDE.md', 'day ' + d + '\n');
+      hb.runBackup(opts({ now: day(d) }));
+    }
+    write('CLAUDE.md', 'day 12\n');
+    const bad = runFailing((cmd, args) => cmd === 'git' && args[0] === 'push');
+    expect(hb.runBackup(opts({ now: day(12), run: bad }))).toMatchObject({ code: 1, status: 'error' });
+    expect(chainLen()).toBe(3);
+    expect(hb.runBackup(opts({ now: day(12) })).status).toBe('unchanged');
+    expect(chainLen()).toBe(2);
+    expect(remoteCommits()).toHaveLength(2);
+  });
+
+  it('github: a failing second (pruning) push is only a warning and retried next run', () => {
+    prepareHome();
+    setKeep(2, 0);
+    let pushes = 0;
+    const flaky = (cmd, args, o = {}) => {
+      if (cmd === 'git' && args[0] === 'push' && ++pushes === 4) return { status: 1, stdout: '', stderr: 'lease' };
+      return hb.defaultRun(cmd, args, o);
+    };
+    for (const d of [10, 11, 12]) {
+      write('CLAUDE.md', 'day ' + d + '\n');
+      hb.runBackup(opts({ now: day(d), run: flaky }));
+    }
+    expect(pushes).toBe(4);
+    expect(reportOf()).toMatchObject({ kind: 'warning' });
+    expect(remoteCommits()).toHaveLength(3);
+    expect(hb.runBackup(opts({ now: day(12), run: flaky })).status).toBe('unchanged');
+    expect(remoteCommits()).toHaveLength(2);
+    expect(fs.existsSync(path.join(claude, hb.REPORT_JSON))).toBe(false);
+  });
+
+  it('folder: a failed delivery deletes no old day folder', () => {
+    const dest = path.join(tmp, 'nas');
+    folderTarget(dest);
+    setKeep(2, 0);
+    for (const d of [10, 11]) {
+      write('CLAUDE.md', 'day ' + d + '\n');
+      hb.runBackup(opts({ now: day(d) }));
+    }
+    write('CLAUDE.md', 'day 12\n');
+    const bad = runFailing((cmd, args) => cmd === 'git' && args[0] === 'ls-tree');
+    expect(hb.runBackup(opts({ now: day(12), run: bad })).code).toBe(1);
+    expect(fs.readdirSync(dest).filter((n) => n.startsWith('2026')).sort()).toEqual(['2026-10-10', '2026-10-11']);
+    expect(hb.runBackup(opts({ now: day(12) })).status).toBe('unchanged');
+    expect(fs.readdirSync(dest).filter((n) => n.startsWith('2026')).sort()).toEqual(['2026-10-11', '2026-10-12']);
+  });
+
+  it('folder: weekly anchors survive the daily window', () => {
+    const dest = path.join(tmp, 'nas');
+    folderTarget(dest);
+    setKeep(2, 4);
+    for (const d of [5, 6, 7, 12, 13, 14]) {
+      write('CLAUDE.md', 'day ' + d + '\n');
+      hb.runBackup(opts({ now: day(d) }));
+    }
+    expect(fs.readdirSync(dest).filter((n) => n.startsWith('2026')).sort())
+      .toEqual(['2026-10-05', '2026-10-12', '2026-10-13', '2026-10-14']);
+  });
+
+  it('folder: without the marker in a non-empty folder nothing is deleted, the run warns but delivers', () => {
+    const dest = path.join(tmp, 'foreign');
+    folderTarget(dest);
+    setKeep(1, 0);
+    for (const d of ['2026-01-01', '2026-01-02', '2026-01-03']) fs.mkdirSync(path.join(dest, d), { recursive: true });
+    write('CLAUDE.md', 'x\n');
+    expect(hb.runBackup(opts()).status).toBe('delivered');
+    expect(fs.readdirSync(dest).sort()).toEqual(['2026-01-01', '2026-01-02', '2026-01-03', '2026-10-19']);
+    expect(fs.existsSync(path.join(dest, hb.FOLDER_MARKER))).toBe(false);
+    expect(reportOf()).toMatchObject({ kind: 'warning' });
+    expect(reportOf().message).toContain(hb.FOLDER_MARKER);
+    expect(fs.readFileSync(path.join(claude, hb.LOG_FILE), 'utf8')).toContain(hb.FOLDER_MARKER);
+  });
+
+  it('folder: an existing day folder in an unclaimed folder is never replaced', () => {
+    const dest = path.join(tmp, 'foreign-today');
+    folderTarget(dest);
+    fs.mkdirSync(path.join(dest, '2026-10-19'), { recursive: true });
+    fs.writeFileSync(path.join(dest, '2026-10-19', 'mine.txt'), 'keep');
+    write('CLAUDE.md', 'x\n');
+    expect(hb.runBackup(opts()).status).not.toBe('delivered');
+    expect(fs.readdirSync(path.join(dest, '2026-10-19'))).toEqual(['mine.txt']);
+    expect(fs.readdirSync(dest).filter((n) => n.startsWith('.tmp-'))).toEqual([]);
+  });
+
+  it('folder: an empty folder is claimed with the marker on first delivery', () => {
+    const dest = path.join(tmp, 'empty');
+    fs.mkdirSync(dest, { recursive: true });
+    folderTarget(dest);
+    write('CLAUDE.md', 'x\n');
+    hb.runBackup(opts());
+    expect(fs.existsSync(path.join(dest, hb.FOLDER_MARKER))).toBe(true);
+  });
+
+  it('rclone: weekly anchors are not purged; a failing purge is a warning, the run still delivered', () => {
+    prepareHome();
+    sh('git', ['remote', 'remove', 'origin'], claude);
+    config.setValue('homeBackup.target', 'rclone', 'global', home, { home });
+    config.setValue('homeBackup.remote', 'gd:b', 'global', home, { home });
+    setKeep(2, 4);
+    write('CLAUDE.md', 'x\n');
+    const purged = [];
+    const run = (cmd, args, o = {}) => {
+      if (cmd !== 'rclone') return hb.defaultRun(cmd, args, o);
+      if (args[0] === 'lsf') return { status: 0, stdout: '2026-10-19/\n2026-10-15/\n2026-10-12/\n2026-10-10/\n2026-10-05/\n2026-10-01/\n', stderr: '' };
+      if (args[0] === 'purge') { purged.push(args[1]); return { status: 1, stdout: '', stderr: 'denied' }; }
+      return { status: 0, stdout: '', stderr: '' };
+    };
+    const res = hb.runBackup(opts({ run }));
+    expect(res).toMatchObject({ code: 0, status: 'delivered' });
+    expect(purged).toEqual(['gd:b/2026-10-10']);
+    expect(reportOf()).toMatchObject({ kind: 'warning' });
+    expect(reportOf().message).toContain('purge 2026-10-10');
+  });
+
+  it('lock: stale after 40 minutes, not before', () => {
+    expect(hb.LOCK_STALE_MS).toBe(40 * 60_000);
+    prepareHome();
+    write('CLAUDE.md', 'x\n');
+    const lock = path.join(claude, 'home-backup.lock');
+    const age = (min) => {
+      fs.writeFileSync(lock, '1');
+      const at = new Date(Date.now() - min * 60_000);
+      fs.utimesSync(lock, at, at);
+    };
+    age(30);
+    expect(hb.runBackup(opts()).status).toBe('busy');
+    age(50);
+    expect(hb.runBackup(opts()).status).toBe('pushed');
+  });
+});
+
+describe('partial runs and reminders', () => {
+  const leak = () => write('agents/leak.md', 'line one\nmy token ' + FAKE_TOKEN + '\n');
+  const reportOf = () => JSON.parse(fs.readFileSync(path.join(claude, hb.REPORT_JSON), 'utf8'));
+
+  it('a hit excludes only that file; the rest is committed and delivered, the report has no value', () => {
+    prepareHome();
+    write('CLAUDE.md', 'clean\n');
+    leak();
+    const res = hb.runBackup(opts());
+    expect(res).toMatchObject({ code: 0, status: 'partial' });
+    expect(remoteFiles()).toContain('CLAUDE.md');
+    expect(remoteFiles()).not.toContain('agents/leak.md');
+    expect(reportOf()).toMatchObject({ kind: 'partial', hits: [{ file: 'agents/leak.md', line: 2, rule: 'github-token' }] });
+    const everything = [
+      JSON.stringify(res), JSON.stringify(reportOf()), fs.readFileSync(path.join(claude, hb.REPORT_TXT), 'utf8'),
+      fs.readFileSync(path.join(claude, hb.LOG_FILE), 'utf8'), JSON.stringify(notify.mock.calls),
+    ].join('\n');
+    expect(everything).not.toContain('ghp_');
+    expect(notify).toHaveBeenCalledTimes(1);
+    expect(sh('git', ['diff', '--cached', '--name-only'], claude).stdout.trim()).toBe('');
+  });
+
+  it('every staged file with a hit stays blocked, as before', () => {
+    prepareHome();
+    sh('git', ['add', '-A'], claude);
+    sh('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-q', '-m', 'base'], claude);
+    leak();
+    expect(hb.runBackup(opts())).toMatchObject({ code: 1, status: 'blocked' });
+    expect(remoteFiles()).toEqual([]);
+  });
+
+  it('reminds every 3 days while the last clean backup is 3+ days old, not more often', () => {
+    prepareHome();
+    write('CLAUDE.md', 'clean\n');
+    hb.runBackup(opts({ now: day(19, 13) }));
+    leak();
+    const at = (d) => hb.runBackup(opts({ now: day(d, 13) })).status;
+    expect(at(20)).toBe('blocked');
+    expect(notify).toHaveBeenCalledTimes(1); // first sight of the findings
+    at(21);
+    expect(notify).toHaveBeenCalledTimes(1); // same findings, success 2 days old
+    at(22);
+    expect(notify).toHaveBeenCalledTimes(1); // success 3 days old, but the last toast was 2 days ago
+    at(23);
+    expect(notify).toHaveBeenCalledTimes(2); // 3 days since the toast, success 4 days old → reminder
+    at(24);
+    expect(notify).toHaveBeenCalledTimes(2); // at most once per 3 days
+    at(26);
+    expect(notify).toHaveBeenCalledTimes(3);
+  });
+
+  it('a clean run records lastSuccessAt in the state', () => {
+    prepareHome();
+    write('CLAUDE.md', 'clean\n');
+    hb.runBackup(opts());
+    const st = JSON.parse(fs.readFileSync(path.join(claude, hb.STATE_FILE), 'utf8'));
+    expect(st.lastSuccessAt).toBe('2026-10-19T12:30:00.000Z');
   });
 });

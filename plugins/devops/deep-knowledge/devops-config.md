@@ -154,13 +154,14 @@ the committed ship extension (`deployParity:` block in the project's
 | `repo` | `''` | The private backup repo, `<owner>/<name>`. |
 | `target` | `github` | `github` · `folder` (local, NAS, Google Drive for Desktop) · `rclone` · `command`. |
 | `path` / `remote` / `command` | `''` | Destination of the `folder` / `rclone` / `command` target. |
-| `keepDays` | `4` | Newest state plus older versions, one per day, from this many days; older ones are deleted. |
+| `keepDays` | `14` | Newest state plus older versions, one per day, from this many days; older ones are deleted — only after a successful delivery. |
+| `keepWeeks` | `4` | Weekly anchors: the first state of each of the last N ISO weeks is kept on top of `keepDays`. `0` = off. |
 | `onRoutineChange` | `ask` | Recurring routine created/changed: `ask` once per session, `auto` back up silently, `off` daily run only. |
 
 Never set `enabled`, `target` or the destinations with `set`: "richte
 Home-Backup ein" → `scripts/home-backup.js setup …` (creates/checks the target,
 registers the job, writes the keys); "Home-Backup aus" → `home-backup.js
-disable`. `keepDays` and `onRoutineChange` may be set directly ("Routinen immer
+disable`. `keepDays`, `keepWeeks` and `onRoutineChange` may be set directly ("Routinen immer
 automatisch sichern" → `set homeBackup.onRoutineChange auto --global`).
 Runbook: `deep-knowledge/home-backup.md`.
 

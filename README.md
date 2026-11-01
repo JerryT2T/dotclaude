@@ -1,6 +1,6 @@
 # dotclaude
 
-**Version: 0.340.1**
+**Version: 0.341.0**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
 
@@ -26,7 +26,7 @@ keep git clean, block risky moves and stop context waste.
 - **Runs while you are away** — `/do-run` works off a backlog, a task or the leftover weekly budget, and ships each item
 - **Per-project tuning** — extend any skill with a `reference.md`, no fork
 
-<!--devops:count:hooks-->103<!--/devops:count:hooks--> hooks ·
+<!--devops:count:hooks-->104<!--/devops:count:hooks--> hooks ·
 <!--devops:count:skills-->15<!--/devops:count:skills--> skills ·
 <!--devops:count:agents-->12<!--/devops:count:agents--> agents ·
 ~0.7M tokens/week overhead (1–4 % of a Max plan), paid back 1.5–6× by the
@@ -317,7 +317,7 @@ All off by default. Turn each on by saying the phrase in a session.
 |---|---|---|---|
 | [Codex review](#codex) | Second-AI code review before each ship | install [codex-plugin-cc](https://github.com/openai/codex-plugin-cc) | on the OpenAI side |
 | [API credits](#claude-api-credits) | Read-only side work runs on your plan's monthly API credit first | "nutze mein API-Guthaben" | moves work off the plan |
-| [Home backup](#claude-home-backup) | Daily backup of `~/.claude` and your routines to a private GitHub repo, Google Drive, a NAS or your own command — secret-scanned, newest + 3 daily versions | "richte Home-Backup ein" | 0 after setup |
+| [Home backup](#claude-home-backup) | Daily backup of `~/.claude` and your routines to a private GitHub repo, Google Drive, a NAS or your own command — secret-scanned, 14 change days + 4 weekly anchors | "richte Home-Backup ein" | 0 after setup |
 | [WIP watch](#wip-watch) | Weekly scan for un-landed branches, stashes, broken worktrees | "WIP-Wächter an" | 0 |
 
 <a name="codex"></a>
@@ -374,11 +374,11 @@ a plain node script, no Claude call — to one target: a **private** GitHub repo
 (default `<you>/claude-home`), a folder (local disk, NAS share, Google Drive for
 Desktop), an `rclone` remote (Google Drive, OneDrive, S3 …) or your own command.
 
-- **Versions:** the newest state plus one version per day from the three previous days with changes; older ones are deleted automatically.
+- **Versions:** the last 14 days with changes plus the first state of each of the last 4 weeks; older ones are deleted only after a successful delivery, and in a folder target only inside folders carrying the `.claude-home-backup` marker.
 - **Routines:** creating or changing a recurring routine (Desktop scheduled task or cloud routine) offers a backup right away — or runs it silently with `homeBackup.onRoutineChange auto`.
 
 - **Never included:** `.credentials.json`, `*token*` / `*secret*` / `*credential*` / `.env` files, transcripts, caches, `plugins/`, browser profiles, logs.
-- **Before every commit** each file is scanned for secrets (private keys, `sk-` / `ghp_` / `AKIA` tokens, JWTs, `password=` values) and private data (e-mail, phone, IBAN, card numbers). A hit commits nothing and leaves `~/.claude/home-backup-report.txt` (file, line, rule — never the value); allow a finding on purpose in `~/.claude/.backupallow`.
+- **Before every commit** each file is scanned for secrets (private keys, `sk-` / `ghp_` / `AKIA` tokens, JWTs, `password=` values) and private data (e-mail, phone, IBAN, card numbers). A hit holds back only that file — the rest is still backed up — and leaves `~/.claude/home-backup-report.txt` (file, line, rule — never the value); allow a finding on purpose in `~/.claude/.backupallow`. While no run fully succeeds, the reminder repeats every 3 days and the session start shows a hint.
 - **On:** "richte Home-Backup ein" · **off:** "Home-Backup aus" (the backup stays).
 - **Restore:** install Claude Code, move the fresh `~/.claude` aside, `git clone https://github.com/<you>/claude-home ~/.claude` (or copy a dated folder back), `claude plugin update`, then `/login`.
 
@@ -523,7 +523,7 @@ A different stack: extend the skills per project — see [Customize](#customize)
 </details>
 
 <details>
-<summary><strong>Hooks</strong> — <!--devops:count:hooks-->103<!--/devops:count:hooks--> hooks by lifecycle and by category</summary>
+<summary><strong>Hooks</strong> — <!--devops:count:hooks-->104<!--/devops:count:hooks--> hooks by lifecycle and by category</summary>
 
 ```
 SessionStart  ──>  UserPromptSubmit  ──>  PreToolUse  ──>  PostToolUse  ──>  Stop
@@ -551,6 +551,7 @@ SessionStart  ──>  UserPromptSubmit  ──>  PreToolUse  ──>  PostToolU
 - `ss.git.check` — Check for stale changes AND workspace setup issues at session start.
 - `ss.git.sync` — Starts ONE detached background git sync for this worktree.
 - `ss.orphan.nudge` — One-line nudge when the current repo has unlanded work, worktrees with uncommitted ch…
+- `ss.backup.stale` — One context line when the opt-in Home-Backup is on and its last successful backup is…
 - `ss.ship.verify` — Surface results from the post-merge watcher (post-ship CI + optional deploy verify).
 - `ss.ship.resume` — Keep a running /do-ship stable across a compaction or a resume.
 - `ss.run.task` — Keep a running do-run's task verbatim across a compaction or a resume.
@@ -780,6 +781,7 @@ SessionStart  ──>  UserPromptSubmit  ──>  PreToolUse  ──>  PostToolU
 #### other
 
 - `ss.setup.firstrun` *(SessionStart)*
+- `ss.backup.stale` *(SessionStart)*
 - `ss.ci.workflows.sweep` *(SessionStart)*
 - `pre.test.fullguard` *(PreToolUse)*
 - `pre.redirect.scope` *(PreToolUse)*
@@ -821,7 +823,7 @@ plugins/
 │   ├── .claude-plugin/plugin.json ← Plugin manifest (SemVer, tags v0.x.y)
 │   ├── .mcp.json                  ← MCP servers: completion card, ship, issues
 │   ├── CONVENTIONS.md             ← Naming, versioning, extension rules
-│   ├── hooks/                     ← <!--devops:count:hooks-->103<!--/devops:count:hooks--> hooks (JS) registered in hooks/dispatch/manifest.json
+│   ├── hooks/                     ← <!--devops:count:hooks-->104<!--/devops:count:hooks--> hooks (JS) registered in hooks/dispatch/manifest.json
 │   ├── skills/                    ← <!--devops:count:skills-->15<!--/devops:count:skills--> skill definitions (SKILL.md)
 │   ├── agents/                    ← <!--devops:count:agents-->12<!--/devops:count:agents--> agent definitions
 │   ├── mcp-server/                ← Card renderer + Desktop widget, ship tools, issue matching
