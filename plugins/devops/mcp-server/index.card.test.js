@@ -968,6 +968,24 @@ describe("render_completion_card — § 3 per-variant table (de + en)", () => {
     }
   });
 
+  // A demo page built for the user to try landed on the fallback card
+  // ("🖥️ System") with its URL only in prose. It is a test card now, and the
+  // page is the linked context line — like the concept page link.
+  test("preview: the page to try is the card's context line; a non-http value is ignored", async () => {
+    const text = await cardText({
+      variant: "test", summary: "Demo-Seite gebaut", lang: "de", session_id: "test-preview",
+      preview: "http://127.0.0.1:8721/analyse-demo.html", userTest: ["Notiz im Briefing senden"],
+      changes: [{ area: "Demo", description: "Analyse-Demo gebaut" }],
+    });
+    expect(text).toContain("› http://127.0.0.1:8721/analyse-demo.html");
+    expect(text).not.toMatch(/System/);
+    const bad = await cardText({
+      variant: "test", summary: "Demo", lang: "de", session_id: "test-preview-bad",
+      preview: "javascript:alert(1)", changes: [{ area: "Demo", description: "x" }],
+    });
+    expect(bad).not.toContain("javascript:");
+  });
+
   // #583: a session stalled on a restart, a reboot or a limit reset said
   // "pick it up whenever you like". The reason now names what unblocks it.
   test("paused with a reason: heading and resume line name what unblocks the work", async () => {

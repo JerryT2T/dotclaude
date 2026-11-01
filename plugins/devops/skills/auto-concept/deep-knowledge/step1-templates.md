@@ -393,17 +393,19 @@ with the button centred. Two sentences at most, no "was wir gemessen haben"
 sub-header, no level numbers. A Full without what / why / potential fails the
 gate (A1). **Topic page:** "Thema n von N", title, a ring with the topic's
 share of the potential, its questions as a numbered list, a button — no
-"roter Faden" block. **Closing:** headline result, every question with a dwell
-bar and a "Nachschärfen" toggle (preset from the hesitation signal), "Jetzt
-umsetzen" / "Nächste Runde".
+"roter Faden" block. **Closing:** a devops message ("Abschluss") introduces every question with a
+dwell bar and a "Nachschärfen" toggle (preset from the hesitation signal), then
+the ☰ panel's "👉 Zur nächsten Runde" / "Jetzt umsetzen" buttons — no count, no
+deviation summary.
 
 **The chat flow (Full + Lite).** Every stage is a centred column (≈ 780 px) of
 messages: the devops avatar (∞) left, your answer right-aligned. A question
 stage is three messages that enter one after another on its first visit —
 the finding (variable height), the question (fixed height: question + one
 "Davon hängt ab" line), the answer block (rows with label + consequence, ★
-Empfohlen preselected, capped at ≈ 45 % of the viewport). Once the next
-question arrives the previous one settles (outline, smaller, dimmer). The
+Empfohlen preselected); while they enter, the chat glides down only as far
+as the newest message needs, never past the question, and a scroll of the
+user's own stops it. Only the next stage peeks in below. The
 right rail lists briefing, topics and questions (hover enlarges the label
 under the mouse), the persistent composer sits at the bottom. Author for
 that budget: the round's `.iteration-intro` is one heading + one sentence,
@@ -440,7 +442,8 @@ without the analysis open:
   above the question: what the analysis found *for this question*, with the
   number. "Today 80 % of cache hits fall within 10 min, yet entries live 24 h."
 - `data-question` — the real question.
-- `data-context` — optional, one background sentence.
+- `data-context` — optional, one sentence about answering (e.g. "Klick auf die Skizze oder die Liste"); shown as a hint at the top of the answer block.
+- The finding (`data-situation`, the L3 slots, `data-example`) is only the finding: it never refers to the answer block, its options or how to answer — that belongs in `data-context`.
 - `data-stakes` — optional, "Davon hängt ab": what changes downstream.
 
 **The finding is the first chat message.** One level only — the stage's own:

@@ -1885,11 +1885,17 @@ function pausedResumeLine(pause, lang) {
 }
 
 /** The optional `›` context line under the heading (§ 2.6). */
+function isPreviewUrl(v) {
+  return typeof v === 'string' && /^https?:\/\/\S+$/.test(v.trim());
+}
+
 function buildContextLine(input, key, delivery, lang) {
   if (input._downgraded) return '› ' + renderDowngradeNote(lang, input._downgradeReason);
   if (key === 'aborted' && input.cta && input.cta.info) return '› ' + input.cta.info;
   // Paused (#548): the one thing left to say is how to pick it up again.
   if (key === 'paused') return '› ' + pausedResumeLine(input.pause, lang);
+  // A page built for the user to try is the one place to go — linked like the concept page.
+  if (isPreviewUrl(input.preview)) return '› ' + input.preview.trim();
   // #693: the close-out happens on the page — its URL is the one place to go.
   if (key === 'ship-successful-closeout') {
     const url = conceptUrl(input.cwd, undefined);
@@ -3033,12 +3039,12 @@ server.registerTool(
       "`session_id` (from the hook context), `cwd`, `lang` (\"de\" if the user writes German, else \"en\"). `summary` max ~10 words in the user's language. " +
       "VARIANT (exactly one): ship-successful = ship pipeline ran and merged (only after /do-ship + merge); " +
       "ship-blocked = ship ran, NOT merged; released = a channel promotion ran (also right after a ship in the same run: ONE released card, never ship-successful first); " +
-      "aborted = aborted/infeasible/rate-limited; test = code edits and an app/service startable; " +
+      "aborted = aborted/infeasible/rate-limited; test = code edits and an app/service startable — also a demo / example / preview page Claude built for the user to try (pass `preview` with its URL, userTest = what to try); " +
       "test-minimal = user started the app via prompt, no edits yet; ready = code/doc changes (>=1 edit), no app — also when implementation was handed to agents still running (+ pending); " +
       "finished unshipped commits in a linked side session = ready + open {text, reply: \"ship\"}, never analysis; " +
       "analysis = nothing changed ANYWHERE (answer/investigation only; never for work outside the repo, delegated work or a mode activation); " +
       "paused = the user pauses to continue later OR the next step is a Claude Code restart / reboot / usage-limit reset (pass pause:{reason:\"restart\"|\"reboot\"|\"usage-reset\"}); " +
-      "fallback = work outside the repo with no repo diff (DB op, deploy, data migration, settings change) or unsure. A mode activation (batch, concept) uses its override, never analysis. " +
+      "fallback = work outside the repo with no repo diff (DB op, deploy, data migration, settings change) or unsure — never for a page the user should open and try (that is test + `preview`). A mode activation (batch, concept) uses its override, never analysis. " +
       "VALIDATION (V&V gate): for any code change populate `validation` (requirement -> how met, how confirmed); a code-change card without it is blocked once. " +
       "PENDING: background agents/workflows/tasks you started that still run -> `pending` [{ name, kind: agent|task|workflow, doing }] (replaces the CTA with the 'not finished yet' line; list only work really running; an ended or foreign task -> `pendingDismissed: \"<why>\"`). " +
       "CONCEPT (outranks pending): while an /auto-concept page is open pass `concept: { phase: \"waiting\"|\"iterating\"|\"implementing\" }`; bridge server, pulser and waker are infrastructure, never `pending`. " +
@@ -3148,6 +3154,7 @@ server.registerTool(
           }),
         ]).optional(),
       ).describe("A /auto-concept page is OPEN at turn end. Replaces every variant's CTA and outranks `pending`. Real background work still goes into `pending`; bridge server, pulser and waker are infrastructure - NEVER in `pending`. Pass `cwd` too."),
+      preview: z.string().optional().describe("http(s) URL of a page Claude built or served for the user to open and try (demo, example, preview). Drawn as the card's clickable context line, like the concept page link. Pair with variant `test`."),
       pause: z.preprocess(
         v => typeof v === 'string' ? tryParse(v) : v,
         z.object({

@@ -73,6 +73,13 @@ touched. **Pins are not draggable** in a document (the anchor is the block).
   const body = document.body;
   const BLOCK = 'p, li, tr';
   const NATIVE = 'a, button, input, select, textarea, label, summary, [contenteditable=""], [contenteditable="true"]';
+  // Analysis pages are a chat of headings, answer rows and engine messages:
+  // those take a note too. Ctrl suppresses the click, so an answer row
+  // (a <label>) is a block there, not a native control.
+  const ANA_BLOCK = 'p, li, tr, h2, h3, h4, label, [data-opt], .an-msg';
+  const ANA_NATIVE = 'a, button, input, select, textarea, summary, [contenteditable=""], [contenteditable="true"]';
+  const inAnalysis = n => !!(n && n.closest && n.closest('[data-analysis]'));
+  const nativeOf = n => (inAnalysis(n) ? ANA_NATIVE : NATIVE);
   const el = (tag, cls, text) => {
     const n = document.createElement(tag);
     if (cls) n.className = cls;
@@ -170,7 +177,7 @@ touched. **Pins are not draggable** in a document (the anchor is the block).
   const blocksOf = (scope, it, kind) =>
     [...scope.querySelectorAll(kind)].filter(n => eligible(n, it) && scopeOf(n, it) === scope);
   function blockOf(target, it) {
-    let b = target.closest && target.closest(BLOCK);
+    let b = target.closest && target.closest(inAnalysis(target) ? ANA_BLOCK : BLOCK);
     if (!b || !eligible(b, it)) return null;
     const row = b.closest('tr');
     if (row && b !== row && b.closest('td, th') && eligible(row, it)) b = row;
@@ -519,7 +526,7 @@ touched. **Pins are not draggable** in a document (the anchor is the block).
     if (!(e.ctrlKey || e.metaKey)) return;
     const it = usable();
     if (!it || !rootOf(it).contains(e.target)) return;
-    if (e.target.closest('.upin, .dpin-layer, ' + NATIVE)) return;
+    if (e.target.closest('.upin, .dpin-layer, ' + nativeOf(e.target))) return;
     const block = blockOf(e.target, it);
     if (!block) return;
     const r = block.getBoundingClientRect();
@@ -549,7 +556,7 @@ touched. **Pins are not draggable** in a document (the anchor is the block).
     cancelLongPress();
     if (e.pointerType === 'mouse' || !e.isPrimary) return;
     const it = usable();
-    if (!it || !rootOf(it).contains(e.target) || e.target.closest('.upin, .dpin-layer, ' + NATIVE) || !blockOf(e.target, it)) return;
+    if (!it || !rootOf(it).contains(e.target) || e.target.closest('.upin, .dpin-layer, ' + nativeOf(e.target)) || !blockOf(e.target, it)) return;
     const x = e.clientX, y = e.clientY, target = e.target;
     lp = { x, y, timer: setTimeout(() => {
       lp = null;
