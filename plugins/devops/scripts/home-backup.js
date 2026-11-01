@@ -466,6 +466,20 @@ function pruneDayDirs(dest, keepDays, keepWeeks = 0) {
   return { kept: days.filter((d) => keep.has(d)).sort().reverse(), skipped: false };
 }
 
+/** Our folder: it carries the marker, or this backup delivered there before (setups older than the marker). */
+function ownsFolder(ctx, dest) {
+  if (fs.existsSync(path.join(dest, FOLDER_MARKER))) return true;
+  const st = readState(ctx);
+  return st.target === 'folder' && st.dest === dest;
+}
+
+/** Setup may claim a folder that is ours, empty, or holds nothing but day folders (an old backup layout). */
+function claimableFolder(ctx, dest) {
+  if (!fs.existsSync(dest) || ownsFolder(ctx, dest)) return true;
+  return fs.readdirSync(dest, { withFileTypes: true })
+    .every((d) => d.name.startsWith('.') || (d.isDirectory() && DAY_RE.test(d.name)));
+}
+
 function writeMarker(dest) {
   fs.writeFileSync(path.join(dest, FOLDER_MARKER), 'Managed by the devops home-backup: dated day folders in here may be deleted by retention.\n');
 }
@@ -511,6 +525,10 @@ const DELIVER = {
     const tmp = path.join(s.path, `.tmp-${head.day}-${process.pid}`);
     fs.rmSync(tmp, { recursive: true, force: true });
     exportTree(ctx, head.sha, tmp);
+    if (fs.existsSync(final) && !fresh && !ownsFolder(ctx, s.path)) {
+      fs.rmSync(tmp, { recursive: true, force: true });
+      throw Object.assign(new Error(`${final} exists in a folder this backup did not claim — nothing replaced (re-run setup to claim it)`), { stage: 'delivery' });
+    }
     fs.rmSync(final, { recursive: true, force: true });
     fs.renameSync(tmp, final);
     if (fresh) writeMarker(s.path);
@@ -820,6 +838,7 @@ function resolveTarget(ctx, opts) {
     if (!opts.path) return { error: '--path <dir> required' };
     const dir = path.resolve(opts.path);
     if (dir === claudeDir(ctx) || dir.startsWith(claudeDir(ctx) + path.sep)) return { error: 'the backup folder must lie outside ~/.claude' };
+    if (!claimableFolder(ctx, dir)) return { error: `${dir} is not empty and holds more than day folders — pick an empty folder, the backup deletes old day folders in its target` };
     try { fs.mkdirSync(dir, { recursive: true }); writeMarker(dir); } catch (e) { return { error: `cannot create ${dir}: ${oneLine(e.message)}` }; }
     return { target, settings: { path: dir }, where: `folder ${dir}` };
   }

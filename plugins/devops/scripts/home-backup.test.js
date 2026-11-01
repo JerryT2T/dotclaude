@@ -422,6 +422,11 @@ describe('targets', () => {
     expect(fs.existsSync(path.join(dest, '2026-10-19', 'CLAUDE.md'))).toBe(true);
     expect(fs.existsSync(path.join(dest, hb.FOLDER_MARKER))).toBe(true);
     expect(hb.setup(opts({ run, platform: 'linux', target: 'folder', path: path.join(claude, 'x') })).code).toBe(1);
+    const foreign = path.join(tmp, 'photos');
+    fs.mkdirSync(path.join(foreign, '2026-01-01'), { recursive: true });
+    fs.writeFileSync(path.join(foreign, 'notes.txt'), 'x');
+    expect(hb.setup(opts({ run, platform: 'linux', target: 'folder', path: foreign })).code).toBe(1);
+    expect(fs.existsSync(path.join(foreign, hb.FOLDER_MARKER))).toBe(false);
   });
 
   it('parses setup flags', () => {
@@ -648,6 +653,17 @@ describe('retention: weekly anchors, prune after delivery, marker guard', () => 
     expect(reportOf()).toMatchObject({ kind: 'warning' });
     expect(reportOf().message).toContain(hb.FOLDER_MARKER);
     expect(fs.readFileSync(path.join(claude, hb.LOG_FILE), 'utf8')).toContain(hb.FOLDER_MARKER);
+  });
+
+  it('folder: an existing day folder in an unclaimed folder is never replaced', () => {
+    const dest = path.join(tmp, 'foreign-today');
+    folderTarget(dest);
+    fs.mkdirSync(path.join(dest, '2026-10-19'), { recursive: true });
+    fs.writeFileSync(path.join(dest, '2026-10-19', 'mine.txt'), 'keep');
+    write('CLAUDE.md', 'x\n');
+    expect(hb.runBackup(opts()).status).not.toBe('delivered');
+    expect(fs.readdirSync(path.join(dest, '2026-10-19'))).toEqual(['mine.txt']);
+    expect(fs.readdirSync(dest).filter((n) => n.startsWith('.tmp-'))).toEqual([]);
   });
 
   it('folder: an empty folder is claimed with the marker on first delivery', () => {
