@@ -7,7 +7,8 @@ description: >-
   interactive concept-page report with one include/discard card per suggestion.
   Triggers on: "plugin audit", "plugin-audit", "audit the plugin", "Plugin prüfen".
   Also started automatically in the background after a ship that crosses a
-  decade boundary (0.289.x -> 0.290.0), see .claude/skills/do-ship/reference.md.
+  decade boundary (0.289.x -> 0.290.0) or when the last audit is 30+ days
+  old, see .claude/skills/do-ship/reference.md.
 ---
 
 # plugin-audit
@@ -36,7 +37,12 @@ Bash tool's `run_in_background: true` and carry on; when it completes, continue
 with steps 2–5 right away, without asking (`--trigger ship` prints that as a
 `[plugin-audit] Next …` line) — never offer the report as an open point. It prints one summary line and
 writes `<dir>/results.json` (footprint, mining, benefit, integrity[12], hygiene[8],
-net). `--skip-tests` skips `npm test` + `npm run lint` (a full audit runs them).
+tokenWaste[8], net). The token-waste checks (`lib/tokenwaste.js`) read this
+machine's state on purpose — CLAUDE.md files in scope, MCP servers and tool
+deferral (`ENABLE_TOOL_SEARCH`, proxy base URLs), pinned model/effort and model
+switches in the newest session, PreToolUse output filters, subagent model pins,
+scheduled tasks against `promptCacheTtl`, the newest session's cache split, and
+the alpha token log `~/.claude/devops-token-log.jsonl` (#1002). `--skip-tests` skips `npm test` + `npm run lint` (a full audit runs them).
 Exit 0 unless the arguments are invalid.
 
 ## Step 2 — Claude-Code currency (one `devops:research` agent, `model: sonnet`)
@@ -69,7 +75,11 @@ Rules for the agent: every suggestion carries at least one piece of evidence tak
 from results.json (a `file:line` finding or a named metric); no claim without
 evidence; no new findings; gate catches are frequencies, never token savings; the
 `net` figure keeps its uncertainty note; group related findings into one
-suggestion; order by priority. No suggestions file → `report.js` derives rule-based
+suggestion; order by priority. **Text that exists for determinism is never
+"just deleted" to save tokens**: a rule, a numbered order or a fixed wording
+that makes the model act the same way every time is moved into code (a
+script, a hook, a check) or rewritten shorter with the same effect — the
+suggestion's `change` names where it goes. No suggestions file → `report.js` derives rule-based
 suggestions from the red/yellow checks.
 
 ## Step 4 — Report (interactive only)
@@ -81,7 +91,7 @@ node .claude/skills/plugin-audit/scripts/report.js --in <dir>
 Builds the concept source folder `<dir>/report/` (page.json via concept-build `init`,
 mode `free`, locale `de`, one round fragment `rounds/01.html`), runs concept-build
 `build` and prints the build line and the built html path. The page has the sections
-Überblick, Nutzen-Proxys, Prüfkatalog, Repo- & Ship-Hygiene and Verbesserungsvorschläge
+Überblick, Nutzen-Proxys, Prüfkatalog, Repo- & Ship-Hygiene, Token-Verschwendung and Verbesserungsvorschläge
 (one bi-state card per suggestion, include checked by default).
 
 Then open it through the devops **auto-concept** skill, Step 3 (concept bridge +
@@ -103,8 +113,9 @@ node .claude/skills/plugin-audit/scripts/audit.js --record --in <dir>
 
 Appends the run summary (footprint, cost/benefit, check tallies, suggestion count,
 `ccVersion`, sizes) to `history.json`, writes `last.json`
-(`{version, minor, decade, ranAt, trigger}`) and clears a matching
-`report-pending.json`. Run it after step 4 even when the user discarded everything —
+(`{version, minor, decade, ranAt, trigger}`), clears a matching
+`report-pending.json` and drops the token-log lines this run summarised (up to
+the newest timestamp it read; lines written since stay), so the log never fills up. Run it after step 4 even when the user discarded everything —
 the decade trigger reads `last.json`.
 
 ## Hook audit (on demand, 0 model tokens)
@@ -125,7 +136,7 @@ in the script to measure whether the model acts on a new hook instruction.
 ## Notes
 
 - `scripts/lib/trigger.js --prev X --new Y` decides the automatic run (decade boundary,
-  once per decade); a manual run ignores it.
+  once per decade, or the last audit 30+ days old); a manual run ignores it.
 - Not measurable from transcripts and reported as such: token-guard and local-llm
   savings (no hook logs one). Delegation savings use a relative price table
   (`lib/mining.js` `PRICE_RATIO`); gate catches are frequencies only.

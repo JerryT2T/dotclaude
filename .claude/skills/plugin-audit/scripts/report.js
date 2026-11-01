@@ -2,7 +2,7 @@
 'use strict';
 /**
  * @script plugin-audit/report
- * @version 0.1.0
+ * @version 0.2.0
  * @description Step 4 of the plugin audit: turns <dir>/results.json (+ the
  *   synthesis agent's suggestions.json, if present) into an INTERACTIVE
  *   concept page - the report is never a static file. Builds the concept
@@ -12,6 +12,7 @@
  *   submission is the session's job (auto-concept Step 3 / Step 5).
  *
  *   Sections: Überblick, Nutzen-Proxys, Prüfkatalog, Repo- & Ship-Hygiene,
+ *   Token-Verschwendung (only when results.json has tokenWaste),
  *   Verbesserungsvorschläge (one bi-state card per suggestion). All round CSS
  *   is namespaced `.d1-…` (concept gate P32).
  *
@@ -44,7 +45,7 @@ function worst(list) {
 /** Rule-derived suggestions, used when the synthesis agent did not run. */
 function fallbackSuggestions(results) {
   const out = [];
-  const all = [...results.integrity.map((c) => ({ ...c, area: 'Integrität' })), ...results.hygiene.map((c) => ({ ...c, area: 'Hygiene' }))];
+  const all = [...results.integrity.map((c) => ({ ...c, area: 'Integrität' })), ...results.hygiene.map((c) => ({ ...c, area: 'Hygiene' })), ...(results.tokenWaste || []).map((c) => ({ ...c, area: 'Token' }))];
   for (const c of all) {
     if (c.status !== 'red' && c.status !== 'yellow') continue;
     out.push({
@@ -157,6 +158,7 @@ function renderFragment(results, suggestions, history = []) {
   const top3 = list.slice(0, 3);
   const net = results.net;
   const fp = results.footprint;
+  const tw = results.tokenWaste || [];
   const m = results.mining;
   const b = results.benefit;
   const fmt = (n) => Number(n || 0).toLocaleString('de-DE');
@@ -167,6 +169,7 @@ function renderFragment(results, suggestions, history = []) {
   <div class="d1-grid">
     ${tile('Integrität', worst(results.integrity), `${results.integrity.filter((c) => c.status === 'green').length}/${results.integrity.length} Checks grün`)}
     ${tile('Repo- &amp; Ship-Hygiene', worst(results.hygiene), `${results.hygiene.filter((c) => c.status === 'green').length}/${results.hygiene.length} Checks grün`)}
+    ${tw.length ? tile('Token-Verschwendung', worst(tw), `${tw.filter((c) => c.status === 'green').length}/${tw.length} Checks grün`) : ''}
     ${tile('Statischer Footprint', 'skipped', `~${fmt(fp.totalTokens)} Tokens je Session`)}
     ${tile('Kosten vs. messbarer Nutzen', 'skipped', `~${fmt(net.costTokens)} / ~${fmt(net.benefitTokens)} Tokens`)}
   </div>
@@ -207,6 +210,12 @@ function renderFragment(results, suggestions, history = []) {
   <h2>Repo- &amp; Ship-Hygiene</h2>
   ${checkTable(results.hygiene)}
 </section>`;
+  const waste = tw.length ? `
+<section id="token-waste" data-nav-label="Token-Verschwendung">
+  <h2>Token-Verschwendung</h2>
+  <p class="d1-note">Regelbasiert auf diesem Rechner: Memory-Dateien, MCP-Deferral, Modell und Effort, Output-Filter, Subagent-Modelle, geplante Läufe gegen die Cache-TTL, Cache-Anteile der neuesten Session und das Alpha-Token-Log.</p>
+  ${checkTable(tw)}
+</section>` : '';
   const sugg = `
 <section id="suggestions" data-nav-label="Verbesserungsvorschläge">
   <h2>Verbesserungsvorschläge</h2>
@@ -224,6 +233,7 @@ ${overview}
 ${benefit}
 ${catalog}
 ${hygiene}
+${waste}
 ${sugg}
 </section>
 `;

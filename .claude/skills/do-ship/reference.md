@@ -190,9 +190,10 @@ tools work immediately, new version active. One restart, no blocked-tool window.
 
 ## Add after Step 5b
 
-### Plugin audit on a decade boundary (background, never a gate)
+### Plugin audit on a decade boundary or monthly (background, never a gate)
 
-On the final ship of a version that crosses a decade boundary (`0.289.x → 0.290.0`),
+On the final ship of a version that crosses a decade boundary (`0.289.x → 0.290.0`)
+or when the last audit is 30+ days old,
 start the plugin audit in the background after Step 5b. Trigger check, command, card
 hint, and why the parent owns it under `--delegated`:
 `deep-knowledge/plugin-audit-trigger.md` (sibling of this file).
