@@ -38,10 +38,6 @@
   display: inline-flex; align-items: center; gap: 0.35rem;
   margin-left: auto;
 }
-.panel-here-section {
-  flex: 1 1 100%;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
 /* 🕘 rounds chip. */
 .panel-here-rounds-btn {
   flex: none;
@@ -97,7 +93,6 @@
   font-size: 0.68rem;
   text-transform: uppercase; letter-spacing: 0.03em;
 }
-.panel-here-section[hidden],
 .panel-here-back[hidden],
 .panel-here-rounds-btn[hidden] { display: none; }
 /* The head does NOT fold on narrow viewports any more. It used to (#341):

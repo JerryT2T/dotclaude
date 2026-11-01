@@ -262,6 +262,18 @@ describe("independent fix: mixed / design pages keep the page title and subtitle
   });
 });
 
+describe("gate A10 question length", () => {
+  test("a question over 100 or stakes over 90 characters warns; short ones do not", () => {
+    const long = MODES.s.replace(/(<h3 data-question>)[^<]*/, "$1" + "Wort ".repeat(25) + "?");
+    expect(findAnalysisIssues(long).warnings.map(w => w.kind)).toContain("question-length");
+    const stakes = MODES.s.replace(/(<h3 data-question>[^<]*<\/h3>)/, "$1<p data-stakes>" + "x".repeat(91) + "</p>");
+    expect(findAnalysisIssues(stakes).warnings.map(w => w.kind)).toContain("stakes-length");
+    const kinds = findAnalysisIssues(MODES.s).warnings.map(w => w.kind);
+    expect(kinds).not.toContain("question-length");
+    expect(kinds).not.toContain("stakes-length");
+  });
+});
+
 describe("gate A9 Fragestellung", () => {
   test("a decision without data-situation warns", () => {
     const bare = MODES.s.replace(/<p data-situation>[^<]*<\/p>/, "");

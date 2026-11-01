@@ -180,7 +180,7 @@
     quiet.append(iss, epic);
     foot.append(quiet, goButtons(inst));
     st.iss = iss; st.epic = epic;
-    // Messages: finding (variable height), question (fixed height), answer block (capped).
+    // Messages: finding (variable height), question (min height, grows), answer block (capped).
     const fm = buildFinding(inst, st);
     const qm = msg('an-m-q'), qb = h('div', 'an-bub an-qb');
     if (q) qb.appendChild(q);

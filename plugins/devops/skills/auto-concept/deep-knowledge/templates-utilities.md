@@ -273,3 +273,208 @@ the ☀️ glyph shows (CSS, § Panel Chrome) and the tooltip reads
 })();
 ```
 
+
+## Neural Backdrop
+
+A very quiet backdrop behind document rounds (decision / free, analysis
+included): biological neurons, not a star chart of dots and straight lines.
+Each cell is a slightly irregular **soma**, a **dendritic arbor** (four to six
+primary dendrites that curve and fork twice, thinner by order; about half carry
+a longer apical dendrite), and most carry one **axon** — thin, even, a smooth
+curve to a neighbour in the same depth plane, ending in short terminal branches
+with a **bouton** (the synapse) inside the target's arbor. Three depth planes
+(back small and pale, front larger and sharper) shift with the mouse by depth;
+axons stay within one plane, so the parallax never tears a connection.
+Impulses run along the axons and the target soma swells briefly as one
+arrives. Morphology after the MadMaze phase transitions (`neural-net.ts`).
+
+It is decoration, so it never competes with the text: low alpha, accent colour
+only, `pointer-events: none`, behind every element (`z-index: -1`, the body
+background propagates to the canvas below it). Off on design rounds (the mock
+is the stage), static under `prefers-reduced-motion`, paused while the tab is
+hidden, ~30 fps; the tissue is pre-rendered once per plane, so a frame only
+draws three bitmaps plus the impulses.
+
+```css
+#neural-bg { position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; opacity: .5; }
+html[data-theme="light"] #neural-bg { opacity: .32; }
+html[data-template="design"] #neural-bg { display: none; }
+@media print { #neural-bg { display: none; } }
+```
+
+```javascript
+(function mountNeuralBackdrop() {
+  if (!window.HTMLCanvasElement || !window.Path2D || document.getElementById('neural-bg')) return;
+  const cv = document.createElement('canvas');
+  cv.id = 'neural-bg';
+  cv.setAttribute('aria-hidden', 'true');
+  document.body.prepend(cv);
+  const ctx = cv.getContext('2d');
+  if (!ctx) return;
+  const still = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const off = () => document.documentElement.dataset.template === 'design';
+  // Back -> front: drawn size, share of cells, tissue alpha, parallax depth.
+  const PLANES = [{ s: 0.55, share: 0.42, a: 0.45, z: 0.35 }, { s: 0.8, share: 0.34, a: 0.7, z: 0.65 }, { s: 1.1, share: 0.24, a: 1, z: 1 }];
+  const PAD = 40;
+  let W = 0, H = 0, dpr = 1, cells = [], layers = [], spikes = [], rgb = '88,166,255';
+  let mx = 0, my = 0, px = 0, py = 0, last = 0, nextFire = 0, raf = 0;
+  const r = Math.random, f = v => v.toFixed(1);
+  function color() {
+    const v = getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim();
+    const m = /^#([0-9a-f]{6})$/i.exec(v);
+    if (m) { const n = parseInt(m[1], 16); rgb = [(n >> 16) & 255, (n >> 8) & 255, n & 255].join(','); }
+  }
+  const planeOf = roll => { let acc = 0; for (let i = 0; i < PLANES.length; i++) { acc += PLANES[i].share; if (roll < acc) return i; } return 2; };
+  // One cell: soma, dendritic arbor (3 branch orders), axon to a same-plane neighbour, terminals + boutons.
+  function neuron(c, all, index) {
+    const x = c.x, y = c.y, s = PLANES[c.p].s, somaR = (4.4 + r() * 2.4) * s, base = r() * Math.PI * 2;
+    const pts = Array.from({ length: 6 }, (_, i) => { const a = base + i / 6 * Math.PI * 2, rr = somaR * (0.8 + r() * 0.45); return [x + Math.cos(a) * rr, y + Math.sin(a) * rr]; });
+    const mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+    const st = mid(pts[5], pts[0]);
+    let soma = 'M' + f(st[0]) + ' ' + f(st[1]);
+    pts.forEach((p, i) => { const m = mid(p, pts[(i + 1) % 6]); soma += 'Q' + f(p[0]) + ' ' + f(p[1]) + ' ' + f(m[0]) + ' ' + f(m[1]); });
+    soma += 'Z';
+    const dend = ['', '', ''];
+    const grow = (x0, y0, ang, len, d) => {
+      const bend = (r() - 0.5) * 0.9, cx = x0 + Math.cos(ang) * len * 0.5, cy = y0 + Math.sin(ang) * len * 0.5;
+      const x1 = x0 + Math.cos(ang + bend) * len, y1 = y0 + Math.sin(ang + bend) * len;
+      dend[d] += 'M' + f(x0) + ' ' + f(y0) + 'Q' + f(cx) + ' ' + f(cy) + ' ' + f(x1) + ' ' + f(y1);
+      if (d >= 2) return;
+      const head = Math.atan2(y1 - cy, x1 - cx), forks = d === 0 || r() < 0.75 ? 2 : 1;
+      for (let i = 0; i < forks; i++) {
+        const spread = forks === 1 ? (r() - 0.5) * 0.4 : (i === 0 ? -1 : 1) * (0.3 + r() * 0.35);
+        grow(x1, y1, head + spread, len * (0.58 + r() * 0.17), d + 1);
+      }
+    };
+    const prim = 4 + Math.floor(r() * 3), apical = r() < 0.5;
+    for (let i = 0; i < prim; i++) {
+      const a = base + i / prim * Math.PI * 2 + (r() - 0.5) * 0.7;
+      grow(x + Math.cos(a) * somaR * 0.7, y + Math.sin(a) * somaR * 0.7, a, (22 + r() * 18) * s * (apical && i === 0 ? 1.7 : 1), 0);
+    }
+    const cell = { x, y, p: c.p, s, soma: new Path2D(soma), dend: dend.map(d => new Path2D(d)), axon: null, curve: null, target: -1, len: 0, term: null, bout: null, swell: 0 };
+    const near = all.map((o, j) => ({ j, d: Math.hypot(o.x - x, o.y - y), p: o.p }))
+      .filter(o => o.j !== index && o.p === c.p && o.d > 70 * s && o.d < 420 * s).sort((a, b) => a.d - b.d).slice(0, 3);
+    if (near.length && r() < 0.88) {
+      const t = near[Math.floor(r() * near.length)].j, to = all[t], toward = Math.atan2(to.y - y, to.x - x);
+      const hill = toward + (r() - 0.5) * 0.9, ax = x + Math.cos(hill) * somaR, ay = y + Math.sin(hill) * somaR;
+      // Stop short of the target soma, off to one side, inside its arbor.
+      const land = toward + Math.PI + (r() - 0.5) * 1.2;
+      const ex = to.x + Math.cos(land) * (16 + r() * 10) * s, ey = to.y + Math.sin(land) * (16 + r() * 10) * s;
+      const span = Math.hypot(ex - ax, ey - ay), c1a = hill + (r() - 0.5) * 0.5, c2a = toward + (r() - 0.5);
+      const c1 = [ax + Math.cos(c1a) * span * 0.38, ay + Math.sin(c1a) * span * 0.38];
+      const c2 = [ex - Math.cos(c2a) * span * 0.38, ey - Math.sin(c2a) * span * 0.38];
+      cell.curve = [[ax, ay], c1, c2, [ex, ey]];
+      cell.axon = new Path2D('M' + f(ax) + ' ' + f(ay) + 'C' + f(c1[0]) + ' ' + f(c1[1]) + ' ' + f(c2[0]) + ' ' + f(c2[1]) + ' ' + f(ex) + ' ' + f(ey));
+      cell.target = t;
+      cell.len = span * 1.15;
+      let term = '', bout = '';
+      const head = Math.atan2(ey - c2[1], ex - c2[0]), tips = 2 + Math.floor(r() * 2), br = 1.5 * Math.max(s, 0.7);
+      for (let i = 0; i < tips; i++) {
+        const a = head + (i - (tips - 1) / 2) * (0.55 + r() * 0.3), len = (8 + r() * 9) * s;
+        const tx = ex + Math.cos(a) * len, ty = ey + Math.sin(a) * len, qx = ex + Math.cos(head) * len * 0.5, qy = ey + Math.sin(head) * len * 0.5;
+        term += 'M' + f(ex) + ' ' + f(ey) + 'Q' + f(qx) + ' ' + f(qy) + ' ' + f(tx) + ' ' + f(ty);
+        bout += 'M' + f(tx - br) + ' ' + f(ty) + 'a' + f(br) + ' ' + f(br) + ' 0 1 0 ' + f(br * 2) + ' 0a' + f(br) + ' ' + f(br) + ' 0 1 0 ' + f(-br * 2) + ' 0';
+      }
+      cell.term = new Path2D(term);
+      cell.bout = new Path2D(bout);
+    }
+    return cell;
+  }
+  // The tissue of one plane, drawn once into its own bitmap (PAD of room for the parallax).
+  function paintPlane(p) {
+    const c = document.createElement('canvas');
+    c.width = Math.round((W + PAD * 2) * dpr); c.height = Math.round((H + PAD * 2) * dpr);
+    const g = c.getContext('2d');
+    g.setTransform(dpr, 0, 0, dpr, PAD * dpr, PAD * dpr);
+    g.lineCap = 'round';
+    const A = PLANES[p].a, ink = a => 'rgba(' + rgb + ',' + (a * A).toFixed(3) + ')';
+    cells.filter(n => n.p === p).forEach(n => {
+      const w = Math.max(n.s, 0.6);
+      [[2.3, 0.5], [1.4, 0.38], [0.8, 0.28]].forEach((o, d) => { g.lineWidth = o[0] * w; g.strokeStyle = ink(o[1]); g.stroke(n.dend[d]); });
+      if (n.axon) {
+        g.lineWidth = 1.05 * w; g.strokeStyle = ink(0.36); g.stroke(n.axon);
+        g.lineWidth = 0.8 * w; g.strokeStyle = ink(0.34); g.stroke(n.term);
+        g.fillStyle = ink(0.55); g.fill(n.bout);
+      }
+      g.fillStyle = ink(0.7); g.fill(n.soma);
+    });
+    return c;
+  }
+  function build() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth; H = window.innerHeight;
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    const count = Math.max(16, Math.min(56, Math.round(W * H / 30000)));
+    const seeds = Array.from({ length: count }, () => ({ x: -PAD / 2 + r() * (W + PAD), y: -PAD / 2 + r() * (H + PAD), p: planeOf(r()) }));
+    cells = seeds.map((c, i) => neuron(c, seeds, i));
+    layers = PLANES.map((_, p) => paintPlane(p));
+    spikes = [];
+  }
+  const bez = (c, t) => { const u = 1 - t; return [0, 1].map(k => u * u * u * c[0][k] + 3 * u * u * t * c[1][k] + 3 * u * t * t * c[2][k] + t * t * t * c[3][k]); };
+  const shift = p => [px * PLANES[p].z, py * PLANES[p].z];
+  function fire(i, gen) {
+    const n = cells[i];
+    if (n && n.axon) spikes.push({ i, t: 0, v: 260 / Math.max(n.len, 60), gen });
+  }
+  function draw(now) {
+    raf = 0;
+    if (document.hidden || off()) return;
+    if (!still && now - last < 33) { raf = requestAnimationFrame(draw); return; }
+    const dt = Math.min(0.1, (now - (last || now)) / 1000);
+    last = now;
+    px += (mx - px) * 0.06; py += (my - py) * 0.06;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    layers.forEach((bmp, p) => { const o = shift(p); ctx.drawImage(bmp, Math.round((o[0] - PAD) * dpr), Math.round((o[1] - PAD) * dpr)); });
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.lineCap = 'round';
+    // Impulses: a short bright stretch of the axon running to the synapse, fading at its tail.
+    spikes = spikes.filter(sp => {
+      const n = cells[sp.i];
+      sp.t += sp.v * dt;
+      if (sp.t >= 1) {
+        cells[n.target].swell = 1;
+        if (sp.gen < 2 && r() < 0.55) fire(n.target, sp.gen + 1);
+        return false;
+      }
+      const o = shift(n.p), A = PLANES[n.p].a;
+      for (let k = 0; k < 6; k++) {
+        const a = bez(n.curve, Math.max(0, sp.t - k * 0.018)), b = bez(n.curve, Math.max(0, sp.t - (k + 1) * 0.018));
+        ctx.strokeStyle = 'rgba(' + rgb + ',' + ((0.9 - k * 0.14) * A).toFixed(3) + ')';
+        ctx.lineWidth = (2.6 - k * 0.3) * Math.max(n.s, 0.7);
+        ctx.beginPath(); ctx.moveTo(a[0] + o[0], a[1] + o[1]); ctx.lineTo(b[0] + o[0], b[1] + o[1]); ctx.stroke();
+      }
+      return true;
+    });
+    // The cell an impulse lands on swells by a breath.
+    cells.forEach(n => {
+      if (n.swell <= 0.02) return;
+      n.swell = Math.max(0, n.swell - dt * 1.4);
+      const o = shift(n.p), cx = n.x + o[0], cy = n.y + o[1], R = (10 + 16 * n.swell) * n.s;
+      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, R);
+      g.addColorStop(0, 'rgba(' + rgb + ',' + (0.45 * n.swell * PLANES[n.p].a).toFixed(3) + ')'); g.addColorStop(1, 'rgba(' + rgb + ',0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill();
+    });
+    if (still) return;
+    if (now > nextFire && spikes.length < 24) {
+      const axons = cells.filter(n => n.axon);
+      if (axons.length) fire(cells.indexOf(axons[Math.floor(r() * axons.length)]), 0);
+      nextFire = now + 500 + r() * 1200;
+    }
+    raf = requestAnimationFrame(draw);
+  }
+  const kick = () => { if (!raf) raf = requestAnimationFrame(draw); };
+  let resizeT = 0;
+  window.addEventListener('resize', () => { clearTimeout(resizeT); resizeT = setTimeout(() => { build(); kick(); }, 150); });
+  if (!still) {
+    window.addEventListener('pointermove', e => {
+      if (e.pointerType && e.pointerType !== 'mouse') return;
+      mx = (e.clientX / (W || 1) - 0.5) * -36; my = (e.clientY / (H || 1) - 0.5) * -36;
+    }, { passive: true });
+  }
+  document.addEventListener('visibilitychange', kick);
+  document.addEventListener('iteration:changed', kick);
+  if (window.MutationObserver) new MutationObserver(() => { color(); layers = PLANES.map((_, p) => paintPlane(p)); kick(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-template'] });
+  color(); build(); kick();
+})();
+```

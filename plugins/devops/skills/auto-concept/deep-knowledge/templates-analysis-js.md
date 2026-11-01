@@ -611,12 +611,28 @@ What the code does, in the order of the file:
   function sendNote(inst) {
     composeSync(inst);
     const st = inst.stages[inst.idx], text = compText(inst.comp.ed);
-    if (!text || frozen(inst)) return false;
+    if (frozen(inst)) return false;
+    // An empty send is "Weiter" / "Los geht's". The closing never submits the
+    // round from here — that is a grave step; it only points at the button.
+    if (!text) {
+      if (st.kind === 'review' || st.kind === 'done') { pointAtNextRound(); return false; }
+      if (st.kind === 'dec') markTouched(st.el);
+      step(inst, 1);
+      return true;
+    }
     if (st.kind === 'dec' && !storeOf(inst, st)) return false;   // no storage target: never advance and drop the note
     inst.comp.el.classList.remove('an-sent'); void inst.comp.el.offsetWidth; inst.comp.el.classList.add('an-sent');
     // Only a question advances (an untagged note accepts the current choice / recommendation); briefing, topic intro and closing never do.
     if (!inst.tag && st.kind === 'dec') { markTouched(st.el); step(inst, 1); }
     return true;
+  }
+  /** Highlight "Zur nächsten Runde" (or the closed panel's ☰) briefly — the user clicks it themselves. */
+  function pointAtNextRound() {
+    const b = document.getElementById('submit-iterate-btn');
+    const t = b && b.offsetParent ? b : document.getElementById('panel-toggle');
+    if (!t) return;
+    t.classList.remove('an-point'); void t.offsetWidth; t.classList.add('an-point');
+    setTimeout(() => t.classList.remove('an-point'), 2400);
   }
   /** A click on a finding / question / topic sets the tag (selecting text does not). */
   function tagFromClick(inst, e) {

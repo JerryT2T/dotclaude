@@ -70,10 +70,13 @@ pre { background: var(--code-bg); padding: 0.75rem 1rem; border-radius: 6px; ove
 // overrides all of it with its own head.html (see the header comment).
 const DEFAULT_HEAD = `<style>
 :root {
-  --bg: #0d1117; --bg-color: #0d1117; --bg-secondary: #161b22; --bg-subtle: #1c2128; --surface-2: #1c2128;
-  --text: #c9d1d9; --text-color: #c9d1d9; --text-primary: #c9d1d9; --text-secondary: #8b949e;
-  --text-muted: #8b949e; --text-tertiary: #6e7681;
-  --panel-bg: #161b22; --border-color: #30363d; --input-bg: #0d1117; --code-bg: #1c2128;
+  /* dimmed, never pitch black: pure-black grounds make light text halate and
+     tire the eye on long reads; a blue-grey ground with off-white text keeps
+     ≥ 4.5:1 for every text token (dark-mode guidance, #121212 and lighter) */
+  --bg: #1c2128; --bg-color: #1c2128; --bg-secondary: #22272e; --bg-subtle: #2d333b; --surface-2: #2d333b;
+  --text: #cdd9e5; --text-color: #cdd9e5; --text-primary: #cdd9e5; --text-secondary: #9ea7b3;
+  --text-muted: #9ea7b3; --text-tertiary: #8b949e;
+  --panel-bg: #22272e; --border-color: #444c56; --input-bg: #1c2128; --code-bg: #2d333b;
   --accent-color: #58a6ff; --success-color: #3fb950; --warning-color: #d29922; --danger-color: #f85149;
   --chrome-safe-top: 0px; --chrome-safe-bottom: 0px;
 }

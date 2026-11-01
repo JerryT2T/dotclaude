@@ -44,7 +44,7 @@ function page({ stages = STAGES, current = "B", rounds, title = "Hub-Navigation 
       <div class="panel-head"><span class="panel-here-round" data-here-round></span>
         <span class="panel-here-right"><button id="panel-here-back" hidden></button>
           <button id="panel-here-rounds" hidden></button></span></div>
-      <div class="panel-here" id="panel-here"><span data-here-section></span></div>
+      <div class="panel-here" id="panel-here"></div>
       <div class="panel-nav-scroll"><nav class="iteration-tabs">${tabs}</nav>
         <nav class="section-nav" id="section-nav"></nav></div>
       <div class="panel-status" id="panel-status">

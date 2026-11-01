@@ -76,10 +76,19 @@ touched. **Pins are not draggable** in a document (the anchor is the block).
   // Analysis pages are a chat of headings, answer rows and engine messages:
   // those take a note too. Ctrl suppresses the click, so an answer row
   // (a <label>) is a block there, not a native control.
-  const ANA_BLOCK = 'p, li, tr, h2, h3, h4, label, [data-opt], .an-msg';
+  const ANA_BLOCK = 'p, li, tr, h2, h3, h4, label, [data-opt], [data-options], .an-kind, .an-msg';
   const ANA_NATIVE = 'a, button, input, select, textarea, summary, [contenteditable=""], [contenteditable="true"]';
   const inAnalysis = n => !!(n && n.closest && n.closest('[data-analysis]'));
   const nativeOf = n => (inAnalysis(n) ? ANA_NATIVE : NATIVE);
+  // An answer's own control (the radio / checkbox / range of an option) covers
+  // its whole row — it is content to note on, not engine chrome; every other
+  // native control keeps the plain click.
+  const ANA_ANSWER = '[data-options] input[type=radio], [data-options] input[type=checkbox], [data-options] input[type=range]';
+  const isNative = n => {
+    if (!n || !n.closest) return false;
+    const c = n.closest(nativeOf(n));
+    return !!c && !(inAnalysis(n) && c.matches(ANA_ANSWER));
+  };
   const el = (tag, cls, text) => {
     const n = document.createElement(tag);
     if (cls) n.className = cls;
@@ -526,7 +535,7 @@ touched. **Pins are not draggable** in a document (the anchor is the block).
     if (!(e.ctrlKey || e.metaKey)) return;
     const it = usable();
     if (!it || !rootOf(it).contains(e.target)) return;
-    if (e.target.closest('.upin, .dpin-layer, ' + nativeOf(e.target))) return;
+    if (e.target.closest('.upin, .dpin-layer') || isNative(e.target)) return;
     const block = blockOf(e.target, it);
     if (!block) return;
     const r = block.getBoundingClientRect();
@@ -556,7 +565,7 @@ touched. **Pins are not draggable** in a document (the anchor is the block).
     cancelLongPress();
     if (e.pointerType === 'mouse' || !e.isPrimary) return;
     const it = usable();
-    if (!it || !rootOf(it).contains(e.target) || e.target.closest('.upin, .dpin-layer, ' + nativeOf(e.target)) || !blockOf(e.target, it)) return;
+    if (!it || !rootOf(it).contains(e.target) || e.target.closest('.upin, .dpin-layer') || isNative(e.target) || !blockOf(e.target, it)) return;
     const x = e.clientX, y = e.clientY, target = e.target;
     lp = { x, y, timer: setTimeout(() => {
       lp = null;
