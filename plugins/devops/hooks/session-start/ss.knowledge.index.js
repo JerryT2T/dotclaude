@@ -182,6 +182,9 @@ function main() {
         require('../lib/run-once').releaseOnce('prompt-delegation-nudge', hook.session_id);
         fs.unlinkSync(require('../lib/session-id').sessionFile('dotclaude-devops-card-contract-sent', hook.session_id));
       } catch { /* marker already gone */ }
+      // The dispatched docs and pointers left context with the compaction too.
+      try { fs.unlinkSync(require('../lib/session-id').sessionFile('dotclaude-dk-injected', hook.session_id)); }
+      catch { /* nothing dispatched yet */ }
     }
     const additionalContext = source === 'resume'
       ? buildResumeContext(pluginRoot, hook.session_id)
