@@ -127,7 +127,27 @@ page), the page has `#decision-panel` and none of the concept gate's
 clipboard / paste-into-chat patterns, and no preview / Playwright tool is
 used. The page graders also look under `.claude/worktrees/*/` (the model
 may `EnterWorktree` before building). A run takes ~8 min, longer than the
-default 5 min timeout — pass `--timeout-min 15`. Ordering checks share
+default 5 min timeout — pass `--timeout-min 15`. The three `auto-concept/round-*`
+cases (tag `concept-round`) grade the round-to-round step instead: the shared
+`round-scaffold.sh` builds a submitted round 1 (JSON file / SQLite / Markdown)
+and drops the page's payload next to it, since the bridge is denied.
+`round-comment-fidelity` expects round 2 to answer each of four specific
+comments, `round-reopen-breadth` at least two new directions after all three
+were discarded, `round-keep-option-open` the weaker variant kept beside the
+favourite as the user asked. Shared graders (`round-graders.js`) check the
+baked round 1, a script-built round 2 that is no final report, and — when the
+round went to `concept-author` — a brief that quotes the comments verbatim.
+`round-replay-r6-hover` (tag `replay`) replays a REAL round: round 6 of the
+user's own `20261030-1850-analyse-redesign` concept (fixture = the real rounds
+1-6, round 6 un-baked), where the user asked that the right-side TOC never
+overlap the ☰/💬 FABs (7 topics x 7 questions maximum), that hover always land
+on an item with a pointer cursor — and then had to repeat it in rounds 7 and 8
+because the session never measured the hover state. `state-check-ran` is the
+process grader (a node/browser call that probes hover or rects); the outcome
+graders (`toc-no-fab-overlap-on-hover`, `toc-cursor-pointer`,
+`toc-hover-no-dead-gap`) run `check-toc.js` in a child process: headless system
+Edge via `playwright-core` (devDependency, no browser download), real mouse over
+every TOC item of the built round 7. They grade n/a without Edge. Ordering checks share
 `skills/order.js`. Per-skill trim records with the A/B numbers
 live in `trims/<skill>.md`.
 

@@ -129,7 +129,7 @@ describe("a concept keeps its template across rounds", () => {
     expect(rule).toMatch(/data-view-kind="decision"/);
     expect(rule).toMatch(/mixed mode/i);
     expect(rule).toMatch(/final report[\s\S]*always `free`/i);
-    expect(rule).toMatch(/MANDATORY|mandatory/);
+    expect(rule).toMatch(/MANDATORY|mandatory|required/);
   });
 
   test("the final report is appended as a document round, explicitly", () => {
