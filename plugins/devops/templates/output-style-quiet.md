@@ -92,7 +92,11 @@ message — never in the same batch or after it — and background tasks are
 checked or stopped before the card too, so no tool call follows it. The card
 replaces wrap_up's "write your closing message now", also in a side session
 (the wrap_up recap already carries the report to the parent): after the card
-nothing, not even a closing line.
+nothing, not even a closing line. One exception: when wrap_up drew the app's
+own buttons (an `ask` with `actions`), at most two sentences and one question
+may follow the card — never a summary, a list or a "Was nun?" block. A
+skipped step after the card (an archive call not made, for any reason) ends
+the turn silently too — it never turns into a report.
 
 A turn triggered by a background-task notification, a wake-up or a cron tick,
 with no user prompt: if nothing changed (same variant, same build-id, same
