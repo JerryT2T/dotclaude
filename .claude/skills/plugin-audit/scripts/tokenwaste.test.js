@@ -92,6 +92,19 @@ describe('runTokenWaste', () => {
   });
 });
 
+describe('output-filter hooks', () => {
+  it('counts a PreToolUse module that sets updatedInput in code, not one that only mentions it', async () => {
+    const s = sandbox('hooks');
+    const dir = path.join(s.root, 'plugins', 'p', 'hooks', 'pre-tool-use');
+    write(path.join(dir, 'pre.comment.js'), '/**\n * Claude Code ignores `updatedInput: x` for Agent\n */\nmodule.exports = 1;');
+    expect(byId(await TW.runTokenWaste({ ...s, env: {}, logFile: null }), 'tw-hooks').status).toBe('yellow');
+    write(path.join(dir, 'pre.filter.js'), 'out({ hookSpecificOutput: { updatedInput: { command: c } } });');
+    const h = byId(await TW.runTokenWaste({ ...s, env: {}, logFile: null }), 'tw-hooks');
+    expect(h.status).toBe('green');
+    expect(h.metrics.rewriters).toBe(1);
+  });
+});
+
 describe('cronRunsPerDay', () => {
   it('multiplies minute and hour fields', () => {
     expect(TW.cronRunsPerDay('*/20 19-23,0 * * *')).toBe(18);

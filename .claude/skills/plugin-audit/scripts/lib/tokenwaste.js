@@ -16,6 +16,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { tokensOfChars, readText, readJson, check, timed } = require('./util');
+const { MAX_FILE_BYTES } = require('./mining');
 
 const MEMORY_FILE_RED = 5000;
 const MEMORY_TOTAL_RED = 10000;
@@ -244,10 +245,13 @@ function newestSession(projectsDir) {
     for (const f of files) {
       const p = path.join(projectsDir, d.name, f);
       let st; try { st = fs.statSync(p); } catch { continue; }
-      if (!best || st.mtimeMs > best.mtimeMs) best = { file: p, mtimeMs: st.mtimeMs };
+      if (!best || st.mtimeMs > best.mtimeMs) best = { file: p, mtimeMs: st.mtimeMs, size: st.size };
     }
   }
-  return best ? { file: best.file, text: readText(best.file) || '' } : null;
+  if (!best) return null;
+  // Same cap as the transcript mining: a larger file is not read into memory.
+  if (best.size > MAX_FILE_BYTES) return { file: best.file, text: '', tooBig: best.size };
+  return { file: best.file, text: readText(best.file) || '' };
 }
 
 /** Usage split of one transcript: main-thread calls, once per message id. */
@@ -283,6 +287,7 @@ function cacheSplit(text) {
 function cache({ newest }) {
   const title = 'Cache split (newest session)';
   if (!newest) return check('tw-cache', title, 'skipped', [{ msg: 'no session log found' }]);
+  if (newest.tooBig) return check('tw-cache', title, 'skipped', [{ msg: `newest session larger than ${Math.round(MAX_FILE_BYTES / 1048576)} MB, not read`, file: newest.file }]);
   const s = cacheSplit(newest.text);
   if (!s.calls) return check('tw-cache', title, 'skipped', [{ msg: 'newest session has no assistant usage', file: newest.file }]);
   const status = s.pct.cacheWrite > 30 ? 'red' : s.pct.cacheRead < 70 ? 'yellow' : 'green';
