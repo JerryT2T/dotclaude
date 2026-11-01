@@ -369,10 +369,11 @@ describe("prompt.knowledge.dispatch — the payload stays under the harness limi
   test("the head is cut at a section boundary, never mid-paragraph", () => {
     const section = (n) => `## Section ${n}\n\n${"word ".repeat(300).trim()}.\n`;
     const body = `# Big\n\n${Array.from({ length: 12 }, (_, i) => section(i)).join("\n")}`;
-    const ctx = run("which tool selection rule applies on windows tools?", { root: fakeRoot({ "tool-selection.md": body }) });
+    // A `full` topic (code-defaults): only those still go in as a head (#997).
+    const ctx = run("which code defaults apply here?", { root: fakeRoot({ "code-defaults.md": body }) });
     expect(ctx.length).toBeLessThanOrEqual(SAFE_CONTEXT_CHARS);
-    const inject = ctx.slice(ctx.indexOf("--- deep-knowledge/tool-selection.md ---"));
-    const head = inject.split("\n[… tool-selection.md continues")[0];
+    const inject = ctx.slice(ctx.indexOf("--- deep-knowledge/code-defaults.md ---"));
+    const head = inject.split("\n[… code-defaults.md continues")[0];
     expect(head.trimEnd().endsWith("word.")).toBe(true); // a whole section ends here
     expect(head).toContain("## Section 0");
   });
@@ -386,6 +387,47 @@ describe("prompt.knowledge.dispatch — the payload stays under the harness limi
     expect(first.length).toBeLessThanOrEqual(SAFE_CONTEXT_CHARS);
     const second = run("and which tool selection applies for windows tools now?", { root, sid, home });
     expect(second).not.toMatch(/tool-selection\.md/);
+  });
+});
+
+// #997: an unbounded `.*` gap matched words a whole sentence apart, and a big
+// doc went in as thousands of characters that stayed for the session.
+describe("prompt.knowledge.dispatch — relevance (#997)", () => {
+  function run(prompt, sid, h = proHome()) {
+    const cwd = emptyProject();
+    const env = { ...process.env, CLAUDE_PLUGIN_ROOT: PLUGIN_ROOT, HOME: h, USERPROFILE: h, TMPDIR: h, TEMP: h, TMP: h };
+    const r = spawnSync(process.execPath, [HOOK], {
+      input: JSON.stringify({ session_id: sid || `vitest-rel-${process.pid}-${Math.random()}`, prompt, cwd }), cwd, env, encoding: "utf8",
+    });
+    return r.stdout ? JSON.parse(r.stdout).hookSpecificOutput.additionalContext : "";
+  }
+
+  test("words far apart in one prompt no longer match", () => {
+    expect(run("Audit this setup for token waste. Find every CLAUDE.md in scope: this project, parent directories, the user level one"))
+      .not.toContain("claude-directory-structure.md");
+    expect(run("bzgl issues zum devops plugin token audit, bitte kritisch betrachten, tests opus plain vs mit den regelungen"))
+      .not.toContain("plugin-behavior.md");
+  });
+
+  test("a big doc on a match is a one-line pointer naming the phrase, not its text", () => {
+    const ctx = run("also check the browser tools quickly while you are at it");
+    expect(ctx).toMatch(/\[deep-knowledge pointer\] deep-knowledge\/browser-tool-strategy\.md \(~[\d.]+k tokens\) matched "browser tool"/);
+    expect(ctx).not.toContain("--- deep-knowledge/browser-tool-strategy.md ---");
+  });
+
+  test("a full topic still goes in as text", () => {
+    expect(run("welche tooltip regeln gelten für die ui defaults")).toContain("--- deep-knowledge/ui-defaults.md ---");
+  });
+
+  test("a small doc on a close match goes in whole", () => {
+    expect(run("erklär mir die claude directory structure")).toContain("--- deep-knowledge/claude-directory-structure.md ---");
+  });
+
+  test("a pointer is not repeated in the same session", () => {
+    const sid = `vitest-rel-once-${process.pid}-${Date.now()}`;
+    const h = proHome();
+    expect(run("welche browser tool strategie gilt hier", sid, h)).toContain("browser-tool-strategy.md");
+    expect(run("und nochmal die browser tool strategie bitte", sid, h)).not.toContain("browser-tool-strategy.md");
   });
 });
 
