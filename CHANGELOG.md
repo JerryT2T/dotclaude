@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.341.0] — 2026-11-01
+
+### Added
+- Home-backup keeps the first snapshot of each of the last 4 weeks (`keepWeeks`) on top of the 14-day window (`keepDays`, default raised from 7).
+- SessionStart hint `ss.backup.stale` when the last successful home backup is older than 3 days.
+- Folder targets get a `.claude-home-backup` marker; pruning only runs inside marked folders, and setup refuses a non-empty foreign folder.
+
+### Changed
+- Pruning runs only after a successful delivery; the github target pushes the unpruned head first.
+- A secret finding holds back only its own file; the rest is still backed up (partial run, not counted as success).
+- The reminder repeats every 3 days while no backup succeeds; the lock is taken over after 40 min instead of 15.
+
 ## [0.340.1] — 2026-11-01
 
 ### Changed
