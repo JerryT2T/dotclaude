@@ -2,10 +2,9 @@
 name: auto-update
 version: 0.5.0
 description: >-
-  Manually update the devops plugin to latest from GitHub. Delegates to
-  ss.plugin.update hook (pull + cache + registry), then adds changelog and
-  verification report. Triggers on: "update plugin", "plugin updaten",
-  "self update", "devops update", "neue version". Explicit user request only.
+  Manually update the devops plugin to the latest GitHub version and report
+  the changelog. Explicit user request only. Triggers on: "update plugin",
+  "plugin updaten", "devops update".
 layer: 2
 invokes: []
 user-invocable: false

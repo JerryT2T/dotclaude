@@ -2,17 +2,11 @@
 name: auto-harden
 version: 0.3.0
 description: >-
-  Stabilization pass: run the full test suite, fix bugs autonomously, identify
-  architecture smells, write regression + missing-coverage tests, apply
-  consistency fixes (spacing, tokens, typography, icons, colors, state-visuals)
-  across the codebase. Does NOT introduce new UI elements, new buttons,
-  re-arrangements, or substantial position changes — those belong to
-  /auto-polish. `--invoked-by=ship` is the narrow diff-scoped path /do-ship
-  calls: static checks on the added lines, no agents, no browser, mechanical
-  fixes only, never blocks. Triggers on: "harden", "stabilize", "härten",
-  "stabilisieren", "bug pass", "consistency pass", "lint und fix".
-  Skips all confirmations when invoked with --autonomous.
-  Do NOT trigger for: feature work, new UI structure, theme changes.
+  Stabilization pass: run all tests, fix bugs, flag architecture smells, add
+  regression tests, apply consistency fixes. Never adds or moves UI elements;
+  that is auto-polish. Do NOT trigger for: feature work, new UI structure,
+  theme changes. Triggers on: "harden", "stabilize", "härten", "bug pass",
+  "lint und fix".
 layer: 4
 invokes: [auto-agents]
 user-invocable: false
