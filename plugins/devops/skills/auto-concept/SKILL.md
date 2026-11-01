@@ -2,16 +2,12 @@
 name: auto-concept
 version: 0.2.2
 description: >-
-  Generate an interactive HTML page for analysis, plans, concepts, prototypes,
-  comparisons, or creative work — open it in the browser and monitor user
-  decisions (toggles, selections, comments) to feed them back into the workflow.
-  Triggers on: "concept", "concept page", "interactive plan",
-  "show me this as a page", "visualize this".
-  Also auto-suggest when Claude completes analysis, planning, comparison,
-  or concept work that would benefit from interactive decision-making.
-  Do NOT trigger for: simple code explanations, debugging
-  (use /auto-fix), or static documentation (README work follows
-  {PLUGIN_ROOT}/deep-knowledge/readme-standards.md).
+  Interactive HTML page for analysis, plans, concepts, prototypes or
+  comparisons; opens it in the browser and feeds the user's decisions back
+  into the workflow. Also suggest it after analysis or planning that needs
+  decisions. Do NOT trigger for: code explanations, debugging, static docs.
+  Triggers on: "concept page", "interactive plan", "show me this as a page",
+  "visualize this".
 layer: 2
 invokes: [do-ship, auto-agents, auto-issue]
 user-invocable: false

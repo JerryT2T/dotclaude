@@ -1,8 +1,7 @@
 ---
 name: research
 description: >-
-  Research agent — investigates topics, compares technologies, finds best
-  practices. Runs in isolated context to keep main conversation clean.
+  Research agent — web/tech investigation, technology comparisons, best practices, in isolated context.
   Use proactively, in the background, whenever a task needs web or tech investigation before it can proceed — no user request needed.
   <example>Research current best practices for API rate limiting</example>
 model: opus

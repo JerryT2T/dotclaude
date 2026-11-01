@@ -3,9 +3,8 @@ name: auto-frustrated
 version: 0.1.0
 description: >-
   Read-only analysis of a session that keeps missing its goal: independent
-  analysts reconstruct intent, history and causes, a synthesis keeps consensus
-  and dissent apart, and the result is a recorded plan that runs only after the
-  user approves it. Never implements, never ships.
+  analysts find the causes, and the synthesis becomes a recorded plan that
+  runs only after the user approves it. Never implements, never ships.
 layer: 0
 invokes: [auto-concept, do-run, auto-fix, do-learn, auto-guide]
 disable-model-invocation: true

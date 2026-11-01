@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.339.1] — 2026-11-01
+
+### Changed
+- **Leaner skill and agent descriptions**: the skill and agent lists every session loads are about 40 % shorter. Triggers, boundaries and safety rules are unchanged, verified by A/B evals.
+
 ## [0.339.0] — 2026-11-01
 
 ### Added
