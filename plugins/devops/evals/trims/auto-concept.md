@@ -208,23 +208,23 @@ R6→R8, visual highlight R2→R4).
 | Words before → after | 5,141 → 4,738 (−8 %, `wc -w`; adds the coverage step, patterns list, repeat depth and read list; drops the pointer mandate prose; moves two blocks out) |
 | Mandatory per-round read before | SKILL.md + 26 "Re-Read … completely on every round" sections = 5,141 + 10,852 = **15,993 words** (plus `validation-gate.md`, 9,446, named in Step 2 for every build: ≈ 25.4 k) |
 | Mandatory per-round read after | SKILL.md + the 7-entry "A feedback round reads" list = 4,738 + 3,053 = **7,791 words** (−51 %); everything else on demand |
-| Variant A | `--a-ref claude/opus-55-skills-review-b0c590` |
+| Variant A | `--a-ref origin/main` (a0efaa0f, incl. #1001/#1007) |
 | Variant B | this branch |
-| Runs per variant | pending (QA wave) |
+| Runs per variant | 2 (5 cases; results `evals/results/ab-2026-11-01T14-07-26-867Z`, not committed) |
 
 ## Removed or rewritten instructions
 
 | # | Excerpt (removed / rewritten text) | Reason | A/B result |
 |---|---|---|---|
-| P2-1 | 54× "**Before executing this step, Read `…` § … completely** — …" | mandate → reference "See `…` § …. <what it holds>."; read when the step needs it (one level deep) | pending (QA wave) |
-| P2-2 | 26× "Re-Read … completely on every round — even if read earlier in this session" | forced ≈ 10.9 k words of re-reading per round, including finalize parts A–E, legacy actions and implement detail an `iterate` round never runs; replaced by a 7-section round read list and "re-read only after a compaction" | pending (QA wave) |
-| P2-3 | "Order of evaluation (mandatory, per iteration)" | emphasis; "first match wins" is the contract | pending (QA wave) |
-| P2-4 | "it is MANDATORY on every section you append" | caps → "required"; gate 12b still enforces it | pending (QA wave) |
-| P2-5 | "### Engine source (mandatory — …)", "### Post-Generation Validation (mandatory gate)" | heading emphasis; "If ANY pattern is missing → DO NOT open the page." stays verbatim | pending (QA wave) |
-| P2-6 | "NEVER open a separate browser window", "MUST be opened in the user's real Edge" | caps → plain; the forbidden-alternatives list and the `### MANDATORY — Real Edge browser only` heading (test-pinned contract) stay | pending (QA wave) |
-| P2-7 | "you MUST NOT render a second concept completion card", "Output … VERBATIM as the LAST thing" | caps → plain wording, same rule | pending (QA wave) |
-| P2-8 | Report-only entry steps 1–5 | moved verbatim to `deep-knowledge/step0-report-entry.md` § Report-only entry · steps; only `--report` runs read it | pending (QA wave) |
-| P2-9 | Step 1a "≥2 designs → the variant overview" + "Orthogonality — a view never re-asks …" | moved verbatim to `step1-templates.md` § 1a · Variant overview and orthogonality; the pointer line keeps the rule summary | pending (QA wave) |
+| P2-1 | 54× "**Before executing this step, Read `…` § … completely** — …" | mandate → reference "See `…` § …. <what it holds>."; read when the step needs it (one level deep) | batch A/B below: no grader regressed |
+| P2-2 | 26× "Re-Read … completely on every round — even if read earlier in this session" | forced ≈ 10.9 k words of re-reading per round, including finalize parts A–E, legacy actions and implement detail an `iterate` round never runs; replaced by a 7-section round read list and "re-read only after a compaction" | batch A/B below: no grader regressed |
+| P2-3 | "Order of evaluation (mandatory, per iteration)" | emphasis; "first match wins" is the contract | batch A/B below: no grader regressed |
+| P2-4 | "it is MANDATORY on every section you append" | caps → "required"; gate 12b still enforces it | batch A/B below: no grader regressed |
+| P2-5 | "### Engine source (mandatory — …)", "### Post-Generation Validation (mandatory gate)" | heading emphasis; "If ANY pattern is missing → DO NOT open the page." stays verbatim | batch A/B below: no grader regressed |
+| P2-6 | "NEVER open a separate browser window", "MUST be opened in the user's real Edge" | caps → plain; the forbidden-alternatives list and the `### MANDATORY — Real Edge browser only` heading (test-pinned contract) stay | batch A/B below: no grader regressed |
+| P2-7 | "you MUST NOT render a second concept completion card", "Output … VERBATIM as the LAST thing" | caps → plain wording, same rule | batch A/B below: no grader regressed |
+| P2-8 | Report-only entry steps 1–5 | moved verbatim to `deep-knowledge/step0-report-entry.md` § Report-only entry · steps; only `--report` runs read it | batch A/B below: no grader regressed |
+| P2-9 | Step 1a "≥2 designs → the variant overview" + "Orthogonality — a view never re-asks …" | moved verbatim to `step1-templates.md` § 1a · Variant overview and orthogonality; the pointer line keeps the rule summary | batch A/B below: no grader regressed |
 
 ## Added
 
@@ -276,8 +276,31 @@ anchor. Not caught: R2→R4 "visual highlight" (no shared vocabulary:
 "kreativer in der Darstellung" vs "noch nicht das Highlight"); the patterns
 list covers it instead.
 
+## A/B (2026-11-01, 2 runs per variant, `--timeout-min 20`)
+
+| Case · grader | A (main) | B (pass 2) |
+|---|---|---|
+| decision-page · all 8 | 2/2 | 2/2 |
+| round-comment-fidelity · all 10 | 0/0 (2× timeout 20 min) | 2/2 |
+| round-keep-option-open · all 9 | 2/2 | 2/2 |
+| round-reopen-breadth · brief-verbatim | 0/2 | 2/2 |
+| round-reopen-breadth · other 7 | 2/2 | 2/2 |
+| round-replay-r6-hover · state-check-ran | 0/2 | 1/1 (1× timeout 20 min) |
+| round-replay-r6-hover · toc-no-fab-overlap-on-hover | 2/2 | 1/1 |
+| round-replay-r6-hover · toc-cursor-pointer | 2/2 | 1/1 |
+| round-replay-r6-hover · toc-hover-no-dead-gap | 0/2 | 0/1 |
+| round-replay-r6-hover · brief-verbatim | 1/2 | 0/1 |
+
+Totals: A 10 runs, 2 errors, 17.5 M tokens, $18.94, mean 666 s · B 10 runs,
+1 error, 17.8 M tokens, $17.99, mean 605 s (−9 %). Cache reads dominate the
+token count, so the −51 % mandatory read shows up as time, not as tokens.
+
 ## Verdict
 
-pending (QA wave): run the `round-*` cases plus `round-replay-r6-hover` with
-`--a-ref claude/opus-55-skills-review-b0c590`; ship if the graders hold and
-the replay case passes on B.
+Keep. No grader got worse; B adds the state check the real concept lacked
+(0/2 → 1/1), carries the user's words into the brief (0/2 → 2/2 on
+reopen-breadth) and finished the comment-fidelity case that A timed out on
+twice. Caveats: the FAB-overlap grader no longer discriminates, because
+#1007 fixed that rail on main, so both variants pass it; `toc-hover-no-dead-gap`
+fails on both and needs recalibrating before it can gate anything; B's
+replay run 2 hit the 20-minute timeout, so the replay case has 1 valid B run.
