@@ -28,7 +28,7 @@ const domOf = html => {
 
 const opt = (id, name, v, checked) => `<label data-opt="${v}"><input type="radio" name="${name}" value="${v}"${checked ? " checked" : ""}></label>`;
 const decision = (id, mode, rec, inner, extra = "") => `<section id="${id}" data-nav-label="${id}" data-decision="${id}" data-decision-mode="${mode}" data-label="L-${id}" data-rec="${rec}" data-applies-to="all" data-finding="f-${id}" ${extra}>
-  <h3 data-question>Question ${id}?</h3>${inner}
+  <p data-situation>Found ${id}.</p><h3 data-question>Question ${id}?</h3>${inner}
   <textarea data-comment="${id}-note"></textarea>
   <input type="hidden" name="dm-${id}-touched" value="">
   <input type="hidden" name="dm-${id}-issue" value="">
@@ -202,17 +202,21 @@ describe("gate rules A1-A8", () => {
   test("A3 unknown mode fails", () => {
     expect(kinds(findAnalysisIssues(MODES.s.replace('"single"', '"triple"')), "errors")).toContain("decision-mode");
   });
-  test("A4 more than 3 topics or 7 decisions per topic warns", () => {
-    const topic = (i, n) => `<section id="t${i}" data-topic data-nav-label="T${i}">${Array.from({ length: n }, (_, k) => MODES.s.replace(/"s"/g, `"s${i}_${k}"`).replace(/dm-s/g, `dm-s${i}_${k}`).replace(/s-note/g, `s${i}_${k}-note`)).join("")}</section>`;
-    const page = n => `<section data-iteration="1" data-analysis="full">${briefing}${n.map((c, i) => topic(i, c)).join("")}</section>`;
-    expect(kinds(findAnalysisIssues(page([1, 1, 1, 1])), "warnings")).toContain("topics-max");
-    expect(kinds(findAnalysisIssues(page([8])), "warnings")).toContain("topic-decisions-max");
-    expect(findAnalysisIssues(page([7, 7, 7])).warnings).toEqual([]);
+  test("A4 topic count 1-7, 3-7 questions per topic, topic title <= 5 words", () => {
+    const topic = (i, n, label = "T" + i) => `<section id="t${i}" data-topic data-nav-label="${label}">${Array.from({ length: n }, (_, k) => MODES.s.replace(/"s"/g, `"s${i}_${k}"`).replace(/dm-s/g, `dm-s${i}_${k}`).replace(/s-note/g, `s${i}_${k}-note`)).join("")}</section>`;
+    const page = (n, label) => `<section data-iteration="1" data-analysis="full">${briefing}${n.map((c, i) => topic(i, c, label)).join("")}</section>`;
+    expect(kinds(findAnalysisIssues(page([3, 3, 3, 3, 3, 3, 3, 3])), "warnings")).toContain("topics-count");
+    expect(kinds(findAnalysisIssues(page([])), "warnings")).toContain("topics-count");
+    expect(kinds(findAnalysisIssues(page([8])), "warnings")).toContain("topic-questions-count");
+    expect(kinds(findAnalysisIssues(page([2])), "warnings")).toContain("topic-questions-count");
+    expect(kinds(findAnalysisIssues(page([3], "One two three four five six")), "warnings")).toContain("topic-title-long");
+    expect(findAnalysisIssues(page([3, 5, 7], "One two three four five")).warnings).toEqual([]);
+    expect(findAnalysisIssues(page([3, 3, 3, 3, 3, 3, 3])).warnings).toEqual([]);
   });
   test("A5 Lite above five decisions warns", () => {
     const q = k => MODES.s.replace(/"s"/g, `"q${k}"`).replace(/dm-s/g, `dm-q${k}`).replace(/s-note/g, `q${k}-note`);
-    expect(kinds(findAnalysisIssues(`<section data-analysis="lite">${[1, 2, 3, 4, 5, 6].map(q).join("")}</section>`), "warnings")).toContain("lite-max");
-    expect(findAnalysisIssues(`<section data-analysis="lite">${[1, 2, 3, 4, 5].map(q).join("")}</section>`).warnings).toEqual([]);
+    expect(kinds(findAnalysisIssues(`<section data-analysis="lite" id="lite">${[1, 2, 3, 4, 5, 6].map(q).join("")}</section>`), "warnings")).toContain("lite-max");
+    expect(findAnalysisIssues(`<section data-analysis="lite" id="lite">${[1, 2, 3, 4, 5].map(q).join("")}</section>`).warnings).toEqual([]);
   });
   test("A6 a quantitative finding without a visual warns; with a palette visual it does not", () => {
     const l3 = inner => MODES.s.replace("</h3>", `</h3><div data-alevel="3" data-title="x"><div data-slot="long">${inner}</div></div>`);
@@ -255,5 +259,13 @@ describe("independent fix: mixed / design pages keep the page title and subtitle
       expect(d.querySelector("[data-page-header] .subtitle").textContent).toBe("Sub line");
       expect(page.html).toContain('html[data-template="design"] [data-page-header] { display: none; }');
     } finally { fs.rmSync(root, { recursive: true, force: true }); }
+  });
+});
+
+describe("gate A9 Fragestellung", () => {
+  test("a decision without data-situation warns", () => {
+    const bare = MODES.s.replace(/<p data-situation>[^<]*<\/p>/, "");
+    expect(findAnalysisIssues(bare).warnings.map(w => w.kind)).toContain("decision-situation");
+    expect(findAnalysisIssues(MODES.s).warnings.map(w => w.kind)).not.toContain("decision-situation");
   });
 });

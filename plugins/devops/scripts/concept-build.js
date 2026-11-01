@@ -392,7 +392,8 @@ function modeFields(fragment, decisions) {
     const n = `dm-${d.id}`;
     const v = d.value;
     switch (d.mode) {
-      case 'single': case 'verify': out[n] = v == null ? '' : String(v); break;
+      case 'single': case 'verify': case 'picture': case 'compare': case 'chain': case 'place': out[n] = v == null ? '' : String(v); break;
+      case 'points': Object.keys(v || {}).forEach(k => { out[`${n}.${k}`] = v[k] ? String(v[k]) : ''; }); break;
       case 'multi': {
         const on = new Set(Array.isArray(v) ? v : []);
         boxNames.filter(b => b.startsWith(`${n}.`)).forEach(b => { out[b] = on.has(b.slice(n.length + 1)); });
@@ -410,7 +411,35 @@ function modeFields(fragment, decisions) {
     out[`${n}-touched`] = d.untouched ? '' : '1';
     out[`${n}-issue`] = d.issue ? '1' : '';
     out[`${n}-epic`] = d.epic || '';
+    out[`${n}-none`] = d.none ? '1' : '';
+    if (d.hesitation && typeof d.hesitation === 'object') {
+      out[`${n}-hes`] = JSON.stringify({ ms: d.hesitation.ms || 0, revisits: d.hesitation.revisits || 0, sharpen: !!d.hesitation.flagged });
+    }
     if (typeof d.note === 'string') out[`${d.id}-note`] = d.note;
+  }
+  return out;
+}
+
+/**
+ * The engine's hidden dm-{id}-none / -hes are not required by authoring or the gate, so a
+ * fragment may lack them; bakeFields only rewrites controls that exist. Inject the missing
+ * ones (when the payload carries a value) so `none: true` and the hesitation survive the freeze.
+ */
+function ensureEngineInputs(fragment, fields) {
+  if (!fields || typeof fields !== 'object') return fragment;
+  let out = fragment;
+  for (const key of Object.keys(fields)) {
+    const m = /^dm-(.+)-(none|hes)$/.exec(key);
+    if (!m || !fields[key]) continue;
+    const spans = opaqueSpans(out);
+    const named = [...out.matchAll(tagRe('input'))].some(t => !inSpan(spans, t.index) && getAttr(t[2], 'name') === key);
+    if (named) continue;
+    const idRe = m[1].replace(/[^\w-]/g, '\\$&');
+    const open = new RegExp(`<([a-z][a-z0-9]*)\\b${ATTRS}\\sdata-decision=(?:"${idRe}"|'${idRe}')${ATTRS}>`, 'i');
+    const hit = open.exec(out);
+    if (!hit || inSpan(spans, hit.index)) continue;
+    const at = hit.index + hit[0].length;
+    out = `${out.slice(0, at)}<input type="hidden" name="${key}" value="">${out.slice(at)}`;
   }
   return out;
 }
@@ -427,7 +456,7 @@ function bake(fragment, payload, opts = {}) {
   if ((!fields || !Object.keys(fields).length) && hasKeyedControls(fragment)) {
     notes.push('the payload carries no allFields, so no control value was written (a stored -decisions.json summary is not a /decisions payload)');
   }
-  let out = bakeFields(fragment, fields, notes);
+  let out = bakeFields(ensureEngineInputs(fragment, fields), fields, notes);
   out = bakeMappings(out, payload && payload.mappings, notes);
   out = bakeFrozenFeedback(out, payload);
   out = replaceRootAttrs(out, a => setAttr(a, 'data-baked', true));

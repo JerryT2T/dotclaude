@@ -301,7 +301,9 @@ async function run(argv, {
   let contextEditing = ctxWanted;
   const maxTurns = Number.isInteger(o.maxTurns) && o.maxTurns > 0 ? o.maxTurns : DEFAULT_MAX_TURNS;
   const maxUsd = o.maxUsd > 0 ? o.maxUsd : DEFAULT_MAX_USD;
-  const deadline = now + (Number(env.CLAUDE_API_AGENT_TIMEOUT) > 0 ? Number(env.CLAUDE_API_AGENT_TIMEOUT) : DEFAULT_TIMEOUT_S) * 1000;
+  // The run clock is real time: `now` only labels logs and can be injected (tests),
+  // so a deadline derived from it expires once the wall clock passes that date.
+  const deadline = Date.now() + (Number(env.CLAUDE_API_AGENT_TIMEOUT) > 0 ? Number(env.CLAUDE_API_AGENT_TIMEOUT) : DEFAULT_TIMEOUT_S) * 1000;
   const tools = o.web ? [...CLIENT_TOOLS, ...webTools(model)] : CLIENT_TOOLS;
 
   const messages = [{ role: 'user', content: `Project root: ${root}\n\nTask:\n${task}` }];

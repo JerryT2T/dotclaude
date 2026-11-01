@@ -1,43 +1,43 @@
-# Concept templates, part 45 of 48: Template: analysis — engine UI JS (palette, stages, stepper, choreography)
+# Concept templates, part 45 of 48: Template: analysis — engine UI JS (palette, chat flow, rail, composer)
 
-## Engine UI — palette, stages, stepper, choreography (JS)
+## Engine UI — palette, chat flow, rail, composer (JS)
 
 One namespaced block (`window.CONCEPT_VIZ`, `window.conceptAnalysis`); it only
 **enhances** the authored markup and only ever writes the named controls of the
-contract (`dm-{id}`, `dm-{id}.{opt}`, `-alt`, `-fix`, `-text`, `-touched`,
-`-issue`, `-epic`, the `data-comment` note). Collect, bake and freeze therefore
-need nothing else. UI strings are a small de/en table keyed off
+contract (`dm-{id}`, `dm-{id}.{opt}`, `-alt`, `-fix`, `-text`, `-none`, `-touched`,
+`-issue`, `-epic`, `-hes`, the `data-comment` note). Collect, bake and freeze
+therefore need nothing else. UI strings are a small de/en table keyed off
 `<html lang>` (no `{{key}}` rows needed).
 
 What the code does, in the order of the file:
 
 1. `CONCEPT_VIZ` — the palette registry (`text kpi bar bars spark donut compare flow`),
    `renderViz(root, size)`; unknown type or bad spec renders `spec.text`.
-2. `setup(root)` — one instance per `[data-analysis]`: builds the stage list
-   (briefing, topic intros, decisions, review, next round, list), the sticky
-   one-line stepper (Full; only the open Themenfeld shows its dots) /
-   progress dots (Lite), the same foot on every stage (decision: ONE note
-   field across the full width with its 📎 inside, then the bar — "Als Issue
-   anlegen" link left, Zurück / Weiter right; briefing: duration + "Los
-   geht's →" in that bar) and the mode widgets (slider bar, sortable order,
-   inline alt / fix / custom fields). The round's `.iteration-intro` moves
-   into the briefing.
-2b. `fitFull(inst)` — a visible Full wider than 900px and ≥ 520px tall is
-   fitted to the viewport (`.an-fit`, `--an-fit-h`): no page scroll, every
-   foot pinned to the round's bottom so the bar never moves, overflow
-   condensed (`.an-dense` → `.an-dense2` for the stage, `.an-afold` for the
-   analysis column), internal scroll (`.an-ovf` / `.an-aovf`) only as the
-   last resort. Re-run on every stage change, level change, resize.
-3. The analysis column: three levels, one long at a time, with the
-   choreography (≈ 1 s the first two times per page — counter in
-   `localStorage`, try/catch — then ≈ 0.3 s; `prefers-reduced-motion` → no
-   motion; "↻ Übergang" replays it).
-4. Touched tracking: a stage open ≥ 3 s, or any change in it, writes
-   `dm-{id}-touched` = `"1"` (and fires `input` + `change`, so persistence and
-   the section nav see it).
-5. Keys: Enter / ⇧+Enter, ← → stages, ↑ ↓ options, 1–N options (decision has
-   focus), Home / End, ⇧+1–3 topics, PgUp / PgDn levels, N note, I issue,
-   L list, R replay, B evidence, U first untouched, Esc closes the popup.
+2. Message builders: `msg()` (devops avatar + bubble), `buildFinding()` (the
+   finding message: meta line, tabs 📊 Befund / 🖥 Beispiel when the level ships
+   a `[data-example]`, the visual; `spec.hl` pulses once), `setTab()` (the
+   pane animates, the messages below fade out and back in).
+3. `setup(root)` — one instance per `[data-analysis]`: the stage list
+   (briefing, topic pages, decisions, closing), the right rail (Full) /
+   progress dots (Lite), the peeks (previous stage above, next below) and the
+   persistent composer. A decision stage is three messages — finding,
+   question (fixed height), answer block (capped at ≈ 45 % of the viewport) —
+   built by `prepDecision()` together with the mode widgets (slider, sortable
+   order, inline alt / fix / custom fields). The round's `.iteration-intro`
+   moves into the briefing.
+4. The composer is THE note field: `storeOf()` maps it onto the open
+   stage's `data-comment="{id}-note"` (briefing, topic page and closing get a
+   hidden one of their own); max ONE tag (`setTag()`, stored as a leading
+   `[tag] `), set by a click on a finding / question / topic page or a closing
+   toggle; `sendNote()`: tagged → the note stays, untagged → the next stage
+   (not on briefing / closing).
+5. Touched tracking: a stage open ≥ 3 s, or any change in it, writes
+   `dm-{id}-touched` = `"1"`. Hesitation: `hesEntry()` … `hesFlush()` count dwell
+   only while the stage is visible AND the window focused and write
+   `dm-{id}-hes`.
+6. Keys: Enter / ⇧+Enter, ← → stages, ↑ ↓ options, 1–N options (decision has
+   focus), Home / End, ⇧+1–3 topics, N composer, I issue, U first untouched.
+   Animation only on the FIRST visit of a stage; `prefers-reduced-motion` → none.
 
 ```javascript
 (function () {
@@ -99,8 +99,10 @@ What the code does, in the order of the file:
   VIZ.bars = (el, s, ctx) => {
     const items = list(s.items), top = ctx && ctx.size === 'short' ? 3 : items.length;
     const max = Math.max.apply(null, items.map(i => num(i.value)).concat([1]));
-    el.innerHTML = '<div class="an-bars">' + items.slice(0, top).map(i =>
-      '<div><span>' + esc(i.label) + '</span><div class="an-bar-t"><i style="width:' + clamp(num(i.value) / max * 100, 0, 100) + '%"></i></div><b>'
+    // spec.hl names the item(s) the question is about: they keep the accent, the rest steps back.
+    const hl = [].concat(s.hl || []).map(String);
+    el.innerHTML = '<div class="an-bars' + (hl.length ? ' an-hl' : '') + '">' + items.slice(0, top).map(i =>
+      '<div' + (hl.indexOf(String(i.label)) >= 0 ? ' class="an-on"' : '') + '><span>' + esc(i.label) + '</span><div class="an-bar-t"><i style="width:' + clamp(num(i.value) / max * 100, 0, 100) + '%"></i></div><b>'
       + esc(fmt(i.value) + (s.unit ? ' ' + s.unit : '')) + '</b></div>').join('') + '</div>';
   };
   VIZ.spark = (el, s, ctx) => {
@@ -157,12 +159,13 @@ What the code does, in the order of the file:
 
   /* ================= 2. helpers over the contract ================= */
   const instances = [];
-  const TOPIC_COLORS = ['#a371f7', '#39c5cf', '#7c8cff', '#c297ff', '#5ec8e5', '#9aa8ff', '#b392f0'];   // never red / green / orange
+  // Strongly different hues; never blue (briefing / closing), never the note purple, never the variant colours, never red / green / orange.
+  const TOPIC_COLORS = ['#f28fb8', '#4fd1c5', '#e6d36a', '#e879c9', '#d4e157', '#6fe3e3', '#f0a0e8'];
   const decId = d => d.dataset.decision;
   const ctl = (d, name) => [...d.querySelectorAll('input, textarea, select')].filter(c => (c.name || '') === name);
   const ctl1 = (d, name) => ctl(d, name)[0] || null;
   const optEl = (d, v) => [...d.querySelectorAll('[data-opt]')].find(o => o.getAttribute('data-opt') === v) || null;
-  const optLabel = (d, v) => { const o = optEl(d, v); const l = o && o.querySelector('[data-opt-label]'); return l ? l.textContent.trim() : String(v); };
+  const optLabel = (d, v) => { const o = optEl(d, v); const l = o && o.querySelector('[data-opt-label]'); if (!l) return String(v); const b = l.querySelector('.an-badge'); return (b ? l.textContent.replace(b.textContent, '') : l.textContent).trim(); };
   const optCons = o => { const c = o && o.querySelector('[data-opt-consequence]'); return c ? c.textContent.trim() : ''; };
   const recList = d => String(d.dataset.rec || '').split(/[\s,]+/).filter(Boolean);
   const isTouched = d => { const c = ctl1(d, 'dm-' + decId(d) + '-touched'); return !!c && c.value === '1'; };
@@ -178,27 +181,40 @@ What the code does, in the order of the file:
   }
   function valueText(d, e) {
     const m = e.mode, v = e.value, unit = d.dataset.unit ? ' ' + d.dataset.unit : '';
+    if (e.none) return L('Keine passt', 'None fits') + (e.note ? ': ' + e.note : '');
     if (m === 'multi') return v.length ? v.map(x => optLabel(d, x)).join(', ') : L('nichts gewählt', 'nothing picked');
     if (m === 'yesnoalt') return v.answer === 'alt' ? L('Anders: ', 'Other: ') + (v.alt || '…') : v.answer ? optLabel(d, v.answer) : '–';
     if (m === 'slider') return v == null ? '–' : fmt(v) + unit;
     if (m === 'order') return v.map(x => optLabel(d, x)).join(' → ');
     if (m === 'wording') return v || '–';
+    if (m === 'points') { const ks = Object.keys(v || {}).filter(k => v[k]); return ks.length ? ks.map(k => optLabel(d, k) + ' ' + v[k]).join(', ') : '–'; }
     return v ? optLabel(d, v) : '–';
   }
   function recText(d) {
     const m = d.dataset.decisionMode, r = recList(d);
     if (m === 'slider') return r[0] + (d.dataset.unit ? ' ' + d.dataset.unit : '');
     if (m === 'order') return r.map(x => optLabel(d, x)).join(' → ');
+    if (m === 'points') return r.map(x => { const k = x.split(':'); return optLabel(d, k[0]) + ' ' + (k[1] || 0); }).join(', ');
     return r.map(x => optLabel(d, x)).join(', ');
   }
   function fire(el) {
     el.dispatchEvent(new Event('input', { bubbles: true }));
     el.dispatchEvent(new Event('change', { bubbles: true }));
   }
+  // A frozen (baked) round is read-only: every control the engine creates is born disabled.
+  // Hidden dm-* inputs (state of the engine: -none, -hes, points, order ...) persist through
+  // saveState() / restoreState() by name (templates-persistence.md).
+  const frozenEl = el => !!(el.closest && el.closest('[data-baked]'));
+  function newHidden(d, name, value) {
+    const c = h('input');
+    c.type = 'hidden'; c.name = name; c.value = value || '';
+    if (frozenEl(d)) c.disabled = true;
+    return c;
+  }
   function setHidden(d, suffix, value) {
     const name = 'dm-' + decId(d) + suffix;
     let c = ctl1(d, name);
-    if (!c) { c = h('input'); c.type = 'hidden'; c.name = name; d.appendChild(c); }
+    if (!c) { c = newHidden(d, name, ''); d.appendChild(c); }
     if (c.value === value || c.disabled) return false;
     c.value = value;
     fire(c);
@@ -212,182 +228,105 @@ What the code does, in the order of the file:
     return wrote;
   }
 
-  /* choreography duration: slow the first two times per page */
-  const CK = 'concept-an-transitions:' + (location.pathname || '/');
-  function transCount() { try { return parseInt(localStorage.getItem(CK) || '0', 10) || 0; } catch (e) { return 0; } }
-  function bumpTrans() { try { const v = String(transCount() + 1); if (typeof _guardedSetItem === 'function') _guardedSetItem(CK, v); else localStorage['setItem'](CK, v); } catch (e) { /* private mode */ } }
-  function transMs() { return reduced() ? 0 : (transCount() < 2 ? 1000 : 300); }
-
-  /* ================= 3. analysis column ================= */
+  /* ================= 3. messages: finding (Befund / Beispiel), question, answer ================= */
+  const MARK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M6.5 8.5c-2 0-3.5 1.6-3.5 3.5s1.5 3.5 3.5 3.5c3.5 0 7.5-7 11-7 2 0 3.5 1.6 3.5 3.5s-1.5 3.5-3.5 3.5c-3.5 0-7.5-7-11-7z"/></svg>';
+  const BLUE = '#79c0ff';
+  /** One chat message: the devops avatar (the ∞ glyph, no ring) beside a bubble. */
+  function msg(cls) {
+    const m = h('div', 'an-msg ' + cls), av = h('div', 'an-av');
+    av.innerHTML = MARK;
+    tip(av, 'devops');
+    m.appendChild(av);
+    return m;
+  }
   function levelSrc(inst, st, n) {
     if (n === 1) return inst.root.querySelector('[data-alevel="1"]');
     if (n === 2) return st.topic ? [...st.topic.children].find(c => c.getAttribute('data-alevel') === '2') || null : null;
     return st.kind === 'dec' ? st.el.querySelector('[data-alevel="3"]') : null;
   }
-  function wanted(inst, st) {
-    let w = {};
-    if (st.kind === 'brief' || st.kind === 'start') w = { 1: 'long' };
-    else if (st.kind === 'topic') w = { 1: 'short', 2: 'long' };
-    else if (st.kind === 'dec') w = inst.lite ? { 1: 'short', 3: 'long' } : { 1: 'short', 2: 'short', 3: 'long' };
-    const present = [1, 2, 3].filter(n => w[n] && levelSrc(inst, st, n));
-    if (present.length && !present.some(n => w[n] === 'long')) w[present[present.length - 1]] = 'long';
-    return w;
+  /** The finding a stage rests on, ONE level: briefing -> L1, topic -> L2, decision -> L3 (no L3: the topic's L2, else the overall L1). */
+  function findingSrc(inst, st) {
+    if (st.kind === 'brief' || st.kind === 'start') return levelSrc(inst, st, 1);
+    if (st.kind === 'topic') return levelSrc(inst, st, 2);
+    return levelSrc(inst, st, 3) || (st.topic ? levelSrc(inst, st, 2) : null) || levelSrc(inst, st, 1);
   }
-  function slotNodes(src, kind) {
-    const slot = [...src.children].find(c => c.getAttribute('data-slot') === kind);
-    const box = h('div');
+  function stageLabel(inst, st) {
+    if (st.kind === 'dec') return st.el.dataset.label || decId(st.el);
+    if (st.kind === 'topic') return st.group.label;
+    if (st.kind === 'brief') return st.el.dataset.navLabel || 'Briefing';
+    return L('Abschluss', 'Closing');
+  }
+  function stageNo(inst, st) { return (st.group ? st.group.decs : inst.decs).indexOf(st) + 1; }
+  function metaText(inst, st) {
+    const list = st.group ? st.group.decs : inst.decs;
+    return (st.group ? st.group.label + ' · ' : '') + L('Frage ', 'Question ') + stageNo(inst, st) + L(' von ', ' of ') + list.length;
+  }
+  /** Finding message: meta line, tabs Befund / Beispiel (Beispiel only with a [data-example] slot), situation + visual. */
+  function buildFinding(inst, st) {
+    const d = st.el, src = findingSrc(inst, st);
+    const m = msg('an-m-find'), bub = h('div', 'an-bub an-edge');
+    m.appendChild(bub);
+    bub.appendChild(h('div', 'an-meta', metaText(inst, st)));
+    const applies = d.querySelector('[data-applies]');
+    if (applies) bub.appendChild(applies);
+    const pane = h('div', 'an-pane an-p-find'), sit = d.querySelector('[data-situation]');
+    if (sit) pane.appendChild(sit);
+    const slot = src && [...src.children].find(c => c.getAttribute('data-slot') === 'long');
     if (slot) {
       const c = slot.cloneNode(true);
-      c.querySelectorAll('[data-evidence]').forEach(e => e.remove());
+      c.querySelectorAll('[data-example], [data-evidence]').forEach(e => e.remove());
       c.querySelectorAll('[data-viz-done]').forEach(e => e.removeAttribute('data-viz-done'));
-      while (c.firstChild) box.appendChild(c.firstChild);
+      while (c.firstChild) pane.appendChild(c.firstChild);
     }
-    return box;
-  }
-  function buildLevel(inst, n, src) {
-    const node = h('div', 'an-lv');
-    node.dataset.n = String(n);
-    node.dataset.state = 'short';
-    node.__src = src;
-    const head = btn('an-lv-h');
-    head.innerHTML = '<i class="an-lv-i"></i><span class="an-lv-t"></span>';
-    head.querySelector('.an-lv-t').textContent = src.dataset.title || '';
-    tip(head, L('Auf- oder zuklappen · Bild↑ / Bild↓ wechselt die Stufe', 'Expand or collapse · PgUp / PgDn switches level'));
-    head.setAttribute('aria-expanded', 'false');
-    head.addEventListener('click', () => openLevel(inst, n));
-    const ws = h('div', 'an-w an-w-s'), wl = h('div', 'an-w an-w-l');
-    const is = h('div', 'an-in'), il = h('div', 'an-in');
-    const short = slotNodes(src, 'short'), long = slotNodes(src, 'long');
-    if (!short.childNodes.length && long.firstElementChild) short.appendChild(long.firstElementChild.cloneNode(true));
-    is.appendChild(short);
-    il.appendChild(long);
-    if (n === 3) long.insertBefore(h('div', 'an-cons-slot'), long.firstChild);
-    const ev = [...src.querySelectorAll('[data-evidence]')];
-    if (ev.length) {
-      const b = btn('an-ev', '🔎 ' + L('Belege', 'Evidence'));
-      tip(b, '', 'B');
-      b.addEventListener('click', () => openEvidence(inst, src.dataset.title || '', ev, b));
-      long.appendChild(b);
-    }
-    ws.appendChild(is); wl.appendChild(il);
-    node.append(head, ws, wl);
-    renderViz(short, 'short');
-    renderViz(long, 'long');
-    return node;
-  }
-  function setState(node, state) {
-    node.dataset.state = state;
-    const b = node.querySelector('.an-lv-h');
-    if (b) b.setAttribute('aria-expanded', state === 'long' ? 'true' : 'false');
-  }
-  /** Accordion: n long, every other present level short. */
-  function openLevel(inst, n) {
-    if (!inst.lv[n]) return;
-    [1, 2, 3].forEach(k => { if (inst.lv[k]) setState(inst.lv[k], k === n ? 'long' : 'short'); });
-    fitSoon(inst, transMs() + 60);
-  }
-  function stepLevel(inst, dir) {
-    const present = [1, 2, 3].filter(k => inst.lv[k]);
-    if (!present.length) return;
-    const cur = present.find(k => inst.lv[k].dataset.state === 'long');
-    const i = present.indexOf(cur);
-    openLevel(inst, present[clamp((i < 0 ? 0 : i) + dir, 0, present.length - 1)]);
-  }
-  function applyLevels(inst, st, opt) {
-    opt = opt || {};
-    const dur = opt.dur != null ? opt.dur : transMs();
-    inst.root.style.setProperty('--an-dur', dur + 'ms');
-    inst.timers.forEach(clearTimeout);
-    inst.timers = [];
-    const want = wanted(inst, st);
-    let animated = false;
-    [1, 2, 3].forEach(n => {
-      const src = want[n] ? levelSrc(inst, st, n) : null;
-      let node = inst.lv[n];
-      if (!src) { if (node) { node.remove(); delete inst.lv[n]; } return; }
-      if (node && node.__src !== src) { node.remove(); node = null; delete inst.lv[n]; }
-      if (node) { setState(node, want[n]); return; }
-      node = buildLevel(inst, n, src);
-      inst.lv[n] = node;
-      const after = [1, 2, 3].filter(k => k < n && inst.lv[k]).pop();
-      if (after) inst.lvs.insertBefore(node, inst.lv[after].nextSibling); else inst.lvs.insertBefore(node, inst.lvs.firstChild);
-      if (n > 1 && dur) {
-        animated = true;
-        setState(node, 'short');
-        const cls = opt.swap && n === 3 ? 'an-swap' : 'an-enter';
-        node.classList.add(cls);
-        node.addEventListener('animationend', () => node.classList.remove(cls), { once: true });
-        if (want[n] === 'long') inst.timers.push(setTimeout(() => setState(node, 'long'), Math.round(dur * 0.6)));
-      } else setState(node, want[n]);
+    const ctx = d.querySelector('[data-context]');
+    if (ctx) pane.appendChild(ctx);
+    renderViz(pane, 'long');
+    const ex = src && src.querySelector('[data-example]');
+    if (!ex) { bub.appendChild(pane); return m; }
+    const tabs = h('div', 'an-tabs'), pe = h('div', 'an-pane an-p-ex');
+    tabs.setAttribute('role', 'tablist');
+    [['find', '📊', L('Befund', 'Finding'), L('Befund: was die Analyse gemessen hat', 'Finding: what the analysis measured')],
+      ['ex', '🖥', L('Beispiel', 'Example'), L('Beispiel: ein konkreter Fall aus der echten Anwendung', 'Example: a concrete case from the real application')]].forEach(t => {
+      const b = btn('an-tab' + (t[0] === 'find' ? ' an-on' : ''));
+      b.dataset.tab = t[0];
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-selected', t[0] === 'find' ? 'true' : 'false');
+      b.append(h('i', '', t[1]), document.createTextNode(t[2]));
+      tip(b, t[3]);
+      b.addEventListener('click', e => { e.stopPropagation(); setTab(m, t[0]); });
+      tabs.appendChild(b);
     });
-    if (animated && !opt.replay) bumpTrans();
-    updateCons(inst);
+    const exc = ex.cloneNode(true);
+    exc.removeAttribute('data-example'); exc.removeAttribute('hidden');
+    exc.querySelectorAll('[data-viz-done]').forEach(e => e.removeAttribute('data-viz-done'));
+    while (exc.firstChild) pe.appendChild(exc.firstChild);
+    pe.hidden = true;
+    renderViz(pe, 'long');
+    bub.append(tabs, pane, pe);
+    return m;
   }
-  function consequenceNode(d) {
-    const e = entryOf(d), box = h('div', 'an-cons');
-    box.appendChild(h('b', '', L('Folge deiner Wahl', 'What your choice does')));
-    const m = e.mode;
-    if (m === 'multi') {
-      const ul = h('ul');
-      e.value.forEach(v => { const li = h('li'); li.textContent = optLabel(d, v) + (optCons(optEl(d, v)) ? ' — ' + optCons(optEl(d, v)) : ''); ul.appendChild(li); });
-      box.appendChild(e.value.length ? ul : h('span', '', L('Nichts gewählt.', 'Nothing picked.')));
-    } else if (m === 'slider' || m === 'order' || m === 'wording') {
-      box.appendChild(h('span', '', valueText(d, e)));
-    } else {
-      const o = optEl(d, m === 'yesnoalt' ? e.value.answer : e.value);
-      const c = optCons(o);
-      box.appendChild(h('span', '', valueText(d, e) + (c ? ' — ' + c : '')));
-    }
-    return box;
+  /** Switching the tab animates the pane; the messages below briefly fade out and back in. */
+  function setTab(m, k) {
+    const bub = m.querySelector('.an-bub');
+    bub.querySelectorAll('.an-tab').forEach(b => { const on = b.dataset.tab === k; b.classList.toggle('an-on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
+    bub.querySelector('.an-p-find').hidden = k !== 'find';
+    bub.querySelector('.an-p-ex').hidden = k !== 'ex';
+    const below = [];
+    for (let n = m.nextElementSibling; n; n = n.nextElementSibling) below.push(n);
+    below.forEach(n => n.classList.add('an-dip'));
+    setTimeout(() => below.forEach(n => n.classList.remove('an-dip')), reduced() ? 0 : 220);
+    if (k === 'find') pulse(bub);
   }
-  function updateCons(inst) {
-    const st = inst.stages[inst.idx], node = inst.lv[3];
-    if (!node) return;
-    const slot = node.querySelector('.an-cons-slot');
-    if (!slot || !st || st.kind !== 'dec') return;
-    const want = isTouched(st.el);
-    const have = slot.firstChild && slot.firstChild.__for;
-    if (!want) { slot.textContent = ''; return; }
-    const n = consequenceNode(st.el);
-    if (have && slot.firstChild.textContent === n.textContent) return;
-    n.__for = true;
-    slot.textContent = '';
-    slot.appendChild(n);
-  }
-  function openEvidence(inst, title, nodes, opener) {
-    closeEvidence(inst);
-    const scrim = h('div', 'an-scrim'), pop = h('div', 'an-pop');
-    pop.setAttribute('role', 'dialog'); pop.setAttribute('aria-modal', 'true');
-    const x = btn('an-x', '✕');
-    tip(x, '', 'Esc');
-    x.setAttribute('aria-label', L('Schließen', 'Close'));
-    const head = h('div', 'an-pop-h'), hd = h('div');
-    hd.append(h('div', 'an-pop-k', L('Belege', 'Evidence')), h('div', 'an-pop-t', title));
-    head.append(hd, x);
-    const body = h('div', 'an-pop-b');
-    nodes.forEach(n => { const c = n.cloneNode(true); c.removeAttribute('hidden'); c.removeAttribute('data-evidence'); body.appendChild(c); });
-    pop.append(head, body);
-    scrim.appendChild(pop);
-    scrim.addEventListener('click', e => { if (e.target === scrim) closeEvidence(inst); });
-    x.addEventListener('click', () => closeEvidence(inst));
-    inst.root.appendChild(scrim);
-    inst.pop = { scrim, opener };
-    x.focus({ preventScroll: true });
-  }
-  function closeEvidence(inst) {
-    if (!inst.pop) return false;
-    const { scrim, opener } = inst.pop;
-    scrim.remove();
-    inst.pop = null;
-    if (opener && opener.isConnected) opener.focus({ preventScroll: true });
-    return true;
+  /** The highlighted part of a chart (spec.hl) pulses once. */
+  function pulse(root) {
+    root.querySelectorAll('.an-bars.an-hl .an-on .an-bar-t > i').forEach(i => { i.classList.remove('an-pulse'); void i.offsetWidth; i.classList.add('an-pulse'); });
   }
 
-  /* ================= 4. instance: stages, stepper, briefing ================= */
+  /* ================= 4. instance: stages, rail, briefing, composer ================= */
   function setup(root) {
     if (root.__an) return root.__an;
     const lite = root.getAttribute('data-analysis') === 'lite';
-    const inst = { root, lite, stages: [], groups: [], idx: 0, lv: {}, timers: [], visited: new Set(), decs: [], pop: null, maxIdx: 0, touchTimer: 0, fitTimer: 0 };
+    const inst = { root, lite, stages: [], groups: [], idx: 0, timers: [], visited: new Set(), seen: new Set(), decs: [], maxIdx: 0, touchTimer: 0, hes: {}, sharpen: new Map(), tag: '', key: root.id || (root.closest('[data-view]') || root).getAttribute('data-view') || ('analysis' + (instances.length + 1)) };
     root.__an = inst;
     instances.push(inst);
     // A lite round is a question view of the page: it counts as answered once EVERY decision is
@@ -419,60 +358,37 @@ What the code does, in the order of the file:
       inst.decs.push(st);
       if (g) g.decs.push(st);
     });
-    if (lite) {
-      const l1 = root.querySelector('[data-alevel="1"]');
-      if (l1) {
-        const start = h('section', 'an-stage an-start');
-        root.insertBefore(start, root.firstChild);
-        inst.stages.unshift({ kind: 'start', el: start });
-      }
-      const done = h('section', 'an-stage an-fin');
-      root.appendChild(done);
-      inst.stages.push({ kind: 'done', el: done });
-      // "All as list" is an aux stage here too: the header's list icon opens it, Zurück returns.
-      const lst = h('section', 'an-stage an-list');
-      root.appendChild(lst);
-      inst.stages.push({ kind: 'list', el: lst, aux: true });
-    } else {
-      ['review', 'next', 'list'].forEach(k => {
-        const el = h('section', 'an-stage an-' + k);
-        root.appendChild(el);
-        inst.stages.push({ kind: k, el, aux: k === 'list' });
-      });
-    }
-    inst.seq = inst.stages.filter(s => !s.aux);
-    // Aside: the three analysis levels.
-    const ana = h('aside', 'an-ana');
-    const ah = h('div', 'an-ana-h');
-    ah.appendChild(h('span', '', L('Analyse', 'Analysis')));
-    const rp = btn('an-rp', '↻ ' + L('Übergang', 'Transition'));
-    tip(rp, '', 'R');
-    rp.addEventListener('click', () => replay(inst));
-    ah.appendChild(rp);
-    inst.lvs = h('div', 'an-lvs');
-    ana.append(ah, inst.lvs);
-    inst.ana = ana;
-    root.appendChild(ana);
+    // Lite: the same chat flow without topic pages and without an empty start stage - it opens on its first question.
+    const end = h('section', 'an-stage ' + (lite ? 'an-fin' : 'an-review'));
+    root.appendChild(end);
+    inst.stages.push({ kind: lite ? 'done' : 'review', el: end });
+    inst.seq = inst.stages.slice();
+    inst.stores = h('div', 'an-stores');
+    inst.peekUp = h('div', 'an-peek an-peek-up');
+    inst.peekDn = h('div', 'an-peek an-peek-dn');
+    root.insertBefore(inst.peekUp, root.firstChild);
+    root.append(inst.peekDn, inst.stores);
     inst.decs.forEach(st => prepDecision(inst, st));
+    loadHes(inst);
     if (inst.brief) prepBrief(inst);
     inst.groups.forEach(g => prepIntro(inst, g));
-    if (lite) prepLiteStart(inst);
-    buildStepper(inst);
+    buildNav(inst);
+    buildComposer(inst);
     root.addEventListener('input', e => onEdit(inst, e));
     root.addEventListener('change', e => onEdit(inst, e));
-    root.addEventListener('click', e => { const t = e.target.closest && e.target.closest('[data-go]'); if (t) go(inst, Number(t.dataset.go)); });
+    root.addEventListener('click', e => {
+      const t = e.target.closest && e.target.closest('[data-go]');
+      if (t) { go(inst, Number(t.dataset.go)); return; }
+      tagFromClick(inst, e);
+    });
     root.addEventListener('pointerdown', () => { if (!root.contains(document.activeElement)) { const st = inst.stages[inst.idx]; if (st && st.el.tabIndex === -1) st.el.focus({ preventScroll: true }); } });
-    if (typeof ResizeObserver === 'function') {
-      let w = 0;
-      new ResizeObserver(() => { const nw = root.offsetWidth; if (nw !== w) { w = nw; drawConn(inst); armTouch(inst); } fitSoon(inst, 0); }).observe(root);
-    }
     go(inst, 0, { initial: true });
     return inst;
   }
-  const isWideKind = k => k === 'review' || k === 'next' || k === 'list' || k === 'done';
 
-  function buildStepper(inst) {
-    const old = inst.root.querySelector(':scope > .an-step, :scope > .an-lhead');
+  /** Right rail: dots on a hairline, fixed 18 px rows, topics carry a "THEMA" prefix. Lite keeps its progress dots. */
+  function buildNav(inst) {
+    const old = inst.root.querySelector(':scope > .an-rail, :scope > .an-lhead');
     if (old) old.remove();
     if (inst.lite) {
       const head = h('div', 'an-lhead');
@@ -483,125 +399,231 @@ What the code does, in the order of the file:
       const dots = h('span', 'an-dots');
       inst.decs.forEach(st => { const b = btn('an-dot'); b.dataset.go = String(inst.stages.indexOf(st)); b.dataset.dec = decId(st.el); dots.appendChild(b); });
       pr.appendChild(dots);
-      pr.appendChild(listIcon(inst));
       head.appendChild(pr);
       inst.root.insertBefore(head, inst.root.firstChild);
       inst.stepEl = head;
       return;
     }
-    const nav = h('nav', 'an-step');
+    const nav = h('nav', 'an-rail');
     nav.setAttribute('aria-label', L('Fortschritt', 'Progress'));
-    const bk = btn('an-k'); bk.dataset.k = 'brief';
-    bk.innerHTML = '<span class="an-ic">✓</span>';
-    bk.appendChild(h('span', 'an-lbl', inst.brief ? (inst.brief.dataset.navLabel || 'Briefing') : 'Briefing'));
-    bk.dataset.go = String(inst.stages.findIndex(s => s.kind === 'brief'));
-    tip(bk, '', 'Pos1');
-    if (inst.brief) nav.append(bk, h('i', 'an-sep'));
-    inst.groups.forEach((g, gi) => {
-      const grp = h('div', 'an-grp'); grp.style.setProperty('--c', g.color); grp.dataset.g = String(gi);
-      const gl = btn('an-gl');
-      gl.innerHTML = '<span class="an-ic">✓</span><i></i>';
-      gl.appendChild(h('span', 'an-lbl', g.label));
-      gl.dataset.go = String(inst.stages.indexOf(inst.stages.find(s => s.group === g && s.kind === 'topic')));
-      tip(gl, '', '⇧+' + (gi + 1));
-      const dots = h('span', 'an-dots');
-      g.decs.forEach(st => { const b = btn('an-dot'); b.dataset.go = String(inst.stages.indexOf(st)); b.dataset.dec = decId(st.el); dots.appendChild(b); });
-      grp.append(gl, dots);
-      nav.append(grp, h('i', 'an-sep'));
+    inst.stages.forEach(st => {
+      const edge = st.kind === 'brief' || st.kind === 'review';
+      const b = btn('an-ri' + (st.kind === 'topic' ? ' an-ri-topic' : edge ? ' an-ri-edge' : ''));
+      b.dataset.go = String(inst.stages.indexOf(st));
+      b.style.setProperty('--dc', st.group ? st.group.color : BLUE);
+      const prefix = st.kind === 'topic' ? L('Thema', 'Topic') : '';
+      if (prefix) b.appendChild(h('b', '', prefix));
+      b.append(h('span', '', stageLabel(inst, st)), h('i'));
+      tip(b, (prefix ? prefix + ' ' : '') + stageLabel(inst, st));
+      b.__st = st;
+      nav.appendChild(b);
     });
-    const rv = btn('an-k'); rv.appendChild(h('span', 'an-lbl', L('Review', 'Review'))); rv.dataset.k = 'review'; rv.dataset.go = String(inst.stages.findIndex(s => s.kind === 'review'));
-    tip(rv, '', 'Ende');
-    const nx = btn('an-k'); nx.appendChild(h('span', 'an-lbl', L('Nächste Runde', 'Next round'))); nx.dataset.k = 'next'; nx.dataset.go = String(inst.stages.findIndex(s => s.kind === 'next'));
-    nav.append(rv, h('i', 'an-sep'), nx, listIcon(inst));
     inst.root.insertBefore(nav, inst.root.firstChild);
     inst.stepEl = nav;
   }
-  function refreshStepper(inst) {
+  function refreshNav(inst) {
     const cur = inst.stages[inst.idx];
-    const decStates = new Map(inst.decs.map(st => [st, stateOf(inst, st.el)]));
-    inst.stepEl.querySelectorAll('.an-dot').forEach(b => {
-      const st = inst.decs.find(x => decId(x.el) === b.dataset.dec);
-      const s = decStates.get(st);
-      b.className = 'an-dot an-s-' + s + (st === cur ? ' an-cur' : '');
-      tip(b, ((st.el.dataset.label || decId(st.el))) + ' · ' + stateText(s));
-      b.setAttribute('aria-label', st.el.dataset.label + ' · ' + stateText(s));
-      if (st === cur) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current');
-    });
     if (inst.lite) {
+      const decStates = new Map(inst.decs.map(st => [st, stateOf(inst, st.el)]));
+      inst.stepEl.querySelectorAll('.an-dot').forEach(b => {
+        const st = inst.decs.find(x => decId(x.el) === b.dataset.dec);
+        const s = decStates.get(st);
+        b.className = 'an-dot an-s-' + s + (st === cur ? ' an-cur' : '');
+        tip(b, ((st.el.dataset.label || decId(st.el))) + ' · ' + stateText(s));
+        b.setAttribute('aria-label', st.el.dataset.label + ' · ' + stateText(s));
+        if (st === cur) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current');
+      });
       const n = inst.decs.indexOf(cur) + 1;
       const c = inst.stepEl.querySelector('.an-lcount');
       if (c) c.textContent = n ? n + ' / ' + inst.decs.length : '';
       return;
     }
-    const k = inst.stepEl.querySelector('[data-k="brief"]');
-    if (k) { k.classList.toggle('an-on', cur.kind === 'brief'); k.classList.toggle('an-done', inst.maxIdx > inst.stages.findIndex(s => s.kind === 'brief')); tip(k, L('Briefing · Analyse, Potential, Themenfelder', 'Briefing · analysis, potential, topics'), 'Pos1'); }
-    const seps = [...inst.stepEl.querySelectorAll(':scope > .an-sep')];
-    inst.groups.forEach((g, gi) => {
-      const grp = inst.stepEl.querySelector('.an-grp[data-g="' + gi + '"]');
-      const done = g.decs.length > 0 && g.decs.every(st => decStates.get(st) !== 'open' && decStates.get(st) !== 'un');
-      grp.classList.toggle('an-gdone', done);
-      grp.classList.toggle('an-on', cur.group === g);
-      const sep = grp.nextElementSibling;
-      if (sep) sep.classList.toggle('an-sd', done);
-      const gl = grp.querySelector('.an-gl');
-      const nDone = g.decs.filter(st => decStates.get(st) !== 'open' && decStates.get(st) !== 'un').length;
-      tip(gl, g.label + ' · ' + nDone + '/' + g.decs.length + ' ' + L('entschieden', 'decided'), '⇧+' + (gi + 1));
+    let here = null;
+    inst.stepEl.querySelectorAll('.an-ri').forEach(b => {
+      const st = b.__st, on = st === cur;
+      b.classList.toggle('an-here', on);
+      b.classList.toggle('an-done', !on && inst.stages.indexOf(st) <= inst.maxIdx);
+      if (on) { here = b; b.setAttribute('aria-current', 'step'); } else b.removeAttribute('aria-current');
     });
-    void seps;
-    ['review', 'next'].forEach(kd => { const b = inst.stepEl.querySelector('[data-k="' + kd + '"]'); if (b) b.classList.toggle('an-on', cur.kind === kd); });
+    // The current item stays in view when the rail scrolls.
+    const r = inst.stepEl;
+    if (here && r.clientHeight) {
+      const top = here.offsetTop, bot = top + here.offsetHeight;
+      if (top < r.scrollTop + 24) r.scrollTop = Math.max(0, top - 24);
+      else if (bot > r.scrollTop + r.clientHeight - 24) r.scrollTop = bot - r.clientHeight + 24;
+    }
   }
 
   function prepBrief(inst) {
     const b = inst.brief, root = inst.root;
     b.classList.add('an-stage', 'an-brief');
     b.tabIndex = -1;
-    const what = b.querySelector('[data-briefing-what]');
-    b.setAttribute('data-an-kicker', L('Analyse', 'Analysis'));
-    // The round's own intro (Etappe heading + line) is a grid item of the
-    // root and landed BELOW the whole briefing: it opens the briefing instead.
+    // The round's own intro (Etappe heading + line) opens the briefing; the eyebrow below names the analysis.
     const intro = root.querySelector(':scope > .iteration-intro');
     if (intro) b.insertBefore(intro, b.firstChild);
+    const l1 = root.querySelector('[data-alevel="1"]');
+    b.insertBefore(h('div', 'an-eyebrow', root.getAttribute('data-nav-label') || (l1 && l1.dataset.title) || b.dataset.navLabel || L('Analyse', 'Analysis')), b.firstChild);
+    renderViz(b, 'long');
+    // Top-3 findings as cards in blue variations: the topics by share.
     const chipsEls = [...b.querySelectorAll('[data-briefing-topic]')];
     if (chipsEls.length) {
       const wrap = h('div', 'an-chips');
       chipsEls[0].parentNode.insertBefore(wrap, chipsEls[0]);
-      chipsEls.forEach((c, i) => {
+      chipsEls.slice().sort((x, y) => num(y.dataset.share) - num(x.dataset.share)).slice(0, 3).forEach((c, i) => {
         const g = inst.groups.find(x => x.topic.id === c.getAttribute('data-briefing-topic'));
-        c.style.setProperty('--c', g ? g.color : TOPIC_COLORS[i % TOPIC_COLORS.length]);
+        c.style.setProperty('--bc', ['#a5d6ff', '#79c0ff', '#58a6ff'][i]);
         c.setAttribute('role', 'button'); c.tabIndex = 0;
         const share = num(c.dataset.share);
-        const meta = h('em', '', (g ? g.decs.length + ' ' + L('Entscheidungen', 'decisions') : '') + (share ? (g ? ' · ' : '') + Math.round(share) + ' %' : ''));
-        c.appendChild(meta);
-        const idx = g ? inst.stages.findIndex(s => s.group === g && s.kind === 'topic') : -1;
-        c.dataset.go = String(idx);
+        c.appendChild(h('em', '', (g ? g.decs.length + ' ' + L('Fragen', 'questions') : '') + (share ? (g ? ' · ' : '') + Math.round(share) + ' %' : '')));
+        c.dataset.go = String(g ? inst.stages.findIndex(s => s.group === g && s.kind === 'topic') : -1);
         tip(c, '', g ? '⇧+' + (inst.groups.indexOf(g) + 1) : '');
         c.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); c.click(); } });
         wrap.appendChild(c);
       });
+      chipsEls.forEach(c => { if (!wrap.contains(c)) c.hidden = true; });
     }
     const dur = b.querySelector('[data-briefing-duration]');
     if (dur) dur.style.display = 'none';
-    // The briefing's way on is the SAME bar every stage has (same spot, same
-    // width): duration + count and the list link left, "Los geht's →" right.
-    // It is a child of the root, not of the briefing: the briefing is the
-    // connector svg's positioning box, the bar is pinned to the round.
+    // The call to action: "N Fragen · [Los geht's] · ≈ X min", the button centred. A child of the
+    // root (not of the briefing) so it stays out of the reveal sequence.
     const foot = h('div', 'an-foot an-foot-brief');
-    const q = h('div', 'an-quiet');
-    const meta = (dur ? dur.textContent.trim() : '') + (inst.decs.length ? (dur ? ' · ' : '') + inst.decs.length + ' ' + L('Entscheidungen', 'decisions') : '');
-    if (meta) q.appendChild(h('span', 'an-meta', meta));
-    const go2 = goButtons(inst, L("Los geht's", "Let's go") + ' →', { noBack: true, glow: true });
-    foot.append(q, go2);
-    root.appendChild(foot);
-    void what;
+    foot.appendChild(h('span', 'an-cta-s', inst.decs.length + ' ' + L('Fragen', 'questions')));
+    foot.appendChild(goButtons(inst, L("Los geht's", "Let's go"), { noBack: true, glow: true }));
+    foot.appendChild(h('span', 'an-cta-s', dur ? dur.textContent.trim() : ''));
+    root.insertBefore(foot, inst.peekDn);
   }
-  /** "All as list": ONE discreet list icon in the header row (stepper / lite head), no text link in the bars. */
-  function listIcon(inst) {
-    const l = btn('an-listbtn');
-    l.dataset.k = 'list';
-    l.innerHTML = '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><path d="M5.5 3.5h8M5.5 8h8M5.5 12.5h8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="2.4" cy="3.5" r="1.1" fill="currentColor"/><circle cx="2.4" cy="8" r="1.1" fill="currentColor"/><circle cx="2.4" cy="12.5" r="1.1" fill="currentColor"/></svg>';
-    l.setAttribute('aria-label', L('Alle als Liste', 'All as list'));
-    tip(l, L('Alle als Liste', 'All as list'), 'L');
-    l.addEventListener('click', () => go(inst, inst.stages.findIndex(s => s.kind === 'list')));
-    return l;
+
+  /* ----- persistent composer: THE note field of the open stage ----- */
+  const TAGRE = /^\[([^\]\n]{1,80})\]\s?/;
+  /** Storage target: the open decision's own data-comment note; every other stage gets a hidden one. */
+  function storeOf(inst, st) {
+    if (!st) return null;
+    if (st.kind === 'dec') return st.el.querySelector('.an-note') || st.el.querySelector('[data-comment$="-note"]');
+    if (!st.store) {
+      const key = st.kind === 'topic' ? st.topic.id : st.kind === 'brief' ? (st.el.id || 'briefing') : inst.key + '-closing';
+      const t = h('textarea', 'an-note an-vh');
+      t.setAttribute('data-comment', key + '-note');
+      t.tabIndex = -1;
+      t.setAttribute('aria-hidden', 'true');
+      inst.stores.appendChild(t);
+      st.store = t;
+    }
+    return st.store;
+  }
+  function compText(ed) {
+    const c = ed.cloneNode(true);
+    c.querySelectorAll('.an-tagw').forEach(n => n.remove());
+    c.querySelectorAll('br').forEach(b => b.replaceWith('\n'));
+    return c.textContent.replace(/ /g, ' ').replace(/\s+$/, '');
+  }
+  const frozen = inst => frozenEl(inst.root);
+  function buildComposer(inst) {
+    const el = h('div', 'an-comp'), ed = h('div', 'an-comp-ed');
+    ed.contentEditable = frozen(inst) ? 'false' : 'true';
+    ed.setAttribute('role', 'textbox');
+    ed.setAttribute('aria-multiline', 'true');
+    ed.setAttribute('aria-label', L('Notiz an devops', 'Note to devops'));
+    ed.dataset.ph = L('Notiz an devops … (optional)', 'Note to devops … (optional)');
+    ed.dataset.empty = '1';
+    tip(ed, '', 'N');
+    const att = btn('an-comp-b an-attach', '📎');
+    att.setAttribute('aria-label', L('Anhang', 'Attachment'));
+    tip(att, L('Anhang hinzufügen', 'Add an attachment'));
+    att.addEventListener('click', () => { const b = (inst.stages[inst.idx].el.querySelector('.attach-btn')); if (b) b.click(); });
+    const send = btn('an-comp-b an-send');
+    send.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2z"/></svg>';
+    send.setAttribute('aria-label', L('Senden', 'Send'));
+    tip(send, L('Senden', 'Send'), 'Enter');
+    send.addEventListener('click', () => sendNote(inst));
+    el.append(ed, att, send);
+    inst.comp = { el, ed, att, send };
+    ed.addEventListener('input', () => composeSync(inst));
+    ed.addEventListener('keydown', e => {
+      if (e.target.closest && e.target.closest('.an-tagw')) return;   // the tag's x is a real button: Enter / Space activate it
+      if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.isComposing) { e.preventDefault(); e.stopPropagation(); sendNote(inst); }
+      else if (e.key === 'Backspace' && !compText(ed) && inst.tag) { e.preventDefault(); setTag(inst, ''); }
+    });
+    if (frozen(inst)) { send.disabled = true; att.disabled = true; }
+    inst.root.insertBefore(el, inst.stores);
+  }
+  /** Max ONE tag, default none: a small inline label (with ×) before the first word. */
+  function setTag(inst, label) {
+    if (frozen(inst)) return;
+    paintTag(inst, label);
+  }
+  /** Draws the tag (also on a frozen round, where it only shows the baked one). */
+  function paintTag(inst, label) {
+    const ed = inst.comp.ed;
+    let t = ed.querySelector('.an-tagw');
+    inst.tag = label || '';
+    if (!label) { if (t) t.remove(); } else {
+      if (!t) { t = h('span', 'an-tagw'); t.contentEditable = 'false'; ed.insertBefore(t, ed.firstChild); }
+      t.textContent = '';
+      const x = btn('', '×');
+      x.setAttribute('aria-label', L('Tag entfernen', 'Remove tag'));
+      tip(x, L('Tag entfernen', 'Remove tag'));
+      x.disabled = frozen(inst);
+      x.addEventListener('mousedown', ev => ev.preventDefault());   // keeps the caret in the note
+      x.addEventListener('click', () => { setTag(inst, ''); composeSync(inst); focusComposer(inst); });
+      t.append(document.createTextNode(label), x);
+    }
+    ed.dataset.empty = !compText(ed) && !inst.tag ? '1' : '';
+  }
+  /** Writes the composer into the open stage's note: "[tag] text" when tagged. */
+  function composeSync(inst) {
+    const st = inst.stages[inst.idx], store = storeOf(inst, st), text = compText(inst.comp.ed);
+    inst.comp.ed.dataset.empty = !text && !inst.tag ? '1' : '';
+    if (!store || frozen(inst)) return;
+    const val = text ? (inst.tag ? '[' + inst.tag + '] ' : '') + text : '';
+    if (store.value !== val) { store.value = val; fire(store); }
+  }
+  /** Loads the open stage's note into the composer (a leading "[tag] " becomes the tag again). */
+  function loadComposer(inst, st) {
+    const store = storeOf(inst, st), ed = inst.comp.ed;
+    let v = store ? store.value : '';
+    const m = TAGRE.exec(v);
+    ed.textContent = '';
+    inst.tag = '';
+    if (m) { v = v.slice(m[0].length); }
+    if (v) ed.appendChild(document.createTextNode(v));
+    paintTag(inst, m ? m[1] : '');
+    ed.dataset.empty = !v && !inst.tag ? '1' : '';
+    ed.contentEditable = frozen(inst) ? 'false' : 'true';
+    inst.comp.att.hidden = !(st.kind === 'dec' && st.el.querySelector('.attach-btn'));
+  }
+  function focusComposer(inst) {
+    const ed = inst.comp.ed;
+    if (frozen(inst)) return;
+    ed.focus({ preventScroll: true });
+    const sel = window.getSelection && window.getSelection();
+    if (sel && document.createRange) { const r = document.createRange(); r.selectNodeContents(ed); r.collapse(false); sel.removeAllRanges(); sel.addRange(r); }
+  }
+  /** Send: a note WITH a tag stays on the stage; one WITHOUT advances (not on briefing / closing). */
+  function sendNote(inst) {
+    composeSync(inst);
+    const st = inst.stages[inst.idx], text = compText(inst.comp.ed);
+    if (!text || frozen(inst)) return false;
+    if (st.kind === 'dec' && !storeOf(inst, st)) return false;   // no storage target: never advance and drop the note
+    inst.comp.el.classList.remove('an-sent'); void inst.comp.el.offsetWidth; inst.comp.el.classList.add('an-sent');
+    if (!inst.tag && st.kind !== 'brief' && st.kind !== 'review' && st.kind !== 'done') step(inst, 1);
+    return true;
+  }
+  /** A click on a finding / question / topic sets the tag (selecting text does not). */
+  function tagFromClick(inst, e) {
+    if (frozen(inst) || e.target.closest('button, a, input, label, [role="button"], .an-tabs')) return;
+    const sel = window.getSelection && window.getSelection();
+    if (sel && String(sel).trim()) return;
+    const st = inst.stages[inst.idx], t = e.target;
+    let label = '';
+    if (st.kind === 'dec') {
+      const no = L('Frage ', 'Question ') + stageNo(inst, st);
+      if (t.closest('.an-m-find .an-bub')) label = L('Befund · ', 'Finding · ') + no;
+      else if (t.closest('.an-m-q .an-bub')) label = no;
+    } else if (st.kind === 'topic' && t.closest('.an-topic')) label = L('Thema ', 'Topic ') + st.group.label;
+    if (!label) return;
+    setTag(inst, label);
+    composeSync(inst);
+    focusComposer(inst);
+  }
 ```
 

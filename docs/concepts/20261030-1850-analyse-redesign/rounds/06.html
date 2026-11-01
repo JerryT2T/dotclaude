@@ -1,0 +1,449 @@
+<section data-iteration="6" data-iteration-template="design" data-baked>
+  <script type="application/json" data-frozen-feedback>{"general":{"text":"das näpchste concpet gern klein, rein auf die änderungen bzgl. inhaltsverzeichnis nochmal bezogen, bei dem rest vertraue ich dir mit meinen notizen die ich dir mitgegebnen habe","attachments":[]},"designs":{},"screens":{},"views":{},"userPins":[{"id":"up-mvwbkhdiz2tw","design":"r6","screen":"r6-s2","x":95.9,"y":20.3,"target":"span.mock-r6-grp \"Thema Cache\"","text":"Thema Cache ist doch auch eine seite, warum nicht einfach in dem punkt den punkt präfixen mit dem Wort Thema was auch visuell font style ja dann anders aussieht.","attachments":[]},{"id":"up-mvwbma2na3d1","design":"r6","screen":"r6-s3","x":30.6,"y":15.2,"target":"svg","text":"dieser schjwarz und farbgi ring darum, irgendwie altbacken, vllt. beim aktuellen nachricht einfach als glwo? und sonst nur der rund kreis!","attachments":[]},{"id":"up-mvwbrqahxdqp","design":"r6","screen":"r6-s8","x":33.3,"y":85.7,"target":"span.mock-r6-tag \"🏷 Cache-Größe ×\"","text":"Das sollte dann vertikal keliner und ohne icon einfach in dem inputfeld stehen was dann schon fokussiert ist (sprich keine hinweise mehr angeziegt werden), sonst bläht das hier zu weit auf!. \nAlso einfach als wäre es das erste wort, aber halt als label und man tippt erst danach","attachments":[]},{"id":"up-mvwbszeffcg6","design":"r6","screen":"r6-s8","x":36.9,"y":90,"target":"small \"Gilt für diese Seite · Enter = Zeilenumb\"","text":"den input feld hinweis bitte immer einzeilig machen!","attachments":[]}]}</script>
+
+  <style>
+    .mock-r6 { --b0:#121212; --s1:rgba(255,255,255,.05); --s2:rgba(255,255,255,.08); --s3:rgba(255,255,255,.11); --t1:rgba(255,255,255,.87); --t2:rgba(255,255,255,.60); --t3:rgba(255,255,255,.38); --line:rgba(255,255,255,.10);
+      --b1:#58a6ff; --b2:#79c0ff; --b3:#a5d6ff; --b4:#388bfd; --cache:#f28fb8; --hooks:#4fd1c5;
+      position: relative; max-width: 1440px; min-height: 720px; margin: 0 auto; background: var(--b0); color: var(--t1); font: 15px/1.6 system-ui, "Segoe UI", sans-serif; border-radius: 10px; overflow: hidden; }
+    .mock-r6-col { max-width: 780px; margin: 0 auto; padding: 64px 24px 170px; }
+    .mock-r6-peek { text-align: center; font-size: 12.5px; color: var(--t3); padding: 4px 0; }
+    .mock-r6-peek b { color: var(--t2); font-weight: 600; }
+    .mock-r6-peek.mock-r6-up { -webkit-mask-image: linear-gradient(0deg, #000, transparent); mask-image: linear-gradient(0deg, #000, transparent); }
+    .mock-r6-peek.mock-r6-down { margin-top: 18px; -webkit-mask-image: linear-gradient(180deg, #000, transparent); mask-image: linear-gradient(180deg, #000, transparent); }
+    .mock-r6-rail { position: absolute; top: 80px; right: 14px; bottom: 170px; width: 18px; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; padding: 6px 0; border-radius: 10px; transition: width .2s, background .2s; z-index: 2; }
+    .mock-r6-rail p { margin: 0; display: flex; align-items: center; gap: 8px; white-space: nowrap; font-size: 12px; color: transparent; transition: color .2s; }
+    .mock-r6-rail p i { width: 10px; height: 3px; border-radius: 2px; background: var(--t3); flex: none; }
+    .mock-r6-rail p.mock-r6-here i { width: 18px; background: var(--t1); }
+    .mock-r6-rail p.mock-r6-c i { background: var(--cache); } .mock-r6-rail p.mock-r6-h i { background: var(--hooks); } .mock-r6-rail p.mock-r6-b i { background: var(--b1); }
+    .mock-r6-rail:hover { width: 210px; background: rgba(30,30,30,.94); padding: 6px 12px; box-shadow: 0 8px 30px rgba(0,0,0,.5); }
+    .mock-r6-rail:hover p { color: var(--t2); } .mock-r6-rail:hover p.mock-r6-here { color: var(--t1); font-weight: 650; }
+    .mock-r6-comp { position: absolute; left: 50%; bottom: 64px; transform: translateX(-50%); width: min(780px, calc(100% - 48px)); display: grid; grid-template-columns: minmax(0,1fr) auto auto; gap: 8px; align-items: end; padding: 12px 12px 12px 16px; border-radius: 18px; background: #1e1e1e; border: 1px solid var(--line); box-shadow: 0 -14px 34px rgba(18,18,18,.95); }
+    .mock-r6-comp span { color: var(--t3); font-size: 14px; line-height: 1.55; min-height: 70px; }
+    .mock-r6-comp small { display: block; font-size: 11.5px; color: var(--t3); }
+    .mock-r6-comp b { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--s2); color: var(--t2); font-weight: 400; }
+    .mock-r6-comp b.mock-r6-send { background: var(--b1); color: #0d1117; font-weight: 700; }
+    /* guided reveal: each message enters, holds a soft "read me" glow, then settles */
+    .mock-r6-msg { display: grid; grid-template-columns: 30px minmax(0,1fr); gap: 12px; margin-top: 16px; animation: mock-r6-in .9s cubic-bezier(.22,.8,.24,1) both; }
+    .mock-r6-msg.mock-r6-d1 { animation-delay: 2.6s; } .mock-r6-msg.mock-r6-d2 { animation-delay: 4.4s; }
+    .mock-r6-msg > :last-child { animation: mock-r6-read 2.4s ease-out both; }
+    .mock-r6-msg.mock-r6-d1 > :last-child { animation-delay: 2.6s; } .mock-r6-msg.mock-r6-d2 > :last-child { animation-delay: 4.4s; }
+    @keyframes mock-r6-in { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+    @keyframes mock-r6-read { 0%, 15% { box-shadow: 0 0 0 0 rgba(121,192,255,0); } 35%, 70% { box-shadow: 0 0 0 2px rgba(121,192,255,.45), 0 0 34px rgba(121,192,255,.18); } 100% { box-shadow: 0 0 0 0 rgba(121,192,255,0); } }
+    .mock-r6-hl-anim { animation: mock-r6-hl 1.4s ease-in-out 1.2s 2 both; }
+    @keyframes mock-r6-hl { 50% { filter: brightness(1.35); transform: scaleY(1.5); } }
+    @media (prefers-reduced-motion: reduce) { .mock-r6 *, .mock-r6 *::before { animation: none !important; } }
+    .mock-r6-av { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; color: #121212; background: var(--tc); box-shadow: 0 0 0 3px #121212, 0 0 0 4px var(--tc); }
+    .mock-r6-bub { padding: 14px 18px; border-radius: 4px 18px 18px 18px; background: var(--s1); }
+    .mock-r6-bub.mock-r6-edge { border-left: 3px solid var(--tc); }
+    .mock-r6-meta { font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--tc); font-weight: 700; margin-bottom: 6px; }
+    .mock-r6-tabs { display: inline-flex; gap: 4px; padding: 4px; border-radius: 14px; background: rgba(0,0,0,.35); margin-bottom: 12px; }
+    .mock-r6-tabs button { display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px; border: 0; border-radius: 10px; background: none; color: var(--t2); font-size: 14px; font-weight: 650; }
+    .mock-r6-tabs button i { font-style: normal; font-size: 20px; line-height: 1; }
+    .mock-r6-tabs button.mock-r6-on { background: var(--s3); color: var(--t1); }
+    .mock-r6-fact { margin: 0 0 12px; font-size: 16px; color: var(--t1); }
+    .mock-r6-bars { display: grid; gap: 8px; }
+    .mock-r6-bar { display: grid; grid-template-columns: 96px minmax(0,1fr) 44px; gap: 10px; align-items: center; font-size: 13px; color: var(--t2); }
+    .mock-r6-bar i { display: block; height: 9px; border-radius: 5px; background: color-mix(in srgb, var(--tc) 30%, transparent); transform-origin: left center; }
+    .mock-r6-bar.mock-r6-hl { color: var(--t1); } .mock-r6-bar.mock-r6-hl i { background: var(--tc); }
+    .mock-r6-shot { border-radius: 12px; overflow: hidden; border: 1px solid var(--line); background: #0d0d0d; }
+    .mock-r6-shot-h { display: flex; gap: 6px; align-items: center; padding: 8px 12px; background: var(--s2); font-size: 12px; color: var(--t2); }
+    .mock-r6-shot-h i { width: 9px; height: 9px; border-radius: 50%; background: var(--t3); }
+    .mock-r6-shot-b { display: grid; grid-template-columns: 170px minmax(0,1fr); min-height: 230px; }
+    .mock-r6-shot-side { border-right: 1px solid var(--line); padding: 12px; font-size: 12px; color: var(--t3); }
+    .mock-r6-shot-side p { margin: 0 0 6px; }
+    .mock-r6-shot pre { margin: 0; padding: 14px; font: 12.5px/1.7 ui-monospace, Consolas, monospace; color: var(--t2); white-space: pre-wrap; }
+    .mock-r6-shot mark { background: color-mix(in srgb, var(--tc) 22%, transparent); color: #fff; border-radius: 3px; padding: 0 3px; outline: 1px solid color-mix(in srgb, var(--tc) 60%, transparent); }
+    .mock-r6-cap { margin: 10px 0 0; color: var(--t2); font-size: 13px; }
+    /* the question: fixed height, one line of context */
+    .mock-r6-qb { height: 92px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; }
+    .mock-r6-q { font-size: 21px; font-weight: 700; letter-spacing: -.015em; margin: 0; color: var(--t1); }
+    .mock-r6-stakes { margin: 4px 0 0; font-size: 13.5px; color: var(--t2); }
+    /* answer block: variable height per type */
+    .mock-r6-ans { padding: 8px; border-radius: 4px 18px 18px 18px; background: linear-gradient(180deg, #1c2230, #181c24); border: 1px solid rgba(121,192,255,.40); box-shadow: 0 14px 40px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.06); }
+    .mock-r6-kind { display: flex; justify-content: space-between; padding: 4px 10px 8px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--b3); font-weight: 700; }
+    .mock-r6-kind span { color: var(--t3); letter-spacing: 0; text-transform: none; font-weight: 500; }
+    .mock-r6-row { position: relative; display: grid; grid-template-columns: 22px minmax(0,1.1fr) minmax(0,1fr); gap: 14px; align-items: center; padding: 12px 14px; border-radius: 12px; transition: background .15s; }
+    .mock-r6-row + .mock-r6-row { margin-top: 4px; }
+    .mock-r6-row:hover { background: rgba(255,255,255,.04); }
+    .mock-r6-row > i { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--t3); }
+    .mock-r6-row b { color: var(--t1); font-weight: 650; }
+    .mock-r6-row b small { display: block; font-weight: 400; font-size: 12.5px; color: var(--t2); }
+    .mock-r6-row > span { font-size: 12.5px; color: var(--t3); }
+    .mock-r6-row.mock-r6-sel { background: linear-gradient(90deg, rgba(88,166,255,.20), rgba(88,166,255,.06)); box-shadow: inset 0 0 0 1px rgba(121,192,255,.55); }
+    .mock-r6-row.mock-r6-sel > i { border-color: var(--b2); background: radial-gradient(circle, var(--b2) 0 4px, transparent 5px); }
+    .mock-r6-row.mock-r6-sel > span { color: var(--t2); }
+    .mock-r6-row.mock-r6-chk > i { border-radius: 5px; }
+    .mock-r6-row.mock-r6-chk.mock-r6-sel > i { background: var(--b2); border-color: var(--b2); box-shadow: inset 0 0 0 3px #1c2230; }
+    .mock-r6-rec { display: inline-block; margin-left: 6px; padding: 0 8px; border-radius: 999px; font-size: 10.5px; font-weight: 700; background: linear-gradient(120deg, var(--b2), var(--b3)); color: #0d1117; vertical-align: 2px; }
+    .mock-r6-none { margin: 8px 14px 6px; font-size: 12.5px; color: var(--t2); }
+    .mock-r6-none u { text-decoration-color: var(--t3); text-underline-offset: 3px; }
+    .mock-r6-sl { padding: 14px 16px 6px; }
+    .mock-r6-sl-v { font-size: 34px; font-weight: 750; letter-spacing: -.02em; color: var(--t1); }
+    .mock-r6-sl-v small { font-size: 15px; color: var(--t2); font-weight: 500; margin-left: 6px; }
+    .mock-r6-track { position: relative; height: 10px; border-radius: 5px; background: var(--s2); margin: 18px 0 30px; }
+    .mock-r6-track > i { position: absolute; left: 0; top: 0; bottom: 0; width: 40%; border-radius: 5px; background: linear-gradient(90deg, var(--b4), var(--b2)); }
+    .mock-r6-track > b { position: absolute; left: 40%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 5px rgba(121,192,255,.35); }
+    .mock-r6-track > em { position: absolute; left: 40%; top: 18px; transform: translateX(-50%); font-style: normal; font-size: 11px; color: var(--b3); white-space: nowrap; }
+    .mock-r6-sl-cons { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
+    .mock-r6-sl-cons div { padding: 10px 12px; border-radius: 10px; background: var(--s1); font-size: 13px; color: var(--t2); }
+    .mock-r6-sl-cons b { display: block; font-size: 18px; color: var(--t1); }
+    .mock-r6-ord { display: grid; gap: 6px; padding: 4px; }
+    .mock-r6-oi { display: grid; grid-template-columns: 18px 30px minmax(0,1fr) auto; gap: 12px; align-items: center; padding: 11px 14px; border-radius: 12px; background: var(--s1); }
+    .mock-r6-oi > i { color: var(--t3); font-style: normal; letter-spacing: -2px; }
+    .mock-r6-oi > b { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: rgba(88,166,255,.18); color: var(--b2); }
+    .mock-r6-oi:first-child { background: linear-gradient(90deg, rgba(88,166,255,.18), rgba(88,166,255,.05)); }
+    .mock-r6-oi span small { display: block; color: var(--t2); font-size: 12.5px; }
+    .mock-r6-oi em { font-style: normal; font-size: 12px; color: var(--t3); }
+    .mock-r6-yna { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; padding: 4px; }
+    .mock-r6-yna div { padding: 16px; border-radius: 14px; background: var(--s1); text-align: center; }
+    .mock-r6-yna div b { display: block; font-size: 17px; }
+    .mock-r6-yna div span { font-size: 12.5px; color: var(--t2); }
+    .mock-r6-yna div.mock-r6-sel { background: linear-gradient(180deg, rgba(88,166,255,.22), rgba(88,166,255,.06)); box-shadow: inset 0 0 0 1px rgba(121,192,255,.6); }
+    .mock-r6-alt { margin: 8px 4px 2px; padding: 10px 12px; border-radius: 10px; border: 1px dashed rgba(121,192,255,.35); color: var(--t3); font-size: 13px; }
+    .mock-r6-me { display: flex; justify-content: flex-end; margin-top: 14px; }
+    .mock-r6-me div { max-width: 70%; padding: 10px 15px; border-radius: 18px 4px 18px 18px; background: rgba(88,166,255,.18); color: var(--t1); }
+    /* settled: answered Q&A stays readable but calmer */
+    .mock-r6-done { position: relative; margin-bottom: 8px; padding: 6px 0 10px; }
+    .mock-r6-done .mock-r6-msg, .mock-r6-done .mock-r6-me { animation: none; }
+    .mock-r6-done .mock-r6-msg > :last-child { animation: none; }
+    .mock-r6-done .mock-r6-bub { background: transparent; border: 1px solid var(--line); padding: 8px 14px; font-size: 13.5px; color: var(--t2); }
+    .mock-r6-done .mock-r6-av { transform: scale(.8); opacity: .6; }
+    .mock-r6-done .mock-r6-me div { background: transparent; border: 1px solid rgba(121,192,255,.30); color: var(--t2); font-size: 13.5px; padding: 6px 13px; }
+    .mock-r6-done .mock-r6-me div::before { content: "✓ "; color: var(--b2); }
+    /* briefing + closing: cool blue, devops-concept family */
+    .mock-r6-hero { position: relative; text-align: center; padding: 24px 0 4px; }
+    .mock-r6-hero::before { content: ""; position: absolute; inset: -60px -220px auto; height: 460px; background: radial-gradient(ellipse at 50% 30%, rgba(88,166,255,.22), rgba(165,214,255,.08) 45%, transparent 72%); pointer-events: none; }
+    .mock-r6-hero > * { position: relative; animation: mock-r6-in 1s cubic-bezier(.22,.8,.24,1) both; }
+    .mock-r6-hero > :nth-child(2) { animation-delay: .7s; } .mock-r6-hero > :nth-child(3) { animation-delay: 1.6s; } .mock-r6-hero > :nth-child(4) { animation-delay: 2.6s; } .mock-r6-hero > :nth-child(5) { animation-delay: 3.8s; }
+    .mock-r6-eyebrow { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--t2); }
+    .mock-r6-big { font-size: 88px; font-weight: 800; letter-spacing: -.045em; line-height: 1; margin: 14px 0 4px; background: linear-gradient(120deg, #d6ebff, var(--b2) 45%, var(--b4)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .mock-r6-big small { font-size: 22px; letter-spacing: 0; font-weight: 600; -webkit-text-fill-color: rgba(255,255,255,.6); }
+    .mock-r6-claim { font-size: 17px; color: var(--t2); max-width: 600px; margin: 8px auto 0; line-height: 1.5; }
+    .mock-r6-path { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; margin-top: 28px; text-align: left; }
+    .mock-r6-step { padding: 14px 16px; border-radius: 14px; background: var(--s1); border-top: 3px solid var(--tc); }
+    .mock-r6-step b { display: block; font-size: 24px; color: var(--t1); }
+    .mock-r6-step span { font-size: 13px; color: var(--t2); }
+    .mock-r6-cta { margin-top: 28px; display: inline-grid; grid-template-columns: 1fr auto 1fr; gap: 16px; align-items: center; }
+    .mock-r6-cta small { font-size: 13px; color: var(--t2); }
+    .mock-r6-cta small:first-child { text-align: right; }
+    .mock-r6-cta small:last-child { text-align: left; }
+    .mock-r6-go { height: 50px; padding: 0 34px; border: 0; border-radius: 999px; background: linear-gradient(120deg, var(--b2), var(--b4)); color: #0d1117; font-size: 17px; font-weight: 800; box-shadow: 0 10px 40px rgba(88,166,255,.30); }
+    .mock-r6-topic { margin-top: 10px; padding: 30px 30px 26px; border-radius: 22px; background: radial-gradient(ellipse at 15% 0%, color-mix(in srgb, var(--tc) 26%, transparent), transparent 60%), var(--s1); border: 1px solid color-mix(in srgb, var(--tc) 30%, transparent); display: grid; grid-template-columns: minmax(0,1fr) 150px; gap: 24px; align-items: center; animation: mock-r6-in .9s both; }
+    .mock-r6-topic h1 { margin: 6px 0 12px; font-size: 30px; line-height: 1.2; letter-spacing: -.025em; }
+    .mock-r6-ring { width: 150px; height: 150px; border-radius: 50%; background: conic-gradient(var(--tc) 0 61%, rgba(255,255,255,.08) 61% 100%); display: grid; place-items: center; }
+    .mock-r6-ring div { width: 112px; height: 112px; border-radius: 50%; background: #1a1a1a; display: grid; place-items: center; text-align: center; }
+    .mock-r6-ring b { font-size: 26px; display: block; } .mock-r6-ring small { font-size: 11px; color: var(--t2); }
+    .mock-r6-tq { display: grid; gap: 8px; }
+    .mock-r6-tq div { display: grid; grid-template-columns: 24px minmax(0,1fr); gap: 10px; color: var(--t2); }
+    .mock-r6-tq b { color: var(--tc); }
+    .mock-r6-btn { margin-top: 22px; height: 42px; padding: 0 22px; border: 0; border-radius: 999px; background: var(--tc); color: #121212; font-weight: 700; font-size: 14.5px; }
+    .mock-r6-sig { margin-top: 24px; border-radius: 16px; background: var(--s1); padding: 6px 16px; text-align: left; }
+    .mock-r6-sigrow { display: grid; grid-template-columns: 8px minmax(0,1.3fr) minmax(0,1fr) 150px; gap: 14px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+    .mock-r6-sigrow:last-child { border-bottom: 0; }
+    .mock-r6-sigrow > i { width: 8px; height: 26px; border-radius: 4px; background: var(--tc); }
+    .mock-r6-dw { height: 8px; border-radius: 4px; background: rgba(255,255,255,.08); overflow: hidden; }
+    .mock-r6-dw b { display: block; height: 100%; background: rgba(255,255,255,.30); }
+    .mock-r6-dw.mock-r6-warn b { background: linear-gradient(90deg, var(--b4), var(--b2)); }
+    .mock-r6-flag { justify-self: start; padding: 3px 11px; border-radius: 8px; font-size: 12.5px; font-weight: 700; background: rgba(121,192,255,.16); color: var(--b3); box-shadow: inset 0 0 0 1px rgba(121,192,255,.35); }
+  
+
+    /* devops mark instead of "C" */
+    .mock-r6-av { background: linear-gradient(135deg, #79c0ff, #388bfd) !important; color: #0d1117; }
+    .mock-r6-av svg { width: 18px; height: 18px; }
+    /* settled Q&A without check mark */
+    .mock-r6-done .mock-r6-me div::before { content: none; }
+    /* ---------- rail: glowing ticks on a hairline, dock magnification ---------- */
+    .mock-r6-rail { background: none !important; box-shadow: none !important; width: 220px !important; right: 18px; top: 130px; padding: 0 !important; pointer-events: auto; }
+    .mock-r6-rail::before { content: ""; position: absolute; right: 4px; top: 0; bottom: 0; width: 1px; background: linear-gradient(180deg, transparent, rgba(121,192,255,.35), rgba(242,143,184,.35), rgba(79,209,197,.35), transparent); }
+    .mock-r6-rail p { position: relative; justify-content: flex-end; gap: 10px; height: 16px; color: transparent !important; transition: transform .18s cubic-bezier(.22,.8,.24,1), color .18s; transform-origin: right center; }
+    .mock-r6-rail p i { width: 9px !important; height: 9px !important; border-radius: 50%; margin-right: 0; box-shadow: 0 0 8px currentColor; background: currentColor !important; transition: transform .18s; }
+    .mock-r6-rail p.mock-r6-c { color: transparent; } .mock-r6-rail p.mock-r6-c i { color: #f28fb8; }
+    .mock-r6-rail p.mock-r6-h i { color: #4fd1c5; } .mock-r6-rail p.mock-r6-b i { color: #79c0ff; }
+    .mock-r6-rail p.mock-r6-here i { transform: scale(1.5); box-shadow: 0 0 0 3px rgba(18,18,18,1), 0 0 0 4px currentColor, 0 0 14px currentColor; }
+    .mock-r6-rail p.mock-r6-sec { margin-top: 10px; }
+    .mock-r6-rail p span.mock-r6-grp { position: absolute; right: 22px; top: -14px; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: transparent; white-space: nowrap; transition: color .18s; }
+    .mock-r6-rail:hover p, .mock-r6-rail.mock-r6-open p { color: rgba(255,255,255,.55) !important; }
+    .mock-r6-rail:hover p span.mock-r6-grp, .mock-r6-rail.mock-r6-open p span.mock-r6-grp { color: rgba(255,255,255,.38); }
+    .mock-r6-rail:hover p:hover, .mock-r6-rail.mock-r6-open p.mock-r6-mag2 { transform: scale(1.45); color: #fff !important; font-weight: 650; }
+    .mock-r6-rail:hover p:hover i, .mock-r6-rail.mock-r6-open p.mock-r6-mag2 i { transform: scale(1.4); box-shadow: 0 0 16px currentColor, 0 0 4px currentColor; }
+    .mock-r6-rail:hover p:has(+ p:hover), .mock-r6-rail:hover p:hover + p, .mock-r6-rail.mock-r6-open p.mock-r6-mag1 { transform: scale(1.18); color: rgba(255,255,255,.75) !important; }
+    /* ---------- answer shapes; the block never exceeds ~45 % of the screen ---------- */
+    .mock-r6-ans { max-height: 330px; overflow: hidden; }
+    .mock-r6-pics { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; padding: 4px; }
+    .mock-r6-pic { border-radius: 14px; padding: 8px; background: var(--s1); }
+    .mock-r6-pic.mock-r6-sel { background: linear-gradient(180deg, rgba(88,166,255,.22), rgba(88,166,255,.06)); box-shadow: inset 0 0 0 1.5px rgba(121,192,255,.7); }
+    .mock-r6-thumb { height: 96px; border-radius: 9px; background: #0d0f14; border: 1px solid var(--line); position: relative; overflow: hidden; }
+    .mock-r6-thumb i { position: absolute; display: block; border-radius: 3px; background: rgba(255,255,255,.14); }
+    .mock-r6-pic b { display: block; margin-top: 8px; font-size: 14px; }
+    .mock-r6-pic span { font-size: 12px; color: var(--t2); }
+    .mock-r6-mx { display: grid; grid-template-columns: 120px repeat(3, minmax(0,1fr)); gap: 4px; padding: 4px; font-size: 13px; }
+    .mock-r6-mx > div { padding: 8px 10px; border-radius: 8px; background: var(--s1); color: var(--t2); }
+    .mock-r6-mx > div.mock-r6-h { background: none; color: var(--t1); font-weight: 650; text-align: center; padding: 6px; }
+    .mock-r6-mx > div.mock-r6-h.mock-r6-sel { background: linear-gradient(180deg, rgba(88,166,255,.25), rgba(88,166,255,.08)); box-shadow: inset 0 0 0 1.5px rgba(121,192,255,.7); border-radius: 10px 10px 4px 4px; }
+    .mock-r6-mx > div.mock-r6-rl { background: none; color: var(--t3); font-size: 12px; }
+    .mock-r6-mx > div.mock-r6-col { background: rgba(88,166,255,.10); color: var(--t1); }
+    .mock-r6-dots { letter-spacing: 2px; color: var(--b2); }
+    .mock-r6-dots s { color: rgba(255,255,255,.15); text-decoration: none; }
+    .mock-r6-flows { display: grid; gap: 6px; padding: 4px; }
+    .mock-r6-flow { display: grid; grid-template-columns: 22px minmax(0,1fr) 120px; gap: 12px; align-items: center; padding: 10px 12px; border-radius: 12px; background: var(--s1); }
+    .mock-r6-flow > i { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--t3); }
+    .mock-r6-flow.mock-r6-sel { background: linear-gradient(90deg, rgba(88,166,255,.20), rgba(88,166,255,.05)); box-shadow: inset 0 0 0 1px rgba(121,192,255,.55); }
+    .mock-r6-flow.mock-r6-sel > i { border-color: var(--b2); background: radial-gradient(circle, var(--b2) 0 4px, transparent 5px); }
+    .mock-r6-chain { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12.5px; }
+    .mock-r6-chain span { padding: 3px 9px; border-radius: 7px; background: rgba(255,255,255,.07); color: var(--t1); }
+    .mock-r6-chain em { font-style: normal; color: var(--t3); }
+    .mock-r6-flow small { font-size: 12px; color: var(--t2); }
+    .mock-r6-place { display: grid; grid-template-columns: minmax(0,1.4fr) minmax(0,1fr); gap: 14px; padding: 6px; align-items: center; }
+    .mock-r6-frame { position: relative; height: 200px; border-radius: 12px; background: #0d0f14; border: 1px solid var(--line); }
+    .mock-r6-frame > i { position: absolute; border-radius: 4px; background: rgba(255,255,255,.08); }
+    .mock-r6-slot { position: absolute; display: grid; place-items: center; border-radius: 8px; border: 1.5px dashed rgba(121,192,255,.45); color: var(--b3); font-size: 12px; font-weight: 700; }
+    .mock-r6-slot.mock-r6-sel { border-style: solid; background: rgba(88,166,255,.22); color: #fff; box-shadow: 0 0 18px rgba(88,166,255,.35); }
+    .mock-r6-place ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: 13px; color: var(--t2); }
+    .mock-r6-place li b { color: var(--b3); margin-right: 6px; }
+    .mock-r6-alloc { display: grid; gap: 8px; padding: 6px 8px; }
+    .mock-r6-ar { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 14px; align-items: center; padding: 8px 10px; border-radius: 10px; background: var(--s1); }
+    .mock-r6-ar b { display: block; font-size: 14px; }
+    .mock-r6-ar small { font-size: 12px; color: var(--t2); }
+    .mock-r6-steps { display: inline-flex; gap: 4px; }
+    .mock-r6-steps span { min-width: 30px; height: 30px; padding: 0 6px; border-radius: 8px; display: grid; place-items: center; font-size: 13px; font-weight: 700; background: rgba(255,255,255,.06); color: var(--t3); }
+    .mock-r6-steps span.mock-r6-on { background: linear-gradient(180deg, var(--b2), var(--b4)); color: #0d1117; }
+    .mock-r6-budget { display: flex; justify-content: space-between; align-items: center; padding: 4px 10px 2px; font-size: 12.5px; color: var(--t2); }
+    .mock-r6-budget b { color: var(--t1); }
+    .mock-r6-share { display: flex; height: 8px; border-radius: 4px; overflow: hidden; margin: 6px 10px 2px; }
+    .mock-r6-share i { display: block; }
+    /* composer tag + glow */
+    .mock-r6-tag { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 6px; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 650; background: rgba(121,192,255,.16); color: var(--b3); box-shadow: inset 0 0 0 1px rgba(121,192,255,.4); }
+    .mock-r6-tag em { font-style: normal; color: var(--t3); }
+    .mock-r6-comp.mock-r6-glow { border-color: rgba(121,192,255,.7); box-shadow: 0 0 0 3px rgba(88,166,255,.18), 0 0 40px rgba(88,166,255,.25), 0 -14px 34px rgba(18,18,18,.95); animation: mock-r6-pulse 2s ease-in-out 3; }
+    @keyframes mock-r6-pulse { 50% { box-shadow: 0 0 0 6px rgba(88,166,255,.10), 0 0 60px rgba(88,166,255,.35), 0 -14px 34px rgba(18,18,18,.95); } }
+    /* closing: toggle per row + next steps */
+    .mock-r6-tog { justify-self: start; padding: 4px 12px; border-radius: 8px; font-size: 12.5px; font-weight: 700; border: 1px solid var(--line); background: rgba(255,255,255,.04); color: var(--t3); }
+    .mock-r6-tog.mock-r6-on { background: rgba(121,192,255,.18); color: var(--b3); border-color: rgba(121,192,255,.55); }
+    .mock-r6-next { display: flex; justify-content: center; gap: 12px; margin-top: 24px; flex-wrap: wrap; }
+    .mock-r6-next button { height: 46px; padding: 0 22px; border-radius: 999px; font-size: 15px; font-weight: 750; border: 0; }
+    .mock-r6-next .mock-r6-pri { background: linear-gradient(120deg, var(--b2), var(--b4)); color: #0d1117; box-shadow: 0 10px 40px rgba(88,166,255,.30); }
+    .mock-r6-next .mock-r6-sec2 { background: rgba(255,255,255,.07); color: var(--t1); border: 1px solid var(--line); }
+    .mock-r6-jump { margin-top: 14px; font-size: 13px; color: var(--t2); }
+    .mock-r6-jump b { color: var(--b3); }
+  </style>
+
+  <header class="iteration-intro">
+    <h2>{{iteration.tab}} 6 · Leiste rechts und Antwortformen</h2>
+    <p>Zwei Schwerpunkte, wie gewünscht. <b>Leiste rechts</b> (Bildschirme „Leiste · zu“ und „Leiste · Hover“, beide echt mit der Maus bedienbar): leuchtende Punkte auf einer feinen Linie, kein grauer Kasten. Beim Überfahren vergrößert sich der Punkt unter der Maus wie bei einem Dock, Abschnittsnamen erscheinen. <b>Antwortformen:</b> Die letzten 20 Concept-Seiten (Star-Citizen-Companion) zeigen, dass die meisten Entscheidungen visuell waren (Varianten mit vielen SVGs), mehrdimensional (Tabellen auf 13 Seiten), ein Wert, ein Datenweg oder eine Platzierung. Dafür gibt es jetzt fünf neue Formen: Bildauswahl, Vergleich, Weg, Platzierung und Punkte verteilen. Jeder Antwortblock bleibt so niedrig, dass die Frage darüber sichtbar bleibt. Außerdem: devops-Symbol statt „C“, Erledigtes ohne ✓, Abschluss mit Umschaltern pro Zeile, einem Tag im aufleuchtenden Notizfeld und den nächsten Schritten.</p>
+  </header>
+  <section data-design="r6" data-nav-label="Gesprächsfluss" data-design-active="true" data-screen-fit="full">
+    <section id="r6-s1" data-nav-label="Leiste · zu" data-screen data-screen-active="true"><div class="mock-r6"><div class="mock-r6-rail r6-rail"><p class="mock-r6-b">Briefing<i></i></p><p class="mock-r6-c mock-r6-sec"><span class="mock-r6-grp">Thema Cache</span>Cache<i></i></p><p class="mock-r6-c mock-r6-here">Lebensdauer<i></i></p><p class="mock-r6-c">Welche Hooks<i></i></p><p class="mock-r6-c">Größe<i></i></p><p class="mock-r6-h mock-r6-sec"><span class="mock-r6-grp">Thema Hooks</span>Hooks<i></i></p><p class="mock-r6-h">Reihenfolge<i></i></p><p class="mock-r6-h">Injektion<i></i></p><p class="mock-r6-h">Budget<i></i></p><p class="mock-r6-b mock-r6-sec">Abschluss<i></i></p></div><div class="mock-r6-col"><p class="mock-r6-peek mock-r6-up">Thema Cache · 3 Fragen</p>
+      <div class="mock-r6-msg" style="--tc:#f28fb8"><div class="mock-r6-av" data-tip="devops"><svg viewBox="0 0 24 24" fill="none" stroke="#0d1117" stroke-width="2.4" stroke-linecap="round"><path d="M6.5 8.5c-2 0-3.5 1.6-3.5 3.5s1.5 3.5 3.5 3.5c3.5 0 7.5-7 11-7 2 0 3.5 1.6 3.5 3.5s-1.5 3.5-3.5 3.5c-3.5 0-7.5-7-11-7z"/></svg></div><div class="mock-r6-bub mock-r6-edge"><div class="mock-r6-meta">Cache · Frage 1 von 3</div><p class="mock-r6-fact" style="margin:0">80 % der Treffer kommen in den ersten 10 Minuten, Einträge leben aber 24 Stunden.</p></div></div>
+      <div class="mock-r6-msg mock-r6-d1" style="--tc:#f28fb8"><div class="mock-r6-av" data-tip="devops"><svg viewBox="0 0 24 24" fill="none" stroke="#0d1117" stroke-width="2.4" stroke-linecap="round"><path d="M6.5 8.5c-2 0-3.5 1.6-3.5 3.5s1.5 3.5 3.5 3.5c3.5 0 7.5-7 11-7 2 0 3.5 1.6 3.5 3.5s-1.5 3.5-3.5 3.5c-3.5 0-7.5-7-11-7z"/></svg></div><div class="mock-r6-bub mock-r6-qb"><p class="mock-r6-q">Wie lange darf eine gecachte Antwort leben?</p><p class="mock-r6-stakes">Davon hängt ab: Tokenverbrauch und wie aktuell alle Hooks antworten.</p></div></div>
+      <div class="mock-r6-msg mock-r6-d2" style="--tc:#f28fb8"><div class="mock-r6-av" data-tip="devops"><svg viewBox="0 0 24 24" fill="none" stroke="#0d1117" stroke-width="2.4" stroke-linecap="round"><path d="M6.5 8.5c-2 0-3.5 1.6-3.5 3.5s1.5 3.5 3.5 3.5c3.5 0 7.5-7 11-7 2 0 3.5 1.6 3.5 3.5s-1.5 3.5-3.5 3.5c-3.5 0-7.5-7-11-7z"/></svg></div><div class="mock-r6-ans r6-a1"><div class="mock-r6-kind">Eine Antwort<span>1–3 wählen</span></div><div class="mock-r6-row mock-r6-sel"><i></i><b>Nach 10 Minuten verwerfen <span class="mock-r6-rec">★ Empfohlen</span><small>Spart ≈ 31 M Tokens.</small></b><span>Antwort von 14:09 ist um 14:19 weg.</span></div>
+        <div class="mock-r6-row"><i></i><b>Nach 1 Stunde verwerfen<small>Spart ≈ 24 M Tokens.</small></b><span>Antwort hält bis 15:09.</span></div><p class="mock-r6-none">Keine passt? <u>Schreib deine Antwort unten ins Notizfeld.</u></p></div></div>
+      <p class="mock-r6-peek mock-r6-down">Als Nächstes: <b>Frage 2 · Welche Hooks</b></p></div><div class="mock-r6-comp r6-comp"><span>Notiz an devops … (optional)<small>Gilt für diese Seite · Enter = Zeilenumbruch, Strg+Enter = speichern</small></span><b>📎</b><b class="mock-r6-send">↑</b></div></div>
+      <div class="anno-layer" data-anno-layer>
+        <div class="anno" data-anno="r6-r6-s1-a1" data-anno-side="left" data-anno-target=".r6-rail" style="--anno-x:70%;--anno-y:20%">
+          <button class="anno-pin" type="button" data-anno-pin="r6-r6-s1-a1" aria-expanded="false" aria-controls="anno-bubble-r6-r6-s1-a1" aria-label="{{anno.pin_label}}">1</button>
+          <div class="anno-bubble" id="anno-bubble-r6-r6-s1-a1" data-anno-bubble="r6-r6-s1-a1" data-open="false">
+            <button type="button" class="anno-bubble-summary" data-anno-summary="r6-r6-s1-a1" aria-expanded="false" aria-controls="anno-bubble-r6-r6-s1-a1"><span class="anno-bubble-question">Zugeklappt nur leuchtende Punkte auf einer feinen Linie, ohne Kasten. Dezent genug? Fahr mit der Maus darüber, es ist echt.</span></button>
+            <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r6-r6-s1-a1" data-annotation="r6-r6-s1-a1" data-attachable placeholder="{{anno.answer_placeholder}}">super ja, gern dabei aber auch berückischitgen, dass es nicht mit fab elemente von devops concept überlappt, ggf. gibt es einfach mehr punkte auf gleich langer linie, mach dafür mal ein maximal besipiel mit voller themneanzahl und voller fragenanzahl (7x7).
+
+Außerdem wenn man  drüber hovered soll man immer auf einem navigationsitem sein und nicht in einem zwischenraum (nicht visuell aber vom fokus her) sodass man immer iens anklicken würde - check dahingehend auch nochmal ob der richtige cursorg enommen wird, weil aktuell ist es ein input cursor obwohl ich ja was auswähle xD von windows / browser... </textarea><div class="attach-slot" data-attach-slot="anno-r6-r6-s1-a1"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section id="r6-s2" data-nav-label="Leiste · Hover" data-screen hidden><div class="mock-r6"><div class="mock-r6-rail r6-rail mock-r6-open"><p class="mock-r6-b">Briefing<i></i></p><p class="mock-r6-c mock-r6-sec"><span class="mock-r6-grp">Thema Cache</span>Cache<i></i></p><p class="mock-r6-c mock-r6-here">Lebensdauer<i></i></p><p class="mock-r6-c mock-r6-mag1">Welche Hooks<i></i></p><p class="mock-r6-c mock-r6-mag2">Größe<i></i></p><p class="mock-r6-h mock-r6-sec mock-r6-mag1"><span class="mock-r6-grp">Thema Hooks</span>Hooks<i></i></p><p class="mock-r6-h">Reihenfolge<i></i></p><p class="mock-r6-h">Injektion<i></i></p><p class="mock-r6-h">Budget<i></i></p><p class="mock-r6-b mock-r6-sec">Abschluss<i></i></p></div><div class="mock-r6-col"><p class="mock-r6-peek mock-r6-up">Thema Cache · 3 Fragen</p>
+      <div class="mock-r6-msg" style="--tc:#f28fb8"><div class="mock-r6-av" data-tip="devops"><svg viewBox="0 0 24 24" fill="none" stroke="#0d1117" stroke-width="2.4" stroke-linecap="round"><path d="M6.5 8.5c-2 0-3.5 1.6-3.5 3.5s1.5 3.5 3.5 3.5c3.5 0 7.5-7 11-7 2 0 3.5 1.6 3.5 3.5s-1.5 3.5-3.5 3.5c-3.5 0-7.5-7-11-7z"/></svg></div><div class="mock-r6-bub mock-r6-edge"><div class="mock-r6-meta">Cache · Frage 1 von 3</div><p class="mock-r6-fact" style="margin:0">80 % der Treffer kommen in den ersten 10 Minuten, Einträge leben aber 24 Stunden.</p></div></div>
+      <div class="mock-r6-msg mock-r6-d1" style="--tc:#f28fb8"><div class="mock-r6-av" data-tip="devops"><svg viewBox="0 0 24 24" fill="none" stroke="#0d1117" stroke-width="2.4" stroke-linecap="round"><path d="M6.5 8.5c-2 0-3.5 1.6-3.5 3.5s1.5 3.5 3.5 3.5c3.5 0 7.5-7 11-7 2 0 3.5 1.6 3.5 3.5s-1.5 3.5-3.5 3.5c-3.5 0-7.5-7-11-7z"/></svg></div><div class="mock-r6-bub mock-r6-qb"><p class="mock-r6-q">Wie lange darf eine gecachte Antwort leben?</p><p class="mock-r6-stakes">Davon hängt ab: Tokenverbrauch und wie aktuell alle Hooks antworten.</p></div></div>
+      <div class="mock-r6-msg mock-r6-d2" style="--tc:#f28fb8"><div class="mock-r6-av" data-tip="devops"><svg viewBox="0 0 24 24" fill="none" stroke="#0d1117" stroke-width="2.4" stroke-linecap="round"><path d="M6.5 8.5c-2 0-3.5 1.6-3.5 3.5s1.5 3.5 3.5 3.5c3.5 0 7.5-7 11-7 2 0 3.5 1.6 3.5 3.5s-1.5 3.5-3.5 3.5c-3.5 0-7.5-7-11-7z"/></svg></div><div class="mock-r6-ans r6-a2"><div class="mock-r6-kind">Eine Antwort<span>1–3 wählen</span></div><div class="mock-r6-row mock-r6-sel"><i></i><b>Nach 10 Minuten verwerfen <span class="mock-r6-rec">★ Empfohlen</span><small>Spart ≈ 31 M Tokens.</small></b><span>Antwort von 14:09 ist um 14:19 weg.</span></div>
+        <div class="mock-r6-row"><i></i><b>Nach 1 Stunde verwerfen<small>Spart ≈ 24 M Tokens.</small></b><span>Antwort hält bis 15:09.</span></div><p class="mock-r6-none">Keine passt? <u>Schreib deine Antwort unten ins Notizfeld.</u></p></div></div>
+      <p class="mock-r6-peek mock-r6-down">Als Nächstes: <b>Frage 2 · Welche Hooks</b></p></div><div class="mock-r6-comp r6-comp"><span>Notiz an devops … (optional)<small>Gilt für diese Seite · Enter = Zeilenumbruch, Strg+Enter = speichern</small></span><b>📎</b><b class="mock-r6-send">↑</b></div></div>
+      <div class="anno-layer" data-anno-layer>
+        <div class="anno" data-anno="r6-r6-s2-a1" data-anno-side="left" data-anno-target=".r6-rail" style="--anno-x:70%;--anno-y:20%">
+          <button class="anno-pin" type="button" data-anno-pin="r6-r6-s2-a1" aria-expanded="false" aria-controls="anno-bubble-r6-r6-s2-a1" aria-label="{{anno.pin_label}}">1</button>
+          <div class="anno-bubble" id="anno-bubble-r6-r6-s2-a1" data-anno-bubble="r6-r6-s2-a1" data-open="false">
+            <button type="button" class="anno-bubble-summary" data-anno-summary="r6-r6-s2-a1" aria-expanded="false" aria-controls="anno-bubble-r6-r6-s2-a1"><span class="anno-bubble-question">Beim Überfahren: Der Punkt unter der Maus wird groß, die Nachbarn etwas, Abschnittsnamen („Thema Cache“) erscheinen. So?</span></button>
+            <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r6-r6-s2-a1" data-annotation="r6-r6-s2-a1" data-attachable placeholder="{{anno.answer_placeholder}}"></textarea><div class="attach-slot" data-attach-slot="anno-r6-r6-s2-a1"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section id="r6-s3" data-nav-label="Form · Bildauswahl" data-screen hidden><div class="mock-r6"><div class="mock-r6-rail r6-rail"><p class="mock-r6-b">Briefing<i></i></p><p class="mock-r6-c mock-r6-sec"><span class="mock-r6-grp">Thema Cache</span>Cache<i></i></p><p class="mock-r6-c">Lebensdauer<i></i></p><p class="mock-r6-c mock-r6-here">Welche Hooks<i></i></p><p class="mock-r6-c">Größe<i></i></p><p class="mock-r6-h mock-r6-sec"><span class="mock-r6-grp">Thema Hooks</span>Hooks<i></i></p><p class="mock-r6-h">Reihenfolge<i></i></p><p class="mock-r6-h">Injektion<i></i></p><p class="mock-r6-h">Budget<i></i></p><p class="mock-r6-b mock-r6-sec">Abschluss<i></i></p></div><div class="mock-r6-col"><p class="mock-r6-peek mock-r6-up">Cache · Frage 1 · Lebensdauer</p>
+      <div class="mock-r6-msg" style="--tc:#f28fb8"><div class="mock-r6-av" data-tip="devops"><svg viewBox="0 0 24 24" fill="none" stroke="#0d1117" stroke-width="2.4" stroke-linecap="round"><path d="M6.5 8.5c-2 0-3.5 1.6-3.5 3.5s1.5 3.5 3.5 3.5c3.5 0 7.5-7 11-7 2 0 3.5 1.6 3.5 3.5s-1.5 3.5-3.5 3.5c-3.5 0-7.5-7-11-7z"/></svg></div><div class="mock-r6-bub mock-r6-edge"><div class="mock-r6-meta">Cache · Frage 2 von 3</div><p class="mock-r6-fact" style="margin:0">Die Cache-Statistik liegt heute in einer eigenen Seite, die kaum jemand öffnet: 3 Aufrufe im Monat.</p></div></div>
+      <div class="mock-r6-msg mock-r6-d1" style="--tc:#f28fb8"><div class="mock-r6-av" data-tip="devops"><svg viewBox="0 0 24 24" fill="none" stroke="#0d1117" stroke-width="2.4" stroke-linecap="round"><path d="M6.5 8.5c-2 0-3.5 1.6-3.5 3.5s1.5 3.5 3.5 3.5c3.5 0 7.5-7 11-7 2 0 3.5 1.6 3.5 3.5s-1.5 3.5-3.5 3.5c-3.5 0-7.5-7-11-7z"/></svg></div><div class="mock-r6-bub mock-r6-qb"><p class="mock-r6-q">Wo sollen die Cache-Filter künftig sitzen?</p><p class="mock-r6-stakes">Davon hängt ab: wie oft die Statistik genutzt wird.</p></div></div>
+      <div class="mock-r6-msg mock-r6-d2" style="--tc:#f28fb8"><div class="mock-r6-av" data-tip="devops"><svg viewBox="0 0 24 24" fill="none" stroke="#0d1117" stroke-width="2.4" stroke-linecap="round"><path d="M6.5 8.5c-2 0-3.5 1.6-3.5 3.5s1.5 3.5 3.5 3.5c3.5 0 7.5-7 11-7 2 0 3.5 1.6 3.5 3.5s-1.5 3.5-3.5 3.5c-3.5 0-7.5-7-11-7z"/></svg></div><div class="mock-r6-ans r6-pics"><div class="mock-r6-kind">Bildauswahl<span>1–3 wählen</span></div><div class="mock-r6-pics"><div class="mock-r6-pic mock-r6-sel"><div class="mock-r6-thumb"><i style="left:6%;top:8%;width:88%;height:12%"></i><i style="left:6%;top:28%;width:56%;height:62%"></i><i style="left:66%;top:28%;width:28%;height:62%;background:rgba(121,192,255,.35)"></i></div><b>Seitenleiste rechts <span class="mock-r6-rec">★</span></b><span>Filter immer sichtbar.</span></div><div class="mock-r6-pic"><div class="mock-r6-thumb"><i style="left:6%;top:8%;width:88%;height:12%"></i><i style="left:6%;top:26%;width:88%;height:10%;background:rgba(121,192,255,.35)"></i><i style="left:6%;top:42%;width:88%;height:48%"></i></div><b>Filterleiste oben</b><span>Mehr Platz für Inhalt.</span></div><div class="mock-r6-pic"><div class="mock-r6-thumb"><i style="left:6%;top:8%;width:88%;height:12%"></i><i style="left:6%;top:28%;width:88%;height:62%"></i><i style="left:70%;top:70%;width:20%;height:14%;border-radius:999px;background:rgba(121,192,255,.35)"></i></div><b>Filter-Knopf</b><span>Öffnet ein Panel.</span></div></div><p class="mock-r6-none">Keine passt? <u>Schreib deine Antwort unten ins Notizfeld.</u></p></div></div>
+      <p class="mock-r6-peek mock-r6-down">Als Nächstes: <b>Frage 3 · Größe</b></p></div><div class="mock-r6-comp r6-comp"><span>Notiz an devops … (optional)<small>Gilt für diese Seite · Enter = Zeilenumbruch, Strg+Enter = speichern</small></span><b>📎</b><b class="mock-r6-send">↑</b></div></div>
+      <div class="anno-layer" data-anno-layer>
+        <div class="anno" data-anno="r6-r6-s3-a1" data-anno-side="left" data-anno-target=".r6-pics" style="--anno-x:70%;--anno-y:20%">
+          <button class="anno-pin" type="button" data-anno-pin="r6-r6-s3-a1" aria-expanded="false" aria-controls="anno-bubble-r6-r6-s3-a1" aria-label="{{anno.pin_label}}">1</button>
+          <div class="anno-bubble" id="anno-bubble-r6-r6-s3-a1" data-anno-bubble="r6-r6-s3-a1" data-open="false">
+            <button type="button" class="anno-bubble-summary" data-anno-summary="r6-r6-s3-a1" aria-expanded="false" aria-controls="anno-bubble-r6-r6-s3-a1"><span class="anno-bubble-question">Bildauswahl: drei Mini-Skizzen. Reicht so eine Skizze, oder braucht es echte Ausschnitte?</span></button>
+            <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r6-r6-s3-a1" data-annotation="r6-r6-s3-a1" data-attachable placeholder="{{anno.answer_placeholder}}">gern als zwei modi, skizzen vs real (bevorzugt skizzen) - aber manchmal macht nur real sinn! Aber wichtig, das ist kein varianten design pßrotottyping wie devops concept sonst es amcht, wenn es das wrüde müsste das eher in das devops concept varianten prrototyping gebaut werden und übergeben, das bitte kritisch an claude gebne!</textarea><div class="attach-slot" data-attach-slot="anno-r6-r6-s3-a1"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section id="r6-s4" data-nav-label="Form · Vergleich" data-screen hidden><div class="mock-r6"><div class="mock-r6-rail r6-rail"><p class="mock-r6-b">Briefing<i></i></p><p class="mock-r6-c mock-r6-sec"><span class="mock-r6-grp">Thema Cache</span>Cache<i></i></p><p class="mock-r6-c">Lebensdauer<i></i></p><p class="mock-r6-c">Welche Hooks<i></i></p><p class="mock-r6-c">Größe<i></i></p><p class="mock-r6-h mock-r6-sec"><span class="mock-r6-grp">Thema Hooks</span>Hooks<i></i></p><p class="mock-r6-h mock-r6-here">Reihenfolge<i></i></p><p class="mock-r6-h">Injektion<i></i></p><p class="mock-r6-h">Budget<i></i></p><p class="mock-r6-b mock-r6-sec">Abschluss<i></i></p></div><div class="mock-r6-col"><p class="mock-r6-peek mock-r6-up">Thema Hooks · 4 Fragen</p>
+      <div class="mock-r6-msg" style="--tc:#4fd1c5"><div class="mock-r6-av" data-tip="devops"><svg viewBox="0 0 24 24" fill="none" stroke="#0d1117" stroke-width="2.4" stroke-linecap="round"><path d="M6.5 8.5c-2 0-3.5 1.6-3.5 3.5s1.5 3.5 3.5 3.5c3.5 0 7.5-7 11-7 2 0 3.5 1.6 3.5 3.5s-1.5 3.5-3.5 3.5c-3.5 0-7.5-7-11-7z"/></svg></div><div class="mock-r6-bub mock-r6-edge"><div class="mock-r6-meta">Hooks · Frage 1 von 4</div><p class="mock-r6-fact" style="margin:0">Die Projektkarte wird heute bei jeder Datei-Änderung sofort neu gebaut: 380× pro Tag, 4 200 Tokens pro Lauf.</p></div></div>
+      <div class="mock-r6-msg mock-r6-d1" style="--tc:#4fd1c5"><div class="mock-r6-av" data-tip="devops"><svg viewBox="0 0 24 24" fill="none" stroke="#0d1117" stroke-width="2.4" stroke-linecap="round"><path d="M6.5 8.5c-2 0-3.5 1.6-3.5 3.5s1.5 3.5 3.5 3.5c3.5 0 7.5-7 11-7 2 0 3.5 1.6 3.5 3.5s-1.5 3.5-3.5 3.5c-3.5 0-7.5-7-11-7z"/></svg></div><div class="mock-r6-bub mock-r6-qb"><p class="mock-r6-q">Wann soll die Projektkarte neu gebaut werden?</p><p class="mock-r6-stakes">Davon hängt ab: Aktualität gegen Tokenkosten.</p></div></div>
+      <div class="mock-r6-msg mock-r6-d2" style="--tc:#4fd1c5"><div class="mock-r6-av" data-tip="devops"><svg viewBox="0 0 24 24" fill="none" stroke="#0d1117" stroke-width="2.4" stroke-linecap="round"><path d="M6.5 8.5c-2 0-3.5 1.6-3.5 3.5s1.5 3.5 3.5 3.5c3.5 0 7.5-7 11-7 2 0 3.5 1.6 3.5 3.5s-1.5 3.5-3.5 3.5c-3.5 0-7.5-7-11-7z"/></svg></div><div class="mock-r6-ans r6-mx"><div class="mock-r6-kind">Vergleich<span>Spalte wählen · 1–3</span></div><div class="mock-r6-mx">
+          <div class="mock-r6-h" style="background:none"></div><div class="mock-r6-h mock-r6-sel">A · Sofort <span class="mock-r6-rec">★</span></div><div class="mock-r6-h">B · Gebündelt</div><div class="mock-r6-h">C · Nachts</div>
+          <div class="mock-r6-rl">Aktualität</div><div class="mock-r6-col"><span class="mock-r6-dots">●●●</span></div><div><span class="mock-r6-dots">●●<s>●</s></span></div><div><span class="mock-r6-dots">●<s>●●</s></span></div>
+          <div class="mock-r6-rl">Tokenkosten</div><div class="mock-r6-col"><span class="mock-r6-dots">●<s>●●</s></span> hoch</div><div><span class="mock-r6-dots">●●<s>●</s></span></div><div><span class="mock-r6-dots">●●●</span> niedrig</div>
+          <div class="mock-r6-rl">Aufwand</div><div class="mock-r6-col"><span class="mock-r6-dots">●●●</span> gering</div><div><span class="mock-r6-dots">●●<s>●</s></span></div><div><span class="mock-r6-dots">●<s>●●</s></span></div>
+        </div><p class="mock-r6-none">Keine passt? <u>Schreib deine Antwort unten ins Notizfeld.</u></p></div></div>
+      <p class="mock-r6-peek mock-r6-down">Als Nächstes: <b>Frage 2 · Weg der Daten</b></p></div><div class="mock-r6-comp r6-comp"><span>Notiz an devops … (optional)<small>Gilt für diese Seite · Enter = Zeilenumbruch, Strg+Enter = speichern</small></span><b>📎</b><b class="mock-r6-send">↑</b></div></div>
+      <div class="anno-layer" data-anno-layer>
+        <div class="anno" data-anno="r6-r6-s4-a1" data-anno-side="left" data-anno-target=".r6-mx" style="--anno-x:70%;--anno-y:20%">
+          <button class="anno-pin" type="button" data-anno-pin="r6-r6-s4-a1" aria-expanded="false" aria-controls="anno-bubble-r6-r6-s4-a1" aria-label="{{anno.pin_label}}">1</button>
+          <div class="anno-bubble" id="anno-bubble-r6-r6-s4-a1" data-anno-bubble="r6-r6-s4-a1" data-open="false">
+            <button type="button" class="anno-bubble-summary" data-anno-summary="r6-r6-s4-a1" aria-expanded="false" aria-controls="anno-bubble-r6-r6-s4-a1"><span class="anno-bubble-question">Vergleich: höchstens 3 Optionen × 3 Merkmale mit Punkten statt Zahlen, eine Spalte wird gewählt. Passt das für deine Matrix-Fälle?</span></button>
+            <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r6-r6-s4-a1" data-annotation="r6-r6-s4-a1" data-attachable placeholder="{{anno.answer_placeholder}}">sieht gut aus! wobei die titel und auswahl zu weit weg von anderen visualisierungen wie die e ausgewählt sijnd, ich galueb das ist die form hmmm</textarea><div class="attach-slot" data-attach-slot="anno-r6-r6-s4-a1"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section id="r6-s5" data-nav-label="Form · Weg" data-screen hidden><div class="mock-r6"><div class="mock-r6-rail r6-rail"><p class="mock-r6-b">Briefing<i></i></p><p class="mock-r6-c mock-r6-sec"><span class="mock-r6-grp">Thema Cache</span>Cache<i></i></p><p class="mock-r6-c">Lebensdauer<i></i></p><p class="mock-r6-c">Welche Hooks<i></i></p><p class="mock-r6-c">Größe<i></i></p><p class="mock-r6-h mock-r6-sec"><span class="mock-r6-grp">Thema Hooks</span>Hooks<i></i></p><p class="mock-r6-h">Reihenfolge<i></i></p><p class="mock-r6-h mock-r6-here">Injektion<i></i></p><p class="mock-r6-h">Budget<i></i></p><p class="mock-r6-b mock-r6-sec">Abschluss<i></i></p></div><div class="mock-r6-col"><div class="mock-r6-done">
+        <div class="mock-r6-msg" style="--tc:#4fd1c5"><div class="mock-r6-av" data-tip="devops"><svg viewBox="0 0 24 24" fill="none" stroke="#0d1117" stroke-width="2.4" stroke-linecap="round"><path d="M6.5 8.5c-2 0-3.5 1.6-3.5 3.5s1.5 3.5 3.5 3.5c3.5 0 7.5-7 11-7 2 0 3.5 1.6 3.5 3.5s-1.5 3.5-3.5 3.5c-3.5 0-7.5-7-11-7z"/></svg></div><div class="mock-r6-bub">In welcher Reihenfolge sollen die Hook-Gruppen laufen?</div></div>
+        <div class="mock-r6-me"><div>Sicherheit → Kontext → Status</div></div>
+      </div>
+      <div class="mock-r6-msg" style="--tc:#4fd1c5"><div class="mock-r6-av" data-tip="devops"><svg viewBox="0 0 24 24" fill="none" stroke="#0d1117" stroke-width="2.4" stroke-linecap="round"><path d="M6.5 8.5c-2 0-3.5 1.6-3.5 3.5s1.5 3.5 3.5 3.5c3.5 0 7.5-7 11-7 2 0 3.5 1.6 3.5 3.5s-1.5 3.5-3.5 3.5c-3.5 0-7.5-7-11-7z"/></svg></div><div class="mock-r6-bub mock-r6-edge"><div class="mock-r6-meta">Hooks · Frage 2 von 4</div><p class="mock-r6-fact" style="margin:0">Mit der neuen Reihenfolge laufen die Guards zuerst. Die Projektkarte nimmt aber noch einen Umweg über den Cache.</p></div></div>
+      <div class="mock-r6-msg mock-r6-d1" style="--tc:#4fd1c5"><div class="mock-r6-av" data-tip="devops"><svg viewBox="0 0 24 24" fill="none" stroke="#0d1117" stroke-width="2.4" stroke-linecap="round"><path d="M6.5 8.5c-2 0-3.5 1.6-3.5 3.5s1.5 3.5 3.5 3.5c3.5 0 7.5-7 11-7 2 0 3.5 1.6 3.5 3.5s-1.5 3.5-3.5 3.5c-3.5 0-7.5-7-11-7z"/></svg></div><div class="mock-r6-bub mock-r6-qb"><p class="mock-r6-q">Welchen Weg sollen die Daten nehmen?</p><p class="mock-r6-stakes">Davon hängt ab: Startzeit und wo Fehler entstehen können.</p></div></div>
+      <div class="mock-r6-msg mock-r6-d2" style="--tc:#4fd1c5"><div class="mock-r6-av" data-tip="devops"><svg viewBox="0 0 24 24" fill="none" stroke="#0d1117" stroke-width="2.4" stroke-linecap="round"><path d="M6.5 8.5c-2 0-3.5 1.6-3.5 3.5s1.5 3.5 3.5 3.5c3.5 0 7.5-7 11-7 2 0 3.5 1.6 3.5 3.5s-1.5 3.5-3.5 3.5c-3.5 0-7.5-7-11-7z"/></svg></div><div class="mock-r6-ans r6-flows"><div class="mock-r6-kind">Weg / Kette<span>1–3 wählen</span></div><div class="mock-r6-flows">
+          <div class="mock-r6-flow mock-r6-sel"><i></i><div class="mock-r6-chain"><span>Hook</span><em>→</em><span>Cache</span><em>→</em><span>Projektkarte</span><span class="mock-r6-rec">★</span></div><small>1 Schritt weniger, ≈ 0,2 s</small></div>
+          <div class="mock-r6-flow"><i></i><div class="mock-r6-chain"><span>Hook</span><em>→</em><span>Projektkarte</span><em>→</em><span>Cache</span></div><small>wie heute</small></div>
+          <div class="mock-r6-flow"><i></i><div class="mock-r6-chain"><span>Hook</span><em>→</em><span>Server</span><em>→</em><span>Projektkarte</span></div><small>braucht MCP, ≈ 0,5 s</small></div>
+        </div><p class="mock-r6-none">Keine passt? <u>Schreib deine Antwort unten ins Notizfeld.</u></p></div></div></div><div class="mock-r6-comp r6-comp"><span>Notiz an devops … (optional)<small>Gilt für diese Seite · Enter = Zeilenumbruch, Strg+Enter = speichern</small></span><b>📎</b><b class="mock-r6-send">↑</b></div></div>
+      <div class="anno-layer" data-anno-layer>
+        <div class="anno" data-anno="r6-r6-s5-a1" data-anno-side="left" data-anno-target=".r6-flows" style="--anno-x:70%;--anno-y:20%">
+          <button class="anno-pin" type="button" data-anno-pin="r6-r6-s5-a1" aria-expanded="false" aria-controls="anno-bubble-r6-r6-s5-a1" aria-label="{{anno.pin_label}}">1</button>
+          <div class="anno-bubble" id="anno-bubble-r6-r6-s5-a1" data-anno-bubble="r6-r6-s5-a1" data-open="false">
+            <button type="button" class="anno-bubble-summary" data-anno-summary="r6-r6-s5-a1" aria-expanded="false" aria-controls="anno-bubble-r6-r6-s5-a1"><span class="anno-bubble-question">Weg / Kette: jede Option zeigt ihren Ablauf. Nützlich für Herkunft oder Datenfluss?</span></button>
+            <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r6-r6-s5-a1" data-annotation="r6-r6-s5-a1" data-attachable placeholder="{{anno.answer_placeholder}}">ja schon nützlich!</textarea><div class="attach-slot" data-attach-slot="anno-r6-r6-s5-a1"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section id="r6-s6" data-nav-label="Form · Platzierung" data-screen hidden><div class="mock-r6"><div class="mock-r6-rail r6-rail"><p class="mock-r6-b">Briefing<i></i></p><p class="mock-r6-c mock-r6-sec"><span class="mock-r6-grp">Thema Cache</span>Cache<i></i></p><p class="mock-r6-c">Lebensdauer<i></i></p><p class="mock-r6-c">Welche Hooks<i></i></p><p class="mock-r6-c">Größe<i></i></p><p class="mock-r6-h mock-r6-sec"><span class="mock-r6-grp">Thema Hooks</span>Hooks<i></i></p><p class="mock-r6-h">Reihenfolge<i></i></p><p class="mock-r6-h">Injektion<i></i></p><p class="mock-r6-h mock-r6-here">Budget<i></i></p><p class="mock-r6-b mock-r6-sec">Abschluss<i></i></p></div><div class="mock-r6-col"><p class="mock-r6-peek mock-r6-up">Hooks · Frage 2 · Weg der Daten</p>
+      <div class="mock-r6-msg" style="--tc:#4fd1c5"><div class="mock-r6-av" data-tip="devops"><svg viewBox="0 0 24 24" fill="none" stroke="#0d1117" stroke-width="2.4" stroke-linecap="round"><path d="M6.5 8.5c-2 0-3.5 1.6-3.5 3.5s1.5 3.5 3.5 3.5c3.5 0 7.5-7 11-7 2 0 3.5 1.6 3.5 3.5s-1.5 3.5-3.5 3.5c-3.5 0-7.5-7-11-7z"/></svg></div><div class="mock-r6-bub mock-r6-edge"><div class="mock-r6-meta">Hooks · Frage 3 von 4</div><p class="mock-r6-fact" style="margin:0">Die Budget-Warnung erscheint heute als Zeile im Chat und wird in 70 % der Fälle überscrollt.</p></div></div>
+      <div class="mock-r6-msg mock-r6-d1" style="--tc:#4fd1c5"><div class="mock-r6-av" data-tip="devops"><svg viewBox="0 0 24 24" fill="none" stroke="#0d1117" stroke-width="2.4" stroke-linecap="round"><path d="M6.5 8.5c-2 0-3.5 1.6-3.5 3.5s1.5 3.5 3.5 3.5c3.5 0 7.5-7 11-7 2 0 3.5 1.6 3.5 3.5s-1.5 3.5-3.5 3.5c-3.5 0-7.5-7-11-7z"/></svg></div><div class="mock-r6-bub mock-r6-qb"><p class="mock-r6-q">Wo soll die Budget-Warnung sitzen?</p><p class="mock-r6-stakes">Davon hängt ab: ob die Warnung gesehen wird, ohne zu stören.</p></div></div>
+      <div class="mock-r6-msg mock-r6-d2" style="--tc:#4fd1c5"><div class="mock-r6-av" data-tip="devops"><svg viewBox="0 0 24 24" fill="none" stroke="#0d1117" stroke-width="2.4" stroke-linecap="round"><path d="M6.5 8.5c-2 0-3.5 1.6-3.5 3.5s1.5 3.5 3.5 3.5c3.5 0 7.5-7 11-7 2 0 3.5 1.6 3.5 3.5s-1.5 3.5-3.5 3.5c-3.5 0-7.5-7-11-7z"/></svg></div><div class="mock-r6-ans r6-place"><div class="mock-r6-kind">Platzierung<span>Fläche anklicken · A–C</span></div><div class="mock-r6-place">
+          <div class="mock-r6-frame"><i style="left:4%;top:6%;width:92%;height:12%"></i><i style="left:4%;top:24%;width:62%;height:70%"></i>
+            <div class="mock-r6-slot" style="left:70%;top:24%;width:26%;height:30%">A</div>
+            <div class="mock-r6-slot mock-r6-sel" style="left:70%;top:60%;width:26%;height:34%">B ★</div>
+            <div class="mock-r6-slot" style="left:60%;top:6%;width:24%;height:12%">C</div></div>
+          <ul><li><b>A</b>rechts oben, neben dem Inhalt</li><li><b>B</b>rechts unten, nahe der Aktion <span class="mock-r6-rec">★</span></li><li><b>C</b>in der Kopfzeile</li></ul>
+        </div><p class="mock-r6-none">Keine passt? <u>Schreib deine Antwort unten ins Notizfeld.</u></p></div></div>
+      <p class="mock-r6-peek mock-r6-down">Als Nächstes: <b>Frage 4 · Gewichtung</b></p></div><div class="mock-r6-comp r6-comp"><span>Notiz an devops … (optional)<small>Gilt für diese Seite · Enter = Zeilenumbruch, Strg+Enter = speichern</small></span><b>📎</b><b class="mock-r6-send">↑</b></div></div>
+      <div class="anno-layer" data-anno-layer>
+        <div class="anno" data-anno="r6-r6-s6-a1" data-anno-side="left" data-anno-target=".r6-place" style="--anno-x:70%;--anno-y:20%">
+          <button class="anno-pin" type="button" data-anno-pin="r6-r6-s6-a1" aria-expanded="false" aria-controls="anno-bubble-r6-r6-s6-a1" aria-label="{{anno.pin_label}}">1</button>
+          <div class="anno-bubble" id="anno-bubble-r6-r6-s6-a1" data-anno-bubble="r6-r6-s6-a1" data-open="false">
+            <button type="button" class="anno-bubble-summary" data-anno-summary="r6-r6-s6-a1" aria-expanded="false" aria-controls="anno-bubble-r6-r6-s6-a1"><span class="anno-bubble-question">Platzierung: Fläche auf einer Skizze anklicken. Verständlich?</span></button>
+            <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r6-r6-s6-a1" data-annotation="r6-r6-s6-a1" data-attachable placeholder="{{anno.answer_placeholder}}">gute idee! aber auch anklickbar die optionen rechts daneben bitte alternativ!</textarea><div class="attach-slot" data-attach-slot="anno-r6-r6-s6-a1"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section id="r6-s7" data-nav-label="Form · Punkte" data-screen hidden><div class="mock-r6"><div class="mock-r6-rail r6-rail"><p class="mock-r6-b">Briefing<i></i></p><p class="mock-r6-c mock-r6-sec"><span class="mock-r6-grp">Thema Cache</span>Cache<i></i></p><p class="mock-r6-c">Lebensdauer<i></i></p><p class="mock-r6-c">Welche Hooks<i></i></p><p class="mock-r6-c">Größe<i></i></p><p class="mock-r6-h mock-r6-sec"><span class="mock-r6-grp">Thema Hooks</span>Hooks<i></i></p><p class="mock-r6-h">Reihenfolge<i></i></p><p class="mock-r6-h">Injektion<i></i></p><p class="mock-r6-h mock-r6-here">Budget<i></i></p><p class="mock-r6-b mock-r6-sec">Abschluss<i></i></p></div><div class="mock-r6-col"><p class="mock-r6-peek mock-r6-up">Hooks · Frage 3 · Platzierung</p>
+      <div class="mock-r6-msg" style="--tc:#4fd1c5"><div class="mock-r6-av" data-tip="devops"><svg viewBox="0 0 24 24" fill="none" stroke="#0d1117" stroke-width="2.4" stroke-linecap="round"><path d="M6.5 8.5c-2 0-3.5 1.6-3.5 3.5s1.5 3.5 3.5 3.5c3.5 0 7.5-7 11-7 2 0 3.5 1.6 3.5 3.5s-1.5 3.5-3.5 3.5c-3.5 0-7.5-7-11-7z"/></svg></div><div class="mock-r6-bub mock-r6-edge"><div class="mock-r6-meta">Hooks · Frage 4 von 4</div><p class="mock-r6-fact" style="margin:0">Startzeit, Aktualität, Tokens und Einfachheit ziehen in verschiedene Richtungen. Wir brauchen deine Gewichtung für alle weiteren Hook-Entscheidungen.</p></div></div>
+      <div class="mock-r6-msg mock-r6-d1" style="--tc:#4fd1c5"><div class="mock-r6-av" data-tip="devops"><svg viewBox="0 0 24 24" fill="none" stroke="#0d1117" stroke-width="2.4" stroke-linecap="round"><path d="M6.5 8.5c-2 0-3.5 1.6-3.5 3.5s1.5 3.5 3.5 3.5c3.5 0 7.5-7 11-7 2 0 3.5 1.6 3.5 3.5s-1.5 3.5-3.5 3.5c-3.5 0-7.5-7-11-7z"/></svg></div><div class="mock-r6-bub mock-r6-qb"><p class="mock-r6-q">Was ist dir bei Hooks wie wichtig?</p><p class="mock-r6-stakes">Davon hängt ab: wie wir künftige Zielkonflikte auflösen.</p></div></div>
+      <div class="mock-r6-msg mock-r6-d2" style="--tc:#4fd1c5"><div class="mock-r6-av" data-tip="devops"><svg viewBox="0 0 24 24" fill="none" stroke="#0d1117" stroke-width="2.4" stroke-linecap="round"><path d="M6.5 8.5c-2 0-3.5 1.6-3.5 3.5s1.5 3.5 3.5 3.5c3.5 0 7.5-7 11-7 2 0 3.5 1.6 3.5 3.5s-1.5 3.5-3.5 3.5c-3.5 0-7.5-7-11-7z"/></svg></div><div class="mock-r6-ans r6-alloc"><div class="mock-r6-kind">Punkte verteilen<span>13 Punkte · Stufen 1–8</span></div><div class="mock-r6-budget"><span>Verteile <b>13 Punkte</b> · Stufen 1 · 2 · 3 · 5 · 8</span><span>noch <b>0</b> übrig</span></div>
+        <div class="mock-r6-share"><i style="width:61%;background:#79c0ff"></i><i style="width:23%;background:#58a6ff"></i><i style="width:8%;background:#388bfd"></i><i style="width:8%;background:#a5d6ff"></i></div>
+        <div class="mock-r6-alloc">
+          <div class="mock-r6-ar"><div><b>Startzeit</b><small>Session soll schnell da sein</small></div><div class="mock-r6-steps"><span>1</span><span>2</span><span>3</span><span>5</span><span class="mock-r6-on">8</span></div></div>
+          <div class="mock-r6-ar"><div><b>Aktualität</b><small>Antworten nie veraltet</small></div><div class="mock-r6-steps"><span>1</span><span>2</span><span class="mock-r6-on">3</span><span>5</span><span>8</span></div></div>
+          <div class="mock-r6-ar"><div><b>Tokens</b><small>Kosten pro Monat</small></div><div class="mock-r6-steps"><span class="mock-r6-on">1</span><span>2</span><span>3</span><span>5</span><span>8</span></div></div>
+          <div class="mock-r6-ar"><div><b>Einfachheit</b><small>Wenig Konfiguration</small></div><div class="mock-r6-steps"><span class="mock-r6-on">1</span><span>2</span><span>3</span><span>5</span><span>8</span></div></div>
+        </div><p class="mock-r6-none">Keine passt? <u>Schreib deine Antwort unten ins Notizfeld.</u></p></div></div>
+      <p class="mock-r6-peek mock-r6-down">Als Nächstes: <b>Abschluss</b></p></div><div class="mock-r6-comp r6-comp"><span>Notiz an devops … (optional)<small>Gilt für diese Seite · Enter = Zeilenumbruch, Strg+Enter = speichern</small></span><b>📎</b><b class="mock-r6-send">↑</b></div></div>
+      <div class="anno-layer" data-anno-layer>
+        <div class="anno" data-anno="r6-r6-s7-a1" data-anno-side="left" data-anno-target=".r6-alloc" style="--anno-x:70%;--anno-y:20%">
+          <button class="anno-pin" type="button" data-anno-pin="r6-r6-s7-a1" aria-expanded="false" aria-controls="anno-bubble-r6-r6-s7-a1" aria-label="{{anno.pin_label}}">1</button>
+          <div class="anno-bubble" id="anno-bubble-r6-r6-s7-a1" data-anno-bubble="r6-r6-s7-a1" data-open="false">
+            <button type="button" class="anno-bubble-summary" data-anno-summary="r6-r6-s7-a1" aria-expanded="false" aria-controls="anno-bubble-r6-r6-s7-a1"><span class="anno-bubble-question">Punkte verteilen in groben Stufen (1, 2, 3, 5, 8) bei festem Budget von 13 Punkten. Klug genug?</span></button>
+            <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r6-r6-s7-a1" data-annotation="r6-r6-s7-a1" data-attachable placeholder="{{anno.answer_placeholder}}">ja klingt gut!</textarea><div class="attach-slot" data-attach-slot="anno-r6-r6-s7-a1"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section id="r6-s8" data-nav-label="Abschluss" data-screen hidden><div class="mock-r6"><div class="mock-r6-rail r6-rail"><p class="mock-r6-b">Briefing<i></i></p><p class="mock-r6-c mock-r6-sec"><span class="mock-r6-grp">Thema Cache</span>Cache<i></i></p><p class="mock-r6-c">Lebensdauer<i></i></p><p class="mock-r6-c">Welche Hooks<i></i></p><p class="mock-r6-c">Größe<i></i></p><p class="mock-r6-h mock-r6-sec"><span class="mock-r6-grp">Thema Hooks</span>Hooks<i></i></p><p class="mock-r6-h">Reihenfolge<i></i></p><p class="mock-r6-h">Injektion<i></i></p><p class="mock-r6-h">Budget<i></i></p><p class="mock-r6-b mock-r6-here mock-r6-sec">Abschluss<i></i></p></div><div class="mock-r6-col"><div class="mock-r6-hero">
+        <div class="mock-r6-eyebrow">Token-Verbrauch · Abschluss</div>
+        <div class="mock-r6-big" style="font-size:64px">44 M<small> von 51 M geholt</small></div>
+        <p class="mock-r6-claim">Wo sollten wir nachschärfen? Vorgeschlagen haben wir es dort, wo du lange verweilt, viel notiert oder mehrfach zurückgesprungen bist. Du kannst es für jede Zeile umschalten.</p>
+        <div class="mock-r6-sig r6-sig">
+          <div class="mock-r6-sigrow" style="--tc:#4fd1c5"><i></i><span>Doppelte Injektion</span><div class="mock-r6-dw mock-r6-warn"><b style="width:92%"></b></div><span class="mock-r6-tog mock-r6-on r6-tog" data-tip="2,6× länger als der Median · Notiz mit 41 Wörtern">Nachschärfen</span></div>
+          <div class="mock-r6-sigrow" style="--tc:#f28fb8"><i></i><span>Cache-Größe</span><div class="mock-r6-dw mock-r6-warn"><b style="width:70%"></b></div><span class="mock-r6-tog mock-r6-on" data-tip="3× zurückgekehrt, Wert zweimal geändert">Nachschärfen</span></div>
+          <div class="mock-r6-sigrow" style="--tc:#f28fb8"><i></i><span>Lebensdauer</span><div class="mock-r6-dw"><b style="width:30%"></b></div><span class="mock-r6-tog">Nachschärfen</span></div>
+          <div class="mock-r6-sigrow" style="--tc:#4fd1c5"><i></i><span>Thema Hooks</span><div class="mock-r6-dw"><b style="width:40%"></b></div><span class="mock-r6-tog">Nachschärfen</span></div>
+        </div>
+        <div class="mock-r6-next r6-next"><button class="mock-r6-pri" type="button">Jetzt umsetzen</button><button class="mock-r6-sec2" type="button">Nächste Runde</button></div>
+        <p class="mock-r6-jump">Im Concept gibt es noch einen Eintrag: <b>Fragen · Header &amp; Footer ↓</b></p>
+      </div></div><div class="mock-r6-comp r6-comp mock-r6-glow"><span><span class="mock-r6-tag">🏷 Cache-Größe <em>×</em></span><br>Notiz an devops … (optional)<small>Gilt für diese Seite · Enter = Zeilenumbruch, Strg+Enter = speichern</small></span><b>📎</b><b class="mock-r6-send">↑</b></div></div>
+      <div class="anno-layer" data-anno-layer>
+        <div class="anno" data-anno="r6-r6-s8-a1" data-anno-side="left" data-anno-target=".r6-tog" style="--anno-x:70%;--anno-y:20%">
+          <button class="anno-pin" type="button" data-anno-pin="r6-r6-s8-a1" aria-expanded="false" aria-controls="anno-bubble-r6-r6-s8-a1" aria-label="{{anno.pin_label}}">1</button>
+          <div class="anno-bubble" id="anno-bubble-r6-r6-s8-a1" data-anno-bubble="r6-r6-s8-a1" data-open="false">
+            <button type="button" class="anno-bubble-summary" data-anno-summary="r6-r6-s8-a1" aria-expanded="false" aria-controls="anno-bubble-r6-r6-s8-a1"><span class="anno-bubble-question">Pro Zeile umschaltbar. Ein Klick lässt das Notizfeld mit einem Tag aufleuchten. Passt das?</span></button>
+            <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r6-r6-s8-a1" data-annotation="r6-r6-s8-a1" data-attachable placeholder="{{anno.answer_placeholder}}"></textarea><div class="attach-slot" data-attach-slot="anno-r6-r6-s8-a1"></div></div>
+          </div>
+        </div>
+        <div class="anno" data-anno="r6-r6-s8-a2" data-anno-side="left" data-anno-target=".r6-next" style="--anno-x:70%;--anno-y:42%">
+          <button class="anno-pin" type="button" data-anno-pin="r6-r6-s8-a2" aria-expanded="false" aria-controls="anno-bubble-r6-r6-s8-a2" aria-label="{{anno.pin_label}}">2</button>
+          <div class="anno-bubble" id="anno-bubble-r6-r6-s8-a2" data-anno-bubble="r6-r6-s8-a2" data-open="false">
+            <button type="button" class="anno-bubble-summary" data-anno-summary="r6-r6-s8-a2" aria-expanded="false" aria-controls="anno-bubble-r6-r6-s8-a2"><span class="anno-bubble-question">Danach „Jetzt umsetzen“ oder „Nächste Runde“, und falls es im Concept noch etwas gibt, der Sprung dorthin. So?</span></button>
+            <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r6-r6-s8-a2" data-annotation="r6-r6-s8-a2" data-attachable placeholder="{{anno.answer_placeholder}}">sehr gut</textarea><div class="attach-slot" data-attach-slot="anno-r6-r6-s8-a2"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </section>
+
+  <section data-view="v-r6" data-view-kind="analysis" data-analysis="lite" data-nav-label="Fragen zu Runde 6" hidden>
+    <div data-alevel="1" data-title="Fragen zu Runde 6">
+      <div data-slot="short"><p>Zwei Punkte zu den Antwortformen.</p></div>
+      <div data-slot="long"><p>Grundlage sind die letzten 20 Concept-Seiten. Sie stammen alle aus Star-Citizen-Companion, andere Projekte waren älter. Nur 3 der 20 Seiten hatten auswertbare Entscheidungs-Markierungen.</p></div>
+    </div>
+
+    <section id="r6-set" data-nav-label="Formen-Set" data-decision="r6-set" data-decision-mode="multi" data-label="Antwortformen" data-rec="pics mx flow place alloc"
+             data-rec-why="Jede der fünf Formen deckt eine Gruppe echter Fälle aus den 20 Seiten ab, die Textzeilen schlecht tragen."
+             data-applies-to="alle Analysen" data-finding="f-r6-set">
+      <p data-applies>Gilt für: alle Analysen</p>
+      <p data-situation>In den 20 Seiten kamen vor: visuelle Varianten (7 Seiten), Tabellen bzw. Matrizen (13), ein Wert auf einer Skala, die Herkunft einer Datenkette und das Platzieren von Elementen. Text-Zeilen reichen nur für 3 Seiten.</p>
+      <h3 data-question>Welche neuen Antwortformen nehmen wir auf?</h3>
+      <p data-stakes>Wie viele Fälle ohne Umweg über Text auskommen und wie viel Engine-Code wir pflegen.</p>
+      <div data-options>
+        <label data-opt="pics"><input type="checkbox" name="dm-r6-set.pics" checked><span data-opt-label>Bildauswahl</span><span data-opt-consequence>2–4 Mini-Skizzen oder Ausschnitte.</span></label>
+        <label data-opt="mx"><input type="checkbox" name="dm-r6-set.mx" checked><span data-opt-label>Vergleich</span><span data-opt-consequence>Max. 3 Optionen × 3 Merkmale.</span></label>
+        <label data-opt="flow"><input type="checkbox" name="dm-r6-set.flow" checked><span data-opt-label>Weg / Kette</span><span data-opt-consequence>Optionen als kurze Abläufe.</span></label>
+        <label data-opt="place"><input type="checkbox" name="dm-r6-set.place" checked><span data-opt-label>Platzierung</span><span data-opt-consequence>Fläche auf einer Skizze.</span></label>
+        <label data-opt="alloc"><input type="checkbox" name="dm-r6-set.alloc" checked><span data-opt-label>Punkte verteilen</span><span data-opt-consequence>Grobe Stufen, festes Budget.</span></label>
+      </div>
+      <textarea data-comment="r6-set-note"></textarea>
+      <input type="hidden" name="dm-r6-set-touched" value=""><input type="hidden" name="dm-r6-set-issue" value=""><input type="hidden" name="dm-r6-set-epic" value="">
+      <div data-alevel="3" data-title="Antwortformen">
+        <div data-slot="short"><p>12 Formen insgesamt mit den 7 bestehenden.</p></div>
+        <div data-slot="long"><div data-viz="bars" data-viz-spec='{"items":[{"label":"Tabellen/Matrix","value":13},{"label":"SVG-lastig","value":8},{"label":"Visuelle Varianten","value":7},{"label":"Nur Text","value":3}],"unit":"Seiten","hl":"Tabellen/Matrix"}'></div><p>Skalen-Umfrage (1–5) und Bereich habe ich weggelassen. Sie kamen in keiner der 20 Seiten vor.</p></div>
+      </div>
+    </section>
+
+    <section id="r6-alloc" data-nav-label="Punkte-Skala" data-decision="r6-alloc" data-decision-mode="single" data-label="Skala beim Punkte verteilen" data-rec="fib"
+             data-rec-why="Grobe, wachsende Stufen zwingen zu einer echten Rangfolge, ohne Scheingenauigkeit (wie Planning Poker). Ein kleines Budget verhindert, dass alles „wichtig“ wird (Constant-Sum)."
+             data-applies-to="die Form Punkte verteilen" data-finding="f-r6-alloc">
+      <p data-applies>Gilt für: die Form Punkte verteilen</p>
+      <p data-situation>Freie Zahlen führen zu Scheingenauigkeit (17 vs. 18 Punkte) und dazu, dass alles ungefähr gleich viel bekommt. Befragungsforschung (Constant-Sum, MaxDiff) und Planning Poker setzen deshalb auf grobe Stufen und ein knappes Budget. Das ist mein Wissensstand, in dieser Sitzung nicht neu recherchiert.</p>
+      <h3 data-question>Welche Skala nutzt „Punkte verteilen“?</h3>
+      <p data-stakes>Wie klar die Gewichtung am Ende ist.</p>
+      <div data-options>
+        <label data-opt="fib" data-recommended><input type="radio" name="dm-r6-alloc" value="fib" checked><span data-opt-label>Fibonacci-Stufen</span><span data-opt-consequence>1, 2, 3, 5, 8 bei 13 Punkten Budget.</span></label>
+        <label data-opt="chips"><input type="radio" name="dm-r6-alloc" value="chips"><span data-opt-label>10 Chips</span><span data-opt-consequence>Je Klick ein Chip, gleich große Schritte.</span></label>
+        <label data-opt="best"><input type="radio" name="dm-r6-alloc" value="best"><span data-opt-label>Wichtigstes / Unwichtigstes</span><span data-opt-consequence>Je eins markieren (MaxDiff light).</span></label>
+      </div>
+      <textarea data-comment="r6-alloc-note"></textarea>
+      <input type="hidden" name="dm-r6-alloc-touched" value=""><input type="hidden" name="dm-r6-alloc-issue" value=""><input type="hidden" name="dm-r6-alloc-epic" value="">
+      <div data-alevel="3" data-title="Skala beim Punkte verteilen">
+        <div data-slot="short"><p>Grobe Stufen statt freier Zahlen.</p></div>
+        <div data-slot="long"><p>Das Budget passt sich der Zahl der Punkte an, etwa 13 Punkte bei 4 Merkmalen. So kann höchstens ein Merkmal die 8 bekommen.</p></div>
+      </div>
+    </section>
+  </section>
+
+</section>

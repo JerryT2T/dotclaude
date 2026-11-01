@@ -127,22 +127,22 @@ describe("touched tracking", () => {
   });
 });
 
-describe("choreography duration", () => {
-  test("about 1 s the first two times per page, 0.3 s afterwards, count in localStorage", () => {
-    const { ca, w } = page(LITE);
-    expect(ca.transMs()).toBe(1000);
+describe("first visit animates, later visits are instant", () => {
+  test("a stage gets .an-first on its first visit only", () => {
+    const { ca } = page(LITE);
     const inst = ca.instances[0];
-    ca.go(inst, inst.stages.findIndex(s => s.kind === "dec"));   // L3 slides in: counted
-    ca.go(inst, inst.stages.findIndex(s => s.kind === "dec") + 1);   // next decision: a fresh L3 slides in again
-    expect(Number(w.localStorage.getItem(Object.keys(w.localStorage).find(k => k.startsWith("concept-an-transitions"))))).toBeGreaterThanOrEqual(2);
-    expect(ca.transMs()).toBe(300);
+    const q2 = inst.stages.findIndex(s => s.el.id === "q2");
+    ca.go(inst, q2);
+    expect(inst.stages[q2].el.classList.contains("an-first")).toBe(true);
+    ca.go(inst, 0);
+    expect(inst.stages[q2].el.classList.contains("an-first")).toBe(false);
+    ca.go(inst, q2);
+    expect(inst.stages[q2].el.classList.contains("an-first")).toBe(false);
   });
-  test("a broken localStorage never throws", () => {
-    const { ca, w } = page("");
-    w.Storage.prototype.getItem = () => { throw new Error("denied"); };
-    expect(() => ca.transMs()).not.toThrow();
-  });
-  test("the stylesheet honours prefers-reduced-motion", () => {
+  test("the messages enter 0.9 s long, 1.8 s apart; reduced motion switches every animation off", () => {
+    expect(CSS).toMatch(/\.an-first \.an-msg, \.an-first \.an-m-a \{ animation: an-in \.9s/);
+    expect(CSS).toMatch(/\.an-first \.an-m-q \{ animation-delay: 1\.8s; \}/);
+    expect(CSS).toMatch(/\.an-first \.an-m-a \{ animation-delay: 3\.6s; \}/);
     expect(CSS).toMatch(/prefers-reduced-motion: reduce\)[\s\S]*animation: none !important/);
   });
 });
@@ -153,13 +153,13 @@ describe("keyboard and widgets", () => {
     const inst = ca.instances[0];
     const stage = inst.stages[inst.idx].el;
     const press = (key, shiftKey) => stage.dispatchEvent(new w.KeyboardEvent("keydown", { key, shiftKey: !!shiftKey, bubbles: true, cancelable: true }));
-    expect(inst.stages[inst.idx].kind).toBe("start");
-    press("Enter");
-    expect(inst.stages[inst.idx].kind).toBe("dec");
+    expect(inst.stages[inst.idx].el.id).toBe("q1");             // Lite opens on its first question
     press("2");                                                  // option 2 of the focused decision
     expect(doc.querySelector('input[name="dm-q1"][value="b"]').checked).toBe(true);
-    press("Enter", true);
-    expect(inst.stages[inst.idx].kind).toBe("start");
+    press("Enter");
+    expect(inst.stages[inst.idx].el.id).toBe("q2");
+    inst.stages[inst.idx].el.dispatchEvent(new w.KeyboardEvent("keydown", { key: "Enter", shiftKey: true, bubbles: true, cancelable: true }));
+    expect(inst.stages[inst.idx].el.id).toBe("q1");
   });
   test("the recommended option is badged, preselected and carries its reason", () => {
     const { doc } = page(LITE);
@@ -222,7 +222,7 @@ describe("palette and stage CSS", () => {
     for (const hex of colors) {
       const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
       const hue = (() => { const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn; if (!d) return 0; let h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h *= 60; return h < 0 ? h + 360 : h; })();
-      expect(hue >= 170 && hue <= 330, hex + " hue " + Math.round(hue)).toBe(true);
+      expect((hue >= 45 && hue <= 80) || (hue >= 160 && hue <= 200) || (hue >= 290 && hue <= 345), hex + " hue " + Math.round(hue)).toBe(true);   // not red, orange, green, blue, the note purple
     }
   });
   test("the design view kind analysis is styled and the engine stays one instance per root", () => {
@@ -257,36 +257,119 @@ const FULL = `<section data-iteration="1" data-iteration-template="decision" dat
   </section>
 </section>`;
 
-describe("fitted Full round", () => {
-  const visibleFoot = (inst) => {
-    const st = inst.stages[inst.idx];
-    return st.kind === "brief" ? inst.root.querySelector(":scope > .an-foot-brief") : st.el.querySelector(".an-foot");
-  };
-  test("a wide, tall viewport fits the round: .an-fit + --an-fit-h, no fit below 900px", () => {
-    const { w, ca } = page(FULL);
-    const inst = ca.instances[0];
-    expect(inst.root.classList.contains("an-fit")).toBe(true);
-    expect(inst.root.style.getPropertyValue("--an-fit-h")).toMatch(/^\d+px$/);
-    Object.defineProperty(w, "innerWidth", { value: 800, configurable: true });
-    ca.go(inst, 1);
-    expect(inst.root.classList.contains("an-fit")).toBe(false);
-    expect(inst.root.style.getPropertyValue("--an-fit-h")).toBe("");
+describe("chat flow Full round", () => {
+  const withExample = FULL.replace('<div data-alevel="3" data-title="T-a1"><div data-slot="short"><p>s</p></div><div data-slot="long"><p>l</p></div></div>',
+    '<div data-alevel="3" data-title="T-a1"><div data-slot="short"><p>s</p></div><div data-slot="long"><p>l</p></div><div data-example><pre>real excerpt</pre></div></div>');
+  test("a decision stage is three messages: finding, question (fixed height), answer block (capped)", () => {
+    const { doc } = page(FULL);
+    const d = doc.getElementById("a1");
+    expect([...d.children].slice(0, 3).map(c => c.classList.contains("an-m-find") ? "find" : c.classList.contains("an-m-q") ? "q" : c.classList.contains("an-m-a") ? "a" : "?")).toEqual(["find", "q", "a"]);
+    expect(d.querySelector(".an-m-q [data-question]")).toBeTruthy();
+    expect(d.querySelector(".an-m-a .an-ans [data-options]")).toBeTruthy();
+    expect(d.querySelector(".an-av").getAttribute("data-tip")).toBe("devops");
+    expect(CSS).toMatch(/\.an-qb \{ height: 92px;/);
+    expect(CSS).toMatch(/\.an-ans \{ max-height: 45vh;/);
+    expect(CSS).toMatch(/\.an-enh \{[^}]*max-width: 780px/);
   });
-  test("every stage ends in the same bar; the fitted CSS pins it to the round's bottom", () => {
+  test("tabs Befund / Beispiel only with a [data-example]; switching shows the other pane and dips the messages below", () => {
+    const { doc, timers } = page(withExample);
+    const d = doc.getElementById("a1");
+    const tabs = [...d.querySelectorAll(".an-tab")];
+    expect(tabs.map(t => t.dataset.tab)).toEqual(["find", "ex"]);
+    expect(doc.getElementById("a2").querySelector(".an-tab")).toBeNull();
+    expect(d.querySelector(".an-p-ex").hidden).toBe(true);
+    tabs[1].click();
+    expect(d.querySelector(".an-p-ex").hidden).toBe(false);
+    expect(d.querySelector(".an-p-find").hidden).toBe(true);
+    expect(d.querySelector(".an-p-ex").textContent).toContain("real excerpt");
+    expect(d.querySelector(".an-m-q").classList.contains("an-dip")).toBe(true);
+    timers.filter(t => t.ms === 220).forEach(t => t.f());
+    expect(d.querySelector(".an-m-q").classList.contains("an-dip")).toBe(false);
+  });
+  test("spec.hl pulses once on the first visit", () => {
+    const L3 = '<div data-alevel="3" data-title="T-a1"><div data-slot="short"><p>s</p></div><div data-slot="long"><p>l</p></div></div>';
+    const hl = FULL.replace(L3, '<div data-alevel="3" data-title="T-a1"><div data-slot="short"><p>s</p></div><div data-slot="long"><div data-viz="bars" data-viz-spec=\'{"items":[{"label":"A","value":3},{"label":"B","value":9}],"hl":"B"}\'></div></div></div>');
+    const { doc, ca, timers } = page(hl);
+    const inst = ca.instances[0];
+    ca.go(inst, inst.stages.findIndex(s => s.el.id === "a1"));
+    timers.filter(t => t.ms === 1100).forEach(t => t.f());
+    expect(doc.querySelectorAll("#a1 .an-bars.an-hl .an-on .an-bar-t > i.an-pulse")).toHaveLength(1);
+    expect(CSS).toMatch(/\.an-pulse \{ animation: an-pulse 1\.1s ease-in-out 1; \}/);
+  });
+  test("the briefing: eyebrow, huge number, claim, top-3 cards, CTA row with the centred button", () => {
     const { ca } = page(FULL);
     const inst = ca.instances[0];
-    inst.stages.forEach((s, i) => {
-      ca.go(inst, i);
-      const foot = visibleFoot(inst);
-      expect(foot, s.kind).toBeTruthy();
-      expect(foot.querySelector(".an-go"), s.kind).toBeTruthy();
-    });
-    expect(CSS).toMatch(/\.an-fit \.an-foot, \.an-fit > \.an-foot-brief \{\s*position: absolute; left: 0; right: 0; bottom: 0;/);
-    expect(CSS).toMatch(/\.an-enh\.an-fit \{[^}]*height: var\(--an-fit-h\)/);
-    // A stage without a next button keeps an invisible one of the same width.
-    ca.go(inst, inst.stages.findIndex((s) => s.kind === "next"));
-    expect(visibleFoot(inst).querySelector(".an-go-ph")).toBeTruthy();
-    expect(CSS).toMatch(/\.an-go \.an-btn, \.an-go-ph \{ min-width: 10\.5rem; \}/);
+    expect(inst.brief.querySelector(":scope > .an-eyebrow")).toBeTruthy();
+    expect(inst.brief.querySelectorAll(".an-chips > [data-briefing-topic]")).toHaveLength(2);
+    expect(inst.brief.querySelector(".an-chips > [data-briefing-topic]").style.getPropertyValue("--bc")).toBe("#a5d6ff");
+    const foot = inst.root.querySelector(":scope > .an-foot-brief");
+    expect(foot.querySelector(".an-back")).toBeNull();
+    expect([...foot.querySelectorAll(".an-cta-s")].map(s => s.textContent)).toEqual(["3 questions", "≈ 3 min"]);
+    const next = foot.querySelector(".an-btn");
+    expect(next.textContent).toMatch(/Let's go/);
+    next.click();
+    expect(inst.stages[inst.idx].kind).toBe("topic");
+    expect(CSS).toMatch(/\.an-foot-brief \{ display: grid; grid-template-columns: 1fr auto 1fr;/);
+  });
+  test("the topic page: Thema n von N, title, ring with the share, numbered questions", () => {
+    const { ca } = page(FULL);
+    const inst = ca.instances[0];
+    ca.go(inst, 1);
+    const el = inst.stages[1].el;
+    expect(el.querySelector(".an-meta").textContent).toBe("Topic 1 of 2");
+    expect(el.querySelector(".an-ring").style.getPropertyValue("--p")).toBe("60%");
+    expect(el.querySelectorAll(".an-tqi")).toHaveLength(2);
+    expect(el.querySelector(".an-tqi").dataset.go).toBe(String(inst.stages.findIndex(s => s.el.id === "a1")));
+  });
+  test("the note textarea stays the storage target (hidden, 📎 bar beside it); the composer writes into it", () => {
+    const html = FULL.replace('<textarea data-comment="a1-note"></textarea>',
+      '<textarea data-comment="a1-note" data-attachable></textarea><div class="attach-bar" data-attach-for="a1-note"><button class="attach-btn">📎</button></div>');
+    const { doc, ca } = page(html);
+    const inst = ca.instances[0];
+    const note = doc.querySelector("#a1 textarea[data-comment='a1-note']");
+    expect(note.classList.contains("an-vh")).toBe(true);
+    expect(note.nextElementSibling.matches('.attach-bar[data-attach-for="a1-note"]')).toBe(true);
+    ca.go(inst, inst.stages.findIndex(s => s.el.id === "a1"));
+    inst.comp.ed.textContent = "my note";
+    inst.comp.ed.dispatchEvent(new doc.defaultView.Event("input", { bubbles: true }));
+    expect(note.value).toBe("my note");
+    expect(inst.comp.att.hidden).toBe(false);
+  });
+  test("the rail: one 18 px row per stage, THEMA prefix on topics, a click goes to the stage, clear of the FABs", () => {
+    const { ca } = page(FULL);
+    const inst = ca.instances[0];
+    const items = [...inst.stepEl.querySelectorAll(".an-ri")];
+    expect(items).toHaveLength(inst.stages.length);
+    expect(items.map(i => i.textContent)).toEqual(["Briefing", "TopicOne", "L-a1", "L-a2", "TopicTwo", "L-b1", "Closing"]);
+    expect(items[1].querySelector("b").textContent).toBe("Topic");
+    items[5].click();
+    expect(inst.stages[inst.idx].el.id).toBe("b1");
+    expect(inst.stepEl.querySelector(".an-here").dataset.go).toBe(String(inst.idx));
+    expect(CSS).toMatch(/\.an-rail \{ position: fixed; right: 22px; top: 96px; bottom: 96px;/);
+    expect(CSS).toMatch(/\.an-ri \{[^}]*height: 18px;/);
+    expect(CSS).not.toMatch(/\n\.an-ri(?![a-z-])[^{\n]*\{[^}\n]*(?<![-a-z])transform:/);
+  });
+  test("the previous stage hints above (question + answer), the next below", () => {
+    const { ca } = page(FULL);
+    const inst = ca.instances[0];
+    ca.go(inst, inst.stages.findIndex(s => s.el.id === "a2"));
+    expect(inst.peekUp.querySelector(".an-settled-q").textContent).toBe("Q a1?");
+    expect(inst.peekUp.querySelector(".an-settled-a").textContent).toBe("Ex");
+    expect(inst.peekDn.textContent).toBe("Next: Two");
+  });
+  test("the closing lists every question with a dwell bar and a Nachschärfen toggle", () => {
+    const { ca } = page(FULL);
+    const inst = ca.instances[0];
+    ca.go(inst, inst.stages.findIndex(s => s.kind === "review"));
+    const rows = inst.stages[inst.idx].el.querySelectorAll(".an-sigrow");
+    expect(rows).toHaveLength(3);
+    expect(rows[0].querySelector(".an-dw")).toBeTruthy();
+    const tg = rows[0].querySelector(".an-tg");
+    expect(tg.getAttribute("aria-pressed")).toBe("false");
+    tg.click();
+    expect(inst.stages[inst.idx].el.querySelector(".an-tg").getAttribute("aria-pressed")).toBe("true");
+    expect(inst.comp.ed.querySelector(".an-tagw").textContent).toContain("L-a1");
+    expect(JSON.parse(inst.root.querySelector('[name="dm-a1-hes"]').value).sharpen).toBe(true);
   });
   test("the first stage shows no back control; from the second on it is visible (#962)", () => {
     const seen = { hidden: 0, shown: 0 };
@@ -308,52 +391,29 @@ describe("fitted Full round", () => {
     expect(seen.shown).toBeGreaterThan(0);
     expect(CSS).toMatch(/\.an-back\[disabled\] \{ visibility: hidden;/);
   });
-  test("the briefing: intro moved in, its way on is the shared bar (no CTA box)", () => {
-    const { doc, ca } = page(FULL);
-    const inst = ca.instances[0];
-    expect(inst.brief.querySelector(":scope > .iteration-intro")).toBeTruthy();
-    expect(inst.root.querySelector(":scope > .iteration-intro")).toBeNull();
-    expect(doc.querySelector(".an-cta")).toBeNull();
-    const foot = inst.root.querySelector(":scope > .an-foot-brief");
-    expect(foot.querySelector(".an-back")).toBeNull();
-    const next = foot.querySelector(".an-btn");
-    expect(next.textContent).toMatch(/Let's go/);
-    expect(foot.querySelector(".an-meta").textContent).toContain("3 decisions");
-    next.click();
-    expect(inst.stages[inst.idx].kind).toBe("topic");
+});
+
+describe("Keine passt and the finding message", () => {
+  test("the none link clears the pick, writes dm-{id}-none and the payload says none", () => {
+    const { w, doc } = page(LITE);
+    const d = doc.getElementById("q1");
+    const none = d.querySelector(".an-none");
+    expect(none).toBeTruthy();
+    none.click();
+    expect(d.querySelector('input[name="dm-q1-none"]').value).toBe("1");
+    expect([...d.querySelectorAll('input[name="dm-q1"]')].some(r => r.checked)).toBe(false);
+    const e = w.collectModeDecision(d);
+    expect(e.none).toBe(true);
+    expect(e.deviates).toBe(true);
+    const a = d.querySelector('input[name="dm-q1"][value="a"]');
+    a.checked = true;
+    a.dispatchEvent(new w.Event("change", { bubbles: true }));
+    expect(d.querySelector('input[name="dm-q1-none"]').value).toBe("");
   });
-  test("the note sits right under the option cards (3 rows), not in the foot, and keeps its 📎 inside", () => {
-    const html = FULL.replace('<textarea data-comment="a1-note"></textarea>',
-      '<textarea data-comment="a1-note" data-attachable></textarea><div class="attach-bar" data-attach-for="a1-note"><button class="attach-btn">📎</button></div>');
-    const { doc } = page(html);
-    const foot = doc.querySelector("#a1 .an-foot");
-    const nw = doc.querySelector("#a1 .an-notew");
-    expect(nw.previousElementSibling.classList.contains("an-zone")).toBe(true);
-    expect(foot.querySelector(".an-notew")).toBeNull();
-    expect(nw.querySelector("textarea").rows).toBe(3);
-    expect(nw.querySelector("textarea.an-note")).toBeTruthy();
-    expect(nw.querySelector("textarea").nextElementSibling.matches('.attach-bar[data-attach-for="a1-note"]')).toBe(true);
-    expect(foot.querySelector(".an-quiet textarea")).toBeNull();
-    expect(CSS).toMatch(/\.an-notew \{ position: relative; flex: none; width: 100%;/);
-    expect(CSS).toMatch(/\.an-notew \.attach-bar \{ position: absolute;/);
-  });
-  test("one-line stepper: only the active topic shows its dots; labels ellipsise", () => {
-    const { ca } = page(FULL);
-    const inst = ca.instances[0];
-    expect(CSS).toMatch(/\.an-step \{[^}]*flex-wrap: nowrap;/);
-    expect(CSS).toContain(".an-grp:not(.an-on) .an-dots { display: none; }");
-    expect([...inst.stepEl.querySelectorAll(".an-gl .an-lbl")].map((l) => l.textContent)).toEqual(["One", "Two"]);
-    ca.go(inst, inst.stages.findIndex((s) => s.kind === "dec"));
-    expect(inst.stepEl.querySelector('.an-grp[data-g="0"]').classList.contains("an-on")).toBe(true);
-    expect(inst.stepEl.querySelector('.an-grp[data-g="1"]').classList.contains("an-on")).toBe(false);
-  });
-  test("lists are overviews: topic decisions and review groups lay out as grids", () => {
-    expect(CSS).toMatch(/\.an-rows \{ display: grid; grid-template-columns: repeat\(auto-fill/);
-    expect(CSS).toMatch(/\.an-rg \{ display: grid; grid-template-columns: repeat\(auto-fill/);
-    const { ca } = page(FULL);
-    const inst = ca.instances[0];
-    ca.go(inst, inst.stages.findIndex((s) => s.kind === "review"));
-    const rv = inst.stages[inst.idx].el.querySelector(".an-rv");
-    expect(rv.querySelector(":scope > .an-rv-side .an-imp")).toBeTruthy();
+  test("Lite opens on its first question in the same chat flow; no Bezug panel, no start stage", () => {
+    const { doc } = page(LITE);
+    expect(doc.querySelector(".an-start")).toBeNull();
+    expect(doc.querySelector(".an-ana")).toBeNull();
+    expect(doc.querySelectorAll("#q1 .an-m-find").length).toBe(1);
   });
 });

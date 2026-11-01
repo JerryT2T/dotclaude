@@ -48,7 +48,7 @@ function page(html, { lang = "en", store = {} } = {}) {
 }
 
 
-describe("deselect, untouched, answered, list icon", () => {
+describe("deselect, untouched, answered", () => {
   const radios = (doc, id) => [...doc.querySelectorAll(`#${id} [data-options] input[type=radio]`)];
   const touched = (doc, id) => doc.querySelector(`input[name="dm-${id}-touched"]`).value;
   test("clicking the selected card again clears the choice; empty note => untouched again", () => {
@@ -105,19 +105,6 @@ describe("deselect, untouched, answered, list icon", () => {
   });
   test("the design overview asks the analysis view before its own interaction heuristics", () => {
     expect(md).toMatch(/function viewAnswered\(v\) \{[\s\S]*?v\.__anAnswered[\s\S]*?v\.dataset\.interacted/);
-  });
-  test("All as list: one icon in the header row, no text link in the bars; the lite round has the list stage", () => {
-    const { doc, ca } = page(LITE);
-    const inst = ca.instances[0];
-    const icon = inst.stepEl.querySelector(".an-listbtn");
-    expect(icon).toBeTruthy();
-    expect(icon.querySelector("svg")).toBeTruthy();
-    expect(doc.querySelector(".an-foot .an-link[data-tip*='list' i]")).toBeNull();
-    expect(inst.root.textContent).not.toMatch(/All as list/);
-    icon.click();
-    expect(inst.stages[inst.idx].kind).toBe("list");
-    ca.step(inst, 1);                           // aux stage: back to where it came from
-    expect(inst.stages[inst.idx].kind).not.toBe("list");
   });
 });
 
