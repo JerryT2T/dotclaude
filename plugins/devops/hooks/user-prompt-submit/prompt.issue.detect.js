@@ -123,7 +123,11 @@ process.stdin.on('end', () => {
           cwd: hook.cwd || process.cwd(), encoding: 'utf8', timeout: 3000, stdio: ['pipe', 'pipe', 'pipe'],
         }).trim();
         issues = readCache(remote);
-      } catch { /* no remote or no git: fall back to the tool */ }
+      } catch {
+        // No git or no remote: there is no issue list to match against, so
+        // the match_issues instruction would only cost context (#996).
+        return;
+      }
       if (issues) {
         const [best] = matchIssues(issues, maskNonProse(message), { maxResults: 1, threshold: MATCH_ASK_MIN });
         if (best) {

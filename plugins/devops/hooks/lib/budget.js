@@ -62,9 +62,10 @@
  *   is a POSITIVE signal (`announce`): the full line goes out on every prompt
  *   while the snapshot is past its reset or the window reset recently
  *   (RECENT_RESET_*), regardless of prompt length, and names the reset so it
- *   outranks an earlier limit message. Stateless on purpose — a per-session
- *   "last emitted" marker would bring compaction, parallel-session and
- *   tmp-cleanup failure modes for the same effect (PO + redteam 2026-09-20).
+ *   outranks an earlier limit message. This lib stays stateless; the
+ *   dispatcher only skips a line identical to the one the session got last
+ *   (#996) — keyed per session, dropped on compaction, and a lost marker
+ *   sends the line again, so every failure mode errs toward sending.
  *
  *   A scraper failure rewrites the snapshot with `_cached` + `_failureReason`
  *   but the OLD timestamp, so the line reports the failure instead of

@@ -241,6 +241,25 @@ describe("prompt.knowledge.dispatch — the positive budget signal after a reset
     expect(lines[2]).toContain("[delegation-policy]");
   });
 
+  test("the same line is not repeated in a session; a changed reading is sent again (#996)", () => {
+    const stale = {
+      timestamp: new Date(Date.now() - 30 * 3_600_000).toISOString(),
+      session: { pct: 100, resetInMinutes: 10 }, weekly: { pct: 100, resetInMinutes: 300 }, plan: "Max 20x",
+    };
+    const h = homeWith(stale);
+    const sid = `vitest-budget-once-${process.pid}-${Date.now()}`;
+    const send = (prompt) => {
+      const cwd = emptyProject();
+      const env = { ...process.env, CLAUDE_PLUGIN_ROOT: PLUGIN_ROOT, TMP: TMP_ROOT, TEMP: TMP_ROOT, TMPDIR: TMP_ROOT, HOME: h, USERPROFILE: h };
+      const r = spawnSync(process.execPath, [HOOK], { input: JSON.stringify({ session_id: sid, prompt, cwd }), cwd, env, encoding: "utf8" });
+      return r.stdout ? JSON.parse(r.stdout).hookSpecificOutput.additionalContext : "";
+    };
+    expect(send("Erneut versuchen")).toContain("[budget]");
+    expect(send("Erneut versuchen bitte")).not.toContain("[budget]");
+    fs.writeFileSync(path.join(h, ".claude", "usage-live.json"), JSON.stringify({ ...stale, plan: "Max 5x" }));
+    expect(send("und nochmal bitte")).toContain("[budget] Max 5x");
+  });
+
   test("no reset in sight → no line (silence still means free in the steady state)", () => {
     const h = homeWith({
       timestamp: new Date().toISOString(),
