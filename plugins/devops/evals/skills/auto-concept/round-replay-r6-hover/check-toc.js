@@ -9,7 +9,8 @@
 //              a visible engine FAB (.panel-fab = ☰, .feedback-fab = 💬,
 //              .anno-toggle-fab), at rest and during hover. Viewports 1440x900
 //              and 1280x720.
-//   gaps     - sweeping the mouse down the rail from the first to the last
+//   gaps     - dead gap along the rail's own content box (see the sweep below).
+//   maxItems - the largest rail seen (the 7x7 maximum example = 58 items).
 //              item, a point that is not on an item (a dead gap).
 //   cursor   - computed cursor under the mouse on each item is not "pointer".
 // Prints one JSON line. Exit 3 + {"unavailable":"..."} when playwright-core or
@@ -24,7 +25,8 @@ if (!html) out({ unavailable: "no html path" }, 3);
 let chromium;
 try { ({ chromium } = require("playwright-core")); } catch (e) { out({ unavailable: "playwright-core: " + e.message }, 3); }
 
-const VIEWPORTS = [{ width: 1440, height: 900 }, { width: 1280, height: 720 }];
+const VIEWPORTS = [{ width: 1440, height: 900 }, { width: 1280, height: 720 }, { width: 1366, height: 600 }];
+const GAP_TOL = 2; // px of tolerated dead run at item borders
 const RAIL_SEL = '[class*="rail"],[class*="toc"],[class*="outline"],[class*="dots"],[class*="minimap"]';
 const FAB_SEL = ".panel-fab,.feedback-fab,.anno-toggle-fab";
 
@@ -53,7 +55,7 @@ const INIT = () => {
 (async () => {
   let browser;
   try { browser = await chromium.launch({ channel: "msedge", headless: true }); } catch (e) { out({ unavailable: "edge: " + e.message.split("\n")[0] }, 3); }
-  const res = { overlap: [], gaps: [], cursor: [], rails: 0, items: 0 };
+  const res = { overlap: [], gaps: [], cursor: [], rails: 0, items: 0, maxItems: 0 };
   const ov = new Map(); // "screen rail state fab" -> item names (keeps the output short)
   const addOv = (hits) => { for (const [label, nm, fab] of hits) { const k = `${label} <-> ${fab}`; (ov.get(k) || ov.set(k, new Set()).get(k)).add(nm); } };
   try {
@@ -92,7 +94,7 @@ const INIT = () => {
           }, { sel, label: `${sc.id}@${vp.width}x${vp.height} rail${k} ` + label });
           const first = await page.evaluate((sel) => { const r = document.querySelector(sel); r.scrollIntoView({ block: "center" }); return r.children.length; }, sel);
           addOv(await measure("rest"));
-          res.items += first;
+          res.items += first; res.maxItems = Math.max(res.maxItems, first);
           for (let j = 0; j < first; j++) {
             if (quick && j % 8 !== 0 && j !== first - 1) continue;
             // Aim at the item's own box (right part: the dot), not the empty label side.
@@ -105,20 +107,38 @@ const INIT = () => {
               return { onItem: !!item, cursor: el ? getComputedStyle(el).cursor : "", tag: el ? el.tagName : "" };
             }, { sel, x: r.x, y: r.y });
             if (state.tag && state.cursor !== "pointer") res.cursor.push(`${sc.id}@${vp.width} item ${j}: cursor ${state.cursor} on <${state.tag}>`);
-            if (!state.onItem) res.gaps.push(`${sc.id}@${vp.width} item ${j}: hover point is not on an item`);
             addOv(await measure("hover"));
           }
-          // Dead-gap sweep down the rail with the hover state active.
+          // Dead-gap sweep: the user's rule is "hovering you are always on a
+          // navigation item, not in a gap (focus-wise, not visually)". The mouse
+          // rests on the rail (hover state active); then elementFromPoint walks
+          // the rail's own content box (padding excluded, margins never) at 1 px
+          // steps, along two columns (the dot column near the right edge and the
+          // middle). A point is a gap when the hit is the rail itself or nothing,
+          // not an item or a child of one. A run of <= GAP_TOL px (item borders,
+          // sub-pixel seams) is tolerated; the longer run counts.
           if (quick) continue;
-          const sw = await page.evaluate((sel) => { const rail = document.querySelector(sel); const a = rail.children[0].getBoundingClientRect(), z = rail.children[rail.children.length - 1].getBoundingClientRect(); return { x: a.right - 3, t: a.top, b: z.bottom }; }, sel);
-          await page.mouse.move(sw.x, sw.t + 1);
-          let misses = 0, samples = 0;
-          for (let y = sw.t + 1; y < sw.b - 1; y += 5) {
-            await page.mouse.move(sw.x, y);
-            const ok = await page.evaluate(({ sel, x, y }) => { const el = document.elementFromPoint(x, y); return !!el && [...document.querySelector(sel).children].some((c) => c.contains(el)); }, { sel, x: sw.x, y });
-            samples++; if (!ok) misses++;
-          }
-          if (misses) res.gaps.push(`${sc.id}@${vp.width} rail${k}: ${misses}/${samples} sweep points are not on an item`);
+          const box = await page.evaluate((sel) => {
+            const rail = document.querySelector(sel); rail.scrollIntoView({ block: "center" });
+            const r = rail.getBoundingClientRect(), cs = getComputedStyle(rail), p = (k) => parseFloat(cs[k]) || 0;
+            const l = r.left + p("paddingLeft"), rt = r.right - p("paddingRight"), t = Math.max(0, r.top + p("paddingTop")), b = Math.min(window.innerHeight, r.bottom - p("paddingBottom"));
+            return { xs: [rt - 6, (l + rt) / 2], t, b };
+          }, sel);
+          await page.mouse.move(box.xs[0], (box.t + box.b) / 2);
+          await page.waitForTimeout(250);
+          const sweepGap = await page.evaluate(({ sel, xs, t, b, tol }) => {
+            const rail = document.querySelector(sel); let worst = 0, total = 0, n = 0;
+            for (const x of xs) {
+              let run = 0;
+              for (let y = Math.ceil(t) + 1; y < b - 1; y++) {
+                const el = document.elementFromPoint(x, y); n++;
+                const ok = !!el && [...rail.children].some((c) => c.contains(el));
+                if (ok) run = 0; else { run++; if (run > tol) total++; worst = Math.max(worst, run); }
+              }
+            }
+            return { worst, total, n };
+          }, { sel, xs: box.xs, t: box.t, b: box.b, tol: GAP_TOL });
+          if (sweepGap.worst > GAP_TOL) res.gaps.push(`${sc.id}@${vp.width} rail${k}: dead gap up to ${sweepGap.worst}px (${sweepGap.total}/${sweepGap.n} sampled points beyond ${GAP_TOL}px)`);
           await page.mouse.move(2, 2);
         }
       }

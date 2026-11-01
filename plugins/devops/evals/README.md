@@ -145,9 +145,15 @@ on an item with a pointer cursor — and then had to repeat it in rounds 7 and 8
 because the session never measured the hover state. `state-check-ran` is the
 process grader (a node/browser call that probes hover or rects); the outcome
 graders (`toc-no-fab-overlap-on-hover`, `toc-cursor-pointer`,
-`toc-hover-no-dead-gap`) run `check-toc.js` in a child process: headless system
+`toc-hover-no-dead-gap`, `toc-max-example-7x7`) run `check-toc.js` in a child process: headless system
 Edge via `playwright-core` (devDependency, no browser download), real mouse over
-every TOC item of the built round 7. They grade n/a without Edge. Ordering checks share
+every TOC item of the built round 7. The gap check samples `elementFromPoint` at 1 px steps along the rail's own content box
+(padding excluded) with the mouse resting on the rail; a run of more than 2 px that
+hits the rail itself instead of an item is a dead gap. It is calibrated offline on
+`toc-fixtures/` (tiled and padded-tiled pass, space-between fails; opt-in
+`EVAL_BROWSER=1 npx vitest run .../check-toc.test.js`). `toc-max-example-7x7` demands the
+58-item (7 x 7) rail the user asked for, so the other checks run on the worst case. Viewports
+1440x900, 1280x720, 1366x600. They grade n/a without Edge. Ordering checks share
 `skills/order.js`. Per-skill trim records with the A/B numbers
 live in `trims/<skill>.md`.
 
