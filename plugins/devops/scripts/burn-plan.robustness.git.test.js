@@ -291,6 +291,20 @@ describe("AUD-C022 — parallel gate calls never claim the same task", () => {
     expect(fs.existsSync(path.join(repo, "BURN-STATE.json.lock"))).toBe(false);
   }, 30000);
 
+  test("writeJsonAtomic survives concurrent readers (Windows rename onto an open file → EPERM)", async () => {
+    const file = path.join(tmp, "W.json");
+    fs.writeFileSync(file, "{}");
+    const readers = Array.from({ length: 4 }, () => spawn(process.execPath, ["-e",
+      `const fs=require("fs");const e=Date.now()+2500;while(Date.now()<e){try{fs.readFileSync(${JSON.stringify(file)},"utf8")}catch{}}`], { stdio: "ignore" }));
+    const done = Promise.all(readers.map((c) => new Promise((r) => c.on("close", r))));
+    const end = Date.now() + 2000;
+    let n = 0;
+    while (Date.now() < end) { bp.writeJsonAtomic(file, { n: n++ }); }
+    await done;
+    expect(JSON.parse(fs.readFileSync(file, "utf8")).n).toBe(n - 1);
+    expect(fs.readdirSync(tmp).filter((f) => f.startsWith("W.json.tmp"))).toEqual([]);
+  }, 30000);
+
   test("a stale lock (dead holder) is taken over; a live one times out loudly", () => {
     const file = path.join(tmp, "S.json");
     const lock = `${file}.lock`;

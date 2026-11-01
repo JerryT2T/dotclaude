@@ -3,6 +3,12 @@
 The **concept bridge server** (`scripts/concept-server.py`) serves static files
 AND provides HTTP endpoints for heartbeat and decision exchange.
 
+> **Fast path:** `node {PLUGIN_ROOT}/scripts/concept-open.js prepare --cwd <cwd> --html <rel html>`,
+> then launch the three printed commands (`launch.server`, `launch.pulser`,
+> `launch.waker`) as Bash background tasks (`run_in_background: true`), then
+> `node {PLUGIN_ROOT}/scripts/concept-open.js verify --state <printed state>`.
+> The sections below are the reference behind it.
+
 > **Timestamp unit convention (read before writing any client code).**
 > Every timestamp the server exposes — `server_ts`, `claude_ts`, `ts` —
 > is **milliseconds since the Unix epoch**, byte-compatible with JavaScript's

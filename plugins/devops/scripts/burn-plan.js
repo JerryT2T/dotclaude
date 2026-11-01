@@ -1342,7 +1342,21 @@ function readJson(file) {
 function writeJsonAtomic(file, data) {
   const tmp = `${file}.tmp-${process.pid}`;
   fs.writeFileSync(tmp, JSON.stringify(data, null, 2) + '\n');
-  fs.renameSync(tmp, file);
+  // On Windows a rename onto a file another process has open for reading
+  // (every unlocked reader: gate's pre-lock read, peek, status) fails with
+  // EPERM/EACCES/EBUSY instead of waiting. Readers hold it for microseconds,
+  // so a bounded retry lets the write land instead of crashing the call
+  // mid-claim.
+  for (let attempt = 0; ; attempt++) {
+    try { fs.renameSync(tmp, file); return; } catch (err) {
+      const transient = err && (err.code === 'EPERM' || err.code === 'EACCES' || err.code === 'EBUSY');
+      if (!transient || attempt >= 200) {
+        try { fs.unlinkSync(tmp); } catch { /* already gone */ }
+        throw err;
+      }
+      sleepMs(5 + Math.floor(Math.random() * 20));
+    }
+  }
 }
 
 const LOCK_WAIT_MS = 15_000;
@@ -1803,7 +1817,7 @@ module.exports = {
   calibrationSamples, recordCalibration,
   inspectInFlight, classifyInFlight, salvageWorktree, pruneCheck, SALVAGE_EXCLUDES, isSalvageSecret,
   protectedBranches, isProtectedBranch, sessionBranch, mayWrite, shortBranch, sameBranch,
-  parseResumeAuto, parseNumberOpt, withStateLock, GIT_TIMEOUT_MS, GIT_MAX_BUFFER,
+  parseResumeAuto, parseNumberOpt, withStateLock, writeJsonAtomic, GIT_TIMEOUT_MS, GIT_MAX_BUFFER,
   toCronExpression, cli,
 };
 
