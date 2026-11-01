@@ -29,6 +29,14 @@
       "skills": [
         "skills/auto-frustrated"
       ]
+    },
+    "token-log": {
+      "minChannel": "alpha",
+      "summary": "Counts locally, at zero model cost, how many characters each hook hands the model and the API usage per turn; the plugin audit reads and prunes the log",
+      "docs": [],
+      "scripts": [
+        "hooks/lib/token-log.js"
+      ]
     }
   }
 }

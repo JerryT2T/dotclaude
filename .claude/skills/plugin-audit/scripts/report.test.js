@@ -89,6 +89,16 @@ describe('plugin-audit report fragment', () => {
     expect(renderFragment(results, null, [])).toContain('data-decision="sug-fix-ci"');
   });
 
+  it('token waste (#1000): own section, tile and Token suggestions; absent field = no section', () => {
+    const tw = [{ id: 'tw-hooks', title: 'Output-filter hooks', status: 'yellow', findings: [{ msg: 'no filter' }], durationMs: 1 },
+      { id: 'tw-memory', title: 'Memory files (CLAUDE.md)', status: 'green', findings: [], durationMs: 1 }];
+    const out = renderFragment({ ...results, tokenWaste: tw }, null, []);
+    expect(out).toContain('id="token-waste"');
+    expect(out).toContain('1/2 Checks grün');
+    expect(fallbackSuggestions({ ...results, tokenWaste: tw }).find((s) => s.id === 'fix-tw-hooks')).toMatchObject({ group: 'Token' });
+    expect(renderFragment(results, sugg, [])).not.toContain('id="token-waste"');
+  });
+
   it('draws the curve over past audit runs only, needing two points', () => {
     expect(curveSvg([{ version: '0.280.0', footprintTokens: 10000 }])).not.toContain('<svg');
     const svg = curveSvg([{ version: '0.280.0', footprintTokens: 10000 }, { version: '0.290.0', footprintTokens: 12000 }]);

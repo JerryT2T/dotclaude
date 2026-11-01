@@ -1,7 +1,9 @@
-# Plugin audit on a decade boundary (background, never a gate)
+# Plugin audit on a decade boundary or monthly (background, never a gate)
 
 Runs only on the **final ship** of a version that crosses a decade boundary
-(`floor(minor/10)` grows, e.g. `0.289.3 → 0.290.0`), at most once per decade.
+(`floor(minor/10)` grows, e.g. `0.289.3 → 0.290.0`), at most once per decade,
+or whose last recorded audit is 30 days old or more (#1000: this repo ships
+near daily, so the ship cadence is the monthly clock — no cron).
 Intermediate ships, promotions (`beta`/`stable`) and keep-mode ships never start
 it. It is a project skill of this repo (`.claude/skills/plugin-audit/`), not part
 of the plugin, and it must never block or delay the ship.

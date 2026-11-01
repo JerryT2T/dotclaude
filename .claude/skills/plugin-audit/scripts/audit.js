@@ -2,17 +2,18 @@
 'use strict';
 /**
  * @script plugin-audit/audit
- * @version 0.2.0
+ * @version 0.3.0
  * @description Deterministic collection of the plugin audit (0 model tokens):
  *   static footprint, transcript mining, 12 integrity checks, 8 hygiene
- *   checks, net cost/benefit estimate. Writes <out>/results.json and prints one
+ *   checks, 8 token-waste checks, net cost/benefit estimate. Writes <out>/results.json and prints one
  *   summary line. Exit 0 unless the arguments are invalid (exit 2).
  *
  *   Usage:
  *     audit.js [--out DIR] [--skip-tests] [--days N] [--trigger manual|ship]
  *              [--root DIR] [--projects-dir DIR] [--state-dir DIR]
  *     audit.js --record --in DIR     step 5: append history.json, write
- *                                    last.json, clear a matching report-pending.json
+ *                                    last.json, clear a matching report-pending.json,
+ *                                    drop the token-log lines this run summarised
  *
  *   `--trigger ship` additionally writes report-pending.json into the state
  *   dir: if no live session opens the report, the next session does. It also
@@ -30,6 +31,7 @@ const { collect } = require('./lib/footprint');
 const { mine } = require('./lib/mining');
 const { runIntegrity, sizeMetrics } = require('./lib/integrity');
 const { runHygiene } = require('./lib/hygiene');
+const { runTokenWaste, pruneTokenLog } = require('./lib/tokenwaste');
 
 const UNCERTAINTY = 'Schätzung: Transkripte enthalten keine Plugin-Version; Zuordnung über Zeitfenster; Nutzen nur über Stellvertreter-Metriken';
 
@@ -107,17 +109,18 @@ async function collectAll(a) {
   const mining = await mine({ root, projectsDir: a.projectsDir, since: a.days ? undefined : (last && last.ranAt), days: a.days ? Number(a.days) : 30, now });
   const integrity = await runIntegrity({ root, skipTests: a.skipTests, previousSizes: prev && prev.sizes });
   const hygiene = await runHygiene({ root, now, mining });
+  const tokenWaste = await runTokenWaste({ root, projectsDir: a.projectsDir });
   const net = netEstimate(footprint, mining);
-  const results = { version, ranAt: new Date(now).toISOString(), trigger: a.trigger, previousAudit: last ? { version: last.version, ranAt: last.ranAt } : null, footprint, mining, benefit: mining.benefit, integrity, hygiene, net };
+  const results = { version, ranAt: new Date(now).toISOString(), trigger: a.trigger, previousAudit: last ? { version: last.version, ranAt: last.ranAt } : null, footprint, mining, benefit: mining.benefit, integrity, hygiene, tokenWaste, net };
   fs.writeFileSync(path.join(out, 'results.json'), JSON.stringify(results, null, 2));
   if (a.trigger === 'ship') state.writePending(dir, { dir: out, version, createdAt: results.ranAt });
   return { results, out };
 }
 
 function summaryLine(r, out) {
-  const i = tally(r.integrity); const h = tally(r.hygiene);
+  const i = tally(r.integrity); const h = tally(r.hygiene); const w = tally(r.tokenWaste || []);
   const fmt = (t) => `${t.green}g/${t.yellow}y/${t.red}r/${t.skipped}s`;
-  return `plugin-audit: v${r.version} | footprint ~${r.footprint.totalTokens} tok | integrity ${fmt(i)} | hygiene ${fmt(h)} | cost ~${r.net.costTokens} tok / ${r.net.comparable ? `benefit incl. estimates ~${r.net.benefitTokens} tok (net ~${r.net.estimate} tok, estimate)` : `measured benefit ~${r.net.benefitTokens} tok (not comparable)`} | ${out}`;
+  return `plugin-audit: v${r.version} | footprint ~${r.footprint.totalTokens} tok | integrity ${fmt(i)} | hygiene ${fmt(h)} | token-waste ${fmt(w)} | cost ~${r.net.costTokens} tok / ${r.net.comparable ? `benefit incl. estimates ~${r.net.benefitTokens} tok (net ~${r.net.estimate} tok, estimate)` : `measured benefit ~${r.net.benefitTokens} tok (not comparable)`} | ${out}`;
 }
 
 /**
@@ -140,7 +143,7 @@ function record(a) {
   const summary = {
     version: results.version, ranAt: results.ranAt, trigger: results.trigger, dir: path.resolve(a.in),
     footprintTokens: results.footprint.totalTokens, costTokens: results.net.costTokens, benefitTokens: results.net.benefitTokens, estimate: results.net.estimate,
-    integrity: tally(results.integrity), hygiene: tally(results.hygiene),
+    integrity: tally(results.integrity), hygiene: tally(results.hygiene), tokenWaste: tally(results.tokenWaste || []),
     suggestions: sugg && Array.isArray(sugg.suggestions) ? sugg.suggestions.length : 0,
     ccVersion: ((results.integrity.find((c) => c.id === 'cc-currency') || {}).metrics || {}).ccVersion || null,
     sizes: ((results.integrity.find((c) => c.id === 'size-trend') || {}).metrics || {}).sizes || null,
@@ -150,7 +153,11 @@ function record(a) {
   const pending = path.join(dir, 'report-pending.json');
   const p = readJson(pending);
   if (p && path.resolve(p.dir) === path.resolve(a.in)) fs.rmSync(pending, { force: true });
-  return { summary };
+  // The token log grows with every hook event (#1002): once the run is
+  // recorded, the lines it summarised are dropped; newer ones stay.
+  const tl = ((results.tokenWaste || []).find((c) => c.id === 'tw-token-log') || {}).metrics;
+  const pruned = tl && tl.file && tl.lastTs ? pruneTokenLog(tl.file, tl.lastTs) : null;
+  return { summary, pruned };
 }
 
 async function main(argv) {
@@ -159,7 +166,7 @@ async function main(argv) {
   if (a.record) {
     const r = record(a);
     if (r.error) { process.stderr.write(`plugin-audit: ${r.error}\n`); return 2; }
-    process.stdout.write(`plugin-audit: recorded v${r.summary.version} (${r.summary.ranAt})\n`);
+    process.stdout.write(`plugin-audit: recorded v${r.summary.version} (${r.summary.ranAt})${r.pruned ? ` · token log: ${r.pruned.dropped} lines dropped, ${r.pruned.kept} kept` : ''}\n`);
     return 0;
   }
   const { results, out } = await collectAll(a);
