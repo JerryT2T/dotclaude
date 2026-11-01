@@ -60,9 +60,9 @@
       <!-- The head row IS the "you are here" line: [data-here-round] at the
            left (mirrors the selected tab's label via showIteration — no
            "· aktiv"/"· active" suffix on the live round, an {{nav.archived}}
-           marker on a frozen one, "(Variante)" appended by
-           updateHereRoundParenthesis while the reading line sits inside a
-           variant section), then — right-aligned as one group —
+           marker on a frozen one; never the section under the reading line —
+           the highlighted TOC entry already says that), then — right-aligned
+           as one group —
            #panel-here-back (frozen rounds only), the 🕘 rounds chip (count
            of PREVIOUS rounds, hidden when there are none), the theme toggle
            and ✕. One row for all of it: the round label used to sit on its
@@ -104,7 +104,7 @@
            theme toggle · ✕) the aside is a flex column of exactly four
            children and only the second one scrolls (§ Decision Panel State
            CSS, "Panel anatomy"):
-             .panel-here        pinned   "› TOC entry" sub-line + the 🕘 rounds list
+             .panel-here        pinned   the 🕘 rounds list (unfolded only)
              .panel-nav-scroll  flex 1   iteration tabs (hidden) + live TOC — hidden on the final report
              .panel-status      pinned   journey row (#journey, built by mountJourney) + ONE status line — hidden on the final report
              .panel-cta         pinned   #panel-ready | #panel-submitted | #panel-frozen | #panel-final-report
@@ -113,13 +113,10 @@
            menu, however many rounds or TOC entries the page has, and the foot
            is the same ≤120px in the smallest and the largest case. -->
 
-      <!-- "You are here", second part: [data-here-section], the "› TOC entry"
-           sub-line (dropped entirely on the final report), and
-           #panel-here-rounds-list (buildRoundsChip), shown only while the 🕘
+      <!-- #panel-here-rounds-list (buildRoundsChip), shown only while the 🕘
            chip in the head row is unfolded. The round label and the chip
            themselves live in .panel-head above. -->
       <div class="panel-here" id="panel-here">
-        <span class="panel-here-section" data-here-section hidden></span>
         <div class="panel-here-rounds-list" id="panel-here-rounds-list" hidden role="list">
           <!-- auto-populated by buildRoundsChip() -->
         </div>

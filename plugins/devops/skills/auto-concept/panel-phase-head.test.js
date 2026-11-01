@@ -19,7 +19,7 @@ function page({ final = false } = {}) {
   const dom = new JSDOM(`<!doctype html><html><body>
     <div class="panel-head"><span class="panel-here-round" data-here-round></span>
       <button id="panel-here-back" hidden></button></div>
-    <div id="panel-here"><span data-here-section></span></div>
+    <div id="panel-here"></div>
     <nav class="iteration-tabs">
       <button class="iteration-tab" data-iteration="1">Runde 1</button>
       <button class="iteration-tab" data-iteration="2" ${final ? "data-final-report" : ""}>${final ? "🏁 Abschlussbericht" : "Runde 2"}</button>

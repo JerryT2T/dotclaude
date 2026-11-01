@@ -3,7 +3,7 @@
  * @description Gate rules for the analysis presentation (Full + Lite) and the
  *   seven decision modes of auto-concept — contract in
  *   skills/auto-concept/deep-knowledge/templates-analysis.md, rule table in
- *   validation-gate.md § Analysis & decision modes (A1–A9).
+ *   validation-gate.md § Analysis & decision modes (A1–A10).
  *
  *   Errors (block the page):
  *     A1  Full without a briefing (what / why / potential)
@@ -38,6 +38,9 @@ const PER_TOPIC_MIN = 3;
 const PER_TOPIC_MAX = 7;
 const TITLE_MAX_WORDS = 5;
 const LITE_MAX = 5;
+// A10: two lines of the 21 px question at ~780 px column ≈ 2 × 55 chars; one stakes line ≈ 95 chars
+const QUESTION_MAX = 100;
+const STAKES_MAX = 90;
 
 const TIMING_RE = /\b(welle|wellen|wann\s+(?:\w+\s+){0,2}umsetz\w*|wann\s+einbauen|when\s+to\s+(?:implement|ship|build|do)|which\s+wave|in\s+which\s+(?:wave|release)|rollout\s+wave)\b/i;
 const QUANT_RE = /\d[\d.,]*\s*(?:%|×|x\b|k\b|m\b|ms\b|s\b|sek|min|h\b|tokens?|mb|gb|kb|€|\$|mal\b|fach)/i;
@@ -258,6 +261,18 @@ function findAnalysisIssues(html) {
     if (!doc.nodes.some(n => has(n, 'data-situation') && inside(d, n) && textOf(doc, n))) warn('decision-situation', `decision "${attr(d, 'data-decision')}": no [data-situation] — open the question with 1–2 sentences of Ausgangslage (what the analysis found for it)`, d.start);
   }
 
+  // A10 — the question message stays two lines: question ≤ QUESTION_MAX chars,
+  // the "Davon hängt ab" line ≤ STAKES_MAX (the box grows, never clips — this
+  // keeps it from growing past two lines + one)
+  for (const d of decisions) {
+    const q = doc.nodes.find(n => has(n, 'data-question') && inside(d, n));
+    const qLen = q ? decode(textOf(doc, q).trim()).length : 0;
+    if (qLen > QUESTION_MAX) warn('question-length', `decision "${attr(d, 'data-decision')}": question has ${qLen} characters (max ${QUESTION_MAX}, two lines) — move the background into data-situation / data-context`, d.start);
+    const s = doc.nodes.find(n => has(n, 'data-stakes') && inside(d, n));
+    const sLen = s ? decode(textOf(doc, s).trim()).length : 0;
+    if (sLen > STAKES_MAX) warn('stakes-length', `decision "${attr(d, 'data-decision')}": data-stakes has ${sLen} characters (max ${STAKES_MAX}, one line)`, d.start);
+  }
+
   // A8 — timing is never a decision
   for (const d of [...decisions, ...legacy]) {
     const q = doc.nodes.find(n => has(n, 'data-question') && inside(d, n));
@@ -267,4 +282,4 @@ function findAnalysisIssues(html) {
   return out;
 }
 
-module.exports = { findAnalysisIssues, pointsBudget, MODES, TOPIC_MIN, TOPIC_MAX, PER_TOPIC_MIN, PER_TOPIC_MAX, TITLE_MAX_WORDS, LITE_MAX, parse, lineAt };
+module.exports = { findAnalysisIssues, pointsBudget, MODES, TOPIC_MIN, TOPIC_MAX, PER_TOPIC_MIN, PER_TOPIC_MAX, TITLE_MAX_WORDS, LITE_MAX, QUESTION_MAX, STAKES_MAX, parse, lineAt };

@@ -142,10 +142,8 @@ below 768px.
 column of four parts; only part 2 scrolls, parts 1, 3 and 4 are pinned):**
 1. **"You are here"** (`.panel-here`) — pinned head: the selected round's
    label — no "· aktiv" suffix on the live round, an "archiviert" marker on
-   a frozen one, and, ONLY when the reading line sits in a variant section,
-   "(Variante)" appended ("{{iteration.tab}} 8 (Orbital Ring)") — the TOC entry
-   under the reading line (dropped entirely on the final report), on a
-   frozen tab a compact "↩ zur Runde N" link, and a 🕘 rounds chip (count of
+   a frozen one — never the section under the reading line (the highlighted
+   TOC entry is the "you are here"), on a frozen tab a compact "↩ zur Runde N" link, and a 🕘 rounds chip (count of
    PREVIOUS rounds, hidden when none) whose click unfolds a dimmed list of
    those rounds — each with its generated summary and an "archiviert" tag —
    directly under the head line; a row click switches to that round via the

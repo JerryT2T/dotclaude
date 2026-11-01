@@ -245,12 +245,12 @@ describe("the head row carries the round label and the 🕘 chip too — one lin
       expect(back).toBeLessThan(chip);
       expect(chip).toBeLessThan(toggle);
       expect(toggle).toBeLessThan(close);
-      // …and #panel-here keeps only the sub-line + the rounds list.
+      // …and #panel-here keeps only the rounds list (no "› entry" sub-line).
       const here = /<div class="panel-here" id="panel-here">[\s\S]*?<\/div>\s*<\/div>/.exec(asideOf(s.code));
       expect(here, `#panel-here @${s.line}`).toBeTruthy();
       expect(here[0]).not.toContain("data-here-round");
       expect(here[0]).not.toContain('id="panel-here-rounds"');
-      expect(here[0]).toContain("data-here-section");
+      expect(here[0]).not.toContain("data-here-section");
       expect(here[0]).toContain('id="panel-here-rounds-list"');
     }
   });

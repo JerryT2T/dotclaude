@@ -123,8 +123,8 @@ Attribute reference:
 | `data-finding="<id>"` | decision | the finding it rests on (the L3 block inside) |
 | `data-finding-quant="true\|false"` | decision | overrides the gate's guess whether the finding is quantitative |
 | `data-situation` | inside a decision | Ausgangslage: 1–2 sentences above the question, what the analysis found for it (gate A9 warns when missing) |
-| `data-stakes` | inside a decision | optional "Davon hängt ab" line below the context |
-| `data-question`, `data-context`, `data-options`, `data-opt`, `data-opt-label`, `data-opt-consequence`, `data-recommended` | inside a decision | question (a real question), one answering hint (answer block, never in the finding), answer rows (outcome verb + consequence line), the ★ option |
+| `data-stakes` | inside a decision | optional "Davon hängt ab" line below the context, ≤ 90 characters (gate A10) |
+| `data-question`, `data-context`, `data-options`, `data-opt`, `data-opt-label`, `data-opt-consequence`, `data-recommended` | inside a decision | question (a real question, ≤ 100 characters), one answering hint (answer block, never in the finding), answer rows (outcome verb + consequence line), the ★ option |
 
 ### Lite
 
