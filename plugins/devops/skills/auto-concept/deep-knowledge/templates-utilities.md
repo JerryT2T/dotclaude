@@ -292,12 +292,14 @@ It is decoration, so it never competes with the text: low alpha, accent colour
 only, `pointer-events: none`, behind every element (`z-index: -1`, the body
 background propagates to the canvas below it). Off on design rounds (the mock
 is the stage), static under `prefers-reduced-motion`, paused while the tab is
-hidden, ~30 fps; the tissue is pre-rendered once per plane, so a frame only
+hidden, ~30 fps. It reads like a micrograph: depth-of-field blur per plane,
+shaded tubes for every strand, lit spheres with a nucleus for the somata —
+all pre-rendered once per plane, so a frame only
 draws three bitmaps plus the impulses.
 
 ```css
-#neural-bg { position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; opacity: .5; }
-html[data-theme="light"] #neural-bg { opacity: .32; }
+#neural-bg { position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; opacity: .38; }
+html[data-theme="light"] #neural-bg { opacity: .24; }
 html[data-template="design"] #neural-bg { display: none; }
 @media print { #neural-bg { display: none; } }
 ```
@@ -313,16 +315,19 @@ html[data-template="design"] #neural-bg { display: none; }
   if (!ctx) return;
   const still = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
   const off = () => document.documentElement.dataset.template === 'design';
-  // Back -> front: drawn size, share of cells, tissue alpha, parallax depth.
-  const PLANES = [{ s: 0.55, share: 0.42, a: 0.45, z: 0.35 }, { s: 0.8, share: 0.34, a: 0.7, z: 0.65 }, { s: 1.1, share: 0.24, a: 1, z: 1 }];
+  // Back -> front: drawn size, share of cells, tissue alpha, parallax depth, depth-of-field blur.
+  const PLANES = [{ s: 0.55, share: 0.42, a: 0.45, z: 0.35, blur: 1.6 }, { s: 0.8, share: 0.34, a: 0.7, z: 0.65, blur: 0.6 }, { s: 1.1, share: 0.24, a: 1, z: 1, blur: 0 }];
   const PAD = 40;
-  let W = 0, H = 0, dpr = 1, cells = [], layers = [], spikes = [], rgb = '88,166,255';
+  let W = 0, H = 0, dpr = 1, cells = [], layers = [], spikes = [], rgb = '88,166,255', lrgb = '200,226,255';
   let mx = 0, my = 0, px = 0, py = 0, last = 0, nextFire = 0, raf = 0;
   const r = Math.random, f = v => v.toFixed(1);
   function color() {
     const v = getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim();
     const m = /^#([0-9a-f]{6})$/i.exec(v);
-    if (m) { const n = parseInt(m[1], 16); rgb = [(n >> 16) & 255, (n >> 8) & 255, n & 255].join(','); }
+    if (!m) return;
+    const n = parseInt(m[1], 16), ch = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+    rgb = ch.join(',');
+    lrgb = ch.map(v => Math.round(v + (255 - v) * 0.65)).join(',');   // the specular tint
   }
   const planeOf = roll => { let acc = 0; for (let i = 0; i < PLANES.length; i++) { acc += PLANES[i].share; if (roll < acc) return i; } return 2; };
   // One cell: soma, dendritic arbor (3 branch orders), axon to a same-plane neighbour, terminals + boutons.
@@ -351,7 +356,7 @@ html[data-template="design"] #neural-bg { display: none; }
       const a = base + i / prim * Math.PI * 2 + (r() - 0.5) * 0.7;
       grow(x + Math.cos(a) * somaR * 0.7, y + Math.sin(a) * somaR * 0.7, a, (22 + r() * 18) * s * (apical && i === 0 ? 1.7 : 1), 0);
     }
-    const cell = { x, y, p: c.p, s, soma: new Path2D(soma), dend: dend.map(d => new Path2D(d)), axon: null, curve: null, target: -1, len: 0, term: null, bout: null, swell: 0 };
+    const cell = { x, y, p: c.p, s, r: somaR, soma: new Path2D(soma), dend: dend.map(d => new Path2D(d)), axon: null, curve: null, target: -1, len: 0, term: null, bout: null, swell: 0 };
     const near = all.map((o, j) => ({ j, d: Math.hypot(o.x - x, o.y - y), p: o.p }))
       .filter(o => o.j !== index && o.p === c.p && o.d > 70 * s && o.d < 420 * s).sort((a, b) => a.d - b.d).slice(0, 3);
     if (near.length && r() < 0.88) {
@@ -386,17 +391,35 @@ html[data-template="design"] #neural-bg { display: none; }
     c.width = Math.round((W + PAD * 2) * dpr); c.height = Math.round((H + PAD * 2) * dpr);
     const g = c.getContext('2d');
     g.setTransform(dpr, 0, 0, dpr, PAD * dpr, PAD * dpr);
-    g.lineCap = 'round';
-    const A = PLANES[p].a, ink = a => 'rgba(' + rgb + ',' + (a * A).toFixed(3) + ')';
+    g.lineCap = 'round'; g.lineJoin = 'round';
+    // Microscope look, all paid once here: depth of field per plane, every strand
+    // a shaded tube (soft halo, body, thin specular core), every soma a lit sphere
+    // with a darker nucleus.
+    const blur = PLANES[p].blur;
+    if (blur && 'filter' in g) g.filter = 'blur(' + blur + 'px)';
+    const A = PLANES[p].a, ink = a => 'rgba(' + rgb + ',' + (a * A).toFixed(3) + ')', lit = a => 'rgba(' + lrgb + ',' + (a * A).toFixed(3) + ')';
+    const tube = (path, lw, a) => {
+      g.lineWidth = lw * 3.2; g.strokeStyle = ink(a * 0.12); g.stroke(path);
+      g.lineWidth = lw; g.strokeStyle = ink(a); g.stroke(path);
+      g.lineWidth = Math.max(0.35, lw * 0.32); g.strokeStyle = lit(a * 0.9); g.stroke(path);
+    };
     cells.filter(n => n.p === p).forEach(n => {
       const w = Math.max(n.s, 0.6);
-      [[2.3, 0.5], [1.4, 0.38], [0.8, 0.28]].forEach((o, d) => { g.lineWidth = o[0] * w; g.strokeStyle = ink(o[1]); g.stroke(n.dend[d]); });
+      [[2.4, 0.42], [1.5, 0.32], [0.85, 0.24]].forEach((o, d) => tube(n.dend[d], o[0] * w, o[1]));
       if (n.axon) {
-        g.lineWidth = 1.05 * w; g.strokeStyle = ink(0.36); g.stroke(n.axon);
-        g.lineWidth = 0.8 * w; g.strokeStyle = ink(0.34); g.stroke(n.term);
-        g.fillStyle = ink(0.55); g.fill(n.bout);
+        tube(n.axon, 1.1 * w, 0.3);
+        tube(n.term, 0.8 * w, 0.28);
+        g.fillStyle = lit(0.5); g.fill(n.bout);
       }
-      g.fillStyle = ink(0.7); g.fill(n.soma);
+      const R = n.r * 1.35, hx = n.x - n.r * 0.35, hy = n.y - n.r * 0.4;
+      const halo = g.createRadialGradient(n.x, n.y, n.r * 0.6, n.x, n.y, n.r * 3.2);
+      halo.addColorStop(0, ink(0.22)); halo.addColorStop(1, ink(0));
+      g.fillStyle = halo; g.beginPath(); g.arc(n.x, n.y, n.r * 3.2, 0, Math.PI * 2); g.fill();
+      const sphere = g.createRadialGradient(hx, hy, n.r * 0.1, n.x, n.y, R);
+      sphere.addColorStop(0, lit(0.95)); sphere.addColorStop(0.45, ink(0.7)); sphere.addColorStop(1, ink(0.35));
+      g.fillStyle = sphere; g.fill(n.soma);
+      g.fillStyle = 'rgba(' + rgb + ',' + (0.45 * A).toFixed(3) + ')';
+      g.beginPath(); g.arc(n.x + n.r * 0.12, n.y + n.r * 0.1, n.r * 0.32, 0, Math.PI * 2); g.fill();
     });
     return c;
   }
