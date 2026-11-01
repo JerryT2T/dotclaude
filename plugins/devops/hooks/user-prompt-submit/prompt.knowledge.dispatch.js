@@ -315,7 +315,7 @@ process.stdin.on('end', () => {
   // pair yielded '' on every real prompt — no nudge, no budget suffix, no
   // locale, no DK dispatch, for months (audit 2026-09-19).
   const rawMessage = hook.prompt || hook.user_message || hook.message || '';
-  const userMessage = rawMessage.toLowerCase().trim();
+  const userMessage = require('../lib/prompt-text').ownWords(rawMessage).toLowerCase();
   if (!userMessage || userMessage.length < 5) process.exit(0);
 
   const sessionId = hook.session_id || 'unknown';
@@ -388,7 +388,7 @@ process.stdin.on('end', () => {
   const pointers = [...docPointers];
   try {
     const home = process.env.HOME || process.env.USERPROFILE || '';
-    for (const hit of nonUser ? [] : matchPointers(rawMessage)) {
+    for (const hit of nonUser ? [] : matchPointers(require('../lib/prompt-text').ownWords(rawMessage))) {
       if (injected.has(hit.file) || docGated(hit.file)) continue;
       const overrides = hit.extension ? legacyOverrides(hit.legacy, { cwd: hook.cwd, home }) : [];
       pointers.push(pointerLine(hit, dkDir, overrides));
@@ -457,7 +457,7 @@ process.stdin.on('end', () => {
   //      budget suffix still rides on every prompt: it is the class the tier
   //      decision of THIS prompt runs on, and it sits next to that decision.
   let nudge = [];
-  if (nudgeText && rawMessage.trim().length >= NUDGE_MIN_CHARS) {
+  if (nudgeText && userMessage.length >= NUDGE_MIN_CHARS) {
     let first = true;
     try { first = runOnce(NUDGE_ONCE_KEY, sessionId); } catch { /* fail open: send it */ }
     if (first) nudge = [nudgeText + budgetSuffix];

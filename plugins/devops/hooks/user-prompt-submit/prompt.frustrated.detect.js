@@ -101,7 +101,7 @@ function decide(hook, opts = {}) {
 
   const prev = stateIo.readState(sessionId, sOpts);
   const evidence = opts.evidence || transcriptEvidence(hook.transcript_path);
-  const res = detect(prompt, prev, { ...evidence, nowMs });
+  const res = detect(require('../lib/prompt-text').ownWords(prompt), prev, { ...evidence, nowMs });
   const st = res.state;
 
   const inBand = res.rounds >= 3 && res.score >= 3 && !res.flagged;

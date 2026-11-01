@@ -106,6 +106,11 @@ Rules inside the dispatcher:
   stdin, `fs.readFileSync(0)` and `fs.writeSync(1|2)` are shimmed. A hook
   that cannot run in a worker gets `"isolate": "process"` (child process) or
   `"dispatch": false` (its own hooks.json entry) in the manifest.
+- **Fast lane.** Hooks on read-only and harness tools (`Read`, `Glob`,
+  `Grep`, `mcp__ccd_*`) never join the main dispatcher (#924). Mark them
+  `"dispatch": "fast"`: they share one `dispatch.js <Event> --fast` entry
+  with a short budget (default 10 s per module) instead of one node process
+  each.
 - **Lanes.** Worker threads share one pid. A lib that names a temp file by
   the pid alone (`` `${file}.${process.pid}.tmp` ``) forces every hook that
   reaches it into one sequential lane (`dispatch/lanes.js`). Add a random

@@ -421,6 +421,15 @@ describe('card-pregate — security finding without an open point (#709)', () =>
     expect(findings({ ...ok, tests: [{ method: 'npm audit', result: 'clean' }] }, { openTasks: [] })).toEqual([]);
   });
 
+  test('a non-security "Schwachstelle" is no finding, a security one still is', () => {
+    expect(findings({ ...ok, summary: 'Architektur-Schwachstellen des Plugins' }, { openTasks: [] })).toEqual([]);
+    expect(findings({ ...ok, summary: 'Design-Schwachstelle im Onboarding' }, { openTasks: [] })).toEqual([]);
+    expect(findings({ ...ok, summary: 'architektonische Schwachstellen gefunden' }, { openTasks: [] })).toEqual([]);
+    expect(findings({ ...ok, summary: '3 Schwachstellen in lodash' }, { openTasks: [] })).toHaveLength(1);
+    expect(findings({ ...ok, summary: 'Sicherheits-Schwachstelle im Login' }, { openTasks: [] })).toHaveLength(1);
+    expect(findings({ ...ok, summary: 'Sicherheitsschwachstelle im Login' }, { openTasks: [] })).toHaveLength(1);
+  });
+
   test('check refuses once, then renders the same call', () => {
     setup({});
     const input = { ...advisory, session_id: sid };

@@ -152,6 +152,20 @@
         "pre.governor.gate"
       ]
     ],
+    "PreToolUse:fast": [
+      [
+        "pre.tokens.guard"
+      ],
+      [
+        "pre.session.archive"
+      ],
+      [
+        "pre.ask.title"
+      ],
+      [
+        "pre.agent.relay"
+      ]
+    ],
     "SubagentStop": [
       [
         "substop.agent.wip"
@@ -224,9 +238,28 @@
         "post.test.record"
       ]
     ],
+    "PostToolUse:fast": [
+      [
+        "post.flow.completion"
+      ],
+      [
+        "post.approval.clear"
+      ],
+      [
+        "post.ask.title"
+      ]
+    ],
     "PostToolUseFailure": [
       [
         "post.governor.clear"
+      ],
+      [
+        "post.approval.clear"
+      ]
+    ],
+    "PostToolUseFailure:fast": [
+      [
+        "post.flow.completion"
       ],
       [
         "post.approval.clear"

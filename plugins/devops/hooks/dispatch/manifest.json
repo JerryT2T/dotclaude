@@ -43,7 +43,7 @@
       },
       {
         "hooks": [
-          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.tokens.guard.js\"", "dispatch": false }
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.tokens.guard.js\"", "dispatch": "fast" }
         ],
         "matcher": "Read|Glob|Grep"
       },
@@ -107,7 +107,7 @@
       },
       {
         "hooks": [
-          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.session.archive.js\"", "dispatch": false }
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.session.archive.js\"", "dispatch": "fast" }
         ],
         "matcher": "mcp__ccd_session_mgmt__archive_session"
       },
@@ -119,7 +119,7 @@
       },
       {
         "hooks": [
-          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.ask.title.js\"", "timeout": 5, "dispatch": false }
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.ask.title.js\"", "timeout": 5, "dispatch": "fast" }
         ],
         "matcher": "mcp__ccd_session__start_session"
       },
@@ -145,7 +145,7 @@
       },
       {
         "hooks": [
-          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.agent.relay.js\"", "timeout": 10, "dispatch": false }
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.agent.relay.js\"", "timeout": 10, "dispatch": "fast" }
         ],
         "matcher": "Read|Glob|Grep|mcp__ccd_.*"
       },
@@ -195,8 +195,8 @@
       },
       {
         "hooks": [
-          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use/post.flow.completion.js\"", "dispatch": false },
-          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use/post.approval.clear.js\"", "timeout": 5, "dispatch": false }
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use/post.flow.completion.js\"", "dispatch": "fast" },
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use/post.approval.clear.js\"", "timeout": 5, "dispatch": "fast" }
         ],
         "matcher": "Read|Glob|Grep|mcp__ccd_.*"
       },
@@ -245,7 +245,7 @@
       },
       {
         "hooks": [
-          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use/post.ask.title.js\"", "timeout": 5, "dispatch": false }
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use/post.ask.title.js\"", "timeout": 5, "dispatch": "fast" }
         ],
         "matcher": "mcp__ccd_session__start_session"
       },
@@ -302,7 +302,7 @@
     "PostToolUseFailure": [
       {
         "hooks": [
-          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use/post.flow.completion.js\"", "dispatch": false }
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use/post.flow.completion.js\"", "dispatch": "fast" }
         ],
         "matcher": "mcp__ccd_session_mgmt__archive_session"
       },
@@ -320,7 +320,7 @@
       },
       {
         "hooks": [
-          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use/post.approval.clear.js\"", "timeout": 5, "dispatch": false }
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use/post.approval.clear.js\"", "timeout": 5, "dispatch": "fast" }
         ],
         "matcher": "Read|Glob|Grep|mcp__ccd_.*"
       }

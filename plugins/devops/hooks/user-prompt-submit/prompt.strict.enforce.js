@@ -53,7 +53,7 @@ process.stdin.on('end', () => {
   let hook;
   try { hook = JSON.parse(inputData); } catch { process.exit(0); }
 
-  const text = hook.prompt || hook.user_message || hook.message || '';
+  const text = require('../lib/prompt-text').userText(hook);
   const cwd  = hook.cwd || process.cwd();
 
   try {

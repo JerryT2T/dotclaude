@@ -31,7 +31,7 @@ describe("hooks.json is generated from the dispatcher manifest", () => {
   test("one dispatcher entry per event, its timeout above every module budget", () => {
     for (const event of Object.keys(manifest.hooks)) {
       const entries = hooksJson.hooks[event];
-      const disp = entries.filter((g) => g.hooks.some((h) => h.command.includes("hooks/dispatch/dispatch.js")));
+      const disp = entries.filter((g) => g.hooks.some((h) => h.command.includes("hooks/dispatch/dispatch.js") && !h.command.includes("--fast")));
       // `"dispatch": false` modules keep their own entry and their own timeout.
       const dispatched = eventModules(manifest, event, PLUGIN_ROOT).filter((m) => m.dispatch);
       if (!dispatched.length) { expect(disp.length, event).toBe(0); continue; }
@@ -42,14 +42,33 @@ describe("hooks.json is generated from the dispatcher manifest", () => {
     }
   });
 
-  test("#924: read-only and harness tools never reach dispatch.js", () => {
-    const exempt = ["Read", "Glob", "Grep", "mcp__ccd_session__start_session", "mcp__ccd_session_mgmt__archive_session", "mcp__ccd_anything__x"];
+  const EXEMPT = ["Read", "Glob", "Grep", "mcp__ccd_session__start_session", "mcp__ccd_session_mgmt__archive_session", "mcp__ccd_anything__x"];
+  const isMain = (g) => g.hooks.some((h) => h.command.includes("hooks/dispatch/dispatch.js") && !h.command.includes("--fast"));
+  const isFast = (g) => g.hooks.some((h) => h.command.includes("hooks/dispatch/dispatch.js") && h.command.includes("--fast"));
+
+  test("#924: read-only and harness tools never reach the main dispatcher", () => {
     for (const event of ["PreToolUse", "PostToolUse", "PostToolUseFailure"]) {
-      const disp = hooksJson.hooks[event].find((g) => g.hooks.some((h) => h.command.includes("hooks/dispatch/dispatch.js")));
+      const disp = hooksJson.hooks[event].find(isMain);
       if (!disp) continue;
-      for (const name of exempt) expect(matches(name, disp.matcher), `${event} ${name}`).toBe(false);
+      for (const name of EXEMPT) expect(matches(name, disp.matcher), `${event} ${name}`).toBe(false);
       for (const m of eventModules(manifest, event, PLUGIN_ROOT).filter((x) => x.dispatch)) {
-        for (const name of exempt) expect(matches(name, m.matcher), `${event}/${m.name} ${name}`).toBe(false);
+        for (const name of EXEMPT) expect(matches(name, m.matcher), `${event}/${m.name} ${name}`).toBe(false);
+      }
+    }
+  });
+
+  test("#924: the fast lane is one short-budget entry that runs only fast modules", () => {
+    for (const event of Object.keys(manifest.hooks)) {
+      const fast = eventModules(manifest, event, PLUGIN_ROOT).filter((m) => m.fast);
+      const entries = hooksJson.hooks[event].filter(isFast);
+      if (!fast.length) { expect(entries.length, event).toBe(0); continue; }
+      expect(entries.length, event).toBe(1);
+      expect(entries[0].hooks[0].command).toBe(build.dispatcherCommand(event, true));
+      // A stuck fast module never stalls a Read for the main budget.
+      expect(entries[0].hooks[0].timeout, event).toBeLessThanOrEqual(15);
+      for (const m of fast) {
+        expect(m.dispatch, `${event}/${m.name}`).toBe(false);
+        expect(m.timeoutS + build.HEADROOM_S, `${event}/${m.name}`).toBeLessThanOrEqual(entries[0].hooks[0].timeout);
       }
     }
   });
