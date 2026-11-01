@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.340.0] — 2026-11-01
+
+### Added
+- Concept pages: a quiet neural backdrop in micrograph style — biological neurons (soma, dendrites, axon with boutons) in three parallax planes with depth of field, shaded strands and lit somata, impulses running along the axons; pre-rendered per plane, off on design rounds, static under reduced motion.
+- Analysis gate A10: warns on a question over 100 characters or a "Davon hängt ab" line over 90.
+- Analysis chat: an empty send acts as Weiter / Los geht's; on the closing it only points at "Zur nächsten Runde".
+
+### Changed
+- Concept pages use a dimmed blue-grey dark ground (#1c2128) with off-white text instead of near-black.
+- A live Full analysis hides the page subtitle and moves the title up.
+- The ☰ panel head names only the concept / round — no "› entry" sub-line, no "(Variante)" parenthesis.
+
+### Fixed
+- The analysis question message no longer clips its "Davon hängt ab" line.
+- Ctrl+click notes work on analysis answer rows and the answer-block header.
+
 ## [0.339.2] — 2026-11-01
 
 ### Fixed
