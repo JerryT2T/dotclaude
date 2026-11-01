@@ -254,7 +254,7 @@ function runProcess(mod, raw, budgetMs) {
 
 /**
  * Run the selected modules and merge.
- * @param {{event:string, raw:string, modules:Array, budgetS:number, startedAt?:number, processMode?:boolean, tele?:object, lanes?:string[][]}} o
+ * @param {{event:string, raw:string, payload?:object|null, modules:Array, budgetS:number, startedAt?:number, processMode?:boolean, tele?:object, lanes?:string[][]}} o
  * @returns {Promise<{code:number, stdout:string, stderr:string, results:Array}>}
  */
 async function runEvent(o) {
@@ -314,6 +314,13 @@ async function runEvent(o) {
   await Promise.all(lanes.map(runLane));
   await Promise.all(procRuns);
   const merged = mergeResults(o.event, results);
+  // Alpha `token-log` (#1002): what each module handed the model, written to
+  // a local file only. Gated, silent, never changes the merged result.
+  try {
+    let payload = o.payload;
+    if (payload === undefined) payload = require('../lib/hook-input').parseHookInput(o.raw);
+    require('../lib/token-log').recordEvent(o.event, payload, results);
+  } catch { /* the log is never worth a hook */ }
   return { ...merged, results };
 }
 
@@ -342,7 +349,7 @@ async function main() {
   const modules = selectModules(manifest, event, payload);
   if (!modules.length) return { code: 0, stdout: '', stderr: '' };
   const lanes = loadLanes();
-  return runEvent({ event, raw, modules, budgetS: eventBudgetS(all), startedAt, processMode: dispatchDisabled(), tele, lanes: lanes ? lanes[event] : undefined });
+  return runEvent({ event, raw, payload, modules, budgetS: eventBudgetS(all), startedAt, processMode: dispatchDisabled(), tele, lanes: lanes ? lanes[event] : undefined });
 }
 
 if (require.main === module) {
