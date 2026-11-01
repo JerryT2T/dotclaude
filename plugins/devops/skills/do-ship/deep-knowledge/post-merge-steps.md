@@ -89,7 +89,7 @@ For every declared surface:
    `{PLUGIN_ROOT}/deep-knowledge/browser-tool-strategy.md` (Claude-in-Chrome in Edge first).
    This is a live post-deploy read — see `{PLUGIN_ROOT}/deep-knowledge/test-autonomy.md`.
    Works in foreground, background, and autonomous mode.
-2. Open `url` in the **separate Edge testing window** (per the Edge Credo).
+2. Open `url` in the **separate Edge testing window** (per the Edge rules).
 3. Read the **rendered** version marker. Use **Eval JS** (`javascript_tool` /
    `browser_evaluate`) to read structured data
    (`document.querySelector(selector)?.textContent` or the documented attribute)

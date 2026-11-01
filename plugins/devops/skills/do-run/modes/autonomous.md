@@ -180,7 +180,7 @@ with "(empfohlen)" in its label.
 This question only controls whether computer-use (mouse/keyboard takeover) is used
 for **native apps**. Browser tools (`$BROWSER_TOOL` from Step 3b) work in both modes
 and never occupy the desktop. Never fall back to computer-use for browser tasks —
-see `{PLUGIN_ROOT}/deep-knowledge/browser-tool-strategy.md` (§ Edge Credo applies identically
+see `{PLUGIN_ROOT}/deep-knowledge/browser-tool-strategy.md` (§ Edge rules applies identically
 in autonomous mode).
 
 In `analyze` mode, desktop is only used for visual inspection (screenshots), never for interaction.
@@ -231,10 +231,11 @@ Then take a test `mcp__computer-use__screenshot` to confirm access works.
 ### 3b — Browser Tools
 
 Follow the **Browser Tool Strategy** (`{PLUGIN_ROOT}/deep-knowledge/browser-tool-strategy.md`),
-including the **Edge Credo** (§ Edge Credo — Hard Rules):
-- Edge only, Claude extension by default — computer-use for browser only if user chose "Desktop übernehmen"
-- Always use the user's installed Edge with their profile/login context
-- New tab in existing Edge window — never a new Edge window
+its decision table and guards:
+- Built-in pane for the localhost / file:// app; Claude-in-Chrome in Edge only for
+  logged-in sites, uploads and watched flows — there the § Edge rules apply (user's
+  Edge profile, separate test window, one tab group)
+- Computer-use for a browser only if the user chose "Desktop übernehmen"
 - These rules apply in BOTH foreground and background/autonomous mode
 
 **Browser probing is MANDATORY when any web-tech gate signal is true** (see

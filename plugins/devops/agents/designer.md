@@ -13,7 +13,7 @@ color: purple
 # have per-installation server names (a connector is registered under a UUID),
 # so an allowlist cannot name them reliably — the agent inherits every
 # connected tool instead — except desktop takeover, which needs the user's
-# explicit opt-in (browser-tool-strategy.md § Edge Credo).
+# explicit opt-in (browser-tool-strategy.md § Edge rules).
 disallowedTools: ["mcp__computer-use"]
 ---
 
