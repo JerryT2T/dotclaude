@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.336.1] — 2026-11-01
+
+### Fixed
+- **Knowledge dispatch**: a prompt no longer pulls a doc because two keywords sit a sentence apart, and a large doc arrives as a one-line pointer instead of thousands of characters that stayed in context for the session; UI, Windows, code, test and visual rules still arrive as text.
+- **Knowledge dispatch**: after a context compaction a doc can be shown again.
+
 ## [0.336.0] — 2026-10-31
 
 ### Added
