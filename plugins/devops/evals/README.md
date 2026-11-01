@@ -127,7 +127,15 @@ page), the page has `#decision-panel` and none of the concept gate's
 clipboard / paste-into-chat patterns, and no preview / Playwright tool is
 used. The page graders also look under `.claude/worktrees/*/` (the model
 may `EnterWorktree` before building). A run takes ~8 min, longer than the
-default 5 min timeout — pass `--timeout-min 15`. Ordering checks share
+default 5 min timeout — pass `--timeout-min 15`. Two cases cover the
+branches the progressive-disclosure slimming moved behind pointer lines:
+`do-batch/go-merge` (`go` with three parked notes, the mode already off, no
+hook merge context: a coverage line per note, the notes archived, exactly one
+hand-off to `do-run --from=do-batch` carrying a `Bündel:` section — Edit and
+Write denied) and `auto-agents/ceremony-plan` (a direct invocation on a
+db / server / web feature: the orchestration plan with its tool-call budget
+line and the `agent-card.js` plan card, and no role agent before the yes `-p`
+never gives). Ordering checks share
 `skills/order.js`. Per-skill trim records with the A/B numbers
 live in `trims/<skill>.md`.
 

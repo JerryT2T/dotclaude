@@ -10,6 +10,7 @@ import { describe, test, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { readSkill as readAgentsSkill } from "../auto-agents/skill-source.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const read = (...p) => readFileSync(join(here, ...p), "utf8").replace(/\r\n/g, "\n");
@@ -108,7 +109,7 @@ describe("rethink has exactly two exits", () => {
 
   test("the interactive handoff skips auto-agents' plan confirmation via --rethink", () => {
     expect(section(rethink, "## Step 7 — Autonomous Handoff")).toMatch(/`auto-agents` with `--rethink` added/);
-    const agents = read("..", "auto-agents", "SKILL.md");
+    const agents = readAgentsSkill();
     expect(agents).toMatch(/`--from=do-run --mode=interactive`\s+without `--rethink`/);
     expect(agents).toMatch(/do-run rethink handoff \(`--rethink`: its pick was the go\)/);
     // The router's own args template carries the flag too (behavioral re-run finding).

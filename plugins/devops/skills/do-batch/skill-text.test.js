@@ -20,7 +20,23 @@ import { SESSION_PREFIX as RAW_PREFIX } from "../../mcp-server/lib/mode-state.js
 const SESSION_PREFIX = Object.fromEntries(Object.entries(RAW_PREFIX).map(([k, v]) => [k, v.replace(/\u200A/g, "")]));
 
 const here = dirname(fileURLToPath(import.meta.url));
-const skill = readFileSync(join(here, "SKILL.md"), "utf8");
+// Step 4 lives in deep-knowledge/fire.md behind one pointer line (only a fire
+// route needs it); the text tests read SKILL.md with that line replaced by the
+// file's body (everything below its heading and intro paragraph).
+const rawSkill = readFileSync(join(here, "SKILL.md"), "utf8");
+const FIRE_POINTER = /^\*\*Before executing this step, Read `\{PLUGIN_ROOT\}\/skills\/do-batch\/deep-knowledge\/fire\.md` completely\*\* — .+$/m;
+const fireBody = readFileSync(join(here, "deep-knowledge", "fire.md"), "utf8").split("\n\n").slice(2).join("\n\n");
+const skill = rawSkill.replace(FIRE_POINTER, () => fireBody);
+
+describe("do-batch SKILL.md — Step 4 on demand", () => {
+  it("keeps only a stub plus the fire.md pointer in the raw SKILL.md", () => {
+    expect(rawSkill).toMatch(FIRE_POINTER);
+    const stub = rawSkill.slice(rawSkill.indexOf("## Step 4 — Fire the merge"), rawSkill.indexOf("## Step 5 — Deactivate"));
+    expect(stub.length).toBeLessThan(2000);
+    expect(stub).toMatch(/do-batch never\s+implements/);
+    expect(fireBody).toMatch(/^\*\*4\.0 Bring main into the branch BEFORE reading a single note\.\*\*/m);
+  });
+});
 
 function section(startHeading, endHeading) {
   const start = skill.indexOf(startHeading);

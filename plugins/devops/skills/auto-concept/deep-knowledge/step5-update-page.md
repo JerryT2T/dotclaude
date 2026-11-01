@@ -4,6 +4,13 @@ Appending rounds, the final report and its open points, re-confirming wakes and 
 
 ## Reality-check round — template and markers
 
+For `action: "implement"` that Step 5b step 0 diverted → append a **regular
+iteration section carrying `data-reality-check` and
+`data-reality-head="<examined sha>"`** instead, with the
+`{{iteration.reality_tab}}` label on its tab and the `.reality-banner`
+explainer as its first child. Everything else about the append is identical to
+a normal iteration, including the append checklist and the `/reset` ordering.
+
 **It also keeps the concept's template** (§ Step 1a · Template continuity): in
 a `design` concept the collision cards go into a
 `section[data-view] data-view-kind="decision"` alongside the design the round

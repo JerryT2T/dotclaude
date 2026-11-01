@@ -1,9 +1,9 @@
 # do-batch Merge — sync, images, archive, retire, gate, compaction
 
-Execution detail for Step 4 of `SKILL.md`. The **decisions** stay in the skill
-body — the coverage list, the bundle plan, the do-run / auto-concept decision
+Execution detail for Step 4 (`fire.md`). The **decisions** stay in `fire.md`
+— the coverage list, the bundle plan, the do-run / auto-concept decision
 rule, the hand-off body; this file only answers "I am in that step, now what
-exactly?". Step numbers refer to `SKILL.md`.
+exactly?". Step numbers refer to `SKILL.md` / `fire.md`.
 
 ## Sync main (Step 4.0)
 

@@ -106,44 +106,17 @@ Mirrors `/auto-polish` § Rules-only path.
 
 **Implemented by `{PLUGIN_ROOT}/scripts/ship-harden.js`** — /do-ship runs the
 script directly, so a ship never loads this skill for it. Invoked here with
-`--invoked-by=ship`, run the same script with the same arguments and return
-its JSON. The steps below are its specification; change both together.
+`--invoked-by=ship`, run the same script with the same arguments, return its
+JSON to the caller and stop:
+`{ applicable, fixed: [{ id, file, line, change }], findings: [{ id, file, line, detail }], skipped: [...] }`.
+No completion card, no AskUserQuestion, no session-title change, no commit —
+/do-ship owns the turn and lands the fixes with the ship. Under `$STRICT=1`
+the script applies nothing and reports every finding. **Never blocks.** A
+finding is never a gate; only a failing `ship_build` stops a ship.
 
-1. **Scope** = the files /do-ship passed, and inside them only the added or
-   changed lines: `git -C <cwd> diff -U0 origin/<base>...HEAD -- <files>` plus
-   the uncommitted diff of the same files (`<cwd>` = `--cwd`, else the
-   session's cwd; the fixes of step 4 edit files under that same `<cwd>`). Deleted files and generated/vendor
-   paths drop out. Empty → return `{ applicable: false, reason: "empty diff" }`.
-2. **Static, inline, bounded.** Read the hunks, grep the added lines — no
-   agents, no browser, no network, no test run (the ship's `ship_build`
-   runs the suite on the result in its Step 2). Budget ~60 s and ≤ 40 files;
-   beyond that check the 40 largest hunks and list the rest once as
-   `skipped: <n> files (budget)`.
-3. **Checks** (added lines only — pre-existing code is not a finding here):
-
-   | id | Finding | Mechanical fix |
-   |---|---|---|
-   | H1 | focused test left in: `.only(`, `fit(`, `fdescribe(` in a test file — it silently disables the rest of the suite | drop `.only` / the `f` |
-   | H2 | `debugger;` statement in source | delete the line |
-   | H3 | secret-shaped literal (`(api[_-]?key\|secret\|token\|password)\s*[:=]\s*['"][^'"\s]{16,}`, a PEM header) | none — report FIRST |
-   | H4 | empty catch without a comment (`catch {}`, `catch (e) {}`, `except: pass`) | none — the intent is unknown |
-   | H5 | new skipped test (`.skip(`, `xit(`, `xdescribe(`, `@pytest.mark.skip`) | none |
-   | H6 | timer or listener without cleanup in the same file (`setInterval` w/o `clearInterval`, `addEventListener` w/o `removeEventListener` in a long-lived module/component) | none |
-   | H7 | new `TODO`/`FIXME`/`XXX`/`HACK` | none |
-
-   A `mechanical` fix invents nothing: it only deletes what the finding names.
-4. **Apply** the mechanical fixes — unless `$STRICT=1`, then apply none and
-   report every finding (the ship's scope is what the user asked for; a
-   drive-by line change is not).
-5. **Return** to the caller and stop:
-   `{ applicable, fixed: [{ id, file, line, change }], findings: [{ id, file, line, detail }], skipped: [...] }`.
-   No completion card, no AskUserQuestion, no session-title change, no
-   commit — /do-ship owns the turn and lands the fixes with the ship.
-6. **Never blocks.** A finding is never a gate. The only red that stops a
-   ship is a failing build/test in `ship_build` — and if one of THIS path's
-   fixes caused it, /do-ship reverts that fix, re-runs the gate and reports
-   the finding instead. A failing test the fixes did not cause is the
-   ship's normal `ship-blocked`, not this path's verdict.
+The checks (H1–H7 on the added lines only), the scope, the budget and the
+mechanical-fix rule: `{PLUGIN_ROOT}/skills/auto-harden/deep-knowledge/ship-path.md` — the script's
+specification, needed only to change the script or when it cannot run.
 
 ## Step 2 — Scope Selection
 
@@ -174,7 +147,7 @@ and inform the user.
 
 Two things in parallel, neither blocks:
 
-1. **Determine the test tool-chain per `deep-knowledge/test-plan.md`** (detect +
+1. **Determine the test tool-chain per `{PLUGIN_ROOT}/deep-knowledge/test-plan.md`** (detect +
    pin the profile) for this project. Store result as `$TEST_PLAN`.
 2. **Spawn `qa` agent** in background — SKIP this when `$PARENT_SKILL=do-run`
    AND a qa wave is already planned/running (the orchestrator owns qa).
@@ -222,7 +195,7 @@ description + suggested action category).
 For every concrete bug from Step 4 (#1) AND any failure reported by the
 background qa agent:
 
-1. **Confidence-score the fix** per `deep-knowledge/harden-polish-shared.md`
+1. **Confidence-score the fix** per `{PLUGIN_ROOT}/deep-knowledge/harden-polish-shared.md`
    § 1 (Confidence Score 0–100, thresholds 80/50). Inputs: tests cover
    path, reversibility, blast radius, contract impact.
 2. **Hard-Floor check** per `harden-polish-shared.md` § 2: if the fix
@@ -235,7 +208,7 @@ background qa agent:
      Otherwise plan + confirm. Always include score breakdown in report.
    - **Score < 50**: no auto-fix. Route through Step 7.
 4. For each auto-fix:
-   - Run the inline pre-mortem from `deep-knowledge/pre-mortem.md`
+   - Run the inline pre-mortem from `{PLUGIN_ROOT}/deep-knowledge/pre-mortem.md`
      focused on: "Which other callers rely on this behavior?"
    - Apply the fix with the smallest possible diff.
    - Write a **regression test** that fails without the fix and passes
@@ -249,7 +222,7 @@ background qa agent:
 ## Step 6 — Coverage Phase: Tests for Critical Paths
 
 From Step 4 (#5), pick the top N uncovered functions/paths by criticality
-per `deep-knowledge/harden-polish-shared.md` § 4:
+per `{PLUGIN_ROOT}/deep-knowledge/harden-polish-shared.md` § 4:
 - **Primary**: name/role heuristic (`fetch*`, `save*`, `auth*`, `pay*`,
   `migrat*`, `*Handler`, `*Resolver`, etc.).
 - **Secondary**: cognitive complexity (preferred — SonarSource 2017+).
@@ -269,7 +242,7 @@ For each, write a focused unit test:
 
 For every Step 4 (#2) finding + every Score < 50 OR Hard-Floor item from Step 5:
 
-1. **Confidence-score** per `deep-knowledge/harden-polish-shared.md` § 1.
+1. **Confidence-score** per `{PLUGIN_ROOT}/deep-knowledge/harden-polish-shared.md` § 1.
 2. **Hard-Floor check** per § 2 → never auto, always plan+confirm or
    skip+flag.
 3. Decide per tier:
@@ -298,7 +271,7 @@ runs the diff-only instance via `/auto-polish --invoked-by=ship`.
    never structural.
 
 2. **Consistency drift** — apply the math from
-   `deep-knowledge/harden-polish-shared.md` § 3 (Ordinal vs. Categorical):
+   `{PLUGIN_ROOT}/deep-knowledge/harden-polish-shared.md` § 3 (Ordinal vs. Categorical):
    - **Ordinal** (spacing/padding/margin/gap/font-size/line-height/radius):
      median + IQR. Outlier = `|value − median| > 1.5 × IQR`. Snap to
      nearest token (if catalog) or to the median.
@@ -402,4 +375,4 @@ or dismisses it.
 - **Surface polish-candidates explicitly** so the user can ask for a polish pass (`auto-polish`)
   as a natural follow-up.
 - **Never commit automatically** — this skill modifies files; the user
-  commits via `/do-ship` (or an inline commit per `deep-knowledge/commit-conventions.md`).
+  commits via `/do-ship` (or an inline commit per `{PLUGIN_ROOT}/deep-knowledge/commit-conventions.md`).

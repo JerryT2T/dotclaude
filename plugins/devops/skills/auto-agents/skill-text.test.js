@@ -21,10 +21,12 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
+import { readSkill, skillPointers, bodyOf } from "./skill-source.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const PLUGIN_ROOT = join(here, "..", "..");
-const skill = readFileSync(join(here, "SKILL.md"), "utf8");
+// SKILL.md with its on-demand deep-knowledge files joined back in (skill-source.js).
+const skill = readSkill();
 const orchestration = readFileSync(
   join(PLUGIN_ROOT, "deep-knowledge", "agent-orchestration.md"),
   "utf8",
@@ -253,5 +255,26 @@ describe("the plan card script renders through the same template", () => {
     expect(card).toContain("| 🔧 | **core** | API | sonnet → opus | ●● medium |");
     expect(card).toContain("| 🧩 | **feature** | Glue | opus | ●● medium |");
     expect(card).toContain("**Σ Verteilung:** **2×** sonnet ●● medium");
+  });
+});
+
+// Branches only some runs take sit behind pointer lines; what every run needs
+// stays readable in the raw SKILL.md.
+describe("auto-agents on-demand detail", () => {
+  const raw = readFileSync(join(here, "SKILL.md"), "utf8");
+  it("every pointer resolves to a deep-knowledge file", () => {
+    const files = skillPointers().map((p) => p.file);
+    expect(files).toEqual(["permission-audit.md", "mode-question.md", "burn-conveyor.md"]);
+    for (const f of files) expect(bodyOf(f).length, f).toBeGreaterThan(200);
+  });
+  it("keeps the every-run guards inline", () => {
+    for (const s of [
+      "`▶ Inline · <reason: domains, ~files>`",
+      "show **only the last one** of the message, verbatim",
+      "**This skill invokes no skill.**",
+      "**Confirmation — only where the user has not already said go.**",
+      "**With `--burn` there is nothing to classify**",
+      "**Under `--burn` the gate decides every spawn**",
+    ]) expect(raw, s).toContain(s);
   });
 });

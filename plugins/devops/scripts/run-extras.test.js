@@ -8,6 +8,7 @@ import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
+import { readSkill as readAgentsSkill } from "../skills/auto-agents/skill-source.js";
 
 const require = createRequire(import.meta.url);
 const extras = require("./run-extras.js");
@@ -93,7 +94,7 @@ describe("fromPreset", () => {
       expect(body, sec).toMatch(/Verify first[^\n]*run-extras\.js" handoff --plan/);
     }
     // auto-agents skips its confirmation only for a --via plan the helper confirms.
-    const agents = fs.readFileSync(path.join(root, "skills", "auto-agents", "SKILL.md"), "utf8");
+    const agents = readAgentsSkill();
     expect(agents).toMatch(/`--via`\+`--plan=<ref>` that `node "\{PLUGIN_ROOT\}\/scripts\/run-extras\.js" handoff --plan <ref>` confirms/);
   });
   test("every section the helper names exists in the feature doc", () => {
