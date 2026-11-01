@@ -69,13 +69,11 @@ See `deep-knowledge/step1-templates.md` § Step 0.5 · Asking, the do-batch star
 
 ## Report-only entry (`--report`) — the Abschluss without a prior concept
 
-Other skills call `auto-concept --report` as the step **after an
-implementation** that had no concept page (`do-run`, `auto-fix`, `do-backlog`,
-`do-audit`): the user gets the same Abschluss page, bridge and close-out FAB a
-concept ends with, but the page has exactly one round — the final report.
-Steps 0.5 to 1 and Step 5's iterate/implement branches do not apply.
+Only for `auto-concept --report` (another skill calls it after an
+implementation that had no concept page); every other invocation skips this
+section.
 
-See `deep-knowledge/step0-report-entry.md` § Report-only entry · steps. When the page opens at all (a Fund, 🧪, 👉 or open ship decision; else the card alone), the `init --report` scaffold, authoring the report, Step 3 unchanged with `finalize` as the only action, and the scope (never for backlog / audit decisions).
+See `deep-knowledge/step0-report.md` § Report-only entry. When the page opens at all (a Fund, 🧪, 👉 or open ship decision; else the card alone), the `init --report` scaffold, authoring the report, Step 3 unchanged with `finalize` as the only action, and the scope (never for backlog / audit decisions).
 
 
 ## Step 1 — Pick Template, then Content Variant
@@ -304,15 +302,7 @@ See `deep-knowledge/step5-finalize.md` § B · Implement the selected follow-ups
 
 ### C · Ship (`ship.run === true`)
 
-0. **Stage the disposition first, index only.** Apply the payload's `disposition`
-   (stored in part A step 2) to the git index and commit it on the branch
-   (`chore(concept): close out {slug}`) before the ship, so the release
-   carries it — a disposition applied after `ship_release` is left
-   uncommitted on the branch. Every file stays on disk where the bridge
-   serves it; an untracked `discard` set goes into the local git exclude so
-   the ship's clean-tree check passes (#931); Step 6a does the on-disk part
-   after the stop:
-See `deep-knowledge/step5-finalize.md` § C · Disposition staging per mode. What the index-only staging does per `disposition` mode; the durable-store copy and the Step 6a table it cites are in `deep-knowledge/step6-closeout.md` § Disposition, cleanup procedure and disposition tables.
+See `deep-knowledge/step5-finalize.md` § C · Disposition staging per mode. Step 0 stages the `disposition` first, index only, committed on the branch before the ship; what the staging does per mode; the durable-store copy and the Step 6a table it cites are in `deep-knowledge/step6-closeout.md` § Disposition, cleanup procedure and disposition tables.
 1. Run the full ship pipeline via the `do-ship` skill (ship_preflight →
    ship_build → ship_version_bump → ship_release → ship_cleanup) with
    `--card-data` in its args (`step5-finalize.md` § C). The execute click authorises the ship; it does NOT waive the gates `ship` already
@@ -336,16 +326,7 @@ See `deep-knowledge/step5-finalize.md` § C · Disposition staging per mode. Wha
 
 ### D · Close out
 
-See `deep-knowledge/step5-finalize.md` § D · Reload and reset per disposition. `data-closed`, reload-before-reset for keep / gitignore, reset-only for discard.
-2. Proceed to Step 6a with the payload's `disposition` (stored in part A step 2). Treat
-   this submission as the explicit "fertig" signal from the user. Step 6a
-   stops the bridge, the pulser and the waker and waits until all three are
-   gone — that happens BEFORE any final card, so no exit notification can
-   arrive after it.
-3. **Card selection — only after the stop:** if part C ran successfully, the
-   `do-ship` ship card (held back per part C step 4) is the authoritative
-   closing artefact; do not render a second concept completion card
-   (duplicate summary). Otherwise render the concept card per Step 6b.
+See `deep-knowledge/step5-finalize.md` § D · Reload and reset per disposition. `data-closed`, reload-before-reset for keep / gitignore, reset-only for discard; then Step 6a, and the card choice only after the stop (the held-back ship card, or the concept card).
 
 ### E · Tests and hand-offs (`tests[]`, `handoffs[]`)
 
@@ -366,13 +347,7 @@ See `deep-knowledge/step2-build.md` § Legacy pages. A page without a source fol
 For `action: "iterate"` → append a regular iteration section.
 For `action: "implement"` → append a **final-report section** (one-time,
 see § "Final-report append (implement only)" below).
-For `action: "implement"` that Step 5b step 0 diverted → append a **regular
-iteration section carrying `data-reality-check` and
-`data-reality-head="<examined sha>"`** instead, with the
-`{{iteration.reality_tab}}` label on its tab and the `.reality-banner`
-explainer as its first child. Everything else about the append is identical to
-a normal iteration, including the append checklist and the `/reset` ordering.
-See `deep-knowledge/step5-update-page.md` § Reality-check round — template and markers. The forced round keeps the concept template, and both markers are read back before `/reload`.
+See `deep-knowledge/step5-update-page.md` § Reality-check round — template and markers. An `implement` that Step 5b step 0 diverted appends a regular iteration carrying `data-reality-check` / `data-reality-head` instead; the forced round keeps the concept template, and both markers are read back before `/reload`.
 For `action: "finalize"` → no new section; rewrite the existing final-report
 fragment in place and `build` (linked `[Issue #NNN]` labels for routed items, a shipped note
 when part B ran) and POST `/reload`.

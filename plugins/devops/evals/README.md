@@ -153,7 +153,16 @@ hits the rail itself instead of an item is a dead gap. It is calibrated offline 
 `toc-fixtures/` (tiled and padded-tiled pass, space-between fails; opt-in
 `EVAL_BROWSER=1 npx vitest run .../check-toc.test.js`). `toc-max-example-7x7` demands the
 58-item (7 x 7) rail the user asked for, so the other checks run on the worst case. Viewports
-1440x900, 1280x720, 1366x600. They grade n/a without Edge. Ordering checks share
+1440x900, 1280x720, 1366x600. They grade n/a without Edge.
+Two cases cover the
+branches the progressive-disclosure slimming moved behind pointer lines:
+`do-batch/go-merge` (`go` with three parked notes, the mode already off, no
+hook merge context: a coverage line per note, the notes archived, exactly one
+hand-off to `do-run --from=do-batch` carrying a `Bündel:` section — Edit and
+Write denied) and `auto-agents/ceremony-plan` (a direct invocation on a
+db / server / web feature: the orchestration plan with its tool-call budget
+line and the `agent-card.js` plan card, and no role agent before the yes `-p`
+never gives). Ordering checks share
 `skills/order.js`. Per-skill trim records with the A/B numbers
 live in `trims/<skill>.md`.
 

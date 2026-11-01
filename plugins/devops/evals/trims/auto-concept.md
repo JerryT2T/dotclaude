@@ -223,7 +223,7 @@ R6→R8, visual highlight R2→R4).
 | P2-5 | "### Engine source (mandatory — …)", "### Post-Generation Validation (mandatory gate)" | heading emphasis; "If ANY pattern is missing → DO NOT open the page." stays verbatim | batch A/B below: no grader regressed |
 | P2-6 | "NEVER open a separate browser window", "MUST be opened in the user's real Edge" | caps → plain; the forbidden-alternatives list and the `### MANDATORY — Real Edge browser only` heading (test-pinned contract) stay | batch A/B below: no grader regressed |
 | P2-7 | "you MUST NOT render a second concept completion card", "Output … VERBATIM as the LAST thing" | caps → plain wording, same rule | batch A/B below: no grader regressed |
-| P2-8 | Report-only entry steps 1–5 | moved verbatim to `deep-knowledge/step0-report-entry.md` § Report-only entry · steps; only `--report` runs read it | batch A/B below: no grader regressed |
+| P2-8 | Report-only entry steps 1–5 | moved verbatim to `deep-knowledge/step0-report.md` § Report-only entry (main #1021 moved the same text there); only `--report` runs read it | batch A/B below: no grader regressed |
 | P2-9 | Step 1a "≥2 designs → the variant overview" + "Orthogonality — a view never re-asks …" | moved verbatim to `step1-templates.md` § 1a · Variant overview and orthogonality; the pointer line keeps the rule summary | batch A/B below: no grader regressed |
 
 ## Added

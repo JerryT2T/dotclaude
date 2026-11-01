@@ -1,8 +1,14 @@
-# Report-only entry (`--report`)
+# Concept report-only entry — the Abschluss without a prior concept
 
-The numbered procedure behind SKILL.md § Report-only entry.
+The `--report` entry of `SKILL.md`, moved here verbatim: only a `--report` call reads it. The `##` section below is named by exactly one mandatory pointer in `SKILL.md`; read it completely before executing that entry — it is as binding as the step itself.
 
-## Report-only entry · steps
+## Report-only entry
+
+Other skills call `auto-concept --report` as the step **after an
+implementation** that had no concept page (`do-run`, `auto-fix`, `do-backlog`,
+`do-audit`): the user gets the same Abschluss page, bridge and close-out FAB a
+concept ends with, but the page has exactly one round — the final report.
+Steps 0.5 to 1 and Step 5's iterate/implement branches do not apply.
 
 1. **Open only when there is something to do.** The page exists only if at
    least one of these is true: a Fund out of scope (admission gate: `found`

@@ -57,7 +57,18 @@ describe.each([
 });
 
 describe("auto-harden — ship path (diff-scoped, like polish's rules-only path)", () => {
-  const ship = section(HARDEN, "## Ship path — `$SHIP_PATH=1`", "## Step 2");
+  // The check specification is read on demand (deep-knowledge/ship-path.md);
+  // SKILL.md keeps the return contract.
+  const SHIP_SPEC = fs.readFileSync(path.join(__dirname, "deep-knowledge", "ship-path.md"), "utf8");
+  const ship = section(HARDEN, "## Ship path — `$SHIP_PATH=1`", "## Step 2") + SHIP_SPEC;
+
+  test("SKILL.md keeps the return contract inline and points at the spec", () => {
+    const raw = section(HARDEN, "## Ship path — `$SHIP_PATH=1`", "## Step 2");
+    expect(raw).toContain("scripts/ship-harden.js");
+    expect(raw).toMatch(/No completion card, no AskUserQuestion/);
+    expect(raw).toMatch(/**Never blocks.**/);
+    expect(raw).toContain("`{PLUGIN_ROOT}/skills/auto-harden/deep-knowledge/ship-path.md`");
+  });
 
   test("static, inline, bounded — no agents, no browser, no test run", () => {
     expect(ship).toMatch(/no\s+agents, no browser, no network, no test run/);

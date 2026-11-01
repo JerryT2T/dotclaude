@@ -168,7 +168,10 @@ describe("auto-cleanup gate contract — ship queue and card", () => {
   });
 
   test("foreign PRs are never selectable", () => {
-    expect(section(SKILL, "### 5b", "## Step 6")).toMatch(/`fremd` \| not the viewer's PR \| .*\(never selectable\)/);
+    // The per-PR detail is read on demand (only when open PRs exist).
+    expect(section(SKILL, "### 5b", "## Step 6")).toMatch(/`\{PLUGIN_ROOT\}\/skills\/auto-cleanup\/deep-knowledge\/open-prs\.md` completely\*\* before building the entries/);
+    expect(section(SKILL, "### 5b", "## Step 6")).toMatch(/a `fremd` PR is never selectable/);
+    expect(flat(read("deep-knowledge", "open-prs.md"))).toMatch(/`fremd` \| not the viewer's PR \| .*\(never selectable\)/);
   });
 
   test("the completion card variant table and the verbatim-last rule", () => {

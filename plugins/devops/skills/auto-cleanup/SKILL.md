@@ -27,13 +27,13 @@ filters and decision controls.
 
 ## Where this skill sits
 
-The cleanup has an automatic half and this interactive half:
-
-| Part | Runs | Removes |
-|---|---|---|
-| `ship_hygiene` auto-clean (`mcp-server/ship/lib/hygiene.js`) | after every successful ship: age (a removable leftover older than 3 days), count (more than 5 removable) or disk (kept session worktrees above 10 GB) | whatever provably landed: older than 3 days, beyond the newest 5, or — disk — the oldest worktree checkouts (branch kept) (clean session worktrees, their branches, plain branches) — no page, no question; the card's **Geprüft** line reports it |
-| `ship_hygiene` nudge | after every successful ship or promote, when more than 50 leftovers lie around, at most weekly | nothing — the card gets an ⚠ OFFEN item pointing here |
-| **this skill** | on a yes to that item, or a trigger phrase | whatever the user ticks on the page, recent items included |
+The cleanup has an automatic half and this interactive half. After every
+successful ship, `ship_hygiene` (`mcp-server/ship/lib/hygiene.js`) removes
+what provably landed — by age (older than 3 days), count (beyond the newest
+5) or disk (kept session worktrees above 10 GB) — without a page, and nudges
+here (an ⚠ OFFEN card item, at most weekly) once more than 50 leftovers lie
+around. **This skill** runs on a yes to that item or a trigger phrase and
+removes whatever the user ticks on the page, recent items included.
 
 The numbers are user settings (`{PLUGIN_ROOT}/deep-knowledge/devops-config.md`,
 section `cleanup`). Scope is the current project — except in the one input
@@ -292,45 +292,12 @@ gh pr list --state open --limit 500 \
   --json number,title,headRefName,baseRefName,author,isDraft,url,createdAt,updatedAt
 ```
 
-Then per PR the landing facts:
-
-```
-gh pr view <n> --json mergeable,mergeStateStatus,reviewDecision,statusCheckRollup,commits
-```
-
-Build one entry per open PR and resolve where its head branch lives:
-
-| `quelle` | Meaning | Derived from |
-|---|---|---|
-| `session` | head branch is checked out in a worktree (an Aktive Session) | worktree list from Step 2, exact ref equality |
-| `lokal` | head branch exists in `refs/heads` but has no worktree | Step 2 truth source |
-| `nur-remote` | head branch exists only on origin (cloud session, other machine, archived session whose worktree is gone) | `ls-remote --heads` |
-| `fremd` | PR author ≠ `gh api user --jq .login` | author field |
-
-For `quelle: session` also record the worktree's status from Step 2
-(`clean` / `has-changes`) and — Desktop app only, best-effort — the owning
-session: `mcp__ccd_session_mgmt__list_sessions`, match `worktreePath` /
-`branch`, keep `sessionId`, `title`, `isArchived`, `isRunning`. Missing tool
-or no match → `session: null`, never a failure.
-
-**Shippability** — exactly one label per PR, decided here, not on the page:
-
-| `shippable` | Condition | Page label |
-|---|---|---|
-| `yes` | own PR, not draft, `mergeable != CONFLICTING`, head is `lokal` / `nur-remote` / clean `session` | „bereit — via /do-ship landen" |
-| `session-dirty` | head worktree has uncommitted changes | „in Session <title> shippen — uncommittete Änderungen" |
-| `conflict` | `mergeable == CONFLICTING` | „Konflikt — /do-ship rebased, Konflikte ggf. manuell" (still selectable; `/do-ship` Step 1b resolves what it can and blocks the rest) |
-| `draft` | `isDraft` | „Draft — erst fertigstellen" |
-| `checks-red` | `statusCheckRollup` has a failed required check | „CI rot — /do-ship wartet nicht auf rot" (selectable, expected to block) |
-| `fremd` | not the viewer's PR | „fremder PR — nicht von hier shippen" (never selectable) |
-
-Pre-check on the page only `shippable: yes` AND `mergeStateStatus` in
-`CLEAN` / `BEHIND` / `UNSTABLE`(no required failure) — the user opts into the
-rest consciously. A PR is never both a delete candidate and a ship candidate:
-a head branch with an open PR is `pr-open` in Untersuchen (unchecked) and
-appears in the ship queue; if the user ships it, `/do-ship` removes the branch
-itself, so the delete checkbox for that branch is disabled on the page with
-tooltip „wird beim Shippen entfernt".
+Zero open PRs → no ship queue, skip to Step 6. Otherwise **Read
+`{PLUGIN_ROOT}/skills/auto-cleanup/deep-knowledge/open-prs.md` completely** before building the entries — the
+per-PR landing facts (`gh pr view`), where the head branch lives (`quelle`:
+`session` / `lokal` / `nur-remote` / `fremd`), the one `shippable` label per PR
+(a `fremd` PR is never selectable), which PRs are pre-checked, and why a head
+branch with an open PR is never also a delete candidate.
 
 ## Step 6 — Local vs Remote Main Sync
 
