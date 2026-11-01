@@ -41,7 +41,8 @@ function base(g) {
     "concept-skill": g.skillInvoked("auto-concept"),
     "round1-baked": (ctx) => /<section[^>]*\sdata-baked/.test(round(ctx.workdir, 1)),
     "round2-written": (ctx) => /data-iteration="2"/.test(round(ctx.workdir, 2)),
-    "built-by-script": g.toolUsed("Bash", { inputMatch: /concept-build\.js\S*\s+build\b/, min: 1 }),
+    // concept-author builds its own round, so its calls count too.
+    "built-by-script": g.toolUsed("Bash", { inputMatch: /concept-build\.js\S*\s+build\b/, min: 1, includeSubagents: true }),
     "no-final-report": (ctx) => {
       const r2 = round(ctx.workdir, 2);
       return r2 !== "" && !/data-final-report/.test(r2);
