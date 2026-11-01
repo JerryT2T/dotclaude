@@ -117,13 +117,17 @@ process.stdin.on('end', () => {
       // hit worth asking about reaches Claude, a miss costs nothing. Only
       // without a usable cache does Claude call match_issues itself.
       const { MATCH_ASK_MIN, readCache, matchIssues } = require('../lib/issue-match');
-      let issues = null;
+      let remote;
       try {
-        const remote = execSync('git config --get remote.origin.url', { windowsHide: true,
+        remote = execSync('git config --get remote.origin.url', { windowsHide: true,
           cwd: hook.cwd || process.cwd(), encoding: 'utf8', timeout: 3000, stdio: ['pipe', 'pipe', 'pipe'],
         }).trim();
-        issues = readCache(remote);
-      } catch { /* no remote or no git: fall back to the tool */ }
+      } catch { remote = ''; }
+      // No git or no remote: there is no issue list to match against, so the
+      // match_issues instruction would only cost context (#996).
+      if (!remote) return;
+      let issues = null;
+      try { issues = readCache(remote); } catch { /* unreadable cache: fall back to the tool */ }
       if (issues) {
         const [best] = matchIssues(issues, maskNonProse(message), { maxResults: 1, threshold: MATCH_ASK_MIN });
         if (best) {

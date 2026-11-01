@@ -209,6 +209,20 @@ const NUDGE_MIN_CHARS = 40;
 /** run-once key of the nudge text (released by ss.knowledge.index on a compaction start). */
 const NUDGE_ONCE_KEY = 'prompt-delegation-nudge';
 
+/** Session marker of the last budget line sent (released on a compaction start). */
+const BUDGET_LINE_MARKER = 'dotclaude-budget-line-sent';
+
+/**
+ * True when `text` differs from what this session got last under `marker`,
+ * and records it. Fails open: an unreadable or unwritable marker sends again.
+ */
+function changedSinceLast(marker, sessionId, text) {
+  const file = sessionFile(marker, sessionId);
+  try { if (fs.readFileSync(file, 'utf8') === text) return false; } catch { /* first time */ }
+  try { writeSessionFile(file, text); } catch { /* send anyway */ }
+  return true;
+}
+
 /** True when an AFK run has armed the lockout sentinel for this project. */
 function lockoutArmed(cwd) {
   try {
@@ -418,19 +432,27 @@ process.stdin.on('end', () => {
   //      prompt length — "Erneut versuchen" (16 chars) after a limit hit is
   //      exactly the prompt that starts a ceremony, and silence there reads
   //      as "still at the limit" (incident 2026-09-20; see lib/budget.js).
+  //      A line identical to the one this session got last is not sent again:
+  //      it is still in context, and a stalled snapshot repeated the same
+  //      ~250 chars on every prompt (#996). A changed reading, a lost marker
+  //      or a compaction (ss.knowledge.index drops the marker) sends it again.
   if (!unattended && mode !== 'off') {
     try {
       const budget = readBudget({ sessionId });
       budget.refreshing = maybeRefreshUsage(budget, { pluginRoot });
       budgetSuffix = nudgeSuffix(budget);
-      if (budget.announce) announce.push(budgetLine(budget));
+      if (budget.announce) {
+        const line = budgetLine(budget);
+        if (changedSinceLast(BUDGET_LINE_MARKER, sessionId, line)) announce.push(line);
+      }
     } catch { /* never block the prompt */ }
   }
   const nudgeText = mode === 'off' ? null : mode === 'ask' ? ASK_NUDGE : DELEGATION_NUDGE;
   //  10. The nudge text itself goes out once per session (and again after a
   //      compaction — ss.knowledge.index releases the marker): the policy is in
   //      context from SessionStart and every copy stays in the transcript. The
-  //      budget suffix still rides on every prompt, as it can change per prompt.
+  //      budget suffix still rides on every prompt: it is the class the tier
+  //      decision of THIS prompt runs on, and it sits next to that decision.
   let nudge = [];
   if (nudgeText && rawMessage.trim().length >= NUDGE_MIN_CHARS) {
     let first = true;

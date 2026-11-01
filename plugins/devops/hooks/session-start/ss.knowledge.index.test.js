@@ -197,13 +197,13 @@ describe("ss.knowledge.index — compaction", () => {
     const { sessionFile, writeSessionFile } = require("../lib/session-id.js");
     const hook = path.join(PLUGIN_ROOT, "hooks", "session-start", "ss.knowledge.index.js");
     const sid = `vitest-compact-dk-${process.pid}-${Date.now()}`;
-    const marker = sessionFile("dotclaude-dk-injected", sid);
-    writeSessionFile(marker, "browser-tool-strategy.md");
+    const markers = ["dotclaude-dk-injected", "dotclaude-budget-line-sent"].map((m) => sessionFile(m, sid));
+    for (const m of markers) writeSessionFile(m, "x");
     spawnSync(process.execPath, [hook], {
       input: JSON.stringify({ session_id: sid, source: "compact" }),
       env: { ...process.env, CLAUDE_PLUGIN_ROOT: PLUGIN_ROOT },
       encoding: "utf8",
     });
-    expect(fs.existsSync(marker)).toBe(false);
+    for (const m of markers) expect(fs.existsSync(m)).toBe(false);
   });
 });
