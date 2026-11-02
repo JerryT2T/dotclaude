@@ -34,15 +34,16 @@ function buildLine({ home = os.homedir(), enabled, now = Date.now() } = {}) {
   const report = readJson(path.join(claude, 'home-backup-report.json'));
   const last = Date.parse(state.lastSuccessAt || '');
   const reason = report && REASONS[report.kind] ? report : null;
-  if (Number.isFinite(last) ? now - last <= STALE_MS : !reason) return null;
-  const days = Number.isFinite(last) ? Math.floor((now - last) / 86_400_000) : null;
+  const ahead = Number.isFinite(last) && last > now; // a success dated in the future: the clock is wrong, the backup cannot be trusted
+  if (Number.isFinite(last) ? !ahead && now - last <= STALE_MS : !reason) return null;
+  const days = Number.isFinite(last) && !ahead ? Math.floor((now - last) / 86_400_000) : null;
   let why = '';
   if (reason) {
     const hits = Array.isArray(reason.hits) ? reason.hits : [];
     const first = hits[0] ? `: ${hits[0].file}${hits[0].line ? `:${hits[0].line}` : ''} (${hits[0].rule})` : '';
     why = ` — ${REASONS[reason.kind]}${first}${hits.length > 1 ? ` +${hits.length - 1} weitere` : ''}`;
   }
-  const age = days === null ? 'unbekannt' : `vor ${days} Tagen`;
+  const age = ahead ? 'liegt in der Zukunft (Uhr prüfen)' : days === null ? 'unbekannt' : `vor ${days} Tagen`;
   return `⚠ Home-Backup: letztes erfolgreiches Backup ${age}${why} → „Home-Backup Status“`;
 }
 

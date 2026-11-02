@@ -387,6 +387,7 @@ describe('targets', () => {
       if (cmd !== 'rclone') return hb.defaultRun(cmd, args, o);
       calls.push(args.join(' '));
       if (args[0] === 'sync') expect(fs.existsSync(path.join(args[1], 'CLAUDE.md'))).toBe(true);
+      if (args[0] === 'lsf' && args.includes('--files-only')) return { status: 0, stdout: hb.FOLDER_MARKER, stderr: '' };
       if (args[0] === 'lsf') return { status: 0, stdout: '2026-10-19/\n2026-10-15/\n2026-10-12/\n2026-10-10/\n2026-10-01/\nother/\n', stderr: '' };
       return { status: 0, stdout: '', stderr: '' };
     };
@@ -685,6 +686,7 @@ describe('retention: weekly anchors, prune after delivery, marker guard', () => 
     const purged = [];
     const run = (cmd, args, o = {}) => {
       if (cmd !== 'rclone') return hb.defaultRun(cmd, args, o);
+      if (args[0] === 'lsf' && args.includes('--files-only')) return { status: 0, stdout: hb.FOLDER_MARKER, stderr: '' };
       if (args[0] === 'lsf') return { status: 0, stdout: '2026-10-19/\n2026-10-15/\n2026-10-12/\n2026-10-10/\n2026-10-05/\n2026-10-01/\n', stderr: '' };
       if (args[0] === 'purge') { purged.push(args[1]); return { status: 1, stdout: '', stderr: 'denied' }; }
       return { status: 0, stdout: '', stderr: '' };
@@ -710,6 +712,102 @@ describe('retention: weekly anchors, prune after delivery, marker guard', () => 
     expect(hb.runBackup(opts()).status).toBe('busy');
     age(50);
     expect(hb.runBackup(opts()).status).toBe('pushed');
+  });
+});
+
+describe('rclone ownership marker and clock-skew retention', () => {
+  const reportOf = () => JSON.parse(fs.readFileSync(path.join(claude, hb.REPORT_JSON), 'utf8'));
+  const rcloneHome = (remote, keepDays, keepWeeks = 0) => {
+    prepareHome();
+    sh('git', ['remote', 'remove', 'origin'], claude);
+    config.setValue('homeBackup.target', 'rclone', 'global', home, { home });
+    config.setValue('homeBackup.remote', remote, 'global', home, { home });
+    config.setValue('homeBackup.keepDays', keepDays, 'global', home, { home });
+    config.setValue('homeBackup.keepWeeks', keepWeeks, 'global', home, { home });
+    write('CLAUDE.md', 'x\n');
+  };
+  const fakeRclone = ({ marker, dirs }, purged) => (cmd, args, o = {}) => {
+    if (cmd !== 'rclone') return hb.defaultRun(cmd, args, o);
+    if (args[0] === 'lsf' && args.includes('--files-only')) return { status: 0, stdout: marker ? `${hb.FOLDER_MARKER}\nother.txt\n` : 'photo.jpg\n', stderr: '' };
+    if (args[0] === 'lsf') return { status: 0, stdout: dirs, stderr: '' };
+    if (args[0] === 'purge') purged.push(args[1]);
+    return { status: 0, stdout: '', stderr: '' };
+  };
+
+  it('never purges foreign date dirs when the remote carries no marker', () => {
+    rcloneHome('gd:shared', 2);
+    const purged = [];
+    const res = hb.runBackup(opts({ run: fakeRclone({ marker: false, dirs: '2026-10-19/\n2024-01-01/\n2023-05-05/\n2022-02-02/\n' }, purged) }));
+    expect(res).toMatchObject({ code: 0, status: 'delivered' });
+    expect(purged).toEqual([]);
+    expect(res.warnings.join()).toContain(`${hb.FOLDER_MARKER} missing in gd:shared`);
+    expect(reportOf()).toMatchObject({ kind: 'warning' });
+  });
+
+  it('purges old day dirs once the marker is there', () => {
+    rcloneHome('gd:mine', 2);
+    const purged = [];
+    hb.runBackup(opts({ run: fakeRclone({ marker: true, dirs: '2026-10-19/\n2026-10-18/\n2026-10-01/\n' }, purged) }));
+    expect(purged).toEqual(['gd:mine/2026-10-01']);
+  });
+
+  it('days dated after now are neither purged nor take a keep slot; a dropped head warns', () => {
+    rcloneHome('gd:mine', 2);
+    const purged = [];
+    const res = hb.runBackup(opts({ run: fakeRclone({ marker: true, dirs: '2027-03-01/\n2026-10-19/\n2026-10-18/\n2026-10-10/\n' }, purged) }));
+    expect(purged).toEqual(['gd:mine/2026-10-10']);
+    expect(res.warnings).toEqual([]);
+  });
+
+  it('a delivered head dated after now warns instead of reporting plain delivered', () => {
+    const dest = path.join(tmp, 'nas2');
+    fs.mkdirSync(dest, { recursive: true });
+    fs.writeFileSync(path.join(dest, hb.FOLDER_MARKER), 'm');
+    prepareHome();
+    sh('git', ['remote', 'remove', 'origin'], claude);
+    config.setValue('homeBackup.target', 'folder', 'global', home, { home });
+    config.setValue('homeBackup.path', dest, 'global', home, { home });
+    write('CLAUDE.md', 'x\n');
+    hb.runBackup(opts({ now: day(20) }));
+    fs.rmSync(path.join(dest, '2026-10-20'), { recursive: true, force: true });
+    const res = hb.runBackup(opts({ now: day(19) }));
+    expect(res.warnings.join()).toContain('dated after today');
+    expect(reportOf()).toMatchObject({ kind: 'warning' });
+    expect(fs.existsSync(path.join(dest, '2026-10-20'))).toBe(true);
+  });
+
+  it('setup rejects a root remote and writes the marker on a proper one', () => {
+    prepareHome();
+    const calls = [];
+    const run = (cmd, args, o = {}) => {
+      if (cmd !== 'rclone') return hb.defaultRun(cmd, args, o);
+      calls.push(args);
+      return { status: 0, stdout: '', stderr: '' };
+    };
+    for (const remote of ['gdrive:', 'gdrive:/']) {
+      expect(hb.setup(opts({ run, platform: 'linux', target: 'rclone', remote }))).toMatchObject({ code: 1, status: 'error' });
+    }
+    expect(calls).toEqual([]);
+    const ok = hb.resolveTarget({ home, run, platform: 'linux', now: NOW }, { target: 'rclone', remote: 'gdrive:claude-home-backup' });
+    expect(ok.error).toBeUndefined();
+    const put = calls.find((c) => c[0] === 'copyto');
+    expect(put[2]).toBe(`gdrive:claude-home-backup/${hb.FOLDER_MARKER}`);
+  });
+
+  it('folder: a future-dated day folder is kept and takes no slot', () => {
+    const dest = path.join(tmp, 'nas');
+    fs.mkdirSync(path.join(dest, '2027-01-01'), { recursive: true });
+    fs.writeFileSync(path.join(dest, hb.FOLDER_MARKER), 'm');
+    for (const d of ['2026-10-17', '2026-10-18']) fs.mkdirSync(path.join(dest, d));
+    prepareHome();
+    sh('git', ['remote', 'remove', 'origin'], claude);
+    config.setValue('homeBackup.target', 'folder', 'global', home, { home });
+    config.setValue('homeBackup.path', dest, 'global', home, { home });
+    config.setValue('homeBackup.keepDays', 2, 'global', home, { home });
+    config.setValue('homeBackup.keepWeeks', 0, 'global', home, { home });
+    write('CLAUDE.md', 'x\n');
+    hb.runBackup(opts());
+    expect(fs.readdirSync(dest).filter((n) => /^\d/.test(n)).sort()).toEqual(['2026-10-18', '2026-10-19', '2027-01-01']);
   });
 });
 

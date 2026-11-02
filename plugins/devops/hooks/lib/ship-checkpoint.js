@@ -202,6 +202,14 @@ function recordShipStep(tool, params, result, { now = Date.now() } = {}) {
     } else if (tool === 'ship_release') {
       const facts = releaseFacts(result);
       if (Object.keys(facts).length) steps.release = { ...(steps.release || {}), ...facts };
+      // ship_release's auto-rebase re-bumped the branch to autoRebased.to: the recorded bump must follow,
+      // or the next ship_run sees a version that is not on the branch and bumps (and logs) a second time.
+      const auto = result.autoRebased;
+      if (auto && auto.to && auto.bump && auto.bump !== 'none') {
+        steps.bump = { ...(steps.bump || { bump: auto.bump, vOld: auto.from || null }), vNew: auto.to };
+        delete steps.bump.verified;
+        delete steps.bump.mismatches;
+      }
     } else if (tool === 'ship_promote') {
       // ship_promote's target ring is its `to` param (#I4: channel used to be always null).
       if (result.success) steps.promote = { channel: result.channel || params.to || params.channel || null, ...(result.tag ? { tag: result.tag } : {}) };

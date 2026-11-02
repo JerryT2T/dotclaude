@@ -25,7 +25,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { gitTry, NETWORK_TIMEOUT } from "../lib/git.js";
 import { rebaseVersionFiles } from "../lib/version-rebase.js";
-import { readVersion, bumpVersion } from "../lib/version.js";
+import { readVersion, bumpVersion, verifyVersionFiles, updateVersionFiles } from "../lib/version.js";
 import { versionFilesSchema } from "./version-bump.js";
 import { recordTiming, summarizeShip, shipDurationTest } from "../lib/ship-timings.js";
 import { probeCiQuota } from "../lib/ci-quota-probe.js";
@@ -134,6 +134,14 @@ export function insertChangelogEntry(text, version, entry, now = Date.now()) {
     return `${pre}${block}`;
   }
   return [...lines.slice(0, idx), block, ...lines.slice(idx)].join("\n");
+}
+
+/** Bump targets (everything verifyVersionFiles checks except the editorial CHANGELOG/README) that do not carry `vNew`. */
+export function bumpTargetDrift(cwd, vNew, versionFiles = []) {
+  try {
+    return verifyVersionFiles(vNew, cwd, versionFiles || [])
+      .mismatches.map((m) => m.file).filter((f) => !/(^|\s|\))(CHANGELOG|README)\.md/.test(f));
+  } catch { return []; }
 }
 
 function defaultTools() {
@@ -254,16 +262,24 @@ export async function handler(params, injected = {}) {
     let cp = deps.checkpoint.open(cwd) || {};
     const steps = cp.steps || {};
     const merged = !!(steps.release && steps.release.merged);
-    // A recorded bump counts only while the branch still carries it. A conflict
-    // rebase that dropped the release commit left the checkpoint naming a bump
-    // the tree no longer had, and #1027 merged without a version bump.
+    // A recorded bump counts only while the branch still carries it — in EVERY
+    // bump target (plugin.json files, marketplace.json, package.json), not just
+    // the one readVersion names. A conflict rebase that dropped the release
+    // commit left the checkpoint naming a bump the tree no longer had, and
+    // #1027 merged without a version bump.
     if (!merged && steps.bump && steps.bump.vNew) {
       const current = (() => { try { return readVersion(cwd).version; } catch { return null; } })();
+      const drifted = bumpTargetDrift(cwd, steps.bump.vNew, params.versionFiles);
       if (current && current !== steps.bump.vNew) {
         out.warnings.push(`checkpoint bump to ${steps.bump.vNew} is not on the branch (version ${current}) — bumping again`);
         delete steps.bump;
         cp = { ...cp, steps };
         deps.checkpoint.write(cwd, cp);
+      } else if (drifted.length) {
+        // The source of truth carries the bump but another target does not: bumping again would skip
+        // a version, so bring the stragglers to the recorded version (the release commit takes them).
+        try { updateVersionFiles(current, steps.bump.vNew, cwd, params.versionFiles || []); } catch { /* verified below by the release */ }
+        out.warnings.push(`checkpoint bump to ${steps.bump.vNew} was missing in ${drifted.join(", ")} — synced`);
       }
     }
     const bumped = !!steps.bump;

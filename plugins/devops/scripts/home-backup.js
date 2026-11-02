@@ -69,7 +69,8 @@ const IDENTITY = Object.freeze({ name: 'claude-home-backup', email: 'noreply@loc
 const GIT_TIMEOUT = 120_000;
 const GH_TIMEOUT = 60_000;
 const REPO_RE = /^[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/;
-const REMOTE_RE = /^[A-Za-z0-9_.-]+:[^\s]*$/;
+// a remote needs a path below its root: `gdrive:` would let retention purge the whole drive
+const REMOTE_RE = /^[A-Za-z0-9_.-]+:(?!\/*$)[^\s]+$/;
 const TARGETS = Object.freeze(['github', 'folder', 'rclone', 'command']);
 const LOCK_FILE = 'home-backup.lock';
 const RERUN_FILE = 'home-backup.rerun';
@@ -400,7 +401,7 @@ function commitSnapshot(ctx) {
  */
 function pruneHistory(ctx, keepDays, keepWeeks = 0) {
   const chain = historyChain(ctx);
-  const keep = selectKeepDays(chain.map((c) => c.day), keepDays, keepWeeks);
+  const keep = selectKeepDays(chain.map((c) => c.day), keepDays, keepWeeks, dayKey(ctx.now()));
   const seen = new Set();
   const kept = [];
   for (const c of chain) {
@@ -457,13 +458,13 @@ function exportTree(ctx, sha, dir) {
  * deleted — but ONLY when our marker file sits in `dest`: a folder we never
  * claimed (e.g. a mistyped path) is never cleaned. Returns `{kept, skipped}`.
  */
-function pruneDayDirs(dest, keepDays, keepWeeks = 0) {
+function pruneDayDirs(dest, keepDays, keepWeeks = 0, today = '') {
   if (!fs.existsSync(path.join(dest, FOLDER_MARKER))) return { kept: [], skipped: true };
   const days = fs.readdirSync(dest, { withFileTypes: true })
     .filter((d) => d.isDirectory() && DAY_RE.test(d.name)).map((d) => d.name);
-  const keep = selectKeepDays(days, keepDays, keepWeeks);
+  const keep = selectKeepDays(days, keepDays, keepWeeks, today);
   for (const old of days.filter((d) => !keep.has(d))) fs.rmSync(path.join(dest, old), { recursive: true, force: true });
-  return { kept: days.filter((d) => keep.has(d)).sort().reverse(), skipped: false };
+  return { kept: days.filter((d) => keep.has(d)).sort().reverse(), keep, skipped: false };
 }
 
 /** Our folder: it carries the marker, or this backup delivered there before (setups older than the marker). */
@@ -480,8 +481,8 @@ function claimableFolder(ctx, dest) {
     .every((d) => d.name.startsWith('.') || (d.isDirectory() && DAY_RE.test(d.name)));
 }
 
-function writeMarker(dest) {
-  fs.writeFileSync(path.join(dest, FOLDER_MARKER), 'Managed by the devops home-backup: dated day folders in here may be deleted by retention.\n');
+function writeMarker(dest, asFile = false) {
+  fs.writeFileSync(asFile ? dest : path.join(dest, FOLDER_MARKER),'Managed by the devops home-backup: dated day folders in here may be deleted by retention.\n');
 }
 
 function withExport(ctx, sha, fn) {
@@ -565,25 +566,37 @@ const DELIVER = {
   },
 };
 
+/** The just-delivered day must survive its own retention; if it does not, say so instead of a plain "delivered". */
+const headDropped = (keep, head, today) => {
+  if (head.day > today) return [`the day just delivered (${head.day}) is dated after today (${today}) — the system clock was off; retention leaves it alone`];
+  return keep.has(head.day) ? [] : [`retention would not keep the day just delivered (${head.day}) — check keepDays/keepWeeks and the system clock`];
+};
+
 const RETAIN = {
-  github(ctx, s) {
+  github(ctx, s, head) {
     // The unpruned head is already on the remote, so a failure from here on loses nothing;
     // rewriting locally and force-pushing again is the only way to cut remote history. A failed
     // second push leaves local != remote, and the next run simply pushes the pruned head.
-    if (!pruneHistory(ctx, s.keepDays, s.keepWeeks)) return [];
+    const dropped = headDropped(selectKeepDays(historyChain(ctx).map((c) => c.day), s.keepDays, s.keepWeeks, dayKey(ctx.now())), head, dayKey(ctx.now()));
+    if (!pruneHistory(ctx, s.keepDays, s.keepWeeks)) return dropped;
     const p = git(ctx, ['push', '-q', '--force-with-lease', 'origin', currentBranch(ctx)]);
-    return p.status === 0 ? [] : [`retention push failed: ${oneLine(p.stderr)}`];
+    return p.status === 0 ? dropped : [`retention push failed: ${oneLine(p.stderr)}`, ...dropped];
   },
-  folder(ctx, s) {
-    const { skipped } = pruneDayDirs(s.path, s.keepDays, s.keepWeeks);
-    return skipped ? [`retention skipped: ${FOLDER_MARKER} missing in ${s.path} — old day folders are never deleted from a folder this backup did not claim (re-run setup to claim it)`] : [];
+  folder(ctx, s, head) {
+    const { skipped, keep } = pruneDayDirs(s.path, s.keepDays, s.keepWeeks, dayKey(ctx.now()));
+    return skipped ? [`retention skipped: ${FOLDER_MARKER} missing in ${s.path} — old day folders are never deleted from a folder this backup did not claim (re-run setup to claim it)`] : headDropped(keep, head, dayKey(ctx.now()));
   },
-  rclone(ctx, s) {
+  rclone(ctx, s, head) {
+    const files = ctx.run('rclone', ['lsf', '--files-only', s.remote], { timeout: GH_TIMEOUT });
+    if (files.status !== 0) return [`retention skipped: rclone lsf failed: ${oneLine(files.stderr)}`];
+    if (!files.stdout.split('\n').some((l) => l.trim() === FOLDER_MARKER)) {
+      return [`retention skipped: ${FOLDER_MARKER} missing in ${s.remote} — old day folders are never deleted from a remote this backup did not claim (re-run setup to claim it)`];
+    }
     const lsf = ctx.run('rclone', ['lsf', '--dirs-only', s.remote], { timeout: GH_TIMEOUT });
     if (lsf.status !== 0) return [`retention skipped: rclone lsf failed: ${oneLine(lsf.stderr)}`];
     const days = lsf.stdout.split('\n').map((l) => l.trim().replace(/\/$/, '')).filter((d) => DAY_RE.test(d));
-    const keep = selectKeepDays(days, s.keepDays, s.keepWeeks);
-    const warnings = [];
+    const keep = selectKeepDays(days, s.keepDays, s.keepWeeks, dayKey(ctx.now()));
+    const warnings = headDropped(keep, head, dayKey(ctx.now()));
     for (const old of days.filter((d) => !keep.has(d))) {
       const r = ctx.run('rclone', ['purge', rcloneJoin(s.remote, old)], { timeout: DELIVER_TIMEOUT });
       if (r.status !== 0) warnings.push(`rclone purge ${old} failed: ${oneLine(r.stderr || `exit ${r.status}`)}`);
@@ -843,10 +856,16 @@ function resolveTarget(ctx, opts) {
     return { target, settings: { path: dir }, where: `folder ${dir}` };
   }
   if (target === 'rclone') {
-    if (!REMOTE_RE.test(opts.remote || '')) return { error: '--remote <name>:<folder> required, e.g. gdrive:claude-home-backup' };
+    if (!REMOTE_RE.test(opts.remote || '')) return { error: '--remote <name>:<folder> required (a folder below the remote root, not the root itself), e.g. gdrive:claude-home-backup' };
     if (ctx.run('rclone', ['version'], { timeout: GH_TIMEOUT }).status !== 0) return { error: 'rclone not found — install it and run `rclone config` once' };
     const mk = ctx.run('rclone', ['mkdir', opts.remote], { timeout: GH_TIMEOUT });
     if (mk.status !== 0) return { error: `rclone cannot reach ${opts.remote}: ${oneLine(mk.stderr)}` };
+    const markerFile = path.join(os.tmpdir(), `home-backup-marker-${process.pid}`);
+    try {
+      writeMarker(markerFile, true);
+      const put = ctx.run('rclone', ['copyto', markerFile, rcloneJoin(opts.remote, FOLDER_MARKER)], { timeout: GH_TIMEOUT });
+      if (put.status !== 0) return { error: `cannot write the ownership marker to ${opts.remote}: ${oneLine(put.stderr)}` };
+    } finally { fs.rmSync(markerFile, { force: true }); }
     return { target, settings: { remote: opts.remote }, where: `rclone ${opts.remote}` };
   }
   if (target === 'command') {
@@ -979,5 +998,5 @@ if (require.main === module) process.exit(main());
 module.exports = {
   JOB_NAME, JOB_TIME, LOCK_STALE_MS, FOLDER_MARKER, REPORT_JSON, REPORT_TXT, LOG_FILE, STATE_FILE, TARGETS, DRIVE_FOLDER,
   renderGitignore, isDenied, defaultRun, runBackup, scanDryRun, setup, disable, status, main,
-  dayKey, findDriveFolder, parseArgs,
+  dayKey, findDriveFolder, parseArgs, resolveTarget,
 };

@@ -19,6 +19,15 @@ afterEach(() => { fs.rmSync(root, { recursive: true, force: true }); });
 const preflight = (branch = "feat/x") => cp.recordShipStep("ship_preflight", { cwd: root }, { ready: true, branch, base: "main" });
 
 describe("ship-checkpoint — the ship server records every step", () => {
+  test("ship_release's auto-rebase re-bump moves the recorded bump, so ship_run does not bump twice", () => {
+    preflight();
+    cp.recordShipStep("ship_version_bump", { cwd: root }, { success: true, bump: "minor", vOld: "1.0.0", vNew: "1.1.0" });
+    cp.recordShipStep("ship_release", { cwd: root }, { success: false, rebaseRequired: true, autoRebased: { ok: true, from: "1.1.0", to: "1.2.0", bump: "minor" } });
+    expect(cp.openCheckpoint(root).steps.bump).toEqual({ bump: "minor", vOld: "1.0.0", vNew: "1.2.0" });
+    cp.recordShipStep("ship_release", { cwd: root }, { success: false, rebaseRequired: true, autoRebased: { ok: true, from: "1.2.0", to: "1.2.0", bump: "none" } });
+    expect(cp.openCheckpoint(root).steps.bump.vNew).toBe("1.2.0");
+  });
+
   test("preflight opens it, build/bump/release fill it, cleanup removes it", () => {
     preflight();
     expect(cp.nextStep(cp.openCheckpoint(root))).toBe("build");
