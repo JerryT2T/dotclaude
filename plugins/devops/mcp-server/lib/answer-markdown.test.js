@@ -96,6 +96,10 @@ describe("answerHtml", () => {
       expect(h).toContain("<p");
     });
 
+    test("a separator with a different cell count is no table", () => {
+      expect(answerHtml("a | b\n---\nrest")).not.toContain("<table");
+    });
+
     test("the table ends at a blank line", () => {
       expect(answerHtml("a|b\n---|---\n1|2\n\nafter")).toMatch(/<\/table><\/div><p[^>]*>after<\/p>/);
     });

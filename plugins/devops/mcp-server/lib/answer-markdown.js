@@ -132,7 +132,10 @@ export function answerHtml(md) {
       out.push(`<h${level} style="${S.h}">${inline(h[2])}</h${level}>`);
       continue;
     }
-    if (line.includes("|") && i + 1 < lines.length && TABLE_SEP.test(lines[i + 1]) && lines[i + 1].includes("-")) {
+    // GFM: the separator must have as many cells as the header, so a lone
+    // `---` under a line that merely contains `|` is no table.
+    if (line.includes("|") && i + 1 < lines.length && TABLE_SEP.test(lines[i + 1]) &&
+        tableCells(lines[i + 1]).length === tableCells(line).length) {
       flushPara(); flushList();
       const rows = [];
       let j = i + 2;
