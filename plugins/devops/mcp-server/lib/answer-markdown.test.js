@@ -53,4 +53,55 @@ describe("answerHtml", () => {
   test("an oversized answer is capped", () => {
     expect(normalizeAnswer("x".repeat(ANSWER_MAX + 50)).length).toBe(ANSWER_MAX + 1);
   });
+
+  // #995: GFM pipe tables render as real tables.
+  describe("tables", () => {
+    const md = "| Option | Kosten | Nutzen |\n|:--|:-:|--:|\n| **A** | `1` | [x](https://e.x) |\n| <b>B</b> | 2 |";
+
+    test("header + separator → table with thead/tbody", () => {
+      const h = answerHtml(md);
+      expect(h).toMatch(/<table[^>]*><thead><tr><th[^>]*>Option<\/th>/);
+      expect(h).toContain("<tbody><tr>");
+      expect(h.match(/<tr>/g)).toHaveLength(3);
+    });
+
+    test("inline markdown works in cells", () => {
+      const h = answerHtml(md);
+      expect(h).toMatch(/<strong[^>]*>A<\/strong>/);
+      expect(h).toMatch(/<code[^>]*>1<\/code>/);
+      expect(h).toContain('<a href="https://e.x"');
+    });
+
+    test("alignment is applied per column", () => {
+      const h = answerHtml(md);
+      expect(h).toMatch(/<th style="[^"]*text-align:left">Option/);
+      expect(h).toMatch(/<th style="[^"]*text-align:center">Kosten/);
+      expect(h).toMatch(/<th style="[^"]*text-align:right">Nutzen/);
+    });
+
+    test("raw HTML in a cell stays escaped; short rows are padded", () => {
+      const h = answerHtml(md);
+      expect(h).not.toContain("<b>");
+      expect(h).toContain("&lt;b&gt;B&lt;/b&gt;");
+      expect(h.split("<tr>").pop().match(/<td/g)).toHaveLength(3);
+    });
+
+    test("escaped pipes stay inside a cell", () => {
+      expect(answerHtml("a | b\n--- | ---\nx \\| y | z")).toMatch(/<td[^>]*>x \| y<\/td>/);
+    });
+
+    test("a pipe line without separator stays a paragraph", () => {
+      const h = answerHtml("a | b\nc | d");
+      expect(h).not.toContain("<table");
+      expect(h).toContain("<p");
+    });
+
+    test("a separator with a different cell count is no table", () => {
+      expect(answerHtml("a | b\n---\nrest")).not.toContain("<table");
+    });
+
+    test("the table ends at a blank line", () => {
+      expect(answerHtml("a|b\n---|---\n1|2\n\nafter")).toMatch(/<\/table><\/div><p[^>]*>after<\/p>/);
+    });
+  });
 });
