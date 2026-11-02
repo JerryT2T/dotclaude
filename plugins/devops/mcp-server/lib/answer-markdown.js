@@ -7,9 +7,10 @@
  * `answerHtml` is a deliberately small markdown subset rendered SAFELY: the
  * whole input is HTML-escaped first, so raw HTML in the answer is shown as
  * text and never injected. Supported: `#`–`###` headings, `-`/`*`/`1.` lists,
- * fenced code blocks, `inline code`, **bold**, *italic*, and links whose
- * target is http(s) (anything else stays plain text). Paragraphs split on
- * blank lines; single newlines become `<br>`.
+ * fenced code blocks, GFM pipe tables (header + `---` separator row, with
+ * `:--` / `:-:` / `--:` alignment; #995), `inline code`, **bold**, *italic*,
+ * and links whose target is http(s) (anything else stays plain text).
+ * Paragraphs split on blank lines; single newlines become `<br>`.
  */
 
 export const ANSWER_MAX = 20000;
@@ -29,7 +30,42 @@ const S = {
   pre: "margin:0 0 8px;padding:8px 10px;border-radius:6px;overflow-x:auto;" +
     "background:color-mix(in srgb, var(--text-primary) 7%, transparent)",
   h: "margin:10px 0 6px;font-size:14px;font-weight:600",
+  tableWrap: "margin:0 0 8px;overflow-x:auto",
+  table: "border-collapse:collapse;font-size:13px",
+  th: "padding:4px 10px;font-weight:600;border-bottom:1px solid color-mix(in srgb, var(--text-primary) 25%, transparent)",
+  td: "padding:4px 10px;border-bottom:1px solid color-mix(in srgb, var(--text-primary) 10%, transparent)",
 };
+
+// A GFM separator row: cells of one or more `-` with optional `:` on either side.
+const TABLE_SEP = /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/;
+
+/** Cells of one table row: split on unescaped `|`, outer pipes dropped. */
+function tableCells(row) {
+  let s = row.trim();
+  if (s.startsWith("|")) s = s.slice(1);
+  if (s.endsWith("|") && !s.endsWith("\\|")) s = s.slice(0, -1);
+  return s.split(/(?<!\\)\|/).map((c) => c.trim().replace(/\\\|/g, "|"));
+}
+
+function tableAlign(sep) {
+  return tableCells(sep).map((c) => {
+    const l = c.startsWith(":"), r = c.endsWith(":");
+    return l && r ? "center" : r ? "right" : l ? "left" : "";
+  });
+}
+
+function tableHtml(header, sep, rows) {
+  const align = tableAlign(sep);
+  const cols = tableCells(header).length;
+  const cell = (tag, style, cells) => Array.from({ length: cols }, (_, i) => {
+    const a = align[i] ? `;text-align:${align[i]}` : tag === "th" ? ";text-align:left" : "";
+    return `<${tag} style="${style}${a}">${inline(cells[i] || "")}</${tag}>`;
+  }).join("");
+  const body = rows.map((r) => `<tr>${cell("td", S.td, tableCells(r))}</tr>`).join("");
+  return `<div style="${S.tableWrap}"><table style="${S.table}">` +
+    `<thead><tr>${cell("th", S.th, tableCells(header))}</tr></thead>` +
+    `<tbody>${body}</tbody></table></div>`;
+}
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -94,6 +130,18 @@ export function answerHtml(md) {
       flushPara(); flushList();
       const level = h[1].length + 3; // h4–h6: below the card's own title
       out.push(`<h${level} style="${S.h}">${inline(h[2])}</h${level}>`);
+      continue;
+    }
+    // GFM: the separator must have as many cells as the header, so a lone
+    // `---` under a line that merely contains `|` is no table.
+    if (line.includes("|") && i + 1 < lines.length && TABLE_SEP.test(lines[i + 1]) &&
+        tableCells(lines[i + 1]).length === tableCells(line).length) {
+      flushPara(); flushList();
+      const rows = [];
+      let j = i + 2;
+      for (; j < lines.length && lines[j].trim() && lines[j].includes("|"); j++) rows.push(lines[j]);
+      out.push(tableHtml(line, lines[i + 1], rows));
+      i = j - 1;
       continue;
     }
     const ul = /^\s*[-*]\s+(.*)$/.exec(line);

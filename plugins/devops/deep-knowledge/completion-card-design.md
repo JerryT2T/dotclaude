@@ -576,7 +576,8 @@ stable?`, `🟩 🎊 Stable — v0.179.0 — done.`, `⏳ 🤖 Team — not done
    question, the full answer (markdown) goes into `render_completion_card`'s
    `answer` field. The renderer draws it ABOVE the card body: inside the
    Desktop widget as escaped HTML outside `#dc-card` (`lib/answer-markdown.js`:
-   raw HTML shows as text, links need http(s)), and as markdown in front of
+   raw HTML shows as text, links need http(s), GFM pipe tables render as
+   tables — #995), and as markdown in front of
    the terminal card. Safety net: a turn that ends WITHOUT any card, whose
    user prompt reads as a question and whose last assistant output carries
    no text, is blocked once by `stop.flow.guard` to re-emit the answer as

@@ -227,7 +227,8 @@ function parseUsageText(text) {
  * @param {object|null} rateLimits  parsed /rate_limits response (rate_limit_tier)
  * @param {number} nowMs
  * @returns {object|null} snapshot in the existing usage-live.json schema, or
- *   null when the payload carries no trustworthy five_hour utilization.
+ *   null when the payload carries no trustworthy five_hour utilization. An
+ *   idle window (`five_hour: null` beside a valid seven_day) maps to 0 %.
  */
 function mapApiUsage(usage, rateLimits, nowMs) {
   // Clamped to [0,100]: an over-quota reading (>100%) must not overflow the
@@ -240,13 +241,17 @@ function mapApiUsage(usage, rateLimits, nowMs) {
     return Number.isFinite(t) ? Math.max(0, Math.round((t - nowMs) / 60_000)) : null;
   };
 
-  const sessionPct = pctOf(usage && usage.five_hour && usage.five_hour.utilization);
+  const weeklyPct = pctOf(usage && usage.seven_day && usage.seven_day.utilization);
+  // #1009: `five_hour: null` means the 5-hour window has not started (no usage
+  // since its reset). With a valid weekly reading that is 0 %, not "no data";
+  // any other missing or garbage session value still writes nothing.
+  const windowIdle = !!usage && usage.five_hour === null && weeklyPct !== null;
+  const sessionPct = windowIdle ? 0 : pctOf(usage && usage.five_hour && usage.five_hour.utilization);
   if (sessionPct === null) return null; // no usable session window → don't write garbage
 
-  const weeklyPct = pctOf(usage.seven_day && usage.seven_day.utilization);
   const snapshot = {
     timestamp: new Date(nowMs).toISOString(),
-    session: { pct: sessionPct, resetInMinutes: resetMin(usage.five_hour.resets_at) },
+    session: { pct: sessionPct, resetInMinutes: windowIdle ? null : resetMin(usage.five_hour.resets_at) },
     weekly: weeklyPct === null ? null : {
       pct: weeklyPct,
       resetDay: null,  // API carries durations only — no day/time strings

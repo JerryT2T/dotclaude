@@ -37,6 +37,13 @@ describe("normalizeUsage — a cached number is not a reading", () => {
     expect(u.sessionResetMin).toBeCloseTo(99, 5);
   });
 
+  test("an unknown reset (null, idle 5-hour window — #1009) stays unknown, never 'now'", () => {
+    const u = usage({ sessionUsed: 0, sessionResetMin: null });
+    expect(u.ok).toBe(true);
+    expect(u.sessionUsed).toBe(0);
+    expect(u.sessionResetMin).toBeNull();
+  });
+
   test("cache-served, stale, future-dated and empty snapshots are rejected", () => {
     expect(usage({ cached: true }).ok).toBe(false);
     expect(usage({ ageMin: 5 }, 2).ok).toBe(false);

@@ -3077,7 +3077,7 @@ server.registerTool(
       variant: z.enum(CARD_VARIANTS).describe("Card variant by task outcome (rules in the tool description). `released` = channel promotion; ONE card also after a ship in the same run. `ready-files` = `ready` in a project without git repo. `paused` = user pause OR next step is a restart / reboot / usage-limit reset (never analysis/ready/fallback then); pass `pause: { reason }`."),
       summary: z.string().transform(v => clampText(v, SUMMARY_MAX).value)
         .describe("What changed for the user, ≤ 8 words / 60 characters (clamped). No pipeline status (merged, live, version)."),
-      answer: z.string().optional().describe("The full answer to the user's question, as markdown (#757), drawn ABOVE the card body. Use it whenever the turn answers a question or the running skill owes a report (root cause with file:line, findings, comparison). Raw HTML is shown as text; links need http(s)."),
+      answer: z.string().optional().describe("The full answer to the user's question, as markdown (#757), drawn ABOVE the card body. Use it whenever the turn answers a question or the running skill owes a report (root cause with file:line, findings, comparison — GFM pipe tables render as tables). Raw HTML is shown as text; links need http(s)."),
       lang: z.enum(["en", "de"]).default("de").describe("UI language for CTA"),
       cwd: z.string().optional().describe("Working directory of the target repo. Without it PR/commit/branch render as dead text and concept/batch mode state is not read."),
       buildId: z.string().optional().describe("Pre-computed build-ID (from ship_build); skips internal computation."),
