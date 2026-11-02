@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.343.1] — 2026-11-02
+
+### Fixed
+- Completion card: after a merged ship whose concept page already shows its final report, the ship card wins over a passed `concept: waiting` field instead of showing "Concept — wartet auf deine Entscheidungen".
+
 ## [0.343.0] — 2026-11-02
 
 ### Added
