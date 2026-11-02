@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.344.4] — 2026-11-02
+
+### Fixed
+- Completion card: markdown tables in the `answer` field render as real tables (alignment, inline markdown in cells, escaped pipes) instead of pipe-garbled text (#995).
+
 ## [0.344.3] — 2026-11-02
 
 ### Fixed
