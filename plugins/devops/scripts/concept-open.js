@@ -29,7 +29,7 @@ const fwd = (p) => String(p).replace(/\\/g, '/');
 const q = (p) => `"${fwd(p)}"`;
 
 function runNode(script, args) {
-  return spawnSync(process.execPath, [path.join(DIR, script), ...args], { encoding: 'utf8', timeout: 60000 });
+  return spawnSync(process.execPath, [path.join(DIR, script), ...args], { encoding: 'utf8', timeout: 60000, windowsHide: true });
 }
 
 function parseArgs(argv) {
@@ -113,7 +113,7 @@ function openBrowser(url) {
   else if (process.platform === 'darwin') { cmd = 'open'; args = ['-a', 'Microsoft Edge', url]; }
   else { cmd = 'microsoft-edge'; args = [url]; }
   return new Promise((resolve) => {
-    const c = spawn(cmd, args, { stdio: 'ignore', detached: true, windowsVerbatimArguments: true });
+    const c = spawn(cmd, args, { stdio: 'ignore', detached: true, windowsHide: true, windowsVerbatimArguments: true });
     c.on('error', (e) => resolve(`could not open Edge (${cmd}): ${e.message}`));
     c.on('exit', (code) => resolve(code ? `${cmd} exited with ${code}` : null));
     c.unref();
