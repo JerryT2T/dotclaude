@@ -184,8 +184,11 @@ function normalizeUsage(raw, nowMs, maxAgeMin = USAGE_FRESH_MIN) {
   const sPct = Number(raw.session.pct);
   if (!Number.isFinite(wPct) || !Number.isFinite(sPct)) return { ok: false, reason: 'no-percent' };
   const age = Math.max(0, ageMin);
-  const wReset = Number(raw.weekly.resetInMinutes);
-  const sReset = Number(raw.session.resetInMinutes);
+  // `null` = reset unknown (an idle 5-hour window, #1009) — Number(null) would
+  // read it as "resets now".
+  const minutesOf = (v) => (v == null ? NaN : Number(v));
+  const wReset = minutesOf(raw.weekly.resetInMinutes);
+  const sReset = minutesOf(raw.session.resetInMinutes);
   return {
     ok: true,
     ageMin: round1(age),
