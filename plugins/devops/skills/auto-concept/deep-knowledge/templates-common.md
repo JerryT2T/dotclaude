@@ -296,7 +296,7 @@ must see their own language. The locale hint is authoritative.
 | `design.keys_level` | Level up / down (overview, variant) | Ebene hoch / runter (Übersicht, Variante) |
 | `nudge.keys` | Press ? to see all hotkeys | ? zeigt alle Hotkeys |
 | `nudge.variants` | Keys 1–{n} switch the variant | Tasten 1–{n} wechseln die Variante |
-| `nudge.pages` | Keys ←/→ flip between pages | Tasten ←/→ blättern zwischen Seiten |
+| `nudge.pages` | Keys ←/→ or A/D flip between pages | Tasten ←/→ oder A/D blättern zwischen Seiten |
 | `nudge.dock` | Space opens your notes | Leertaste öffnet deine Notizen |
 | `nudge.dismiss` | Hide this tip for 30 days | Tipp 30 Tage ausblenden |
 | `design.questions`             | Analysis                        | Analyse |

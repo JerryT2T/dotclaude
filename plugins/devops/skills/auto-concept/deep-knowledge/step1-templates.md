@@ -189,6 +189,13 @@ with an overview table carrying a recommendation column and jump links
    `design-tokens.*`, `theme.*`, `tailwind.config.*`, Figma tokens via
    the design MCP, or the existing UI code before inventing a look.
 
+   **No captions in or under the mock.** A mock shows the UI and nothing
+   else: no explanatory sentence, no "Neu: …" / "What's new" line, no
+   summary paragraph below the mocked screen. Nobody reads them; in the
+   overview they sit under the info panel as noise. What changed belongs
+   in `data-design-improved` and the `.anno-bubble-improved` line, what to
+   ask in an annotation.
+
    **Annotation layer — where component questions live:** every question
    about a *part* of a design (this list, that header, the empty state, the
    badge) is pinned onto that element as an annotation — pin, leader line,

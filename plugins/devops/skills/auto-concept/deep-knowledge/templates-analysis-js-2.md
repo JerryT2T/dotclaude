@@ -282,8 +282,11 @@
     ol.addEventListener('keydown', e => {
       const it = e.target.closest('.an-oi');
       if (!it) return;
-      if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) { e.preventDefault(); e.stopPropagation(); moveItem(inst, d, it, e.key === 'ArrowUp' ? -1 : 1); }
-      else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); e.stopPropagation(); const n = e.key === 'ArrowUp' ? it.previousElementSibling : it.nextElementSibling; if (n) n.focus(); }
+      // W / S = ↑ / ↓ for focus; reorder stays Alt+↑ / Alt+↓ (Alt+letters are browser shortcuts).
+      const up = e.key === 'ArrowUp' || (!e.altKey && !e.shiftKey && !e.ctrlKey && !e.metaKey && e.code === 'KeyW');
+      const down = e.key === 'ArrowDown' || (!e.altKey && !e.shiftKey && !e.ctrlKey && !e.metaKey && e.code === 'KeyS');
+      if (e.altKey && !e.ctrlKey && !e.metaKey && (up || down)) { e.preventDefault(); e.stopPropagation(); moveItem(inst, d, it, up ? -1 : 1); }
+      else if (!e.altKey && (up || down)) { e.preventDefault(); e.stopPropagation(); const n = up ? it.previousElementSibling : it.nextElementSibling; if (n) n.focus(); }
     });
   }
   function syncOrder(inst, d) {
@@ -1003,7 +1006,10 @@
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     const act = fn => { e.preventDefault(); e.stopPropagation(); fn(); };
     const onButton = tag0 === 'BUTTON' || tag0 === 'A' || tag0 === 'SUMMARY';
-    const key = e.key;
+    // WASD = arrows: W up, A left, S down, D right (no modifier; the typing
+    // return above already keeps every text field out). Sliders, radios and
+    // checkboxes keep their native arrows; the letters do nothing there.
+    const key = ({ w: 'ArrowUp', a: 'ArrowLeft', s: 'ArrowDown', d: 'ArrowRight' })[e.shiftKey ? '' : String(e.key).toLowerCase()] || e.key;
     if (key === 'Enter') { if (onButton && !e.shiftKey) return; act(() => { if (e.shiftKey) step(inst, -1); else if (!e.repeat) stepOnce(inst, false); }); return; }
     if (e.shiftKey && /^Digit[1-9]$/.test(e.code || '')) { const g = inst.groups[Number(e.code.slice(5)) - 1]; if (g) act(() => go(inst, inst.stages.findIndex(s => s.group === g && s.kind === 'topic'))); return; }
     if (e.shiftKey) return;

@@ -114,12 +114,16 @@ the element. Pair it with `aria-keyshortcuts` on the element.
     const key = el.dataset.tipKey;
     if (!key) return;
     if (!keyOnly) tip.appendChild(document.createTextNode(' '));
+    // `+` joins keys pressed together, `|` separates alternatives (`←|A`).
     key.split('+').forEach((part, i) => {
       if (i) tip.appendChild(document.createTextNode('+'));
-      const cap = document.createElement('kbd');
-      cap.className = 'app-kbd';
-      cap.textContent = part;
-      tip.appendChild(cap);
+      part.split('|').forEach((alt, j) => {
+        if (j) tip.appendChild(document.createTextNode('/'));
+        const cap = document.createElement('kbd');
+        cap.className = 'app-kbd';
+        cap.textContent = alt;
+        tip.appendChild(cap);
+      });
     });
   }
 

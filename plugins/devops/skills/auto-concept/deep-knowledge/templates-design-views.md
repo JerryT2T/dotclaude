@@ -569,7 +569,7 @@ icon, when the traits are not exactly three, when the round has no
   motion).
 - **Hotkeys** — `Esc` overview · `1`–`9` design N · `Shift`+`1`–`9` view N ·
   `Tab` next page of the current design (only while nothing is focused) ·
-  `←` / `→` same level (carousel cards, pages) · `↑` / `↓` one level
+  `←` / `→` (or `A` / `D`) same level (carousel cards, pages) · `↑` / `↓` (or `W` / `S`) one level
   (variant → overview, overview → variant) · `Space` notes dock (every
   template; only when no field is focused; it never scrolls) ·
   `V` viewport · `F` favourite (alternatives round only) · `Alt`+`1`–`9` iteration tab · `?` shortcut sheet ·

@@ -148,8 +148,9 @@ describe("quick nav — one level up, in-place repaint, direction", () => {
 
 describe("quick nav tooltips — never the visible name again", () => {
   // One kind of tooltip per group: every page names its key (↑ on screen,
-  // Tab next, ← previous) and every question entry its ⇧ + number.
-  test("named segments carry the keycap only; pages ↑ / Tab / ← keycaps; question entries ⇧+n; Fragen no tooltip", async () => {
+  // Tab next, ← previous) and the Analyse segment is a plain button (no submenu entries, no tooltip). WASD is named
+  // next to the arrows (↑|W, ←|A).
+  test("named segments carry the keycap only; pages ↑|W / Tab / ←|A keycaps; Analyse segment has no submenu and no tooltip", async () => {
     const { window, document } = await boot(page(3));
     const segs = [...document.querySelectorAll("#design-quick .design-quick-designs > .design-quick-seg")];
     expect(segs.length).toBe(3);
@@ -160,17 +161,17 @@ describe("quick nav tooltips — never the visible name again", () => {
     }
     window.showDesign("d2");
     const pages = [...document.querySelectorAll("#design-quick .design-quick-page")];
-    expect(pages.map((b) => b.dataset.tipKey || "")).toEqual(["↑", "Tab", ...pages.slice(2).map(() => "")]);
+    expect(pages.map((b) => b.dataset.tipKey || "")).toEqual(["↑|W", "Tab", ...pages.slice(2).map(() => "")]);
     for (const b of pages.filter((p) => p.dataset.tip)) expect(b.dataset.tipKeyOnly).toBe("true");
     window.showScreen(pages[1].dataset.screenId);
-    expect(pages[0].dataset.tipKey).toBe("←");
-    expect(pages[1].dataset.tipKey).toBe("↑");
-    document.querySelectorAll("#design-quick .design-quick-qitem").forEach((item, i) => {
-      expect(item.dataset.tipKey).toBe("⇧+" + (i + 1));
-      expect(item.dataset.tipKeyOnly).toBe("true");
-    });
+    expect(pages[0].dataset.tipKey).toBe("←|A");
+    expect(pages[1].dataset.tipKey).toBe("↑|W");
+    expect(pages[1].getAttribute("aria-keyshortcuts")).toBe("ArrowUp W");
+    expect(pages[0].getAttribute("aria-keyshortcuts")).toBe("ArrowLeft A");
+    expect(document.querySelectorAll("#design-quick .design-quick-qitem").length, "no submenu entries any more").toBe(0);
     const q = document.querySelector("#design-quick .design-quick-q");
     if (q) {
+      expect(q.querySelector(".design-quick-name").textContent).toBe("Analyse");
       expect(q.dataset.tip).toBeUndefined();
       expect(q.getAttribute("aria-label")).toBeTruthy();
     }

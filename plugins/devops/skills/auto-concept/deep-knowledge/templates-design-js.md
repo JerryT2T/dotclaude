@@ -1381,7 +1381,7 @@ design round has: the three row builders and the ordering of stash → rebuild
   }
   window.romanNumeral = romanNumeral;
 
-  // Keyboard: Arrow Left/Right jump between screens (within the active
+  // Keyboard: Arrow Left/Right (or A / D) jump between screens (within the active
   // design) whenever no TEXT field is focused — regardless of which overlay
   // (notes dock, ☰ panel) is open or where the mouse is. Space is NOT a page
   // key any more — it toggles the notes dock (wireDesignOverview /
@@ -1399,7 +1399,9 @@ design round has: the three row builders and the ordering of stash → rebuild
     // whenever the dock or the panel was open, so a user who clicked out of
     // the dock's fields had dead arrow keys until the dock was closed.
     if (isTextEntry(e.target) || isTextEntry(document.activeElement)) return;
-    const arrow = e.key === 'ArrowLeft' || e.key === 'ArrowRight';
+    // WASD = arrows (conceptNavKey, § Hotkey overlay): nk is the arrow name.
+    const nk = window.conceptNavKey ? window.conceptNavKey(e) : e.key;
+    const arrow = nk === 'ArrowLeft' || nk === 'ArrowRight';
     // Arrows: a widget that uses them itself (round tabs, radio groups,
     // listboxes, sliders) keeps them. A focused BUTTON does not — arrows
     // never activate a button, so they navigate.
@@ -1424,8 +1426,8 @@ design round has: the three row builders and the ordering of stash → rebuild
     const currentIdx = screens.findIndex(s => s.dataset.screenActive === 'true');
     if (currentIdx < 0) return;
     let nextIdx = currentIdx;
-    if (e.key === 'ArrowRight') nextIdx = Math.min(currentIdx + 1, screens.length - 1);
-    else if (e.key === 'ArrowLeft') nextIdx = Math.max(currentIdx - 1, 0);
+    if (nk === 'ArrowRight') nextIdx = Math.min(currentIdx + 1, screens.length - 1);
+    else if (nk === 'ArrowLeft') nextIdx = Math.max(currentIdx - 1, 0);
     else return;
     e.preventDefault();
     showScreen(screens[nextIdx].id);

@@ -323,7 +323,10 @@ returns — the single-design page is untouched.
     node.dataset.tipTier = 'info';
     if (key) {
       node.dataset.tipKey = key;
-      node.setAttribute('aria-keyshortcuts', key.replace('⇧', 'Shift').replace(L.ctrl, 'Control'));
+      // ←|A → "ArrowLeft A": aria-keyshortcuts lists alternatives space-separated.
+      const ARIA = { '←': 'ArrowLeft', '→': 'ArrowRight', '↑': 'ArrowUp', '↓': 'ArrowDown' };
+      node.setAttribute('aria-keyshortcuts', key.replace('⇧', 'Shift').replace(L.ctrl, 'Control')
+        .split('|').map(p => ARIA[p] || p).join(' '));
     }
   }
   // A control whose name is on screen gets no tooltip that repeats it
@@ -1155,8 +1158,8 @@ returns — the single-design page is untouched.
         // Every page names its key, one kind for all: the page on screen ↑
         // (a click on it goes one level up), the next Tab, the previous ←.
         // A page further away has no key and so no tooltip.
-        keyTip(b, i < 0 ? '' : isCur ? '↑'
-          : i === (idx + 1) % screens.length ? 'Tab' : i === idx - 1 ? '←' : '');
+        keyTip(b, i < 0 ? '' : isCur ? '↑|W'
+          : i === (idx + 1) % screens.length ? 'Tab' : i === idx - 1 ? '←|A' : '');
       });
       const chip = quick.querySelector('.design-quick-more');
       if (chip && chip.firstElementChild) {
@@ -1393,7 +1396,11 @@ returns — the single-design page is untouched.
     const frag = document.createDocumentFragment();
     spec.split('+').forEach((k, i) => {
       if (i) frag.appendChild(document.createTextNode(' + '));
-      frag.appendChild(el('kbd', 'app-kbd', k));
+      // `|` separates alternative keys (←/→|A/D): one cap each, "or" between.
+      k.split('|').forEach((alt, j) => {
+        if (j) frag.appendChild(document.createTextNode(' / '));
+        frag.appendChild(el('kbd', 'app-kbd', alt));
+      });
     });
     return frag;
   }
@@ -1402,7 +1409,7 @@ returns — the single-design page is untouched.
     sheet.appendChild(el('h2', '', L.keysTitle));
     const dl = el('dl');
     const rows = [['Esc', L.overview], ['1–9', L.keysDesign], ['⇧+1–9', L.keysView], ['Tab', L.keysNext],
-     ['←/→', L.keysCarousel], ['↑/↓', L.keysLevel], ['Enter', L.open], [L.space, L.keysDock], ['F', L.fav], ['Alt+1–9', L.keysRound], ['N', L.keysNotes], [L.ctrl + '+Enter', L.keysDockNext], [L.ctrl + '+' + L.space, L.keysDockClose],
+     ['←/→|A/D', L.keysCarousel], ['↑/↓|W/S', L.keysLevel], ['Enter', L.open], [L.space, L.keysDock], ['F', L.fav], ['Alt+1–9', L.keysRound], ['N', L.keysNotes], [L.ctrl + '+Enter', L.keysDockNext], [L.ctrl + '+' + L.space, L.keysDockClose],
      [L.ctrl + '+' + L.keysClick, L.keysPin], ['M', L.keysMenu], ['H', L.keysHide], ['T', L.keysTheme], ['?', L.keysTitle]];
     // V only where there is a device view to switch to.
     if (document.getElementById('viewport-toggle') && body.dataset.singleViewport !== 'true') rows.splice(9, 0, ['V', L.keysViewport]);
@@ -2203,9 +2210,11 @@ returns — the single-design page is untouched.
     }
     if (e.key === '?') { e.preventDefault(); toggleSheet(); return; }
     if (e.shiftKey) return;
+    // WASD = arrows (conceptNavKey): nk is the arrow name for A/D/W/S too.
+    const nk = typeof window.conceptNavKey === 'function' ? window.conceptNavKey(e) : e.key;
     // Space is the notes dock (wireChromeHotkeys, every template). Arrows:
     // left / right = same level, up / down = one level (overview <-> variant).
-    if (e.key === 'ArrowUp' && mode() !== 'overview' && overviewOf(it)) {
+    if (nk === 'ArrowUp' && mode() !== 'overview' && overviewOf(it)) {
       e.preventDefault();
       window.showOverview();
       return;
@@ -2214,12 +2223,12 @@ returns — the single-design page is untouched.
     // chrome control (quick nav, header) holds the focus — the screen
     // handler of § Design JS bails on any focused button. Focus on the page
     // itself stays that handler's case, so a press never steps twice.
-    if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && mode() === 'design'
+    if ((nk === 'ArrowLeft' || nk === 'ArrowRight') && mode() === 'design'
         && e.target && e.target.closest && e.target.closest('#design-quick, #design-header')) {
       const d = activeDesignOf(it);
       const screens = d ? [...d.querySelectorAll('section[data-screen][id]')] : [];
       const cur = screens.indexOf(activeScreenOf(d));
-      const next = cur + (e.key === 'ArrowLeft' ? -1 : 1);
+      const next = cur + (nk === 'ArrowLeft' ? -1 : 1);
       if (cur < 0 || next < 0 || next >= screens.length) return;
       e.preventDefault();
       window.showScreen(screens[next].id);
@@ -2231,7 +2240,7 @@ returns — the single-design page is untouched.
       const fa = document.activeElement;
       const onPage = !fa || fa === body || fa === document.documentElement
         || (fa.tagName !== 'BUTTON' && !!fa.closest('.design-ov-slide[data-pos="cur"]'));
-      if (e.key === 'ArrowDown' || (e.key === 'Enter' && onPage)) {
+      if (nk === 'ArrowDown' || (e.key === 'Enter' && onPage)) {
         const cur = overviewOf(it).querySelector('.design-ov-slide[data-pos="cur"]');
         if (!cur) return;
         e.preventDefault();
@@ -2239,10 +2248,10 @@ returns — the single-design page is untouched.
         else window.designNextQuestion();
         return;
       }
-      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      if (nk === 'ArrowLeft' || nk === 'ArrowRight') {
         if (slidesOf(it).length < 2) return;
         e.preventDefault();
-        stepSlide(e.key === 'ArrowLeft' ? -1 : 1);
+        stepSlide(nk === 'ArrowLeft' ? -1 : 1);
         return;
       }
     }
