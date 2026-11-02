@@ -129,7 +129,7 @@ const path = require('path');
 // PostToolUse call error. Guarded the way post.agent.nudge.js does it: a load
 // error makes main() a silent no-op, same as every other failure path.
 let sessionFile, readSessionFile, writeSessionFile, projectRoot, inOwnWorkTree, gitRun,
-  isMcpServerAlive, NO_OUTPUT_NUDGE_REPLY, isCardWidgetCall, getLocale, t,
+  isMcpServerAliveForSession, NO_OUTPUT_NUDGE_REPLY, isCardWidgetCall, getLocale, t,
   responseLaunch, responseTaskId, labelFor, isConceptInfra,
   BGRUN_FLAG, recordBackgroundRun, settleRecordedRuns,
   SPAWN_TOOL_RE, DISMISS_TOOL_RE, recordSpawn, recordDismiss, chipReminder,
@@ -146,7 +146,7 @@ try {
   ({ projectRoot, inOwnWorkTree } = guardedRequire('../lib/project-root'));
   ({ gitRun } = guardedRequire('../lib/git-timeout'));
   ({ inRepoTree } = guardedRequire('../lib/repo-tree'));
-  ({ isMcpServerAlive } = guardedRequire('../lib/mcp-heartbeat'));
+  ({ isMcpServerAliveForSession } = guardedRequire('../lib/mcp-heartbeat'));
   ({ NO_OUTPUT_NUDGE_REPLY, isCardWidgetCall } = guardedRequire('../lib/card-guard'));
   ({ getLocale, t } = guardedRequire('../lib/locale'));
   ({ responseLaunch, responseTaskId, labelFor, isConceptInfra } = guardedRequire('../lib/pending-tasks'));
@@ -961,7 +961,7 @@ function cardContractLines(hook, scheduledTask) {
   const lines = [];
   // Offline-first when the completion MCP's heartbeat is dead (#371): each
   // failed rung of the ladder costs a turn, so name the working one first.
-  const completionDown = !isMcpServerAlive('dotclaude');
+  const completionDown = !isMcpServerAliveForSession('dotclaude');
   const offline = `node "${OFFLINE_RENDERER}" --render-card <payload.json> (same JSON args, relay stdout verbatim)`;
 
   if (scheduledTask) {
