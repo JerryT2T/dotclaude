@@ -6,7 +6,8 @@ vi.mock("zod", () => {
 });
 import { handler, insertChangelogEntry } from "./run.js";
 
-vi.mock("../lib/version.js", () => ({ readVersion: () => ({ version: "1.2.3", file: "package.json" }), bumpVersion: (v, b) => (b === "minor" ? "1.3.0" : b === "major" ? "2.0.0" : "1.2.4") }));
+const ver = vi.hoisted(() => ({ current: "1.2.3" }));
+vi.mock("../lib/version.js", () => ({ readVersion: () => ({ version: ver.current, file: "package.json" }), bumpVersion: (v, b) => (b === "minor" ? "1.3.0" : b === "major" ? "2.0.0" : "1.2.4") }));
 vi.mock("node:fs", async (orig) => {
   const real = await orig();
   return { ...real, existsSync: vi.fn(() => true), readFileSync: vi.fn(() => "# Changelog\n\n## [1.2.3] — 2026-10-01\n\n- old\n"), writeFileSync: vi.fn() };
@@ -59,7 +60,7 @@ function harness(over = {}, initial = null) {
 const DEFAULTS = { majorConfirmed: false, commitMessage: null, acceptGaps: false, interactive: false, skipChecks: false, outOfBandGlobs: null, earlyPush: true, build: {}, codexGate: false, codex: null, queued: false, lang: "de" };
 const P = (extra = {}) => ({ ...DEFAULTS, cwd: "/repo", title: "feat: x", body: "Closes #1", bump: "minor", changelogEntry: "### Added\n- thing", ...extra });
 
-beforeEach(() => { delete process.env.DEVOPS_SHIP_RUN; fs.writeFileSync.mockClear(); });
+beforeEach(() => { delete process.env.DEVOPS_SHIP_RUN; fs.writeFileSync.mockClear(); ver.current = "1.2.3"; });
 afterEach(() => { delete process.env.DEVOPS_SHIP_RUN; });
 
 describe("ship_run — happy path", () => {
@@ -197,6 +198,7 @@ describe("ship_run — decision points", () => {
 
 describe("ship_run — resume", () => {
   test("a landed bump skips preflight, build and bump; a landed merge skips release too", async () => {
+    ver.current = "1.3.0"; // the branch carries the bump
     const h = harness({}, { steps: { preflight: true, build: {}, bump: { bump: "minor", vNew: "1.3.0" } }, base: "main", branch: "feat/x", run: { preflight: { base: "main", branch: "feat/x", mode: "git", inWorktree: true } } });
     const res = await handler(P(), h.deps);
     expect(h.names()).toEqual(["ship_release", "ship_cleanup", "ship_hygiene"]);
@@ -207,6 +209,16 @@ describe("ship_run — resume", () => {
     expect(h2.names()).toEqual(["ship_cleanup", "ship_hygiene"]);
     expect(res2).toMatchObject({ merged: "main", pr: 42 });
     expect(fs.writeFileSync).not.toHaveBeenCalled(); // no second CHANGELOG entry
+  });
+
+  test("a recorded bump the branch no longer carries is redone, not trusted (#1027)", async () => {
+    // A conflict rebase dropped the release commit: checkpoint says 1.3.0, the tree is still on 1.2.3.
+    const h = harness({}, { steps: { preflight: true, build: {}, bump: { bump: "minor", vNew: "1.3.0" } }, base: "main", branch: "feat/x", run: { preflight: { base: "main", branch: "feat/x", mode: "git", inWorktree: true } } });
+    const res = await handler(P(), h.deps);
+    expect(h.names()).toContain("ship_version_bump");
+    expect(h.names().indexOf("ship_version_bump")).toBeLessThan(h.names().indexOf("ship_release"));
+    expect(res.warnings.join(" ")).toMatch(/checkpoint bump to 1.3.0 is not on the branch/);
+    expect(fs.writeFileSync).toHaveBeenCalled(); // CHANGELOG entry written again
   });
 });
 
