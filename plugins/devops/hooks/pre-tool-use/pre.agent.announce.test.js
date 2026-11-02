@@ -115,9 +115,9 @@ describe("pre.agent.announce (hook)", () => {
   test("a budget downgrade of an opus role reads opus → sonnet", () => {
     const dir = project();
     const res = runHook(dir, {
-      input: { subagent_type: "devops:po", model: "sonnet", description: "Scope call", prompt: "x" },
+      input: { subagent_type: "devops:pox", model: "sonnet", description: "Scope call", prompt: "x" },
     });
-    expect(line(res)).toBe("po · opus → sonnet · high · background — Scope call");
+    expect(line(res)).toBe("pox · opus → sonnet · high · background — Scope call");
   });
 
   test("an inheriting built-in names the session's model with its version", () => {
@@ -149,7 +149,7 @@ describe("pre.agent.announce (hook)", () => {
   test("silent inside a subagent and for other tools", () => {
     const dir = project();
     const sub = runHook(dir, {
-      input: { subagent_type: "devops:qa", prompt: "x" },
+      input: { subagent_type: "devops:qax", prompt: "x" },
       extra: { agent_id: "a1", agent_type: "devops:feature" },
     });
     expect(sub.status).toBe(0);
@@ -196,8 +196,8 @@ describe("pre.agent.announce (hook)", () => {
 
   test("an override equal to the frontmatter model shows no arrow", () => {
     const dir = project();
-    const res = runHook(dir, { input: { subagent_type: "devops:qa", model: "sonnet", prompt: "x" } });
-    expect(line(res)).toBe("qa · sonnet · medium · background");
+    const res = runHook(dir, { input: { subagent_type: "devops:qax", model: "sonnet", prompt: "x" } });
+    expect(line(res)).toBe("qax · sonnet · medium · background");
   });
 
   test("a missing subagent_type is the general-purpose agent", () => {
@@ -225,7 +225,7 @@ describe("pre.agent.announce (hook)", () => {
   test("silent when the plugin is not enabled for the project", () => {
     const dir = project();
     fs.writeFileSync(path.join(dir, ".claude", "settings.json"), JSON.stringify({ enabledPlugins: {} }));
-    const res = runHook(dir, { input: { subagent_type: "devops:qa", prompt: "x" } });
+    const res = runHook(dir, { input: { subagent_type: "devops:qax", prompt: "x" } });
     expect(res.status).toBe(0);
     expect(res.stdout).toBe("");
   });
@@ -239,7 +239,7 @@ describe("pre.agent.announce (hook)", () => {
     });
     const a = { subagent_type: "devops:core", description: "[W1] Engine", prompt: "a" };
     const b = { subagent_type: "devops:frontend", description: "[W1] Hold", prompt: "b" };
-    const c = { subagent_type: "devops:qa", description: "Tests", prompt: "c" };
+    const c = { subagent_type: "devops:qax", description: "Tests", prompt: "c" };
     const lines = [
       call("m0", "t0", { subagent_type: "devops:research", description: "Earlier", prompt: "r" }),
       call("m1", "t1", a),

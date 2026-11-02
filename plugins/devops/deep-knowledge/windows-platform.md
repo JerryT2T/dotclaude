@@ -34,5 +34,5 @@ real, but too rare to justify a role of its own.)
 
 ## Collaboration
 
-Platform code depends on core contracts and hands off to `qa` for
+Platform code depends on core contracts and hands off to `qax` for
 platform-specific testing, like any other `core` work.

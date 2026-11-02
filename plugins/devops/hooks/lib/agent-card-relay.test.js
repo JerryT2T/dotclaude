@@ -33,7 +33,7 @@ const card = (n, lang = "de") => {
 const announce = (c) => `Agent card — show the user this card verbatim in the next text you write:\n${c}`;
 
 const prompt = (text = "do it") => ({ type: "user", message: { role: "user", content: text } });
-const agentUse = (msgId, id) => ({ type: "assistant", message: { id: msgId, role: "assistant", content: [{ type: "tool_use", id, name: "Agent", input: { subagent_type: "devops:qa" } }] } });
+const agentUse = (msgId, id) => ({ type: "assistant", message: { id: msgId, role: "assistant", content: [{ type: "tool_use", id, name: "Agent", input: { subagent_type: "devops:qax" } }] } });
 const toolUse = (msgId, id, name = "Bash") => ({ type: "assistant", message: { id: msgId, role: "assistant", content: [{ type: "tool_use", id, name, input: {} }] } });
 const text = (msgId, t) => ({ type: "assistant", message: { id: msgId, role: "assistant", content: [{ type: "text", text: t }] } });
 const hookCtx = (toolUseID, c) => ({ type: "attachment", attachment: { type: "hook_additional_context", hookName: "PreToolUse:Agent", toolUseID, content: [announce(c)] } });

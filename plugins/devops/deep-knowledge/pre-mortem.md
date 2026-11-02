@@ -75,6 +75,6 @@ hypothetical failure modes with no actionable response.
 ## Relationship to the Red-Team Agent
 
 For larger or higher-stakes work, escalate to the `redteam` agent in a wave
-(parallel to `po`). The agent produces a list of concrete risks with
+(parallel to `pox`). The agent produces a list of concrete risks with
 file/line references; the implementing agent folds them in. The inline
 pre-mortem above is the always-on lightweight version.

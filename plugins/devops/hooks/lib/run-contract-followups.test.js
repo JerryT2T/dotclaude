@@ -73,12 +73,12 @@ describe("AUD-010: CLI status / done measure qa like the gate", () => {
     expect(d.out.error).toContain("qa");
   });
 
-  test("qa satisfied by a devops:qa agent → done closes normally", () => {
+  test("qa satisfied by a devops:qax agent → done closes normally", () => {
     RC.arm(dir, { mode: "backlog", flow: "autonomous", ship: "manual", passes: [], presence: false });
     RC.record(dir, { k: "skill", name: "auto-agents" });
     RC.record(dir, { k: "edit" });
     commitOnBranch("fix/2");
-    RC.record(dir, { k: "agent", type: "devops:qa" });
+    RC.record(dir, { k: "agent", type: "devops:qax" });
 
     expect(runCli("done").out).toMatchObject({ ok: true, closed: true });
   });

@@ -186,8 +186,8 @@ describe("profiles — M2: no PO review, no second QA", () => {
   });
 
   test("max upgrades qa to opus; deep upgrades only the implementers", () => {
-    expect(bp.modelOverrides("max")).toMatchObject({ core: "opus", frontend: "opus", qa: "opus" });
-    expect(bp.modelOverrides("deep").qa).toBeUndefined();
+    expect(bp.modelOverrides("max")).toMatchObject({ core: "opus", frontend: "opus", qax: "opus" });
+    expect(bp.modelOverrides("deep").qax).toBeUndefined();
     expect(bp.modelOverrides("standard")).toEqual({});
   });
 });

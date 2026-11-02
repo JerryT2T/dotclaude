@@ -64,7 +64,7 @@ describe("validation — mirrors the tool's zod shapes without zod", () => {
       tests: [{ method: "m", result: "r" }],
       validation: [{ requirement: "q", status: "met", evidence: "e" }],
       userFinalTest: ["x", { action: "y", afterDeployment: true }],
-      open: ["o"], pending: ["p", { name: "devops:qa", kind: "agent", doing: "d" }],
+      open: ["o"], pending: ["p", { name: "devops:qax", kind: "agent", doing: "d" }],
       deployGate: ["g", { artifact: "a.sql", kind: "migration" }],
       state: { branch: "main", pr: { number: 1, title: "t" } }, cta: {}, delivery: {}, concept: "waiting",
     });

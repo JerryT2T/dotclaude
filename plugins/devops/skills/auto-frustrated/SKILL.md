@@ -73,10 +73,10 @@ Naming: `[role:<agent> · Analysis] <role> for <target>`.
 
 | # | Role | Agent | Slice |
 |---|------|-------|-------|
-| R1 | Intent | `devops:po` | the user's prompts `P1..Pn`, inline only |
+| R1 | Intent | `devops:pox` | the user's prompts `P1..Pn`, inline only |
 | R2 | History | `devops:redteam` | transcript path + session window, git read-only |
 | R3 | Technical cause | `devops:research` | target, edited files, error signatures, repo, web; not the transcript |
-| R4 | Workflow & product | `devops:po` | transcript metadata (skills, agents, tools), CLAUDE.md, project docs |
+| R4 | Workflow & product | `devops:pox` | transcript metadata (skills, agents, tools), CLAUDE.md, project docs |
 | R5 | Fresh alternative | `devops:rethinker` | the code-free cut (`codeFree.prompts`, goal, no-gos) |
 
 Budget class `ask-before-parallel` / `sonnet-only`

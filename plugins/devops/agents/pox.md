@@ -1,5 +1,5 @@
 ---
-name: po
+name: pox
 description: >-
   Product owner — weighs value, UX, feasibility and readiness and makes the call. Modes:
   one lens (customer, tech or business; several in parallel), or the synthesis into scope and acceptance criteria, or an end-user judgment of a flow (`Lens: customer`).

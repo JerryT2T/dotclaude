@@ -1,5 +1,5 @@
 ---
-name: ai
+name: aix
 description: >-
   AI/ML integration agent — models, prompts, embeddings, vector stores.
   Spawn proactively only alongside another domain agent (parallel tier); single-domain AI work stays inline.

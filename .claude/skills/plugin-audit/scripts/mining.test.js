@@ -70,9 +70,9 @@ describe('plugin-audit mining', () => {
     s.add(ctx('Agent card ...\n[agent-model] id=t1 type=devops:core model=sonnet (audit marker - do not show)'));
     s.add(spawn('t1', { subagent_type: 'devops:core' }));
     s.add(result('t1', 500));
-    s.add(spawn('t2', { subagent_type: 'devops:qa', model: 'haiku' }));
+    s.add(spawn('t2', { subagent_type: 'devops:qax', model: 'haiku' }));
     s.add(result('t2', 100));
-    s.add(spawn('t3', { subagent_type: 'devops:qa' }));
+    s.add(spawn('t3', { subagent_type: 'devops:qax' }));
     s.add(result('t3', 50));
     const r = s.finish();
     expect(r.version).toBe('0.291.0');

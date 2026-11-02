@@ -133,7 +133,7 @@ Without blocking:
 
 1. **UI test tools per `{PLUGIN_ROOT}/deep-knowledge/test-plan.md`** (browser
    preview, Playwright, snapshot tests, multi-viewport setup) → `$TEST_PLAN`.
-2. **Background `devops:qa` agent** (skip when `$PARENT_SKILL=do-run` and the
+2. **Background `devops:qax` agent** (skip when `$PARENT_SKILL=do-run` and the
    parent owns a qa wave), report-only: build PASS/FAIL, UI snapshot diffs,
    screenshots of changed routes/components per `$TEST_PLAN` (phone/tablet/
    desktop if multi-viewport), console errors, layout shifts, axe-core

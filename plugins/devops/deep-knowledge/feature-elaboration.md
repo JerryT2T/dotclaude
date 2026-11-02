@@ -1,7 +1,7 @@
 # Feature Elaboration
 
-How a feature is thought through before anyone builds it — `po` lenses in
-parallel, then a `po` synthesis that weighs them. One procedure for every
+How a feature is thought through before anyone builds it — `pox` lenses in
+parallel, then a `pox` synthesis that weighs them. One procedure for every
 caller: the `feature` agent runs it as its Phase 1, and `auto-agents` runs it
 as Wave 0 of a full ceremony (`agent-orchestration.md` § Agent Selection).
 
@@ -22,7 +22,7 @@ prompt. Every handoff reports
 
 ## Lenses — parallel, one message
 
-Spawn `po` once per lens, each with `Lens: <name>` and the brief verbatim:
+Spawn `pox` once per lens, each with `Lens: <name>` and the brief verbatim:
 
 | Lens | When |
 |---|---|
@@ -34,7 +34,7 @@ Lens agents argue one perspective and may run on `model: "sonnet"`.
 
 ## Synthesis
 
-One more `po` spawn with every lens result attached. It returns vision, scope
+One more `pox` spawn with every lens result attached. It returns vision, scope
 (must / nice / explicitly out), acceptance criteria, risks and a
 recommendation. Model: `opus`, unless the budget class
 (`agent-proactivity.md` § Budget) lowers it — then `sonnet`, like every other
@@ -58,7 +58,7 @@ opus role.
 ## Review after the build
 
 Whenever acceptance criteria exist — elaborated or given — the built result
-gets a `po` spawn with `Review:` and the criteria. For UI or game work spawn
+gets a `pox` spawn with `Review:` and the criteria. For UI or game work spawn
 it as `Review:` + `Lens: customer` and pass qa's screenshot paths: that is the
 end user's (or player's) judgment of what was built. Verdicts:
 

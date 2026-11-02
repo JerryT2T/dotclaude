@@ -229,9 +229,9 @@ difference: the next round belongs to the next stage.
    brief: the concept file path, the submitted round, and the decisions the
    work must honour — not a paraphrase. `auto-agents` applies the delegation
    tiers, shows its agent cards, splits the approved work by domain
-   (`devops:core`, `devops:frontend`, `devops:designer`, `devops:ai`),
+   (`devops:core`, `devops:frontend`, `devops:designer`, `devops:aix`),
    runs independent parts in parallel and lets
-   `devops:qa` verify; `{PLUGIN_ROOT}/deep-knowledge/agent-orchestration.md`
+   `devops:qax` verify; `{PLUGIN_ROOT}/deep-knowledge/agent-orchestration.md`
    stays the authority on who owns what. The implement click is the yes its
    parallel tier needs — it does not ask again. Its result comes back here:
    `done` feeds the final report, `open` shortfalls go into the
@@ -267,9 +267,9 @@ difference: the next round belongs to the next stage.
      checklist lines it owns plus the fragment paths as the binding spec
      (`{PLUGIN_ROOT}/deep-knowledge/agent-orchestration.md` § Agent Prompt
      Template, item 12) — never a paraphrase of them.
-   - **Parity QA.** The `devops:qa` step checks every line mock vs.
+   - **Parity QA.** The `devops:qax` step checks every line mock vs.
      implementation — paired screenshots at the declared viewports and
-     sampled animation frames (`agents/qa.md` § Design parity). Nothing is
+     sampled animation frames (`agents/qax.md` § Design parity). Nothing is
      `met` without that evidence.
    - **Fix rounds re-checked.** Every fix brief after a failed line is checked
      against the checklist before it goes out ("centred and consistent" must

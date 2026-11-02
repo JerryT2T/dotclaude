@@ -149,12 +149,12 @@ Two things in parallel, neither blocks:
 
 1. **Determine the test tool-chain per `{PLUGIN_ROOT}/deep-knowledge/test-plan.md`** (detect +
    pin the profile) for this project. Store result as `$TEST_PLAN`.
-2. **Spawn `qa` agent** in background — SKIP this when `$PARENT_SKILL=do-run`
+2. **Spawn `qax` agent** in background — SKIP this when `$PARENT_SKILL=do-run`
    AND a qa wave is already planned/running (the orchestrator owns qa).
    When skipped, defer to parent's qa output and request a focused re-test
    after fixes (Step 9 step 2).
 
-   Otherwise spawn `devops:qa` with `run_in_background: true`: run the full
+   Otherwise spawn `devops:qax` with `run_in_background: true`: run the full
    test plan (build, unit, integration, E2E if available) on the
    `$SCOPE_FILES` summary, report PASS/FAIL counts and every failure with
    file:line and error, no fixes. Continue with Step 4 immediately.

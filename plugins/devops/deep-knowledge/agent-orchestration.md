@@ -18,20 +18,20 @@ Select agents based on domains touched, complexity, and risk:
 | Agent | When to include | Wave |
 |-------|----------------|------|
 | **research** | Topic needs investigation first | 0 (pre-work) |
-| **po** (`Lens:` customer / tech / business) | Elaboration unless the acceptance criteria come from outside — lenses in parallel, then a po synthesis; procedure and gate: [feature-elaboration.md](feature-elaboration.md) | 0 |
+| **pox** (`Lens:` customer / tech / business) | Elaboration unless the acceptance criteria come from outside — lenses in parallel, then a po synthesis; procedure and gate: [feature-elaboration.md](feature-elaboration.md) | 0 |
 | **core** | Business logic, APIs, data models, platform code (`windows-platform.md`) | 1 |
 | **frontend** | UI components, templates, styling | 2 |
-| **ai** | AI/ML integration, embeddings, prompts | 2 |
+| **aix** | AI/ML integration, embeddings, prompts | 2 |
 | **designer** | UX/UI decisions, design system, specs | 0 or 2 |
-| **qa** | Unit tests, build check, browser-based visual verification | 3 |
-| **po** (`Review:`) | Go/no-go against the acceptance criteria — with `Lens: customer` and qa screenshots for UI/game work | 4 |
+| **qax** | Unit tests, build check, browser-based visual verification | 3 |
+| **pox** (`Review:`) | Go/no-go against the acceptance criteria — with `Lens: customer` and qa screenshots for UI/game work | 4 |
 
 ### Selection Criteria
 
 - Include an agent only if it adds **concrete value** — not for coverage
 - Prefer fewer agents with clear purpose over many with vague roles
-- Always include **qa** for any code changes (Wave 3)
-- Include **po** only for feature-level work, not bugfixes or refactoring.
+- Always include **qax** for any code changes (Wave 3)
+- Include **pox** only for feature-level work, not bugfixes or refactoring.
   Its lens agents argue one perspective each and may run on `model: "sonnet"`;
   the synthesis that weighs them keeps opus
 
@@ -59,14 +59,14 @@ ceiling is its proxy. `/do-run burn` is exempt (explicit run skill).
 
 | Agent | model | effort | Notes |
 |-------|-------|--------|-------|
-| **po** | opus | high | Strategic decisions — needs deep reasoning |
+| **pox** | opus | high | Strategic decisions — needs deep reasoning |
 | **research** | opus | high | Cross-referencing, fact verification |
 | **redteam** | opus | high | Adversarial review — inter-wave risk gate |
 | **core** | sonnet | medium | Standard code generation |
 | **frontend** | sonnet | medium | Standard code generation |
-| **ai** | sonnet | medium | Standard code generation |
+| **aix** | sonnet | medium | Standard code generation |
 | **designer** | sonnet | medium | Design specs |
-| **qa** | sonnet | medium | Test execution + evaluation |
+| **qax** | sonnet | medium | Test execution + evaluation |
 | **scout** | haiku | medium | Read-only locating and sweeps — replaces Explore (which inherits the session); measured against sonnet · low in `docs/haiku-5-5-scout.md` |
 | **feature** | opus | medium | Long autonomous run: elaborates, builds, delegates |
 | **rethinker** | opus | high | Code-blind ideation, one lens per agent (do-run rethink only) |
@@ -98,15 +98,15 @@ ceiling is its proxy. `/do-run burn` is exempt (explicit run skill).
   reasoning effort. Its goal is to turn budget that would expire into
   depth-per-task rather than breadth-of-unfinished-tasks. See
   `skills/do-run/modes/burn/deep-knowledge/burn-scheduler.md` § Depth profiles.
-- **Implementers stay on sonnet** (`core`, `frontend`, `ai`, `designer`,
-  `qa` — their frontmatter): a well-specified bundle (contract given, files
+- **Implementers stay on sonnet** (`core`, `frontend`, `aix`, `designer`,
+  `qax` — their frontmatter): a well-specified bundle (contract given, files
   named, tests known) is never upgraded. `opus` / `fable` only for
   design-heavy, architecture or ambiguous work (no contract yet, an open
   trade-off, a cross-cutting refactor) — and only in budget class `free`.
   In every other class (Pro always lands there) an implementer is never
   upgraded, also inside `/do-run` and after "the right agents": a smaller
   plan only makes the rule lighter. Unaffected: the opus roles' own
-  frontmatter (`po`, `research`, `redteam`, `feature` — the full-ceremony
+  frontmatter (`pox`, `research`, `redteam`, `feature` — the full-ceremony
   synthesis and the redteam gate keep opus) and `/do-run burn`, which
   upgrades on purpose via `burn-plan.js gate`. Measured: 86 implementer
   spawns on opus cost ≈ $1,500 per 50 sessions; on sonnet ≈ $300.
@@ -187,7 +187,7 @@ the concurrent change).
 
 Agents belong in roughly 30–70 % of implementation sessions (not 100 %: each
 costs a context bootstrap). A long session with none is a smell: the suite run
-inline again and again (-> `qa`, background), 10+ files touched (-> offer the
+inline again and again (-> `qax`, background), 10+ files touched (-> offer the
 ceremony), a `weiter`/`ship` continuation redoing sweeps inline.
 
 ## Wave Execution

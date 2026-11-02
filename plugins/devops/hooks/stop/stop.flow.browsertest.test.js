@@ -173,7 +173,7 @@ describe("stop.flow.browsertest — background agents that may still change file
   test("a read-only agent (research, qa, redteam) defers nothing", async () => {
     const dir = project();
     try {
-      for (const role of ["devops:research", "devops:qa", "devops:redteam", "Explore"]) {
+      for (const role of ["devops:research", "devops:qax", "devops:redteam", "Explore"]) {
         owe(dir);
         try { fs.unlinkSync(flagPath(dir, "light-blockcount")); } catch { /* none */ }
         const decision = JSON.parse(await stop(dir, transcriptWithAgent(dir, role)));

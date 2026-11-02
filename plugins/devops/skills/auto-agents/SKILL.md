@@ -288,7 +288,7 @@ Per tier:
 
 - **Inline** — do the work in this session; no agent.
 - **1 agent / parallel** — § Single-Agent Shortcut, or one message with all
-  independent agents; no waves, no inter-wave gate. `devops:qa` verifies
+  independent agents; no waves, no inter-wave gate. `devops:qax` verifies
   implementing work when the change is more than one file.
 - **Full ceremony** — waves as planned in Step 3, inter-wave gates, QA wave.
 

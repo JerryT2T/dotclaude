@@ -146,8 +146,8 @@ describe('card-pregate — parity with stop.flow.guard', () => {
     // Gate Q (#714) is the pre-check's own — the parity case carries its question.
     [{ ...ok, validation: [{ requirement: 'r', status: 'partial', waitsOn: 'user', evidence: 'listen' }], open: ['r?'] }, {}],
     [{ ...ok, validation: [{ requirement: 'r', status: 'partial', waitsOn: 'pending', evidence: 'qa' }] }, { openTasks: [] }],
-    [ok, { openTasks: ['devops:qa'] }],
-    [{ ...ok, pending: [{ name: 'devops:qa' }] }, { openTasks: ['devops:qa'] }],
+    [ok, { openTasks: ['devops:qax'] }],
+    [{ ...ok, pending: [{ name: 'devops:qax' }] }, { openTasks: ['devops:qax'] }],
     [{ ...ok, variant: 'aborted', validation: [{ requirement: 'r', status: 'unmet' }] }, {}],
   ];
 

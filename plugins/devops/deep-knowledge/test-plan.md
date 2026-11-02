@@ -7,7 +7,7 @@ decision is consistent and autonomous (no ad-hoc "should I take the desktop?").
 
 This is a **reference, not a skill** — there is no `/devops-test-plan` command.
 Testing skills (`auto-harden`, `auto-polish`, do-run rethink mode,
-do-run backlog mode, the `qa` agent) and the V&V hooks
+do-run backlog mode, the `qax` agent) and the V&V hooks
 (`post.flow.completion` → `stop.flow.browsertest`) read this file and apply it
 inline. It provides data; it never runs tests itself.
 

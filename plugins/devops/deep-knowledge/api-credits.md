@@ -57,7 +57,7 @@ is on and a key exists. While it is there:
 | Codex second opinion when Codex is skipped (75 / 124 / 127) | `claude-api-safe.js` one-shot (`codex-integration.md` § Claude API fallback) |
 | Evals (`evals/ab-run.js`) | API key only when started from the user's own terminal (below) |
 | Month-end audit | `api-credit-audit.js` (below) |
-| Code-writing agents (`core`, `frontend`, `feature`), test runs (`qa`), anything that edits or executes | **in-session**, always — the API agent has no write or shell tools |
+| Code-writing agents (`core`, `frontend`, `feature`), test runs (`qax`), anything that edits or executes | **in-session**, always — the API agent has no write or shell tools |
 
 `[api-credit] on · no key stored` → everything stays on the plan; offer the
 web guide once if `apiCredit.webGuide`. `… credit exhausted until …` → plan.

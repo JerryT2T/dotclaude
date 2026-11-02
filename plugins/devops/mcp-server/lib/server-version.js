@@ -40,6 +40,13 @@ function readLoadedVersion() {
 export const LOADED_VERSION = readLoadedVersion();
 
 /**
+ * True when this server runs from the Desktop app's claude.ai catalog copy
+ * (`…/rpm/<org>/<user>/plugin_<id>`): a restart loads that same copy again.
+ */
+export const LOADED_FROM_CATALOG = /[\\/]rpm[\\/][^\\/]+[\\/][^\\/]+[\\/]plugin_[^\\/]+[\\/]/i
+  .test(fileURLToPath(import.meta.url));
+
+/**
  * The newest user-scope devops entry of installed_plugins.json (by
  * lastUpdated). Dev clones (`..clone` keys) are not the installed release.
  * @returns {string} the version, '' when unknown
@@ -65,10 +72,15 @@ export function installedVersion(registryFile = process.env.DEVOPS_INSTALLED_PLU
  * The one info line, or null when the installed version is not newer than
  * the loaded one (or either is unknown). Never throws.
  */
-export function staleServerLine(lang, { loaded = LOADED_VERSION, installed } = {}) {
+export function staleServerLine(lang, { loaded = LOADED_VERSION, installed, catalog = LOADED_FROM_CATALOG } = {}) {
   try {
     const now = installed === undefined ? installedVersion() : installed;
     if (!semverGreater(now, loaded)) return null;
+    if (catalog) {
+      return lang === "en"
+        ? `⚠ devops v${loaded} from the claude.ai plugin catalog is older than your install v${now} — claude.ai → Customize → Plugins → Manage marketplaces → Check for updates, then restart the app.`
+        : `⚠ devops v${loaded} aus dem claude.ai-Plugin-Katalog ist älter als dein Install v${now} — claude.ai → Anpassungen → Plugins → Marketplaces verwalten → Nach Updates suchen, dann App neu starten.`;
+    }
     return lang === "en"
       ? `ℹ Session server v${loaded} — restarting the session loads v${now}.`
       : `ℹ Session-Server v${loaded} — ein Neustart der Session lädt v${now}.`;

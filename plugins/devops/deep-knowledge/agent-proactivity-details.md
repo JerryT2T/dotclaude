@@ -7,8 +7,8 @@ On demand. The always-on core is `agent-proactivity.md` (tiers, precedence, hard
 | Tier | Signal | Do |
 |------|--------|----|
 | **Inline** | 1 domain, Q&A, quick fix, or an answer reachable by reading ~5 files or fewer | No agent — a sub-agent pays a full context bootstrap and loses the conversation. |
-| **1 agent, background** | The deliverable is a *conclusion* whose path would flood the conversation: anything that needs web pages (`research` — even one fetch), a sweep over more than ~10 files (`scout`, "where/how is X?"), a full test suite or build (`qa`), a high-stakes plan or diff to attack (`redteam`), a trade-off with real stakes that no file answers (`po`) | Spawn with `run_in_background: true`; keep working inline; relay the conclusion, not the transcript. |
-| **2–3 agents, parallel** | Two *analysis* lenses on one question (`research` + `po`, `po` + `redteam`) | Spawn in one message, ~5–15 tool calls per agent. **Implementing** agents in parallel (`core` + `frontend` editing the working tree at once) are never auto-spawned: offer it in one sentence like a ceremony. A UI consuming a new endpoint is not independent: Inline if ~5 files or fewer, else Full ceremony. |
+| **1 agent, background** | The deliverable is a *conclusion* whose path would flood the conversation: anything that needs web pages (`research` — even one fetch), a sweep over more than ~10 files (`scout`, "where/how is X?"), a full test suite or build (`qax`), a high-stakes plan or diff to attack (`redteam`), a trade-off with real stakes that no file answers (`pox`) | Spawn with `run_in_background: true`; keep working inline; relay the conclusion, not the transcript. |
+| **2–3 agents, parallel** | Two *analysis* lenses on one question (`research` + `pox`, `pox` + `redteam`) | Spawn in one message, ~5–15 tool calls per agent. **Implementing** agents in parallel (`core` + `frontend` editing the working tree at once) are never auto-spawned: offer it in one sentence like a ceremony. A UI consuming a new endpoint is not independent: Inline if ~5 files or fewer, else Full ceremony. |
 | **Full ceremony** | 3+ domains, a feature end-to-end, or a high-risk change (migration, auth, breaking contract, destructive op) | Never auto-start. Offer it in one sentence, no slash name; on a yes invoke the auto-agents skill (do-run if the user will be away). |
 
 **Execution path.** Implementing skills (do-run, auto-concept implement,
@@ -46,7 +46,7 @@ domain agent on `sonnet`; opus only for design-heavy/ambiguous work in class
   `off` → Inline always, no offers. Both cap only *proactive* spawns — a
   run skill or a hard go still spawns as designed.
 - **Escalation** — same area iterated 2+ times without converging → one tier
-  up (`qa` recurring bug, `designer` UI polish, `core` repeated refactor).
+  up (`qax` recurring bug, `designer` UI polish, `core` repeated refactor).
 - Never spawn for an explanation or a single-fact lookup; never silently.
 - `redteam` only after the inline pre-mortem hits a higher-stakes trigger;
   max 2 rounds per diff, round-2 leftovers become open points.

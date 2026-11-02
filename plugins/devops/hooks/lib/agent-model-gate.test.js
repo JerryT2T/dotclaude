@@ -30,7 +30,7 @@ describe("agent-model-gate", () => {
 
   test("a named model or an own frontmatter model passes", () => {
     expect(gate.wouldRefuse({ ...explore, model: "opus" }, null, jsonl(prompt()), "t1")).toBe(false);
-    expect(gate.wouldRefuse({ subagent_type: "devops:qa" }, "sonnet", jsonl(prompt()), "t1")).toBe(false);
+    expect(gate.wouldRefuse({ subagent_type: "devops:qax" }, "sonnet", jsonl(prompt()), "t1")).toBe(false);
   });
 
   test("model: inherit in the frontmatter counts as inheriting", () => {
@@ -85,7 +85,7 @@ describe("pre.agent.model hook", () => {
     const r = await runHook({ tool_name: "Agent", tool_input: explore, tool_use_id: "t1", cwd: dir, transcript_path: file }, dir);
     expect(r.code).toBe(2);
     expect(r.stderr).toContain(gate.MARKER);
-    const qa = { subagent_type: "devops:qa", description: "Run tests", prompt: "x" };
+    const qa = { subagent_type: "devops:qax", description: "Run tests", prompt: "x" };
     const ok = await runHook({ tool_name: "Agent", tool_input: qa, tool_use_id: "t1", cwd: dir, transcript_path: file }, dir);
     expect(ok.code).toBe(0);
   }, 20000);
@@ -96,7 +96,7 @@ describe("pre.agent.model hook", () => {
     const r = await runHook({ tool_name: "Agent", tool_input: named, tool_use_id: "t1", cwd: dir, transcript_path: file }, dir);
     expect(r.code).toBe(0);
     expect(r.stdout).toContain("devops:scout");
-    expect(gate.locateHint({ subagent_type: "devops:qa" })).toBeNull();
+    expect(gate.locateHint({ subagent_type: "devops:qax" })).toBeNull();
   }, 20000);
 
   test("silent inside a subagent", async () => {

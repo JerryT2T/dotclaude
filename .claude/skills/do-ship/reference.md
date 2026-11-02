@@ -77,6 +77,13 @@ sync failure (observed 2026-07-19). This keeps the completion card the **last vi
 output** (per plugin Step 6); do **not** print the notice as separate prose after the
 card — the card carries it.
 
+## Step 6.6 — The claude.ai account copy (Desktop Code tab + cloud sessions)
+
+devops also lives as a claude.ai account plugin (Auto-Sync from `main`, mirrored by the
+Desktop app; the only route into cloud sessions). Before the render, read the Desktop
+mirror's version and add the one `userFinalTest` item that asks the user to confirm the
+synced commit: `deep-knowledge/account-copy.md`. Same guards as Step 8.
+
 ## Step 8 — Self-update finalizer (silent, between the render and the card widget)
 
 > **Ordering is mandatory.** This MUST run **after** `render_completion_card` (Step 6)

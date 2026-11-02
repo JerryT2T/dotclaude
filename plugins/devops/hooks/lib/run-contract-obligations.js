@@ -117,7 +117,7 @@ function passDone(seg, name) {
 function isQaAgent(ev) {
   if (!ev || ev.k !== 'agent') return false;
   const t = String(ev.type || '').toLowerCase();
-  return t === 'devops:qa' || t === 'qa' || t.endsWith(':qa');
+  return t === 'devops:qax' || t === 'qax' || t.endsWith(':qax') || t === 'qa' || t.endsWith(':qa'); // qa: pre-0.341 transcripts
 }
 function skipOf(list, ob, item) {
   const itemOk = (ev) => item === undefined || String(ev.item) === String(item);
@@ -265,7 +265,7 @@ function fixFor(contract, ob, allEvs, item) {
     }
     case 'harden': return `Skill("devops:auto-harden", "${invokedBy(contract)}")`;
     case 'polish': return `Skill("devops:auto-polish", "${invokedBy(contract)}")`;
-    case 'qa': return 'Agent({ subagent_type: "devops:qa", prompt: "<verify this item\'s change>" })';
+    case 'qa': return 'Agent({ subagent_type: "devops:qax", prompt: "<verify this item\'s change>" })';
     case 'do-ship':
       return (contract.mode === 'backlog'
         ? `Skill("devops:do-ship", "${queuedArg(contract, allEvs)} --keep")`

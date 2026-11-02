@@ -200,10 +200,10 @@ conflicts occur, follow `deep-knowledge/merge-safety.md` strictly:
 
 Creating an issue is a refinement session, not a solo task. All relevant roles participate:
 
-1. `po` — drafts scope, user story, acceptance criteria
+1. `pox` — drafts scope, user story, acceptance criteria
 2. Domain roles — add technical notes, flag assumptions, identify risks
-3. `po` with `Lens: customer` (if applicable) — validates the user story from the end-user perspective, challenges vague AC
-4. `qa` — defines testability: what does "done" look like?
+3. `pox` with `Lens: customer` (if applicable) — validates the user story from the end-user perspective, challenges vague AC
+4. `qax` — defines testability: what does "done" look like?
 
 All happens within the single `/auto-issue` execution.
 

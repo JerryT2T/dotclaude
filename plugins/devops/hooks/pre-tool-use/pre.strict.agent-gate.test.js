@@ -93,7 +93,7 @@ describe("active", () => {
   });
 
   test("missing prompt field is treated as no block", () => {
-    expect(runHook({ tool_input: { subagent_type: "devops:qa" } }).code).toBe(2);
+    expect(runHook({ tool_input: { subagent_type: "devops:qax" } }).code).toBe(2);
   });
 });
 

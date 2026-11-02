@@ -226,7 +226,7 @@ describe("post.flow.completion — pending reminder", () => {
   test("never leaks the internal agentId into the instruction", () => {
     const dir = project();
     const out = runHook(dir, "s-pending-noid", "Agent", {
-      tool_input: { subagent_type: "devops:qa", run_in_background: true },
+      tool_input: { subagent_type: "devops:qax", run_in_background: true },
       tool_response: AGENT_LAUNCH,
     });
     expect(out).not.toContain("a75d674f7108dd6c8");
@@ -316,7 +316,7 @@ describe("post.flow.completion — pending reminder", () => {
   test("stays quiet for a foreground agent — it has already returned", () => {
     const dir = project();
     const out = runHook(dir, "s-pending-fg", "Agent", {
-      tool_input: { subagent_type: "devops:qa", run_in_background: false },
+      tool_input: { subagent_type: "devops:qax", run_in_background: false },
       tool_response: "Here is the review: everything looks fine.",
     });
     expect(out).not.toContain("[pending]");
@@ -349,10 +349,10 @@ describe("post.flow.completion — launches are read from the structured tool_re
   test("an async Agent launch fires [pending], named by its type, never by its id", () => {
     const dir = project();
     const out = runHook(dir, "s-struct-agent", "Agent", {
-      tool_input: { subagent_type: "devops:qa", description: "Review the diff", run_in_background: true },
+      tool_input: { subagent_type: "devops:qax", description: "Review the diff", run_in_background: true },
       tool_response: ASYNC_AGENT,
     });
-    expect(out).toContain("[pending] Background agent started: devops:qa");
+    expect(out).toContain("[pending] Background agent started: devops:qax");
     expect(out).not.toContain("a3a8dbef8ee890dbf");
     cleanup(dir);
   });
@@ -360,7 +360,7 @@ describe("post.flow.completion — launches are read from the structured tool_re
   test("a foreground agent stays quiet — even when its prompt quotes the launch sentences", () => {
     const dir = project();
     const out = runHook(dir, "s-struct-fg", "Agent", {
-      tool_input: { subagent_type: "devops:qa", description: "Review the diff" },
+      tool_input: { subagent_type: "devops:qax", description: "Review the diff" },
       tool_response: FOREGROUND_AGENT,
     });
     expect(out).toContain("COMPLETION CARD");

@@ -158,7 +158,7 @@ describe('scanOpenTasks', () => {
 
   test('a foreground agent is never reported (no launch marker)', () => {
     const lines = [
-      toolUse('toolu_1', 'Agent', { subagent_type: 'devops:qa', run_in_background: false }),
+      toolUse('toolu_1', 'Agent', { subagent_type: 'devops:qax', run_in_background: false }),
       toolResult('toolu_1', 'Here is what I found: the suite passes.'),
     ];
     expect(scanOpenTasks(lines.join('\n'))).toEqual([]);
@@ -216,7 +216,7 @@ describe('scanOpenTasks — a SendMessage re-opens only an in-process agent', ()
   ];
   const AGENT_DONE = [...AGENT_START, notification('a75d674f7108dd6c8')];
   const NAMED_DONE = [
-    toolUse('toolu_n', 'Agent', { subagent_type: 'devops:qa', name: 'checker', run_in_background: true }),
+    toolUse('toolu_n', 'Agent', { subagent_type: 'devops:qax', name: 'checker', run_in_background: true }),
     toolResult('toolu_n', AGENT_LAUNCH_TEXT),
     notification('a75d674f7108dd6c8'),
   ];
@@ -271,7 +271,7 @@ describe('scanOpenTasks — a SendMessage re-opens only an in-process agent', ()
     const byName = SEND_RESUMED.replace('"name":"a75d674f7108dd6c8"', '"name":"checker"');
     const lines = [...NAMED_DONE, ...send('toolu_s', 'checker', byName)];
     expect(scanOpenTasks(lines.join('\n')))
-      .toEqual([{ id: 'a75d674f7108dd6c8', kind: 'agent', name: 'devops:qa' }]);
+      .toEqual([{ id: 'a75d674f7108dd6c8', kind: 'agent', name: 'devops:qax' }]);
     expect(scanOpenTasks([...lines, notification('a75d674f7108dd6c8')].join('\n'))).toEqual([]);
   });
 
@@ -283,7 +283,7 @@ describe('scanOpenTasks — a SendMessage re-opens only an in-process agent', ()
       "agentId: a75d674f7108dd6c8 (use SendMessage with to: 'a75d674f7108dd6c8', summary: " +
       "'<5-10 word recap>' to continue this agent)\n<usage>subagent_tokens: 61279</usage>";
     const open = scanOpenTasks([
-      toolUse('toolu_f', 'Agent', { subagent_type: 'devops:qa', description: 'Check the suite' }),
+      toolUse('toolu_f', 'Agent', { subagent_type: 'devops:qax', description: 'Check the suite' }),
       toolResult('toolu_f', foreground),
       ...send('toolu_s', 'a75d674f7108dd6c8', SEND_RESUMED),
     ].join('\n'));
@@ -301,7 +301,7 @@ describe('scanOpenTasks — a SendMessage re-opens only an in-process agent', ()
   test('the fallback maps a launch name to its agentId, with or without a ListAgents ref', () => {
     for (const to of ['checker', 'checker [3fa9c1]']) {
       expect(scanOpenTasks([...NAMED_DONE, ...send('toolu_s', to, UNKNOWN_REPLY)].join('\n')))
-        .toEqual([{ id: 'a75d674f7108dd6c8', kind: 'agent', name: 'devops:qa' }]);
+        .toEqual([{ id: 'a75d674f7108dd6c8', kind: 'agent', name: 'devops:qax' }]);
     }
   });
 
@@ -653,8 +653,8 @@ describe('openTaskNames', () => {
 
   test('deduplicates repeated names and preserves order', () => {
     expect(openTaskNames([
-      { name: 'devops:qa' }, { name: 'devops:frontend' }, { name: 'devops:qa' },
-    ])).toEqual(['devops:qa', 'devops:frontend']);
+      { name: 'devops:qax' }, { name: 'devops:frontend' }, { name: 'devops:qax' },
+    ])).toEqual(['devops:qax', 'devops:frontend']);
   });
 
   test('skips unnamed entries and tolerates no input', () => {
@@ -665,7 +665,7 @@ describe('openTaskNames', () => {
 
 describe('labelFor', () => {
   test('prefers subagent_type, then description', () => {
-    expect(labelFor({ subagent_type: 'devops:qa', description: 'x' }, 'agent')).toBe('devops:qa');
+    expect(labelFor({ subagent_type: 'devops:qax', description: 'x' }, 'agent')).toBe('devops:qax');
     expect(labelFor({ description: 'Review the diff' }, 'agent')).toBe('Review the diff');
     expect(labelFor({}, 'agent')).toBe('agent');
   });

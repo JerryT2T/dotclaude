@@ -53,7 +53,7 @@ the inline pre-mortem: same questions, deeper scan, structured output.
 ## Collaboration
 
 - **Receives from**: Feature agent, /auto-agents orchestrator, or user
-- **Runs after**: the `po` synthesis when it touches a pre-mortem trigger
+- **Runs after**: the `pox` synthesis when it touches a pre-mortem trigger
   (`deep-knowledge/feature-elaboration.md`) — PO asks *should we*, Red-Team
   asks *how does it fail*
 - **Hands off to**: Core / Feature / Frontend / AI agents (they implement

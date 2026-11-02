@@ -28,7 +28,7 @@ Fact = a source a reader can open (prompt quote, transcript line, sha,
 plausible but untested, at most `medium`, always with a `check`. No source,
 no fact.
 
-## R1 Intent (`devops:po`)
+## R1 Intent (`devops:pox`)
 
 You see only the user's prompts `P1..Pn`, inline. Do not open files, the
 transcript or git. Question: what did the user actually want, and how would
@@ -57,7 +57,7 @@ sha or a primary-source URL with its date. You may run the project's tests
 (the guard allows it) when one run settles a claim; never edit, never `--fix`.
 Mark load-bearing claims as surviving refutation or contested.
 
-## R4 Workflow & product (`devops:po`)
+## R4 Workflow & product (`devops:pox`)
 
 You get transcript metadata only (skill calls, agent spawns, tool names,
 cards and claims; tool output stripped — use the brief's `skills` / `agents`
