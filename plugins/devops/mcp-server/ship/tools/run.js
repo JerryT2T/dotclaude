@@ -254,6 +254,18 @@ export async function handler(params, injected = {}) {
     let cp = deps.checkpoint.open(cwd) || {};
     const steps = cp.steps || {};
     const merged = !!(steps.release && steps.release.merged);
+    // A recorded bump counts only while the branch still carries it. A conflict
+    // rebase that dropped the release commit left the checkpoint naming a bump
+    // the tree no longer had, and #1027 merged without a version bump.
+    if (!merged && steps.bump && steps.bump.vNew) {
+      const current = (() => { try { return readVersion(cwd).version; } catch { return null; } })();
+      if (current && current !== steps.bump.vNew) {
+        out.warnings.push(`checkpoint bump to ${steps.bump.vNew} is not on the branch (version ${current}) — bumping again`);
+        delete steps.bump;
+        cp = { ...cp, steps };
+        deps.checkpoint.write(cwd, cp);
+      }
+    }
     const bumped = !!steps.bump;
     let pre = run.preflight || null;
 
