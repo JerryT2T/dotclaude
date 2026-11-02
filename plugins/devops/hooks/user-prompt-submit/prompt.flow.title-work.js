@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook prompt.flow.title-work
- * @version 0.7.1
+ * @version 0.8.0
  * @event UserPromptSubmit
  * @plugin devops
  * @description Marks a session as "being worked on" in the sidebar: on the
@@ -57,6 +57,20 @@
  *   ~3.6 % of all tokens). Title already right → no output at all. Title
  *   unknown (no transcript, no title entry yet) → the old get_session
  *   instruction, so the semantics never break.
+ *
+ *   0.8.0: the title also comes from the app's sidecar
+ *   (`<session>/custom-title.json`, lib/session-title.js readKnownTitle),
+ *   which exists before the transcript carries a title entry — so the first
+ *   prompt gets the exact call too. Still unknown on a FRESH session (no
+ *   earlier prompt in the transcript): the title can only be the app's own
+ *   summary, so a short get_session → set fallback without the prefix-strip
+ *   table (freshInstruction). The long table stays for an unknown title in
+ *   an old session only.
+ *   The direct instruction also names the exact question-title call
+ *   (`👉 ➜ ❓ Question ┃ <title>`, lib/ask-title.js) to send in the same
+ *   message as a later AskUserQuestion / ExitPlanMode / start_session that
+ *   waits on the user — pre.ask.title then has nothing to refuse, and its
+ *   one block per turn stays only for a model that ignored the line.
  */
 
 require('../lib/plugin-guard');
@@ -78,8 +92,9 @@ const ONCE_KEY = 'prompt-title-work';
 // keep one import.
 const {
   WORK_PREFIX, LEGACY_PENDING_PREFIX, LEGACY_PREFIXES, SHIPPING_PREFIX, CONCEPT_PREFIX, BATCH_PREFIX,
-  classify, nextTitle, readCurrentTitle,
+  classify, nextTitle, readKnownTitle, isFreshSession,
 } = require('../lib/session-title');
+const ask = require('../lib/ask-title');
 const { STATUS, BARE_WORK } = require('../lib/title-scheme');
 
 /**
@@ -106,8 +121,7 @@ function directInstruction(title, { shipping = false, conceptYields = false } = 
       '(parallel — no get_session, no message of its own). No other tool this turn → call it alone.',
     'Only deferred → ToolSearch "select:mcp__ccd_session_mgmt__set_session_title" in that first batch, the set call in the next. ' +
       'Not even deferred, or it fails: skip silently.',
-    'An AskUserQuestion later this turn: send set_session_title with the title head "👉 ➜ ❓ Question ┃ " instead of this one ' +
-      'in the SAME message, before the question (pre.ask.title refuses the question otherwise).',
+    ...questionLine(title),
     ...(shipping ? ['This is do-ship Pre-Step C done early.'] : []),
     ...(conceptYields ? ['The concept prefix yields (Claude works now); if the concept page stays open after this turn, its completion card (concept field + cwd) sets it again.'] : []),
     'Do not mention this to the user.',
@@ -122,14 +136,40 @@ function directInstruction(title, { shipping = false, conceptYields = false } = 
 function titleWorkOutput(hook, prompt, cwd) {
   const prefix = prefixFor(prompt, cwd);
   const machine = isMachineTurn(prompt);
-  const current = readCurrentTitle(hook.transcript_path);
-  if (current === null) return instruction(prefix, { machine });
+  const current = readKnownTitle(hook.transcript_path);
+  if (current === null) {
+    return !machine && isFreshSession(hook.transcript_path) ? freshInstruction(prefix) : instruction(prefix, { machine });
+  }
   const next = nextTitle(current, { prefix, machine });
   if (next === null) return '';
   return directInstruction(next, {
     shipping: prefix === SHIPPING_PREFIX,
     conceptYields: classify(current) === 'concept-waiting',
   });
+}
+
+/**
+ * The exact call for a later blocking question this turn (P2: no refused
+ * round) — empty for a title that keeps its own head (batch).
+ */
+function questionLine(title) {
+  const q = ask.questionTitle(title);
+  if (!q) return [];
+  return [`Later this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: ${ask.setCall(q)} ` +
+    'FIRST in that same message (pre.ask.title refuses the call otherwise).'];
+}
+
+/**
+ * Fallback for a FRESH session whose title is still unknown: it can only be
+ * the app's own summary, so no prefix table — get it, prefix it.
+ */
+function freshInstruction(prefix = WORK_PREFIX) {
+  const heads = [...new Set(Object.values(STATUS))].join(' ');
+  return [
+    '[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__get_session {session_id:"self"} in the first tool batch of this turn; ' +
+      `title non-empty and starting with none of ${heads} 📥 → mcp__ccd_session_mgmt__set_session_title {session_id:"self", title:"${prefix}" + title} with the next batch.`,
+    'Deferred → ToolSearch "select:mcp__ccd_session_mgmt__get_session,mcp__ccd_session_mgmt__set_session_title" first. Unavailable or failing: skip silently. Do not mention this to the user.',
+  ].join('\n');
 }
 
 /** Fallback when the current title is unknown: read it via get_session. */
@@ -216,4 +256,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { ONCE_KEY, WORK_PREFIX, LEGACY_PENDING_PREFIX, LEGACY_PREFIXES, SHIPPING_PREFIX, CONCEPT_PREFIX, BATCH_PREFIX, instruction, directInstruction, titleWorkOutput, prefixFor, shouldMark, releaseTitleWork };
+module.exports = { freshInstruction, questionLine, ONCE_KEY, WORK_PREFIX, LEGACY_PENDING_PREFIX, LEGACY_PREFIXES, SHIPPING_PREFIX, CONCEPT_PREFIX, BATCH_PREFIX, instruction, directInstruction, titleWorkOutput, prefixFor, shouldMark, releaseTitleWork };

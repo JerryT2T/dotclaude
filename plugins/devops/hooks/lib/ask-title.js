@@ -1,6 +1,6 @@
 /**
  * @module ask-title
- * @version 0.3.0
+ * @version 0.3.1
  * @description The session title while a call waits for the user — an
  *   AskUserQuestion, an ExitPlanMode plan approval, or a start_session that
  *   asks the user ("offer", "user_asked": the app's approval card): the card
@@ -173,4 +173,5 @@ module.exports = {
   previousTitle,
   refusalText,
   restoreText,
+  setCall,
 };

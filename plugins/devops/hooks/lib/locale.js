@@ -124,17 +124,23 @@ const INJECTED_PROMPT = new RegExp('^(?:' + [
   'Another Claude session sent a message',
 ].join('|') + ')');
 
-/** True when the prompt was generated, not typed by the user. */
-function isInjectedPrompt(prompt) {
-  return typeof prompt === 'string' && INJECTED_PROMPT.test(prompt.trimStart());
-}
-
 // Pasted material and harness reminders inside a typed prompt are not the
 // user's own words either ("ok" + a pasted English log must not flip to en).
-function ownWords(prompt) {
-  return prompt
-    .replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, ' ')
-    .replace(/<pasted_content[^>]*>[\s\S]*?<\/pasted_content[^>]*>/g, ' ');
+const { ownWords } = require('./prompt-text');
+
+/**
+ * True when the prompt was generated, not typed by the user. A typed prompt
+ * the app prefixed with a <system-reminder> (the worktree note on a worktree
+ * session's first prompt) is still typed: only a prompt that is nothing but
+ * reminders, or whose own words start with another marker, is generated.
+ */
+function isInjectedPrompt(prompt) {
+  if (typeof prompt !== 'string') return false;
+  const start = prompt.trimStart();
+  if (!INJECTED_PROMPT.test(start)) return false;
+  if (!start.startsWith('<system-reminder>')) return true;
+  const rest = ownWords(prompt);
+  return !rest || INJECTED_PROMPT.test(rest);
 }
 
 /**

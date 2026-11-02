@@ -45,7 +45,9 @@
  *      file. Without lanes.json every module runs in one sequential lane. A
  *      module that cannot run in
  *      a worker gets `"isolate": "process"` (child process, run alongside) or
- *      `"dispatch": false` (stays its own hooks.json entry). Today: none.
+ *      `"dispatch": false` (stays its own hooks.json entry: the asyncRewake
+ *      PermissionRequest watchers). `"dispatch": "fast"` modules run in the
+ *      fast lane (`dispatch.js <Event> --fast`, see FAST_DEFAULT_TIMEOUT_S).
  *
  *   4. Time budget — a module's budget is its own manifest timeout (60 s when
  *      unset), counted from its start; the event's budget is the largest
@@ -82,6 +84,13 @@ const PLUGIN_ROOT = path.resolve(HOOKS_DIR, '..');
 const MANIFEST = path.join(__dirname, 'manifest.json');
 const LANES = path.join(__dirname, 'lanes.json');
 const DEFAULT_TIMEOUT_S = 60;
+// Fast lane (`"dispatch": "fast"`): the read-only and harness tools #924 keeps
+// off the main dispatcher (Read, Glob, Grep, mcp__ccd_*). They used to run as
+// one `node <file>` process per module — 4 node starts per Read. The fast lane
+// runs them in ONE process with its own hooks.json entry and a short budget:
+// the main roster never touches these tools, and a stuck fast module costs
+// FAST_DEFAULT_TIMEOUT_S, never the main dispatcher's 60 s.
+const FAST_DEFAULT_TIMEOUT_S = 10;
 const HEADROOM_S = 5;
 const MIN_START_MS = 250;
 
@@ -143,14 +152,16 @@ function eventModules(manifest, event, pluginRoot = PLUGIN_ROOT) {
     for (const h of (g && Array.isArray(g.hooks) ? g.hooks : [])) {
       const file = moduleFile(h.command, pluginRoot);
       if (!file) continue;
+      const fast = h.dispatch === 'fast';
       out.push({
         name: path.basename(file).replace(/\.(c?js|mjs)$/, ''),
         file,
         command: h.command,
         matcher: g.matcher,
-        timeoutS: typeof h.timeout === 'number' && h.timeout > 0 ? h.timeout : DEFAULT_TIMEOUT_S,
+        timeoutS: typeof h.timeout === 'number' && h.timeout > 0 ? h.timeout : (fast ? FAST_DEFAULT_TIMEOUT_S : DEFAULT_TIMEOUT_S),
         isolate: h.isolate === 'process' ? 'process' : 'worker',
-        dispatch: h.dispatch !== false,
+        dispatch: h.dispatch !== false && !fast,
+        fast,
         onFailure: h.onFailure,
       });
     }
@@ -163,9 +174,14 @@ function eventBudgetS(modules) {
   return modules.reduce((m, x) => Math.max(m, x.timeoutS), 0) || DEFAULT_TIMEOUT_S;
 }
 
-function selectModules(manifest, event, payload, pluginRoot = PLUGIN_ROOT) {
+/** The modules one dispatcher entry owns: the main roster, or the fast lane. */
+function laneModules(manifest, event, pluginRoot = PLUGIN_ROOT, { fast = false } = {}) {
+  return eventModules(manifest, event, pluginRoot).filter((m) => (fast ? m.fast : m.dispatch));
+}
+
+function selectModules(manifest, event, payload, pluginRoot = PLUGIN_ROOT, opts = {}) {
   const query = queryFor(event, payload);
-  return eventModules(manifest, event, pluginRoot).filter((m) => m.dispatch && matches(query, m.matcher));
+  return laneModules(manifest, event, pluginRoot, opts).filter((m) => matches(query, m.matcher));
 }
 
 function collect(stream, sink) {
@@ -337,19 +353,21 @@ function readStdin() {
 async function main() {
   const startedAt = Date.now() - Math.round(process.uptime() * 1000);
   const event = String(process.argv[2] || '');
+  const fast = process.argv.includes('--fast');
+  const laneKey = fast ? `${event}:fast` : event;
   const tele = telemetry();
-  if (tele) tele.setHook(`dispatch:${event}`);
+  if (tele) tele.setHook(`dispatch:${laneKey}`);
   const raw = await readStdin();
   let payload = null;
   try { payload = require('../lib/hook-input').parseHookInput(raw); } catch { /* matcher falls back to all */ }
   let manifest;
   try { manifest = loadManifest(); } catch { return { code: 0, stdout: '', stderr: '' }; }
-  const all = eventModules(manifest, event).filter((m) => m.dispatch);
+  const all = laneModules(manifest, event, PLUGIN_ROOT, { fast });
   if (!all.length) return { code: 0, stdout: '', stderr: '' };
-  const modules = selectModules(manifest, event, payload);
+  const modules = selectModules(manifest, event, payload, PLUGIN_ROOT, { fast });
   if (!modules.length) return { code: 0, stdout: '', stderr: '' };
   const lanes = loadLanes();
-  return runEvent({ event, raw, payload, modules, budgetS: eventBudgetS(all), startedAt, processMode: dispatchDisabled(), tele, lanes: lanes ? lanes[event] : undefined });
+  return runEvent({ event, raw, payload, modules, budgetS: eventBudgetS(all), startedAt, processMode: dispatchDisabled(), tele, lanes: lanes ? lanes[laneKey] : undefined });
 }
 
 if (require.main === module) {
@@ -365,6 +383,6 @@ if (require.main === module) {
 }
 
 module.exports = {
-  moduleFile, loadManifest, loadLanes, laneGroups, eventModules, eventBudgetS, selectModules, runEvent, dispatchDisabled,
-  DEFAULT_TIMEOUT_S, HEADROOM_S, MIN_START_MS, MANIFEST,
+  moduleFile, loadManifest, loadLanes, laneGroups, eventModules, laneModules, eventBudgetS, selectModules, runEvent, dispatchDisabled,
+  DEFAULT_TIMEOUT_S, FAST_DEFAULT_TIMEOUT_S, HEADROOM_S, MIN_START_MS, MANIFEST,
 };

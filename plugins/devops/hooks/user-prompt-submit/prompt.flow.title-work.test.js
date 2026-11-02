@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { ONCE_KEY, WORK_PREFIX, LEGACY_PENDING_PREFIX, LEGACY_PREFIXES as HOOK_LEGACY, SHIPPING_PREFIX, CONCEPT_PREFIX, BATCH_PREFIX, instruction, directInstruction, titleWorkOutput, prefixFor, shouldMark, releaseTitleWork } from "./prompt.flow.title-work.js";
+import { ONCE_KEY, WORK_PREFIX, LEGACY_PENDING_PREFIX, LEGACY_PREFIXES as HOOK_LEGACY, SHIPPING_PREFIX, CONCEPT_PREFIX, BATCH_PREFIX, instruction, freshInstruction, directInstruction, titleWorkOutput, prefixFor, shouldMark, releaseTitleWork } from "./prompt.flow.title-work.js";
 import { runOnce } from "../lib/run-once.js";
 import { SESSION_PREFIX, LEGACY_PREFIXES } from "../../mcp-server/lib/mode-state.js";
 import TITLE_SCHEME_MOD from "../lib/title-scheme.js";
@@ -247,7 +247,8 @@ describe("prompt.flow.title-work — title known from the transcript", () => {
   });
 
   test("title unknown (no entry, no transcript) → the get_session fallback", () => {
-    expect(out(null)).toBe(instruction(WORK_PREFIX));
+    // 0.8.0: a transcript without any earlier prompt is a fresh session → the short fallback.
+    expect(out(null)).toBe(freshInstruction(WORK_PREFIX));
     expect(titleWorkOutput({}, "fix it", dir)).toBe(instruction(WORK_PREFIX));
     expect(titleWorkOutput({}, "/do-ship", dir)).toBe(instruction(SHIPPING_PREFIX));
   });

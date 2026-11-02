@@ -84,3 +84,14 @@ describe("prompt.flow.appstart skips machine turns (#474)", () => {
     expect(r.stdout).toContain("App start intent detected");
   });
 });
+
+describe("prompt.flow.appstart needs an app-ish object", () => {
+  test("starting a session is no app start", () => {
+    const r = run(APPSTART, "ja die starten und ihr die info mitgeben", "appstart-session");
+    expect(r.stdout).toBe("");
+  });
+  test("'starte den dev-server' is an app start", () => {
+    const r = run(APPSTART, "starte den dev-server", "appstart-dev");
+    expect(r.stdout).toContain("App start intent detected");
+  });
+});

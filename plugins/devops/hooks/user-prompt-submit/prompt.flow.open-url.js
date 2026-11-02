@@ -84,7 +84,7 @@ function renderDeadContext(url, concept) {
 async function handle(hook, deps = {}) {
   const open = deps.open || openInDefaultBrowser;
   const probe = deps.probe || probeUrl;
-  const text = hook.prompt || hook.user_message || hook.message || '';
+  const text = require('../lib/prompt-text').userText(hook);
   const parsed = parseOpenUrlPrompt(text);
   if (!parsed) return { exitCode: 0, stderr: '' };
   let alive = false;

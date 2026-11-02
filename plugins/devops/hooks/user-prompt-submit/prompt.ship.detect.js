@@ -157,11 +157,12 @@ process.stdin.on('end', () => {
   try { hook = JSON.parse(inputData); }
   catch { process.exit(0); }
 
-  const userMessage = (hook.prompt || hook.user_message || hook.message || '').toLowerCase().trim();
+  const { userText } = require('../lib/prompt-text');
+  const userMessage = userText(hook).toLowerCase();
   if (!userMessage) process.exit(0);
 
   // --- Direct ship intent keywords (shared with prompt.flow.title-work) ---
-  const request = parseShipRequest(hook.prompt || hook.user_message || hook.message || '');
+  const request = parseShipRequest(userText(hook));
   const isDirectShipIntent = request.ship;
 
   // --- Affirmation after completion card (short messages) ---
@@ -248,7 +249,7 @@ process.stdin.on('end', () => {
   }
   // "<work>, dann ship": the work first, the ship as the turn's last step —
   // a red card's Fix button ends this way (2026-10-25).
-  const deferred = isDirectShipIntent && isDeferredShip(hook.prompt || hook.user_message || hook.message || '');
+  const deferred = isDirectShipIntent && isDeferredShip(userText(hook));
   let mandate = promoteArgs
     ? [`MANDATORY: Use Skill("devops:do-ship") with args "${promoteArgs}".`, promoteNote]
     : deferred

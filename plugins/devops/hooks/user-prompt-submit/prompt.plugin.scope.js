@@ -75,7 +75,7 @@ if (require.main === module) {
     try { hook = JSON.parse(inputData); } catch { process.exit(0); }
 
     // `prompt` is what the runtime actually sends; the others are defensive.
-    const message = hook.prompt || hook.user_message || hook.message || '';
+    const message = require('../lib/prompt-text').userText(hook);
     if (!hasPluginSignal(message)) process.exit(0);
 
     const cwd = hook.cwd || process.cwd();

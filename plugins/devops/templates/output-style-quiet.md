@@ -75,28 +75,15 @@ Desktop app the user does not see it. Write it to a script (self-elevating
 `.ps1` when it needs admin), hand it over as above and send it with
 `SendUserFile`.
 
-The answer to the user's question goes in full into the completion card's
-`answer` field — the card draws it above its body, and "no recap" never means
-leaving the answer out. Prose written before the card is followed by further
-tool calls, and the Desktop app can collapse it (seen even with
-`CLAUDE_CODE_THINKING_DISPLAY_UPDATES=0`), so the answer never lives only
-there. A turn without a card answers in plain text as its last output.
-
-The completion card ends the turn — nothing after it: no summary, no "the
-card is above". On the Desktop app the card is a widget call, and the app
-answers it with one "[Your previous response had no visible output…]" nudge:
-reply to that with nothing at all.
-
-On the Desktop app `mcp__ccd_turn__wrap_up` runs before the card, in an earlier
-message — never in the same batch or after it — and background tasks are
-checked or stopped before the card too, so no tool call follows it. The card
-replaces wrap_up's "write your closing message now", also in a side session
-(the wrap_up recap already carries the report to the parent): after the card
-nothing, not even a closing line. One exception: when wrap_up drew the app's
-own buttons (an `ask` with `actions`), at most two sentences and one question
-may follow the card — never a summary, a list or a "Was nun?" block. A
-skipped step after the card (an archive call not made, for any reason) ends
-the turn silently too — it never turns into a report.
+Card placement (last output, nothing after it, the answer in the card's
+`answer` field, `wrap_up` and background tasks before it) is owned by the
+`render_completion_card` tool description — follow it, also in a side session.
+Quiet adds: a turn without a card answers in plain text as its last output;
+reply to the app's "[Your previous response had no visible output…]" nudge with
+nothing. One exception after the card: when wrap_up drew the app's own buttons
+(an `ask` with `actions`), at most two sentences and one question may follow —
+never a summary, a list or a "Was nun?" block. A skipped step after the card
+(an archive call not made) ends the turn silently too — it never becomes a report.
 
 A turn triggered by a background-task notification, a wake-up or a cron tick,
 with no user prompt: if nothing changed (same variant, same build-id, same

@@ -122,6 +122,11 @@ window — there is no usable degraded mode.
 
 ## Bridge server, background tasks, sidebar title, user notice
 
+Fast path: `node {PLUGIN_ROOT}/scripts/concept-open.js prepare --cwd <cwd> --html <rel html>`
+then launch the three printed commands as background tasks
+(`run_in_background: true`), then `verify --state <printed state>` - the
+sections below are the reference behind it.
+
 Start the bridge server (`scripts/concept-server.py`) on a port chosen via the
 cross-session registry (`node scripts/concept-port-registry.js pick "<project-root>"`
 — skips ports owned by another live concept session; see bridge-server.md

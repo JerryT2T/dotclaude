@@ -33,11 +33,15 @@ process.stdin.on('end', () => {
   // A task notification or cron tick is no start request: its text can say
   // "start" or "preview" and still come from nobody (#474).
   if (require('../lib/non-user-prompt').isNonUserPrompt(raw)) process.exit(0);
-  const userMessage = raw.toLowerCase().trim();
+  const userMessage = require('../lib/prompt-text').ownWords(raw).toLowerCase();
   if (!userMessage) process.exit(0);
 
+  // A bare "starte"/"starten" needs an app-ish object: "ja, die session
+  // starten" asked for a side session and got the app-start card mandate.
   const startKeywords = [
-    /\bstart(?:e|en)?\b/,
+    /^\s*start(?:e|en)?\s*[.!]?\s*$/,
+    /\bstart(?:e|en)?\s+(?:(?:die|den|das|the|my|our|unsere?n?)\s+)?(?:app|server|dev(?:-?server)?|frontend|backend|anwendung|projekt|project)\b/,
+    /\b(?:app|server|dev-?server|frontend|backend|anwendung)\s+start(?:en)?\b/,
     /\bdev\s+start\b/,
     /\bnpm\s+(?:run\s+)?(?:dev|start|serve)\b/,
     /\bapp\s+starten\b/,

@@ -58,7 +58,7 @@ process.stdin.on('end', () => {
   try { if (require('../lib/batch-state').willBeCollected(hook)) process.exit(0); }
   catch { /* fail open */ }
 
-  const message = hook.prompt || hook.user_message || hook.message || '';
+  let message = hook.prompt || hook.user_message || hook.message || '';
   if (!message) process.exit(0);
   // Background agent reports quote issue and PR numbers; the user referenced
   // none of them (#473). Machine turns also must not consume the first-prompt
@@ -68,6 +68,7 @@ process.stdin.on('end', () => {
   // A request to work on an issue is tracked; a number only mentioned is
   // asked about. Quoted examples, code, brackets, pasted log lines and lists
   // of 3+ are neither.
+  message = require('../lib/prompt-text').ownWords(message);
   const refs = issueRefs(message);
   const trackNumbers = refs.track;
   let askNumbers = refs.ask;

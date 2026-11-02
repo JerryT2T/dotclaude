@@ -17,27 +17,9 @@
       },
       {
         "hooks": [
-          { "type": "command", "command": "command -v node >/dev/null 2>&1 || { echo '{\"systemMessage\":\"devops inactive: node/git missing\"}'; exit 0; }; node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.tokens.guard.js\"" }
+          { "type": "command", "command": "command -v node >/dev/null 2>&1 || { echo '{\"systemMessage\":\"devops inactive: node/git missing\"}'; exit 0; }; node \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch/dispatch.js\" PreToolUse --fast", "timeout": 15 }
         ],
-        "matcher": "Read|Glob|Grep"
-      },
-      {
-        "hooks": [
-          { "type": "command", "command": "command -v node >/dev/null 2>&1 || { echo '{\"systemMessage\":\"devops inactive: node/git missing\"}'; exit 0; }; node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.session.archive.js\"" }
-        ],
-        "matcher": "mcp__ccd_session_mgmt__archive_session"
-      },
-      {
-        "hooks": [
-          { "type": "command", "command": "command -v node >/dev/null 2>&1 || { echo '{\"systemMessage\":\"devops inactive: node/git missing\"}'; exit 0; }; node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.ask.title.js\"", "timeout": 5 }
-        ],
-        "matcher": "mcp__ccd_session__start_session"
-      },
-      {
-        "hooks": [
-          { "type": "command", "command": "command -v node >/dev/null 2>&1 || { echo '{\"systemMessage\":\"devops inactive: node/git missing\"}'; exit 0; }; node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.agent.relay.js\"", "timeout": 10 }
-        ],
-        "matcher": "Read|Glob|Grep|mcp__ccd_.*"
+        "matcher": "Read|Glob|Grep|mcp__ccd_session_mgmt__archive_session|mcp__ccd_session__start_session|Read|Glob|Grep|mcp__ccd_.*"
       }
     ],
     "SubagentStop": [
@@ -71,16 +53,9 @@
       },
       {
         "hooks": [
-          { "type": "command", "command": "command -v node >/dev/null 2>&1 || { echo '{\"systemMessage\":\"devops inactive: node/git missing\"}'; exit 0; }; node \"${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use/post.flow.completion.js\"" },
-          { "type": "command", "command": "command -v node >/dev/null 2>&1 || { echo '{\"systemMessage\":\"devops inactive: node/git missing\"}'; exit 0; }; node \"${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use/post.approval.clear.js\"", "timeout": 5 }
+          { "type": "command", "command": "command -v node >/dev/null 2>&1 || { echo '{\"systemMessage\":\"devops inactive: node/git missing\"}'; exit 0; }; node \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch/dispatch.js\" PostToolUse --fast", "timeout": 15 }
         ],
-        "matcher": "Read|Glob|Grep|mcp__ccd_.*"
-      },
-      {
-        "hooks": [
-          { "type": "command", "command": "command -v node >/dev/null 2>&1 || { echo '{\"systemMessage\":\"devops inactive: node/git missing\"}'; exit 0; }; node \"${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use/post.ask.title.js\"", "timeout": 5 }
-        ],
-        "matcher": "mcp__ccd_session__start_session"
+        "matcher": "Read|Glob|Grep|mcp__ccd_.*|mcp__ccd_session__start_session"
       }
     ],
     "PostToolUseFailure": [
@@ -92,15 +67,9 @@
       },
       {
         "hooks": [
-          { "type": "command", "command": "command -v node >/dev/null 2>&1 || { echo '{\"systemMessage\":\"devops inactive: node/git missing\"}'; exit 0; }; node \"${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use/post.flow.completion.js\"" }
+          { "type": "command", "command": "command -v node >/dev/null 2>&1 || { echo '{\"systemMessage\":\"devops inactive: node/git missing\"}'; exit 0; }; node \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch/dispatch.js\" PostToolUseFailure --fast", "timeout": 15 }
         ],
-        "matcher": "mcp__ccd_session_mgmt__archive_session"
-      },
-      {
-        "hooks": [
-          { "type": "command", "command": "command -v node >/dev/null 2>&1 || { echo '{\"systemMessage\":\"devops inactive: node/git missing\"}'; exit 0; }; node \"${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use/post.approval.clear.js\"", "timeout": 5 }
-        ],
-        "matcher": "Read|Glob|Grep|mcp__ccd_.*"
+        "matcher": "mcp__ccd_session_mgmt__archive_session|Read|Glob|Grep|mcp__ccd_.*"
       }
     ],
     "Stop": [

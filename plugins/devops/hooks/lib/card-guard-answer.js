@@ -18,7 +18,8 @@
 const { isPromptEntry } = require('./skill-invocations');
 
 /** Per-session marker: the re-emit was already asked for this turn. */
-const ANSWER_ASKED_FLAG = 'dotclaude-devops-answer-reemit';
+/** lib/turn-state.js key (was the marker file dotclaude-devops-answer-reemit). */
+const ANSWER_ASKED_FLAG = 'answerReemit';
 
 /** Interrogative openers only — no auxiliaries ("Do the ship", "Ist erledigt" are no questions). */
 const QUESTION_WORD_RE = /^(?:wie|was|warum|wieso|weshalb|wo|wann|welche[rsmn]?|wer|how|what|why|where|when|which|who)(?![\p{L}\d_])/iu;

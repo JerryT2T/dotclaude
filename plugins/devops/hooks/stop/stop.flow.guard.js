@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook stop.flow.guard
- * @version 0.12.0
+ * @version 0.12.1
  * @event Stop
  * @plugin devops
  * @description Per-turn completion card + validation enforcement (the validation
@@ -84,7 +84,7 @@ require('../lib/plugin-guard');
 
 const fs = require('fs');
 const path = require('path');
-const { readSessionFile, sessionFile, writeSessionFile } = require('../lib/session-id');
+const { readSessionFile } = require('../lib/session-id');
 const {
   decideAction,
   isSubstantialAnswer,
@@ -106,7 +106,8 @@ const { execFileSync } = require('child_process');
 const { interruptedTitle, staleWorkTitle, lastTitlePrefix, readCurrentTitle } = require('../lib/session-title');
 
 /** Per-session marker of a pending F5 rename — the follow-up stop passes. */
-const INTERRUPT_FLAG = 'dotclaude-devops-interrupt-title';
+const INTERRUPT_FLAG = 'interruptTitle';
+const turnState = require('../lib/turn-state');
 
 /**
  * The block reason that renames a card-less turn's bare `⏳ ` title (F5):
@@ -176,7 +177,8 @@ process.stdin.on('end', () => {
   // Signature of the last notification-turn card (design § 5.5) — persists
   // ACROSS turns (not cleared by resetFlags) so the next notification turn
   // can be compared against it.
-  const notifSigResult = readSessionFile('dotclaude-devops-notification-card-sig', sessionId, EXACT);
+  // Card/title markers of this hook live in one per-session JSON (lib/turn-state.js).
+  const notifSig = turnState.get(sessionId, 'notificationCardSig');
 
   const workHappened = workResult !== null;
   const flagCardRendered = cardResult !== null;
@@ -201,7 +203,7 @@ process.stdin.on('end', () => {
   const stopHookActive = hook.stop_hook_active === true;
   const scheduledTask = scheduledResult !== null;
   const shipped = shippedResult !== null;
-  const prevCardSignature = notifSigResult ? String(notifSigResult.content || '').trim() || null : null;
+  const prevCardSignature = notifSig ? notifSig.trim() || null : null;
 
   // Scan the transcript unless this is a silent tick. It answers several questions:
   //  - did the last assistant message already carry a card / substantial prose
@@ -303,9 +305,8 @@ process.stdin.on('end', () => {
   // touched when this turn actually computed one.
   if (decision.newCardSignature !== undefined) {
     try {
-      const sigFile = sessionFile('dotclaude-devops-notification-card-sig', sessionId);
-      if (decision.newCardSignature) writeSessionFile(sigFile, decision.newCardSignature);
-      else if (notifSigResult) fs.unlinkSync(notifSigResult.filePath);
+      if (decision.newCardSignature) turnState.set(sessionId, 'notificationCardSig', decision.newCardSignature);
+      else if (notifSig !== null) turnState.del(sessionId, 'notificationCardSig');
     } catch {}
   }
 
@@ -327,15 +328,15 @@ process.stdin.on('end', () => {
   // #757 safety net: a card-less turn that leaves the user's question without
   // any visible answer text is blocked once to re-emit it. Never with a card —
   // the card's `answer` field carries the answer there.
-  const answerAsked = readSessionFile(ANSWER_ASKED_FLAG, sessionId, EXACT);
+  const answerAsked = turnState.get(sessionId, ANSWER_ASKED_FLAG) !== null;
   if (answerAsked && decision.action !== 'block') {
-    try { fs.unlinkSync(answerAsked.filePath); } catch { /* already gone */ }
+    try { turnState.del(sessionId, ANSWER_ASKED_FLAG); } catch { /* already gone */ }
   } else if (decision.action !== 'block' && shouldAskForAnswer({
-    cardRendered, stopHookActive, alreadyAsked: !!answerAsked, silent,
+    cardRendered, stopHookActive, alreadyAsked: answerAsked, silent,
     exempt: scheduledTask || guideActive || notificationTurn, transcript,
   })) {
     try {
-      writeSessionFile(sessionFile(ANSWER_ASKED_FLAG, sessionId), String(Date.now()));
+      turnState.set(sessionId, ANSWER_ASKED_FLAG, String(Date.now()));
       decision.action = 'block';
       decision.reason = buildAnswerMissingReason();
       decision.answerBlock = true;
@@ -344,9 +345,9 @@ process.stdin.on('end', () => {
 
   let interruptBlock = false;
   if (decision.action !== 'block' && !silent && !scheduledTask && !guideActive) {
-    const asked = readSessionFile(INTERRUPT_FLAG, sessionId, EXACT);
+    const asked = turnState.get(sessionId, INTERRUPT_FLAG) !== null;
     if (asked) {
-      try { fs.unlinkSync(asked.filePath); } catch { /* marker already gone — nothing to clear */ }
+      try { turnState.del(sessionId, INTERRUPT_FLAG); } catch { /* marker already gone — nothing to clear */ }
     } else if (!cardRendered && openTasks.length === 0) {
       // Background work of this session still runs → the work is not
       // interrupted, whatever the title says (a concept round answering one
@@ -360,7 +361,7 @@ process.stdin.on('end', () => {
         : interruptedTitle(current);
       let marked = false;
       if (next) {
-        try { writeSessionFile(sessionFile(INTERRUPT_FLAG, sessionId), next); marked = true; } catch { /* unwritable marker → no block (see below) */ }
+        try { turnState.set(sessionId, INTERRUPT_FLAG, next); marked = true; } catch { /* unwritable marker → no block (see below) */ }
       }
       // No marker, no block: without it the follow-up stop could block again.
       if (marked) {

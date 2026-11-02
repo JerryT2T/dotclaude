@@ -19,7 +19,7 @@ require('../lib/plugin-guard');
 
 const { runHook } = require('../lib/hook-input');
 const { isSkillTool } = require('../lib/skill-invocations');
-const { overrideBlock, recordOverrides } = require('../lib/skill-overrides');
+const { overrideBlock, recordOverrides, textOnce } = require('../lib/skill-overrides');
 
 /**
  * @param {object} hook PostToolUse payload
@@ -38,7 +38,7 @@ function main(hook, opts = {}) {
   });
   if (!block) return null;
   try { recordOverrides(hook.session_id, block.record, { dir: opts.dir }); } catch { /* advisory */ }
-  return { context: block.text };
+  return { context: textOnce(hook.session_id, block, { dir: opts.dir }) };
 }
 
 if (require.main === module) runHook(main, { event: 'PostToolUse' });

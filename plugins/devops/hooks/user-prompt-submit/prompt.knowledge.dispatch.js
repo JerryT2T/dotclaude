@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook prompt.knowledge.dispatch
- * @version 0.13.0
+ * @version 0.14.0
  * @event UserPromptSubmit
  * @plugin devops
  * @description On-demand deep-knowledge injection based on prompt keywords.
@@ -24,6 +24,8 @@
  *   mentioning "Codex" must not inject codex-integration.md, and its English
  *   text must not flip the locale — such a turn keeps the cached locale (no
  *   line when there is none). Budget lines still go out.
+ *   0.14.0: a topic may carry `weakPatterns` — a bare match on those (ui-defaults:
+ *   tooltip, shortcut, dropdown …) injects a pointer line, not the body.
  *   0.12.0: also delivers the deferred SessionStart results (lib/deferred-results)
  *   once, on a real user prompt.
  */
@@ -96,7 +98,11 @@ const TOPIC_MAP = [
     file: 'ui-defaults.md',
     specificity: 2,
     full: true,
-    patterns: [/\bui.*(?:default|rule|convention|regel)/i, /\btooltip/i, /\bdropdown/i, /\bhotkey/i, /\bshortcut/i, /\btastenk/i, /\bkeyboard.*(?:nav|access|shortcut)/i, /\bdesign.*(?:rule|regel|check)/i, /\bscroll.?bar/i],
+    // Only an explicit ask for the UI rules injects the 29 KB body. A bare UI
+    // word (tooltip, shortcut, dropdown …) also fires in prompts about a git
+    // shortcut or a CLI dropdown — it gets a pointer line instead (P6).
+    patterns: [/\bui.*(?:default|rule|convention|regel)/i, /\bdesign.*(?:rule|regel|check)/i, /\bkeyboard.*(?:nav|access)/i],
+    weakPatterns: [/\btooltip/i, /\bdropdown/i, /\bhotkey/i, /\bshortcut/i, /\btastenk/i, /\bscroll.?bar/i],
   },
   {
     file: 'windows-platform.md',
@@ -188,7 +194,8 @@ const TOPIC_MAP = [
 
 /** The topic with every unescaped `.*` of its patterns bounded to GAP. */
 function boundGaps(topic) {
-  return { ...topic, patterns: topic.patterns.map((re) => new RegExp(re.source.replace(/(?<!\\)\.\*/g, GAP), re.flags)) };
+  const bound = (list) => list.map((re) => new RegExp(re.source.replace(/(?<!\\)\.\*/g, GAP), re.flags));
+  return { ...topic, patterns: bound(topic.patterns), ...(topic.weakPatterns ? { weakPatterns: bound(topic.weakPatterns) } : {}) };
 }
 
 // Per-prompt delegation nudge (see compose step 4). Mirrors the tier table in
@@ -315,7 +322,7 @@ process.stdin.on('end', () => {
   // pair yielded '' on every real prompt — no nudge, no budget suffix, no
   // locale, no DK dispatch, for months (audit 2026-09-19).
   const rawMessage = hook.prompt || hook.user_message || hook.message || '';
-  const userMessage = rawMessage.toLowerCase().trim();
+  const userMessage = require('../lib/prompt-text').ownWords(rawMessage).toLowerCase();
   if (!userMessage || userMessage.length < 5) process.exit(0);
 
   const sessionId = hook.session_id || 'unknown';
@@ -345,7 +352,7 @@ process.stdin.on('end', () => {
   // Find matching topics, sort by specificity (higher = more relevant)
   const matched = nonUser ? [] : TOPIC_MAP
     .filter(t => !docGated(t.file))
-    .filter(t => t.patterns.some(re => re.test(userMessage)))
+    .filter(t => t.patterns.some(re => re.test(userMessage)) || (t.weakPatterns || []).some(re => re.test(userMessage)))
     .sort((a, b) => b.specificity - a.specificity);
 
   // Session-scoped dedup via session-id lib (atomic writes, fallback on mismatch)
@@ -358,7 +365,11 @@ process.stdin.on('end', () => {
   } catch {}
 
   // Filter out already-injected, apply count cap
-  const candidates = matched.filter(t => !injected.has(t.file));
+  // A weak-only match (no strong pattern) is a pointer, tracked under its own
+  // key so a later strong match still gets the body.
+  const isWeak = (t) => !t.patterns.some(re => re.test(userMessage));
+  const markKey = (t) => (isWeak(t) ? `${t.file}#pointer` : t.file);
+  const candidates = matched.filter(t => !injected.has(markKey(t)) && !(isWeak(t) && injected.has(t.file)));
 
   // Read the matched docs; which of them fit is decided below, once the rest
   // of the payload is known (lib/context-cap).
@@ -372,13 +383,13 @@ process.stdin.on('end', () => {
     try { content = fs.readFileSync(filePath, 'utf8').trim(); }
     catch { continue; /* unreadable doc: skip it */ }
     const bytes = Buffer.byteLength(content, 'utf8');
-    if (!topic.full && bytes > POINTER_OVER_BYTES) {
+    if ((!topic.full && bytes > POINTER_OVER_BYTES) || isWeak(topic)) {
       // The matched phrase lets the model judge whether the read is worth it.
-      const hit = topic.patterns.map((re) => re.exec(userMessage)).find(Boolean);
+      const hit = [...topic.patterns, ...(topic.weakPatterns || [])].map((re) => re.exec(userMessage)).find(Boolean);
       const phrase = hit ? hit[0].trim().slice(0, 60) : '';
       const tokens = Math.round(bytes / 400) / 10;
       docPointers.push(`[deep-knowledge pointer] deep-knowledge/${topic.file} (~${tokens}k tokens) matched "${phrase}" — read ${path.join(dkDir, topic.file).replace(/\\/g, '/')} only if the prompt is about that topic.`);
-      injected.add(topic.file);
+      injected.add(markKey(topic));
       continue;
     }
     docs.push({ file: topic.file, content });
@@ -388,7 +399,7 @@ process.stdin.on('end', () => {
   const pointers = [...docPointers];
   try {
     const home = process.env.HOME || process.env.USERPROFILE || '';
-    for (const hit of nonUser ? [] : matchPointers(rawMessage)) {
+    for (const hit of nonUser ? [] : matchPointers(require('../lib/prompt-text').ownWords(rawMessage))) {
       if (injected.has(hit.file) || docGated(hit.file)) continue;
       const overrides = hit.extension ? legacyOverrides(hit.legacy, { cwd: hook.cwd, home }) : [];
       pointers.push(pointerLine(hit, dkDir, overrides));
@@ -457,7 +468,7 @@ process.stdin.on('end', () => {
   //      budget suffix still rides on every prompt: it is the class the tier
   //      decision of THIS prompt runs on, and it sits next to that decision.
   let nudge = [];
-  if (nudgeText && rawMessage.trim().length >= NUDGE_MIN_CHARS) {
+  if (nudgeText && userMessage.length >= NUDGE_MIN_CHARS) {
     let first = true;
     try { first = runOnce(NUDGE_ONCE_KEY, sessionId); } catch { /* fail open: send it */ }
     if (first) nudge = [nudgeText + budgetSuffix];

@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.343.0] — 2026-11-02
+
+### Added
+- Dispatcher fast lane (`"dispatch": "fast"`): read-only and harness tools run their hooks in one process per event instead of one per module
+- `hooks/lib/prompt-text.js` (`userText`/`ownWords`): keyword hooks match the user's typed words, not harness reminders or pasted content
+- `hooks/lib/turn-state.js`: one per-session state for card/title hints
+- Hook telemetry daily rollup (60 days) and `scripts/hook-telemetry-report.js`
+- `scripts/concept-open.js`: two-phase launcher (prepare / verify) for the concept bridge
+
+### Changed
+- First-prompt title instruction gives the exact title call (fallback 502 instead of 2105 chars); the Question title call is announced ahead of AskUserQuestion / ExitPlanMode / start_session
+- Completion-card reminder: one dynamic line at turn start, one line after wrap_up or a completed plan; static rules only in the tool description
+- ui-defaults body only on explicit UI-rule asks (pointer otherwise); skill overrides in full once per skill and session
+- Quiet output style points to the card tool description for card rules
+
+### Fixed
+- Knowledge dispatch injected docs matched in the worktree path of the first prompt
+- appstart fired on a bare "starten"; locale treated a typed prompt behind a reminder as machine text
+- card-pregate blocked architecture analyses as security findings ("Schwachstelle")
+- burn-plan gate crashed mid-claim on Windows when a concurrent reader blocked the state-file rename
+
 ## [0.342.0] — 2026-11-02
 
 ### Added
