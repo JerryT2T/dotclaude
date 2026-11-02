@@ -2,19 +2,20 @@
  * @module skill-source
  * @description The auto-concept procedure, joined back into one text.
  *
- *   SKILL.md keeps the step skeleton and the decisions; the execution detail
- *   lives in deep-knowledge/step*.md. Every moved block is named by exactly one
- *   mandatory pointer line at the place it used to stand:
+ *   SKILL.md keeps the step skeleton, the contracts and the decisions; the
+ *   execution detail lives in deep-knowledge/step*.md. Every moved block is
+ *   named by exactly one pointer line at the place it used to stand:
  *
- *     **Before executing this step, Read `deep-knowledge/<file>.md` § <section> completely** — <what it holds>.
+ *     See `deep-knowledge/<file>.md` § <section>. <What it holds>.
  *
  *   A guide outside the step files (decision-modes.md, analysis-palette.md)
  *   is named whole, without a section:
  *
- *     **Before executing this step, Read `deep-knowledge/<file>.md` completely** — <what it holds>.
+ *     See `deep-knowledge/<file>.md`. <What it holds>.
  *
- *   Step 5 pointers say "Re-Read … completely on every round — even if read
- *   earlier in this session" instead: a long session compacts earlier reads.
+ *   A pointer is a reference, read when the step needs it, not a mandate to
+ *   re-read on every round; the short "A feedback round reads" list in
+ *   SKILL.md names the sections a round needs.
  *
  *   readSkill() replaces each pointer with the body of that `## <section>` (or
  *   with the whole file for a whole-file pointer), so
@@ -28,7 +29,7 @@ const path = require('path');
 
 const SKILL = path.join(__dirname, 'SKILL.md');
 const DK = path.join(__dirname, 'deep-knowledge');
-const POINTER = /^\*\*Before executing this step, (?:Read|Re-Read) `deep-knowledge\/([a-z0-9-]+\.md)`(?: § (.+?))? completely(?: on every round — even if read earlier in this session)?\*\* — .+\.$/;
+const POINTER = /^See `deep-knowledge\/([a-z0-9-]+\.md)`(?: § (.+?))?\. .+$/;
 
 /** The `## <name>` sections of one deep-knowledge file, body lines only. */
 function sectionsOf(file) {

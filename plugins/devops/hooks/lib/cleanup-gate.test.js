@@ -9,6 +9,8 @@ import { createRequire } from "node:module";
 vi.setConfig({ testTimeout: 30_000 });
 
 const require = createRequire(import.meta.url);
+// A loaded box lets a 5 s call expire and the gate then (correctly) fails closed - not a gate bug.
+process.env.DEVOPS_GIT_TIMEOUT_MS = "60000";
 const gate = require("./cleanup-gate.js");
 const { gitFor } = require("../pre-tool-use/pre.cleanup.gate.js");
 const __dirname = path.dirname(fileURLToPath(import.meta.url));

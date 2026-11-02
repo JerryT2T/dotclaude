@@ -75,6 +75,9 @@ first (`step2-build.md` § Legacy pages).
    `BLOCKED`, fix the fragment it names and build again. Never POST
    `/reload` over a blocked build: the old page would reload as if it were
    the new round.
+4.5. **Coverage:** run `concept-coverage.js` on the saved payload and fill
+   every evidence slot of `checks/NN.md` (SKILL.md Step 5c); a `REPEAT` line
+   is fixed in this round before the reload.
 5. POST to the bridge: `curl -s -X POST http://localhost:{port}/reload`.
    The browser's `pollReload` loop sees the counter bump and calls
    `location.reload()`. The reload lands on the new active iteration

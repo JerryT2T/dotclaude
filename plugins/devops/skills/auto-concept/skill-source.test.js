@@ -16,7 +16,11 @@ const stepFiles = fs.readdirSync(DK).filter((f) => /^step.*\.md$/.test(f));
 describe("auto-concept SKILL.md pointers", () => {
   test("every pointer resolves and the joined text has no pointer left", () => {
     const text = readSkill();
-    expect(text).not.toMatch(/Before executing this step, (?:Re-)?Read `deep-knowledge\//);
+    const rawLines = fs.readFileSync(path.join(__dirname, "SKILL.md"), "utf8").split("\n");
+    const pointers = skillPointers();
+    expect(pointers.length).toBeGreaterThan(40);
+    const pointerLines = new Set(pointers.map((p) => rawLines[p.line - 1]));
+    for (const line of text.split("\n")) expect(pointerLines.has(line), line).toBe(false);
     expect(text).toMatch(/## Step 6 — Completion Card/);
   });
 
@@ -51,17 +55,29 @@ describe("auto-concept SKILL.md pointers", () => {
     const skill = fs.readFileSync(path.join(__dirname, "SKILL.md"), "utf8");
     const steps = skill.split(/^## (?=Step )/m).slice(1);
     for (const step of steps.filter((s) => !/^Step 0 /.test(s))) {
-      expect(step, step.split("\n")[0]).toMatch(/\*\*Before executing this step, (?:Re-)?Read `deep-knowledge\//);
+      expect(step, step.split("\n")[0]).toMatch(/^See `deep-knowledge\//m);
     }
   });
 
-  test("Step 5 pointers demand a re-read on every round (compaction drops earlier reads)", () => {
-    const step5 = skillPointers().filter((p) => p.file.startsWith("step5"));
-    expect(step5.length).toBeGreaterThan(0);
-    const lines = fs.readFileSync(path.join(__dirname, "SKILL.md"), "utf8").split("\n");
-    for (const p of step5) {
-      expect(lines[p.line - 1]).toMatch(/^\*\*Before executing this step, Re-Read `.+ completely on every round — even if read earlier in this session\*\*/);
-    }
+  // A pointer is a reference, not a per-round mandate: a round reads the short
+  // list SKILL.md names, and every entry there must resolve to a real section.
+  test("the feedback-round read list is short and names existing step sections", () => {
+    const raw = fs.readFileSync(path.join(__dirname, "SKILL.md"), "utf8");
+    expect(raw).not.toMatch(/completely on every round|Before executing this step/);
+    const block = raw.split("**A feedback round reads**")[1].split("\n\n")[1];
+    const entries = [...block.matchAll(/^- `deep-knowledge\/([a-z0-9-]+\.md)` § (.+)$/gm)];
+    expect(entries.length).toBeGreaterThan(3);
+    expect(entries.length).toBeLessThanOrEqual(8);
+    for (const [, file, name] of entries) expect(sectionsOf(file).has(name), `${file} § ${name}`).toBe(true);
+  });
+
+  test("Step 5c runs the coverage script before /reload and handles REPEAT lines", () => {
+    const raw = fs.readFileSync(path.join(__dirname, "SKILL.md"), "utf8");
+    expect(raw).toContain('Run `node "{PLUGIN_ROOT}/scripts/concept-coverage.js" --payload <saved payload> --dir "docs/concepts/{name}"`.');
+    expect(raw).toContain("Fill every evidence slot with a tool result from this session");
+    expect(raw).toContain("**On a `REPEAT <id> ~ round N <id>` line**");
+    expect(raw).toContain("`round-replay-r6-hover`");
+    expect(fs.existsSync(path.join(__dirname, "..", "..", "scripts", "concept-coverage.js"))).toBe(true);
   });
 
   // Guards stay readable in SKILL.md itself — no pointer may be the only way to

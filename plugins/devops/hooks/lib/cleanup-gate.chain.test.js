@@ -5,9 +5,14 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
 
-vi.setConfig({ testTimeout: 30_000 });
+// Fixtures spawn dozens of real git processes; on a loaded Windows box each can take seconds.
+vi.setConfig({ testTimeout: 240_000, hookTimeout: 240_000 });
+// The wall-clock chain budget must never decide a test outcome (only the explicit spent-budget case).
+const BUDGET = { budgetMs: 3_600_000 };
 
 const require = createRequire(import.meta.url);
+// A loaded box lets a 5 s call expire and the gate then (correctly) fails closed - not a gate bug.
+process.env.DEVOPS_GIT_TIMEOUT_MS = "60000";
 const gate = require("./cleanup-gate.js");
 const { gitFor } = require("../pre-tool-use/pre.cleanup.gate.js");
 
@@ -34,7 +39,7 @@ describe("hasLanded — sub-agent branches of a squash-merged integration branch
     git(dir, "add", "-A");
     git(dir, "commit", "-q", "-m", msg);
   };
-  const lands = (name, heads) => gate.hasLanded(g, { kind: "branch", target: name }, { cwd: dir, mergedHeads: heads });
+  const lands = (name, heads) => gate.hasLanded(g, { kind: "branch", target: name }, { cwd: dir, mergedHeads: heads, deadline: Date.now() + 3_600_000 });
   const heads = (...names) => () => new Set(names.map(n => git(dir, "rev-parse", n)));
 
   beforeAll(() => {
@@ -90,7 +95,7 @@ describe("hasLanded — sub-agent branches of a squash-merged integration branch
 
   test("decide: chain-landed branch needs no Unmerged yes; a dropped one still does", () => {
     const state = armedFor("- agent/ok", "- agent/dropped");
-    const run = (cmd) => gate.decide({ command: cmd, cwd: dir, state, gitFor, mergedHeads: headOf });
+    const run = (cmd) => gate.decide({ command: cmd, cwd: dir, state, gitFor, mergedHeads: headOf, ...BUDGET });
     expect(run("git branch -D agent/ok")).toBeNull();
     expect(run("git branch -D agent/dropped").block).toMatch(/header "Unmerged"/);
   });
@@ -99,7 +104,7 @@ describe("hasLanded — sub-agent branches of a squash-merged integration branch
     const state = armedFor("- agent/ok", "- agent/dropped");
     let calls = 0;
     const counting = (...a) => { calls++; return headOf(...a); };
-    gate.decide({ command: "git branch -D agent/ok agent/dropped", cwd: dir, state, gitFor, mergedHeads: counting });
+    gate.decide({ command: "git branch -D agent/ok agent/dropped", cwd: dir, state, gitFor, mergedHeads: counting, ...BUDGET });
     expect(calls).toBe(1);
     expect(lands("agent/ok", headOf)).toBe(true);
     expect(gate.hasLanded(g, { kind: "branch", target: "agent/ok" }, { cwd: dir, mergedHeads: headOf, deadline: Date.now() - 1 })).toBe(false);
@@ -136,6 +141,6 @@ describe("hasLanded — agent change superseded inside a squash-merged head (#98
 
   test("tip inside a merged head whose tree equals main → landed, although the file changed again", () => {
     const heads = () => new Set([git(dir, "rev-parse", "feat")]);
-    expect(gate.hasLanded(g, { kind: "branch", target: "agent/edited" }, { cwd: dir, mergedHeads: heads })).toBe(true);
+    expect(gate.hasLanded(g, { kind: "branch", target: "agent/edited" }, { cwd: dir, mergedHeads: heads, deadline: Date.now() + 3_600_000 })).toBe(true);
   });
 });
