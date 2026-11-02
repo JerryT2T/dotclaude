@@ -67,6 +67,7 @@ const POINTER_OVER_BYTES = 3072;
  * … parent directories" pulled the directory doc and "devops plugin … mit den
  * Regelungen" the 17 KB plugin-behavior doc (#997).
  */
+const IMPLEMENT_INTENT_RE = /\b(?:add|adding|build|building|implement\w*|create|creating|insert|f(?:ü|ue)g\w*|einbau\w*|einf(?:ü|ue)g\w*|hinzu\w*|bau(?:e|en|st|t)?\b|erstell\w*|umsetz\w*|umbau\w*)/i;
 const TOPIC_MAP = [
   {
     file: 'agent-collaboration.md',
@@ -101,7 +102,9 @@ const TOPIC_MAP = [
     // Only an explicit ask for the UI rules injects the 29 KB body. A bare UI
     // word (tooltip, shortcut, dropdown …) also fires in prompts about a git
     // shortcut or a CLI dropdown — it gets a pointer line instead (P6).
-    patterns: [/\bui.*(?:default|rule|convention|regel)/i, /\bdesign.*(?:rule|regel|check)/i, /\bkeyboard.*(?:nav|access)/i],
+    patterns: [/\bui.*(?:default|rule|convention|regel)/i, /\bdesign.*(?:rule|regel|check)/i, /\bkeyboard.*(?:nav|access|shortcut)/i],
+    // A weak match plus an ask to build it ("add a dropdown", "füge einen Tooltip hinzu") is UI work: body, not pointer.
+    implementIntent: IMPLEMENT_INTENT_RE,
     weakPatterns: [/\btooltip/i, /\bdropdown/i, /\bhotkey/i, /\bshortcut/i, /\btastenk/i, /\bscroll.?bar/i],
   },
   {
@@ -311,6 +314,7 @@ process.stdin.on('end', () => {
   let hook;
   try { hook = JSON.parse(inputData); }
   catch { process.exit(0); }
+  if (!hook || typeof hook !== 'object') process.exit(0);
 
   // A collected prompt produces no turn — marking a doc "already injected" here
   // would burn the one-shot for a prompt nobody ever sees. See willBeCollected().
@@ -321,7 +325,7 @@ process.stdin.on('end', () => {
   // the legacy names the tests and older runtimes used. Reading only the legacy
   // pair yielded '' on every real prompt — no nudge, no budget suffix, no
   // locale, no DK dispatch, for months (audit 2026-09-19).
-  const rawMessage = hook.prompt || hook.user_message || hook.message || '';
+  const rawMessage = require('../lib/prompt-text').rawPrompt(hook);
   const userMessage = require('../lib/prompt-text').ownWords(rawMessage).toLowerCase();
   if (!userMessage || userMessage.length < 5) process.exit(0);
 
@@ -367,7 +371,8 @@ process.stdin.on('end', () => {
   // Filter out already-injected, apply count cap
   // A weak-only match (no strong pattern) is a pointer, tracked under its own
   // key so a later strong match still gets the body.
-  const isWeak = (t) => !t.patterns.some(re => re.test(userMessage));
+  const isWeak = (t) => !t.patterns.some(re => re.test(userMessage))
+    && !(t.implementIntent && t.implementIntent.test(userMessage));
   const markKey = (t) => (isWeak(t) ? `${t.file}#pointer` : t.file);
   const candidates = matched.filter(t => !injected.has(markKey(t)) && !(isWeak(t) && injected.has(t.file)));
 

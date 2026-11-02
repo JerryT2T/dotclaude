@@ -199,6 +199,16 @@ describe("run — pulser", () => {
     expect(slept).toBeGreaterThan(DEFAULTS.deadAfter * 1000);
   });
 
+  test("exits SERVER_DEAD on a long outage only while no waker is running", async () => {
+    // Between a pickup and the waker's re-arm nobody else watches the bridge;
+    // a bridge that died there stayed dead and silent for the whole round.
+    const fail = { ok: false, body: "" };
+    const h = harness({ mode: "pulse", state: "ok", responses: () => fail, beat: { ts: 0, woke_version: 1 } });
+    await expect(h.done).resolves.toBe("SERVER_DEAD");
+    const slept = h.calls.filter(c => c.sleep !== undefined).reduce((a, c) => a + c.sleep, 0);
+    expect(slept).toBeGreaterThanOrEqual(DEFAULTS.deadAfter * 1000);
+  });
+
   test("carries its id on every POST and yields to an OLDER sibling after 3 echoes", async () => {
     const older = `${1_000_000 - 5000}-111`;     // started before the harness clock
     const echo = (prev) => ({ ok: true, body: JSON.stringify({ ok: true, prev_pulser: prev }) });

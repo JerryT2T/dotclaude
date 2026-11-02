@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.344.3] — 2026-11-02
+
+### Fixed
+- Home backup: rclone retention only purges a remote it claimed (ownership marker), a root remote is refused, and future-dated days never take keep slots.
+- Ship: the redo-bump check covers every version file, and an auto-rebase moves the recorded bump, so a resumed ship never bumps twice.
+- Hooks: subagents get the full skill-override text once per agent; turn-state writes retry on Windows EPERM; "Linux-/Build-/Infrastruktur-Schwachstelle" count as security again; UI rules come as full text when a UI element is being built; huge pastes no longer stall the prompt hooks; malformed hook input fails open.
+- Analysis page: an empty send advances exactly one stage and never skips one unseen; the note field keeps focus on desktop; answers come before the rail in tab order and the closed panel is inert; the note field no longer covers the chat on phones; briefing cards follow the flow; the closing names unopened questions.
+- Completion card: the offline renderer lets a ship outcome win over a waiting concept; MCP liveness is per session; four running agents no longer list as three.
+- Agents: the ai/po/qa rename is finished (icons, a rename hint on old names, burn-plan roles).
+- Concept bridge: the pulser reports a dead bridge while no waker runs.
+
+### Changed
+- Delegation evals: a positive two-lens case is back; the offer grader ignores negations. Trigger phrases "new issue", "Issue erstellen" and "self update" restored.
+
 ## [0.344.2] — 2026-11-02
 
 ### Changed

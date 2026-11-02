@@ -18,10 +18,21 @@ require('../lib/plugin-guard');
 
 const gate = require('../lib/agent-model-gate');
 
+// Agents renamed so claude.ai accepts them (3df34d31). Claude Code ignores
+// updatedInput for the Agent tool, so a stale name is refused with the new one.
+const RENAMED = { 'devops:ai': 'devops:aix', 'devops:po': 'devops:pox', 'devops:qa': 'devops:qax' };
+
+function renameHint(input) {
+  const to = RENAMED[String((input && input.subagent_type) || '').trim()];
+  return to ? `Agent "${input.subagent_type}" was renamed to "${to}". Repeat the spawn with subagent_type "${to}".` : null;
+}
+
 function main(hook) {
   if (hook.tool_name && hook.tool_name !== 'Agent') return null;
-  if (hook.agent_id) return null;
   const input = hook.tool_input || {};
+  const rename = renameHint(input);
+  if (rename) return { block: rename };
+  if (hook.agent_id) return null;
   const cwd = hook.cwd || process.cwd();
   const announce = require('./pre.agent.announce');
   if (announce.strictWillBlock(cwd, typeof input.prompt === 'string' ? input.prompt : '')) return null;
@@ -41,4 +52,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { main };
+module.exports = { main, renameHint };

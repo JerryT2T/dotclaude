@@ -26,10 +26,14 @@ function isoWeekKey(day) {
  * @param {string[]} days  `YYYY-MM-DD` keys (duplicates and junk are ignored)
  * @param {number} keepDays  newest distinct days kept
  * @param {number} keepWeeks  most recent ISO weeks (that have data) whose first day is kept; 0 = off
+ * @param {string} [today]  `YYYY-MM-DD`; days dated AFTER it (clock skew, a clock that was ahead once)
+ *   never take a keep slot and are never deleted — they are added to the keep set untouched
  * @returns {Set<string>} the days to keep
  */
-function selectKeepDays(days, keepDays, keepWeeks = 0) {
-  const sorted = [...new Set(days.filter((d) => DAY_RE.test(d)))].sort().reverse();
+function selectKeepDays(days, keepDays, keepWeeks = 0, today = '') {
+  const valid = [...new Set(days.filter((d) => DAY_RE.test(d)))];
+  const future = today ? valid.filter((d) => d > today) : [];
+  const sorted = valid.filter((d) => !future.includes(d)).sort().reverse();
   const keep = new Set(sorted.slice(0, Math.max(0, keepDays)));
   if (keepWeeks > 0) {
     const firstOfWeek = new Map();
@@ -37,6 +41,7 @@ function selectKeepDays(days, keepDays, keepWeeks = 0) {
     const weeks = [...firstOfWeek.keys()].sort().reverse().slice(0, keepWeeks);
     for (const w of weeks) keep.add(firstOfWeek.get(w));
   }
+  for (const d of future) keep.add(d);
   return keep;
 }
 

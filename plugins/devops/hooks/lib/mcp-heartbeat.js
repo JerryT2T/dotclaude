@@ -64,8 +64,10 @@ function matchesPidFile(fileName, head) {
 
 function readEntry(file, legacy) {
   try {
-    const pid = parseInt(fs.readFileSync(file, 'utf8').trim(), 10);
-    return { file, pid: pid > 0 ? pid : null, mtimeMs: fs.statSync(file).mtimeMs, legacy };
+    const lines = fs.readFileSync(file, 'utf8').trim().split(/\s+/);
+    const pid = parseInt(lines[0], 10);
+    const ppid = parseInt(lines[1], 10);
+    return { file, pid: pid > 0 ? pid : null, ppid: ppid > 0 ? ppid : null, mtimeMs: fs.statSync(file).mtimeMs, legacy };
   } catch { return null; /* vanished between readdir and read */ }
 }
 
@@ -135,10 +137,37 @@ function isMcpServerAlive(serverName) {
   return live(serverName);
 }
 
+/**
+ * Per session: is a live server THIS session's own? A server records its
+ * parent (the Claude Code process) in its heartbeat; a hook shares that
+ * parent. Another session's live server no longer vouches for this one — a
+ * session whose own server never connected then gets the offline ladder.
+ * Entries without a recorded parent (older servers, the legacy file) cannot
+ * be attributed: they count machine-wide, as before. Without a usable own
+ * parent the check is machine-wide too.
+ * The own parent is CLAUDE_PID, never process.ppid: hooks run through a
+ * shell wrapper (`bash -c "… node dispatch.js"`), so a hook's ppid is that
+ * shell, while the server's parent is Claude Code itself.
+ * @param {string} serverName
+ * @param {{ ppid?: number }} [opts] the session's Claude Code pid (default env CLAUDE_PID)
+ */
+function isMcpServerAliveForSession(serverName, opts = {}) {
+  const own = opts.ppid === undefined ? parseInt(process.env.CLAUDE_PID, 10) : opts.ppid;
+  if (!(own > 1)) return isMcpServerAlive(serverName);
+  const all = heartbeats(serverName).filter((h) => h.pid && isProcessAlive(h.pid));
+  // A current server also writes the shared legacy file (pid only): it is the
+  // same server as its per-process entry, not an unattributable one.
+  const perProcess = new Set(all.filter((h) => !h.legacy).map((h) => h.pid));
+  const live = all.filter((h) => !(h.legacy && perProcess.has(h.pid)));
+  if (live.length === 0) return false;
+  if (live.some((h) => h.ppid === own)) return true;
+  return live.some((h) => !h.ppid);
+}
+
 /** The one devops MCP server (mcp-server/index.js, .mcp.json key). */
 const SERVER_NAME = 'dotclaude';
 
 module.exports = {
   PREFIX, HEARTBEAT_DIR, SERVER_NAME, pidFileFor, processPidFileFor, isProcessAlive,
-  heartbeats, heartbeatState, isMcpServerAlive,
+  heartbeats, heartbeatState, isMcpServerAlive, isMcpServerAliveForSession,
 };

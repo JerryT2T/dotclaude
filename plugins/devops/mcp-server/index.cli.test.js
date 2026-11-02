@@ -246,6 +246,19 @@ describe("--render-card CLI fallback", () => {
 
   // A ship card whose ladder already sits on beta (e.g. "ship beta") must not
   // offer a beta promotion any more — only the stable step is left.
+  test("a waiting concept on a close-out page yields to the ship outcome on the CLI path too", async () => {
+    const cwd = mkdtempSync(join(workDir, "closeout-"));
+    mkdirSync(join(cwd, ".claude"), { recursive: true });
+    mkdirSync(join(cwd, "docs", "concepts"), { recursive: true });
+    writeFileSync(join(cwd, ".claude", "concept-active.json"), JSON.stringify({ port: 4321, html_path: "docs/concepts/x.html", started_at: new Date().toISOString() }));
+    writeFileSync(join(cwd, "docs", "concepts", "x.html"), '<html><body><section data-iteration="2"></section><section id="iter-3" data-iteration="3" data-final-report data-active></section></body></html>');
+    const base = { summary: "x", lang: "de", cwd, concept: { phase: "waiting" } };
+    const shipped = await renderCard({ ...base, variant: "ship-successful", session_id: S("closeout-ship"), state: { mode: "git", pushed: true, merged: "main", kept: true, branch: "feat/x" }, delivery: { ship: { version: "0.1.0" }, promote: { channels: { alpha: "0.1.0" }, current: "alpha" } } });
+    expect(shipped).not.toMatch(/Concept — wartet/);
+    const released = await renderCard({ ...base, variant: "released", session_id: S("closeout-rel"), delivery: { promote: { channels: { alpha: "0.1.0", beta: "0.1.0" }, current: "beta" } } });
+    expect(released).not.toMatch(/Concept — wartet/);
+  });
+
   test("a ship-successful card already on beta offers only Promote stable", async () => {
     const onBeta = await renderCardFull({
       variant: "ship-successful", summary: "Ship", session_id: S("promote-on-beta"),

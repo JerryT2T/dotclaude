@@ -1962,6 +1962,18 @@ function dropChipOpenItems(open, sessionId, cwd) {
   }
 }
 
+/**
+ * One point per running item, capped at POINTS_LIMIT; the rest folds into a
+ * "+N" line, so a heading that counts four agents never lists only three.
+ */
+function pendingPoints(pending) {
+  const items = normalizePending(pending)
+    .map(it => (it.name ? '`' + it.name + '`' : '') + (it.doing ? ' — ' + it.doing : ''))
+    .filter(Boolean);
+  if (items.length <= POINTS_LIMIT) return items;
+  return [...items.slice(0, POINTS_LIMIT - 1), '+' + (items.length - POINTS_LIMIT + 1)];
+}
+
 function buildDecisionBlock(input, lang, key, delivery, state) {
   const T = HEADINGS[lang] || HEADINGS.de;
   const batch = hasConcept(input.concept) ? null : readBatch(input.cwd);
@@ -1978,9 +1990,7 @@ function buildDecisionBlock(input, lang, key, delivery, state) {
     const what = conceptHeadingWhat(input.concept, input.pending, lang);
     // Background work of an iterating/implementing concept is listed like the
     // pending block's items — the user sees WHO is working, not only that.
-    const pts = normalizePending(input.pending).slice(0, POINTS_LIMIT)
-      .map(it => (it.name ? '`' + it.name + '`' : '') + (it.doing ? ' — ' + it.doing : ''))
-      .filter(Boolean);
+    const pts = pendingPoints(input.pending);
     return { heading: TITLE_SCHEME.headingOf(conceptHeadState(input.concept), T.concept({ what })), context: url ? '› ' + url : '', points: pts, buttonsKey: null, guideHandoff };
   }
   if (batch) {
@@ -1990,9 +2000,7 @@ function buildDecisionBlock(input, lang, key, delivery, state) {
   if (hasPending(input.pending)) {
     const what = pendingWhat(input.pending, lang);
     const names = renderPendingLine(input.pending, lang);
-    const pts = normalizePending(input.pending).slice(0, POINTS_LIMIT)
-      .map(it => (it.name ? '`' + it.name + '`' : '') + (it.doing ? ' — ' + it.doing : ''))
-      .filter(Boolean);
+    const pts = pendingPoints(input.pending);
     return { heading: TITLE_SCHEME.headingOf('agents', T.pending({ what })), context: names ? '› ' + names : '', points: pts, buttonsKey: null, guideHandoff };
   }
 
@@ -2570,6 +2578,9 @@ function normalizeCardParams(raw, { strictVariant = false } = {}) {
   coerceCardInput(params);
   validationGaps.rerouteUserChecks(params);
   sanitizeSessionId(params);
+  // The tool handler does this itself and never goes through here, so the
+  // offline CLI path is the only caller: same ship-outcome-wins rule.
+  dropShippedConceptWait(params);
 
   return params;
 }

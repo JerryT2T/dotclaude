@@ -33,6 +33,11 @@ describe('ss.backup.stale buildLine', () => {
     expect(buildLine({ home, enabled: true, now: NOW })).toBeNull();
   });
 
+  it('warns when the last success is dated in the future', () => {
+    put('home-backup-state.json', { lastSuccessAt: ago(-3) });
+    expect(buildLine({ home, enabled: true, now: NOW })).toContain('Zukunft');
+  });
+
   it('names age and the report reason as file:line (rule), never a value', () => {
     put('home-backup-state.json', { lastSuccessAt: ago(4) });
     put('home-backup-report.json', {

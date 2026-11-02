@@ -6,8 +6,8 @@ vi.mock("zod", () => {
 });
 import { handler, insertChangelogEntry } from "./run.js";
 
-const ver = vi.hoisted(() => ({ current: "1.2.3" }));
-vi.mock("../lib/version.js", () => ({ readVersion: () => ({ version: ver.current, file: "package.json" }), bumpVersion: (v, b) => (b === "minor" ? "1.3.0" : b === "major" ? "2.0.0" : "1.2.4") }));
+const ver = vi.hoisted(() => ({ current: "1.2.3", drift: [], synced: [] }));
+vi.mock("../lib/version.js", () => ({ verifyVersionFiles: () => ({ consistent: !ver.drift.length, mismatches: ver.drift.map((file) => ({ file })) }), updateVersionFiles: (...a) => { ver.synced.push(a); return []; }, readVersion: () => ({ version: ver.current, file: "package.json" }), bumpVersion: (v, b) => (b === "minor" ? "1.3.0" : b === "major" ? "2.0.0" : "1.2.4") }));
 vi.mock("node:fs", async (orig) => {
   const real = await orig();
   return { ...real, existsSync: vi.fn(() => true), readFileSync: vi.fn(() => "# Changelog\n\n## [1.2.3] — 2026-10-01\n\n- old\n"), writeFileSync: vi.fn() };
@@ -60,7 +60,7 @@ function harness(over = {}, initial = null) {
 const DEFAULTS = { majorConfirmed: false, commitMessage: null, acceptGaps: false, interactive: false, skipChecks: false, outOfBandGlobs: null, earlyPush: true, build: {}, codexGate: false, codex: null, queued: false, lang: "de" };
 const P = (extra = {}) => ({ ...DEFAULTS, cwd: "/repo", title: "feat: x", body: "Closes #1", bump: "minor", changelogEntry: "### Added\n- thing", ...extra });
 
-beforeEach(() => { delete process.env.DEVOPS_SHIP_RUN; fs.writeFileSync.mockClear(); ver.current = "1.2.3"; });
+beforeEach(() => { delete process.env.DEVOPS_SHIP_RUN; fs.writeFileSync.mockClear(); ver.current = "1.2.3"; ver.drift = []; ver.synced = []; });
 afterEach(() => { delete process.env.DEVOPS_SHIP_RUN; });
 
 describe("ship_run — happy path", () => {
@@ -219,6 +219,30 @@ describe("ship_run — resume", () => {
     expect(h.names().indexOf("ship_version_bump")).toBeLessThan(h.names().indexOf("ship_release"));
     expect(res.warnings.join(" ")).toMatch(/checkpoint bump to 1.3.0 is not on the branch/);
     expect(fs.writeFileSync).toHaveBeenCalled(); // CHANGELOG entry written again
+  });
+});
+
+describe("ship_run — bump drift in secondary targets", () => {
+  const resumed = () => harness({}, { steps: { preflight: true, build: {}, bump: { bump: "minor", vNew: "1.3.0" } }, base: "main", branch: "feat/x", run: { preflight: { base: "main", branch: "feat/x", mode: "git", inWorktree: true } } });
+
+  test("source carries the bump but a plugin.json lags: synced in place, no second bump, no second CHANGELOG entry", async () => {
+    ver.current = "1.3.0";
+    ver.drift = ["plugins/devops/.claude-plugin/plugin.json", "CHANGELOG.md"];
+    const h = resumed();
+    const res = await handler(P(), h.deps);
+    expect(h.names()).not.toContain("ship_version_bump");
+    expect(ver.synced).toEqual([["1.3.0", "1.3.0", "/repo", []]]);
+    expect(res.warnings.join(" ")).toMatch(/missing in plugins\/devops\/.claude-plugin\/plugin.json — synced/);
+    expect(res.warnings.join(" ")).not.toMatch(/CHANGELOG/);
+    expect(fs.writeFileSync).not.toHaveBeenCalled();
+  });
+
+  test("a clean tree is left alone", async () => {
+    ver.current = "1.3.0";
+    const h = resumed();
+    await handler(P(), h.deps);
+    expect(ver.synced).toEqual([]);
+    expect(h.names()).not.toContain("ship_version_bump");
   });
 });
 

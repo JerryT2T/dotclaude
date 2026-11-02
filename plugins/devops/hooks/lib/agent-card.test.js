@@ -6,6 +6,13 @@ const { renderAgentCard, parseWave } = require("./agent-card.js");
 
 const core = { type: "devops:core", description: "Engine", model: "sonnet", effort: "medium" };
 const redteam = { type: "devops:redteam", description: "Gate", model: "opus", effort: "high" };
+describe("agent card - renamed agents keep their icon", () => {
+  test.each([["qax", "🧪"], ["aix", "🧠"], ["pox", "🎯"]])("devops:%s", (name, ic) => {
+    const card = renderAgentCard({ lang: "en", agents: [{ type: "devops:" + name, description: "x", model: "sonnet", effort: "medium" }] });
+    expect(card).toContain("| " + ic + " | **" + name + "**");
+  });
+});
+
 const rows = (card) => card.split("\n").filter((l) => /^\| \S+ \| \*\*/.test(l));
 
 describe("agent card — one template for one agent or many", () => {

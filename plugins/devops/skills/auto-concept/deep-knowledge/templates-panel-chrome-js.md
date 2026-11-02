@@ -44,6 +44,7 @@
     const dock = document.getElementById('feedback-dock');
     const fromDock = dock?.contains(document.activeElement);
     window.closeDock?.(true);
+    if (panel) panel.inert = false;   // before the focus move below: a closed panel is out of the tab order
     panel?.classList.add('open');
     backdrop?.classList.add('visible');
     panelToggle?.classList.add('hidden');
@@ -64,6 +65,7 @@
   };
   window.closePanel = () => {
     panel?.classList.remove('open');
+    if (panel) panel.inert = true;
     backdrop?.classList.remove('visible');
     panelToggle?.classList.remove('hidden');
     if (panelToggle) {
@@ -73,6 +75,7 @@
     }
     document.body.classList.remove('panel-open');
   };
+  if (panel && !panel.classList.contains('open')) panel.inert = true;   // closed = inert (tab order, screen readers)
   // Bound by reference, exactly as before the extraction: both handlers are
   // globals (window.openPanel / window.closePanel), so a bare identifier here
   // resolves to the same function the dock paths call.
