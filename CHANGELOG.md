@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.344.1] — 2026-11-02
+
+### Changed
+- Delegation nudge per prompt is 16 % shorter with the same tiers and agents (`devops:qax`, `devops:pox`); the 52 eval prompt copies are regenerated. A/B against the old nudge (8 delegation cases × 2 runs): no grader regressed (#1027, merged unversioned).
+
+### Fixed
+- ship_run redoes a checkpoint bump the branch no longer carries (a conflict rebase that dropped the release commit let #1027 merge without a bump or tag).
+- prompt.knowledge.dispatch scope-note test no longer fails on a rerun.
+
 ## [0.344.0] — 2026-11-02
 
 ### Changed
