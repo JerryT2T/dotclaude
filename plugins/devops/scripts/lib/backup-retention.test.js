@@ -41,3 +41,11 @@ describe('selectKeepDays', () => {
     expect(keep([], 14, 4)).toEqual([]);
   });
 });
+
+describe('selectKeepDays with a clock', () => {
+  it('keeps days after today untouched without letting them take a keep slot', () => {
+    const d = ['2026-10-17', '2026-10-18', '2026-10-19', '2027-03-01'];
+    expect(keep(d, 2, 0, '2026-10-19')).toEqual(['2026-10-18', '2026-10-19', '2027-03-01']);
+    expect(keep(d, 2, 0)).toEqual(['2026-10-19', '2027-03-01']);
+  });
+});
