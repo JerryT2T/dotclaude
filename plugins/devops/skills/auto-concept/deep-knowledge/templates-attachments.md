@@ -1,4 +1,4 @@
-# Concept templates, part 30 of 48: Shared systems — attachments (HTML, CSS)
+# Concept templates, part 30 of 49: Shared systems — attachments (HTML, CSS)
 
 ## Attachments
 
@@ -131,6 +131,8 @@ The bar is injected per field by `ensureCommentSlots()` and
 <div class="attach-bar" data-attach-for="variant-a-note">
   <button type="button" class="attach-btn"
           data-tip="{{attach.button_title}}" aria-label="{{attach.button_title}}">📎</button>
+  <button type="button" class="voice-btn" data-tip="{{voice.mic_start}}"
+          aria-label="{{voice.mic_start}}" aria-pressed="false">🎤</button>
   <input type="file" multiple hidden>
   <div class="attach-thumbs"></div>
 </div>
@@ -138,6 +140,8 @@ The bar is injected per field by `ensureCommentSlots()` and
 
 `{{attach.button_title}}` → e.g. "Datei anhängen (oder Strg+V / hierher
 ziehen)". Resolve it at generation time per § UI Locale.
+
+**Voice:** the 🎤 (`.voice-btn`) next to the 📎 is the same kind of button (same CSS family, § Voice input) and dictates into this field; fields without an attach bar get a mic of their own from the voice scan.
 
 **The 📎 alone is the affordance — no hint label.** Every attachable field
 carries a bar, so a spelled-out "Ctrl+V or drop any file" line repeated under

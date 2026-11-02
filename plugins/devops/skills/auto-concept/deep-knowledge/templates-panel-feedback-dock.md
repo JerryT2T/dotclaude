@@ -1,4 +1,4 @@
-# Concept templates, part 05 of 48: Panel chrome — feedback dock
+# Concept templates, part 05 of 49: Panel chrome — feedback dock
 
 ```javascript
 // --- Feedback dock (all templates) ---
@@ -314,6 +314,11 @@
     applyDockSize();
     if (typeof saveState === 'function') saveState();
   });
+
+  // Voice (§ Voice input): every dock field carries a 🎤 next to its 📎, and the
+  // header's #voice-mode-toggle appends speech to the first VISIBLE, writable note
+  // (dockFieldVisible's rule) even while the dock is closed. A frozen round makes the
+  // notes readOnly, which also makes the voice engine skip them: nothing to wire here.
 
   // ── Closed by default, opened only by the user ──
   // The dock starts minimised (data-open="false" in markup). It used to open

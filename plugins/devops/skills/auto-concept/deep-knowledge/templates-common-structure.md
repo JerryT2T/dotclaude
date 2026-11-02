@@ -1,4 +1,4 @@
-# Concept templates, part 02 of 48: Shared systems — common structure (all templates)
+# Concept templates, part 02 of 49: Shared systems — common structure (all templates)
 
 ## Common Structure (all templates)
 
@@ -479,7 +479,7 @@
          per-design / per-view rows ABOVE the general section; on a page that
          mixes templates those rows hide by CSS while a document round is on
          screen. Same ids everywhere: #feedback-toggle, #feedback-dock,
-         #feedback-maximize, #feedback-close, #design-general-feedback.
+         #voice-mode-toggle, #feedback-maximize, #feedback-close, #design-general-feedback.
          CLOSED by default (data-open="false"); data-size is written by
          applyDockSize() (§ Panel Chrome JS) — always `compact` on a document
          round. `data-untouched` drives the one-shot pulse that the JS clears
@@ -495,6 +495,9 @@
     <aside class="feedback-dock" id="feedback-dock" data-open="false" data-size="compact" data-user-maximized="false">
       <div class="feedback-dock-header">
         <strong>{{proto.feedback_title}}</strong>
+        <!-- Voice mode (opt-in): first of the button group, left of fullscreen. § Voice input -->
+        <button id="voice-mode-toggle" class="feedback-maximize-btn voice-mode-btn" aria-pressed="false"
+                aria-label="{{voice.mode_off}}" data-tip="{{voice.mode_off}}">🎤</button>
         <!-- Maximise is a distinct control from minimise: minimise CLOSES
              the dock (data-open toggle), maximise RESIZES it (data-size
              override) without touching data-open at all. Never merge them. -->

@@ -106,7 +106,7 @@ describe("quick nav acts on pointerdown (two-click bug)", () => {
   test("the engine rebuilds the quick nav with nodes that act on pointerdown", () => {
     expect(md).toContain("function press(node, fn)");
     expect(md).toContain("press(seg,");
-    expect(md).toMatch(/press\(btn, e => \{[\s\S]{0,400}const q = nextQuestion/);
+    expect(md).toMatch(/press\(btn, \(\) => \{[\s\S]{0,200}const q = nextQuestion/);
   });
 });
 
@@ -142,12 +142,14 @@ describe("questions segment", () => {
   const qBtn = (d) => d.querySelector("#design-quick .design-quick-q");
   const viewId = (d) => live(d).querySelector(":scope > section[data-view][data-view-active='true']")?.dataset.view;
 
-  test("no ? mark; several questions: a dropdown lists them, a click goes to the first open, then the next open", async () => {
+  test("no ? mark, no dropdown, label Analyse; a click goes to the first open, then the next open", async () => {
     const { window, document, errors } = await boot(page(2, 2));
     expect(errors).toEqual([]);
     expect(document.querySelector(".design-quick-qmark")).toBeNull();
-    expect(document.querySelectorAll("#design-quick .design-quick-qpop .design-quick-qitem").length).toBe(2);
-    expect(document.querySelector("#design-quick .design-quick-qwrap").dataset.multi).toBe("true");
+    expect(document.querySelector("#design-quick .design-quick-qpop"), "no dropdown").toBeNull();
+    expect(document.querySelector("#design-quick .design-quick-qwrap").dataset.multi).toBeUndefined();
+    expect(document.querySelector("#design-quick .design-quick-q .design-quick-name").textContent).toBe("Analyse");
+    expect(document.querySelector("#design-quick .design-quick-badge"), "no count badge").toBeNull();
     qBtn(document).click();
     expect(viewId(document)).toBe("q1");
     qBtn(document).click();
@@ -171,7 +173,7 @@ describe("questions segment", () => {
 
   test("a mere visit is not an answer; any interaction or scroll in the question is", async () => {
     const { window, document } = await boot(page(2, 2));
-    const badge = () => document.querySelector("#design-quick .design-quick-badge")?.textContent;
+    const badge = () => (document.querySelector("#design-quick .design-quick-q")?.getAttribute("aria-label") || "").match(/\d+/)?.[0];
     expect(badge()).toBe("2");
     qBtn(document).click();
     expect(viewId(document)).toBe("q1");

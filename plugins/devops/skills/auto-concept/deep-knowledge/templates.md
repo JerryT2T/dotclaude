@@ -54,6 +54,7 @@ Index of the concept engine reference: the three templates (decision, design, fr
 | 46 | [templates-analysis-js-2.md](templates-analysis-js-2.md) | 609 | Template: analysis — Engine UI JS (continued) |
 | 47 | [templates-stages.md](templates-stages.md) | 195 | Etappen (stages) — contract, panel head name, round row, stepper tabs, next-stage station · CSS |
 | 48 | [templates-stages-js.md](templates-stages-js.md) | 468 | Etappen JS |
+| 49 | [templates-voice-js.md](templates-voice-js.md) | 449 | Voice input — mic buttons, notes voice mode (JS + CSS) |
 
 ## Using the parts
 

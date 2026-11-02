@@ -1,4 +1,4 @@
-# Concept templates, part 43 of 48: Template: analysis — Full + Lite contract, decision modes, collect
+# Concept templates, part 43 of 49: Template: analysis — Full + Lite contract, decision modes, collect
 
 ## Analysis presentation (Full + Lite) — engine fit
 
@@ -9,12 +9,16 @@ bake and bridge path keeps working:
 
 | Variant | Where it lives | Marker | Payload branch |
 |---|---|---|---|
-| **Full** | a whole round: `data-iteration-template="decision"` plus `data-analysis="full"` on the iteration section | `section[data-iteration][data-analysis="full"]` | `collectDecisionDecisions()` (every `[data-decision]`, mode-aware) |
-| **Lite** | embedded: in a design round as a view (`data-view-kind="analysis"`), or anywhere in a `decision` / `free` round | `[data-analysis="lite"]` | the host branch (design: view decisions; free: appended) |
+| **Full** | a whole round: `data-iteration-template="decision"` plus `data-analysis="full"` on the iteration section; **or, inside a design round, a view** (`section[data-view][data-view-kind="analysis"][data-analysis="full"]`) | `section[data-iteration][data-analysis="full"]` / `section[data-view][data-analysis="full"]` | `collectDecisionDecisions()` (every `[data-decision]`, mode-aware) / the design branch's view decisions |
+| **Lite** | embedded, only in a `decision` / `free` round (never in a design round) | `[data-analysis="lite"]` | the host branch (free: appended) |
 
 Rules of thumb (authoring guidance lives in `step1-templates.md`): a concept
-whose content IS analysis results + decisions → Full. A few questions that
-come up inside another concept (≤ 5) → Lite. More than 5 → Full.
+whose content IS analysis results + decisions → Full. **An analysis inside a
+design concept is always Full** (briefing, topics, right-hand rail, the same
+chat flow as a standalone analysis page; the top bar shows one plain
+"Analyse" segment, no dropdown, no count). A few questions that come up inside
+a `decision` / `free` round (≤ 5) → Lite. More than 5 → Full. Gate A5d warns
+on a Lite design view (`lite-in-design`).
 
 **Wave status.** Wave 1 is the contract and the collect code; wave 2 (below,
 § Styling, § Engine UI) is the visual layer: the chat flow, the right rail, the
@@ -129,9 +133,9 @@ Attribute reference:
 ### Lite
 
 ```html
-<!-- Inside a design round: a view. In a decision / free round: the same
-     section directly in the body. -->
-<section data-view="q-sync" data-view-kind="analysis" data-analysis="lite" data-nav-label="Quick questions">
+<!-- Only in a decision / free round: the section directly in the body
+     (a design round embeds a Full analysis view instead, see above). -->
+<section id="q-sync" data-analysis="lite" data-nav-label="Quick questions">
   <div data-alevel="1" data-title="Quick questions">…</div>          <!-- optional overall -->
   <section id="q1" data-nav-label="Sync" data-decision="q1" data-decision-mode="yesnoalt"
            data-label="Sync" data-rec="yes" data-rec-why="…" data-applies-to="…">…</section>
@@ -139,10 +143,26 @@ Attribute reference:
 ```
 
 Lite is the same chat flow without topic pages and without an empty start
-stage: it opens on its first question, L1 + L3, progress dots, ≤ 5 decisions. In a design round the view is a normal
-`section[data-view]` (`templates-design-views.md`); its decisions are
-collected by the design branch's view-decision loop, which dispatches
-mode-aware decisions to `collectModeDecision()` below.
+stage: it opens on its first question, L1 + L3, progress dots, ≤ 5 decisions.
+It never lives in a design round: there the analysis is a Full view (below).
+
+### Full inside a design round
+
+```html
+<section data-view="analysis" data-view-kind="analysis" data-analysis="full" data-nav-label="Analysis" hidden>
+  <section data-analysis-briefing>…</section>   <!-- exactly the Full markup above -->
+  <section id="t1" data-topic data-nav-label="…">…</section>
+</section>
+```
+
+The markup is the Full contract unchanged (briefing, topics, decisions,
+`data-alevel`); only the host differs: a `section[data-view]` instead of the
+iteration section. The engine boots every top-level `[data-analysis]`
+(`conceptAnalysis.init`), so the view becomes the full chat flow with
+briefing, topic pages and right rail. The view's decisions are collected by
+the design branch's view-decision loop, which dispatches mode-aware decisions
+to `collectModeDecision()` below. Several analysis views are allowed; the top
+bar still shows one "Analyse" segment that opens the next open one.
 
 ## Decision modes
 

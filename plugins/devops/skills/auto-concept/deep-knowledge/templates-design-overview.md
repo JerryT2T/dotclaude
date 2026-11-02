@@ -1,4 +1,4 @@
-# Concept templates, part 16 of 48: Template: design — variant overview JS
+# Concept templates, part 16 of 49: Template: design — variant overview JS
 
 ## Variant overview JS — `wireDesignOverview()`
 
@@ -41,7 +41,7 @@ returns — the single-design page is untouched.
   keeps `--dz-ov-glow` free above and below, so the glow is never cut. The
   centre tile carries no badge: the quick nav highlights the centred variant
   (`data-ov-focus`, its pages stay folded, a small ▾ hints at them; the
-  questions tile highlights "Fragen"). Everything is sized from the viewport
+  analysis tile highlights "Analyse"). Everything is sized from the viewport
   (CSS container units on the stage), so the overview never scrolls.
 - **Pins on the overview.** Ctrl + click (or the armed pin button) on the
   centre preview places an own pin there (#887): the preview is an inert
@@ -96,10 +96,9 @@ returns — the single-design page is untouched.
   against the eye's real right edge and the ☰ FAB on every render, so the
   two never overlap. Too little room → pages fold into the "2 / 7 ▾" chip,
   then (overview / view) the designs shrink to their icons.
-- **"Fragen".** One question view: the segment opens it directly, no
-  dropdown. Two or more: the segment carries their list as a dropdown
-  (hover / focus; the first tap on touch), a click still jumps to the next
-  open one.
+- **"Analyse".** The analysis segment is one plain label (en "Analysis"):
+  no dropdown, no count badge. A click opens the analysis (the next open one
+  when there are several); the analysis itself is the Full page.
 - **Hotkeys** never fire while focus is in a real text entry
   (`isConceptTextEntry()`, § Design JS — a focused dock button does not
   count); digits, arrows, `Enter` and `Tab` also work while the ☰ panel is
@@ -1086,12 +1085,10 @@ returns — the single-design page is untouched.
     g.appendChild(wrap);
     return g;
   }
-  // "Fragen" is one segment, no "?" mark. One question: no submenu, it opens
-  // directly and hovers like its siblings. Several: the segment carries
-  // their list as a dropdown (hover / focus, like a design's pages; on touch
-  // the first tap opens it), and a click opens the first open one, a click
-  // while inside the questions the next open one (wrapping; all answered ->
-  // the questions in order).
+  // "Analyse" is one plain segment (no dropdown, no count badge, no "?" mark):
+  // a click opens the analysis - the first open one, a click while inside
+  // one the next open one (wrapping; all answered -> in order). The analysis
+  // itself is the Full page (briefing, topics, rail), nothing is listed here.
   function nextQuestion(it) {
     const qs = questionsOf(it);
     if (!qs.length) return null;
@@ -1116,41 +1113,14 @@ returns — the single-design page is untouched.
     const viewOn = md === 'view' ? it.querySelector(':scope > section[data-view][data-view-active="true"]') : null;
     btn.dataset.active = String(!!viewOn);
     btn.appendChild(el('span', 'design-quick-name', L.qLabel));
-    btn.appendChild(open.length ? el('span', 'design-quick-badge', String(open.length)) : el('span', 'design-quick-qok', '✓'));
-    // "Fragen" and the open count are on screen: no tooltip repeating them,
-    // the full sentence goes to assistive tech only.
+    if (!open.length) btn.appendChild(el('span', 'design-quick-qok', '✓'));
+    // The label is on screen: no tooltip repeating it, the state goes to assistive tech only.
     btn.setAttribute('aria-label', L.qLabel + ': ' + (open.length ? (open.length === 1 ? L.qOpen1 : L.qOpen.replace('{n}', String(open.length))) : L.qAllDone));
-    const multi = qs.length >= 2;
-    press(btn, e => {
-      if (multi && e && e.pointerType === 'touch' && wrap.dataset.open !== 'true') {
-        wrap.dataset.open = 'true';
-        btn.setAttribute('aria-expanded', 'true');
-        return;
-      }
-      wrap.dataset.open = 'false';
+    press(btn, () => {
       const q = nextQuestion(visibleIteration());
       if (q) goQuestion(q.id);
     });
     wrap.append(btn);
-    if (!multi) return wrap;
-    wrap.dataset.multi = 'true';
-    btn.setAttribute('aria-haspopup', 'true');
-    btn.setAttribute('aria-expanded', 'false');
-    btn.appendChild(el('span', 'design-quick-caret', '▾'));
-    const pop = el('div', 'design-quick-qpop');
-    pop.setAttribute('role', 'menu');
-    const head = el('div', 'design-quick-qhead');
-    head.append(el('strong', '', L.qLabel),
-      el('span', '', L.qProgress.replace('{done}', String(qs.length - open.length)).replace('{n}', String(qs.length))));
-    pop.append(head, progressBar(qs.length - open.length, qs.length));
-    qs.forEach((q, i) => {
-      const item = questionItem(q, () => { wrap.dataset.open = 'false'; goQuestion(q.id); }, i + 1);
-      item.setAttribute('role', 'menuitem');
-      item.dataset.viewId = q.id;
-      item.dataset.active = String(viewOn === q.v);
-      pop.appendChild(item);
-    });
-    wrap.appendChild(pop);
     return wrap;
   }
   // The quick nav is rebuilt only when its SHAPE changes (mode, which
