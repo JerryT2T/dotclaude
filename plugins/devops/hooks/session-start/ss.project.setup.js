@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook ss.project.setup
- * @version 0.3.0
+ * @version 0.4.0
  * @event SessionStart
  * @plugin devops
  * @description The automatic part of project setup (the former /setup-project
@@ -23,6 +23,10 @@
  *      one-time offer of the project setup — once per clone, recorded in
  *      ~/.claude/devops-project-setup.json; the setup itself only runs when
  *      the user agrees.
+ *
+ *   3. Always prints `[devops] version=…`, plus a warning when the session
+ *      runs the claude.ai catalog copy of devops (Desktop app, `…/rpm/…`)
+ *      and the Claude Code install is newer — that copy shadows every release.
  *
  *   Silent otherwise. Outside a git work tree, for a dotfiles repo rooted at
  *   the home directory seen from a subfolder, and for a git repo at
@@ -183,6 +187,74 @@ function versionTag(pluginRoot = path.resolve(__dirname, '..', '..')) {
   } catch { return null; }
 }
 
+/**
+ * True when `root` is the Desktop app's copy of a claude.ai catalog plugin
+ * (`…/Claude-Data/…/rpm/<org>/<user>/plugin_<id>`), not a Claude Code install.
+ */
+function isCatalogCopy(root) {
+  return /[\\/]rpm[\\/][^\\/]+[\\/][^\\/]+[\\/]plugin_[^\\/]+[\\/]?$/i.test(String(root || ''));
+}
+
+function semverParts(v) {
+  const m = /^(\d+)\.(\d+)\.(\d+)/.exec(String(v || '').replace(/^v/, ''));
+  return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
+}
+
+function semverGreater(a, b) {
+  const x = semverParts(a);
+  const y = semverParts(b);
+  if (!x || !y) return false;
+  for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] > y[i];
+  return false;
+}
+
+/**
+ * The newest user-scope devops entry of installed_plugins.json — the Claude
+ * Code install the channel pin updates. Dev clones (`..clone`) do not count.
+ * @returns {{version:string, channel:string|null}|null}
+ */
+function installedRelease(registryFile) {
+  try {
+    const plugins = JSON.parse(fs.readFileSync(registryFile, 'utf8')).plugins || {};
+    let best = null;
+    for (const [key, entries] of Object.entries(plugins)) {
+      if (!/^devops@/.test(key) || key.includes('..clone') || !Array.isArray(entries)) continue;
+      for (const e of entries) {
+        if (!e || e.scope !== 'user' || !semverParts(e.version)) continue;
+        if (!best || String(e.lastUpdated || '') > String(best.lastUpdated || '')) best = e;
+      }
+    }
+    return best ? { version: String(best.version).replace(/^v/, ''), channel: best.channel || null } : null;
+  } catch { return null; }
+}
+
+/**
+ * Warning when this session runs the claude.ai catalog copy of devops while
+ * the Claude Code install (the one /do-ship and the channel pin update) is
+ * newer. The Desktop app prefers the catalog copy, so every release since its
+ * last catalog sync is invisible there — a session restart does not help.
+ * @returns {string|null}
+ */
+function catalogShadowWarning({
+  pluginRoot = path.resolve(__dirname, '..', '..'),
+  home = os.homedir(),
+} = {}) {
+  if (!isCatalogCopy(pluginRoot)) return null;
+  let loaded;
+  try {
+    loaded = JSON.parse(fs.readFileSync(path.join(pluginRoot, '.claude-plugin', 'plugin.json'), 'utf8')).version;
+  } catch { return null; }
+  const inst = installedRelease(path.join(home, '.claude', 'plugins', 'installed_plugins.json'));
+  if (!inst || !semverGreater(inst.version, loaded)) return null;
+  const ch = inst.channel ? ` (${inst.channel})` : '';
+  return [
+    '[ss.catalog.shadow] Show the user this line verbatim in your first reply, once:',
+    `⚠ Diese Session läuft mit devops v${loaded} aus dem claude.ai-Plugin-Katalog — dein Claude-Code-Install ist v${inst.version}${ch}. ` +
+      'Fix: claude.ai → Anpassungen → Plugins → Marketplaces verwalten → dotclaude „…“ → „Nach Updates suchen“, dann die Desktop-App neu starten. ' +
+      'Die Konto-Kopie bleiben lassen — nur über sie kommt devops in Cloud-Sessions.',
+  ].join('\n');
+}
+
 function main() {
   let input = '';
   process.stdin.setEncoding('utf8');
@@ -199,7 +271,9 @@ function main() {
     // Always: a short version tag so the plugin audit can attribute a
     // transcript to the running devops version (mining.js VERSION_RE).
     const tag = versionTag();
-    const ctx = [tag, res && res.offer].filter(Boolean).join('\n');
+    let shadow = null;
+    try { shadow = catalogShadowWarning(); } catch { /* never block the session */ }
+    const ctx = [tag, shadow, res && res.offer].filter(Boolean).join('\n');
     if (ctx) {
       process.stdout.write(JSON.stringify({
         hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: ctx },
@@ -211,4 +285,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { versionTag, setupProject, syncGitignore, newRepoReason };
+module.exports = { versionTag, setupProject, syncGitignore, newRepoReason, catalogShadowWarning, isCatalogCopy };

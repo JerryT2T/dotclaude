@@ -64,12 +64,12 @@ When the product is a game (or a game-like app), design for the player:
 controller and touch navigation, readable big-screen UI, feedback for every
 input, the first 30 seconds of a flow. Name a reference game that solves the
 same problem well. (This absorbed the former `gamer` agent; the player's
-judgment of a built result is the `po` customer lens.)
+judgment of a built result is the `pox` customer lens.)
 
 ## Collaboration
 
 - **Receives from**: Feature agent or the orchestrator (design tasks, the
-  requirements the `po` synthesis produced)
+  requirements the `pox` synthesis produced)
 - **Delegates to**: Research agent (user research, competitor analysis,
   accessibility audits) — spawn it rather than web-searching yourself
 - **Hands off to**: Frontend agent (implementation-ready specs, tokens, component definitions)

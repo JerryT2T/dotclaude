@@ -218,7 +218,7 @@ describe("replay C — happy path (acceptance 2)", () => {
     commitJs("plugins/devops/hooks/lib/x.js");
     skill("devops:auto-harden", "--invoked-by=autonomous");
     skill("devops:auto-polish", "--invoked-by=autonomous");
-    post("Agent", { subagent_type: "devops:qa", prompt: "verify" });
+    post("Agent", { subagent_type: "devops:qax", prompt: "verify" });
     skill("devops:do-ship", "--queued=1/1");
 
     const rel = pre(SHIP, { body: "Closes #473", base: "main" });

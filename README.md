@@ -456,13 +456,13 @@ or `{"mode":"ask"}` — every agent tier is offered first.
 
 | Agent | Role |
 |---|---|
-| **ai** | AI/ML integration |
+| **aix** | AI/ML integration |
 | **core** | Business logic, APIs and platform code |
 | **designer** | UX/UI design, tokens, specs |
 | **feature** | One feature end to end: elaborate, build, verify |
 | **frontend** | UI components and styling |
-| **po** | Product judgment: one lens (customer · tech · business) or the synthesis |
-| **qa** | Test, verify, screenshot |
+| **pox** | Product judgment: one lens (customer · tech · business) or the synthesis |
+| **qax** | Test, verify, screenshot |
 | **redteam** | Adversarial review: failure modes, blind spots |
 | **research** | Deep-dive investigations |
 | **scout** | Read-only locator (haiku): "where/how is X?" with `path:line` evidence |

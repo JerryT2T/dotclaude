@@ -6,7 +6,7 @@ A hook records the answers to `do-run`'s questions and refuses the tool call tha
 
 ## Why
 
-Failure this prevents: the user made a choice in `do-run` and the model walked past it (Harden/Polish skipped, `ship_*` called directly instead of `devops:do-ship`, `auto-agents` / `devops:qa` / backlog triage skipped, `do-batch` never handed to `do-run`). Obligations that live only in skill prose are not checked.
+Failure this prevents: the user made a choice in `do-run` and the model walked past it (Harden/Polish skipped, `ship_*` called directly instead of `devops:do-ship`, `auto-agents` / `devops:qax` / backlog triage skipped, `do-batch` never handed to `do-run`). Obligations that live only in skill prose are not checked.
 
 ## What is recorded
 
@@ -29,7 +29,7 @@ Evaluated on the current **segment** (events since the last item boundary — a 
 | `auto-agents` | mode `prompt` or `backlog` | a `Skill("devops:auto-agents")` call in the segment |
 | `harden` | every run (no longer asked), segment has work | `Skill("devops:auto-harden")` without `--invoked-by=ship` |
 | `polish` | segment has work AND the gate's diff holds UI files (`hooks/lib/ui-files.js`, the auto-polish ship-path detection + the override's `files:`; `measure.uiFiles`, unknown → owed) | `Skill("devops:auto-polish")`, same rule |
-| `qa` | segment has work and changed code files past the threshold (≥1 backlog, >5 prompt) | a `devops:qa` agent |
+| `qa` | segment has work and changed code files past the threshold (≥1 backlog, >5 prompt) | a `devops:qax` agent |
 | `do-ship` | `ship: auto`, segment has work | a `Skill("devops:do-ship")` call, then a `release: ok` or a blocked/aborted card |
 | `refine` | backlog, present user: a release closing `#N`, or (Ship manuell) the final card for every queued item | a `devops:auto-issue` refine of `#N` |
 | `triage` | backlog, present user, first `auto-agents` of the run, every `release`, and the final card once the run did work | ≥1 agent event since arm whose `description` names "triage" (case-insensitive) |

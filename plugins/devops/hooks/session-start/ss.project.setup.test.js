@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 
 const require = createRequire(import.meta.url);
 const __dirname_ = path.dirname(fileURLToPath(import.meta.url));
-const { setupProject, versionTag } = require("./ss.project.setup.js");
+const { setupProject, versionTag, catalogShadowWarning, isCatalogCopy } = require("./ss.project.setup.js");
 const { BLOCK_START, BLOCK_END } = require("../lib/runtime-ignores.js");
 
 const tmp = [];
@@ -165,5 +165,47 @@ describe("version tag", () => {
     const v = JSON.parse(fs.readFileSync(path.join(__dirname_, "..", "..", ".claude-plugin", "plugin.json"), "utf8")).version;
     expect(versionTag()).toBe(`[devops] version=${v}`);
     expect(versionTag(os.tmpdir())).toBeNull();
+  });
+});
+
+describe("catalog shadow warning", () => {
+  function catalogRoot(version) {
+    const root = path.join(mkTmp("ps-cd-"), "rpm", "2c09286c", "394def81", "plugin_0182abc");
+    fs.mkdirSync(path.join(root, ".claude-plugin"), { recursive: true });
+    fs.writeFileSync(path.join(root, ".claude-plugin", "plugin.json"), JSON.stringify({ version }));
+    return root;
+  }
+  function homeWith(entries) {
+    const home = mkTmp("ps-home-");
+    fs.mkdirSync(path.join(home, ".claude", "plugins"), { recursive: true });
+    fs.writeFileSync(path.join(home, ".claude", "plugins", "installed_plugins.json"), JSON.stringify({ version: 2, plugins: entries }));
+    return home;
+  }
+  const user = (version, lastUpdated, extra = {}) => ({ scope: "user", version, lastUpdated, ...extra });
+
+  test("recognises the Desktop app's catalog copy only", () => {
+    expect(isCatalogCopy("C:/Users/x/AppData/Local/Claude-Data/a/rpm/2c09286c/394def81/plugin_0182ycWE")).toBe(true);
+    expect(isCatalogCopy("C:\\Users\\x\\.claude\\plugins\\cache\\dotclaude\\devops\\0.339.1")).toBe(false);
+    expect(isCatalogCopy("C:\\Users\\x\\AppData\\Local\\Claude-Data\\a\\rpm\\2c09286c\\394def81\\plugin_0182ycWE")).toBe(true);
+  });
+
+  test("older catalog copy + newer install -> verbatim warning with both versions and the fix", () => {
+    const home = homeWith({
+      "devops@dotclaude": [user("0.339.1", "2026-11-01T15:00:00Z", { channel: "alpha" }), { scope: "project", version: "9.9.9", lastUpdated: "2026-12-01" }],
+      "devops@temp_git_1..clone": [user("99.0.0", "2026-12-01T00:00:00Z")],
+    });
+    const w = catalogShadowWarning({ pluginRoot: catalogRoot("0.326.0"), home });
+    expect(w).toMatch(/Show the user this line verbatim/);
+    expect(w).toContain("devops v0.326.0 aus dem claude.ai-Plugin-Katalog");
+    expect(w).toContain("v0.339.1 (alpha)");
+    expect(w).toContain("Nach Updates suchen");
+    expect(w).toContain("Cloud-Sessions");
+  });
+
+  test("silent for a Claude Code install, an up-to-date catalog copy or a missing registry", () => {
+    const home = homeWith({ "devops@dotclaude": [user("0.339.1", "2026-11-01T15:00:00Z")] });
+    expect(catalogShadowWarning({ pluginRoot: path.join(home, ".claude", "plugins", "cache", "dotclaude", "devops", "0.326.0"), home })).toBeNull();
+    expect(catalogShadowWarning({ pluginRoot: catalogRoot("0.339.1"), home })).toBeNull();
+    expect(catalogShadowWarning({ pluginRoot: catalogRoot("0.326.0"), home: mkTmp("ps-home-") })).toBeNull();
   });
 });

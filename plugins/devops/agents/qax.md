@@ -1,5 +1,5 @@
 ---
-name: qa
+name: qax
 description: >-
   QA agent — runs tests, verifies builds, takes screenshots, validates changes.
   Use proactively, in the background, for a full test suite or build verification after non-trivial code changes, and as the escalation step for a recurring bug — no user request needed.

@@ -16,8 +16,8 @@ import { readSkill as readAgentsSkill } from "../skills/auto-agents/skill-source
 const plugin = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (...p) => readFileSync(join(plugin, ...p), "utf8").replace(/\r\n/g, "\n");
 
-const IMPLEMENTERS = ["core", "frontend", "ai", "designer", "feature"];
-const ANALYSTS = ["po", "research", "redteam", "qa", "scout", "rethinker"];
+const IMPLEMENTERS = ["core", "frontend", "aix", "designer", "feature"];
+const ANALYSTS = ["pox", "research", "redteam", "qax", "scout", "rethinker"];
 
 describe("the rule itself", () => {
   const conv = read("deep-knowledge", "commit-conventions.md");

@@ -153,7 +153,7 @@ describe("branch gate (backlog)", () => {
     for (const ob of ["harden", "polish", "do-ship"]) expect(r.stderr).toContain(ob);
     ev({ k: "skill", name: "auto-harden", args: "--invoked-by=autonomous" });
     ev({ k: "skill", name: "auto-polish", args: "--invoked-by=autonomous" });
-    ev({ k: "agent", type: "devops:qa" }); // the stylesheet counts as a code file for qa
+    ev({ k: "agent", type: "devops:qax" }); // the stylesheet counts as a code file for qa
     ev({ k: "release", ok: false });
     expect(run("Bash", { command: "git checkout -b fix/3" }).stderr).toContain("do-ship");
     ev({ k: "card", variant: "ship-blocked" });
@@ -239,8 +239,8 @@ describe("release gate", () => {
     git("commit", "-q", "-m", "a");
     const r = run(SHIP, { body: "", base: "main" });
     expect(r.code).toBe(2);
-    expect(r.stderr).toContain("devops:qa");
-    ev({ k: "agent", type: "devops:qa" });
+    expect(r.stderr).toContain("devops:qax");
+    ev({ k: "agent", type: "devops:qax" });
     expect(run(SHIP, { body: "", base: "main" }).code).toBe(0);
   });
 
@@ -438,7 +438,7 @@ describe("harden pass (H-*)", () => {
     ev({ k: "edit" });
   };
 
-  test("H-B4: 6 new untracked code files in a prompt contract → the card gate names devops:qa", () => {
+  test("H-B4: 6 new untracked code files in a prompt contract → the card gate names devops:qax", () => {
     armPrompt({ passes: [] });
     ev({ k: "skill", name: "auto-agents" });
     ev({ k: "edit" });
@@ -446,7 +446,7 @@ describe("harden pass (H-*)", () => {
     for (let i = 0; i < 6; i++) fs.writeFileSync(f(`src/n${i}.js`), "1\n");
     const r = run(CARD, { variant: "ready" });
     expect(r.code).toBe(2);
-    expect(r.stderr).toContain("devops:qa");
+    expect(r.stderr).toContain("devops:qax");
     expect(RC.events(dir).filter(e => e.k === "measure").pop()).toMatchObject({ codeFiles: 6 });
   });
 
@@ -517,17 +517,17 @@ describe("harden pass (H-*)", () => {
     expect(P.resolveBase(dir, "a..b", C)).toBe("main");
   });
 
-  test("H-C3: a repo created on master, no base → master fallback → exit 2 naming devops:qa", () => {
+  test("H-C3: a repo created on master, no base → master fallback → exit 2 naming devops:qax", () => {
     git("branch", "-m", "main", "master");
     expect(P.resolveBase(dir, undefined, C)).toBe("master");
     readyBacklog();
     commitOnBranch("fix/m");
     const r = run(SHIP, { body: "" });
     expect(r.code).toBe(2);
-    expect(r.stderr).toContain("devops:qa");
+    expect(r.stderr).toContain("devops:qax");
   });
 
-  test("H-C3: a repo on master with origin/HEAD → origin/master...HEAD → exit 2 naming devops:qa", () => {
+  test("H-C3: a repo on master with origin/HEAD → origin/master...HEAD → exit 2 naming devops:qax", () => {
     git("branch", "-m", "main", "master");
     git("update-ref", "refs/remotes/origin/master", "HEAD");
     git("symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/master");
@@ -535,7 +535,7 @@ describe("harden pass (H-*)", () => {
     commitOnBranch("fix/o");
     const r = run(SHIP, { body: "", base: "--output=x" });
     expect(r.code).toBe(2);
-    expect(r.stderr).toContain("devops:qa");
+    expect(r.stderr).toContain("devops:qax");
   });
 
   test("H-C3: origin/<b>...HEAD missing → <b>...HEAD; non-release gates add the working-tree files", () => {

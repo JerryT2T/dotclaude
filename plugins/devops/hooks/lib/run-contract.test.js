@@ -70,7 +70,7 @@ const sk = (name, args = "") => ({ k: "skill", name, args });
 const edit = { k: "edit" };
 const commit = { k: "commit" };
 const rel = (closes = []) => ({ k: "release", ok: true, merged: true, closes });
-const qaAgent = { k: "agent", type: "devops:qa" };
+const qaAgent = { k: "agent", type: "devops:qax" };
 // AUD-020: only an agent event whose description says "triage" (or names a
 // queued item) satisfies triage — `exploreAgent` below is the regression
 // case, an unrelated agent call that must NOT satisfy it.
@@ -580,7 +580,7 @@ describe("openObligations", () => {
       sk("auto-issue", "refine #685 — hand-over"),
       { k: "branch", name: "fix/685-deploy-parity-default-install" },
       sk("auto-agents", "--from=do-run --mode=background --ship=auto #685 deploy-parity"),
-      edit, commit, ag("QA #685 — full suite", "devops:qa"),
+      edit, commit, ag("QA #685 — full suite", "devops:qax"),
       sk("auto-harden", "--invoked-by=autonomous"),
       { k: "card", variant: "ready" },
       { k: "park", item: "665", reason: "401" }, { k: "park", item: "667", reason: "401" },

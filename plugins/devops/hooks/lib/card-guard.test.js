@@ -644,7 +644,7 @@ describe("decideAction — pending gate", () => {
       cardRendered: false,
       stopHookActive: false,
       substantial: false,
-      openTaskNames: ["devops:qa"],
+      openTaskNames: ["devops:qax"],
       pendingAttested: false,
     });
     expect(d.action).toBe("block");
@@ -660,7 +660,7 @@ describe("decideAction — pending gate", () => {
       substantial: false,
       validationPending: true,
       validationAttested: false,
-      openTaskNames: ["devops:qa"],
+      openTaskNames: ["devops:qax"],
       pendingAttested: false,
     });
     expect(d.reason).toMatch(/Validation required/);
@@ -672,7 +672,7 @@ describe("decideAction — pending gate", () => {
       cardRendered: true,
       stopHookActive: false,
       substantial: false,
-      openTaskNames: ["devops:qa"],
+      openTaskNames: ["devops:qax"],
       pendingAttested: false,
     });
     expect(d.action).toBe("block");
@@ -685,7 +685,7 @@ describe("decideAction — pending gate", () => {
       cardRendered: true,
       stopHookActive: true,
       substantial: false,
-      openTaskNames: ["devops:qa"],
+      openTaskNames: ["devops:qax"],
       pendingAttested: false,
     });
     expect(d.action).toBe("pass");
@@ -699,7 +699,7 @@ describe("decideAction — pending gate", () => {
       stopHookActive: false,
       substantial: false,
       silent: true,
-      openTaskNames: ["devops:qa"],
+      openTaskNames: ["devops:qax"],
       pendingAttested: false,
     });
     expect(d.action).toBe("pass");
@@ -717,11 +717,11 @@ describe("buildPendingReason", () => {
   });
 
   test("forbids putting an internal agentId in the card", () => {
-    expect(buildPendingReason(["devops:qa"])).toMatch(/NEVER put an internal agentId/);
+    expect(buildPendingReason(["devops:qax"])).toMatch(/NEVER put an internal agentId/);
   });
 
   test("tells the model not to fake pending to get past the gate", () => {
-    expect(buildPendingReason(["devops:qa"])).toMatch(/NEVER invent a `pending` entry/);
+    expect(buildPendingReason(["devops:qax"])).toMatch(/NEVER invent a `pending` entry/);
   });
 });
 

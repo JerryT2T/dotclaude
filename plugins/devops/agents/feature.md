@@ -35,9 +35,9 @@ Work in checkpoints: commit `wip(<scope>): <what>` after every green sub-step an
 Follow `{PLUGIN_ROOT}/deep-knowledge/feature-elaboration.md`. In short: skip
 only when acceptance criteria come from outside the run (a refined issue, an
 approved concept, a signed-off plan) or the prompt says `Elaborate: no` — a
-"you are done when …" line is not acceptance criteria. Otherwise spawn `po`
+"you are done when …" line is not acceptance criteria. Otherwise spawn `pox`
 lenses (`customer`, `tech`, `business` when worth is open) in ONE message,
-then one `po` synthesis with all lens results; `redteam` on the synthesis when
+then one `pox` synthesis with all lens results; `redteam` on the synthesis when
 a pre-mortem trigger fires. Stop only on `reject` / `defer` or an
 irreversible open question; every other open question proceeds with the
 recommended option and is listed under `assumptions`.
@@ -48,7 +48,7 @@ recommended option and is listed under `assumptions`.
 - **Several domains with separate files** → delegate in waves per
   `{PLUGIN_ROOT}/deep-knowledge/agent-collaboration.md`: `core` (contracts)
   first, then `designer` when the UX is not specified yet, then `frontend`,
-  `ai` and — for platform code (`windows-platform.md`) — a second `core` in
+  `aix` and — for platform code (`windows-platform.md`) — a second `core` in
   parallel on disjoint files. Spawn implementers with
   `isolation: "worktree"`; every prompt carries
   `Parent branch: <your-integration-branch>` (or `none (file-only)` without a
@@ -70,9 +70,9 @@ recommended option and is listed under `assumptions`.
   prints `npx vitest related <files> --run` or `full` (a changed file no test imports —
   hooks, JSON, Markdown, `execFile`-spawned scripts — needs the full suite). Scoped runs are
   never recorded. Before handoff one recorded full run via `test-record-cli.js run`
-  (`qa` does it); the ship gate stays full-suite.
-- Spawn `qa` on the integration branch (tests, build, browser check for UI).
-- Whenever acceptance criteria exist, spawn `po` with `Review:` and the
+  (`qax` does it); the ship gate stays full-suite.
+- Spawn `qax` on the integration branch (tests, build, browser check for UI).
+- Whenever acceptance criteria exist, spawn `pox` with `Review:` and the
   criteria — for UI or game work with `Lens: customer` and qa's screenshot
   paths. `needs-work` → fix and verify again, at most twice; `blocker` → stop
   with `needs-decision`.

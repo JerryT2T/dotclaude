@@ -786,7 +786,7 @@ describe("render_completion_card — anatomy (§ 2 of the design doc)", () => {
 
       const pending = await cardText({
         variant: "ready", summary: "x", lang: "de", session_id: "test-rc-1d", buildId: "abc1234", cwd: dir,
-        pending: [{ name: "devops:qa", doing: "prüft" }],
+        pending: [{ name: "devops:qax", doing: "prüft" }],
       });
       expect(pending).toContain("🧾 Run · Prompt");
     } finally {
@@ -1598,7 +1598,7 @@ describe("render_completion_card — web hand-off in the card payload (#506)", (
     await render({
       variant: "ready", summary: "x", lang: "de", session_id: "test-guide-handoff-pending",
       open: ["Noch einen Supabase-Bucket für Assets anlegen"],
-      pending: [{ name: "devops:qa", kind: "agent", doing: "volle Testsuite" }],
+      pending: [{ name: "devops:qax", kind: "agent", doing: "volle Testsuite" }],
     });
     expect(consumePendingHandoff("test-guide-handoff-pending")).toBe("Supabase");
   });

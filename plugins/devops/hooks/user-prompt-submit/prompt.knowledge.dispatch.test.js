@@ -104,7 +104,7 @@ describe("prompt.knowledge.dispatch — delegation nudge", () => {
 
   test("nudge is short and names every tier", () => {
     expect(Buffer.byteLength(nudge, "utf8")).toBeLessThan(600);
-    for (const needle of ["Inline", "devops:research", "devops:qa", "devops:redteam", "devops:po", "2–3 parallel", "auto-agents", "Hard stop"]) {
+    for (const needle of ["Inline", "devops:research", "devops:qax", "devops:redteam", "devops:pox", "2–3 parallel", "auto-agents", "Hard stop"]) {
       expect(nudge).toContain(needle);
     }
   });

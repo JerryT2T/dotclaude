@@ -105,7 +105,7 @@ describe("agent-orchestration.md § Model & Effort Defaults stays the source of 
     expect(defaults).toMatch(/only in budget class `free`/);
     expect(defaults).toMatch(/Pro always lands there/);
     expect(defaults).toMatch(/`\/do-run burn`, which\s+upgrades on purpose/);
-    for (const name of ["core", "frontend", "ai", "designer", "qa"]) {
+    for (const name of ["core", "frontend", "aix", "designer", "qax"]) {
       const fm = readFileSync(join(PLUGIN_ROOT, "agents", `${name}.md`), "utf8");
       expect(fm.match(/^model:\s*(\S+)/m)?.[1], `${name}: model`).toBe("sonnet");
     }
@@ -244,7 +244,7 @@ describe("the plan card script renders through the same template", () => {
     const card = planCard({
       lang: "de", tier: "volle Zeremonie", session: "fable · high",
       agents: [
-        { type: "devops:qa", wave: 2, task: "Tests" },
+        { type: "devops:qax", wave: 2, task: "Tests" },
         { type: "devops:core", wave: 1, task: "API", model: "opus" },
         { type: "devops:core", wave: 1, task: "DB" },
         { type: "devops:feature", wave: 1, task: "Glue" },

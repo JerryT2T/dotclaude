@@ -5,7 +5,7 @@ Quick-reference for all deep-knowledge topics. Read this FIRST to find the right
 
 | File | Topic | Summary |
 |------|-------|---------|
-| [agent-branch-setup.md](agent-branch-setup.md) | Agent Branch Setup | The first step of every implementing agent (`core`, `frontend`, `ai`, |
+| [agent-branch-setup.md](agent-branch-setup.md) | Agent Branch Setup | The first step of every implementing agent (`core`, `frontend`, `aix`, |
 | [agent-collaboration.md](agent-collaboration.md) | Agent Collaboration Protocol | How agents work together on multi-role tasks. |
 | [agent-conventions.md](agent-conventions.md) | Agent Naming & Collaboration Conventions | [role:X · Type] Task description |
 | [agent-orchestration.md](agent-orchestration.md) | Agent Orchestration | > **Single-Source-of-Truth for test autonomy decisions:** see [test-autonomy.... |
@@ -30,7 +30,7 @@ Quick-reference for all deep-knowledge topics. Read this FIRST to find the right
 | [documentation-maintenance.md](documentation-maintenance.md) | Documentation Maintenance | Keep project docs in their target state as behavior, flows, and architecture ... |
 | [edge-profiles.md](edge-profiles.md) | Edge Profiles | Configuration and usage rules for the two Microsoft Edge profiles used by thi... |
 | [fact-verification.md](fact-verification.md) | Fact Verification | Cross-cutting rule for all web research, claims, and statistics. |
-| [feature-elaboration.md](feature-elaboration.md) | Feature Elaboration | How a feature is thought through before anyone builds it — `po` lenses in |
+| [feature-elaboration.md](feature-elaboration.md) | Feature Elaboration | How a feature is thought through before anyone builds it — `pox` lenses in |
 | [git-hygiene.md](git-hygiene.md) | Git Hygiene | Cross-cutting git rules referenced by `/do-ship`, the role agents, and hooks. |
 | [harden-polish-shared.md](harden-polish-shared.md) | Harden/Polish — Shared Reference | Cross-cutting reference for `/auto-harden` and `/auto-polish`. Covers |
 | [home-backup.md](home-backup.md) | Home Backup (opt-in) | Back up the allowlisted part of `~/.claude` (settings, agents, own skills/com... |

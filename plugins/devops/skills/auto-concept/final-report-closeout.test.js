@@ -298,7 +298,7 @@ describe("final-report close-out sheet", () => {
     const root = path.join(__dirname, "..", "..");
     const orch = fs.readFileSync(path.join(root, "deep-knowledge", "agent-orchestration.md"), "utf8");
     expect(orch).toContain("12. **Binding spec and acceptance checklist**");
-    const qa = fs.readFileSync(path.join(root, "agents", "qa.md"), "utf8");
+    const qa = fs.readFileSync(path.join(root, "agents", "qax.md"), "utf8");
     expect(qa).toContain("## Design parity (concept implement)");
     expect(qa).toContain("document.getAnimations()");
     expect(md).toMatch(/Design implement\s+\(#935\)/);

@@ -77,7 +77,7 @@ describe("recording", () => {
 
   test("skill, agent, edit (deduped), commit, branch", () => {
     run("Skill", { skill: "devops:tune-harden", args: "--invoked-by=do-run" });
-    run("Agent", { subagent_type: "devops:qa", prompt: "x" });
+    run("Agent", { subagent_type: "devops:qax", prompt: "x" });
     run("Agent", { prompt: "x" });
     run("Edit", { file_path: path.join(dir, "src/a.js") });
     run("Write", { file_path: path.join(dir, "src/b.js") });
@@ -87,7 +87,7 @@ describe("recording", () => {
     const evs = RC.events(dir);
     expect(evs.map(e => e.k)).toEqual(["skill", "agent", "agent", "edit", "commit", "branch"]);
     expect(evs[0]).toMatchObject({ name: "auto-harden", args: "--invoked-by=do-run" });
-    expect(evs[1].type).toBe("devops:qa");
+    expect(evs[1].type).toBe("devops:qax");
     expect(evs[2].type).toBe("general-purpose");
     expect(evs[5].name).toBe("feat/x");
   });

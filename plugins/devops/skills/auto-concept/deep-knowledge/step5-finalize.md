@@ -94,7 +94,7 @@ because the session feels like it is ending.
    (`title`, `type`, `description`, optional `role` / `module`); `role` and
    `module` are the strongest signal for which agent owns the work.
 2. Hand all items to `auto-agents` in ONE call — it dispatches by domain,
-   independent items in parallel, `devops:qa` verifying.
+   independent items in parallel, `devops:qax` verifying.
    The user-value gate from part A does NOT apply here — it exists to keep the
    issue tracker free of fragments, and these items are being built, not
    filed.

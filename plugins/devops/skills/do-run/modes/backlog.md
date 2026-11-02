@@ -387,7 +387,7 @@ for each issue in queue:
                  one heavy item to a /do-run autonomous implement sub-run
                  (never ships).
   3. TEST/QA   → pin the profile per {PLUGIN_ROOT}/deep-knowledge/test-plan.md; a
-                 `devops:qa` agent — gated when the diff changes ≥1 code file
+                 `devops:qax` agent — gated when the diff changes ≥1 code file
                  (browsertest-guard.isCodeChange); verify per test-strategy.md
                  (browser verification MANDATORY for web tech)
   3b. PASSES   → over this issue's diff, never asked:

@@ -34,7 +34,7 @@ describe("normalizePending", () => {
 
   it("returns [] for a non-array", () => {
     expect(normalizePending(undefined)).toEqual([]);
-    expect(normalizePending("devops:qa")).toEqual([]);
+    expect(normalizePending("devops:qax")).toEqual([]);
   });
 
   it("keeps hyphens and colons — real names are slugs", () => {
@@ -81,7 +81,7 @@ describe("pendingWhat — the CTA slot", () => {
   });
 
   it("counts instead of naming from two items on — the names go on the line", () => {
-    expect(pendingWhat(["devops:frontend", "devops:qa"], "de")).toBe("2 Agenten arbeiten");
+    expect(pendingWhat(["devops:frontend", "devops:qax"], "de")).toBe("2 Agenten arbeiten");
     expect(pendingWhat(["a", "b", "c", "d"], "de")).toBe("4 Agenten arbeiten");
   });
 
@@ -100,7 +100,7 @@ describe("pendingWhat — the CTA slot", () => {
   });
 
   it("reports mixed work biggest unit first", () => {
-    expect(pendingWhat([{ name: "devops:qa" }, { name: "npm test", kind: "task" }], "de"))
+    expect(pendingWhat([{ name: "devops:qax" }, { name: "npm test", kind: "task" }], "de"))
       .toBe("1 Agent + 1 Task laufen");
     expect(pendingWhat([
       { name: "wf", kind: "workflow" }, { name: "a" }, { name: "b" },
@@ -124,10 +124,10 @@ describe("pendingWhat — the CTA slot", () => {
 describe("renderPendingLine — the dim line next to the CTA", () => {
   it("names the first three, workflows first", () => {
     expect(renderPendingLine([
-      { name: "devops:qa" },
+      { name: "devops:qax" },
       { name: "verify-spec", kind: "workflow" },
       { name: "harden-pass", kind: "workflow" },
-    ], "de")).toBe("⏳ `verify-spec`, `harden-pass`, `devops:qa`");
+    ], "de")).toBe("⏳ `verify-spec`, `harden-pass`, `devops:qax`");
   });
 
   it("collapses the rest into a +N tail that counts unnamed items too", () => {

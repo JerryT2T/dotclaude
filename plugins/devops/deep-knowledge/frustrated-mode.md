@@ -89,8 +89,8 @@ used, plus a code-free cut. It writes only into the temp dir. Another session
 is read only after the user's explicit yes.
 
 Roles (existing agents, role blocks in `skills/auto-frustrated/deep-knowledge/roles.md`):
-R1 intent `po`, R2 history `redteam`, R3 technical cause `research`, R4
-workflow & product `po`, R5 fresh alternative `rethinker`, S synthesis
+R1 intent `pox`, R2 history `redteam`, R3 technical cause `research`, R4
+workflow & product `pox`, R5 fresh alternative `rethinker`, S synthesis
 `research`. Lite: R1, R2+R4, R3, synthesis in the main thread. No new agent
 files.
 

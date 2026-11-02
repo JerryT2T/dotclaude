@@ -54,7 +54,7 @@ describe("session-archive — which cards archive the session", () => {
   });
 
   test("pending agents / tasks / workflows block it", () => {
-    const p = shipped({ pending: ["devops:qa"] });
+    const p = shipped({ pending: ["devops:qax"] });
     expect(archiveDecision(p, deps()).reason).toBe("pending");
   });
 

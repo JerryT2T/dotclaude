@@ -450,7 +450,7 @@ describe("--render-card CLI fallback", () => {
 
     await renderCard({
       variant: "ready", summary: "Agent läuft", session_id: session,
-      pending: [{ name: "devops:qa" }],
+      pending: [{ name: "devops:qax" }],
     });
     expect(existsSync(attested)).toBe(true);
     try { unlinkSync(attested); } catch { /* best effort */ }

@@ -128,8 +128,8 @@ alone):
 | Lens agent | Dimensions | Evidence |
 |---|---|---|
 | `devops:scout` — code | architecture, logging, security, build-config, content, resilience (static half) | file:line, grep counts, dependency facts |
-| `devops:qa` — tests & function | functional, tests, resilience (live half) | test run results, requirement → flow walkthrough, console/network |
-| `devops:qa` — live surface | visual, animation, audio, accessibility, performance | screenshots per viewport, perf metrics, media/audio state probes, a11y tree |
+| `devops:qax` — tests & function | functional, tests, resilience (live half) | test run results, requirement → flow walkthrough, console/network |
+| `devops:qax` — live surface | visual, animation, audio, accessibility, performance | screenshots per viewport, perf metrics, media/audio state probes, a11y tree |
 | `devops:redteam` — only for `all` | cross-cutting failure modes of the requirement catalog | concrete risks with file:line |
 
 Each prompt carries: `$SCOPE` files, the requirements catalog, the active

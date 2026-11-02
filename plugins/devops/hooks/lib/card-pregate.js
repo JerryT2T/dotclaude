@@ -76,7 +76,7 @@ const { findTranscript } = require('./session-title');
 // #624 — tools whose use means the turn changed something, so `analysis`
 // ("nothing changed anywhere") is the wrong card.
 const FILE_WRITE_TOOLS = new Set(['Edit', 'Write', 'NotebookEdit', 'MultiEdit']);
-const IMPLEMENTING_AGENT_RE = /(^|:)(core|frontend|feature|ai|designer)$/;
+const IMPLEMENTING_AGENT_RE = /(^|:)(core|frontend|feature|aix|ai|designer)$/;
 const WRITE_MCP_RE = /(apply_migration|deploy|delete|trash|merge_branch|merge_pull_request|create_or_update_file|push_files)/i;
 const SQL_WRITE_RE = /\b(insert|update|delete|drop|alter|truncate|create)\b/i;
 const SHELL_WRITE_RE = /(\brm\s|\bgit\s+push\b|\bDELETE\s+FROM\b|\bDROP\s+TABLE\b)/i;

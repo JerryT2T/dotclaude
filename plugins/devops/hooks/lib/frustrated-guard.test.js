@@ -127,7 +127,7 @@ describe("decide while armed", () => {
     expect(g.decide(hook("mcp__github__create_pull_request", {}), opts).block).toBe(true);
     expect(g.decide(hook("mcp__github__get_issue", {}), opts).block).toBe(false);
     expect(g.decide(hook("Read", { file_path: "src/a.js" }), opts).block).toBe(false);
-    expect(g.decide(hook("Agent", { subagent_type: "devops:po" }), opts).block).toBe(false);
+    expect(g.decide(hook("Agent", { subagent_type: "devops:pox" }), opts).block).toBe(false);
   });
 });
 
