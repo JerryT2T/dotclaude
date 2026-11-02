@@ -129,6 +129,7 @@ describe("ship_run — decision points", () => {
     ["bump-required", {}, { bump: undefined }],
     ["major-bump", {}, { bump: "major" }],
     ["bump-mismatch", { ship_version_bump: () => ({ success: false, vNew: "1.3.0", mismatches: [{ file: "README.md" }] }) }, {}],
+    ["version-file-missing", { ship_version_bump: () => ({ success: false, needs: "version-file-missing", hint: "declare versionFiles" }) }, {}],
     ["checks-failed", { ship_release: () => ({ success: false, checksBlocked: true, failedChecks: [{ name: "lint" }] }) }, {}],
     ["release-failed", { ship_release: () => ({ success: false, error: "boom" }) }, {}],
   ])("%s", async (need, over, extra) => {

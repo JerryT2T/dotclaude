@@ -27,8 +27,15 @@ export async function handler(params) {
   if (!cwd) throw new Error("cwd is required — MCP server runs in the plugin directory, not the target repo");
 
   // Read current version
-  const { version: vOld, type: projectType, file: sourceFile } = readVersion(cwd);
+  const { version: vOld, type: projectType, file: sourceFile } = readVersion(cwd, params.versionFiles || []);
   if (!vOld) {
+    if (bump !== "none" && detectRepoMode(cwd) !== "none") {
+      return {
+        success: false,
+        needs: "version-file-missing",
+        hint: "no version file found (plugin.json / package.json / marketplace.json / custom_components/*/manifest.json) — declare versionFiles: in the project's do-ship reference.md, or ship with bump none",
+      };
+    }
     if (detectRepoMode(cwd) === "none") {
       return { success: true, skipped: true, reason: "no-manifest-in-file-only-mode", version: null };
     }

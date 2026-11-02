@@ -268,7 +268,7 @@ export async function handler(params, injected = {}) {
     // commit left the checkpoint naming a bump the tree no longer had, and
     // #1027 merged without a version bump.
     if (!merged && steps.bump && steps.bump.vNew) {
-      const current = (() => { try { return readVersion(cwd).version; } catch { return null; } })();
+      const current = (() => { try { return readVersion(cwd, params.versionFiles || []).version; } catch { return null; } })();
       const drifted = bumpTargetDrift(cwd, steps.bump.vNew, params.versionFiles);
       if (current && current !== steps.bump.vNew) {
         out.warnings.push(`checkpoint bump to ${steps.bump.vNew} is not on the branch (version ${current}) — bumping again`);
@@ -371,7 +371,7 @@ export async function handler(params, injected = {}) {
     if (!merged && finalShip && !bumpResult && params.bump !== "none") {
       if (!params.bump) return needs("bump-required", { hint: "decide patch/minor/major/none (versioning.md § When to bump) and pass bump + changelogEntry" });
       if (params.bump === "major" && !params.majorConfirmed) return needs("major-bump", { hint: "ask the user (BLOCK under lockout); re-call with majorConfirmed:true" });
-      const current = (() => { try { return readVersion(cwd).version; } catch { return null; } })();
+      const current = (() => { try { return readVersion(cwd, params.versionFiles || []).version; } catch { return null; } })();
       if (current && params.changelogEntry) {
         const vNext = bumpVersion(current, params.bump);
         const root = gitTry(["rev-parse", "--show-toplevel"], { cwd }) || cwd;
@@ -382,6 +382,7 @@ export async function handler(params, injected = {}) {
       }
       const v = await call("ship_version_bump", { bump: params.bump, ...(params.versionFiles ? { versionFiles: params.versionFiles } : {}) });
       out.bump = v;
+      if (v.needs === "version-file-missing") return needs("version-file-missing", { hint: v.hint });
       bumpResult = v;
       if (!v.success && !v.skipped) {
         // Never bump twice: the checkpoint now carries the raised version.
@@ -391,7 +392,7 @@ export async function handler(params, injected = {}) {
       out.stagesSkipped.push("ship_version_bump");
     }
     const bump = params.bump || (bumpResult && bumpResult.bump) || undefined;
-    const version = (bumpResult && bumpResult.vNew) || (() => { try { return readVersion(cwd).version; } catch { return null; } })();
+    const version = (bumpResult && bumpResult.vNew) || (() => { try { return readVersion(cwd, params.versionFiles || []).version; } catch { return null; } })();
 
     // ── release ──────────────────────────────────────────────────────────────
     stage = "release";
@@ -407,6 +408,7 @@ export async function handler(params, injected = {}) {
           commitMessage: params.commitMessage || (version ? `chore(release): v${version}` : null),
           ...(params.tag !== undefined ? { tag: params.tag } : {}),
           ...(bump ? { bump } : {}),
+          ...(params.versionFiles ? { versionFiles: params.versionFiles } : {}),
           releaseNotes: params.changelogEntry || null,
           mergeStrategy: params.mergeStrategy || pre.mergeStrategy || "squash",
           skipChecks: params.skipChecks, interactive: params.interactive,

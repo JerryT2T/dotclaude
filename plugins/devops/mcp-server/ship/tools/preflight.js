@@ -467,7 +467,7 @@ export async function handler(params) {
   // Version consistency (skip for intermediate merges — versions only matter on main)
   let versionInfo = { version: null, type: null };
   if (!intermediate) {
-    versionInfo = readVersion(cwd);
+    versionInfo = readVersion(cwd, params.versionFiles || []);
     let versionOk = true;
     let versionMismatches = [];
     if (versionInfo.version) {
