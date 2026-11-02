@@ -382,7 +382,7 @@ export async function handler(params, injected = {}) {
       }
       const v = await call("ship_version_bump", { bump: params.bump, ...(params.versionFiles ? { versionFiles: params.versionFiles } : {}) });
       out.bump = v;
-      if (v.needs === "version-file-missing") return needs("version-file-missing", {}, { hint: v.hint });
+      if (v.needs === "version-file-missing") return needs("version-file-missing", { hint: v.hint });
       bumpResult = v;
       if (!v.success && !v.skipped) {
         // Never bump twice: the checkpoint now carries the raised version.
