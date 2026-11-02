@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.345.0] — 2026-11-03
+
+### Added
+- API credit: every batch-policy decision is logged with its rule and estimated saving; `--usage` shows them as a `batchPolicy` block (decisions by rule, saving left on the table) outside the call totals (#1015).
+
 ## [0.344.5] — 2026-11-02
 
 ### Fixed

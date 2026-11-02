@@ -280,6 +280,10 @@ function usageSummary({ home, since }) {
       .map((l) => { try { return JSON.parse(l); } catch { return null; } })
       .filter((r) => r && r.ts >= since);
   } catch { /* no log yet */ }
+  // #1015: batch-policy decisions are $0 rows, not API calls — kept out of the
+  // call/cost aggregates and summarised in their own block.
+  const policyRows = rows.filter((r) => r.tool === 'batch-policy');
+  rows = rows.filter((r) => r.tool !== 'batch-policy');
   const group = (key) => {
     const m = {};
     for (const r of rows) {
@@ -316,6 +320,15 @@ function usageSummary({ home, since }) {
     result.contextEditing = {
       clears: rows.reduce((s, r) => s + (r.ctxClears || 0), 0),
       clearedTokens: rows.reduce((s, r) => s + (r.ctxClearedTokens || 0), 0),
+    };
+  }
+  if (policyRows.length) {
+    const byRule = {};
+    for (const r of policyRows) byRule[r.rule || '?'] = (byRule[r.rule || '?'] || 0) + 1;
+    const rejected = policyRows.filter((r) => r.rule !== 'ok');
+    result.batchPolicy = {
+      decisions: policyRows.length, byRule,
+      rejectedSavingUsd: Math.round(rejected.reduce((s, r) => s + (r.estSavingUsd || 0), 0) * 100) / 100,
     };
   }
   return result;

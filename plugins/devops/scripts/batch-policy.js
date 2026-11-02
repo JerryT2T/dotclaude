@@ -2,7 +2,7 @@
 'use strict';
 /**
  * @script batch-policy
- * @version 0.1.0
+ * @version 0.2.0
  * @plugin devops
  * @description Decides whether a large, unattended job may take the Message
  *   Batches path (-50 %) instead of the normal one. "No" is a normal answer,
@@ -23,7 +23,8 @@ const MIN_DEADLINE_MS = 30 * 60 * 1000;
 const DEFAULT_DEADLINE_MS = 2 * 60 * 60 * 1000;
 
 function no(reason, est = {}) {
-  return { useBatch: false, reason, estUsd: est.estUsd || 0, estSavingUsd: est.estSavingUsd || 0 };
+  const m = /^(R\d)\b/.exec(reason);
+  return { useBatch: false, reason, ...(m ? { rule: m[1] } : {}), estUsd: est.estUsd || 0, estSavingUsd: est.estSavingUsd || 0 };
 }
 
 function monthStart(now) {
@@ -44,10 +45,26 @@ function remainingBudget(job, env, { home, now }) {
  * @param {{requests:number, estInputTokens:number, estOutputTokens:number, model?:string,
  *          unattended?:boolean, deadlineMs?:number, monthBudgetUsd?:number, maxUsd?:number, cwd?:string}} job
  * @param {{env?:object, home?:string, now?:number, featureOpts?:object}} ctx
- * @returns {{useBatch:boolean, reason:string, estUsd:number, estSavingUsd:number}}
+ * @returns {{useBatch:boolean, reason:string, rule?:string, estUsd:number, estSavingUsd:number}}
+ *   rule = "R1".."R5" or "ok" (absent on a policy error); each decision is logged (#1015).
  *   estUsd = expected cost on the batch path, estSavingUsd = saving vs the normal path.
  */
 function decide(job = {}, ctx = {}) {
+  const d = decideInner(job, ctx);
+  // #1015: every real decision lands in the usage log, so `--usage` can show
+  // which rule keeps jobs off the batch path and what that costs. A policy
+  // error (no rule) is not a decision and is not logged. $0 row, no prompt.
+  if (d.rule) {
+    safe.logUsage({
+      home: ctx.home, now: ctx.now || Date.now(), tool: 'batch-policy', cwd: job.cwd,
+      model: job.model || safe.DEFAULT_MODEL, rc: d.useBatch ? 0 : 3,
+      extra: { rule: d.rule, requests: job.requests || 0, estUsd: d.estUsd, estSavingUsd: d.estSavingUsd, unattended: job.unattended === true },
+    });
+  }
+  return d;
+}
+
+function decideInner(job, ctx) {
   try {
     if (!featureAllowed('batch', ctx.featureOpts || {})) return no('R1 feature "batch" is not available on this channel');
     const penv = ctx.env || process.env;
@@ -76,7 +93,7 @@ function decide(job = {}, ctx = {}) {
     const deadline = job.deadlineMs === undefined ? DEFAULT_DEADLINE_MS : job.deadlineMs;
     if (!(deadline >= MIN_DEADLINE_MS)) return no(`R5 deadline ${Math.round(deadline / 60000)} min < ${MIN_DEADLINE_MS / 60000} min`, est);
 
-    return { useBatch: true, reason: 'all rules hold', ...est };
+    return { useBatch: true, reason: 'all rules hold', rule: 'ok', ...est };
   } catch (e) {
     return no(`policy error (${e && e.message}) - normal path`);
   }

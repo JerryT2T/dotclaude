@@ -84,3 +84,23 @@ test("CLI: flag off → exit 126 without output; main maps no → 3, yes → 0",
   expect(policy.main(argv, { out: (s) => out.push(s), ctx: ctx(mkHome("cli")) })).toBe(0);
   expect(policy.main(argv.slice(0, -1), { out: () => {}, ctx: ctx(mkHome("cli2")) })).toBe(3);
 });
+
+// #1015: every decision lands in the usage log; --usage summarises them apart from API calls.
+test("decisions are logged with rule and saving, summarised outside the call totals", () => {
+  const h = mkHome("log");
+  const now = Date.parse("2026-11-03T10:00:00Z");
+  policy.decide({ ...good, unattended: false }, ctx(h, { now }));
+  policy.decide({ ...good, requests: 4 }, ctx(h, { now }));
+  const ok = policy.decide(good, ctx(h, { now }));
+  const rows = fs.readFileSync(path.join(h, ".claude", "api-credit-usage.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+  expect(rows.map((r) => r.rule)).toEqual(["R3", "R4", "ok"]);
+  expect(rows.every((r) => r.tool === "batch-policy" && r.usd === 0)).toBe(true);
+  expect(rows[0].estSavingUsd).toBeGreaterThan(1);
+  expect(JSON.stringify(rows)).not.toMatch(/sk-test/);
+  const s = safe.usageSummary({ home: h, since: "2026-11-01" });
+  expect(s.calls).toBe(0);
+  expect(s.batchPolicy.decisions).toBe(3);
+  expect(s.batchPolicy.byRule).toEqual({ R3: 1, R4: 1, ok: 1 });
+  expect(s.batchPolicy.rejectedSavingUsd).toBeCloseTo(rows[0].estSavingUsd + rows[1].estSavingUsd, 2);
+  expect(ok.rule).toBe("ok");
+});
