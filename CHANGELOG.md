@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.346.0] — 2026-11-03
+
+### Added
+- Ship: projects whose version lives outside plugin.json / package.json get bumped and tagged — from the declared `versionFiles:`, or a Home Assistant `custom_components/*/manifest.json` found on its own. With nothing to read, a bump stops with `version-file-missing` instead of skipping silently (#1017).
+
 ## [0.345.1] — 2026-11-03
 
 ### Fixed
