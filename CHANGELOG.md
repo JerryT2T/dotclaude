@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.342.0] — 2026-11-02
+
+### Added
+- auto-concept: `scripts/concept-coverage.js` writes a per-comment checklist with state, patterns and evidence after every round and flags comments the user had to repeat; a repeat triggers a fresh qa review, a fix, do-learn and a replay eval case.
+- Evals: round cases for comment fidelity, reopened breadth and kept options, plus the replay case `round-replay-r6-hover` from a real concept with repeated hover feedback (headless Edge grader via playwright-core).
+
+### Changed
+- auto-concept: the mandatory per-round reading is about half as long; deep-knowledge is referenced instead of read in full, SKILL.md stays under 500 lines.
+
+### Fixed
+- cleanup-gate tests no longer flake on a loaded machine (injectable chain budget in `decide()`, longer git timeout in tests).
+
 ## [0.341.0] — 2026-11-01
 
 ### Added
