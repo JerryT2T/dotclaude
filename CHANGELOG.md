@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.344.0] — 2026-11-02
+
+### Changed
+- **Agents `ai`, `po`, `qa` are now `aix`, `pox`, `qax`.** The claude.ai plugin sync rejects agent names under 3 characters and silently dropped them from the account copy (Desktop Code tab, cloud sessions). `devops:aix` / `devops:pox` / `devops:qax` everywhere; the old names stay recognised in run-contract, sub-branch roles and agent-type checks.
+
+### Added
+- `agents/agent-names.test.js` — every agent name has at least 3 characters and matches its file name.
+- SessionStart warning when the Desktop app runs an older claude.ai catalog copy of devops than the Claude Code install, with the re-sync path; the card's stale-server line names the same fix instead of a restart.
+- do-ship project extension Step 6.6 (`deep-knowledge/account-copy.md`): after every ship, check the claude.ai account copy's synced commit and the Desktop mirror version.
+
 ## [0.343.1] — 2026-11-02
 
 ### Fixed
