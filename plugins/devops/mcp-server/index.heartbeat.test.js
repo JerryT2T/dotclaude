@@ -52,7 +52,8 @@ test("after connect the server writes its per-process heartbeat and prunes a dea
     expect(seen.connected).toBe(true);
     expect(seen.fileAtConnect).toBe(false);
     expect(fs.existsSync(own)).toBe(true);
-    expect(fs.readFileSync(own, "utf8")).toBe(String(process.pid));
+    // "<pid>\n<ppid>": the parent (Claude Code) attributes the server to its session
+    expect(fs.readFileSync(own, "utf8")).toBe(`${process.pid}\n${process.ppid}`);
     expect(fs.existsSync(processPidFile(NAME, gone, dir))).toBe(false);
     expect(fs.existsSync(flatPidFile(NAME, gone, dir))).toBe(false);
   } finally {
