@@ -194,4 +194,20 @@ describe("per-session liveness (isMcpServerAliveForSession)", () => {
   test("nothing alive is false", () => {
     withTmp(() => expect(reader.isMcpServerAliveForSession(NAME, { ppid: 4242 })).toBe(false));
   });
+  test("defaults to CLAUDE_PID, not the hook's own parent (a bash wrapper)", () => {
+    const saved = process.env.CLAUDE_PID;
+    try {
+      withTmp((dir) => {
+        writeHeartbeat(NAME, other.pid, dir, 4242);
+        process.env.CLAUDE_PID = "4242";
+        expect(reader.isMcpServerAliveForSession(NAME)).toBe(true);
+        process.env.CLAUDE_PID = "9999";
+        expect(reader.isMcpServerAliveForSession(NAME)).toBe(false);
+        delete process.env.CLAUDE_PID; // unknown session → machine-wide
+        expect(reader.isMcpServerAliveForSession(NAME)).toBe(true);
+      });
+    } finally {
+      if (saved === undefined) delete process.env.CLAUDE_PID; else process.env.CLAUDE_PID = saved;
+    }
+  });
 });
