@@ -111,7 +111,8 @@ getComputedStyle(document.documentElement).getPropertyValue('--accent-color').tr
 chips and status line consume; the reference CSS itself defines no tokens, and
 pages differ on `--bg` vs `--bg-color`, so those are not reliable probes. (A
 page that uses a different accent name is one you authored — probe the token
-your `:root` block defines.) Non-empty → proceed to `start`. Empty → do NOT
+your `:root` block defines.) Non-empty → proceed to the open (`start`, or
+`concept-open.js verify` on the fast path — never both). Empty → do NOT
 open the tab; regenerate the `<style>` block from `templates.md` § Layout
 (exactly one `<style>` opener, closed before the next tag), re-run the gate,
 re-check. Skip the check only when no browser tool is reachable at all — then
@@ -143,7 +144,8 @@ rediscover this concept, **send the first heartbeat AND verify it round-trips wi
 non-zero `claude_ts`** (see `deep-knowledge/bridge-server-state.md` § Step 5 —
 the read-back is mandatory; a naked POST leaves a dead-bridge failure
 mode invisible until the user submits and gets no response), then open
-the page in the user's existing Edge window using the exact command above.
+the page in the user's existing Edge window using the exact command above —
+on the fast path `verify` has already done this open, so skip it there.
 
 **Then launch the two background tasks — the concept does not work without
 them.** Both are the same script in two modes, `scripts/concept-watch.js`,
