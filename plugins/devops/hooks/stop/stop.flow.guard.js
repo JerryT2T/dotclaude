@@ -155,6 +155,7 @@ process.stdin.on('end', () => {
   let hook;
   try { hook = JSON.parse(inputData); }
   catch { process.exit(0); }
+  if (!hook || typeof hook !== 'object') process.exit(0);
 
   const sessionId = hook.session_id;
 

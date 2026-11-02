@@ -58,7 +58,7 @@ process.stdin.on('end', () => {
   try { if (require('../lib/batch-state').willBeCollected(hook)) process.exit(0); }
   catch { /* fail open */ }
 
-  let message = hook.prompt || hook.user_message || hook.message || '';
+  let message = require('../lib/prompt-text').rawPrompt(hook);
   if (!message) process.exit(0);
   // Background agent reports quote issue and PR numbers; the user referenced
   // none of them (#473). Machine turns also must not consume the first-prompt

@@ -38,7 +38,7 @@ function main(hook, opts = {}) {
   });
   if (!block) return null;
   try { recordOverrides(hook.session_id, block.record, { dir: opts.dir }); } catch { /* advisory */ }
-  return { context: textOnce(hook.session_id, block, { dir: opts.dir }) };
+  return { context: textOnce(hook.session_id, block, { dir: opts.dir, agentId: typeof hook.agent_id === 'string' ? hook.agent_id : undefined }) };
 }
 
 if (require.main === module) runHook(main, { event: 'PostToolUse' });

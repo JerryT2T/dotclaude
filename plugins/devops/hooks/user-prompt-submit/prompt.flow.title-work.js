@@ -226,7 +226,7 @@ function instruction(prefix = WORK_PREFIX, { machine = false } = {}) {
 }
 
 function shouldMark(hook) {
-  const prompt = hook.prompt || hook.user_message || hook.message || '';
+  const prompt = require('../lib/prompt-text').rawPrompt(hook);
   if (!prompt.trim()) return false;
   if (isSilent(prompt) || isScheduledTask(prompt)) return false;
   try { if (require('../lib/batch-state').willBeCollected(hook)) return false; }

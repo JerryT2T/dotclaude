@@ -49,7 +49,15 @@ function writeSessionFile(filePath, content) {
   const tmp = `${filePath}.${process.pid}.${Math.random().toString(36).slice(2, 10)}.tmp`;
   try {
     fs.writeFileSync(tmp, content, 'utf8');
-    fs.renameSync(tmp, filePath);
+    // Windows: a rename onto a file another process is reading fails with
+    // EPERM/EACCES/EBUSY for microseconds — retry a few times (cf. burn-plan).
+    for (let attempt = 0; ; attempt++) {
+      try { fs.renameSync(tmp, filePath); break; } catch (err) {
+        const transient = err && (err.code === 'EPERM' || err.code === 'EACCES' || err.code === 'EBUSY');
+        if (!transient || attempt >= 5) throw err;
+        try { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 5 + attempt * 10); } catch { /* no wait available */ }
+      }
+    }
   } catch (err) {
     try { fs.unlinkSync(tmp); } catch { /* never created / already renamed */ }
     throw err;

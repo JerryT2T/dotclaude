@@ -171,12 +171,13 @@ const SECURITY_RE = /\b(?:CVE-\d{4}-\d+|CVE|GHSA(?:-[0-9a-z]{4}){0,3}|advisor(?:
  * counts.
  */
 const WEAK_SPOT_RE = /(?:([\p{L}]+)-)?schwachstelle\w*/giu;
-const NON_SECURITY_QUALIFIER = /(?:architektur|architekton|design|struktur|konzept|ux|ui|performance|prozess|workflow|usability|bedien)\w*/i;
+const NON_SECURITY_QUALIFIER = /^(?:architektur|architekton|design|konzept|ux|ui|performance|prozess|workflow|usability|bedien)\w*$/i;
 function namesSecurityWeakSpot(text) {
   for (const m of String(text).matchAll(WEAK_SPOT_RE)) {
     if (m[1]) { if (/^sicherheit/i.test(m[1])) return true; if (NON_SECURITY_QUALIFIER.test(m[1])) continue; return true; }
-    const before = String(text).slice(Math.max(0, m.index - 30), m.index).split(/\s+/).filter(Boolean).slice(-2).join(' ');
-    if (!NON_SECURITY_QUALIFIER.test(before)) return true;
+    const before = String(text).slice(Math.max(0, m.index - 60), m.index).split(/\s+/).filter(Boolean).slice(-2)
+      .map((w) => w.replace(/^[^\p{L}]+|[^\p{L}]+$/gu, ''));
+    if (!before.some((w) => NON_SECURITY_QUALIFIER.test(w))) return true;
   }
   return false;
 }

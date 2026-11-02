@@ -349,17 +349,21 @@ function seenPath(sessionId, dir) {
  * sees this skill's exact override text, a one-line reminder afterwards (the
  * block is still in context until a compaction — `forgetSeen` then). The
  * reminder keeps "binding for this run"; a changed override file is new text
- * and goes in full. Fails open: an unreadable or unwritable marker sends it all.
+ * and goes in full; `agentId` (the hook payload's, absent on the main thread)
+ * gives each subagent its own first full copy. Fails open: an unreadable or unwritable marker sends it all.
  */
-function textOnce(sessionId, block, { dir } = {}) {
+function textOnce(sessionId, block, { dir, agentId } = {}) {
   if (!block || !block.record) return block ? block.text : '';
   const file = seenPath(sessionId, dir);
   const hash = crypto.createHash('sha1').update(block.text).digest('hex').slice(0, 12);
   let seen = {};
   try { seen = JSON.parse(fs.readFileSync(file, 'utf8')) || {}; } catch { /* first time */ }
-  const skill = block.record.skill;
+  // Subagent hooks share the parent's session_id: each agent (and the main
+  // thread) keeps its own marker, so a subagent sees the full text once too.
+  const skill = agentId ? `${block.record.skill}@${agentId}` : block.record.skill;
+  const label = block.record.skill;
   if (seen[skill] === hash) {
-    return `[skill-overrides] ${skill}: unchanged since earlier in this session — the same overrides stay binding for this run.`;
+    return `[skill-overrides] ${label}: unchanged since earlier in this session — the same overrides stay binding for this run.`;
   }
   seen[skill] = hash;
   try { fs.writeFileSync(file, JSON.stringify(seen), 'utf8'); } catch { /* send anyway */ }

@@ -516,8 +516,18 @@ describe("ui-defaults.md: body only on an explicit ask, pointer on a bare UI wor
   });
 
   test.each([
-    "Kannst du den Tooltip im Header etwas größer machen?",
+    "Füge einen Tooltip hinzu",
+    "add a dropdown to the filter bar",
     "add a hotkey for the export button in the toolbar",
+    "Bau mir bitte einen Dropdown ein",
+    "which keyboard shortcut conventions apply?",
+  ])("a weak UI word plus an ask to build it injects the body: %s", (prompt) => {
+    expect(runHook(prompt)).toContain(BODY);
+  });
+
+  test.each([
+    "Kannst du den Tooltip im Header etwas größer machen?",
+    "was ist ein tooltip?",
     "wie lege ich einen git shortcut für den rebase an?",
     "der Dropdown im Filter springt beim Scrollen",
   ])("a bare UI word gets a pointer, not 29 KB: %s", (prompt) => {

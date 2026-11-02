@@ -91,6 +91,7 @@ function recoveryLines(toolName) {
 function resolveServer(toolName) {
   // tool names look like: mcp__plugin_devops_dotclaude__ship_build
   // extract the server key between "plugin_devops_" and the next "__"
+  if (typeof toolName !== 'string') return null;
   const match = toolName.match(/plugin_devops_([a-z0-9-]+)__/);
   if (!match) return null;
   const key = match[1];
@@ -126,8 +127,9 @@ process.stdin.on('end', () => {
   let hook;
   try { hook = JSON.parse(inputData); }
   catch { process.exit(0); }
+  if (!hook || typeof hook !== 'object') process.exit(0);
 
-  const toolName = hook.tool_name || '';
+  const toolName = typeof hook.tool_name === 'string' ? hook.tool_name : '';
   const serverName = resolveServer(toolName);
   if (!serverName) process.exit(0);
 

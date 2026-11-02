@@ -360,6 +360,9 @@ async function main() {
   const raw = await readStdin();
   let payload = null;
   try { payload = require('../lib/hook-input').parseHookInput(raw); } catch { /* matcher falls back to all */ }
+  // Valid JSON that is not an object (`null`, a number, an array): no hook can
+  // read a field from it, and most would throw on `hook.tool_name` — fail open here.
+  if (payload === null && /^(?:null|true|false|-?\d[\d.eE+-]*|\[[\s\S]*\]|"[\s\S]*")$/.test(String(raw || '').replace(/^\uFEFF/, '').trim())) return { code: 0, stdout: '', stderr: '' };
   let manifest;
   try { manifest = loadManifest(); } catch { return { code: 0, stdout: '', stderr: '' }; }
   const all = laneModules(manifest, event, PLUGIN_ROOT, { fast });
