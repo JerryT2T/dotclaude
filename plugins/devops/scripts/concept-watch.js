@@ -68,8 +68,8 @@
  *     - a cleanup verdict (state gone / port changed / page gone) must hold
  *       for `--confirm` consecutive polls — a state-file or page rewrite is
  *       not the end of the concept;
- *     - the pulser never exits on request failures while the state file is
- *       there; the waker exits SERVER_DEAD only after `--dead-after` seconds
+ *     - the pulser never exits on request failures while a waker runs (with
+ *       none, after `--dead-after` it exits SERVER_DEAD itself); the waker exits SERVER_DEAD only after `--dead-after` seconds
  *       of continuous failure. Requests wait up to `--timeout` (30 s) so a
  *       bridge that is merely slow under load still counts as alive;
  *     - two watchers of one kind on one port: the younger pulser and the
@@ -529,6 +529,15 @@ async function run(opts, deps = {}) {
       // this pulser simply reconnects. It leaves when the state file does.
       if (watch && fails >= opts.tolerate && io.now() - failingSince >= opts.deadAfter * 1000) {
         return emit('SERVER_DEAD');
+      }
+      // Exception: no waker is running (between a pickup and the re-arm — an
+      // `implement` round can take an hour). Nobody else would ever report the
+      // dead bridge, and the page sat on "nicht verbunden" until the session
+      // happened to look. Then the pulser is the only one left to say it.
+      if (!watch && fails >= opts.tolerate && io.now() - failingSince >= opts.deadAfter * 1000) {
+        const b = io.readBeat(opts.state, opts.port);
+        const wakerAlive = b && Number.isFinite(b.ts) && io.now() - b.ts < beatStaleMs(opts);
+        if (!wakerAlive) return emit('SERVER_DEAD');
       }
     }
 
