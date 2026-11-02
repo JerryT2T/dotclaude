@@ -116,3 +116,13 @@ test("buildLaunch quotes paths and uses forward slashes", () => {
   const l = buildLaunch({ port: 8800, cwd: "C:\\a b", html: "d/x.html", state: "C:/a b/.claude/concept-active.json", owner: "ab12cd34" });
   expect(l.server).toContain('8800 "C:/a b" --html "d/x.html"');
 });
+
+// #1030: verify owns the open on the fast path — the docs must not tell the
+// model to run the manual `start msedge` on top of it (page opened twice).
+describe("docs name one owner of the open", () => {
+  const read = (p) => fs.readFileSync(path.join(__dirname, "..", p), "utf8");
+  test("step3-open-browser.md and SKILL.md say verify opens Edge itself", () => {
+    expect(read("skills/auto-concept/deep-knowledge/step3-open-browser.md")).toMatch(/Fast path → no manual open \(#1030\)/);
+    expect(read("skills/auto-concept/SKILL.md")).toMatch(/Exactly one open \(#1030\)/);
+  });
+});

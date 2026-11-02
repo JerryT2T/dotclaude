@@ -45,6 +45,11 @@ no crons, no Edge start. The steps, the wrapper contract and the card:
 
 ## Open command, 200 gate, token check
 
+**Fast path → no manual open (#1030).** When the page is opened through
+`concept-open.js verify` (§ Bridge server below), `verify` already opens Edge
+once after its 200 check. Running the command below as well opens the page
+twice. The command is for the non-fast path only.
+
 The **only** correct invocation is the OS `start`/`open` shell command
 that hands the URL to the user's default Edge window, which then opens
 a new tab. The exact command per platform:
@@ -124,7 +129,7 @@ window — there is no usable degraded mode.
 
 Fast path: `node {PLUGIN_ROOT}/scripts/concept-open.js prepare --cwd <cwd> --html <rel html>`
 then launch the three printed commands as background tasks
-(`run_in_background: true`), then `verify --state <printed state>` - the
+(`run_in_background: true`), then `verify --state <printed state>` (it opens Edge itself — no second `start msedge`) - the
 sections below are the reference behind it.
 
 Start the bridge server (`scripts/concept-server.py`) on a port chosen via the
