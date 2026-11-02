@@ -93,11 +93,11 @@ marker, it does not activate the mode:
 > jetzt gesammelt. Hinter dem Marker darf Text stehen — der gilt als Anweisung
 > für die nächste Phase."
 > Options (fixed order — `MARKER_SUGGESTIONS` in `batch-state.js`):
-> 1. `los` (empfohlen) — einfach "los" tippen; auch "los, aber ohne B3" löst aus
+> 1. `go` (empfohlen) — "go" als erstes Wort löst aus, egal in welcher Sprache; auch "go, ohne B3" oder "go mach X"
 
-Only one suggestion (`los`); `>>`, `>go`, `>start` are gone, and a stored config
-holding one of them migrates to `los` on load. "los geht's", "los geht", "Los
-Angeles" and "lose Enden" do not fire (collected as notes). A colon-free marker
+Only one suggestion (`go`); `>>`, `>go`, `>start`, `los` and `Let's go` are gone, and a stored config
+holding one of them migrates to `go` on load. `go` as the first word of a prompt fires
+the merge whatever follows ("go", "go!", "go, ohne B3", "Go ahead"); "google …" and "gopher" do not (word boundary). A colon-free marker
 reads as a switch, not a label. The user's
 own answer via "Sonstiges" may be anything `validateMarker` accepts.
 
@@ -283,7 +283,7 @@ silently if absent. Detail: `deep-knowledge/merge.md` § Local compaction.
   attachment prompt is not collected *automatically*, but it is still filed —
   by you, per Step 2.6. Passing it through untouched loses it entirely.
 - **The execute marker outranks everything except machine prompts and slash
-  commands.** `los so wie hier [Image #1]` fires the merge; the attachment rule
+  commands.** `go so wie hier [Image #1]` fires the merge; the attachment rule
   does not apply, because an execute prompt is never blocked. And the marker
   reaches the notes even when the mode already expired or hit its cap — the
   notes outlive the mode.

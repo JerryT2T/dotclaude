@@ -171,7 +171,7 @@ body:not([data-overview-active="true"]) .design-ov { display: none; }
 
 /* ── Round changes: overlay on the preview, dots on menu entries ── */
 .design-ov, .design-header, .design-quick, .screen-nav { --dz-new-color: var(--success-color, #3fb950); }
-/* "Neugedacht" chip of a NEW variant; a changed one gets .design-ov-improved. */
+/* "Neugedacht" chip of a NEW variant; a changed one gets no extra line. */
 .design-ov-change {
   display: inline-flex; align-items: center; gap: 0.4rem; margin: 0 0 0.55rem; box-sizing: border-box;
   padding: 0.2rem 0.65rem; border-radius: 999px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.02em;

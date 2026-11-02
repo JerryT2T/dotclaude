@@ -117,11 +117,9 @@ describe("overview feedback — tiles", () => {
       expect(s.querySelector(".design-ov-open")).toBeNull();
       const kick = s.querySelector(".design-ov-kicker");
       expect(kick.querySelector(".design-ov-num").textContent).toMatch(/^[1-9] ·$/);
-      // "Verbessert" is a line under the traits (changed variants only), never a chip.
+      // No "Verbessert" line under the traits any more, and never a chip.
       expect(s.querySelector('.design-ov-change[data-kind="changed"]')).toBeNull();
-      const line = s.querySelector(".design-ov-improved");
-      if (s.dataset.change === "changed") expect(line.textContent).toBe("Verbessert Größere Tageskacheln");
-      else expect(line).toBeNull();
+      expect(s.querySelector(".design-ov-improved")).toBeNull();
     });
     // Side label: shown on neighbours only, centred vertically, no name.
     expect(css).toMatch(/\.design-ov-slide:is\(\[data-pos="prev"\], \[data-pos="next"\]\) \.design-ov-side \{ display: block; \}/);

@@ -51,8 +51,8 @@ html[data-theme="light"] [data-analysis] {
 .concept-content:has(section[data-analysis="full"][data-active]) > header .subtitle { display: none; }
 .concept-content:has(section[data-analysis="full"][data-active]) > header h1 { margin: 0.25rem 0 0.25rem; }
 .an-enh:not(.an-lite) { overflow: hidden; padding-bottom: 28px; }
-.an-chat { position: relative; flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable both-edges; display: flex; flex-direction: column; padding-bottom: 8px; }
-.an-chat > * { flex: 0 0 auto; }
+.an-chat { position: relative; flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable both-edges; display: flex; flex-direction: column; padding-bottom: 28px; scroll-padding-bottom: 28px; }
+.an-chat > *, .an-chat .an-stage { flex: 0 0 auto; }   /* a stage inside a display:contents topic is a flex item too: it must never shrink below its content */
 .an-chat > .an-foot-brief { margin-top: auto; }
 .an-enh:not([data-an-stage="brief"]):not(.an-lite) { padding-top: 12px; }
 .an-enh [data-topic] { display: contents; }
@@ -81,6 +81,15 @@ section[data-view].an-lite { max-width: none; margin: 0; border: 0; border-radiu
 .an-meta { margin-bottom: 6px; font-size: 11.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--c); }
 .an-dip { opacity: 0; }
 .an-pane { min-width: 0; }
+/* history: a question already answered stays in the chat above (finding + question), its answer block and foot give
+   way to the user's own right-aligned message; scrolling back is always possible */
+.an-stage:not(.an-past) > .an-m-me { display: none; }
+.an-past > .an-m-a { display: none; }
+.an-past > .an-m-q .an-av { box-shadow: none; }
+.an-m-me { display: flex; justify-content: flex-end; margin-top: 12px; }
+.an-m-me[hidden] { display: none; }
+.an-bub-me { max-width: 78%; padding: 10px 16px; border-radius: 18px 18px 4px 18px; background: color-mix(in srgb, var(--an-ac) 30%, var(--an-s2)); color: var(--an-tx); font-size: 14px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+.an-past > .an-m-me:not([hidden]) { animation: an-in .5s cubic-bezier(.22,.8,.24,1) both; }
 .an-pane:not([hidden]) { animation: an-fade .32s ease-out both; }
 .an-pane > * + * { margin-top: 12px; }
 [data-analysis] [data-applies] { margin: 0 0 6px; font-size: 12.5px; color: var(--an-mu2); }
@@ -396,6 +405,8 @@ html[data-theme="light"] .an-tagw { color: var(--an-ac); }
 @keyframes an-glow { 0%, 100% { box-shadow: 0 10px 30px rgba(31,111,235,.4), 0 0 0 0 rgba(47,129,247,.45); } 50% { box-shadow: 0 10px 30px rgba(31,111,235,.4), 0 0 0 12px rgba(47,129,247,0); } }
 @media (prefers-reduced-motion: reduce) {
   [data-analysis] *, [data-analysis] *::before, [data-analysis] *::after { animation: none !important; transition: none !important; }
+  /* the messages still enter one after another, as a plain fade without movement (opacity is no motion sickness) */
+  [data-analysis] .an-enter, [data-analysis] .an-past > .an-m-me:not([hidden]) { animation: an-fade .6s ease-out both !important; }
 }
 
 @keyframes an-in { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }

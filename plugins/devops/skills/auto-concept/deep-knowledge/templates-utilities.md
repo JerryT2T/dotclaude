@@ -428,7 +428,20 @@ html[data-template="design"] #neural-bg { display: none; }
     W = window.innerWidth; H = window.innerHeight;
     cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
     const count = Math.max(16, Math.min(56, Math.round(W * H / 30000)));
-    const seeds = Array.from({ length: count }, () => ({ x: -PAD / 2 + r() * (W + PAD), y: -PAD / 2 + r() * (H + PAD), p: planeOf(r()) }));
+    // Analysis: calm the centred reading column (~780 px). Seeds are thinned there
+    // by rejection sampling with a smoothstep falloff (no mask, no edge): the front
+    // plane keeps least, the back plane most, so the sides carry the tissue.
+    const calm = W >= 900 && [...document.querySelectorAll('[data-analysis]')].some(e => e.offsetWidth > 0), half = 390;
+    const keep = (x, p) => {
+      if (!calm) return true;
+      const t = Math.min(1, Math.max(0, (Math.abs(x - W / 2) - half * 0.7) / (half * 0.9))), k = t * t * (3 - 2 * t);
+      return r() < [0.45, 0.15, 0][p] + [0.55, 0.85, 1][p] * k;
+    };
+    const seeds = [];
+    for (let tries = 0; seeds.length < count && tries < count * 40; tries++) {
+      const c = { x: -PAD / 2 + r() * (W + PAD), y: -PAD / 2 + r() * (H + PAD), p: planeOf(r()) };
+      if (keep(c.x, c.p)) seeds.push(c);
+    }
     cells = seeds.map((c, i) => neuron(c, seeds, i));
     layers = PLANES.map((_, p) => paintPlane(p));
     spikes = [];

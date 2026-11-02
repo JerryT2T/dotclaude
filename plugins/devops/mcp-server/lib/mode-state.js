@@ -612,7 +612,7 @@ const BATCH_LABEL = {
 
 /**
  * The `{what}` slot of the batch CTA — "3 Notizen · nächster Prompt wird
- * Notiz #4 · ">>" löst aus". Says what the collect hook will do with the very
+ * Notiz #4 · "go" löst aus". Says what the collect hook will do with the very
  * next prompt, which is the one thing a returning user needs to know.
  *
  * @param {{ notes: number, marker: string }} batch
@@ -653,7 +653,7 @@ const BATCH_GUIDE = {
  */
 export function batchGuide(batch, lang) {
   const G = BATCH_GUIDE[lang] || BATCH_GUIDE.de;
-  const marker = (batch && batch.marker) || ">>";
+  const marker = (batch && batch.marker) || "go";
   const h = batch && batch.expiryHours;
   const max = batch && batch.maxNotes;
   const bounds = h && max ? G.bounds.replace("{h}", String(h)).replace("{max}", String(max)) : "";

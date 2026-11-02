@@ -41,7 +41,7 @@ const HARNESS_RESERVED_PREFIXES = ['!', '/', '#', '@'];
 const DEFAULTS = {
   // A plain word, not a symbol: easier to type than `>>` (user decision). `!` is
   // unusable regardless, see HARNESS_RESERVED_PREFIXES.
-  marker: 'los',
+  marker: 'go',
   inactivityMinutes: 10,
   // Failsafe bounds — either one deactivates collection on its own, so a bug in
   // marker comparison can never lock the user out of their own session.
@@ -50,15 +50,15 @@ const DEFAULTS = {
 };
 
 /**
- * The marker the skill offers on first run: the German word "los". The former
- * symbol suggestions (`>>`, `>go`, `>start`) were dropped; a stored config
- * still holding one of them migrates to `los` in `loadConfig`.
+ * The marker the skill offers on first run: the word "go". Older defaults
+ * (`>>`, `>go`, `>start`, "los", "Let's go") are dropped; a stored config still
+ * holding one of them migrates to `go` in `loadConfig`.
  *
  * Suggestions, not a closed set: whatever the user types via "Other" is the
  * marker, subject only to `validateMarker`.
  */
-const MARKER_SUGGESTIONS = ['los'];
-const LEGACY_MARKER_SUGGESTIONS = ['>>', '>go', '>start'];
+const MARKER_SUGGESTIONS = ['go'];
+const LEGACY_MARKER_SUGGESTIONS = ['>>', '>go', '>start', 'los', "let's go", 'let’s go'];
 
 /**
  * Machine-prompt patterns. Prompts matching these are NEVER collected.
@@ -207,7 +207,7 @@ function loadConfig() {
   } catch { /* missing or corrupt — defaults below */ }
   const cfg = { ...DEFAULTS, ...raw };
   delete cfg.markerFallback;
-  if (typeof raw.marker === 'string' && LEGACY_MARKER_SUGGESTIONS.includes(raw.marker.trim())) {
+  if (typeof raw.marker === 'string' && LEGACY_MARKER_SUGGESTIONS.includes(raw.marker.trim().replace(/\s+/g, ' ').toLowerCase())) {
     // Old suggestion → new default, persisted once. A custom marker never gets here.
     cfg.marker = DEFAULTS.marker;
     try {
@@ -914,26 +914,17 @@ function validateMarker(raw) {
  * A marker ending in a word character additionally requires a word boundary, so
  * `go` does not fire on "google das mal".
  *
- * Trailing punctuation is optional on both sides (#599): a legacy marker `los:`
- * fires on a typed `los`, and a marker `los` fires on `los:`. The typed
+ * Trailing punctuation is optional on both sides (#599): a legacy marker `go:`
+ * fires on a typed `go`, and a marker `go` fires on `go:`. The typed
  * punctuation is part of the match, so `stripMarker` never leaves it at the
  * start of the payload. A marker that is punctuation only keeps its full text,
  * and a symbol marker (`>>`) gains no optional tail.
  *
- * The default marker `los` fires on `los` alone, `los,` / `los:` and `los <text>`
- * ("los, aber ohne B3"). It does NOT fire when the next word is a common German
- * or place-name continuation ("los geht", "los gehts", "los geht's", "Los
- * Angeles", see NOT_MARKER_CONTINUATION), nor on "lose Enden" (word boundary).
- * Those prompts are collected as notes.
- *
- * The default marker also has an English alias, `go`, for users who do not
- * write German. It is stricter than `los`: it fires only when punctuation or
- * the end of the line follows (`go`, `go!`, `go, skip B3`), never on a plain
- * sentence such as "go to settings and …", which stays a note.
+ * The default marker `go` fires whenever "go" is the FIRST WORD of the prompt,
+ * in any language and whatever follows: `go`, `go!`, `go, ohne B3`, `go mach X`,
+ * `Go ahead`. Not "google ..." or "gopher" (word boundary).
  */
-const NOT_MARKER_CONTINUATION = /^\s+(?:geht(?:['’]?s)?|ging(?:s|['’]s)?|angeles)(?![\p{L}\p{N}_])/iu;
 const MARKER_TAIL = /[:;,.!?]+$/;
-const DEFAULT_MARKER_ALIAS = /^\s*go(?![\p{L}\p{N}_])(?:\s*[:;,.!?]+|[^\S\n]*(?=\n|$))/iu;
 
 function markerMatch(text, marker) {
   if (typeof text !== 'string' || !text) return null;
@@ -945,9 +936,6 @@ function markerMatch(text, marker) {
   const boundary = wordEnd ? '(?![\\p{L}\\p{N}_])' : '';
   const tail = wordEnd || stem !== v.marker ? '(?:\\s*[:;,.!?]+)?' : '';
   const m = new RegExp(`^\\s*${escaped}${boundary}${tail}`, 'iu').exec(text);
-  if (m && stem.toLowerCase() === 'los' && m[0].trim().toLowerCase() === 'los'
-    && NOT_MARKER_CONTINUATION.test(text.slice(m[0].length))) return null;
-  if (!m && stem.toLowerCase() === DEFAULTS.marker) return DEFAULT_MARKER_ALIAS.exec(text);
   return m;
 }
 
@@ -1064,7 +1052,7 @@ function renderCommandLines(p = {}) {
   const max = p.maxNotes ?? DEFAULTS.maxNotes;
   const I = PANEL_ICONS;
   return [
-    `${I.fire} Umsetzen:  "${marker} <text>"${marker.toLowerCase() === DEFAULTS.marker ? ' / "go"' : ''} oder /do-batch go (merged main, plant EINE Umsetzung)`,
+    `${I.fire} Umsetzen:  "${marker} <text>" oder /do-batch go (merged main, plant EINE Umsetzung)`,
     `${I.stop} Stoppen:   /do-batch off (Notizen bleiben) · /do-batch on sammelt weiter`,
     `${I.autoEnd} Auto-Ende: ${hours} h oder ${max} Notizen · /do-batch status · marker · help`,
   ].join('\n');

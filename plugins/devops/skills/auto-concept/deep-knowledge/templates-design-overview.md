@@ -63,11 +63,9 @@ returns — the single-design page is untouched.
   `data-design-overlay-tone="warm"`. The eye (`#anno-toggle`, top left)
   hides it with every other annotation; there is no separate
   overlay toggle. A NEW variant carries the "Neugedacht" chip; a variant
-  CHANGED this round shows one line under the traits — "Verbessert" + the
-  phrase from the optional `data-design-improved` attribute on its
-  `section[data-design]` (a few words, ≤ ~40 chars, e.g. "Größere
-  Tageskacheln"; longer text is cut at a word boundary). No attribute → no
-  line, no chip.
+  CHANGED this round carries no extra line (the overview card is
+  motto + traits only; user's call, 2026-11-02). `data-design-improved`
+  still feeds the annotation bubbles. No chip for a changed variant.
 - **Big cards, filled from inside.** The centred variant is always the big
   16:10 card (≈ 78 % of the stage width), framed and rounded, its
   neighbours peeking in at the edges — never a preview that covers the
@@ -713,11 +711,9 @@ returns — the single-design page is untouched.
       m.traits.forEach(t => ul.appendChild(el('li', '', t)));
       ov.appendChild(ul);
     }
-    if (kind === 'changed' && m.improved) {
-      const line = el('p', 'design-ov-improved');
-      line.append(el('strong', '', L.chImproved), document.createTextNode(' ' + m.improved));
-      ov.appendChild(line);
-    }
+    // No "Verbessert …" line under the traits (user's call, 2026-11-02): the
+    // overview card is motto + traits only; the phrase still reaches the
+    // annotation bubbles via data-design-improved.
     slide.appendChild(ov);
     wireSlide(slide, open);
     return slide;

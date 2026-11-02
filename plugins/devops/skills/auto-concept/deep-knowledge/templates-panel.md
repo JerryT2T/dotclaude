@@ -460,10 +460,15 @@ body.panel-open .feedback-fab { opacity: 0; pointer-events: none; }
 .panel-fab { z-index: 220; }
 
 .feedback-dock-header {
-  display: flex; justify-content: space-between; align-items: center;
+  display: flex; justify-content: flex-end; align-items: center;
   margin-bottom: 0.25rem;
 }
-.feedback-dock-header strong { font-size: 1rem; }
+/* Title left, controls as one right-aligned group in the order
+   [voice toggle (later, first)] [fullscreen ⤢] [minimise −]: the title's
+   auto margin pushes every button right, so a third control added to the
+   left of ⤢ later needs no layout change (with space-between the middle
+   button floated to the centre). */
+.feedback-dock-header strong { font-size: 1rem; margin-right: auto; }
 
 /* Minimise button — visual cue is the underscore-low minus, not an ✕,
    so the user understands their text is preserved (not destroyed). */

@@ -198,22 +198,22 @@ describe("custom markers typed via the 'Sonstiges' option", () => {
     expect(validateMarker("Let's go").warning).toBe(null);
     expect(validateMarker("jetzt").warning).toBe("wordy");
     expect(validateMarker(">>").warning).toBe(null);
-    expect(validateMarker("los").warning).toBe(null);
+    expect(validateMarker("go").warning).toBe(null);
   });
 
-  test("`los` fires alone and with instruction, not on German phrases", () => {
-    for (const t of ["los", "Los", "los, aber ohne B3", "los: bau", "los bau das"]) {
-      expect(startsWithMarker(t, "los")).toBe(true);
+  test("`go` as first word fires whatever follows, but not on google/gopher", () => {
+    for (const t of ["go", "Go", "go!", "go, ohne B3", "go: bau", "go mach X", "Go ahead", "go to settings", "go\nplus this"]) {
+      expect(startsWithMarker(t, "go")).toBe(true);
     }
-    for (const t of ["los geht's", "los geht", "los gehts", "Los Angeles", "lose Enden", "los geht’s los"]) {
-      expect(startsWithMarker(t, "los")).toBe(false);
+    for (const t of ["google it", "gopher", "ago go", "los"]) {
+      expect(startsWithMarker(t, "go")).toBe(false);
     }
-    expect(stripMarker("los, aber ohne B3", "los")).toBe("aber ohne B3");
+    expect(stripMarker("go, ohne B3", "go")).toBe("ohne B3");
   });
 
-  test("loadConfig migrates legacy suggestions to los and keeps custom markers", () => {
+  test("loadConfig migrates legacy suggestions to go and keeps custom markers", () => {
     const p = configPath();
-    for (const [stored, want] of [[">>", "los"], [">go", "los"], [">start", "los"], ["Let's go", "Let's go"]]) {
+    for (const [stored, want] of [[">>", "go"], [">go", "go"], [">start", "go"], ["los", "go"], ["Let's go", "go"], ["Let’s  Go", "go"], ["jetzt", "jetzt"]]) {
       fs.mkdirSync(path.dirname(p), { recursive: true });
       fs.writeFileSync(p, JSON.stringify({ marker: stored }), "utf8");
       expect(loadConfig().marker).toBe(want);
@@ -768,8 +768,8 @@ describe("classify — a re-activation while collecting is absorbed", () => {
 });
 
 describe("marker suggestions", () => {
-  test("are just `los` — colon-free, equal to the default", () => {
-    expect(MARKER_SUGGESTIONS).toEqual(["los"]);
+  test("are just `go` — colon-free, equal to the default", () => {
+    expect(MARKER_SUGGESTIONS).toEqual(["go"]);
     expect(MARKER_SUGGESTIONS[0]).toBe(DEFAULTS.marker);
     for (const m of MARKER_SUGGESTIONS) {
       expect(m.endsWith(":")).toBe(false);
@@ -785,13 +785,14 @@ describe("marker suggestions", () => {
     }
   });
 
-  test("the default marker takes `go` as an English alias, only when punctuation or the line end follows", () => {
+  test("the default marker `go` fires on any first-word go", () => {
     const m = DEFAULTS.marker;
+    expect(m).toBe("go");
     expect(startsWithMarker("go", m)).toBe(true);
     expect(startsWithMarker("Go!", m)).toBe(true);
     expect(startsWithMarker("go\nplus this", m)).toBe(true);
     expect(stripMarker("go, skip B3", m)).toBe("skip B3");
-    expect(startsWithMarker("go to settings and fix it", m)).toBe(false);
+    expect(startsWithMarker("go to settings and fix it", m)).toBe(true);
     expect(startsWithMarker("google it", m)).toBe(false);
     expect(startsWithMarker("go", ">>")).toBe(false);
   });
