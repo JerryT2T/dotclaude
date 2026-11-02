@@ -4,7 +4,7 @@ version: 0.5.0
 description: >-
   Manually update the devops plugin to the latest GitHub version and report
   the changelog. Explicit user request only. Triggers on: "update plugin",
-  "plugin updaten", "devops update".
+  "plugin updaten", "devops update", "self update".
 layer: 2
 invokes: []
 user-invocable: false

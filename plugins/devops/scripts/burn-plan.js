@@ -119,13 +119,13 @@ const PROFILES = {
   standard: { depthFactor: 1.0, opusRoles: [], passes: [], toolCalls: '15–30' },
   deep: {
     depthFactor: 1.5,
-    opusRoles: ['core', 'frontend', 'aix', 'designer'],
+    opusRoles: ['core', 'frontend', 'aix', 'ai', 'designer'], // `ai`: pre-rename plans
     passes: ['redteam'],
     toolCalls: '30–45',
   },
   max: {
     depthFactor: 2.0,
-    opusRoles: ['core', 'frontend', 'aix', 'designer', 'qax'],
+    opusRoles: ['core', 'frontend', 'aix', 'ai', 'designer', 'qax', 'qa'], // `ai`/`qa`: pre-rename plans
     passes: ['redteam'],
     toolCalls: '45–60',
   },

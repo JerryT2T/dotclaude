@@ -103,9 +103,13 @@ export function unregister(name, pid = process.pid, dir = tmpdir()) {
 }
 
 /** Write this process's heartbeat files (no exit handlers). */
-export function writeHeartbeat(name, pid = process.pid, dir = tmpdir()) {
+export function writeHeartbeat(name, pid = process.pid, dir = tmpdir(), ppid = process.ppid) {
   mkdirSync(heartbeatDir(dir), { recursive: true });
-  writeFileSync(processPidFile(name, pid, dir), String(pid), "utf8");
+  // Line 2 = the parent (the Claude Code session that spawned this server):
+  // hooks match it to their own parent to tell this session's server from a
+  // neighbour's. Old readers parseInt line 1 and ignore the rest.
+  writeFileSync(processPidFile(name, pid, dir), ppid > 0 ? `${pid}
+${ppid}` : String(pid), "utf8");
   try { writeFileSync(legacyPidFile(name, dir), String(pid), "utf8"); } catch { /* legacy is best-effort */ }
 }
 

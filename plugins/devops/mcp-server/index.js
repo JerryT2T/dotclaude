@@ -2570,6 +2570,9 @@ function normalizeCardParams(raw, { strictVariant = false } = {}) {
   coerceCardInput(params);
   validationGaps.rerouteUserChecks(params);
   sanitizeSessionId(params);
+  // The tool handler does this itself and never goes through here, so the
+  // offline CLI path is the only caller: same ship-outcome-wins rule.
+  dropShippedConceptWait(params);
 
   return params;
 }

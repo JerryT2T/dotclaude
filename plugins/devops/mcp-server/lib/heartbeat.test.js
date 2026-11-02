@@ -171,3 +171,27 @@ describe("heartbeat — subdir layout, pruning, cheap reads (AUD-C043)", () => {
   });
 });
 
+
+describe("per-session liveness (isMcpServerAliveForSession)", () => {
+  test("a neighbour's live server does not vouch for this session; its own does", () => {
+    withTmp((dir) => {
+      const mine = 4242; // the hook's parent (this session's Claude Code)
+      writeHeartbeat(NAME, other.pid, dir, 9999); // another session's server, live
+      expect(reader.isMcpServerAlive(NAME)).toBe(true); // machine-wide: unchanged
+      expect(reader.isMcpServerAliveForSession(NAME, { ppid: mine })).toBe(false);
+      writeHeartbeat(NAME, process.pid, dir, mine); // own server connected
+      expect(reader.isMcpServerAliveForSession(NAME, { ppid: mine })).toBe(true);
+      expect(reader.heartbeats(NAME).find((h) => h.pid === process.pid).ppid).toBe(mine);
+    });
+  });
+  test("an entry without a recorded parent counts machine-wide; no own parent falls back too", () => {
+    withTmp((dir) => {
+      writeHeartbeat(NAME, other.pid, dir, 0); // old server: pid only
+      expect(reader.isMcpServerAliveForSession(NAME, { ppid: 4242 })).toBe(true);
+      expect(reader.isMcpServerAliveForSession(NAME, { ppid: 0 })).toBe(true);
+    });
+  });
+  test("nothing alive is false", () => {
+    withTmp(() => expect(reader.isMcpServerAliveForSession(NAME, { ppid: 4242 })).toBe(false));
+  });
+});

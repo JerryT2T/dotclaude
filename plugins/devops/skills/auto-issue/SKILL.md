@@ -6,8 +6,8 @@ description: >-
   format and labels. The single owner of every issue write: skills, agents and
   hooks delegate here instead of calling `gh issue create` / `gh issue edit`.
   Do NOT trigger for: PR creation (do-ship), commits, implementation. Triggers
-  on: "create issue", "neues Issue", "refine issue", "Issue anpassen",
-  "milestone planen".
+  on: "create issue", "new issue", "neues Issue", "Issue erstellen",
+  "refine issue", "Issue anpassen", "milestone planen".
 layer: 5
 invokes: []
 user-invocable: false

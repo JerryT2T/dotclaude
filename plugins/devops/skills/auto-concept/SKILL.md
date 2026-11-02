@@ -370,7 +370,7 @@ live, inviting a duplicate submission.
 - Cursor: a text cursor on a clickable item, or an oversized custom cursor.
 - A requested visual highlight answered with a minor tweak — name the visible change in the evidence.
 
-**On a `REPEAT <id> ~ round N <id>` line** the earlier fix did not hold: spawn the `qa` agent with fresh context, giving it both remarks verbatim, the built page path and its localhost URL; it finds from the page why round N missed it (wrong element, wrong state, untested size). Fix it in this round, then capture the lesson with the `do-learn` skill. In the plugin source repo also add a replay eval case under `plugins/devops/evals/skills/auto-concept/` modelled on `round-replay-r6-hover`.
+**On a `REPEAT <id> ~ round N <id>` line** the earlier fix did not hold: spawn the `devops:qax` agent with fresh context, giving it both remarks verbatim, the built page path and its localhost URL; it finds from the page why round N missed it (wrong element, wrong state, untested size). Fix it in this round, then capture the lesson with the `do-learn` skill. In the plugin source repo also add a replay eval case under `plugins/devops/evals/skills/auto-concept/` modelled on `round-replay-r6-hover`.
 
 See `deep-knowledge/step5-update-page.md` § 5c · Append procedure. The numbered append procedure: freeze, coverage, engine drift, append, tab, /reload, /reset, re-launch the waker.
 
