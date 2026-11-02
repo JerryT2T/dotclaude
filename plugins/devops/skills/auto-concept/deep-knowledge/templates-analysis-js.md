@@ -426,7 +426,8 @@ What the code does, in the order of the file:
       b.__st = st;
       nav.appendChild(b);
     });
-    inst.root.insertBefore(nav, inst.root.firstChild);
+    // Last in the DOM (it is position: fixed): Tab reaches the chat and its answers before the rail.
+    inst.root.appendChild(nav);
     inst.stepEl = nav;
   }
   function refreshNav(inst) {
@@ -472,17 +473,17 @@ What the code does, in the order of the file:
     const l1 = root.querySelector('[data-alevel="1"]');
     b.insertBefore(h('div', 'an-eyebrow', root.getAttribute('data-nav-label') || (l1 && l1.dataset.title) || b.dataset.navLabel || L('Analyse', 'Analysis')), b.firstChild);
     renderViz(b, 'long');
-    // Top-3 findings as cards in blue variations: the topics by share.
+    // The first three topics as cards in blue variations, in FLOW order (as they come in the analysis).
     const chipsEls = [...b.querySelectorAll('[data-briefing-topic]')];
     if (chipsEls.length) {
       const wrap = h('div', 'an-chips');
       chipsEls[0].parentNode.insertBefore(wrap, chipsEls[0]);
-      chipsEls.slice().sort((x, y) => num(y.dataset.share) - num(x.dataset.share)).slice(0, 3).forEach((c, i) => {
+      chipsEls.slice(0, 3).forEach((c, i) => {
         const g = inst.groups.find(x => x.topic.id === c.getAttribute('data-briefing-topic'));
         c.style.setProperty('--bc', ['#a5d6ff', '#79c0ff', '#58a6ff'][i]);
         c.setAttribute('role', 'button'); c.tabIndex = 0;
         const share = num(c.dataset.share);
-        c.appendChild(h('em', '', (g ? g.decs.length + ' ' + L('Fragen', 'questions') : '') + (share ? (g ? ' · ' : '') + Math.round(share) + ' %' : '')));
+        c.appendChild(h('em', '', (g ? g.decs.length + ' ' + L('Fragen', 'questions') : '') + (share ? (g ? ' · ' : '') + Math.round(share) + ' % ' + L('des Potenzials', 'of the potential') : '')));
         c.dataset.go = String(g ? inst.stages.findIndex(s => s.group === g && s.kind === 'topic') : -1);
         tip(c, '', g ? '⇧+' + (inst.groups.indexOf(g) + 1) : '');
         c.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); c.click(); } });
@@ -548,7 +549,7 @@ What the code does, in the order of the file:
     ed.addEventListener('input', () => composeSync(inst));
     ed.addEventListener('keydown', e => {
       if (e.target.closest && e.target.closest('.an-tagw')) return;   // the tag's x is a real button: Enter / Space activate it
-      if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.isComposing) { e.preventDefault(); e.stopPropagation(); sendNote(inst); }
+      if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.isComposing) { e.preventDefault(); e.stopPropagation(); if (!e.repeat) sendNote(inst); }
       else if (e.key === 'Backspace' && !compText(ed) && inst.tag) { e.preventDefault(); setTag(inst, ''); }
     });
     if (frozen(inst)) { send.disabled = true; att.disabled = true; }
@@ -614,16 +615,29 @@ What the code does, in the order of the file:
     if (frozen(inst)) return false;
     // An empty send is "Weiter" / "Los geht's". The closing never submits the
     // round from here — that is a grave step; it only points at the button.
+    // It advances exactly ONE stage and keeps the selected answer; rapid sends (a held Enter, a
+    // double click) never skip a stage unseen - see stepOnce().
     if (!text) {
       if (st.kind === 'review' || st.kind === 'done') { pointAtNextRound(); return false; }
-      if (st.kind === 'dec') markTouched(st.el);
-      step(inst, 1);
-      return true;
+      return stepOnce(inst, true);
     }
     if (st.kind === 'dec' && !storeOf(inst, st)) return false;   // no storage target: never advance and drop the note
     inst.comp.el.classList.remove('an-sent'); void inst.comp.el.offsetWidth; inst.comp.el.classList.add('an-sent');
     // Only a question advances (an untagged note accepts the current choice / recommendation); briefing, topic intro and closing never do.
     if (!inst.tag && st.kind === 'dec') { markTouched(st.el); step(inst, 1); }
+    return true;
+  }
+  /** Empty send / Enter on a question: ONE stage forward, never more. A stage that is still entering simply
+   *  shows in full (go() ends the enter sequence); a second send within SEND_GAP ms (the new stage is not
+   *  current for the user yet) is dropped. The stage left is visited with its real dwell (go() -> hesStop). */
+  const SEND_GAP = 250;
+  function stepOnce(inst, accept) {
+    const st = inst.stages[inst.idx], now = Date.now();
+    if (frozen(inst) || inst.seq.indexOf(st) >= inst.seq.length - 1) return false;
+    if (inst.sendAt && now - inst.sendAt < SEND_GAP) return false;
+    inst.sendAt = now;
+    if (accept && st.kind === 'dec') markTouched(st.el);
+    step(inst, 1);
     return true;
   }
   /** Highlight "Zur nächsten Runde" (or the closed panel's ☰) briefly — the user clicks it themselves. */

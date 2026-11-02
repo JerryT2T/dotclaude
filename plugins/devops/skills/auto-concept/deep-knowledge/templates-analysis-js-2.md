@@ -600,6 +600,7 @@
       dn.append(document.createTextNode(L('Als Nächstes: ', 'Next: ')), h('b', '', stageLabel(inst, next)));
     }
   }
+  const deskFocus = inst => !!inst.comp && !frozen(inst) && typeof window.matchMedia === 'function' && window.matchMedia('(pointer: fine)').matches && window.innerWidth >= 768;
   function go(inst, i, opt) {
     opt = opt || {};
     i = clamp(Number.isFinite(i) ? i : 0, 0, inst.stages.length - 1);
@@ -643,7 +644,9 @@
     armTouch(inst);
     hesFlush(inst);
     if (!opt.initial) {
-      if (!opt.noFocus) st.el.focus({ preventScroll: true });
+      // Desktop (fine pointer, wide): the note field takes the focus on every stage change, so typing or Enter
+      // works at once (an empty Enter = Weiter). Touch / narrow: the stage itself (no keyboard pops up).
+      if (!opt.noFocus) { if (deskFocus(inst)) focusComposer(inst); else st.el.focus({ preventScroll: true }); }
       if (typeof inst.root.scrollIntoView === 'function') inst.root.scrollIntoView({ block: 'nearest' });
     }
     const navItem = document.querySelector('.section-nav-item[data-section-id="' + cssEsc((st.group && st.kind === 'topic') ? st.group.topic.id : st.el.id || '') + '"]');
@@ -755,9 +758,14 @@
     const wrap = h('div', 'an-close');
     const m = msg('an-m-close'), bub = h('div', 'an-bub');
     bub.appendChild(h('div', 'an-meta', L('Abschluss', 'Closing')));
-    bub.appendChild(h('p', 'an-close-t', stats.some(x => x.hs.flagged)
+    // A question with 0 ms dwell was never looked at: that is "not looked at", not "no hesitation".
+    const unseen = stats.filter(x => !x.hs.ms);
+    const unseenTxt = unseen.length ? L(' Nicht angesehen: ', ' Not looked at: ') + unseen.map(x => x.s.el.dataset.label || decId(x.s.el)).join(', ') + '.' : '';
+    bub.appendChild(h('p', 'an-close-t', (stats.some(x => x.hs.flagged)
       ? L('Bei diesen Fragen würde ich im nächsten Schritt noch genauer hinschauen — vorgemerkt sind die, bei denen du gezögert hast:', 'These are the questions I would look at more closely in the next step — marked are the ones you hesitated on:')
-      : L('Bei keiner Frage hast du sichtbar gezögert. Merk vor, wo ich im nächsten Schritt noch genauer hinschauen soll:', 'You did not visibly hesitate on any question. Mark where I should look more closely in the next step:')));
+      : unseen.length === stats.length
+        ? L('Keine dieser Fragen hast du angesehen. Merk vor, wo ich im nächsten Schritt genauer hinschauen soll:', 'You did not look at any of these questions. Mark where I should look more closely in the next step:')
+        : L('Bei den angesehenen Fragen hast du nicht sichtbar gezögert. Merk vor, wo ich im nächsten Schritt noch genauer hinschauen soll:', 'You did not visibly hesitate on the questions you looked at. Mark where I should look more closely in the next step:')) + (unseen.length === stats.length ? '' : unseenTxt)));
     m.appendChild(bub);
     wrap.appendChild(m);
     const body = h('div', 'an-close-body');
@@ -937,7 +945,7 @@
     const act = fn => { e.preventDefault(); e.stopPropagation(); fn(); };
     const onButton = tag0 === 'BUTTON' || tag0 === 'A' || tag0 === 'SUMMARY';
     const key = e.key;
-    if (key === 'Enter') { if (onButton && !e.shiftKey) return; act(() => step(inst, e.shiftKey ? -1 : 1)); return; }
+    if (key === 'Enter') { if (onButton && !e.shiftKey) return; act(() => { if (e.shiftKey) step(inst, -1); else if (!e.repeat) stepOnce(inst, false); }); return; }
     if (e.shiftKey && /^Digit[1-9]$/.test(e.code || '')) { const g = inst.groups[Number(e.code.slice(5)) - 1]; if (g) act(() => go(inst, inst.stages.findIndex(s => s.group === g && s.kind === 'topic'))); return; }
     if (e.shiftKey) return;
     if (/^[1-9]$/.test(key) && d) { act(() => pickOption(inst, d, Number(key) - 1)); return; }

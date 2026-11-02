@@ -130,13 +130,14 @@ describe("persistent composer", () => {
     expect(inst.idx).toBe(ri);
   });
   test("an empty send is Weiter / Los geht's; on the closing it only points at the next-round button", () => {
-    const { doc, ca } = page(FULL);
+    const { doc, ca, env } = page(FULL);
     const inst = ca.instances[0];
     expect(inst.stages[inst.idx].kind).toBe("brief");
     expect(ca.sendNote(inst)).toBe(true);
     expect(inst.stages[inst.idx].kind).not.toBe("brief");
     const di = inst.stages.findIndex(s => s.kind === "dec");
     ca.go(inst, di);
+    env.tick(400);
     expect(ca.sendNote(inst)).toBe(true);
     expect(inst.idx).toBeGreaterThan(di);
     const btn = doc.createElement("button");
@@ -147,6 +148,92 @@ describe("persistent composer", () => {
     expect(ca.sendNote(inst)).toBe(false);
     expect(inst.idx).toBe(ri);
     expect(btn.classList.contains("an-point")).toBe(true);
+  });
+  test("d-emptysend: an empty send advances exactly ONE stage; rapid sends never skip one unseen", () => {
+    const { w, doc, ca, env } = page(FULL);
+    const inst = ca.instances[0];
+    const idOf = () => inst.stages[inst.idx].el.id;
+    ca.go(inst, inst.stages.findIndex(s => s.el.id === "a1"));
+    const q1 = inst.stages[inst.idx];
+    // the enter sequence is still running (finding only): the send shows the rest and moves ON to the next stage
+    expect(doc.querySelectorAll("#a1 .an-wait").length).toBeGreaterThan(0);
+    env.tick(500);
+    expect(ca.sendNote(inst)).toBe(true);
+    expect(idOf()).toBe("a2");
+    expect(doc.querySelectorAll("#a1 .an-wait").length).toBe(0);
+    // the selected answer is kept, the question counts as accepted
+    expect(doc.querySelector('#a1 input[type=radio]:checked').value).toBe("a");
+    expect(doc.querySelector('#a1 [name="dm-a1-touched"]').value).toBe("1");
+    // a double click / second Enter within the gap does NOT skip a2
+    expect(ca.sendNote(inst)).toBe(false);
+    expect(ca.sendNote(inst)).toBe(false);
+    expect(idOf()).toBe("a2");
+    // a held key (repeat) is ignored outright, a keypress after the gap advances once
+    env.tick(400);
+    inst.comp.ed.dispatchEvent(new w.KeyboardEvent("keydown", { key: "Enter", repeat: true, bubbles: true, cancelable: true }));
+    expect(idOf()).toBe("a2");
+    inst.comp.ed.dispatchEvent(new w.KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+    expect(inst.stages[inst.idx].kind).toBe("review");
+    // the stage left was visited (its dwell recorded), and on the closing an empty send does nothing
+    expect(inst.visited.has("a1") && inst.visited.has("a2")).toBe(true);
+    expect(q1).toBeTruthy();
+    env.tick(400);
+    expect(ca.sendNote(inst)).toBe(false);
+    expect(inst.stages[inst.idx].kind).toBe("review");
+  });
+  test("d-emptysend: the composer takes the focus on every stage change on desktop, never on touch / narrow", () => {
+    const { w, ca, env } = page(FULL);
+    const inst = ca.instances[0];
+    const focused = [];
+    const real = w.HTMLElement.prototype.focus;
+    w.HTMLElement.prototype.focus = function () { focused.push(this); return real.apply(this, arguments); };
+    w.matchMedia = q => ({ matches: /pointer: fine/.test(q) });
+    w.innerWidth = 1280;
+    ca.go(inst, 1);
+    expect(focused.includes(inst.comp.ed)).toBe(true);
+    focused.length = 0;
+    env.tick(400);
+    ca.sendNote(inst);
+    expect(focused.includes(inst.comp.ed)).toBe(true);
+    focused.length = 0;
+    w.matchMedia = q => ({ matches: false });   // touch
+    ca.go(inst, 2);
+    expect(focused.includes(inst.comp.ed)).toBe(false);
+    w.matchMedia = q => ({ matches: /pointer: fine/.test(q) });
+    w.innerWidth = 600;                          // narrow
+    ca.go(inst, 1);
+    expect(focused.includes(inst.comp.ed)).toBe(false);
+  });
+  test("d-mobile: no fixed composer offset on mobile - the FAB clearance is padding on the column", () => {
+    const css = blocks.find(b => b.info === "css" && b.code.includes("--an-bg")).code;
+    expect(css).not.toMatch(/\.an-comp \{ bottom: 88px/);
+    expect(css).toMatch(/max-width: 900px\) \{[^@]*\.an-enh:not\(\.an-lite\) \{ padding-bottom: 7\d+px/);
+    expect(css).toMatch(/line-clamp: 2/);       // d-polish c: the live page title is two lines at most
+  });
+  test("d-keyboard: the rail comes after the chat in the DOM (Tab order); the closed side panel is inert", () => {
+    const { doc, ca } = page(FULL);
+    const inst = ca.instances[0];
+    const kids = [...inst.root.children];
+    expect(kids.indexOf(inst.stepEl)).toBeGreaterThan(kids.indexOf(inst.comp.el));
+    expect(kids.indexOf(inst.stepEl)).toBe(kids.length - 1);
+    expect(doc.querySelectorAll(".an-rail").length).toBe(1);
+    const chrome = blocks.find(b => b.code.includes("window.openPanel = ")).code;
+    expect(chrome).toMatch(/if \(panel && !panel\.classList\.contains\('open'\)\) panel\.inert = true/);
+    expect(chrome.indexOf("panel.inert = false")).toBeLessThan(chrome.indexOf("panel?.classList.add('open')"));
+    expect(chrome).toMatch(/classList\.remove\('open'\);\s*if \(panel\) panel\.inert = true/);
+  });
+  test("d-polish: briefing cards follow the flow order and read '… des Potenzials'; the closing names unseen questions", () => {
+    const html = FULL.replace('<a data-briefing-topic="t1" data-share="100">One</a>', '<a data-briefing-topic="t1" data-share="20">One</a><a data-briefing-topic="t2" data-share="80">Two</a>')
+      .replace("</section>\n</section>", '</section><section id="t2" data-topic data-nav-label="Two">' + decision("b1") + "</section></section>");
+    const { doc, ca } = page(html);
+    const inst = ca.instances[0];
+    const chips = [...doc.querySelectorAll(".an-chips [data-briefing-topic]")];
+    expect(chips.map(c => c.getAttribute("data-briefing-topic"))).toEqual(["t1", "t2"]);
+    expect(chips[0].querySelector("em").textContent).toMatch(/20 % of the potential/);
+    ca.go(inst, inst.stages.findIndex(s => s.kind === "review"));
+    const t = doc.querySelector(".an-close-t").textContent;
+    expect(t).not.toMatch(/did not visibly hesitate on any/);
+    expect(t).toMatch(/not look at any/);
   });
   test("tagged: the note stays on the stage, one tag at most, the tag comes back on return", () => {
     const { doc, w, ca } = page(LITE);
