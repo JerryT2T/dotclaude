@@ -703,6 +703,12 @@ describe("render_completion_card — anatomy (§ 2 of the design doc)", () => {
       // Overrides replace the decision block — no start button on a pending card.
       const pending = mod.buildDecisionBlock({ variant: "test", summary: "x", cwd: withPath, pending: [{ name: "qa", doing: "läuft" }] }, "de", "test", delivery, state);
       expect(pending.appStart).toBeFalsy();
+      // Four running agents of the same type: the points never silently drop one.
+      const four = ["A", "B", "C", "D"].map((d) => ({ name: "devops:core", doing: d }));
+      for (const extra of [{}, { concept: { phase: "implementing" } }]) {
+        const block = mod.buildDecisionBlock({ variant: "ready", summary: "x", pending: four, ...extra }, "de", "ready", delivery, state);
+        expect(block.points).toEqual(["`devops:core` — A", "`devops:core` — B", "+2"]);
+      }
     } finally {
       rmSync(withPath, { recursive: true, force: true });
       rmSync(without, { recursive: true, force: true });
