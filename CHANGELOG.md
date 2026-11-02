@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.345.1] — 2026-11-03
+
+### Fixed
+- Concept pages: the docs name `concept-open.js verify` as the one owner of the Edge open on the fast path, so the page no longer opens twice (#1030, symptom 1).
+
 ## [0.345.0] — 2026-11-03
 
 ### Added
