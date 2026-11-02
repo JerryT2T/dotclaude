@@ -469,7 +469,9 @@ html[data-theme="light"] .an-tagw { color: var(--an-ac); }
 @media (max-width: 900px) {
   .an-rail { display: none; }
   .an-enh { padding: 24px 14px 28px; }
-  .an-comp { bottom: 88px; }
+  /* the feedback FAB sits bottom-right: the column keeps clear of it (the composer stays in the flow) */
+  .an-enh:not(.an-lite) { padding-bottom: 76px; }
+  .concept-content:has(section[data-analysis="full"][data-active]) > header h1 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .an-topic { grid-template-columns: minmax(0, 1fr); }
   .an-ring { justify-self: center; }
   [data-analysis] [data-question] { font-size: 19px; }
