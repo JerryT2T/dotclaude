@@ -203,11 +203,11 @@ function boundGaps(topic) {
 // No slash-command spelling here: the same text is appended to eval prompts,
 // where prompt.skill.enforce would read "/auto-agents" as a user invocation.
 const DELEGATION_NUDGE =
-  '[delegation-policy] Classify before the first tool call: Inline (≤~5 files, Q&A, quick fix) · ' +
-  '1 background agent (web pages → devops:research; >~10-file sweep → devops:scout; full tests → devops:qax; ' +
-  'high-stakes diff → devops:redteam; "should we X?" trade-off → devops:pox, plus devops:research when facts need checking) · ' +
-  '2–3 parallel only for two analysis lenses (parallel implementers → offer) · ' +
-  'Complex → offer the auto-agents skill, never auto-start. Hard stop (request narrowed: "just/quick/nur/schnell/keine Agents") → Inline; hard go ("agents/full") → as designed.';
+  '[delegation-policy] Tier before the first tool call: Inline (≤~5 files, Q&A, quick fix) · ' +
+  '1 background agent for a conclusion (web → devops:research, >~10 files → devops:scout, full tests → devops:qax, ' +
+  'high-stakes diff → devops:redteam, trade-off → devops:pox) · ' +
+  '2–3 parallel only for two analysis lenses; implementers → offer · ' +
+  'Complex → offer the auto-agents skill, never auto-start · Hard stop "just/quick/nur/schnell/keine Agents" → Inline; hard go "agents/full" → as designed.';
 
 // Kill-switch variants (lib/delegation.js). `off` emits no nudge at all —
 // the SessionStart line already says so and every copy would only tempt.

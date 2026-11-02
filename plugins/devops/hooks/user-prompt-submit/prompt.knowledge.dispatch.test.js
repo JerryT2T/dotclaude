@@ -140,7 +140,7 @@ describe("prompt.knowledge.dispatch — delegation nudge", () => {
     const first = send("should we upgrade to postgres 17 this quarter, for and against?");
     expect(first).toContain(nudge);
     const second = send("compare vite and webpack for our typescript spa, please");
-    expect(second).not.toContain("Classify before the first tool call");
+    expect(second).not.toContain("Tier before the first tool call");
     expect(second).toContain("budget: ask-before-parallel"); // the per-prompt suffix is kept
     // compaction start: ss.knowledge.index hands the marker back
     const { releaseOnce } = createRequire(import.meta.url)("../lib/run-once.js");
@@ -184,7 +184,7 @@ describe("prompt.knowledge.dispatch — delegation nudge", () => {
     expect(ask.startsWith("[delegation-policy: ask] No proactive spawn")).toBe(true);
     expect(ask).toContain("run it only on a yes");
     expect(ask).toContain("· budget: ask-before-parallel");
-    expect(ask).not.toContain("Classify before the first tool call");
+    expect(ask).not.toContain("Tier before the first tool call");
   });
 
   test("every delegation eval prompt carries the identical nudge line (off cases: none)", () => {
@@ -370,7 +370,7 @@ describe("prompt.knowledge.dispatch — the payload stays under the harness limi
     const scopeCwd = emptyProject();
     // The scope hook writes its note as plain stdout — that text IS its context.
     const scope = spawnSync(process.execPath, [path.resolve(import.meta.dirname, "prompt.plugin.scope.js")], {
-      input: JSON.stringify({ session_id: "vitest-scope", prompt: "der devops plugin hook ist kaputt, skill fix", cwd: scopeCwd }),
+      input: JSON.stringify({ session_id: `vitest-scope-${process.pid}-${Date.now()}`, prompt: "der devops plugin hook ist kaputt, skill fix", cwd: scopeCwd }),
       cwd: scopeCwd, encoding: "utf8",
     }).stdout;
     expect(scope.length).toBeGreaterThan(0);
