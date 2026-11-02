@@ -512,6 +512,18 @@ function workTreeClean(cwd) {
  * a work tree whose `origin` is missing is `git-no-remote`. An explicit mode
  * always wins; a failed probe changes nothing.
  */
+/**
+ * After a merged ship, a page that only waits for its close-out (final report
+ * live, #693) is no decision left: a "waiting" concept field there turned the
+ * ship card into "Concept — wartet auf deine Entscheidungen" (observed on
+ * v0.341.0). The ship outcome wins; iterating/implementing still override.
+ */
+function dropShippedConceptWait(params) {
+  if (params.variant !== 'ship-successful' && params.variant !== 'released') return;
+  const c = normalizeConcept(params.concept);
+  if (c && c.phase === 'waiting' && conceptCloseoutOnly(params.cwd)) delete params.concept;
+}
+
 function withDetectedRepoMode(params) {
   const state = params.state || {};
   if (state.mode) return;
@@ -3047,7 +3059,7 @@ server.registerTool(
       "fallback = work outside the repo with no repo diff (DB op, deploy, data migration, settings change) or unsure — never for a page the user should open and try (that is test + `preview`). A mode activation (batch, concept) uses its override, never analysis. " +
       "VALIDATION (V&V gate): for any code change populate `validation` (requirement -> how met, how confirmed); a code-change card without it is blocked once. " +
       "PENDING: background agents/workflows/tasks you started that still run -> `pending` [{ name, kind: agent|task|workflow, doing }] (replaces the CTA with the 'not finished yet' line; list only work really running; an ended or foreign task -> `pendingDismissed: \"<why>\"`). " +
-      "CONCEPT (outranks pending): while an /auto-concept page is open pass `concept: { phase: \"waiting\"|\"iterating\"|\"implementing\" }`; bridge server, pulser and waker are infrastructure, never `pending`. " +
+      "CONCEPT (outranks pending): while an /auto-concept page is open pass `concept: { phase: \"waiting\"|\"iterating\"|\"implementing\" }`; bridge server, pulser and waker are infrastructure, never `pending`; after a merged ship whose page shows its final report, omit it — the ship card wins. " +
       "`cta` is an object of placeholders (e.g. { reason }), never a sentence. `delivery` (PR -> Ship -> Promote track) whenever the work reached a pipeline stage (a PR exists, it was shipped, a channel was promoted): fill the stages that happened, omit it when none apply. " +
       "Offline fallback if the MCP server never connected: node <plugin>/mcp-server/index.js --render-card <payload.json> (same JSON args, relay stdout verbatim).",
     inputSchema: z.object({
@@ -3229,6 +3241,7 @@ server.registerTool(
   async (params) => {
     sanitizeSessionId(params);
     withDetectedRepoMode(params);
+    dropShippedConceptWait(params);
     // A user's own check is no requirement of the feature (#643): before the
     // pregate and the render, so neither counts it as a gap.
     validationGaps.rerouteUserChecks(params);

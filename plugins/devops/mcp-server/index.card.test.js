@@ -1385,12 +1385,14 @@ describe("render_completion_card — concept close-out after the implement ship 
     }
   });
 
-  test("a card that carries the concept field keeps the concept override", async () => {
+  test("a waiting concept field on a close-out page yields to the ship outcome; implementing still overrides", async () => {
     const cwd = conceptRepo(FINAL);
     try {
       const text = await cardText({ ...kept, summary: "x", lang: "de", session_id: "test-closeout-field", cwd, concept: { phase: "waiting" } });
-      expect(text).not.toMatch(/Abschlussbericht wartet/);
-      expect(text).toMatch(/🧭 Concept — wartet/);
+      expect(text).not.toMatch(/🧭 Concept — wartet/);
+      expect(text).toMatch(/Abschlussbericht wartet/);
+      const busy = await cardText({ ...kept, summary: "x", lang: "de", session_id: "test-closeout-busy", cwd, concept: { phase: "implementing" } });
+      expect(busy).toMatch(/🧭 Concept/);
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }
