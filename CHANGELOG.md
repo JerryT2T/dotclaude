@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.344.2] — 2026-11-02
+
+### Changed
+- Delegation policy: open web research (searches, several sources) goes to devops:research; a few fetches of pages the task names stay inline (measured: 25 % cheaper, half the time, same answer). The nudge says so, and tells Complex-tier work to offer the agent run before building.
+
+### Fixed
+- Three delegation evals that failed in both A/B arms: new inline-targeted-fetch case, the two-lens case checks a cap plus a recommendation, the ceremony case gets a real repo and graders that accept the worded offer and forbid writes before a yes.
+
 ## [0.344.1] — 2026-11-02
 
 ### Changed

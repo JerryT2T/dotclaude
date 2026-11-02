@@ -9,7 +9,7 @@ Classify every task by the tiers below before the first tool call, by signal.
 | Tier | Signal | Do |
 |------|--------|----|
 | **Inline** | 1 domain, Q&A, quick fix, or an answer reachable by reading ~5 files or fewer | No agent — a sub-agent pays a full context bootstrap and loses the conversation. |
-| **1 agent, background** | A *conclusion* whose path would flood the conversation: web pages (`research`, even one fetch), a sweep over >~10 files (`scout`), a full test suite or build (`qax`), a high-stakes plan or diff (`redteam`), a real-stakes trade-off no file answers (`pox`) | `run_in_background: true`; keep working inline; relay the conclusion, not the transcript. |
+| **1 agent, background** | A *conclusion* whose path would flood the conversation: open web research — searches, several sources to weigh (`research`; a few fetches of pages the task names stay inline), a sweep over >~10 files (`scout`), a full test suite or build (`qax`), a high-stakes plan or diff (`redteam`), a real-stakes trade-off no file answers (`pox`) | `run_in_background: true`; keep working inline; relay the conclusion, not the transcript. |
 | **2–3 agents, parallel** | Two *analysis* lenses on one question (`research` + `pox`, `pox` + `redteam`) | One message, ~5–15 tool calls each. **Implementing** agents in parallel are never auto-spawned: offer it in one sentence. A UI consuming a new endpoint is not independent: Inline if ~5 files or fewer, else Full ceremony. |
 | **Full ceremony** | 3+ domains, a feature end-to-end, or a high-risk change (migration, auth, breaking contract, destructive op) | Never auto-start. Offer in one sentence, no slash name; on a yes invoke the auto-agents skill (do-run if the user will be away). |
 

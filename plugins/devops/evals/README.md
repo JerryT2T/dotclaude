@@ -173,9 +173,21 @@ node plugins/devops/evals/ab-run.js --case 'skills/*/*' --a-ref origin/main --ru
 ## delegation/
 
 Pins the always-on delegation policy (`deep-knowledge/agent-proactivity.md`):
-simple prompts spawn no devops role agent, a question that needs the web
-spawns one background `research` agent, a two-lens question spawns 2–3
-parallel role agents, and Complex-tier work only *offers* `/auto-agents`.
+simple prompts spawn no devops role agent, open web research (searches,
+several sources) spawns one background `research` agent while a few fetches
+of pages the prompt names stay inline (`inline-targeted-fetch`), a two-lens
+question spawns at most 3 role agents and ends in a recommendation, and
+Complex-tier work only *offers* `/auto-agents`.
+
+Re-scoped 2026-11-02 after an A/B where three cases failed in both arms:
+the targeted Vite fetch ran inline at 25 % less cost and half the time with
+the same answer (the policy now says so), the Postgres question was answered
+inline from the repo files the scaffold provides (spawning is a cap, not a
+duty), and the ceremony case had an empty repo, so the model reported
+"nothing to build on" (the scaffold now has DB, auth and UI). Its offer grader
+also matched only `auto-agents`/`run-agents`, which the policy forbids naming
+("offer in one sentence, no slash name"); it now accepts the offer as the
+model words it ("Agenten-Lauf", "agent run", …).
 
 Two things about how the graders are written:
 
