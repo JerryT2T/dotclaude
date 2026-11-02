@@ -273,6 +273,21 @@ describe("mapApiUsage — claude.ai internal usage API → usage-live.json schem
     expect(mapApiUsage({ five_hour: { utilization: null } }, null, NOW)).toBeNull();
   });
 
+  // #1009: no usage since the 5-hour reset → the API sends five_hour: null.
+  test("idle 5-hour window with valid weekly data → session 0 %, weekly kept", () => {
+    const resets = new Date(NOW + 3 * 24 * 60 * 60_000).toISOString();
+    const snap = mapApiUsage({ five_hour: null, seven_day: { utilization: 7, resets_at: resets } }, null, NOW);
+    expect(snap.session).toEqual({ pct: 0, resetInMinutes: null });
+    expect(snap.weekly.pct).toBe(7);
+    expect(snap.weekly.resetInMinutes).toBe(3 * 24 * 60);
+  });
+
+  test("idle 5-hour window without valid weekly data → null", () => {
+    expect(mapApiUsage({ five_hour: null }, null, NOW)).toBeNull();
+    expect(mapApiUsage({ five_hour: null, seven_day: null }, null, NOW)).toBeNull();
+    expect(mapApiUsage({ five_hour: null, seven_day: { utilization: "x" } }, null, NOW)).toBeNull();
+  });
+
   test("resets_at in the past clamps to 0; missing resets_at → null", () => {
     const past = { five_hour: { utilization: 5, resets_at: new Date(NOW - 60_000).toISOString() } };
     expect(mapApiUsage(past, null, NOW).session.resetInMinutes).toBe(0);

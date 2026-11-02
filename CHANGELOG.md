@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.344.5] — 2026-11-02
+
+### Fixed
+- Usage refresh: an idle 5-hour window (no usage since its reset) now records 0 % with the weekly value instead of writing no usage data at all (#1009).
+
 ## [0.344.4] — 2026-11-02
 
 ### Fixed
