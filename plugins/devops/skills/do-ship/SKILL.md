@@ -96,6 +96,7 @@ Handle the need, then call `ship_run` again with the same params (plus what `res
 | `codex-judgment` | the Codex gate above |
 | `bump-required` / `major-bump` | pass `bump`; major → ask, then `majorConfirmed: true` (lockout: BLOCK) |
 | `bump-mismatch` | the version WAS raised: bring `detail.mismatches` to `vNew` by hand, re-call (the bump is never repeated) |
+| `version-file-missing` | `bump` ≠ none but no version file was found: declare `versionFiles:` in the project's do-ship reference.md (Step 0 captures it), or ship with bump `none` |
 | `full-suite-required` | `ship_run` already ran one full local build; still red/absent → `ship-blocked` |
 | `checks-failed` | real red checks → `ship-blocked` with names + links. `ciQuotaDecisionNeeded` → ask the user (skip-checks / wait), re-call with `quotaDecision`; never `skipChecks` on your own (`deep-knowledge/release-results.md` § Account-limited CI) |
 | `release-failed` | `ship-blocked` with `detail.error`; `prLeftOpen` names the open draft |

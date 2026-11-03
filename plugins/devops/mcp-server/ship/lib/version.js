@@ -3,7 +3,7 @@
  * @description Version file detection, reading, bumping, and verification.
  */
 
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync, readdirSync } from "node:fs";
 import { join, resolve, relative, isAbsolute } from "node:path";
 import { resolveGitRoot } from "./resolve-root.js";
 
@@ -44,9 +44,29 @@ export function detectProjectType(cwd = process.cwd()) {
 }
 
 /**
- * Read the current version from the source of truth.
+ * Home Assistant / HACS integration manifest: the first
+ * `custom_components/<domain>/manifest.json` carrying a string `"version"`.
+ * Returns the repo-relative posix path or null.
  */
-export function readVersion(cwd = process.cwd()) {
+export function detectHaManifest(cwd = process.cwd()) {
+  try {
+    const base = join(cwd, "custom_components");
+    for (const d of readdirSync(base, { withFileTypes: true }).filter((e) => e.isDirectory()).sort((a, b) => a.name.localeCompare(b.name))) {
+      try {
+        const raw = JSON.parse(readFileSync(join(base, d.name, "manifest.json"), "utf8"));
+        if (typeof raw.version === "string") return `custom_components/${d.name}/manifest.json`;
+      } catch { /* no manifest here */ }
+    }
+  } catch { /* no custom_components */ }
+  return null;
+}
+
+/**
+ * Read the current version from the source of truth. Built-in manifests win;
+ * only when none exists does it fall back to the first declared `versionFiles`
+ * entry, then to a Home Assistant integration manifest.
+ */
+export function readVersion(cwd = process.cwd(), versionFiles = []) {
   const type = detectProjectType(cwd);
   if (type === "plugin") {
     const raw = JSON.parse(readFileSync(join(cwd, ".claude-plugin", "plugin.json"), "utf8"));
@@ -59,6 +79,15 @@ export function readVersion(cwd = process.cwd()) {
   if (type === "marketplace") {
     const raw = JSON.parse(readFileSync(join(cwd, ".claude-plugin", "marketplace.json"), "utf8"));
     return { version: raw.metadata.version, type, file: ".claude-plugin/marketplace.json" };
+  }
+  if (Array.isArray(versionFiles) && versionFiles.length > 0) {
+    const r = readDeclaredVersion(versionFiles[0], cwd);
+    if (r.found) return { version: r.found, type: "declared", file: versionFiles[0].path };
+  }
+  const ha = detectHaManifest(cwd);
+  if (ha) {
+    const raw = JSON.parse(readFileSync(join(cwd, ha), "utf8"));
+    return { version: raw.version, type: "home-assistant", file: ha };
   }
   return { version: null, type: null, file: null };
 }
@@ -184,6 +213,9 @@ export function updateVersionFiles(oldVersion, newVersion, cwd = process.cwd(), 
     updateJson(".claude-plugin/marketplace.json", "metadata.version");
     updateMarketplacePlugins();
     updateNestedPluginJsonFiles();
+  } else {
+    const ha = detectHaManifest(cwd);
+    if (ha && !versionFiles.some((e) => e.path === ha)) updateJson(ha);
   }
 
   updateReadme();
@@ -379,6 +411,9 @@ export function verifyVersionFiles(expectedVersion, cwd = process.cwd(), version
     checkJson(".claude-plugin/marketplace.json", "metadata.version");
     checkMarketplacePlugins();
     checkNestedPluginJsonFiles();
+  } else {
+    const ha = detectHaManifest(cwd);
+    if (ha && !versionFiles.some((e) => e.path === ha)) checkJson(ha);
   }
 
   checkReadme();

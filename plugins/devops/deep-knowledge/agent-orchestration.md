@@ -251,6 +251,10 @@ Every spawned agent MUST receive:
    its markup, CSS and keyframes are the spec, not a reference. Report each
    checklist line you own as built with evidence, or as not built with the
    reason."* A prose summary of the decisions never replaces them (#935).
+   Every other auto-concept implement passes the same way: the path of the
+   verbatim brief `docs/concepts/{name}/briefs/implement.md` and the
+   checklist lines the agent owns, with the order to return an acceptance
+   table — item → done / partial / not done → evidence (#1004).
 
 ### Interaction Directives
 

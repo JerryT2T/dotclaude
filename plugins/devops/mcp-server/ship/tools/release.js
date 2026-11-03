@@ -20,6 +20,7 @@ import { isPermanentPushError, tagHandoff } from "../lib/tag-handoff.js";
 import { scanConflictMarkers, describeMarkers } from "../lib/conflict-markers.js";
 import { clampText } from "../../lib/soft-limits.js";
 import { readVersion } from "../lib/version.js";
+import { versionFilesSchema } from "./version-bump.js";
 import { localMerge, localTag, LocalMergeError } from "../lib/local-merge.js";
 import { versionOnlyOverlap, rebaseVersionFiles } from "../lib/version-rebase.js";
 import { createRequire } from "node:module";
@@ -84,6 +85,7 @@ export const schema = z.object({
   body: z.string().describe("PR body (must start with Closes #N if applicable)"),
   tag: z.string().nullable().optional().describe("Bare version tag (e.g. v0.18.0), published as alpha/<tag> (ring model). OMIT: defaults to v<version> from the version file (what ship_version_bump wrote). null: ship WITHOUT a ring tag; the result carries tagSkipped + tagWarning, never a silent gap (#372). Ignored for intermediate merges"),
   bump: z.enum(["patch", "minor", "major", "none"]).optional().describe("The bump ship_version_bump applied in this ship. \"none\" → no ring tag (version unchanged, tag already on an earlier commit); result carries tagSkipped + tagSkipReason. Omitted → read from this ship's checkpoint."),
+  versionFiles: versionFilesSchema,
   releaseNotes: z.string().nullable().default(null).describe("CHANGELOG entry — NOT published at ship time (releases happen at promotion via ship_promote); recorded as releaseDeferred"),
   prerelease: z.boolean().default(false).describe("Deprecated — releases are created at promotion time; kept for caller compatibility"),
   commitMessage: z.string().nullable().default(null).describe("If set, stage all and commit with this message before pushing"),
@@ -301,19 +303,19 @@ export async function handler(params) {
   // previous ship's commit — tagging again would either fail or promote the
   // wrong commit. No tag, and the result says why (the card shows it).
   if (!intermediate && shipBump(params) === "none") {
-    const v = readVersion(cwd);
+    const v = readVersion(cwd, params.versionFiles || []);
     tagSkipReason = `bump: none — version unchanged${v.version ? ` (v${v.version})` : ""}, so no new ring tag; nothing to promote for this ship`;
     tag = null;
     tagDefaultSkip = tagSkipReason;
   }
   if (!intermediate && tag === undefined) {
-    const v = readVersion(cwd);
+    const v = readVersion(cwd, params.versionFiles || []);
     if (v.version) {
       tag = `v${v.version}`;
       tagDefaulted = true;
     } else {
       tag = null;
-      tagDefaultSkip = "no version file (plugin.json / package.json / marketplace.json) to derive the tag from";
+      tagDefaultSkip = "no version file (plugin.json / package.json / marketplace.json / custom_components manifest / versionFiles) to derive the tag from";
     }
   }
   const result = { branch, base, intermediate, mode: repoMode };

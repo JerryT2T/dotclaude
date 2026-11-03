@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.347.1] — 2026-11-03
+
+### Added
+- Every auto-concept implement writes a verbatim `briefs/implement.md`, collects a per-agent acceptance table and runs an independent qax check before the final report (#1004)
+
+## [0.347.0] — 2026-11-03
+
+### Added
+- Delegation: with api-credit on (key stored, no active limit), the first `devops:scout` / `devops:research` / `devops:redteam` spawn per turn is refused once with the ready `claude-api-agent.js` command; a retry or a prompt citing the API rc passes, `general-purpose` / `Explore` are never gated, and the hook fails open (#1013).
+
+## [0.346.0] — 2026-11-03
+
+### Added
+- Ship: projects whose version lives outside plugin.json / package.json get bumped and tagged — from the declared `versionFiles:`, or a Home Assistant `custom_components/*/manifest.json` found on its own. With nothing to read, a bump stops with `version-file-missing` instead of skipping silently (#1017).
+
+## [0.345.1] — 2026-11-03
+
+### Fixed
+- Concept pages: the docs name `concept-open.js verify` as the one owner of the Edge open on the fast path, so the page no longer opens twice (#1030, symptom 1).
+
+## [0.345.0] — 2026-11-03
+
+### Added
+- API credit: every batch-policy decision is logged with its rule and estimated saving; `--usage` shows them as a `batchPolicy` block (decisions by rule, saving left on the table) outside the call totals (#1015).
+
 ## [0.344.5] — 2026-11-02
 
 ### Fixed

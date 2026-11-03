@@ -28,5 +28,12 @@ Capture, if present in the merged `reference.md`, for use later in this run:
   bump writes them and `version-consistent` checks them. A prose "Version files"
   list without that shape → turn each entry into one of the two forms; a file
   you cannot express that way is named in the card's `open`, never dropped.
+  **Fallback (#1017):** when the repo has no plugin.json / package.json /
+  marketplace.json, the first `versionFiles` entry is the version source (read for
+  the bump base and the default ring tag `alpha/v<version>`). With none declared,
+  a Home Assistant `custom_components/*/manifest.json` (`"version"`) is detected
+  and bumped automatically. If neither exists and `bump` is not `none`,
+  `ship_run` stops with `needs: "version-file-missing"` instead of merging
+  unbumped and untagged — declare `versionFiles:` or ship with bump `none`.
 - `deployParity:` — overrides for the deploy-parity build (Step 2.5):
   `disable`, `buildCmd`, `installCmd`, `dir`, `timeoutSec`, `passEnv`.

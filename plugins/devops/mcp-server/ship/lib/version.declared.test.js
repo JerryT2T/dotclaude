@@ -2,7 +2,7 @@ import { describe, test, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { updateVersionFiles, verifyVersionFiles } from "./version.js";
+import { updateVersionFiles, verifyVersionFiles, readVersion } from "./version.js";
 
 // Project-declared version files (#941): bumped with the built-in files and
 // checked by version-consistent. Real files in a temp npm project.
@@ -76,5 +76,43 @@ describe("declared version files (#941)", () => {
     updateVersionFiles("0.86.0", "0.86.1", dir);
     expect(read(TS)).toContain("'0.86.0'");
     expect(verifyVersionFiles("0.86.1", dir).consistent).toBe(true);
+  });
+});
+
+describe("versionFiles / Home Assistant fallback (#1017)", () => {
+  const HA = "custom_components/fin/manifest.json";
+  let bare;
+  beforeEach(() => {
+    bare = fs.mkdtempSync(path.join(os.tmpdir(), "vf1017-"));
+    fs.mkdirSync(path.join(bare, "custom_components/fin"), { recursive: true });
+    fs.writeFileSync(path.join(bare, HA), JSON.stringify({ domain: "fin", version: "0.26.0" }, null, 2) + "\n");
+    fs.writeFileSync(path.join(bare, "const.py"), 'VERSION = "0.26.0"\n');
+    fs.writeFileSync(path.join(bare, "CHANGELOG.md"), "## [0.26.0]\n");
+  });
+  afterEach(() => fs.rmSync(bare, { recursive: true, force: true }));
+
+  test("reads the first declared file when no built-in manifest exists", () => {
+    const r = readVersion(bare, [{ path: "const.py", pattern: 'VERSION = "([^"]+)"' }]);
+    expect(r).toEqual({ version: "0.26.0", type: "declared", file: "const.py" });
+  });
+
+  test("detects the HA manifest without versionFiles and bumps it", () => {
+    expect(readVersion(bare)).toEqual({ version: "0.26.0", type: "home-assistant", file: HA });
+    const res = updateVersionFiles("0.26.0", "0.27.0", bare);
+    expect(res).toEqual(expect.arrayContaining([{ file: HA, updated: true }]));
+    expect(readVersion(bare).version).toBe("0.27.0");
+    expect(verifyVersionFiles("0.27.0", bare).mismatches.some((m) => m.file === HA)).toBe(false);
+  });
+
+  test("declared files take precedence over the HA probe", () => {
+    const r = readVersion(bare, [{ path: "const.py", pattern: 'VERSION = "([^"]+)"' }]);
+    expect(r.type).toBe("declared");
+  });
+
+  test("built-in package.json still wins and nothing found stays null", () => {
+    expect(readVersion(dir, [{ path: TS, pattern: "APP_VERSION = '([^']+)'" }]).type).toBe("npm");
+    const empty = fs.mkdtempSync(path.join(os.tmpdir(), "vf1017e-"));
+    try { expect(readVersion(empty)).toEqual({ version: null, type: null, file: null }); }
+    finally { fs.rmSync(empty, { recursive: true, force: true }); }
   });
 });

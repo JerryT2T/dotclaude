@@ -179,7 +179,9 @@ M-set when it has `[data-mapping]` (`deep-knowledge/validation-gate.md`).
 ## Step 3 — Open in Browser
 
 Open the generated HTML file **inside the user's existing Edge window** as
-a new tab, never in a separate browser window.
+a new tab, never in a separate browser window. **Exactly one open (#1030):**
+on the fast path `concept-open.js verify` opens Edge itself — never run
+`start "" msedge` after it; the manual open command is for the non-fast path only.
 
 ### No reachable bridge — hand-off fallback (cloud / remote sessions)
 

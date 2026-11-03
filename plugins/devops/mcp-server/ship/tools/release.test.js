@@ -645,7 +645,7 @@ describe("ship_release — tag default from the version file (#372)", () => {
     const p = params(); delete p.tag;
     const res = await handler(p);
     expect(res.success).toBe(true);
-    expect(readVersion).toHaveBeenCalledWith("/repo");
+    expect(readVersion).toHaveBeenCalledWith("/repo", []);
     expect(res.tag).toBe("alpha/v2.3.4");
     expect(res.channel).toBe("alpha");
     expect(res.tagDefaulted).toBe(true);

@@ -29,7 +29,7 @@ Not a batch job: do-run's backlog triage. It runs in the Präsenz phase with the
 
 ## Seeing results
 
-`node scripts/claude-api-safe.js --usage` — batch lines have `tool: "batch"`, the $ at 50 %, `savingUsd`, and `done`/`unfinished` counts.
+`node scripts/claude-api-safe.js --usage` — batch lines have `tool: "batch"`, the $ at 50 %, `savingUsd`, and `done`/`unfinished` counts. Every policy decision is logged too (`tool: "batch-policy"`, `rule` R1–R5 or `ok`, `estSavingUsd`, $0); `--usage` keeps those rows out of the call totals and shows them as `batchPolicy: { decisions, byRule, rejectedSavingUsd }` (#1015).
 
 ## Switch
 
