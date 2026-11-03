@@ -173,8 +173,10 @@ describe("tool loop", () => {
 
   test("budget reached without an answer → rc 1 (caller falls back to the in-session agent)", async () => {
     const big = { input_tokens: 1_000_000, output_tokens: 0 };
+    const paused = { content: [], stop_reason: "pause_turn", usage: big };
     const fetchImpl = scripted([
       { content: [{ type: "tool_use", id: "t1", name: "list_files", input: { path: "." } }], stop_reason: "tool_use", usage: big },
+      paused,
     ]);
     const r = await runAgent(["--max-usd", "1", "x"], { fetchImpl });
     expect(r.rc).toBe(1);
@@ -335,6 +337,14 @@ describe("a run nearing a limit answers with what it has", () => {
     expect(calls[0].tool_choice).toBeUndefined();
     expect(calls[1].tool_choice).toEqual({ type: "none" });
     expect(lastUser(calls[1]).at(-1).text).toMatch(/Do not call more tools/);
+  });
+
+  test("a request that jumps past the budget still gets the last request", async () => {
+    const calls = [];
+    const r = await runAgent(["--max-usd", "1", "x"], { fetchImpl: seq([toolTurn({ input_tokens: 1_000_000, output_tokens: 0 }), answer], calls) });
+    expect(r.rc).toBe(0);
+    expect(r.err).toMatch(/cut short: budget/);
+    expect(calls[1].tool_choice).toEqual({ type: "none" });
   });
 
   test("75 % of the budget starts the last request", async () => {

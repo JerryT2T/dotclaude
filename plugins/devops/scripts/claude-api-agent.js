@@ -385,7 +385,8 @@ async function run(argv, {
       if (stop === 'end_turn' || stop === 'stop_sequence') return finish(safe.textOf(res), wrapUp);
       if (stop === 'max_tokens') return finish(safe.textOf(res), 'max_tokens');
       if (stop === 'refusal') { err('claude-api-agent: the model declined the task\n'); return RC.ERROR; }
-      if (spent >= maxUsd) { err(`claude-api-agent: budget of $${maxUsd} reached\n`); return RC.ERROR; }
+      // One request can jump past the budget: it still gets the last request.
+      if (spent >= maxUsd && wrapUp) { err(`claude-api-agent: budget of $${maxUsd} reached\n`); return RC.ERROR; }
       if (stop === 'pause_turn') continue; // server tool loop paused — resend as is
       if (stop !== 'tool_use') { err(`claude-api-agent: unexpected stop_reason ${stop}\n`); return RC.ERROR; }
 

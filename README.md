@@ -337,8 +337,8 @@ ship. Setup: [INSTALL.md](INSTALL.md#optional-codex-integration).
 <details>
 <summary><strong>Claude API credits</strong></summary>
 
-Max and Team plans include monthly API credits ($100 on Max 5x, $200 on Max
-20x, up to $500 pooled on Team) that expire every cycle and do **not** cover
+Max, Ultra and Team plans include monthly API credits ($100 on Max 5x, $200 on
+Ultra, up to $500 pooled on Team) that expire every cycle and do **not** cover
 Claude Code itself. Switched on, the plugin runs its read-only side work there
 first and falls back to the plan:
 
@@ -490,7 +490,7 @@ or `{"mode":"ask"}` — every agent tier is offered first.
 |---|---|---|---|
 | Pro ($20) | Sonnet / Opus | ~10M / ~3M | **~7 % / ~23 %** |
 | Max 5x ($100) | Sonnet / Opus | ~55M / ~18M | **~1.3 % / ~3.9 %** |
-| Max 20x ($200) | Sonnet / Opus | ~225M / ~75M | **~0.3 % / ~0.9 %** |
+| Ultra ($200) | Sonnet / Opus | ~225M / ~75M | **~0.3 % / ~0.9 %** |
 
 *Rough estimates; Anthropic adjusts limits dynamically.*
 
