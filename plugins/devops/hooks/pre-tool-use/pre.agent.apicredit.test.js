@@ -127,6 +127,13 @@ describe("pre.agent.apicredit", () => {
     expect(main(hook("devops:scout", { transcript_path: path.join(home, "missing.jsonl") }))).toBeNull();
   });
 
+  test("a refusal whose spawn fell off the transcript tail still counts (no re-refusal loop)", () => {
+    const tail = [
+      JSON.stringify({ type: "user", message: { content: [{ type: "tool_result", tool_use_id: "gone", content: `${gate.MARKER} refused` }] } }),
+    ].join("\n");
+    expect(gate.refusedBefore(tail, { subagent_type: "devops:scout" }, "new")).toBe(true);
+  });
+
   test("an internal error fails open", () => {
     configure();
     expect(gate.wouldRefuse({ subagent_type: "devops:scout", prompt: "x" }, "{}\n", "t", { cwd: {}, env: null })).toBe(false);

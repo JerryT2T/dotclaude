@@ -66,7 +66,9 @@ function refusedBefore(transcriptText, input, toolUseId) {
   }
   for (const id of refused) {
     const prev = spawns.get(id);
-    if (prev && prev.subagent_type === type) return true;
+    // A refusal whose spawn fell off the transcript tail counts as this type's:
+    // refusing again on a cut-off tail could loop — fail open instead.
+    if (!prev || prev.subagent_type === type) return true;
   }
   return false;
 }
