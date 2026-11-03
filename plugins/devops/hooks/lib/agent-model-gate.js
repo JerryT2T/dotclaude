@@ -109,4 +109,4 @@ function locateHint(input) {
     'default (delegation policy). Keep Explore when you need its thoroughness levels.';
 }
 
-module.exports = { MARKER, refusedBefore, wouldRefuse, refusalText, locateHint };
+module.exports = { MARKER, isPromptEntry, resultText, refusedBefore, wouldRefuse, refusalText, locateHint };

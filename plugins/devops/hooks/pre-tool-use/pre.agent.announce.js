@@ -244,6 +244,17 @@ function modelGateWillRefuse(input, cwd, transcriptPath, toolUseId) {
   }
 }
 
+/** True when pre.agent.apicredit refuses this spawn (api-credit first, #1013). */
+function apiCreditWillRefuse(input, cwd, transcriptPath, toolUseId) {
+  try {
+    const G = require('../lib/agent-apicredit-gate');
+    const text = require('../lib/agent-card-relay').readTail(transcriptPath);
+    return G.wouldRefuse(input, text, toolUseId, { cwd });
+  } catch {
+    return false;
+  }
+}
+
 /** True when pre.ship.delegate refuses this spawn (a bare ship spawn, or a delegated ship below the threshold). */
 function shipDelegateWillRefuse(prompt, transcriptPath) {
   try {
@@ -324,6 +335,7 @@ function main() {
       if (strictWillBlock(cwd, prompt)) process.exit(0);
       if (modelGateWillRefuse(input, cwd, hook.transcript_path, hook.tool_use_id)) process.exit(0);
       if (shipDelegateWillRefuse(prompt, hook.transcript_path)) process.exit(0);
+      if (apiCreditWillRefuse(input, cwd, hook.transcript_path, hook.tool_use_id)) process.exit(0);
 
       const card = buildCard(input, cwd, hook.transcript_path, hook.tool_use_id, sessionLang(hook.session_id));
       let marker = null;
@@ -343,4 +355,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { effectiveModel, modelMarker, readFrontmatter, findAgentFile, friendlyModel, sessionModel, resolve, buildLine, batchInputs, buildCard, strictWillBlock, modelGateWillRefuse, shipDelegateWillRefuse, progressUpdatesModel, progressUpdatesSession, announceText };
+module.exports = { effectiveModel, modelMarker, readFrontmatter, findAgentFile, friendlyModel, sessionModel, resolve, buildLine, batchInputs, buildCard, strictWillBlock, modelGateWillRefuse, apiCreditWillRefuse, shipDelegateWillRefuse, progressUpdatesModel, progressUpdatesSession, announceText };

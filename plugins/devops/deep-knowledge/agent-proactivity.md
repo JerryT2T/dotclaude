@@ -20,7 +20,7 @@ auto-polish) execute through the auto-agents skill; Inline needs no skill load.
 `opus`, never a pinned version), even if it equals the session's — without
 `model` the first spawn is refused. Locating → `devops:scout` (haiku, only
 there), not `Explore`. Implementing → a domain agent on `sonnet`; opus only for
-design-heavy/ambiguous work in class `free`.
+design-heavy/ambiguous work in class `free`. With api-credit on, a first `scout`/`research`/`redteam` spawn is refused once: run `claude-api-agent.js` first.
 
 **Card:** the agent card (`pre.agent.announce`) is your very next text,
 verbatim, before any other tool call, also under Quiet; parallel spawns → last
