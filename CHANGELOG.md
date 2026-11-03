@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.348.0] — 2026-11-03
+
+### Added
+- Concept pages: voice input — a mic button beside every attach button, and an opt-in voice mode in the notes dock that appends speech to the current page's first note (2 s pause before a page switch takes effect)
+- Concept pages: W/A/S/D work wherever arrow keys do
+
+### Changed
+- Analysis chat keeps answered questions above, shows a typed comment as a chat message, keeps the Weiter row clear of the composer and drops the "Runde" label
+- Analyses inside design concepts always use the full analysis template; the top-bar entry reads "Analyse" and has no dropdown
+- Neuron backdrop is calmer in the reading column
+- do-batch fires on "go" as the first word in any language; stored "Let's go" / "los" migrate to "go"; a note naming a skill trigger is treated as an order to run that skill
+
 ## [0.347.1] — 2026-11-03
 
 ### Added
