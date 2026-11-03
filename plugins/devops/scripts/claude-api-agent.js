@@ -38,6 +38,9 @@ const DEFAULT_MODEL = 'claude-opus-5-5';
 // Default model follows the task (tag): pure locating is Haiku work, scouting
 // and web research Sonnet; audits, reviews and unknown tags stay on Opus.
 const MODEL_BY_TAG = { locate: 'claude-haiku-5-5', scout: 'claude-sonnet-5-5', research: 'claude-sonnet-5-5' };
+// Opus 5.5 defaults to `medium`; a review keeps the level of the in-session
+// redteam (review scores keep rising with effort, unlike research).
+const EFFORT_BY_TAG = { redteam: 'high' };
 // Context freeze (client-side). Server-side context editing (clear_tool_uses)
 // re-cleared every few turns on long runs: each clear rewrites the cached
 // prefix (cache write ~25x a read), so a 22-turn run cleared 7 times and spent
@@ -54,6 +57,12 @@ const DEFAULT_MAX_TURNS = 30;
 const DEFAULT_MAX_USD = 2;
 const DEFAULT_TIMEOUT_S = 900; // whole run
 const REQUEST_TIMEOUT_S = 300; // one request
+// A run nearing a limit stops calling tools and answers with what it has:
+// losing the whole run costs more than one final request (2026-11-03: a review
+// spent $1.33 over 40 turns with no answer).
+const WRAP_UP_USD_SHARE = 0.75;
+const WRAP_UP_LEFT_S = 150;
+const WRAP_UP_NOTE = 'A limit of this run is close. Do not call more tools. Answer now with what you have and say plainly what you did not get to check.';
 const MAX_READ_BYTES = 200 * 1024;
 const MAX_LIST = 400;
 const MAX_GREP_HITS = 200;
@@ -316,6 +325,7 @@ async function run(argv, {
   const ctx = { clears: 0, clearedTokens: 0 };
   let lastPrompt = 0;
   let turns = 0;
+  let wrapUp = null;
   // Every exit after the first request is logged once — answer or not, the credit was spent.
   let rc = RC.ERROR;
   try {
@@ -329,6 +339,11 @@ async function run(argv, {
     for (let turn = 1; turn <= maxTurns; turn++) {
       const left = deadline - Date.now();
       if (left <= 0) { err('claude-api-agent: run timed out\n'); return RC.TIMEOUT; }
+      if (!wrapUp && turn > 1) {
+        if (turn === maxTurns) startWrapUp('turn limit');
+        else if (spent >= maxUsd * WRAP_UP_USD_SHARE) startWrapUp('budget');
+        else if (left <= WRAP_UP_LEFT_S * 1000) startWrapUp('run time');
+      }
       const body = {
         model,
         max_tokens: 16000,
@@ -337,13 +352,21 @@ async function run(argv, {
         messages,
         cache_control: { type: 'ephemeral' }, // caches the growing prefix turn by turn
       };
-      if (o.effort) body.output_config = { effort: o.effort };
+      const effort = o.effort || EFFORT_BY_TAG[tag];
+      if (effort) body.output_config = { effort };
+      if (wrapUp) body.tool_choice = { type: 'none' };
       if (ctxWanted && !frozen && lastPrompt >= CONTEXT_CAP_TOKENS) frozen = freezeContext(messages);
       const r = await safe.postMessages({ key: keyInfo.key, body, fetchImpl, timeoutMs: Math.min(left, REQUEST_TIMEOUT_S * 1000) });
       if (r.rc === RC.LIMIT) {
         const stored = safe.storeLimit({ home, reason: r.message });
         err(`claude-api-agent: API credit exhausted (${r.message}) — skipped until ${stored}.\n`);
         return RC.LIMIT;
+      }
+      // A request that hung takes the earlier turns with it: ask once for the answer.
+      if (r.rc === RC.TIMEOUT && !wrapUp && turn > 1 && deadline - Date.now() > 0) {
+        startWrapUp('request timeout');
+        turn -= 1;
+        continue;
       }
       if (r.rc !== RC.OK) { err(`claude-api-agent: ${r.message}\n`); return r.rc; }
 
@@ -359,10 +382,11 @@ async function run(argv, {
       // the caller falls back to the in-session Agent instead of relaying
       // half-done narration of a tool turn as the result.
       const stop = res.stop_reason;
-      if (stop === 'end_turn' || stop === 'stop_sequence') return finish(safe.textOf(res), null);
+      if (stop === 'end_turn' || stop === 'stop_sequence') return finish(safe.textOf(res), wrapUp);
       if (stop === 'max_tokens') return finish(safe.textOf(res), 'max_tokens');
       if (stop === 'refusal') { err('claude-api-agent: the model declined the task\n'); return RC.ERROR; }
-      if (spent >= maxUsd) { err(`claude-api-agent: budget of $${maxUsd} reached\n`); return RC.ERROR; }
+      // One request can jump past the budget: it still gets the last request.
+      if (spent >= maxUsd && wrapUp) { err(`claude-api-agent: budget of $${maxUsd} reached\n`); return RC.ERROR; }
       if (stop === 'pause_turn') continue; // server tool loop paused — resend as is
       if (stop !== 'tool_use') { err(`claude-api-agent: unexpected stop_reason ${stop}\n`); return RC.ERROR; }
 
@@ -378,6 +402,13 @@ async function run(argv, {
     }
     err(`claude-api-agent: ${maxTurns} turns used up\n`);
     return RC.ERROR;
+  }
+
+  /** The last request of the run: no tools, one appended note (the cached prefix stays). */
+  function startWrapUp(reason) {
+    wrapUp = reason;
+    const last = messages[messages.length - 1];
+    if (last.role === 'user' && Array.isArray(last.content)) last.content.push({ type: 'text', text: WRAP_UP_NOTE });
   }
 
   /** Clear the tool results older than the newest rounds, once. Returns true if it did. */

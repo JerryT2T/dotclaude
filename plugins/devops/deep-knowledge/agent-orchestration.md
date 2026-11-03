@@ -38,24 +38,26 @@ Select agents based on domains touched, complexity, and risk:
 ### Model & Effort Defaults
 
 Each agent defines `model` and optionally `effort` in its frontmatter.
-The orchestrator can override `model` at invocation time but **not** `effort` —
-the Agent tool has no effort parameter, so the frontmatter value is always the
-effective one.
+The orchestrator can override both at invocation time: `model` freely within the
+rules below, `effort` only in the cases of § Effort at spawn (Claude Code
+2.1.292+; it beats the frontmatter, `CLAUDE_CODE_EFFORT_LEVEL` beats both).
 This table is the **source of truth for the `Model · Effort` column** of
 every agent card (auto-agents Step 5: `scripts/agent-card.js` for the plan,
 `pre.agent.announce` for each spawn) — both resolve `model · effort` from
 the frontmatter, a Model cell (the family resolved per run to its newest
 release, never a pinned id) and an Effort cell; the `/do-run burn` plan lists
 `default → override` per role — keep it in sync with the agent frontmatter.
-A model override at invocation shows as `default → override` (`sonnet → opus`);
-the effort never carries an arrow.
+An override at invocation shows as `default → override` (`sonnet → opus`,
+`medium → high`).
 One standing override comes from the delegation policy's budget class
 ([agent-proactivity.md](agent-proactivity.md) § Budget): under
 `ask-before-parallel` and `sonnet-only` (unless the user answered "the right
 agents"), the opus roles run as `opus · high → sonnet · high` — shown exactly
 like any other override — and the prompt's tool-call ceiling (item 6 of the
-template) drops to ≤ 10 or ≤ 5: effort itself cannot be lowered at spawn, the
-ceiling is its proxy. `/do-run burn` is exempt (explicit run skill).
+template) drops to ≤ 10 or ≤ 5. `feature` falls back the same way, with
+`effort: "high"` at spawn: Sonnet gives up far more at `medium` than Opus does. `/do-run burn` is exempt (explicit run skill); any other
+do-run mode is not, with the ceiling on analysis roles only
+([agent-proactivity-details.md](agent-proactivity-details.md) § Budget).
 
 | Agent | model | effort | Notes |
 |-------|-------|--------|-------|
@@ -87,15 +89,21 @@ ceiling is its proxy. `/do-run burn` is exempt (explicit run skill).
 - **Always name the model**, also when it equals the session's — a spawn that
   would inherit it (Explore, general-purpose, `model: inherit`) is refused once
   by `pre.agent.model`; the identical retry is the deliberate exception.
-- **Effort is chosen by agent, not per spawn**: the cheap tier is a small
-  model at `medium`, not a big one at `low` — haiku·medium for locating
-  beats opus·anything; reasoning roles keep medium/high.
+- **Effort is chosen by agent**: the cheap tier is a small model at `medium`,
+  not a big one at `low` — haiku·medium for locating beats opus·anything;
+  reasoning roles keep medium/high.
+- **Effort at spawn** — this table is the standing instruction the Agent
+  tool's `effort` parameter asks for, and these are its only uses: the
+  `feature` fallback above, and `effort: "high"` for a Complex-tier implementer
+  bundle on sonnet (long or tricky, yet well specified; it stays on sonnet).
+  Never lower a default, never raise one to `xhigh` or `max`: Anthropic reserves
+  those for measured gains. A Claude Code that refuses the parameter → spawn
+  without it.
 - **`/do-run burn` inverts this**: it overrides **upward only** (sonnet → opus)
   per its depth profile, and never downgrades for cost. The overrides come
   from `scripts/burn-plan.js gate` (`models`), applied by auto-agents' burn
-  conveyor (`--burn`); mechanical and filler tasks keep the defaults. Effort
-  is not a tool parameter — the frontmatter value stays the effective
-  reasoning effort. Its goal is to turn budget that would expire into
+  conveyor (`--burn`); mechanical and filler tasks keep the defaults. The
+  frontmatter effort stays, an upgraded role runs at `opus · medium`. Its goal is to turn budget that would expire into
   depth-per-task rather than breadth-of-unfinished-tasks. See
   `skills/do-run/modes/burn/deep-knowledge/burn-scheduler.md` § Depth profiles.
 - **Implementers stay on sonnet** (`core`, `frontend`, `aix`, `designer`,
@@ -108,7 +116,8 @@ ceiling is its proxy. `/do-run burn` is exempt (explicit run skill).
   plan only makes the rule lighter. Unaffected: the opus roles' own
   frontmatter (`pox`, `research`, `redteam`, `feature` — the full-ceremony
   synthesis and the redteam gate keep opus) and `/do-run burn`, which
-  upgrades on purpose via `burn-plan.js gate`. Measured: 86 implementer
+  upgrades on purpose via `burn-plan.js gate`. Sonnet at `high` is the step before
+  an upgrade (§ Effort at spawn). Measured: 86 implementer
   spawns on opus cost ≈ $1,500 per 50 sessions; on sonnet ≈ $300.
 
 ### Complexity Tiers
@@ -156,8 +165,10 @@ The count follows the work, not a fixed number. Parallel **implementers**
    More bundles than the ceiling → another wave (or bundle them), never a
    wider wave.
 4. **Budget class** — `ask-before-parallel` → at most 3 implementers per wave;
-   `sonnet-only` → at most 2. An explicit run skill (`/do-run`) is exempt
-   from the budget class (as everywhere) and keeps the ceilings of 3.
+   `sonnet-only` → at most 2. An explicit run skill (`/do-run burn`, a ceremony
+   yes) is exempt from the budget class and keeps the ceilings of 3. Any other
+   do-run obeys it, and *spare the window* or an unattended run means one
+   implementer at a time.
 5. **Read-only lens agents** (research, scout, qa, redteam, po) are not
    implementers: up to ~8 in parallel, limited by cost only — they cannot
    conflict, and more independent lenses keep adding signal.
@@ -228,7 +239,8 @@ Every spawned agent MUST receive:
    window reset is not an input (`agent-proactivity.md` § Budget). An agent
    that itself spawns agents (`feature`, `designer`) applies the same model +
    ceiling override; the `[budget]` line is injected on user prompts only,
-   never inside a sub-agent, so the parent must pass it down.
+   never inside a sub-agent, so the parent must pass it down. Inside a do-run
+   the parent also passes down that the ceiling binds analysis roles only.
 10. **Scope contract** — when a `[claude-strict contract]` block is in context
    (strict mode armed — `deep-knowledge/strict.md`), it goes **verbatim at
    the top** of the prompt, before item 1. The `pre.strict.agent-gate` hook

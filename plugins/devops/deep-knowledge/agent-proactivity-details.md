@@ -23,17 +23,18 @@ Every spawn gets an agent card (`pre.agent.announce`) — show it verbatim as
 the next text, also under Quiet; spawns in one message → only the last card.
 Every spawn names its `model` (family alias, never a pinned version), even
 when it equals the session's: an inheriting spawn is refused once
-(`pre.agent.model`). Effort comes from the agent file. Locating → `scout`
+(`pre.agent.model`). Effort comes from the agent file (at spawn only per `agent-orchestration.md`). Locating → `scout`
 (haiku · medium), not `Explore`; `haiku` only for `scout`. Implementing → a
 domain agent on `sonnet`; opus only for design-heavy/ambiguous work in class
 `free`.
 
 ## Precedence: explicit run skill > hard stop > hard go > switch > escalation > tier table
 
-- **Explicit run skill** — inside do-run (every mode) and auto-agents run
-  from do-run or a ceremony yes, the invocation itself is the answer: never ask
-  the budget question, never downgrade a model for budget (do-run burn mode upgrades
-  on purpose). Hooks drop the budget suffix on `AUTONOMOUS_*` prompts.
+- **Explicit run skill** — inside `/do-run burn` (auto-agents `--burn`) and
+  auto-agents after a ceremony yes, the invocation itself is the answer: never
+  ask the budget question, never downgrade a model for budget (burn upgrades on
+  purpose). Every other do-run mode runs under the class (§ Budget). Hooks drop
+  the budget suffix only inside an active, recent burn run.
 - **Hard stop** — the user *narrows the request* with "just", "quick",
   "inline", "no agents" (de: "nur X", "schnell", "keine Agents") → Inline
   regardless of tier; a high-risk change still gets its inline pre-mortem
@@ -53,11 +54,11 @@ domain agent on `sonnet`; opus only for design-heavy/ambiguous work in class
 
 ## Budget (the `[budget] … → class` line; plan × window × week)
 
-The Agent tool has no effort parameter: the spare path's levers are
-`model: sonnet` and a tool-call ceiling in the agent prompt.
+The spare path's levers are `model: sonnet` and a tool-call ceiling in the
+agent prompt; `effort` at spawn only per `agent-orchestration.md`.
 
 - **free** → tiers as above; ceilings per `agent-orchestration.md`.
-- **ask-before-parallel** (Pro from 0 %, Max 5x ≥ 80 %/90 %, Max 20x
+- **ask-before-parallel** (Pro from 0 %, Max 5x ≥ 80 %/90 %, Ultra
   ≥ 90 %/95 %, unknown plan with unknown usage) → the 1-agent tier runs on
   `model: sonnet` with ≤ 10 tool calls, no question. Before a **parallel**
   spawn or a **ceremony**, ask ONCE per session via AskUserQuestion — one
@@ -66,10 +67,17 @@ The Agent tool has no effort parameter: the spare path's levers are
   *the right agents regardless of the window* / *no agent, inline now*.
   For a ceremony the second option is the ceremony itself (never two
   questions in a row).
-- **sonnet-only** (Pro ≥ 70 %/85 %, Max 5x ≥ 95 %/98 %, Max 20x ≥ 98 %/99 %)
+- **sonnet-only** (Pro ≥ 70 %/85 %, Max 5x ≥ 95 %/98 %, Ultra ≥ 98 %/99 %)
   → the 1-agent tier runs on `model: sonnet` with ≤ 5 tool calls;
   parallel/ceremony ask as above, naming the binding reset ("window
   resets in N min" / "week resets in N h").
+- **Inside do-run without burn** the class applies with two differences: the
+  call ceiling binds analysis roles only (`research`, `pox`, `redteam`,
+  `rethinker`), because an implementer cut off mid-way leaves a half-done edit;
+  opus roles still run on `sonnet`, `feature` included. Interactive runs ask the
+  one question; unattended runs and every backlog run cannot, so they take
+  *spare the window* unasked: one agent at a time. Rethink and audit never ask
+  and keep their read-only lenses in parallel on `sonnet`, per their mode files.
 - **The answer holds for the whole session and every tier** ("the right
   agents" → the 1-agent tier is back on its frontmatter model; "spare" →
   parallel stays collapsed). Re-ask only after a compaction or a class change.

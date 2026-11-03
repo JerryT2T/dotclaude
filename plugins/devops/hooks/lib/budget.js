@@ -6,7 +6,7 @@
  *
  *   Delegation costs volume where opus·high agents are spawned (research /
  *   po / redteam) — model × effort × tool calls. On a Pro plan even one of
- *   those is a real share of the 5-hour window; on Max 20x two in parallel
+ *   those is a real share of the 5-hour window; on Ultra two in parallel
  *   are noise. The class names say what they DO, not how full the meter is
  *   (a Pro plan is "ask-before-parallel" at 0 %, which is honest; "tight at
  *   0 %" was not — PO review 2026-09-14):
@@ -120,13 +120,18 @@ const RULES = {
   max20: { askAt: [90, 95], sonnetAt: [98, 99] },
 };
 
-/** Human label for a tier — the credentials string is an internal id. */
+/**
+ * Human label for a tier — the credentials string is an internal id. The
+ * $200 plan is sold as "Ultra", while its rate-limit tier is still
+ * `default_claude_max_20x`, so the tier id stays `max20`.
+ */
 function tierLabel(tier, raw) {
-  return { pro: 'Pro', max5: 'Max 5x', max20: 'Max 20x' }[tier] || (raw == null ? null : String(raw));
+  return { pro: 'Pro', max5: 'Max 5x', max20: 'Ultra' }[tier] || (raw == null ? null : String(raw));
 }
 
 function planTier(label) {
   if (typeof label !== 'string') return 'unknown';
+  if (/ultra/i.test(label)) return 'max20';
   const m = label.match(/max[\s_]*(\d+)x/i);
   if (m) return Number(m[1]) >= 20 ? 'max20' : 'max5';
   if (/(?:^|[^a-z])pro(?:$|[^a-z])/i.test(label)) return 'pro'; // "_" is a word char — \bpro\b misses default_claude_pro
@@ -262,7 +267,7 @@ function readBudget({ home = os.homedir(), nowMs = Date.now(), env = process.env
   let { tier, label: plan } = credentialsTier(home, sessionId);
   if (tier === 'unknown' && typeof live.plan === 'string') {
     const fromLabel = planTier(live.plan);
-    if (fromLabel !== 'unknown') { tier = fromLabel; plan = live.plan; }
+    if (fromLabel !== 'unknown') { tier = fromLabel; plan = fromLabel === 'max20' ? tierLabel(fromLabel) : live.plan; }
   }
 
   const five = liveWindow(live.session, ts, nowMs);
@@ -302,7 +307,7 @@ function readBudget({ home = os.homedir(), nowMs = Date.now(), env = process.env
  * FAILURE_BACKOFF_MS is not retried — a logged-out profile would otherwise
  * relaunch Edge every 5 min.
  */
-function maybeRefreshUsage(b, { home = os.homedir(), nowMs = Date.now(), env = process.env, pluginRoot = null } = {}) {
+function maybeRefreshUsage(b, { home = os.homedir(), nowMs = Date.now(), env = process.env, pluginRoot = null, unattended = false } = {}) {
   if (!b || b.override) return false;
   const aged = b.ageMinutes != null && b.refreshDueMinutes != null && b.ageMinutes >= b.refreshDueMinutes;
   if (!(b.stale || b.expired || aged)) return false;
@@ -322,7 +327,8 @@ function maybeRefreshUsage(b, { home = os.homedir(), nowMs = Date.now(), env = p
   try { fs.accessSync(script); } catch { return false; }
   try {
     fs.writeFileSync(REFRESH_MARKER, String(nowMs), 'utf8');
-    const child = spawn(process.execPath, [script, '--quiet', '--login-prompt'], {
+    // Nobody is there to log in during an unattended run — no window then.
+    const child = spawn(process.execPath, [script, '--quiet', unattended ? '--no-login' : '--login-prompt'], {
       detached: true, stdio: 'ignore', windowsHide: true, env,
     });
     child.unref();
@@ -401,22 +407,34 @@ function nudgeSuffix(b) {
   return classSuffix(b) + deferSuffix(b);
 }
 
+/**
+ * Suffix for an unattended do-run (not burn): the same class, but nobody can
+ * answer a question, so the run takes the sparing answer by itself. The call
+ * ceiling stays on analysis roles: an implementer cut off mid-way leaves a
+ * half-done edit.
+ */
+function unattendedSuffix(b) {
+  if (b.cls !== 'sonnet-only' && b.cls !== 'ask-before-parallel') return '';
+  const calls = b.cls === 'sonnet-only' ? 5 : 10;
+  return ` · budget: ${b.cls} (unattended do-run: opus roles → sonnet, analysis agents ≤${calls} calls, one agent at a time, no question)`;
+}
+
 function classSuffix(b) {
   if (b.cls === 'sonnet-only') {
     const reset = b.binding === 'week'
       ? (b.weeklyResetInMinutes != null ? `, week resets in ${Math.round(b.weeklyResetInMinutes / 60)} h` : ', week is the binding limit')
       : (b.resetInMinutes != null ? `, window resets in ${b.resetInMinutes} min` : '');
-    return ` · budget: sonnet-only (1 sonnet agent ≤5 calls; parallel/ceremony → ask once${reset})`;
+    return ` · budget: sonnet-only (1 sonnet agent ≤5 calls, in a do-run analysis roles only; parallel/ceremony → ask once${reset})`;
   }
   if (b.cls === 'ask-before-parallel') {
-    return ' · budget: ask-before-parallel (1-agent tier → sonnet ≤10 calls; parallel/ceremony → ask once: inline / 1 sonnet agent / full)';
+    return ' · budget: ask-before-parallel (1-agent tier → sonnet ≤10 calls, in a do-run analysis roles only; parallel/ceremony → ask once: inline / 1 sonnet agent / full)';
   }
   return '';
 }
 
 module.exports = {
   RULES, CLASSES, planTier, tierLabel, classify, bindingWindow, refreshDueMinutes, readBudget, maybeRefreshUsage,
-  budgetLine, budgetSummary, nudgeSuffix, deferInfo, DEFER_AT, DEFER_SOON_MIN,
+  budgetLine, budgetSummary, nudgeSuffix, unattendedSuffix, deferInfo, DEFER_AT, DEFER_SOON_MIN,
   STALE_MS, REFRESH_COOLDOWN_MS, FAILURE_BACKOFF_MS, REFRESH_MARKER, RESET_IMMINENT_MIN, WINDOW_FILL_MIN, WEEK_TO_WINDOW,
   RECENT_RESET_5H_MIN, RECENT_RESET_WEEK_MIN,
 };

@@ -28,8 +28,9 @@ card only.
 
 ## Precedence: explicit run skill > hard stop > hard go > switch > escalation > tier table
 
-- **Explicit run skill** — inside do-run and auto-agents (from do-run or a
-  ceremony yes) the invocation is the answer: no budget question, no budget downgrade.
+- **Explicit run skill** — inside `/do-run burn` and auto-agents after a ceremony
+  yes the invocation is the answer: no budget question, no budget downgrade.
+  Every other do-run mode runs under the class (§ Budget).
 - **Hard stop** — "just", "quick", "inline", "no agents" (de: "nur X",
   "schnell", "keine Agents") → Inline; a high-risk change still gets its
   inline pre-mortem (`pre-mortem.md`).

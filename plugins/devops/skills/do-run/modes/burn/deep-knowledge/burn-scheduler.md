@@ -39,8 +39,8 @@ Depth first; lanes only fill a time gap depth cannot close.
 
 The first version's per-task **PO review** and **second QA** are gone: the
 second QA re-ran what the first had verified, and a PO weighs trade-offs that
-nobody decides while the user is away. Effort is not a tool parameter (the
-Agent tool has none) — the model, the pass and the ceiling are what change.
+nobody decides while the user is away. The frontmatter effort stays: the model,
+the pass and the ceiling are what change.
 
 Mechanical tasks (lint, rename, import sort, dependency bump) and filler
 (P3–P5, discovery sources) always run at `standard`. Only the user's own work
@@ -73,8 +73,8 @@ where little is left and a normal run uses it anyway.
 
 Estimates: a standard lane spends `laneHourlyPct` of the weekly budget per
 hour, a task costs `unitCostPct × size weight (S 1 · M 2.5 · L 5) ×
-depthFactor`. Defaults are set for Max 20x and scaled by plan capacity (Max
-5x ×4, Pro ×20). After every finished run `state finish` records one sample
+depthFactor`. Defaults are set for Ultra and scaled by plan capacity (Max
+5x ×2, Pro ×10). After every finished run `state finish` records one sample
 of each, normalized to standard depth, in `~/.claude/burn-calibration.json`;
 from three samples on, the median replaces the default. Usage numbers are
 account-wide — another session's spend makes the samples more conservative,

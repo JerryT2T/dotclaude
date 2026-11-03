@@ -71,7 +71,7 @@ asks: Step 4, and only for the full-ceremony tier — the lower tiers run
 ### Plan and usage — `get_usage`, once per run
 
 Call `mcp__plugin_devops_dotclaude__get_usage` once at the start.
-It returns the plan (Pro / Max 5x / Max 20x), the 5-hour and weekly usage
+It returns the plan (Pro / Max 5x / Ultra), the 5-hour and weekly usage
 with their resets, and `budget.cls` — the budget class the tier table and
 the model/ceiling override (§ Budget in `agent-proactivity.md`) run on.
 
@@ -82,11 +82,16 @@ errors, fall back to the newest `[budget] … → class` line in context; with
 neither, treat the class as `ask-before-parallel`. The user's own words keep
 their precedence (a hard stop / hard go beats the class either way).
 
-**Explicit run.** `--from=do-run` and a direct invocation after the user's
-yes are an explicit run skill (`agent-proactivity.md` § Precedence): never
-ask the budget question, never downgrade a model for budget. Every other
-caller (`auto-fix`, `auto-concept`, `auto-harden`, `auto-polish`) runs under
-the class like any prompt.
+**Explicit run.** `--burn` and a direct invocation after the user's yes are
+an explicit run skill (`agent-proactivity.md` § Precedence): never ask the
+budget question, never downgrade a model for budget. `--from=do-run` without
+`--burn` runs under the class: opus roles on `sonnet`, the call ceiling on
+analysis roles only, the one question under `--mode=interactive`, and
+`--mode=background` (every backlog run) takes *spare the window* unasked (one
+agent at a time;
+`agent-proactivity-details.md` § Budget). Every other caller (`auto-fix`,
+`auto-concept`, `auto-harden`, `auto-polish`) runs under the class like any
+prompt.
 
 ## Step 2 — Tier and agents
 
@@ -177,8 +182,8 @@ Template (`{key}` → resolved per locale):
 **The agents** are the Step 5 plan card, not a hand-drawn table: waves as
 sections, model and effort resolved by the script (Model & Effort Defaults
 in `{PLUGIN_ROOT}/deep-knowledge/agent-orchestration.md`), a model override shown as
-`default → override` — the Agent tool has no effort parameter, so effort
-never carries an arrow.
+`default → override`, effort likewise (`medium → high`, only in the cases of
+§ Effort at spawn there).
 
 **`{plan.budget}` line** — the complexity tier of the task (same doc,
 § Complexity Tiers) and the per-agent tool-call ceiling it implies: Medium →
@@ -264,10 +269,10 @@ number never appears in this skill, a frontmatter, an override or a prompt:
    the bare `<family>`. An override → `<default> → <override>`, e.g.
    `sonnet → opus`.
 
-**Effort — per task.** The agent's frontmatter `effort` (the Agent tool has
-no effort parameter, so that value is the effective one); `inherit` → the
-session's effort. Never an arrow: a budget override lowers the tool-call
-ceiling, not the effort.
+**Effort — per task.** The agent's frontmatter `effort`; `inherit` → the
+session's effort. An `effort` at spawn only per `agent-orchestration.md`
+§ Effort at spawn. A budget override lowers the tool-call ceiling; only
+`feature` also gets `effort: "high"`, because it drops to sonnet.
 
 **Under `--burn`** the plan card lists the queue in gate order, one row per
 task, wave = the lane slot (1…lanes); the model cell carries the profile's

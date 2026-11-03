@@ -25,7 +25,7 @@ const { resolve } = require('../hooks/pre-tool-use/pre.agent.announce');
 function planCard(spec, cwd = process.cwd()) {
   const [sessModel, sessEffort] = String(spec.session || '').split('·').map((s) => s.trim());
   const agents = (spec.agents || []).map((a) => {
-    let { model, effort } = resolve({ subagent_type: a.type, model: a.model }, cwd, null);
+    let { model, effort } = resolve({ subagent_type: a.type, model: a.model, effort: a.effort }, cwd, null);
     if (sessModel) model = model.replace(/^session model/, `${sessModel} (session)`);
     if (sessEffort && effort === 'session effort') effort = sessEffort;
     return { type: a.type, task: a.task, wave: a.wave, model, effort, mode: a.mode };

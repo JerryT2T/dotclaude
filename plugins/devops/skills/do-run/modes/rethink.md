@@ -92,7 +92,10 @@ must stand alone.
 ## Step 4 — Fresh Phase (code-blind fan-out)
 
 Spawn **three `devops:rethinker` agents in parallel** (one message, three
-Agent calls). Each prompt = the full Rethink Brief + ONE lens block from
+Agent calls). Budget class other than `free` (`get_usage`, `budget.cls`): no
+question here either; the lenses run on `model: sonnet` under the class's call
+ceiling (≤ 10, `sonnet-only` ≤ 5), and `sonnet-only` drops to two lenses
+(`product-value` and `ux-design`). Each prompt = the full Rethink Brief + ONE lens block from
 `{PLUGIN_ROOT}/skills/do-run/modes/rethink/deep-knowledge/lenses.md`:
 
 | Lens | Owns the question |

@@ -265,11 +265,12 @@ function mapApiUsage(usage, rateLimits, nowMs) {
   return snapshot;
 }
 
-/** 'default_claude_max_5x' → 'Max 5x'; unknown/absent tiers → generic label. */
+/** 'default_claude_max_5x' → 'Max 5x', 'default_claude_max_20x' → 'Ultra' (its sales name); unknown/absent tiers → generic label. */
 function tierLabel(tier) {
   if (typeof tier === 'string') {
+    if (/ultra/i.test(tier)) return 'Ultra';
     const max = tier.match(/max_(\d+)x/i);
-    if (max) return `Max ${max[1]}x`;
+    if (max) return Number(max[1]) >= 20 ? 'Ultra' : `Max ${max[1]}x`;
     if (/pro/i.test(tier)) return 'Pro';
     if (/free/i.test(tier)) return 'Free';
   }

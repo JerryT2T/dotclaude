@@ -41,7 +41,9 @@ const LOCALE_INSTRUCTION = {
   de: 'Antworte auf Deutsch, auch wenn Tool-, Hook-, Agent- oder Benachrichtigungstext englisch ist.',
 };
 const { isNonUserPrompt } = require('../lib/non-user-prompt');
-const { readBudget, maybeRefreshUsage, nudgeSuffix, budgetLine } = require('../lib/budget');
+const { readBudget, maybeRefreshUsage, nudgeSuffix, unattendedSuffix, budgetLine } = require('../lib/budget');
+const { projectRoot } = require('../lib/project-root');
+const { statePath, readStateFile, isOpenRun } = require('../lib/burn-state');
 const { readDelegation } = require('../lib/delegation');
 const { matchPointers, legacyOverrides, pointerLine } = require('../lib/knowledge-pointers');
 const { DISPATCH_CONTEXT_CHARS } = require('../lib/context-cap');
@@ -244,6 +246,21 @@ function lockoutArmed(cwd) {
   } catch { return false; }
 }
 
+// A burn left behind must not switch the budget rules off for good: its state
+// counts only this long after its last write. A resume names itself anyway
+// (BURN_RESUME:), however long the pause was.
+const BURN_STATE_MAX_AGE_MS = 30 * 60 * 60 * 1000;
+
+/** True while a /do-run burn run is open, switched on and recent for this project. */
+function burnRunActive(cwd) {
+  try {
+    const file = statePath(projectRoot(cwd || process.cwd()));
+    const state = readStateFile(file);
+    if (!isOpenRun(state) || (state.burn && state.burn.active === false)) return false;
+    return Date.now() - fs.statSync(file).mtimeMs <= BURN_STATE_MAX_AGE_MS;
+  } catch { return false; }
+}
+
 // Hard limits: max 2 files and 8KB total payload per prompt
 const MAX_INJECT_PER_PROMPT = 2;
 const MAX_INJECT_BYTES = 8192;
@@ -427,10 +444,11 @@ process.stdin.on('end', () => {
   //   5. Budget suffix on the nudge when the class is not comfortable — the
   //      snapshot is re-read per prompt (cheap local JSON), so a window that
   //      fills up mid-session tightens the nudge without a restart.
-  //      Inside an unattended run (AUTONOMOUS_* prompts, or the lockout
-  //      sentinel armed) the suffix is dropped: a budget question can never
-  //      be answered there, and /do-run burn deliberately upgrades models — the
-  //      explicit run-* skill IS the "full" answer (redteam 2026-09-14 #2).
+  //      Inside an unattended /do-run burn run the suffix is dropped: burn
+  //      deliberately upgrades models, the invocation IS the "full" answer
+  //      (redteam 2026-09-14 #2). Any other unattended run (AUTONOMOUS_*
+  //      prompts, or the lockout sentinel armed) keeps the class in a form
+  //      without a question, which nobody could answer there.
   //   6. Short prompts (< NUDGE_MIN_CHARS: "ja", "weiter", "ok mach") get no
   //      nudge at all — they can never be non-Inline, and every copy sits in
   //      the transcript for the rest of the session (redteam #11).
@@ -455,11 +473,12 @@ process.stdin.on('end', () => {
   //      it is still in context, and a stalled snapshot repeated the same
   //      ~250 chars on every prompt (#996). A changed reading, a lost marker
   //      or a compaction (ss.knowledge.index drops the marker) sends it again.
-  if (!unattended && mode !== 'off') {
+  const burning = /^\s*BURN_RESUME\s*:/i.test(rawMessage) || (unattended && burnRunActive(hook.cwd));
+  if (!burning && mode !== 'off') {
     try {
       const budget = readBudget({ sessionId });
-      budget.refreshing = maybeRefreshUsage(budget, { pluginRoot });
-      budgetSuffix = nudgeSuffix(budget);
+      budget.refreshing = maybeRefreshUsage(budget, { pluginRoot, unattended });
+      budgetSuffix = unattended ? unattendedSuffix(budget) : nudgeSuffix(budget);
       if (budget.announce) {
         const line = budgetLine(budget);
         if (changedSinceLast(BUDGET_LINE_MARKER, sessionId, line)) announce.push(line);
