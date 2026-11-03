@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.349.0] — 2026-11-03
+
+### Added
+- `/do-run backlog` lands independent issues together in one ship by default; `--per-item` restores one ship per issue (#1016)
+
+### Fixed
+- Concept pages: a filled user pin is never lost from the store or payload (#993)
+- Concept pages: user pins land at the click point, also over page chrome (#992)
+- API agent: cleared context is frozen client-side, so the cache is no longer rewritten on every clear (#1014)
+- CI: the Full suite no longer cancels a running suite on a new push (#1016)
+
 ## [0.348.0] — 2026-11-03
 
 ### Added
