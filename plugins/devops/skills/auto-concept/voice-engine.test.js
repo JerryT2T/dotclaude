@@ -115,6 +115,33 @@ describe("field mic: insert at the cursor", () => {
   });
 });
 
+describe("analysis composer (contenteditable)", () => {
+  test("interim words show while speaking and never stay in the saved text", () => {
+    make();
+    const c = doc.createElement("div");
+    c.className = "an-comp";
+    c.innerHTML = '<div class="an-comp-ed" contenteditable="true">Hallo</div>';
+    doc.body.appendChild(c);
+    v.boot();
+    vi.advanceTimersByTime(200);
+    const ed = c.querySelector(".an-comp-ed");
+    const r = doc.createRange();
+    r.selectNodeContents(ed);
+    r.collapse(false);
+    win.getSelection().removeAllRanges();
+    win.getSelection().addRange(r);
+    c.querySelector(".voice-btn-an").click();
+    say(v, "", "wie geht");
+    expect(ed.textContent).toBe("Hallo wie geht");
+    expect(ed.querySelectorAll(".voice-interim").length).toBe(1);
+    say(v, "", "wie geht es");
+    expect(ed.querySelectorAll(".voice-interim").length).toBe(1);
+    say(v, "wie geht es dir");
+    expect(ed.querySelector(".voice-interim")).toBeNull();
+    expect(ed.textContent.replace(/\s+/g, " ").trim()).toBe("Hallo wie geht es dir");
+  });
+});
+
 describe("voice mode: appends to the first note of the current page", () => {
   test("first visible writable note, appended at the end; the FAB blinks, then shows a check", () => {
     make();

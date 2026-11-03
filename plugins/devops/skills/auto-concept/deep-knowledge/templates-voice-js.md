@@ -81,7 +81,24 @@ function createConceptVoice(env) {
   function place(ins, finalText, interimText) {
     const f = ins.field;
     if (!f || !f.isConnected) return false;
-    if (isCE(f)) return finalText ? insertCE(f, finalText) : true;
+    if (isCE(f)) {
+      // Interim words live in a non-editable ghost span that every call replaces,
+      // so they show while speaking but never reach the field's saved text.
+      const old = f.querySelector('.voice-interim');
+      if (old) old.remove();
+      if (finalText && finalText.trim()) insertCE(f, finalText);
+      if (interimText && interimText.trim()) {
+        const g = doc.createElement('span');
+        g.className = 'voice-interim';
+        g.setAttribute('contenteditable', 'false');
+        g.setAttribute('aria-hidden', 'true');
+        g.textContent = ' ' + interimText.trim();
+        const r = caretRangeCE(f);
+        r.collapse(false);
+        r.insertNode(g);
+      }
+      return true;
+    }
     let v = f.value;
     // The user typed into the interim region: stop tracking it, keep every word.
     if (ins.len && v.substr(ins.start, ins.len) !== ins.shown) { ins.start = caretOf(f); ins.len = 0; ins.shown = ''; }
@@ -102,12 +119,17 @@ function createConceptVoice(env) {
     ins.shown = full.slice(keep);
     return true;
   }
-  function insertCE(f, text) {
+  function caretRangeCE(f) {
     const sel = win.getSelection ? win.getSelection() : null;
     let range = null;
-    if (sel && sel.rangeCount && f.contains(sel.getRangeAt(0).startContainer)) range = sel.getRangeAt(0);
-    if (!range) range = st.lastRange.get(f) || null;
+    if (sel && sel.rangeCount && f.contains(sel.getRangeAt(0).startContainer)) range = sel.getRangeAt(0).cloneRange();
+    if (!range) { const last = st.lastRange.get(f); range = last ? last.cloneRange() : null; }
     if (!range) { range = doc.createRange(); range.selectNodeContents(f); range.collapse(false); }
+    return range;
+  }
+  function insertCE(f, text) {
+    const sel = win.getSelection ? win.getSelection() : null;
+    const range = caretRangeCE(f);
     const before = (() => {
       try { const r = range.cloneRange(); r.selectNodeContents(f); r.setEnd(range.startContainer, range.startOffset); return r.toString(); } catch (e) { return ''; }
     })();
@@ -269,7 +291,14 @@ function createConceptVoice(env) {
   const coarse = () => !!(win.matchMedia && win.matchMedia('(pointer: coarse)').matches);
   function startField(btn, field) {
     if (!field || !field.isConnected || field.readOnly || st.blocked) return;
+    // Focusing a contenteditable may move its caret to the start: keep the user's.
+    const ceCaret = isCE(field) ? caretRangeCE(field) : null;
     if (!coarse() && typeof field.focus === 'function') { try { field.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
+    if (ceCaret) {
+      st.lastRange.set(field, ceCaret.cloneRange());
+      const sel = win.getSelection && win.getSelection();
+      if (sel) { sel.removeAllRanges(); sel.addRange(ceCaret); }
+    }
     st.gesture = true;
     const start = isCE(field) ? 0 : caretOf(field);
     st.fs = { btn, field, ins: { field, start, len: 0, shown: '' } };
@@ -421,6 +450,7 @@ function createConceptVoice(env) {
 .feedback-dock .attach-slot .voice-btn:hover, .feedback-dock .attach-slot .voice-btn.is-listening { opacity: 1; }
 html .feedback-dock .feedback-section textarea[data-attachable] { padding-right: 5.6rem; }
 .voice-mode-btn[aria-pressed="true"] { color: var(--danger-color, #f85149); }
+.voice-interim { opacity: .55; font-style: italic; pointer-events: none; }
 .voice-mode-btn[aria-disabled="true"] { opacity: .4; cursor: not-allowed; }
 .voice-mode-btn[aria-pressed="true"]::after {
   content: ""; display: inline-block; width: 6px; height: 6px; margin-left: 3px; vertical-align: super;
