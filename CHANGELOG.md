@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.347.1] — 2026-11-03
+
+### Added
+- Every auto-concept implement writes a verbatim `briefs/implement.md`, collects a per-agent acceptance table and runs an independent qax check before the final report (#1004)
+
 ## [0.347.0] — 2026-11-03
 
 ### Added

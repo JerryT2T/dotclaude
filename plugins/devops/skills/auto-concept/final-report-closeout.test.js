@@ -304,6 +304,18 @@ describe("final-report close-out sheet", () => {
     expect(md).toMatch(/Design implement\s+\(#935\)/);
   });
 
+  test("every implement gets a verbatim brief, acceptance tables and an independent check (#1004)", () => {
+    const start = skill.indexOf("**Every implement: verbatim brief, acceptance table, independent check");
+    expect(start).toBeGreaterThan(-1);
+    const rule = skill.slice(start, skill.indexOf("**Design concepts: build to the mocks"));
+    for (const part of ["Verbatim brief file", "briefs/implement.md", "decisions.json", "word for word", "Acceptance table per agent", "Independent check", "built nothing", "Gaps are shortfalls"]) {
+      expect(rule, part).toContain(part);
+    }
+    const root = path.join(__dirname, "..", "..");
+    expect(fs.readFileSync(path.join(root, "deep-knowledge", "agent-orchestration.md"), "utf8")).toMatch(/briefs\/implement\.md[\s\S]{0,200}acceptance/);
+    expect(fs.readFileSync(path.join(root, "agents", "qax.md"), "utf8")).toContain("## Concept acceptance (every concept implement)");
+  });
+
   test("a discard close-out does not reload the browser onto a deleted file", () => {
     const c = skill.slice(skill.indexOf("### D · Close out"), skill.indexOf("### Legacy final-report actions"));
     expect(c).toContain("no `/reload`");

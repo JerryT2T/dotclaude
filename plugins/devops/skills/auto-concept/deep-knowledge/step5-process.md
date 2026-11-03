@@ -248,6 +248,32 @@ difference: the next round belongs to the next stage.
    ("nicht umgesetzt, weil …"), never re-labelled as a follow-up for the
    user to sign off.
 
+   **Every implement: verbatim brief, acceptance table, independent check
+   (#1004).** A brief written from the orchestrator's memory shortens what
+   the user said ("7 variants, not boring" became a counter), and builders
+   that grade themselves report "nothing left out" next to their own
+   assumptions. So for every implement — plan, analysis, design alike:
+
+   - **Verbatim brief file.** Before dispatch, build
+     `docs/concepts/{name}/briefs/implement.md` from **every** baked round,
+     later rounds overriding earlier ones: a link to `{name}-decisions.json`,
+     every comment, annotation answer and pin quoted word for word (with the
+     round it comes from), and a checklist with one line per accepted item.
+     Agents get this file path plus the checklist lines they own — never a
+     summary of it. A design implement's parity checklist (below) is the
+     checklist of this file, not a second list.
+   - **Acceptance table per agent.** Each implementing agent returns one row
+     per checklist line it owns: item → `done` / `partial` / `not done` →
+     evidence (file:line, test, screenshot). A line without evidence counts
+     as `not done`.
+   - **Independent check.** Before the final report, a `devops:qax` that
+     built nothing compares the checklist and every quoted pin against the
+     diff and, for visible items, against screenshots of the real result
+     (never mock data). Its verdict wins over the builders' tables.
+   - **Gaps are shortfalls.** Every `partial` / `not done` line goes into the
+     *Zusammenfassung* as a shortfall with its reason — never an open point
+     for the user to sign off (§ Open points admission gate).
+
    **Design concepts: build to the mocks, prove parity (#935).** A design
    concept's approved behaviour lives in its round fragments — the mock
    markup, CSS and keyframes — and in the user's own words on them ("mega
