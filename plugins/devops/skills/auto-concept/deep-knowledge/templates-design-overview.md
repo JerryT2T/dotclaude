@@ -399,15 +399,60 @@ returns — the single-design page is untouched.
     if (!node) return null;
     try { return JSON.parse(node.textContent); } catch (e) { return null; }
   }
-  function readState(it) {
+  function readState(it, raw) {
     if (!it) return EMPTY();
     if (!isLive(it)) {
       const blob = frozenBlob(it) || {};
       return normalise({ favorite: blob.favorite, pins: blob.userPins });
     }
     const ta = storeOf(it);
-    if (!ta || !ta.value) return EMPTY();
-    try { return normalise(JSON.parse(ta.value)); } catch (e) { return EMPTY(); }
+    let st = EMPTY();
+    if (ta && ta.value) { try { st = normalise(JSON.parse(ta.value)); } catch (e) { st = EMPTY(); } }
+    return raw ? st : withOrphans(it, st);
+  }
+  // Safety net (#993): a note the reviewer typed is never dropped. A pin whose
+  // textarea (`upin-ta-<id>`, in the DOM or in the stored draft) holds text but
+  // which has no record in the store is rebuilt from that text — screen unknown
+  // (''), so it travels as a general note in the payload. Ids deleted on purpose
+  // (`forgetPin`) and the document pins' ids are skipped.
+  const forgottenPins = new Set();
+  function withOrphans(it, st, skipId) {
+    if (!isLive(it)) return st;
+    const found = new Map();
+    it.querySelectorAll('textarea[id^="upin-ta-"]').forEach(t => {
+      if (!t.closest('[data-device-clone]') && !t.readOnly) found.set(t.id.slice(8), t.value);
+    });
+    if (typeof STORAGE_KEY !== 'undefined') {
+      let blob = {};
+      try { blob = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') || {}; } catch (e) { blob = {}; }
+      const pre = 'text:i' + it.dataset.iteration + ':upin-ta-';
+      Object.keys(blob).forEach(k => {
+        if (k.startsWith(pre) && !found.has(k.slice(pre.length))) found.set(k.slice(pre.length), blob[k]);
+      });
+    }
+    if (!found.size) return st;
+    const docPins = [...document.querySelectorAll('textarea[data-engine-store="doc-pins"]')].map(t => t.value).join('');
+    found.forEach((text, id) => {
+      const t = String(text || '').trim();
+      if (!t || id === skipId || forgottenPins.has(id) || st.pins.some(p => p.id === id) || docPins.includes('"' + id + '"')) return;
+      st.pins.push({ id, design: '', screen: '', x: 0, y: 0, target: '', text: t });
+    });
+    return st;
+  }
+  // A pin removed on purpose must not come back through the safety net: drop
+  // its typed text from the stored draft and report the clear to the bridge.
+  function forgetPin(it, id) {
+    forgottenPins.add(id);
+    if (typeof STORAGE_KEY === 'undefined' || !it) return;
+    const key = 'text:i' + it.dataset.iteration + ':upin-ta-' + id;
+    try {
+      const blob = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') || {};
+      if (!(key in blob)) return;
+      delete blob[key];
+      if (typeof _guardedSetItem === 'function') _guardedSetItem(STORAGE_KEY, JSON.stringify(blob));
+      if (typeof _draftCleared !== 'undefined') _draftCleared.push(key);
+      if (typeof queueDraftSync === 'function') queueDraftSync();
+    } catch (e) { /* storage unavailable */ }
   }
   function writeState(it, st) {
     const ta = storeOf(it);
@@ -1743,11 +1788,28 @@ returns — the single-design page is untouched.
   document.addEventListener('pointermove', e => {
     if (armed === 'ctrl' && !e.ctrlKey && !e.metaKey) disarm();
   });
+  // The box a pin is measured against and hosted in. Never a non-rendering
+  // child (<style> / <script> / <template> / a hidden node) nor a small
+  // sibling such as a table of contents: a zero-size first child made every
+  // pin land at 100 % / 100 % — "at the end of the page" (#992). A framed
+  // mock-up wins; otherwise the one child that fills the screen; otherwise
+  // the screen itself.
+  const NO_BOX = /^(script|style|template|link|meta|noscript|textarea)$/i;
   function contentBox(screen) {
-    return screen.querySelector(':scope > .device-frame')
-      || [...screen.children].find(c => !c.hasAttribute('data-anno-layer') && !c.classList.contains('device-stage'))
-      || screen;
+    const frame = screen.querySelector(':scope > .device-frame');
+    if (frame) return frame;
+    const kids = [...screen.children].filter(c => !c.hasAttribute('data-anno-layer') && !c.classList.contains('device-stage')
+      && !c.classList.contains('upin-layer') && !NO_BOX.test(c.tagName) && !c.hidden && !c.hasAttribute('data-engine-store'));
+    const sr = screen.getBoundingClientRect();
+    if (!sr.width || !sr.height) return kids[0] || screen;   // no layout: first rendered child
+    const fills = kids.filter(c => {
+      const r = c.getBoundingClientRect();
+      return r.width >= sr.width * 0.9 && r.height >= sr.height * 0.9;
+    });
+    return fills.length === 1 ? fills[0] : screen;
   }
+  // Everything that is the engine's own UI: a pin is never set over it.
+  const PIN_OWN_UI = '.upin, .anno, .device-stage, #feedback-dock, #decision-panel, #design-header, .design-ov, .anno-bubble, textarea, input, select';
   function describeTarget(node, screen) {
     if (!node || node.nodeType !== 1 || node === screen) return '';
     let s = node.tagName.toLowerCase();
@@ -1797,6 +1859,23 @@ returns — the single-design page is untouched.
     renderPins(now, readState(now), true);
     return true;
   }
+  // A click outside the screen's DOM that still lands on the screen's box:
+  // chrome overlaying it. Not the engine's own controls (PIN_OWN_UI).
+  function overChrome(e, screen) {
+    if (!e.target.closest || e.target.closest(PIN_OWN_UI)) return false;
+    const r = screen.getBoundingClientRect();
+    return !!(r.width && r.height && e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom);
+  }
+  // While pin mode is on, chrome must not act on the press that sets a pin:
+  // the section nav / quick nav act on pointerdown, before any click.
+  document.addEventListener('pointerdown', e => {
+    if (e.pointerType !== 'mouse' || !(armed || e.ctrlKey || e.metaKey) || !on() || mode() !== 'design') return;
+    if (body.classList.contains('viewing-frozen') || (body.dataset.viewportMode && body.dataset.viewportMode !== 'desktop')) return;
+    const it = visibleIteration();
+    const screen = isLive(it) && activeScreenOf(activeDesignOf(it));
+    if (!screen || screen.contains(e.target) || !overChrome(e, screen)) return;
+    e.stopImmediatePropagation();
+  }, true);
   document.addEventListener('click', e => {
     if (!armed && !(e.ctrlKey || e.metaKey)) return;
     if (on() && mode() === 'overview' && overviewPin(e)) return;
@@ -1805,11 +1884,14 @@ returns — the single-design page is untouched.
     if (!isLive(it) || body.classList.contains('viewing-frozen')) return;
     const d = activeDesignOf(it);
     const screen = activeScreenOf(d);
-    if (!screen || !screen.contains(e.target)) return;
+    if (!screen) return;
     if (e.target.closest('.upin, .anno, .device-stage')) return;
     if (body.dataset.viewportMode && body.dataset.viewportMode !== 'desktop') return;
     const box = contentBox(screen);
     const r = box.getBoundingClientRect();
+    // Page chrome (table of contents, section nav) that floats over the
+    // screen takes a pin too (#992): the point only has to lie on the screen.
+    if (!screen.contains(e.target) && !overChrome(e, screen)) return;
     const w = r.width || 1, h = r.height || 1;
     const pct = (v, lo, size) => Math.round(Math.min(100, Math.max(0, ((v - lo) / size) * 100)) * 10) / 10;
     e.preventDefault();
@@ -1856,7 +1938,7 @@ returns — the single-design page is untouched.
   }, true);
   function savePin(pin, text) {
     const it = visibleIteration();
-    const st = readState(it);
+    const st = withOrphans(it, readState(it, true), pin.id);   // the note being placed is not its own orphan
     const t = String(text || '').trim();
     const idx = st.pins.findIndex(p => p.id === pin.id);
     if (!t) { if (idx >= 0) st.pins.splice(idx, 1); }
@@ -1866,7 +1948,9 @@ returns — the single-design page is untouched.
     // (and its editor with the typed note) when there is no store to take it.
     if (!storeOf(it)) return;
     if (draft && draft.id === pin.id) draft = null;
+    if (!t) forgetPin(it, pin.id);
     writeState(it, st);
+    if (!t) forgetPin(it, pin.id);   // again: the write's own save re-stored the text
   }
   // A note is never held back for a blur (#929, same rule as § Free Pins):
   // every keystroke that leaves text in the field upserts the pin into the
@@ -1878,7 +1962,7 @@ returns — the single-design page is untouched.
     if (!t) return;
     const it = visibleIteration();
     if (!it || !isLive(it)) return;
-    const st = readState(it);
+    const st = withOrphans(it, readState(it, true), pin.id);
     const i = st.pins.findIndex(p => p.id === pin.id);
     if (i >= 0) { if (st.pins[i].text === t) return; st.pins[i].text = t; } else st.pins.push({ ...pin, text: t });
     ensureStore(it);
@@ -1895,7 +1979,7 @@ returns — the single-design page is untouched.
     const it = visibleIteration();
     // Esc on a fresh note that already reached the store removes it again.
     const stored = d && isLive(it) && readState(it).pins.some(p => p.id === d.id);
-    if (stored) { const st = readState(it); st.pins = st.pins.filter(p => p.id !== d.id); writeState(it, st); return; }
+    if (stored) { forgetPin(it, d.id); const st = readState(it); st.pins = st.pins.filter(p => p.id !== d.id); writeState(it, st); forgetPin(it, d.id); return; }
     renderPins(it, readState(it), isLive(it));
   }
   // The editor sits inside the screen, whose frame clips it — a phone mock-up
