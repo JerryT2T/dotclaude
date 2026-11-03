@@ -135,10 +135,10 @@ describe("do-batch SKILL.md — 0.4.0: activation ends ON, markers, main sync", 
     expect(step1).toMatch(/`off`, `go`, `status` and `marker` always/);
   });
 
-  it("offers only `los`", () => {
+  it("offers only `go`", () => {
     const options = step2.split("\n").filter((l) => /^> \d\. /.test(l));
     expect(options).toHaveLength(1);
-    expect(options[0]).toMatch(/`los` \(empfohlen\)/);
+    expect(options[0]).toMatch(/`go` \(empfohlen\)/);
     expect(step2).not.toMatch(/`los:`/);
     expect(step2).not.toMatch(/`jetzt:`/);
     expect(step2).toMatch(/MARKER_SUGGESTIONS/);

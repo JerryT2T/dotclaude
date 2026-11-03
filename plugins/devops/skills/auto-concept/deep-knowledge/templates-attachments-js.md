@@ -1,4 +1,4 @@
-# Concept templates, part 31 of 48: Shared systems — attachments JS
+# Concept templates, part 31 of 49: Shared systems — attachments JS
 
 ### JS
 
@@ -63,6 +63,8 @@ function buildAttachmentBar(slotKey) {
   bar.innerHTML =
     '<button type="button" class="attach-btn" data-tip="{{attach.button_title}}"' +
     ' aria-label="{{attach.button_title}}">📎</button>' +
+    '<button type="button" class="voice-btn" data-tip="{{voice.mic_start}}"' +
+    ' aria-label="{{voice.mic_start}}" aria-pressed="false">🎤</button>' +
     '<input type="file" multiple hidden>' +
     '<div class="attach-thumbs"></div>';
   return bar;
@@ -179,6 +181,10 @@ function initCommentAttachments() {
       e.preventDefault();
       addAttachments(slotKey, files);
     });
+
+    // The mic beside the 📎 dictates into this same field (§ Voice input).
+    const micBtn = bar.querySelector('.voice-btn');
+    if (micBtn && window.conceptVoice) window.conceptVoice.wireButton(micBtn, ta);
 
     renderAttachments(slotKey);
   });

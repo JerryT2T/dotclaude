@@ -1,4 +1,4 @@
-# Concept templates, part 45 of 48: Template: analysis — engine UI JS (palette, chat flow, rail, composer)
+# Concept templates, part 45 of 49: Template: analysis — engine UI JS (palette, chat flow, rail, composer)
 
 ## Engine UI — palette, chat flow, rail, composer (JS)
 
@@ -36,7 +36,7 @@ What the code does, in the order of the file:
    `dm-{id}-touched` = `"1"`. Hesitation: `hesEntry()` … `hesFlush()` count dwell
    only while the stage is visible AND the window focused and write
    `dm-{id}-hes`.
-6. Keys: Enter / ⇧+Enter, ← → stages, ↑ ↓ options, 1–N options (decision has
+6. Keys: Enter / ⇧+Enter, ← → (or A D) stages, ↑ ↓ (or W S) options, 1–N options (decision has
    focus), Home / End, ⇧+1–3 topics, N composer, I issue, U first untouched.
    Animation only on the FIRST visit of a stage; `prefers-reduced-motion` → none.
 

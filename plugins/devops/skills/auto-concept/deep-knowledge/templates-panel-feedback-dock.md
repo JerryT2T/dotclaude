@@ -1,4 +1,4 @@
-# Concept templates, part 05 of 48: Panel chrome — feedback dock
+# Concept templates, part 05 of 49: Panel chrome — feedback dock
 
 ```javascript
 // --- Feedback dock (all templates) ---
@@ -147,7 +147,7 @@
       "Tasten 1–9 springen direkt zur Variante.",
       "F markiert die offene Variante als Favorit.",
       "V schaltet die Geräteansicht um.",
-      "←/→ blättern durch die Seiten.",
+      "←/→ oder A/D blättern durch die Seiten.",
       "Esc führt eine Ebene zurück.",
       "Esc im Notizfeld schließt die Notizen.",
       "Strg + Enter springt zum nächsten Notizfeld.",
@@ -179,7 +179,7 @@
       "Keys 1–9 jump straight to a variant.",
       "F marks the open variant as favourite.",
       "V switches the device view.",
-      "←/→ flip through the pages.",
+      "←/→ or A/D flip through the pages.",
       "Esc goes back one level.",
       "Esc in a note field closes the notes.",
       "Ctrl + Enter jumps to the next note field.",
@@ -314,6 +314,11 @@
     applyDockSize();
     if (typeof saveState === 'function') saveState();
   });
+
+  // Voice (§ Voice input): every dock field carries a 🎤 next to its 📎, and the
+  // header's #voice-mode-toggle appends speech to the first VISIBLE, writable note
+  // (dockFieldVisible's rule) even while the dock is closed. A frozen round makes the
+  // notes readOnly, which also makes the voice engine skip them: nothing to wire here.
 
   // ── Closed by default, opened only by the user ──
   // The dock starts minimised (data-open="false" in markup). It used to open

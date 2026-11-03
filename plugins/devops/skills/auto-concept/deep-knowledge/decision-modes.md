@@ -263,7 +263,7 @@ All checkable while writing; several are gate warnings.
 - **Findings are content, not decisions.** A finding gets a control only when
   Claude needs it confirmed — then it is `verify`.
 - **≤ 3 topics, ≤ 7 decisions each** in a Full analysis; ≤ 5 decisions in a
-  Lite (gates A4 / A5). More means split, not squeeze.
+  Lite (decision / free rounds only; gates A4 / A5). More means split, not squeeze.
 
 ## Before / after — rewrites of real decisions
 

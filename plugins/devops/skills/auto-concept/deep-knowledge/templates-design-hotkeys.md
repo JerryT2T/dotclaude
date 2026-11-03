@@ -1,4 +1,4 @@
-# Concept templates, part 19 of 48: Template: design — hotkey overlay, Space and nudges
+# Concept templates, part 19 of 49: Template: design — hotkey overlay, Space and nudges
 
 ## Hotkey overlay, Space and nudges — `wireChromeHotkeys()`
 
@@ -37,7 +37,7 @@ the same hotkeys and tips as a design round. Three jobs:
   a nudge is shown at most ONCE per page session; at most twice ever
   (`hint-nudge-shown:<id>`, the `?` tip once); and never again once the
   user has used that hotkey (`hint-hotkey-used:<id>`, recorded on the
-  first real use — Space, ?, 1–9, arrows, F, V, Esc,
+  first real use — Space, ?, 1–9, arrows or WASD, F, V, Esc,
   Ctrl + click on the design). Every nudge is one line (`nowrap` +
   ellipsis) in the calm `--tip-color`, never the amber of open questions.
   `window.conceptHotkeyUsed(id)` reads the used state for the dock tips.
@@ -56,6 +56,15 @@ the same hotkeys and tips as a design round. Three jobs:
     pinDoc: '{{doc.pin_hint}}', pinDesign: '{{design.upin_hint}}'
   };
   const body = document.body;
+  // WASD = the arrow keys (W up, A left, S down, D right). One definition
+  // for every page: `window.conceptNavKey(e)` returns the arrow name for an
+  // arrow press or a bare W/A/S/D (any case, no Ctrl / Meta / Alt / Shift),
+  // else `e.key`. Callers keep their own text-field and widget guards.
+  window.conceptNavKey = window.conceptNavKey || (e => {
+    const w = (!e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey)
+      ? { w: 'ArrowUp', a: 'ArrowLeft', s: 'ArrowDown', d: 'ArrowRight' }[String(e.key || '').toLowerCase()] : '';
+    return w || e.key;
+  });
   const DAY = 86400000;
   const TTL = 30 * DAY;
   const BASE = 'concept-nudge:';
@@ -132,7 +141,7 @@ the same hotkeys and tips as a design round. Three jobs:
       const top = document.elementFromPoint
         ? document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) : null;
       if (top && !n.contains(top) && !top.contains(n)) return;
-      const badge = mk('kbd', 'app-kbd hk-badge', n.dataset.tipKey);
+      const badge = mk('kbd', 'app-kbd hk-badge', n.dataset.tipKey.replace(/\|/g, '/'));
       badge.style.left = Math.round(r.right) + 'px';
       badge.style.top = Math.round(r.top) + 'px';
       layer.appendChild(badge);
@@ -297,7 +306,7 @@ the same hotkeys and tips as a design round. Three jobs:
     if (fieldIn(e.target) || mod || e.altKey) return;
     if (k === ' ') markUsed('dock');
     else if (/^[1-9]$/.test(k)) markUsed('variants');
-    else if (/^Arrow/.test(k)) markUsed('pages');
+    else if (/^Arrow/.test(k) || /^[wasd]$/i.test(k)) markUsed('pages');
     else if (k === 'f' || k === 'F') markUsed('fav');
     else if (k === 'v' || k === 'V') markUsed('view');
     else if (k === 'Escape') markUsed('esc');
@@ -324,7 +333,7 @@ the same hotkeys and tips as a design round. Three jobs:
       for (let i = 1; i <= Math.min(n, 3); i++) caps.push(String(i));
       if (caps.length) nudge('variants', caps, T.variants.replace('{n}', String(Math.min(n, 9))));
     } else if (t.closest('.design-quick-page, .design-quick-vitem, .screen-nav-item') && hit('pages', 3)) {
-      nudge('pages', ['←', '→'], T.pages);
+      nudge('pages', ['←', '→', 'A', 'D'], T.pages);
     } else if (t.closest('#feedback-toggle') && hit('dock', 2)) {
       nudge('dock', [T.space], T.dock);
     }

@@ -1,4 +1,4 @@
-# Concept templates, part 21 of 48: Template: free — Document pins
+# Concept templates, part 21 of 49: Template: free — Document pins
 
 ## Document pins — own notes in decision / free rounds and design-round question views (`wireDocumentPins()`)
 
@@ -379,6 +379,8 @@ touched. **Pins are not draggable** in a document (the anchor is the block).
     ed.appendChild(el('div', 'upin-editor-head', label));
     const ta = el('textarea');
     ta.id = slotOf(pin.id);
+    // data-attachable: the attach bar carries the 🎤 too (§ Voice input); Enter ends a
+    // dictation first (text kept), a second Enter saves the note.
     ta.setAttribute('data-attachable', '');
     ta.placeholder = L.placeholder;
     ta.value = pin.text;

@@ -1,4 +1,4 @@
-# Concept templates, part 09 of 48: Template: design — views, variant overview
+# Concept templates, part 09 of 49: Template: design — views, variant overview
 
 ## Views (optional)
 
@@ -429,12 +429,14 @@ design spec `docs/superpowers/specs/2026-09-13-concept-information-mapping-desig
 
 ### View kind `analysis`
 
-`<section data-view="…" data-view-kind="analysis" data-analysis="lite" data-nav-label="…" hidden>`
-holds a Lite analysis (L1 + L3, ≤ 5 `data-decision-mode` decisions, one at a
-time with progress dots). Markup, modes and payload are in
-`templates-analysis.md`; the engine enhances the view itself into the Lite
-card (the view stays the scroll box, no `.view-frame`), and the view
-decisions are collected by the design branch through `collectModeDecision()`.
+`<section data-view="…" data-view-kind="analysis" data-analysis="full" data-nav-label="…" hidden>`
+holds a **Full** analysis (briefing, topics, right rail; never Lite in a
+design round — gate `lite-in-design`). Markup, modes and payload are in
+`templates-analysis.md` § Full inside a design round; the engine enhances the
+view itself into the Full chat flow (the view stays the scroll box, no
+`.view-frame`), and the view decisions are collected by the design branch
+through `collectModeDecision()`. The top bar shows it as one plain "Analyse"
+segment (no dropdown, no count) that opens it.
 
 ## Variant overview (≥2 designs)
 
@@ -567,7 +569,7 @@ icon, when the traits are not exactly three, when the round has no
   motion).
 - **Hotkeys** — `Esc` overview · `1`–`9` design N · `Shift`+`1`–`9` view N ·
   `Tab` next page of the current design (only while nothing is focused) ·
-  `←` / `→` same level (carousel cards, pages) · `↑` / `↓` one level
+  `←` / `→` (or `A` / `D`) same level (carousel cards, pages) · `↑` / `↓` (or `W` / `S`) one level
   (variant → overview, overview → variant) · `Space` notes dock (every
   template; only when no field is focused; it never scrolls) ·
   `V` viewport · `F` favourite (alternatives round only) · `Alt`+`1`–`9` iteration tab · `?` shortcut sheet ·

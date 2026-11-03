@@ -1,4 +1,4 @@
-# Concept templates, part 33 of 48: Shared systems — information mapping engine JS
+# Concept templates, part 33 of 49: Shared systems — information mapping engine JS
 
 ### JS
 
@@ -959,7 +959,8 @@
         e.preventDefault();
         setCell(section, chip.dataset.item, slot.dataset.mapTarget, ctx, false);
         slot.querySelector('.map-slot-label').focus();
-      } else if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+      } else if (e.altKey && !e.ctrlKey && !e.metaKey && /^Arrow(Left|Right)$/.test(e.key)) {
+        // Alt+←/→ only: Alt+A/D would collide with browser shortcuts (Alt+D = address bar).
         e.preventDefault();
         reorderChip(section, model, slot, ctx, chip.dataset.item, e.key === 'ArrowLeft' ? -1 : 1);
       }
@@ -1112,7 +1113,8 @@
     section.addEventListener('keydown', e => {
       const cb = e.target;
       if (!(cb instanceof HTMLInputElement) || !cb.dataset.mapCell) return;
-      if (KEYS[e.key]) { e.preventDefault(); moveFocus(cb, KEYS[e.key][0], KEYS[e.key][1]); }
+      const nk = window.conceptNavKey ? window.conceptNavKey(e) : e.key;   // WASD = arrows
+      if (KEYS[nk]) { e.preventDefault(); moveFocus(cb, KEYS[nk][0], KEYS[nk][1]); }
       else if (e.key === 'Home' || e.key === 'End') { e.preventDefault(); moveFocus(cb, 0, 0, e.key.toLowerCase()); }
     });
     wireSchema(section, model);

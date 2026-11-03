@@ -92,8 +92,9 @@ describe("variant overview — quick nav pages and open questions", () => {
   test("the questions segment counts open views, the carousel ends on a questions slide, the panel a submit hint", async () => {
     const { window, document, errors } = await boot(withViews(2));
     expect(errors).toEqual([]);
-    const badge = () => document.querySelector("#design-quick .design-quick-badge");
-    expect(badge().textContent).toBe("2");
+    const badge = () => document.querySelector("#design-quick .design-quick-q");
+    expect(document.querySelector("#design-quick .design-quick-badge"), "no count badge").toBeNull();
+    expect(badge().getAttribute("aria-label")).toMatch(/2/);
     const slides = [...document.querySelectorAll("[data-design-overview] .design-ov-slide")];
     expect(slides.length, "two designs + the questions slide").toBe(3);
     const qslide = slides[slides.length - 1];
@@ -117,10 +118,10 @@ describe("variant overview — quick nav pages and open questions", () => {
       ta.dispatchEvent(new window.Event("input", { bubbles: true }));
     };
     answer("q1", "ja");
-    expect(badge().textContent).toBe("1");
+    expect(badge().getAttribute("aria-label")).toMatch(/1/);
     expect(hint().textContent).toContain("1");
     answer("q2", "kurz");
-    expect(badge()).toBeNull();
+    expect(document.querySelector("#design-quick .design-quick-qok")).not.toBeNull();
     expect(document.querySelector("#design-quick .design-quick-q").dataset.state).toBe("done");
     expect(hint().hidden).toBe(true);
   }, BOOT_TIMEOUT);

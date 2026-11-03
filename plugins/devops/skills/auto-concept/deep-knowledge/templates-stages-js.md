@@ -1,4 +1,4 @@
-# Concept templates, part 48 of 48: Shared systems — Etappen (stages) JS
+# Concept templates, part 48 of 49: Shared systems — Etappen (stages) JS
 
 ## Etappen JS
 
@@ -188,8 +188,9 @@ function renderStageTabs() {
       const i = tabs.indexOf(document.activeElement);
       if (i < 0) return;
       let to = -1;
-      if (e.key === 'ArrowRight') to = Math.min(tabs.length - 1, i + 1);
-      else if (e.key === 'ArrowLeft') to = Math.max(0, i - 1);
+      const nk = window.conceptNavKey ? window.conceptNavKey(e) : e.key;   // A / D = ← / →
+      if (nk === 'ArrowRight') to = Math.min(tabs.length - 1, i + 1);
+      else if (nk === 'ArrowLeft') to = Math.max(0, i - 1);
       else if (e.key === 'Home') to = 0;
       else if (e.key === 'End') to = tabs.length - 1;
       else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectStageTab(tabs[i].dataset.stageId); return; }

@@ -1,4 +1,4 @@
-# Concept templates, part 01 of 48: Overview, UI locale
+# Concept templates, part 01 of 49: Overview, UI locale
 
 # Concept HTML Templates
 
@@ -296,10 +296,10 @@ must see their own language. The locale hint is authoritative.
 | `design.keys_level` | Level up / down (overview, variant) | Ebene hoch / runter (Übersicht, Variante) |
 | `nudge.keys` | Press ? to see all hotkeys | ? zeigt alle Hotkeys |
 | `nudge.variants` | Keys 1–{n} switch the variant | Tasten 1–{n} wechseln die Variante |
-| `nudge.pages` | Keys ←/→ flip between pages | Tasten ←/→ blättern zwischen Seiten |
+| `nudge.pages` | Keys ←/→ or A/D flip between pages | Tasten ←/→ oder A/D blättern zwischen Seiten |
 | `nudge.dock` | Space opens your notes | Leertaste öffnet deine Notizen |
 | `nudge.dismiss` | Hide this tip for 30 days | Tipp 30 Tage ausblenden |
-| `design.questions`             | Questions                       | Fragen |
+| `design.questions`             | Analysis                        | Analyse |
 | `design.questions_open`        | {n} questions still open        | {n} Fragen noch offen |
 | `design.questions_progress`    | {done} of {n} answered          | {done} von {n} beantwortet |
 | `design.questions_all_done`    | All questions answered          | Alle Fragen beantwortet |
@@ -344,6 +344,14 @@ must see their own language. The locale hint is authoritative.
 | `attach.uploading`             | Uploading…                      | Wird hochgeladen… |
 | `attach.remove`                | Remove attachment                | Anhang entfernen |
 | `attach.retry`                 | Retry upload                     | Upload wiederholen |
+| `voice.mic_start` | Dictate (click again or Enter to finish) | Diktieren (erneut klicken oder Enter zum Beenden) |
+| `voice.mic_stop` | Stop dictation | Diktat beenden |
+| `voice.mode_on` | Voice mode on: everything you say is appended to the notes of this page | Sprachmodus an: alles Gesagte wird an die Notizen dieser Seite angehängt |
+| `voice.mode_off` | Voice mode: dictate notes while you click through | Sprachmodus: Notizen diktieren, während du dich durchklickst |
+| `voice.unsupported` | Voice input is not supported in this browser | Spracheingabe wird von diesem Browser nicht unterstützt |
+| `voice.denied` | Microphone access denied. Allow it in the site settings | Mikrofonzugriff verweigert. In den Website-Einstellungen erlauben |
+| `voice.no_mic` | No microphone found | Kein Mikrofon gefunden |
+| `voice.unavailable` | Speech service not reachable | Spracherkennung nicht erreichbar |
 | `attach.error_generic`         | Upload failed                    | Upload fehlgeschlagen |
 | `attach.error_too_large`       | File too large for this bridge   | Datei zu groß für diese Bridge |
 | `attach.error_quota_exceeded`  | Storage full on the bridge       | Speicher auf der Bridge voll |

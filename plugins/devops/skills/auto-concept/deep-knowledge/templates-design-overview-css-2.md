@@ -1,4 +1,4 @@
-# Concept templates, part 18 of 48: Template: design — variant overview CSS (≥2 designs) (continued 2)
+# Concept templates, part 18 of 49: Template: design — variant overview CSS (≥2 designs) (continued 2)
 
 ```css
 /* ── Side-tile label: neighbours only. The variant icon — exactly the
@@ -15,13 +15,6 @@
 .design-ov-slide[data-pos="prev"] .design-ov-side { right: calc(7% + 3.2rem); transform-origin: right center; }
 .design-ov-slide[data-pos="next"] .design-ov-side { left: calc(7% + 3.2rem); transform-origin: left center; }
 .design-ov-side > .dz-icon { display: grid; }
-/* A changed variant: one line under the traits, "Verbessert" + the phrase
-   from data-design-improved. */
-.design-ov-improved {
-  margin: 0.6rem 0 0; padding-top: 0.5rem; font-size: 0.82rem; line-height: 1.3;
-  border-top: 1px solid color-mix(in srgb, currentColor 22%, transparent); opacity: 0.95;
-}
-.design-ov-improved strong { margin-right: 0.35rem; color: var(--warning-color, #d29922); }
 
 /* Improved line inside an annotation bubble (rounds 2+): no visible label —
    the phrase is a hint, marked by a soft green wash BEHIND the text (green =

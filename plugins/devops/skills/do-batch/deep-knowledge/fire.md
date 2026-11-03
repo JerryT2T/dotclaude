@@ -63,6 +63,15 @@ lacking the image.
 | Konflikt mit #x | contradicts another note — Step 4.4 |
 | nicht machbar (Grund) | fails the feasibility check — named, not skipped |
 | Frage | answered first, then merged |
+| Skill-Auftrag (<skill>) | the note names a skill trigger — start that skill |
+
+**Check every note against the skill triggers first.** A note that names a
+skill trigger or alias, even clipped or led by "und …" ("und devops backlog",
+"auch noch harden"), is an order to run that skill, never a Frage. It is
+not part of the merged plan: start it as its own session when it is
+independent of the plan (`do-run backlog` beside a polish plan), else as a
+plan step. Asking back what "und devops backlog" meant cost the user a
+round trip (#11 of a 15-note batch).
 
 Count the lines against the note count in the injected context before you go on.
 A note without a line is a lost requirement. If the user enriched the execute prompt

@@ -14,6 +14,7 @@
  *     A4  a Full with fewer than 1 or more than 7 topics, a topic with fewer
  *         than 3 or more than 7 questions, a topic title over 5 words
  *     A5  Lite with more than 5 decisions (use Full)
+ *     A5d Lite as a design-round view (data-view-kind="analysis" must be Full)
  *     A6  quantitative finding without a visual
  *     A7  an exclusive choice built as N bi-states
  *     A8  timing as a decision
@@ -226,6 +227,10 @@ function findAnalysisIssues(html) {
   // A5b — a Lite round needs its own id (it keys the closing note and the persisted state)
   for (const l of lites) {
     if (!attr(l, 'id') && !attr(l, 'data-view')) warn('lite-id', 'Lite analysis has neither an id nor a data-view — give it an id so its state and closing note do not collide with another Lite round', l.start);
+  }
+  // A5d — an analysis inside a design round (a data-view-kind="analysis" view) is always Full
+  for (const l of lites) {
+    if (attr(l, 'data-view-kind') === 'analysis') warn('lite-in-design', 'an analysis view in a design round is always Full (data-analysis="full": briefing, topics, rail, same chat flow as a standalone analysis page) - Lite is only for decision / free rounds', l.start);
   }
   // A5c — the composer stores the note in the decision's own textarea
   for (const d of decisions) {

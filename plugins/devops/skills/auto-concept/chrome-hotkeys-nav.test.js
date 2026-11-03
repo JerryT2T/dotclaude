@@ -106,7 +106,7 @@ describe("quick nav acts on pointerdown (two-click bug)", () => {
   test("the engine rebuilds the quick nav with nodes that act on pointerdown", () => {
     expect(md).toContain("function press(node, fn)");
     expect(md).toContain("press(seg,");
-    expect(md).toMatch(/press\(btn, e => \{[\s\S]{0,400}const q = nextQuestion/);
+    expect(md).toMatch(/press\(btn, \(\) => \{[\s\S]{0,200}const q = nextQuestion/);
   });
 });
 
@@ -142,12 +142,14 @@ describe("questions segment", () => {
   const qBtn = (d) => d.querySelector("#design-quick .design-quick-q");
   const viewId = (d) => live(d).querySelector(":scope > section[data-view][data-view-active='true']")?.dataset.view;
 
-  test("no ? mark; several questions: a dropdown lists them, a click goes to the first open, then the next open", async () => {
+  test("no ? mark, no dropdown, label Analyse; a click goes to the first open, then the next open", async () => {
     const { window, document, errors } = await boot(page(2, 2));
     expect(errors).toEqual([]);
     expect(document.querySelector(".design-quick-qmark")).toBeNull();
-    expect(document.querySelectorAll("#design-quick .design-quick-qpop .design-quick-qitem").length).toBe(2);
-    expect(document.querySelector("#design-quick .design-quick-qwrap").dataset.multi).toBe("true");
+    expect(document.querySelector("#design-quick .design-quick-qpop"), "no dropdown").toBeNull();
+    expect(document.querySelector("#design-quick .design-quick-qwrap").dataset.multi).toBeUndefined();
+    expect(document.querySelector("#design-quick .design-quick-q .design-quick-name").textContent).toBe("Analyse");
+    expect(document.querySelector("#design-quick .design-quick-badge"), "no count badge").toBeNull();
     qBtn(document).click();
     expect(viewId(document)).toBe("q1");
     qBtn(document).click();
@@ -171,7 +173,7 @@ describe("questions segment", () => {
 
   test("a mere visit is not an answer; any interaction or scroll in the question is", async () => {
     const { window, document } = await boot(page(2, 2));
-    const badge = () => document.querySelector("#design-quick .design-quick-badge")?.textContent;
+    const badge = () => (document.querySelector("#design-quick .design-quick-q")?.getAttribute("aria-label") || "").match(/\d+/)?.[0];
     expect(badge()).toBe("2");
     qBtn(document).click();
     expect(viewId(document)).toBe("q1");
@@ -214,6 +216,48 @@ describe("hotkeys: Space = notes dock, arrows = levels", () => {
     key(window, document.body, { key: "ArrowDown", code: "ArrowDown" });
     expect(document.body.dataset.overviewActive).toBe("false");
     expect(activeDesign(document)).not.toBeNull();
+  }, BOOT_TIMEOUT);
+
+  test("WASD = arrows: D / A switch pages, W / S change the level; guards hold", async () => {
+    const { window, document } = await boot(page(2));
+    window.showDesign("d2");
+    const first = activeScreen(document);
+    const d = key(window, document.body, { key: "d", code: "KeyD" });
+    expect(d.defaultPrevented).toBe(true);
+    const second = activeScreen(document);
+    expect(second).not.toBe(first);
+    key(window, document.body, { key: "A", code: "KeyA" });
+    expect(activeScreen(document), "case-insensitive A goes back").toBe(first);
+    for (const init of [{ ctrlKey: true }, { metaKey: true }, { altKey: true }, { shiftKey: true }]) {
+      key(window, document.body, { key: "d", code: "KeyD", ...init });
+      expect(activeScreen(document), "a modifier turns WASD off: " + Object.keys(init)[0]).toBe(first);
+    }
+    const ta = document.createElement("textarea");
+    document.body.appendChild(ta);
+    ta.focus();
+    key(window, ta, { key: "d", code: "KeyD" });
+    expect(activeScreen(document), "typing d in a field is not navigation").toBe(first);
+    ta.remove();
+    key(window, document.body, { key: "w", code: "KeyW" });
+    expect(document.body.dataset.overviewActive, "W = up to the overview").toBe("true");
+    key(window, document.body, { key: "s", code: "KeyS" });
+    expect(document.body.dataset.overviewActive, "S = down into the variant").toBe("false");
+  }, BOOT_TIMEOUT);
+
+  test("the shortcut sheet and tips name WASD next to the arrows; no chrome key sits on W / A / S / D", async () => {
+    const { window, document } = await boot(page(2));
+    const nav = (id) => window.conceptNavKey({ key: id });
+    expect([nav("w"), nav("a"), nav("s"), nav("d"), nav("x")]).toEqual(["ArrowUp", "ArrowLeft", "ArrowDown", "ArrowRight", "x"]);
+    expect(nav.call(null, "w")).toBe("ArrowUp");
+    window.showDesign("d2");
+    key(window, document.body, { key: "?", code: "Slash" });
+    const caps = [...document.querySelectorAll("#design-keys dt")].map((n) => n.textContent.replace(/\s+/g, ""));
+    expect(caps).toContain("←/→/A/D");
+    expect(caps).toContain("↑/↓/W/S");
+    const taken = [...document.querySelectorAll("[data-tip-key]")].map((n) => n.dataset.tipKey).filter((k) => /^[wasd]$/i.test(k));
+    expect(taken, "no single-letter chrome hotkey on W / A / S / D").toEqual([]);
+    const aria = [...document.querySelectorAll("[aria-keyshortcuts]")].map((n) => n.getAttribute("aria-keyshortcuts"));
+    expect(aria.some((a) => a === "ArrowUp W"), "aria-keyshortcuts lists both").toBe(true);
   }, BOOT_TIMEOUT);
 
   test("plain mode (decision template): Space toggles the dock too", async () => {

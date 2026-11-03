@@ -189,6 +189,13 @@ with an overview table carrying a recommendation column and jump links
    `design-tokens.*`, `theme.*`, `tailwind.config.*`, Figma tokens via
    the design MCP, or the existing UI code before inventing a look.
 
+   **No captions in or under the mock.** A mock shows the UI and nothing
+   else: no explanatory sentence, no "Neu: …" / "What's new" line, no
+   summary paragraph below the mocked screen. Nobody reads them; in the
+   overview they sit under the info panel as noise. What changed belongs
+   in `data-design-improved` and the `.anno-bubble-improved` line, what to
+   ask in an annotation.
+
    **Annotation layer — where component questions live:** every question
    about a *part* of a design (this list, that header, the empty state, the
    badge) is pinned onto that element as an annotation — pin, leader line,
@@ -212,9 +219,9 @@ with an overview table carrying a recommendation column and jump links
    the schematic UI elements of a design or to matrix targets — an
    assignment, not a choice; § Views (optional) → View kind `mapping`, rules
    in § 1c below); count preference 7 per `decision` / `comparison` view
-   (Step 0.5). A fourth kind, `analysis`, is the **Lite** analysis — up to
-   5 questions with their finding beside them, one at a time
-   (§ 1b · Analysis results and decisions — Full vs Lite); prefer it over a
+   (Step 0.5). A fourth kind, `analysis`, is the **Full** analysis as a view
+   (briefing, topics, right rail — never Lite inside a design round;
+   § 1b · Analysis results and decisions — Full vs Lite); prefer it over a
    bi-state `decision` view whenever a question rests on a finding. Any view, whatever its kind, MAY name the design it belongs
    to with `data-view-for="{designId}"` — the ☰ nav then nests it under that
    design instead of the flat views group. In **design** mode (Step 0.5) views are out of scope — the
@@ -360,8 +367,8 @@ cards. Every question on any of them is authored in a decision mode
 | **creative** | Brainstorming, ideation, mind maps | `multi` to keep ideas, `wording` for names, grouping |
 
 Design and free templates have no sub-variants — their body is
-content-specific (design = visual mockup(s); free = Claude-authored). Both
-may embed a **Lite** analysis (§ 1b · Analysis results and decisions — Full
+content-specific (design = visual mockup(s); free = Claude-authored). Free
+may embed a **Lite** analysis, design embeds a **Full** one as a view (§ 1b · Analysis results and decisions — Full
 vs Lite).
 
 These are **recommendations, not rigid categories**. Mix elements across
@@ -380,10 +387,13 @@ completely (SKILL.md Step 1b-ii names both). Markup, payload and gate rules:
 | Situation | Variant | Shape |
 |---|---|---|
 | The concept's content IS analysis results + the decisions that follow (an audit, a measurement, "where do the tokens go", a findings review) | **Full** — `data-analysis="full"` on a `decision` round | Briefing → one Themenfeld after another → one decision per stage → Closing |
-| A few questions come up inside another concept — a design round, a prototype, a plan — and need their finding beside them | **Lite** — `data-analysis="lite"` (a `data-view-kind="analysis"` view in a design round, or a section in a `decision` / `free` round) | L1 + L3, one decision at a time with progress dots, **≤ 5 decisions** |
+| An analysis inside a design concept (variants, views) | **Full** — a `section[data-view][data-view-kind="analysis"][data-analysis="full"]` view | The same briefing, topics, right rail and chat flow as a standalone analysis page; the top bar shows one plain "Analyse" segment (no dropdown, no count) |
+| A few questions come up inside a `decision` / `free` round and need their finding beside them | **Lite** — `data-analysis="lite"` (a section in that round) | L1 + L3, one decision at a time with progress dots, **≤ 5 decisions** |
 | More than 5 such questions | Full, as its own round | — |
 
-Lite never gets topics or a briefing; Full never hides inside a design round.
+Lite never gets topics or a briefing and never appears in a design round (gate
+`lite-in-design`); a design concept's analysis is a differently built page
+only in its host (a view), never in its shape.
 
 **The briefing (Full).** Eyebrow = the analysis title only → one **huge
 potential number** with its unit (`kpi`) → one claim sentence

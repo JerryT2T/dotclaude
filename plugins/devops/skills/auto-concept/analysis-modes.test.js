@@ -213,6 +213,12 @@ describe("gate rules A1-A8", () => {
     expect(findAnalysisIssues(page([3, 5, 7], "One two three four five")).warnings).toEqual([]);
     expect(findAnalysisIssues(page([3, 3, 3, 3, 3, 3, 3])).warnings).toEqual([]);
   });
+  test("A5d a Lite analysis as a design view warns (design analyses are Full)", () => {
+    const q = `<div data-decision="q" data-decision-mode="single" data-rec="a"><label data-opt="a"><input type="radio" checked></label></div>`;
+    expect(kinds(findAnalysisIssues(`<section data-view="v" data-view-kind="analysis" data-analysis="lite">${q}</section>`), "warnings")).toContain("lite-in-design");
+    expect(kinds(findAnalysisIssues(`<section id="l" data-analysis="lite">${q}</section>`), "warnings")).not.toContain("lite-in-design");
+  });
+
   test("A5 Lite above five decisions warns", () => {
     const q = k => MODES.s.replace(/"s"/g, `"q${k}"`).replace(/dm-s/g, `dm-q${k}`).replace(/s-note/g, `q${k}-note`);
     expect(kinds(findAnalysisIssues(`<section data-analysis="lite" id="lite">${[1, 2, 3, 4, 5, 6].map(q).join("")}</section>`), "warnings")).toContain("lite-max");

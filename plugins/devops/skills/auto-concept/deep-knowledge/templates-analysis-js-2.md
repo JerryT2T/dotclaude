@@ -1,4 +1,4 @@
-# Concept templates, part 46 of 48: Template: analysis — engine UI JS (continued 2)
+# Concept templates, part 46 of 49: Template: analysis — engine UI JS (continued 2)
 
 ```javascript
   function prepIntro(inst, g) {
@@ -282,8 +282,11 @@
     ol.addEventListener('keydown', e => {
       const it = e.target.closest('.an-oi');
       if (!it) return;
-      if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) { e.preventDefault(); e.stopPropagation(); moveItem(inst, d, it, e.key === 'ArrowUp' ? -1 : 1); }
-      else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); e.stopPropagation(); const n = e.key === 'ArrowUp' ? it.previousElementSibling : it.nextElementSibling; if (n) n.focus(); }
+      // W / S = ↑ / ↓ for focus; reorder stays Alt+↑ / Alt+↓ (Alt+letters are browser shortcuts).
+      const up = e.key === 'ArrowUp' || (!e.altKey && !e.shiftKey && !e.ctrlKey && !e.metaKey && e.code === 'KeyW');
+      const down = e.key === 'ArrowDown' || (!e.altKey && !e.shiftKey && !e.ctrlKey && !e.metaKey && e.code === 'KeyS');
+      if (e.altKey && !e.ctrlKey && !e.metaKey && (up || down)) { e.preventDefault(); e.stopPropagation(); moveItem(inst, d, it, up ? -1 : 1); }
+      else if (!e.altKey && (up || down)) { e.preventDefault(); e.stopPropagation(); const n = up ? it.previousElementSibling : it.nextElementSibling; if (n) n.focus(); }
     });
   }
   function syncOrder(inst, d) {
@@ -613,27 +616,40 @@
     inst.idx = i;
     inst.maxIdx = Math.max(inst.maxIdx, i);
     // The messages of a stage enter one after another on its FIRST visit only (never with reduced motion).
-    const first = !inst.seen.has(i) && !reduced();
+    const first = !inst.seen.has(i);   // reduced motion still reveals one message after the other (opacity only, see the CSS)
     inst.seen.add(i);
     // A running enter sequence ends with the stage: its pending messages simply show.
     inst.timers.forEach(clearTimeout);
     inst.timers = [];
     inst.root.querySelectorAll('.an-wait, .an-enter').forEach(n => n.classList.remove('an-wait', 'an-enter'));
-    inst.stages.forEach(s => { s.el.classList.toggle('an-off', s !== st); s.el.classList.remove('an-first'); });
-    inst.groups.forEach(g => g.topic.classList.toggle('an-off', st.group !== g));
+    // The chat is a history: the questions already answered stay above (finding + question + the user's answer as
+    // their own right-aligned message), so the user can always scroll back; only the open stage is shown in full.
+    const k0 = inst.seq.indexOf(st);
+    const isPast = s => s !== st && s.kind === 'dec' && inst.seq.indexOf(s) >= 0 && inst.seq.indexOf(s) < k0 && inst.maxIdx >= inst.stages.indexOf(s) && st.kind !== 'brief';
+    inst.stages.forEach(s => {
+      const past = isPast(s);
+      s.el.classList.toggle('an-off', s !== st && !past);
+      s.el.classList.toggle('an-past', past);
+      s.el.classList.remove('an-first');
+      s.el.style.minHeight = '';
+      if (past) fillMe(inst, s);
+    });
+    inst.groups.forEach(g => g.topic.classList.toggle('an-off', st.group !== g && !inst.stages.some(s => s.group === g && s.el.classList.contains('an-past'))));
     if (inst.brief) inst.brief.classList.toggle('an-off', st.kind !== 'brief');
     inst.root.dataset.anStage = st.kind;
     if (st.kind === 'topic') fillIntro(inst, st);
     else if (st.kind === 'review') fillReview(inst, st);
     else if (st.kind === 'done') fillDone(inst, st);
     // Every stage opens at its top: the finding is what the user sees first.
-    if (inst.chat) { inst.userScroll = false; inst.chat.scrollTop = 0; }
+    const hist = inst.stages.some(s => s.el.classList.contains('an-past'));
+    if (inst.chat) { inst.userScroll = false; if (!hist) inst.chat.scrollTop = 0; }
     // First stage: no way back — hidden, not dimmed; visibility keeps its space so Weiter stays put (#962).
     const firstSt = st === inst.seq[0];
     inst.root.querySelectorAll('.an-back').forEach(x => { x.disabled = firstSt; x.style.visibility = firstSt ? 'hidden' : ''; });
     peeks(inst, st);
     loadComposer(inst, st);
     fitChat(inst);
+    if (hist && !opt.initial) toStage(inst, st);
     if (first) {
       st.el.classList.add('an-first');
       if (st.kind === 'dec') enterSeq(inst, st);
@@ -653,6 +669,42 @@
     if (navItem && typeof setActiveNavItem === 'function') setActiveNavItem(navItem);
     inst.root.dispatchEvent(new CustomEvent('conceptanalysis:stage', { bubbles: true, detail: { index: i, kind: st.kind } }));
   }
+  /** The user's side of the chat: the answer (and the note) of a question as a right-aligned message under it. */
+  function fillMe(inst, s) {
+    const d = s.el;
+    let me = s.me;
+    if (!me) { me = s.me = h('div', 'an-m-me'); me.appendChild(h('div', 'an-bub-me')); d.appendChild(me); }
+    const store = storeOf(inst, s), note = store ? String(store.value || '').trim() : '';
+    let ans = '';
+    try { ans = valueText(d, entryOf(d)); } catch (e) { ans = ''; }
+    const txt = [ans && ans !== '–' ? ans : '', note].filter(Boolean).join('\n');
+    const b = me.firstChild;
+    if (b.textContent !== txt) b.textContent = txt;
+    me.hidden = !txt;
+  }
+  /** Earlier messages scroll up and away: the open stage glides to the top of the chat (its min-height gives it the room). */
+  function toStage(inst, st) {
+    const c = inst.chat;
+    if (!c) return;
+    st.el.style.minHeight = Math.max(0, c.clientHeight - 24) + 'px';
+    const at = n => { let y = 0; while (n && n !== c) { y += n.offsetTop; n = n.offsetParent; } return y; };
+    const to = Math.max(0, at(st.el) - 12), from = c.scrollTop;
+    if (Math.abs(to - from) < 2) return;
+    if (reduced() || typeof requestAnimationFrame !== 'function') { c.scrollTop = to; return; }
+    const t0 = performance.now(), dur = 700;
+    inst.autoTop = from; inst.gliding = true;
+    let ran = false;
+    const frame = now => {
+      ran = true;
+      if (inst.userScroll || !inst.gliding) { inst.gliding = false; return; }
+      const p = Math.min(1, (now - t0) / dur), e = p < .5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+      c.scrollTop = from + (to - from) * e;
+      inst.autoTop = c.scrollTop;
+      if (p < 1) requestAnimationFrame(frame); else inst.gliding = false;
+    };
+    requestAnimationFrame(frame);
+    setTimeout(() => { if (!ran && inst.gliding && !inst.userScroll) { inst.gliding = false; c.scrollTop = to; } }, 250);
+  }
   /** The chat fills the rest of the viewport below the title, so the composer sits at the same y on every stage. */
   function fitChat(inst) {
     if (inst.lite) return;
@@ -661,6 +713,15 @@
     const padB = parseFloat(getComputedStyle(cc || document.body).paddingBottom) || 0;
     const avail = window.innerHeight - top - padB;
     inst.root.style.height = Math.max(320, Math.floor(avail)) + 'px';
+    markCompTop(inst);
+    // the composer grows with its text: the toast above it follows
+    if (!inst.ro && typeof ResizeObserver === 'function' && inst.comp) { inst.ro = new ResizeObserver(() => markCompTop(inst)); inst.ro.observe(inst.comp.el); }
+  }
+  /** Publishes where the notes field starts (distance from the viewport bottom): the status toast sits right above it. */
+  function markCompTop(inst) {
+    if (inst.lite || !inst.comp || !inst.root.offsetParent) return;
+    const r = inst.comp.el.getBoundingClientRect();
+    if (r.height) document.documentElement.style.setProperty('--an-comp-top', Math.max(0, Math.round(window.innerHeight - r.top)) + 'px');
   }
   /** First visit of a question: finding now, question after 2.7 s, answer block (+ "Als Nächstes") after 5.4 s.
    *  A message that has not entered is display:none, so no empty area waits below; each entry
@@ -693,7 +754,8 @@
     const at = n => { let y = 0; while (n && n !== c) { y += n.offsetTop; n = n.offsetParent; } return y; };
     const from = c.scrollTop, max = c.scrollHeight - c.clientHeight, top = at(el);
     const toBottom = top + el.offsetHeight + 16 - c.clientHeight, toTop = (keep && keep !== el ? at(keep) : top) - 12;
-    const to = clamp(Math.min(toBottom, toTop), 0, Math.max(0, max));
+    // The answer block (what the user acts on) wins over the question: its foot (Zurück / Weiter) must end above the composer.
+    const to = clamp(el.classList.contains('an-m-a') ? toBottom : Math.min(toBottom, toTop), 0, Math.max(0, max));
     if (to <= from + 1) return;
     if (reduced() || typeof requestAnimationFrame !== 'function') { c.scrollTop = to; return; }
     const t0 = performance.now(), dur = 900;
@@ -944,7 +1006,10 @@
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     const act = fn => { e.preventDefault(); e.stopPropagation(); fn(); };
     const onButton = tag0 === 'BUTTON' || tag0 === 'A' || tag0 === 'SUMMARY';
-    const key = e.key;
+    // WASD = arrows: W up, A left, S down, D right (no modifier; the typing
+    // return above already keeps every text field out). Sliders, radios and
+    // checkboxes keep their native arrows; the letters do nothing there.
+    const key = ({ w: 'ArrowUp', a: 'ArrowLeft', s: 'ArrowDown', d: 'ArrowRight' })[e.shiftKey ? '' : String(e.key).toLowerCase()] || e.key;
     if (key === 'Enter') { if (onButton && !e.shiftKey) return; act(() => { if (e.shiftKey) step(inst, -1); else if (!e.repeat) stepOnce(inst, false); }); return; }
     if (e.shiftKey && /^Digit[1-9]$/.test(e.code || '')) { const g = inst.groups[Number(e.code.slice(5)) - 1]; if (g) act(() => go(inst, inst.stages.findIndex(s => s.group === g && s.kind === 'topic'))); return; }
     if (e.shiftKey) return;

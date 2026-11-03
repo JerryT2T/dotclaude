@@ -1,4 +1,4 @@
-# Concept templates, part 47 of 48: Shared systems — Etappen (stages): contract, head name, round row, stepper tabs, next-stage — markup and CSS
+# Concept templates, part 47 of 49: Shared systems — Etappen (stages): contract, head name, round row, stepper tabs, next-stage — markup and CSS
 
 ## Etappen (stages)
 
@@ -63,14 +63,9 @@ Only with Etappen:
 
 ```css
 /* ── Etappen + round row (§ Etappen) ── */
-.panel-round-row {
-  display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.6rem; margin-bottom: 2px;
-  font-size: 0.85rem; font-weight: 700; color: var(--text-color, #e6edf3);
-}
-.panel-round-row::before {
-  content: ""; flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--accent-color, #58a6ff);
-}
-.panel-round-row[hidden] { display: none; }
+/* The "Runde N" row stays in the DOM (state hooks read it) but is never shown:
+   the user dropped "Runde" as a visible term on the live round. */
+.panel-round-row, .panel-round-row[hidden] { display: none; }
 .screen-nav-rnd { margin-left: 0.4rem; font-weight: 500; color: var(--text-secondary, #8b949e); white-space: nowrap; }
 body.viewing-frozen .screen-nav-rnd, body.viewing-frozen .panel-round-row { display: none; }
 /* Live head of a staged concept: the 🕘 chip lives in the Etappen tabs. */

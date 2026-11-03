@@ -1,4 +1,4 @@
-# Concept templates, part 16 of 48: Template: design — variant overview JS
+# Concept templates, part 16 of 49: Template: design — variant overview JS
 
 ## Variant overview JS — `wireDesignOverview()`
 
@@ -41,7 +41,7 @@ returns — the single-design page is untouched.
   keeps `--dz-ov-glow` free above and below, so the glow is never cut. The
   centre tile carries no badge: the quick nav highlights the centred variant
   (`data-ov-focus`, its pages stay folded, a small ▾ hints at them; the
-  questions tile highlights "Fragen"). Everything is sized from the viewport
+  analysis tile highlights "Analyse"). Everything is sized from the viewport
   (CSS container units on the stage), so the overview never scrolls.
 - **Pins on the overview.** Ctrl + click (or the armed pin button) on the
   centre preview places an own pin there (#887): the preview is an inert
@@ -63,11 +63,9 @@ returns — the single-design page is untouched.
   `data-design-overlay-tone="warm"`. The eye (`#anno-toggle`, top left)
   hides it with every other annotation; there is no separate
   overlay toggle. A NEW variant carries the "Neugedacht" chip; a variant
-  CHANGED this round shows one line under the traits — "Verbessert" + the
-  phrase from the optional `data-design-improved` attribute on its
-  `section[data-design]` (a few words, ≤ ~40 chars, e.g. "Größere
-  Tageskacheln"; longer text is cut at a word boundary). No attribute → no
-  line, no chip.
+  CHANGED this round carries no extra line (the overview card is
+  motto + traits only; user's call, 2026-11-02). `data-design-improved`
+  still feeds the annotation bubbles. No chip for a changed variant.
 - **Big cards, filled from inside.** The centred variant is always the big
   16:10 card (≈ 78 % of the stage width), framed and rounded, its
   neighbours peeking in at the edges — never a preview that covers the
@@ -98,10 +96,9 @@ returns — the single-design page is untouched.
   against the eye's real right edge and the ☰ FAB on every render, so the
   two never overlap. Too little room → pages fold into the "2 / 7 ▾" chip,
   then (overview / view) the designs shrink to their icons.
-- **"Fragen".** One question view: the segment opens it directly, no
-  dropdown. Two or more: the segment carries their list as a dropdown
-  (hover / focus; the first tap on touch), a click still jumps to the next
-  open one.
+- **"Analyse".** The analysis segment is one plain label (en "Analysis"):
+  no dropdown, no count badge. A click opens the analysis (the next open one
+  when there are several); the analysis itself is the Full page.
 - **Hotkeys** never fire while focus is in a real text entry
   (`isConceptTextEntry()`, § Design JS — a focused dock button does not
   count); digits, arrows, `Enter` and `Tab` also work while the ☰ panel is
@@ -326,7 +323,10 @@ returns — the single-design page is untouched.
     node.dataset.tipTier = 'info';
     if (key) {
       node.dataset.tipKey = key;
-      node.setAttribute('aria-keyshortcuts', key.replace('⇧', 'Shift').replace(L.ctrl, 'Control'));
+      // ←|A → "ArrowLeft A": aria-keyshortcuts lists alternatives space-separated.
+      const ARIA = { '←': 'ArrowLeft', '→': 'ArrowRight', '↑': 'ArrowUp', '↓': 'ArrowDown' };
+      node.setAttribute('aria-keyshortcuts', key.replace('⇧', 'Shift').replace(L.ctrl, 'Control')
+        .split('|').map(p => ARIA[p] || p).join(' '));
     }
   }
   // A control whose name is on screen gets no tooltip that repeats it
@@ -713,11 +713,9 @@ returns — the single-design page is untouched.
       m.traits.forEach(t => ul.appendChild(el('li', '', t)));
       ov.appendChild(ul);
     }
-    if (kind === 'changed' && m.improved) {
-      const line = el('p', 'design-ov-improved');
-      line.append(el('strong', '', L.chImproved), document.createTextNode(' ' + m.improved));
-      ov.appendChild(line);
-    }
+    // No "Verbessert …" line under the traits (user's call, 2026-11-02): the
+    // overview card is motto + traits only; the phrase still reaches the
+    // annotation bubbles via data-design-improved.
     slide.appendChild(ov);
     wireSlide(slide, open);
     return slide;
@@ -1090,12 +1088,10 @@ returns — the single-design page is untouched.
     g.appendChild(wrap);
     return g;
   }
-  // "Fragen" is one segment, no "?" mark. One question: no submenu, it opens
-  // directly and hovers like its siblings. Several: the segment carries
-  // their list as a dropdown (hover / focus, like a design's pages; on touch
-  // the first tap opens it), and a click opens the first open one, a click
-  // while inside the questions the next open one (wrapping; all answered ->
-  // the questions in order).
+  // "Analyse" is one plain segment (no dropdown, no count badge, no "?" mark):
+  // a click opens the analysis - the first open one, a click while inside
+  // one the next open one (wrapping; all answered -> in order). The analysis
+  // itself is the Full page (briefing, topics, rail), nothing is listed here.
   function nextQuestion(it) {
     const qs = questionsOf(it);
     if (!qs.length) return null;
@@ -1120,41 +1116,14 @@ returns — the single-design page is untouched.
     const viewOn = md === 'view' ? it.querySelector(':scope > section[data-view][data-view-active="true"]') : null;
     btn.dataset.active = String(!!viewOn);
     btn.appendChild(el('span', 'design-quick-name', L.qLabel));
-    btn.appendChild(open.length ? el('span', 'design-quick-badge', String(open.length)) : el('span', 'design-quick-qok', '✓'));
-    // "Fragen" and the open count are on screen: no tooltip repeating them,
-    // the full sentence goes to assistive tech only.
+    if (!open.length) btn.appendChild(el('span', 'design-quick-qok', '✓'));
+    // The label is on screen: no tooltip repeating it, the state goes to assistive tech only.
     btn.setAttribute('aria-label', L.qLabel + ': ' + (open.length ? (open.length === 1 ? L.qOpen1 : L.qOpen.replace('{n}', String(open.length))) : L.qAllDone));
-    const multi = qs.length >= 2;
-    press(btn, e => {
-      if (multi && e && e.pointerType === 'touch' && wrap.dataset.open !== 'true') {
-        wrap.dataset.open = 'true';
-        btn.setAttribute('aria-expanded', 'true');
-        return;
-      }
-      wrap.dataset.open = 'false';
+    press(btn, () => {
       const q = nextQuestion(visibleIteration());
       if (q) goQuestion(q.id);
     });
     wrap.append(btn);
-    if (!multi) return wrap;
-    wrap.dataset.multi = 'true';
-    btn.setAttribute('aria-haspopup', 'true');
-    btn.setAttribute('aria-expanded', 'false');
-    btn.appendChild(el('span', 'design-quick-caret', '▾'));
-    const pop = el('div', 'design-quick-qpop');
-    pop.setAttribute('role', 'menu');
-    const head = el('div', 'design-quick-qhead');
-    head.append(el('strong', '', L.qLabel),
-      el('span', '', L.qProgress.replace('{done}', String(qs.length - open.length)).replace('{n}', String(qs.length))));
-    pop.append(head, progressBar(qs.length - open.length, qs.length));
-    qs.forEach((q, i) => {
-      const item = questionItem(q, () => { wrap.dataset.open = 'false'; goQuestion(q.id); }, i + 1);
-      item.setAttribute('role', 'menuitem');
-      item.dataset.viewId = q.id;
-      item.dataset.active = String(viewOn === q.v);
-      pop.appendChild(item);
-    });
-    wrap.appendChild(pop);
     return wrap;
   }
   // The quick nav is rebuilt only when its SHAPE changes (mode, which
@@ -1189,8 +1158,8 @@ returns — the single-design page is untouched.
         // Every page names its key, one kind for all: the page on screen ↑
         // (a click on it goes one level up), the next Tab, the previous ←.
         // A page further away has no key and so no tooltip.
-        keyTip(b, i < 0 ? '' : isCur ? '↑'
-          : i === (idx + 1) % screens.length ? 'Tab' : i === idx - 1 ? '←' : '');
+        keyTip(b, i < 0 ? '' : isCur ? '↑|W'
+          : i === (idx + 1) % screens.length ? 'Tab' : i === idx - 1 ? '←|A' : '');
       });
       const chip = quick.querySelector('.design-quick-more');
       if (chip && chip.firstElementChild) {
@@ -1427,7 +1396,11 @@ returns — the single-design page is untouched.
     const frag = document.createDocumentFragment();
     spec.split('+').forEach((k, i) => {
       if (i) frag.appendChild(document.createTextNode(' + '));
-      frag.appendChild(el('kbd', 'app-kbd', k));
+      // `|` separates alternative keys (←/→|A/D): one cap each, "or" between.
+      k.split('|').forEach((alt, j) => {
+        if (j) frag.appendChild(document.createTextNode(' / '));
+        frag.appendChild(el('kbd', 'app-kbd', alt));
+      });
     });
     return frag;
   }
@@ -1436,7 +1409,7 @@ returns — the single-design page is untouched.
     sheet.appendChild(el('h2', '', L.keysTitle));
     const dl = el('dl');
     const rows = [['Esc', L.overview], ['1–9', L.keysDesign], ['⇧+1–9', L.keysView], ['Tab', L.keysNext],
-     ['←/→', L.keysCarousel], ['↑/↓', L.keysLevel], ['Enter', L.open], [L.space, L.keysDock], ['F', L.fav], ['Alt+1–9', L.keysRound], ['N', L.keysNotes], [L.ctrl + '+Enter', L.keysDockNext], [L.ctrl + '+' + L.space, L.keysDockClose],
+     ['←/→|A/D', L.keysCarousel], ['↑/↓|W/S', L.keysLevel], ['Enter', L.open], [L.space, L.keysDock], ['F', L.fav], ['Alt+1–9', L.keysRound], ['N', L.keysNotes], [L.ctrl + '+Enter', L.keysDockNext], [L.ctrl + '+' + L.space, L.keysDockClose],
      [L.ctrl + '+' + L.keysClick, L.keysPin], ['M', L.keysMenu], ['H', L.keysHide], ['T', L.keysTheme], ['?', L.keysTitle]];
     // V only where there is a device view to switch to.
     if (document.getElementById('viewport-toggle') && body.dataset.singleViewport !== 'true') rows.splice(9, 0, ['V', L.keysViewport]);
@@ -2237,9 +2210,11 @@ returns — the single-design page is untouched.
     }
     if (e.key === '?') { e.preventDefault(); toggleSheet(); return; }
     if (e.shiftKey) return;
+    // WASD = arrows (conceptNavKey): nk is the arrow name for A/D/W/S too.
+    const nk = typeof window.conceptNavKey === 'function' ? window.conceptNavKey(e) : e.key;
     // Space is the notes dock (wireChromeHotkeys, every template). Arrows:
     // left / right = same level, up / down = one level (overview <-> variant).
-    if (e.key === 'ArrowUp' && mode() !== 'overview' && overviewOf(it)) {
+    if (nk === 'ArrowUp' && mode() !== 'overview' && overviewOf(it)) {
       e.preventDefault();
       window.showOverview();
       return;
@@ -2248,12 +2223,12 @@ returns — the single-design page is untouched.
     // chrome control (quick nav, header) holds the focus — the screen
     // handler of § Design JS bails on any focused button. Focus on the page
     // itself stays that handler's case, so a press never steps twice.
-    if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && mode() === 'design'
+    if ((nk === 'ArrowLeft' || nk === 'ArrowRight') && mode() === 'design'
         && e.target && e.target.closest && e.target.closest('#design-quick, #design-header')) {
       const d = activeDesignOf(it);
       const screens = d ? [...d.querySelectorAll('section[data-screen][id]')] : [];
       const cur = screens.indexOf(activeScreenOf(d));
-      const next = cur + (e.key === 'ArrowLeft' ? -1 : 1);
+      const next = cur + (nk === 'ArrowLeft' ? -1 : 1);
       if (cur < 0 || next < 0 || next >= screens.length) return;
       e.preventDefault();
       window.showScreen(screens[next].id);
@@ -2265,7 +2240,7 @@ returns — the single-design page is untouched.
       const fa = document.activeElement;
       const onPage = !fa || fa === body || fa === document.documentElement
         || (fa.tagName !== 'BUTTON' && !!fa.closest('.design-ov-slide[data-pos="cur"]'));
-      if (e.key === 'ArrowDown' || (e.key === 'Enter' && onPage)) {
+      if (nk === 'ArrowDown' || (e.key === 'Enter' && onPage)) {
         const cur = overviewOf(it).querySelector('.design-ov-slide[data-pos="cur"]');
         if (!cur) return;
         e.preventDefault();
@@ -2273,10 +2248,10 @@ returns — the single-design page is untouched.
         else window.designNextQuestion();
         return;
       }
-      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      if (nk === 'ArrowLeft' || nk === 'ArrowRight') {
         if (slidesOf(it).length < 2) return;
         e.preventDefault();
-        stepSlide(e.key === 'ArrowLeft' ? -1 : 1);
+        stepSlide(nk === 'ArrowLeft' ? -1 : 1);
         return;
       }
     }

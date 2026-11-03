@@ -1,4 +1,4 @@
-# Concept templates, part 26 of 48: Shared systems — decision panel state CSS (continued 3)
+# Concept templates, part 26 of 49: Shared systems — decision panel state CSS (continued 3)
 
 ```css
 /* ── Final-report body components (§ Final Report Panel → Report body) ──────
@@ -489,28 +489,16 @@ body.viewing-frozen .journey, body.viewing-final .journey { display: none; }
 }
 .concept-decision-panel .screen-nav-design-heading[aria-current="true"] { color: var(--accent-color, #58a6ff); }
 
-/* Round label in the panel head — secondary info, NOT a pill: the head's
-   own small text in --text-secondary, a 6px dot in the colour of whose turn
-   it is (you = accent, 🤖 = success, a frozen past round = muted). The old
-   gradient pill with glow read as dusty and out of place above the calm
-   panel body. */
-.panel-head .panel-here-round:not(:empty) {
-  flex: 0 1 auto; display: inline-flex; align-items: center; gap: 7px;
-  font-size: 12px; font-weight: 600; letter-spacing: .02em;
-  line-height: var(--pill-line-height, 1.3);
-  color: var(--text-secondary, #8b949e);
-  --round-dot: var(--accent-color, #388bfd);
-}
-.panel-head .panel-here-round:not(:empty)::before {
-  content: ''; flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--round-dot);
-}
-body[data-journey="rethinking"] .panel-head .panel-here-round:not(:empty),
-body[data-journey="implementing"] .panel-head .panel-here-round:not(:empty) { --round-dot: var(--success-color, #3fb950); }
-body.viewing-frozen .panel-head .panel-here-round:not(:empty) { --round-dot: var(--text-secondary, #8b949e); }
+/* The round label ("Runde 1") and its dot are gone: the round is already named by the rounds chip and
+   the journey row, a second label above the notes only repeated it. The element stays in the markup
+   (the engine still writes its text), it is just never shown. */
+.panel-head .panel-here-round { display: none !important; }
 
 /* ── Status toast — the same pill as the panel (renderSubmittedToast) ── */
 .jr-toast {
-  position: fixed; left: 50%; bottom: 2rem; transform: translateX(-50%);
+  /* sits right ABOVE the notes field: --an-comp-top is the distance of the analysis composer's top edge
+     from the viewport bottom (fitChat sets it; it follows the composer when it grows), 2rem without one */
+  position: fixed; left: 50%; bottom: calc(var(--an-comp-top, 1.25rem) + 14px); transform: translateX(-50%);
   z-index: 97; width: min(340px, calc(100vw - 184px));
   display: flex; flex-direction: column; align-items: center; gap: 3px;
   --jr-you: var(--accent-color, #388bfd); --jr-ai: var(--success-color, #3fb950); --jr-gold: #e3b341;
@@ -536,7 +524,7 @@ body.viewing-frozen .panel-head .panel-here-round:not(:empty) { --round-dot: var
 @keyframes jr-dot { 0%, 100% { opacity: .2; } 50% { opacity: 1; } }
 @keyframes jr-float { 50% { transform: translateY(-2px); } }
 @keyframes jr-toast-in { from { opacity: 0; transform: translate(-50%, 12px); } to { opacity: 1; transform: translate(-50%, 0); } }
-body:has(.draft-offline-strip:not([hidden])) .jr-toast { bottom: 4.75rem; }
+body:has(.draft-offline-strip:not([hidden])) .jr-toast { bottom: calc(var(--an-comp-top, 1.25rem) + 14px + 2.75rem); }
 
 @media (prefers-reduced-motion: reduce) {
   .jr-toggle, .jr-face, .jr-face[data-on], .jr-face-lock, .jr-face-lock[data-on], .jr-wire, .jr-node, .jr-run-done { transition: none !important; }

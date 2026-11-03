@@ -1,4 +1,4 @@
-# Concept templates, part 10 of 48: Template: design — fullscreen layout, overlay panel, feedback dock
+# Concept templates, part 10 of 49: Template: design — fullscreen layout, overlay panel, feedback dock
 
 ## Layout — Fullscreen single-screen + Overlay Panel + Feedback Dock
 
@@ -417,6 +417,9 @@
     <aside class="feedback-dock" id="feedback-dock" data-open="false" data-size="compact" data-user-maximized="false">
       <div class="feedback-dock-header">
         <strong>{{proto.feedback_title}}</strong>
+        <!-- Voice mode (opt-in): first of the button group, left of fullscreen. § Voice input -->
+        <button id="voice-mode-toggle" class="feedback-maximize-btn voice-mode-btn" aria-pressed="false"
+                aria-label="{{voice.mode_off}}" data-tip="{{voice.mode_off}}">🎤</button>
         <!-- Maximise (Work package B) is a distinct control from minimise:
              minimise CLOSES the dock (data-open toggle), maximise RESIZES it
              (data-size override) without touching data-open at all. The two
