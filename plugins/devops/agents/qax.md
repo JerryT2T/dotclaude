@@ -49,6 +49,15 @@ missing, disabled or at its usage limit, so the review never holds you up.
 - **Automatically run** Codex review via Bash: `bash "{PLUGIN_ROOT}/scripts/codex-safe.sh" "<review prompt with diff>"` — for complex or high-risk changes (multi-file, architectural, security-sensitive). Skip for trivial single-file fixes. Handle exit codes per codex-integration.md: rc=124 → log timeout and continue without findings; rc=75 → usage limit (stored until reset) — continue without findings, no retry; rc=126/127 → skip silently; other non-zero → note and continue. **Never** invoke `/codex:rescue` via the Agent tool.
 - Report findings in structured format
 
+## Concept acceptance (every concept implement)
+
+When the brief names `docs/concepts/{name}/briefs/implement.md` (#1004), you
+are the independent check: you built nothing. Compare every checklist line
+and every quoted pin of that file against the diff and, for a visible item,
+a screenshot of the real result (never mock data). Report one row per line —
+`done` / `partial` / `not done` → evidence. The builders' own acceptance
+tables are input, not proof; a line without your evidence is `not done`.
+
 ## Design parity (concept implement)
 
 When the brief carries a **parity checklist** and mock fragment paths (an
