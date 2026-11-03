@@ -38,20 +38,18 @@ const DEFAULT_MODEL = 'claude-opus-5-5';
 // Default model follows the task (tag): pure locating is Haiku work, scouting
 // and web research Sonnet; audits, reviews and unknown tags stay on Opus.
 const MODEL_BY_TAG = { locate: 'claude-haiku-5-5', scout: 'claude-sonnet-5-5', research: 'claude-sonnet-5-5' };
-// Context editing: clears old tool results once the prompt passes 100k tokens,
-// but only if that frees >= 60k — replayed on 494 real traces this saved ~30 %
-// (only 20 runs dearer); a 10k minimum made 140 runs dearer, as every clear
-// forces a cache rewrite.
-const CONTEXT_BETA = 'context-management-2025-06-27';
-const CONTEXT_MANAGEMENT = Object.freeze({
-  edits: [{
-    type: 'clear_tool_uses_20250919',
-    trigger: { type: 'input_tokens', value: 100000 },
-    keep: { type: 'tool_uses', value: 3 },
-    clear_at_least: { type: 'input_tokens', value: 60000 },
-  }],
-});
-const CONTEXT_REJECT_RE = /context[_ -]?management|clear_tool_uses|anthropic-beta|beta/i;
+// Context freeze (client-side). Server-side context editing (clear_tool_uses)
+// re-cleared every few turns on long runs: each clear rewrites the cached
+// prefix (cache write ~25x a read), so a 22-turn run cleared 7 times and spent
+// 62 % of its cost on writes (#1014). Instead the loop clears old tool results
+// itself ONCE, when the prompt first reaches the cap, and from then on resends
+// that already-cleared prefix byte-for-byte: one rewrite, then cheap cache
+// reads. Server-side editing stays off — it would resend every cleared result.
+const CONTEXT_CAP_TOKENS = 100000; // prompt size (input + cache read + cache write) that triggers the one clear
+const CONTEXT_KEEP_TOOL_USES = 3; // newest tool rounds whose results stay intact
+const CONTEXT_MIN_FREED_TOKENS = 30000; // a clear freeing less is not worth the rewrite — wait
+const CLEARED_NOTE = '[tool result cleared to save context]';
+const CHARS_PER_TOKEN = 4;
 const DEFAULT_MAX_TURNS = 30;
 const DEFAULT_MAX_USD = 2;
 const DEFAULT_TIMEOUT_S = 900; // whole run
@@ -264,6 +262,11 @@ function parseArgs(argv) {
   return o;
 }
 
+function promptTokens(u) {
+  u = u || {};
+  return (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0);
+}
+
 /**
  * Run the agent. Returns the exit code; writes the answer via `out`.
  */
@@ -298,7 +301,7 @@ async function run(argv, {
   const tag = o.tag || (o.locate ? 'locate' : (o.web ? 'research' : 'scout'));
   const model = o.model || env.CLAUDE_API_AGENT_MODEL || MODEL_BY_TAG[tag] || DEFAULT_MODEL;
   const ctxWanted = switches.contextEditing !== false && env.DEVOPS_API_CONTEXT_EDITING !== '0';
-  let contextEditing = ctxWanted;
+  let frozen = false;
   const maxTurns = Number.isInteger(o.maxTurns) && o.maxTurns > 0 ? o.maxTurns : DEFAULT_MAX_TURNS;
   const maxUsd = o.maxUsd > 0 ? o.maxUsd : DEFAULT_MAX_USD;
   // The run clock is real time: `now` only labels logs and can be injected (tests),
@@ -311,6 +314,7 @@ async function run(argv, {
   let total = {};
   let parts = {};
   const ctx = { clears: 0, clearedTokens: 0 };
+  let lastPrompt = 0;
   let turns = 0;
   // Every exit after the first request is logged once — answer or not, the credit was spent.
   let rc = RC.ERROR;
@@ -334,21 +338,8 @@ async function run(argv, {
         cache_control: { type: 'ephemeral' }, // caches the growing prefix turn by turn
       };
       if (o.effort) body.output_config = { effort: o.effort };
-      const send = () => {
-        if (contextEditing) body.context_management = CONTEXT_MANAGEMENT;
-        else delete body.context_management;
-        return safe.postMessages({
-          key: keyInfo.key, body, fetchImpl, timeoutMs: Math.min(left, REQUEST_TIMEOUT_S * 1000),
-          headers: contextEditing ? { 'anthropic-beta': CONTEXT_BETA } : {},
-        });
-      };
-      let r = await send();
-      // The API may reject the beta (or the model may not support it): retry once
-      // without context editing and stay without it for the rest of the run.
-      if (contextEditing && r.rc === RC.ERROR && CONTEXT_REJECT_RE.test(r.message || '')) {
-        contextEditing = false;
-        r = await send();
-      }
+      if (ctxWanted && !frozen && lastPrompt >= CONTEXT_CAP_TOKENS) frozen = freezeContext(messages);
+      const r = await safe.postMessages({ key: keyInfo.key, body, fetchImpl, timeoutMs: Math.min(left, REQUEST_TIMEOUT_S * 1000) });
       if (r.rc === RC.LIMIT) {
         const stored = safe.storeLimit({ home, reason: r.message });
         err(`claude-api-agent: API credit exhausted (${r.message}) — skipped until ${stored}.\n`);
@@ -360,7 +351,7 @@ async function run(argv, {
       turns = turn;
       spent += costOf(model, res.usage);
       parts = safe.addParts(parts, safe.costParts(model, res.usage));
-      noteContextEdits(res.context_management);
+      lastPrompt = promptTokens(res.usage);
       total = safe.addUsage(total, res.usage);
       messages.push({ role: 'assistant', content: res.content || [] });
 
@@ -389,13 +380,25 @@ async function run(argv, {
     return RC.ERROR;
   }
 
-  function noteContextEdits(cm) {
-    const edits = cm && Array.isArray(cm.applied_edits) ? cm.applied_edits : [];
-    for (const e of edits) {
-      if (!e || typeof e !== 'object') continue;
-      ctx.clears += 1;
-      if (Number.isFinite(e.cleared_input_tokens)) ctx.clearedTokens += e.cleared_input_tokens;
+  /** Clear the tool results older than the newest rounds, once. Returns true if it did. */
+  function freezeContext(msgs) {
+    const resultMsgs = msgs.filter((m) => m.role === 'user' && Array.isArray(m.content) && m.content.some((b) => b && b.type === 'tool_result'));
+    const old = resultMsgs.slice(0, Math.max(0, resultMsgs.length - CONTEXT_KEEP_TOOL_USES));
+    const targets = [];
+    let chars = 0;
+    for (const m of old) {
+      for (const b of m.content) {
+        if (!b || b.type !== 'tool_result' || b.content === CLEARED_NOTE) continue;
+        targets.push(b);
+        chars += typeof b.content === 'string' ? b.content.length : JSON.stringify(b.content || '').length;
+      }
     }
+    const freed = Math.round(chars / CHARS_PER_TOKEN);
+    if (!targets.length || freed < CONTEXT_MIN_FREED_TOKENS) return false;
+    for (const b of targets) b.content = CLEARED_NOTE;
+    ctx.clears += 1;
+    ctx.clearedTokens += freed;
+    return true;
   }
 
   function finish(answer, cutShort) {
@@ -406,7 +409,7 @@ async function run(argv, {
   }
 }
 
-module.exports = { SECRET_FILE, walk, MODEL_BY_TAG, CONTEXT_BETA, CONTEXT_MANAGEMENT, RC, CLIENT_TOOLS, PRICES, webTools, costOf, runTool, parseArgs, run };
+module.exports = { SECRET_FILE, walk, MODEL_BY_TAG, CONTEXT_CAP_TOKENS, CONTEXT_KEEP_TOOL_USES, CLEARED_NOTE, RC, CLIENT_TOOLS, PRICES, webTools, costOf, runTool, parseArgs, run };
 
 if (require.main === module) {
   run(process.argv.slice(2)).then((rc) => { process.exitCode = rc; });

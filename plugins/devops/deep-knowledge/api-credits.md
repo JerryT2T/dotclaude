@@ -113,17 +113,22 @@ Prices ($/MTok, platform pricing page 2026-10-25):
 Prompt size = input + cache read + cache write of that request; `costOf`
 applies the tier per request.
 
-### Context editing
+### Context freeze (client-side)
 
-The loop sends beta header `context-management-2025-06-27` and
-`context_management: clear_tool_uses_20250919`: trigger at 100k input tokens,
-keep the last 3 tool uses, `clear_at_least` 60k. Why those numbers: replayed on
-494 real read-only traces, 100k/60k saved ~30 % with only 20 runs dearer, while a
-10k minimum made 140 runs dearer (every clear forces a cache rewrite). Top-level
-`cache_control` stays. If the API rejects the beta, the loop retries once without
-it and stays without for the run. Switch: `apiCredit.contextEditing` (default
-`true`) or env `DEVOPS_API_CONTEXT_EDITING=0`. Each run logs the applied clears
-and cleared input tokens (`ctxClears`, `ctxClearedTokens`).
+Server-side context editing (`clear_tool_uses`, beta `context-management-2025-06-27`)
+is **not** used any more (#1014): on long runs it re-cleared every few turns and
+each clear rewrote the cached prefix (cache write ~25x a read) — one 22-turn
+Sonnet run cleared 7 times and spent 62 % of its cost on cache writes. Instead
+the loop clears old tool results itself, **once**: when the last response's
+prompt (input + cache read + cache write) reaches 100k tokens, every tool result
+except those of the newest 3 tool rounds becomes a one-line note, provided that
+frees an estimated >= 30k tokens (otherwise it waits). From then on the
+already-cleared messages are resent byte-identical and only new turns are
+appended, so the cached prefix stays valid: one rewrite, then cheap reads.
+Server-side editing must stay off after the clear — it would resend every
+cleared result. Top-level `cache_control` stays. Switch:
+`apiCredit.contextEditing` (default `true`) or env `DEVOPS_API_CONTEXT_EDITING=0`.
+Each run logs `ctxClears` (0 or 1) and `ctxClearedTokens` (estimate, 4 chars per token).
 
 ## One-shot calls — `scripts/claude-api-safe.js`
 
@@ -202,7 +207,7 @@ billing cycle; it works from inside a session too (it is a Messages API call).
 | Key | Default | Meaning |
 |---|---|---|
 | `apiCredit.enabled` | `false` | The routes above may use the credit. Off → every script exits 126 without a network call, no SessionStart line. |
-| `apiCredit.contextEditing` | `true` | The agent loop clears old tool results beyond 100k prompt tokens (Context editing above). Env `DEVOPS_API_CONTEXT_EDITING=0` overrides. |
+| `apiCredit.contextEditing` | `true` | The agent loop clears old tool results once at 100k prompt tokens and then freezes the prefix (Context freeze above). Env `DEVOPS_API_CONTEXT_EDITING=0` overrides. |
 | `apiCredit.webGuide` | `false` | With `enabled` on and no key stored, offer the one-time auto-guide through the Console (below), at most once per session. |
 
 ## Activation — the user says so
