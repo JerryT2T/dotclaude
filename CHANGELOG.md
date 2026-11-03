@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.347.0] — 2026-11-03
+
+### Added
+- Delegation: with api-credit on (key stored, no active limit), the first `devops:scout` / `devops:research` / `devops:redteam` spawn per turn is refused once with the ready `claude-api-agent.js` command; a retry or a prompt citing the API rc passes, `general-purpose` / `Explore` are never gated, and the hook fails open (#1013).
+
 ## [0.346.0] — 2026-11-03
 
 ### Added
