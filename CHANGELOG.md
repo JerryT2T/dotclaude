@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.350.0] — 2026-11-04
+
+### Added
+- `claude-api-agent` answers with what it has near its turn, budget or time limit, and once after a request timeout. stderr names the reason.
+- The Agent tool's per-spawn `effort` is documented for two cases: the `feature` budget fallback and hard Sonnet bundles. The agent card shows it as `medium → high`.
+
+### Changed
+- `/do-run` without burn follows the budget classes. Only `/do-run burn` and a ceremony yes stay exempt. The call ceiling binds analysis roles only. Unattended and backlog runs spare without a question; rethink and audit keep their read-only lenses on Sonnet.
+- The $200 plan shows as Ultra, with a capacity of 10x Pro in burn estimates. Earlier burn samples are kept.
+- `claude-api-agent --tag redteam` runs at `high` effort, matching the in-session agent.
+
+### Fixed
+- A leftover or switched-off `BURN-STATE.json` no longer removes the budget line.
+- An unattended usage refresh no longer opens a login window.
+
 ## [0.349.0] — 2026-11-03
 
 ### Added
