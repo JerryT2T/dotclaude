@@ -22,6 +22,7 @@ afterAll(() => { try { fs.rmSync(tmp, { recursive: true, force: true }); } catch
 beforeEach(() => {
   fs.rmSync(home, { recursive: true, force: true });
   fs.mkdirSync(path.join(home, ".claude"), { recursive: true });
+  fs.rmSync(proj, { recursive: true, force: true });
   fs.mkdirSync(path.join(proj, "src"), { recursive: true });
   fs.mkdirSync(path.join(proj, "node_modules", "x"), { recursive: true });
   fs.writeFileSync(path.join(proj, "src", "a.js"), "const answer = 42;\nmodule.exports = answer;\n");
@@ -238,63 +239,82 @@ describe("model per task", () => {
   });
 });
 
-describe("context editing", () => {
+describe("context freeze (client-side)", () => {
   const done = () => ({ content: [{ type: "text", text: "ok" }], stop_reason: "end_turn", usage });
-  const logRows = () => fs.readFileSync(path.join(home, ".claude", "api-credit-usage.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+  const logRows = () => fs.readFileSync(path.join(home, ".claude", "api-credit-usage.jsonl"), "utf8").trim().split(String.fromCharCode(10)).map((l) => JSON.parse(l));
+  let bigId = 0;
+  const toolTurn = (prompt) => ({
+    content: [{ type: "tool_use", id: "t" + (++bigId), name: "list_files", input: { path: "." } }],
+    stop_reason: "tool_use",
+    usage: { input_tokens: 500, cache_read_input_tokens: prompt - 500, output_tokens: 50 },
+  });
 
+  // Fake transport: snapshots each request body as bytes and the headers.
   function capture(responses, seen) {
     return async (url, init) => {
-      seen.push({ body: JSON.parse(init.body), headers: init.headers });
+      seen.push({ raw: init.body, body: JSON.parse(init.body), headers: init.headers });
       const r = responses.shift();
       return { ok: !r.status || r.status < 300, status: r.status || 200, json: async () => r.body || r };
     };
   }
+  // Prompt sizes grow 20k per turn: 20k..., crossing the 100k cap after turn 5.
+  const script = (turns) => [...Array.from({ length: turns }, (_, i) => toolTurn(20000 * (i + 1))), done()];
+  const resultsOf = (body) => body.messages.filter((m) => m.role === "user" && Array.isArray(m.content)).flatMap((m) => m.content).filter((b) => b.type === "tool_result");
 
-  test("on by default: beta header, thresholds, cache_control kept; applied edits are logged", async () => {
+  test("never sends server-side context_management or the beta header", async () => {
     enable();
     const seen = [];
-    const res = { ...done(), context_management: { applied_edits: [{ type: "clear_tool_uses_20250919", cleared_tool_uses: 4, cleared_input_tokens: 65000 }] } };
-    const r = await runAgent(["t"], { fetchImpl: capture([res], seen) });
-    expect(r.rc).toBe(0);
-    expect(seen[0].headers["anthropic-beta"]).toBe("context-management-2025-06-27");
-    expect(seen[0].body.context_management.edits[0]).toEqual({
-      type: "clear_tool_uses_20250919",
-      trigger: { type: "input_tokens", value: 100000 },
-      keep: { type: "tool_uses", value: 3 },
-      clear_at_least: { type: "input_tokens", value: 60000 },
-    });
-    expect(seen[0].body.cache_control).toEqual({ type: "ephemeral" });
-    const row = logRows()[0];
-    expect(row.ctxClears).toBe(1);
-    expect(row.ctxClearedTokens).toBe(65000);
-  });
-
-  test("env DEVOPS_API_CONTEXT_EDITING=0 and the config switch turn it off", async () => {
-    enable();
-    let seen = [];
-    await runAgent(["t"], { env: { DEVOPS_API_CONTEXT_EDITING: "0" }, fetchImpl: capture([done()], seen) });
-    expect(seen[0].body.context_management).toBeUndefined();
-    expect(seen[0].headers["anthropic-beta"]).toBeUndefined();
-    // The config key is registered in hooks/lib/devops-config.js (orchestrator-owned); assert once it exists.
-    if (require("../hooks/lib/devops-config").listKeys().includes("apiCredit.contextEditing")) {
-      fs.writeFileSync(path.join(home, ".claude", "devops-config.json"), JSON.stringify({ apiCredit: { enabled: true, contextEditing: false } }));
-      seen = [];
-      await runAgent(["t"], { fetchImpl: capture([done()], seen) });
-      expect(seen[0].body.context_management).toBeUndefined();
+    await runAgent(["t"], { fetchImpl: capture(script(8), seen) });
+    for (const q of seen) {
+      expect(q.body.context_management).toBeUndefined();
+      expect(q.headers["anthropic-beta"]).toBeUndefined();
+      expect(q.body.cache_control).toEqual({ type: "ephemeral" });
     }
   });
 
-  test("a rejected beta is retried once without it and stays off for the run", async () => {
+  test("clears once at the cap, then resends the identical prefix and no cleared results", async () => {
+    enable();
+    // Large tool results: list_files over a dir of 400 long file names (~15k tokens).
+    for (let i = 0; i < 400; i++) fs.writeFileSync(path.join(proj, "src", "f".repeat(150) + i + ".js"), "");
+    const seen = [];
+    const r = await runAgent(["t"], { fetchImpl: capture(script(10), seen) });
+    expect(r.rc).toBe(0);
+    // Request i (0-based) follows response i-1; prompt >= 100k first after response 4 (5 * 20k).
+    const note = agent.CLEARED_NOTE;
+    const cleared = seen.map((q) => resultsOf(q.body).filter((b) => b.content === note).length);
+    expect(cleared.slice(0, 5)).toEqual([0, 0, 0, 0, 0]); // below the cap: untouched
+    expect(cleared[5]).toBe(2); // 5 results, newest 3 kept → 2 cleared, exactly once
+    // (b) the frozen prefix is byte-identical on every later turn
+    // Byte-identical prefix: every later request begins with the exact bytes of the
+    // frozen request's messages (minus the closing bracket), then only appends.
+    const prefix = JSON.stringify(seen[5].body.messages).slice(0, -1);
+    for (let i = 6; i < seen.length; i++) {
+      expect(JSON.stringify(seen[i].body.messages).startsWith(prefix)).toBe(true);
+      expect(cleared[i]).toBe(2); // (c) no re-clear, nothing newly cleared
+    }
+    // (a) one clear logged; results older than the freeze are never full-size again
+    const row = logRows()[0];
+    expect(row.ctxClears).toBe(1);
+    expect(row.ctxClearedTokens).toBeGreaterThan(0);
+    for (let i = 6; i < seen.length; i++) {
+      const full = resultsOf(seen[i].body).filter((b) => b.content !== note);
+      expect(full.length).toBe(resultsOf(seen[i].body).length - 2);
+    }
+  });
+
+  test("a clear that would free too little waits instead of rewriting the cache", async () => {
     enable();
     const seen = [];
-    const tool = { content: [{ type: "tool_use", id: "t1", name: "list_files", input: { path: "." } }], stop_reason: "tool_use", usage };
-    const reject = { status: 400, error: { message: "context_management: Extra inputs are not permitted" } };
-    const r = await runAgent(["t"], { fetchImpl: capture([reject, tool, done()], seen) });
-    expect(r.rc).toBe(0);
-    expect(seen).toHaveLength(3);
-    expect(seen[0].body.context_management).toBeDefined();
-    expect(seen[1].body.context_management).toBeUndefined();
-    expect(seen[2].body.context_management).toBeUndefined();
-    expect(seen[2].headers["anthropic-beta"]).toBeUndefined();
+    await runAgent(["t"], { fetchImpl: capture(script(8), seen) }); // tiny results
+    expect(seen.every((q) => resultsOf(q.body).every((b) => b.content !== agent.CLEARED_NOTE))).toBe(true);
+    expect(logRows()[0].ctxClears).toBe(0);
+  });
+
+  test("env DEVOPS_API_CONTEXT_EDITING=0 switches the freeze off", async () => {
+    enable();
+    for (let i = 0; i < 400; i++) fs.writeFileSync(path.join(proj, "src", "f".repeat(150) + i + ".js"), "");
+    const seen = [];
+    await runAgent(["t"], { env: { DEVOPS_API_CONTEXT_EDITING: "0" }, fetchImpl: capture(script(8), seen) });
+    expect(seen.every((q) => resultsOf(q.body).every((b) => b.content !== agent.CLEARED_NOTE))).toBe(true);
   });
 });
