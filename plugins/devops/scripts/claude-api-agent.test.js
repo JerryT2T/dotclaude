@@ -318,3 +318,51 @@ describe("context freeze (client-side)", () => {
     expect(seen.every((q) => resultsOf(q.body).every((b) => b.content !== agent.CLEARED_NOTE))).toBe(true);
   });
 });
+
+describe("a run nearing a limit answers with what it has", () => {
+  const toolTurn = (u = usage) => ({ content: [{ type: "tool_use", id: "t1", name: "list_files", input: { path: "." } }], stop_reason: "tool_use", usage: u });
+  const answer = { content: [{ type: "text", text: "Partial result." }], stop_reason: "end_turn", usage };
+  const seq = (responses, calls = []) => async (url, init) => { calls.push(JSON.parse(init.body)); const r = responses.shift(); if (typeof r === "function") return r(); return { ok: true, status: 200, json: async () => r }; };
+  beforeEach(() => enable());
+  const lastUser = (body) => body.messages[body.messages.length - 1].content;
+
+  test("the last turn runs without tools and carries the note", async () => {
+    const calls = [];
+    const r = await runAgent(["--max-turns", "2", "x"], { fetchImpl: seq([toolTurn(), answer], calls) });
+    expect(r.rc).toBe(0);
+    expect(r.out).toBe("Partial result.\n");
+    expect(r.err).toMatch(/cut short: turn limit/);
+    expect(calls[0].tool_choice).toBeUndefined();
+    expect(calls[1].tool_choice).toEqual({ type: "none" });
+    expect(lastUser(calls[1]).at(-1).text).toMatch(/Do not call more tools/);
+  });
+
+  test("75 % of the budget starts the last request", async () => {
+    const calls = [];
+    const big = { input_tokens: 800000, output_tokens: 0 };
+    const r = await runAgent(["--max-usd", "2", "x"], { fetchImpl: seq([toolTurn(big), answer], calls) });
+    expect(r.rc).toBe(0);
+    expect(r.err).toMatch(/cut short: budget/);
+    expect(calls[1].tool_choice).toEqual({ type: "none" });
+  });
+
+  test("a hung request asks once for the answer, a first request has nothing to save", async () => {
+    const hang = () => { const e = new Error("aborted"); e.name = "AbortError"; throw e; };
+    const calls = [];
+    const saved = await runAgent(["x"], { fetchImpl: seq([toolTurn(), hang, answer], calls) });
+    expect(saved.rc).toBe(0);
+    expect(saved.err).toMatch(/cut short: request timeout/);
+    expect(calls.at(-1).tool_choice).toEqual({ type: "none" });
+    expect(lastUser(calls.at(-1)).filter((b) => b.type === "text")).toHaveLength(1);
+    expect((await runAgent(["x"], { fetchImpl: seq([hang]) })).rc).toBe(safe.RC.TIMEOUT);
+    expect((await runAgent(["x"], { fetchImpl: seq([toolTurn(), hang, hang]) })).rc).toBe(safe.RC.TIMEOUT);
+  });
+
+  test("a review runs at high effort unless the caller says otherwise", async () => {
+    const calls = [];
+    await runAgent(["--tag", "redteam", "x"], { fetchImpl: seq([answer], calls) });
+    await runAgent(["--tag", "redteam", "--effort", "medium", "x"], { fetchImpl: seq([answer], calls) });
+    await runAgent(["x"], { fetchImpl: seq([answer], calls) });
+    expect(calls.map((c) => c.output_config && c.output_config.effort)).toEqual(["high", "medium", undefined]);
+  });
+});

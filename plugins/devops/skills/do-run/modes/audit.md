@@ -132,6 +132,12 @@ alone):
 | `devops:qax` — live surface | visual, animation, audio, accessibility, performance | screenshots per viewport, perf metrics, media/audio state probes, a11y tree |
 | `devops:redteam` — only for `all` | cross-cutting failure modes of the requirement catalog | concrete risks with file:line |
 
+Budget class other than `free` (`get_usage`, `budget.cls`): `devops:redteam`
+runs on `model: sonnet` under the class's call ceiling (≤ 10, `sonnet-only`
+≤ 5). `sonnet-only` also limits the run to two lenses, code and tests &
+function; the dimensions of a dropped lens are `blocked — budget class`.
+No budget question: read-only lenses cannot conflict.
+
 Each prompt carries: `$SCOPE` files, the requirements catalog, the active
 dimensions, the dimension checklists copied from `{PLUGIN_ROOT}/skills/do-run/modes/audit/deep-knowledge/dimensions.md`,
 and the finding format from Step 6. Lens agents **report only — they never

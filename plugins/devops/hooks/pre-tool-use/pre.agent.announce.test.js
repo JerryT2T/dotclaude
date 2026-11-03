@@ -104,6 +104,11 @@ describe("pre.agent.announce (hook)", () => {
     expect(line(res)).toBe("research · opus · high · background — Compare rate limiters");
   });
 
+  test("an effort at spawn shows as default → override, also next to a model override", () => {
+    const res = runHook(project(), { input: { subagent_type: "devops:feature", model: "sonnet", effort: "high", description: "Fallback", prompt: "x" } });
+    expect(line(res)).toBe("feature · opus → sonnet · medium → high · background — Fallback");
+  });
+
   test("a model override shows as default → override, effort once", () => {
     const dir = project();
     const res = runHook(dir, {

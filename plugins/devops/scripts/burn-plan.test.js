@@ -78,10 +78,18 @@ describe("offer — Q4 shows the option where budget would expire unused (H3)", 
 });
 
 describe("calibrationFor — defaults scale by plan, measurements replace them (H2)", () => {
-  test("Pro costs 20× Max 20x per task until measured", () => {
+  test("Ultra uses the capacity and the samples measured under Max 20x", () => {
+    const samples = { "Max 20x": { laneHourlyPct: [1, 2, 9], unitCostPct: [0.3, 0.1, 0.2] } };
+    const cal = bp.calibrationFor(samples, "Ultra");
+    expect(cal.source.laneHourly).toMatch(/measured/);
+    expect(cal.laneHourlyPct).toBe(bp.calibrationFor(samples, "Max 20x").laneHourlyPct);
+    expect(bp.recordCalibration(samples, "Ultra", { laneHourlyPct: 1, unitCostPct: 0.1 })["Max 20x"].unitCostPct).toHaveLength(4);
+  });
+
+  test("Pro costs 10× Ultra per task until measured", () => {
     const max = bp.calibrationFor(null, "Max 20x");
     const pro = bp.calibrationFor(null, "Pro");
-    expect(pro.unitCostPct / max.unitCostPct).toBeCloseTo(20, 5);
+    expect(pro.unitCostPct / max.unitCostPct).toBeCloseTo(10, 5);
     expect(max.source.unitCost).toBe("default");
   });
 

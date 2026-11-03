@@ -56,7 +56,7 @@ Explain: the plugin reads this to pace itself (budget hints, burn) and to
 decide whether Step 3 is relevant. Nothing is changed, no key is read. Gilt
 immer / Applies always, no setting involved.
 
-## Step 3 — API credit (only Max 5x, Max 20x or Team)
+## Step 3 — API credit (only Max 5x, Ultra or Team)
 
 Skip silently on other plans. Source of truth: `deep-knowledge/api-credits.md`
 § Activation — use its two questions and its `devops-config.js … --global`

@@ -6,8 +6,8 @@
  *
  *   1. The agents are the Step 5 plan card (scripts/agent-card.js), the same
  *      template every spawn card uses — never a hand-drawn table in its own
- *      shape. Effort is fixed by the agent's frontmatter (the Agent tool has
- *      no effort parameter), so the card shows the effective value up front.
+ *      shape. Effort comes from the agent's frontmatter unless a spawn passes
+ *      one, so the card shows the effective value up front.
  *   2. The complexity tier and its per-agent tool-call ceiling are a slot in
  *      the template, not a prose reminder: the budget every agent prompt will
  *      carry (§ Agent Prompt Template item 6) is visible before confirmation.
@@ -55,8 +55,8 @@ describe("auto-agents plan template — agents come from the plan card", () => {
     expect(template).not.toMatch(/^\| Wave \|/m);
   });
 
-  it("states that effort cannot be overridden at invocation", () => {
-    expect(step3).toMatch(/no effort parameter/i);
+  it("limits an effort override at invocation to the documented cases", () => {
+    expect(step3).toMatch(/Effort at spawn/);
   });
 });
 
@@ -231,9 +231,9 @@ describe("auto-agents agent cards", () => {
     expect(skill).not.toMatch(/\b(opus|sonnet|haiku|fable) \d+(\.\d+)?\b/i);
   });
 
-  it("gives effort per task, never with an arrow", () => {
+  it("gives effort per task, an override only per the documented cases", () => {
     expect(step5).toMatch(/\*\*Effort — per task\.\*\*/);
-    expect(step5).toMatch(/Never an arrow/);
+    expect(step5).toMatch(/Effort at spawn/);
   });
 });
 

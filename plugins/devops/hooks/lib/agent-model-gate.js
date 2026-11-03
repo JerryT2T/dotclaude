@@ -10,8 +10,7 @@
  *   A spawn whose model would be inherited (no frontmatter model, or
  *   `model: inherit`) and that passes no `model` is refused once with the
  *   reason; repeating the identical spawn goes through — the deliberate
- *   exception. Effort cannot be passed at spawn (the Agent tool has no
- *   effort parameter): a cheap locator with a fixed effort is `devops:scout`.
+ *   exception. A cheap locator with a fixed effort is `devops:scout`.
  *
  *   Stateless on purpose: pre.agent.announce runs in parallel with the gate
  *   and must know whether the spawn goes through (a refused spawn gets no

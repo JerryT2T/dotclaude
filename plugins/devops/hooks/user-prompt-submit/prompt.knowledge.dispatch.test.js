@@ -158,15 +158,40 @@ describe("prompt.knowledge.dispatch — delegation nudge", () => {
     // autonomous run is armed here must not turn the test red.
     const h = proHome();
     const ctx = runHook("should we upgrade to postgres 17 this quarter, for and against?", h, h);
-    expect(ctx.split("\n")[1]).toBe(nudge + " · budget: ask-before-parallel (1-agent tier → sonnet ≤10 calls; parallel/ceremony → ask once: inline / 1 sonnet agent / full)");
+    expect(ctx.split("\n")[1]).toBe(nudge + " · budget: ask-before-parallel (1-agent tier → sonnet ≤10 calls, in a do-run analysis roles only; parallel/ceremony → ask once: inline / 1 sonnet agent / full)");
   });
 
-  test("short follow-ups get no nudge at all; an AUTONOMOUS_* prompt gets the nudge without the budget suffix", () => {
+  test("short follow-ups get no nudge at all; an AUTONOMOUS_* prompt keeps the class without a question", () => {
     const short = runHook("ja, weiter so", proHome());
     expect(short.split("\n").length).toBe(1);
     expect(short).toMatch(/^\[ui-locale: (en|de)\]( Antworte auf Deutsch[^\n]*)?$/);
     const afk = runHook("AUTONOMOUS_AUTOSTART: continue the queued implementation of the tenant switcher", proHome());
-    expect(afk.split("\n")).toContain(nudge);
+    expect(afk.split("\n")).toContain(nudge + " · budget: ask-before-parallel (unattended do-run: opus roles → sonnet, analysis agents ≤10 calls, one agent at a time, no question)");
+  });
+
+  test("an unattended prompt of an active burn run gets the nudge without the budget suffix", () => {
+    const project = emptyProject();
+    fs.writeFileSync(path.join(project, "BURN-STATE.json"), JSON.stringify({ status: "running", queue: [{ id: "t1" }], inFlight: [] }));
+    const burn = runHook("AUTONOMOUS_RESUME: continue the queued implementation of the tenant switcher", proHome(), project);
+    expect(burn.split("\n")).toContain(nudge);
+  });
+
+  test("a leftover burn state never switches the budget rules off", () => {
+    const afk = "AUTONOMOUS_RESUME: continue the queued implementation of the tenant switcher";
+    const withState = (state, ageMs = 0) => {
+      const project = emptyProject();
+      const file = path.join(project, "BURN-STATE.json");
+      fs.writeFileSync(file, JSON.stringify(state));
+      if (ageMs) { const t = new Date(Date.now() - ageMs); fs.utimesSync(file, t, t); }
+      return project;
+    };
+    const open = { status: "running", queue: [{ id: "t1" }], inFlight: [] };
+    // Typed prompt beside an open run: the user is present.
+    expect(runHook("should we upgrade to postgres 17 this quarter, for and against?", proHome(), withState(open))).toContain("budget: ask-before-parallel");
+    // Switched off with "Burn abschalten", the state stays open.
+    expect(runHook(afk, proHome(), withState({ ...open, burn: { active: false } }))).toContain("budget: ask-before-parallel");
+    // Abandoned: no write for more than 30 hours.
+    expect(runHook(afk, proHome(), withState(open, 31 * 3_600_000))).toContain("budget: ask-before-parallel");
   });
 
   test("kill-switch: off → no nudge and no budget suffix; ask → the ask variant, suffix kept", () => {
@@ -226,7 +251,7 @@ describe("prompt.knowledge.dispatch — the positive budget signal after a reset
     });
     const lines = runHook("Erneut versuchen", h).split("\n");
     expect(lines[0]).toMatch(/^\[ui-locale: (en|de)\]( Antworte auf Deutsch[^\n]*)?$/);
-    expect(lines[1]).toMatch(/^\[budget\] Max 20x · usage unknown \(snapshot past its reset\) → free/);
+    expect(lines[1]).toMatch(/^\[budget\] Ultra · usage unknown \(snapshot past its reset\) → free/);
     expect(lines[1]).toContain("earlier limit messages and usage claims in this conversation no longer apply");
     expect(lines.length).toBe(2); // still no nudge for a short prompt
   });
@@ -237,7 +262,7 @@ describe("prompt.knowledge.dispatch — the positive budget signal after a reset
       session: { pct: 9, resetInMinutes: 271 }, weekly: { pct: 3, resetInMinutes: 10080 - 120 }, plan: "Max 20x",
     });
     const lines = runHook("compare vite and webpack for our typescript spa, please", h).split("\n");
-    expect(lines[1]).toContain("[budget] Max 20x · week reset 2 h ago · window 9% (reset 271 min) · week 3% → free");
+    expect(lines[1]).toContain("[budget] Ultra · week reset 2 h ago · window 9% (reset 271 min) · week 3% → free");
     expect(lines[2]).toContain("[delegation-policy]");
   });
 
@@ -268,22 +293,24 @@ describe("prompt.knowledge.dispatch — the positive budget signal after a reset
     expect(runHook("Erneut versuchen", h)).toMatch(/^\[ui-locale: (en|de)\]( Antworte auf Deutsch[^\n]*)?$/);
   });
 
-  test("an AUTONOMOUS_* prompt never gets the line — the class is irrelevant unattended", () => {
+  test("an AUTONOMOUS_* prompt keeps the line — the class also binds an unattended do-run", () => {
     const h = homeWith({
       timestamp: new Date(Date.now() - 30 * 3_600_000).toISOString(),
       session: { pct: 100, resetInMinutes: 10 }, weekly: { pct: 100, resetInMinutes: 300 }, plan: "Max 20x",
     });
-    expect(runHook("AUTONOMOUS_RESUME: continue the queued implementation of the tenant switcher", h)).not.toContain("[budget]");
+    expect(runHook("AUTONOMOUS_RESUME: continue the queued implementation of the tenant switcher", h)).toContain("[budget]");
   });
 
-  test("an armed lockout sentinel in the project makes the same short retry unattended — no line", () => {
+  test("an armed lockout sentinel keeps the line, an active burn run drops it", () => {
     const h = homeWith({
       timestamp: new Date(Date.now() - 30 * 3_600_000).toISOString(),
       session: { pct: 100, resetInMinutes: 10 }, weekly: { pct: 100, resetInMinutes: 300 }, plan: "Max 20x",
     });
     const cwd = emptyProject();
     fs.writeFileSync(path.join(cwd, "AUTONOMOUS-LOCKOUT.flag"), JSON.stringify({ owner: "vitest", since: new Date().toISOString() }));
-    expect(runHook("Erneut versuchen", h, cwd)).not.toContain("[budget]");
+    expect(runHook("Erneut versuchen", h, cwd)).toContain("[budget]");
+    fs.writeFileSync(path.join(cwd, "BURN-STATE.json"), JSON.stringify({ status: "running", queue: [{ id: "t1" }], inFlight: [] }));
+    expect(runHook("Noch einmal versuchen", h, cwd)).not.toContain("[budget]");
   });
 });
 

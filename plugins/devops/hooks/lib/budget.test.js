@@ -5,7 +5,7 @@ import path from "node:path";
 import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
-const { planTier, classify, refreshDueMinutes, readBudget, maybeRefreshUsage, budgetLine, budgetSummary, nudgeSuffix, deferInfo, STALE_MS, FAILURE_BACKOFF_MS, REFRESH_MARKER } = require("./budget.js");
+const { planTier, classify, refreshDueMinutes, readBudget, maybeRefreshUsage, budgetLine, budgetSummary, nudgeSuffix, unattendedSuffix, tierLabel, deferInfo, STALE_MS, FAILURE_BACKOFF_MS, REFRESH_MARKER } = require("./budget.js");
 
 /**
  * The budget class is the delegation policy's fourth input. What must hold
@@ -37,6 +37,7 @@ const read = (h, extra = {}) => readBudget({ home: h, nowMs: NOW, env: {}, ...ex
 describe("planTier", () => {
   test("labels from usage-live.json and rateLimitTier both resolve", () => {
     expect(planTier("Max 20x")).toBe("max20");
+    expect(planTier("Ultra")).toBe("max20");
     expect(planTier("Max 5x")).toBe("max5");
     expect(planTier("Pro")).toBe("pro");
     expect(planTier("default_claude_max_20x")).toBe("max20");
@@ -78,9 +79,20 @@ describe("readBudget", () => {
       "usage-live.json": { timestamp: iso(NOW - 60_000), session: { pct: 56, resetInMinutes: 52 }, weekly: { pct: 43, resetInMinutes: 7942 }, plan: "Max 20x" },
     });
     const b = read(h);
-    expect(b).toMatchObject({ plan: "Max 20x", tier: "max20", fivePct: 56, weeklyPct: 43, resetInMinutes: 51, stale: false, cls: "free", binding: "5h" });
-    expect(budgetLine(b)).toBe("[budget] Max 20x · window 56% (reset 51 min) · week 43% → free");
+    expect(b).toMatchObject({ plan: "Ultra", tier: "max20", fivePct: 56, weeklyPct: 43, resetInMinutes: 51, stale: false, cls: "free", binding: "5h" });
+    expect(budgetLine(b)).toBe("[budget] Ultra · window 56% (reset 51 min) · week 43% → free");
     expect(nudgeSuffix(b)).toBe("");
+  });
+
+  test("the $200 tier reads as Ultra, from credentials and from an old snapshot label", () => {
+    expect(tierLabel("max20")).toBe("Ultra");
+    expect(planTier("Ultra")).toBe("max20");
+  });
+
+  test("an unattended do-run keeps the class without a question and names the analysis ceiling", () => {
+    expect(unattendedSuffix({ cls: "free" })).toBe("");
+    expect(unattendedSuffix({ cls: "ask-before-parallel" })).toMatch(/analysis agents ≤10 calls.*no question/);
+    expect(unattendedSuffix({ cls: "sonnet-only" })).toMatch(/analysis agents ≤5 calls.*no question/);
   });
 
   test("credentials tier beats a sticky snapshot label; only the tier string surfaces", () => {
@@ -254,7 +266,7 @@ describe("the positive signal — a reset since the previous reading is announce
     const b = read(h);
     expect(b.recentReset).toBe("week");
     expect(b.announce).toBe(true);
-    expect(budgetLine(b)).toBe("[budget] Max 20x · week reset 2 h ago · window 3% (reset 150 min) · week 1% → free — earlier limit messages and usage claims in this conversation no longer apply");
+    expect(budgetLine(b)).toBe("[budget] Ultra · week reset 2 h ago · window 3% (reset 150 min) · week 1% → free — earlier limit messages and usage claims in this conversation no longer apply");
     expect(nudgeSuffix(b)).toBe(""); // the suffix contract is untouched: free stays silent there
   });
 
@@ -416,7 +428,7 @@ describe("budgetSummary — the block get_usage returns", () => {
       snapshot: { timestamp: iso(NOW), session: { pct: 3, resetInMinutes: 290 }, weekly: { pct: 1, resetInMinutes: 5000 }, plan: "Max 20x" },
     });
     expect(budgetSummary(b)).toEqual({
-      plan: "Max 20x", tier: "max20", cls: "free", binding: "5h",
+      plan: "Ultra", tier: "max20", cls: "free", binding: "5h",
       expired: false, recentReset: "5h", refreshFailed: null, refreshDueMinutes: 180, override: null,
       line: budgetLine(b),
     });

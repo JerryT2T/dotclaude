@@ -100,8 +100,10 @@ const MAX_READINGS = 50;
 const CALIBRATION_KEEP = 10;
 const CALIBRATION_MIN_SAMPLES = 3;
 
-/** Relative weekly capacity per plan — Max 20x has 20× Pro's budget. */
-const PLAN_CAPACITY = { Pro: 1, 'Max 5x': 5, 'Max 20x': 20 };
+/** Relative weekly capacity per plan (claude.com/pricing) — Ultra, formerly labelled Max 20x, is the baseline. */
+const PLAN_CAPACITY = { Pro: 1, 'Max 5x': 5, 'Max 20x': 10, Ultra: 10 };
+/** Calibration samples of Ultra stay under the label they were first measured with. */
+const calibrationKey = (plan) => (plan === 'Ultra' ? 'Max 20x' : plan);
 /** Planning defaults at Max 20x, standard depth. Scaled for other plans. */
 const DEFAULTS_AT_MAX20 = { laneHourlyPct: 1.5, unitCostPct: 0.2 };
 const SIZE_WEIGHT = { S: 1, M: 2.5, L: 5 };
@@ -109,9 +111,8 @@ const PRIORITY_ORDER = ['P0', 'P1', 'P2', 'P3', 'P4', 'P5'];
 const FILLER_PRIORITIES = new Set(['P3', 'P4', 'P5']);
 
 /**
- * Depth profiles. Effort is not a tool parameter (the Agent tool has none),
- * so what actually changes is the model, the tool-call ceiling and the extra
- * passes. The second QA and the per-task PO review of the first version are
+ * Depth profiles. The frontmatter effort stays, so what actually changes is
+ * the model, the tool-call ceiling and the extra passes. The second QA and the per-task PO review of the first version are
  * gone: QA was redundant, and a PO weighs trade-offs nobody decides while
  * the user is away.
  */
@@ -216,7 +217,7 @@ function planScale(plan) {
  */
 function calibrationFor(calibration, plan) {
   const scale = planScale(plan);
-  const entry = (calibration && plan && calibration[plan]) || {};
+  const entry = (calibration && plan && calibration[calibrationKey(plan)]) || {};
   const lane = Array.isArray(entry.laneHourlyPct) ? entry.laneHourlyPct.filter(isPos).slice(-CALIBRATION_KEEP) : [];
   const unit = Array.isArray(entry.unitCostPct) ? entry.unitCostPct.filter(isPos).slice(-CALIBRATION_KEEP) : [];
   const laneMeasured = lane.length >= CALIBRATION_MIN_SAMPLES;
@@ -1025,10 +1026,11 @@ function calibrationSamples(state, finalRemaining, nowMs) {
 function recordCalibration(calibration, plan, sample) {
   const out = clone(calibration || {});
   if (!plan || !sample) return out;
-  const entry = out[plan] || {};
+  const key = calibrationKey(plan);
+  const entry = out[key] || {};
   entry.laneHourlyPct = [...(entry.laneHourlyPct || []), sample.laneHourlyPct].slice(-CALIBRATION_KEEP);
   entry.unitCostPct = [...(entry.unitCostPct || []), sample.unitCostPct].slice(-CALIBRATION_KEEP);
-  out[plan] = entry;
+  out[key] = entry;
   return out;
 }
 

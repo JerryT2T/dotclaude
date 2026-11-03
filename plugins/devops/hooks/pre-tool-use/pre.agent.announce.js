@@ -101,8 +101,7 @@ function sessionModel(transcriptPath) {
 
 /**
  * The effective `model · effort` of a spawn. An invocation override shows as
- * `default → override`; the effort never changes at spawn (the Agent tool has
- * no effort parameter), so it is shown once.
+ * `default → override`, for the model and for the effort alike.
  */
 function resolve(input, cwd, transcriptPath) {
   const file = findAgentFile(input.subagent_type || 'general-purpose', cwd);
@@ -121,6 +120,8 @@ function resolve(input, cwd, transcriptPath) {
 
   let effort = fm.effort || null;
   if (!effort) effort = base === 'inherit' || !file ? 'session effort' : 'default effort';
+  const effortOverride = typeof input.effort === 'string' && input.effort ? input.effort : null;
+  if (effortOverride && effortOverride !== fm.effort) effort = fm.effort ? `${fm.effort} → ${effortOverride}` : effortOverride;
   return { model, effort };
 }
 

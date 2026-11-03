@@ -409,10 +409,13 @@ Loop the queue, **one issue at a time**:
 for each issue in queue:
   1. WORKTREE  → branch for the issue
   2. IMPLEMENT → Skill("devops:auto-agents", "--from=do-run --mode=background
+                 [--burn=<project root>/BURN-STATE.json when $BURN_MODE]
                  --ship=<$SHIP> <issue>") — gated: the run contract's
                  `auto-agents` obligation refuses an Edit/commit on this branch
                  without it (agent-orchestration.md — Single-Agent Shortcut /
-                 waves; Autonomous directive, no AskUserQuestion). May delegate
+                 waves; Autonomous directive, no AskUserQuestion, so
+                 without $BURN_MODE a tight budget class means *spare the
+                 window*, Interaktiv included). May delegate
                  one heavy item to a /do-run autonomous implement sub-run
                  (never ships).
   3. TEST/QA   → pin the profile per {PLUGIN_ROOT}/deep-knowledge/test-plan.md; a
