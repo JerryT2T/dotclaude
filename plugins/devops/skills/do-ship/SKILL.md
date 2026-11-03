@@ -15,7 +15,7 @@ invokes: [auto-harden, auto-polish]
 triggers:
   en: ["ship it", "push and merge", "release", "promote", "promotion", "channel release", "promote to beta", "promote to stable"]
   de: ["auf stable heben"]
-argument-hint: "[beta|stable|promote] [<version>] [--cwd <path>] [--keep] [--queued] [--delegated] [--card-data] [--inline]"
+argument-hint: "[beta|stable|promote] [<version>] [--cwd <path>] [--keep] [--queued] [--batch=<M>] [--delegated] [--card-data] [--inline]"
 allowed-tools: Bash(git *), Bash(gh *), Bash(npm *), Bash(node *), Bash(bash *), Bash(nohup *), Read, Glob, Grep, AskUserQuestion, ExitWorktree, Agent, SendMessage, TaskList, TaskCreate, TaskUpdate, Skill, mcp__plugin_devops_dotclaude__*, mcp__ccd_session_mgmt__get_session, mcp__ccd_session_mgmt__set_session_title, mcp__ccd_session_mgmt__archive_session
 ---
 
@@ -43,13 +43,14 @@ A ship always lands on **alpha**. Naming a higher channel means "ship if anythin
 
 **Promotion stays a user decision.** The channel word the user typed IS that decision. Never promote on a channel that did not come from the user: orchestrator arguments (`--queued`, `--cwd`, `/do-run backlog`) and any `$SHIP_LOCKOUT` run skip the promotion; the card's Promote buttons offer it — never an `open` item (its reply would ride on Nachbessern; `lib/open-admission.js` drops it). All `ship_promote` guards stay final (monotonicity, ancestry, immutability).
 
-## Composed ships — `--cwd`, `--keep`, `--queued`, the queue marker
+## Composed ships — `--cwd`, `--keep`, `--queued`, `--batch`, the queue marker
 
 | Signal | Effect |
 |---|---|
 | `--cwd=<path>` | Every `ship_*` MCP call passes this path as `cwd`, git runs as `git -C <path>`, the Step 1e passes get `--cwd=<path>`. `ExitWorktree` is **never** called — `--cwd` implies `--keep`. Pre-Steps B/C still refer to this session. |
 | `--keep` | `ship_run({ …, keep: true })` — no branch or worktree teardown, only sentinel + lockout marker cleared. |
 | `--queued` | `ship_run({ …, queued: true })` — no hygiene; summary suffix `(Queue n/N)`; a blocked outcome is parked by the caller, not retried here. |
+| `--batch=<M>` | Default landing for a backlog run (#1016): the branch holds M per-issue commits (`… (closes #N)`) and ships ONCE — `ship_run({ …, mergeStrategy: "rebase" })` so each commit reaches main, one version bump, one changelog line per issue, body `Closes #N` per issue, one CI cycle. No `queued`. Preflight reads `allow_rebase_merge`; if the repo forbids it, fall back to squash and put the lost per-issue history on the card as an open item. Per-issue `--queued=n/N` ships remain behind `/do-run backlog --per-item`. |
 | land a green Dependabot PR | `ship_run({ cwd, landPr: <n> })` — squash-merges it, no worktree/bump/changelog; `land-refused` unless bot-authored, non-draft, mergeable, all checks green. `gh pr merge` stays guarded. |
 | `.claude/.ship-queue` marker, `--delegated`, `--card-data`, `--resume`, `--inline` | read `deep-knowledge/composed-ships.md` (§ Queue marker, § Run flags) before Pre-Step A. |
 

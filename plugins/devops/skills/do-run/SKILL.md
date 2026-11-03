@@ -270,8 +270,10 @@ before the ship: `deep-knowledge/execution.md` § auto-agents hand-off.
   `burn` argument. A burn stopped by a limit is never burned on silently:
   a manual nudge is asked (`prompt.burn.resume`), an automatic resume
   follows F7.
-- Ship authority lives in this router (Q2) and in backlog mode's per-issue
-  loop. The autonomous engine itself still never ships.
+- Backlog runs land as ONE batch (one branch/PR/CI run) by default; the
+  explicit argument `--per-item` selects one full ship per issue
+  (`modes/backlog.md` § Landing lane).
+- Ship authority lives in this router (Q2) and in backlog mode's loop. The autonomous engine itself still never ships.
 - Harden always, Polish on every UI change — never asked, never silently
   dropped: a conscious skip goes through `run-contract.js skip <ob> --reason`
   and shows on the card (Step 5b, `{PLUGIN_ROOT}/deep-knowledge/run-contract.md`).
