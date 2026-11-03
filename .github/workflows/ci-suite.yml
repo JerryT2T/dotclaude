@@ -22,9 +22,13 @@ permissions:
   contents: read
   checks: read
 
+# A running suite is never cancelled by a follow-up push (#1016): the ship's
+# release push and fix-ups used to restart a nearly finished 5-7 min run. A newer
+# push queues behind it and replaces any older pending run, so at most one run
+# is waiting.
 concurrency:
   group: ci-suite-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   # A ship pushes its release commit (version + CHANGELOG) onto a PR whose

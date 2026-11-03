@@ -3,7 +3,9 @@
 # Run Backlog
 
 Work off the project's planned backlog. Pick milestones (or loose issues), then
-refine → implement → test/QA → **ship** each selected item, one after another,
+refine → implement → test/QA each selected item, one after another, then **land
+them together as one batch** (one branch, one PR, one build, one CI run — see
+"Landing lane" below; `--per-item` restores one full ship per issue)
 until the backlog is done — so the user can lean back or go to bed and wake up to
 shipped work.
 
@@ -374,6 +376,33 @@ a time, and main stays incrementally green through per-issue shipping.
 
 When `$BURN_MODE=no` (default), run strictly one issue at a time as below.
 
+## Landing lane — batch (default) or `--per-item`
+
+`$LANE=batch` is the default (#1016): a 7-issue run is not 7 full releases
+(PR + harden + QA + build + CI each, ~30 min apiece, CI restarting on every
+follow-up push). The explicit flag `--per-item` (router argument, carried in the
+`RUN_BACKLOG_AUTOSTART:` payload as `lane=per-item`) selects the old lane: the
+loop below with step 4 as a per-issue `--queued` ship. Burn mode
+(`$BURN_MODE=yes`) keeps per-issue landing, so does `$SHIP=manual`.
+
+Batch lane, differences to the loop below:
+
+- **One batch branch** `batch/<slug>` off the base, one worktree. Steps 1-3b run
+  per issue on it, in queue order. Items that touch the same files or depend on
+  each other simply stay in that order; they are never reordered or parallelised.
+- **One commit per issue**, `<type>(<scope>): <what> (closes #N)`. Fix-ups for an
+  issue are folded into that issue's commit before the push (`git commit --fixup`
+  + autosquash), never left as separate "fix" commits.
+- **No push until the end.** Nothing is pushed or PR'd per issue, so no CI run
+  is started and then cancelled by a follow-up push.
+- **Step 3b passes only report out-of-scope, pre-existing findings** (open items
+  on the card, follow-up issue); they never fix code the branch did not change.
+- **Step 4 SHIP runs once, after the last item**, over the whole batch:
+  `Skill("devops:do-ship", "--batch=<M> --keep")` (see do-ship SKILL.md,
+  composed ships). A parked or blocked item is dropped from the batch (its
+  commit reverted or never made) and does not hold the others back. Step 5 CLOSE
+  covers every issue of the batch after the single merge.
+
 Loop the queue, **one issue at a time**:
 
 ```
@@ -397,7 +426,7 @@ for each issue in queue:
                  detection) (+ --strict under "Strikt") — both gated by the run
                  contract, Polish only on UI; a conscious skip via
                  `run-contract.js skip harden|polish --reason "<why>"`
-  4. SHIP      → $SHIP=auto: Skill("devops:do-ship", "--queued=<n>/<N>
+  4. SHIP      → (`--per-item` only; batch lane ships once after the loop) $SHIP=auto: Skill("devops:do-ship", "--queued=<n>/<N>
                  --keep") — NEVER the ship_* MCP tools directly; the
                  run-contract `do-ship` obligation refuses `ship_release`
                  without a prior do-ship call in this segment, and this is
@@ -528,7 +557,7 @@ git-exclude entries (Step 3). Semantics mirror the `AUTONOMOUS-*` family.
   after the Lockout.
 - **Compose, don't copy** — reuse the shared scripts, deep-knowledge, and
   sub-skills by reference; never duplicate the autonomous frame prose.
-- **Per-issue shipping** keeps `main` incrementally green; a blocked item never
+- **Batch landing** (default) lands all items in one PR/CI cycle; `--per-item` shipping keeps `main` incrementally green per issue; a blocked item never
   halts the queue, it becomes a `⏸ Rückfrage` and the loop moves on.
 - **Presence phase is timeout-safe** — the autostart is armed from the FIRST
   question (Step 1a), not just the gate, so a user who walks away early still
