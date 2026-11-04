@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.350.2] — 2026-11-04
+
+### Fixed
+- Orphan report: a local-only branch left idle on the main checkout now counts as at risk.
+- Orphan report: remote-only branches with unlanded work and no PR are listed from day one (`remoteOnly`), and the session-start nudge counts them.
+
 ## [0.350.1] — 2026-11-04
 
 ### Fixed

@@ -235,6 +235,16 @@ runtime state do not count). The card line carries commits, `n/m files landed`
 for partial, `unpushed` and `uncommitted`. Offline (no merged-PR list) the
 unlanded half stays silent — a squash-merged branch looks the same.
 
+Two places the autosave and the post-ship hygiene cannot see count as well. A
+local-only branch on the **main checkout** with unlanded work, no PR, no live
+session and no commit for a day is at risk (never removed): the autosave skips
+main checkouts, so nothing else holds this work. A **remote-only** branch with
+unlanded work and no PR is listed in the orphan report as `remoteOnly` from its
+first day (a cloud session that pushed and ended), not only after
+`remoteStaleDays`; at least 95 % of its content in the base keeps it out. Hygiene
+runs per ship, so a repo nobody ships again is only seen by the orphan scan: every
+leftover class must reach that report, or it stays unseen.
+
 **Parked** = deliberately set-aside, unlanded work someone wants to keep. One
 prefix: `parked/<topic>`. Read-only legacy aliases, still recognized and never
 created again: `wip/`, `backup/`, `salvage/`, and any branch whose tip subject
