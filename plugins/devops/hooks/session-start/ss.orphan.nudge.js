@@ -126,7 +126,8 @@ function counts(entry) {
   const dirty = risk.filter((r) => r.dirty > 0).length;
   const parked = Array.isArray(entry.parked) ? entry.parked : [];
   const undecided = parked.filter((p) => (p.ageDays || 0) >= UNDECIDED_AFTER_DAYS && isUndecided(p)).length;
-  return { unlanded: risk.length - dirty, dirty, undecided };
+  const remote = Array.isArray(entry.remoteOnly) ? entry.remoteOnly.length : 0;
+  return { unlanded: risk.length - dirty + remote, dirty, undecided };
 }
 
 /** "3 h" from one hour on, otherwise minutes (at least 1). */

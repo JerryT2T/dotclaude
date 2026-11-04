@@ -97,6 +97,7 @@ export const REMOVE_TIMEOUT = 15 * 60_000;
 export const REMOVAL_BUDGET_MS = 180_000;
 /** A Claude transcript for the worktree written this recently → a session may still be in it. */
 export const LIVE_SESSION_MS = 2 * 3_600_000;
+const MAIN_CHECKOUT_IDLE_MS = 24 * 3_600_000;
 /**
  * Ignored entries `worktree remove` may delete: regenerable build output only
  * (git-hygiene.md orphan rule). Any other ignored file keeps the worktree.
@@ -732,6 +733,15 @@ export function transcriptDirNames(wtPath) {
   return [...new Set([p.replace(/[\\/:.]/g, "-"), p.replace(/[^A-Za-z0-9]/g, "-")])];
 }
 
+/** Unlanded work on the main checkout counts as left behind only without a PR, a live session and a commit in the last day. */
+function mainCheckoutIdle(u, ctx, merged, open) {
+  if (merged === null) return false;
+  if (open && (open.names.has(u.branch) || open.shas.has(u.head))) return false;
+  if (hasLiveSession(u.path, ctx.projectsDir, ctx.now)) return false;
+  const ts = Number(gitOut(["log", "-1", "--format=%ct", u.head], ctx.cwd));
+  return Number.isFinite(ts) && ts > 0 && ctx.now - ts * 1000 > MAIN_CHECKOUT_IDLE_MS;
+}
+
 /** A Claude transcript for `wtPath` was written within LIVE_SESSION_MS. */
 export function hasLiveSession(wtPath, projectsDir, now = Date.now()) {
   if (!projectsDir) return false;
@@ -965,9 +975,20 @@ export function classifyUnits(scan, io) {
   const mainOnLanded = [];
   const landedOutside = [];
   for (const u of scan.units) {
-    // never removable, never at risk: the user stands on it; landed ones are only reported (#879)
+    // never removable: the user stands on it; landed ones are only reported (#879). Unlanded and
+    // idle it is at risk: the autosave skips main checkouts and the branch was never pushed, so
+    // nothing else knows about this work.
     if (u.kind === "main-checkout") {
-      if (landingState(u.head, u.branch, ctx).state === "landed") mainOnLanded.push(u);
+      const landing = landingState(u.head, u.branch, ctx);
+      if (landing.state === "landed") mainOnLanded.push(u);
+      else if (mainCheckoutIdle(u, ctx, merged, open)) {
+        atRisk.push({
+          kind: u.kind, branch: u.branch, path: u.path, head: u.head,
+          commits: ownCommits(u.head, ctx),
+          state: landing.state, filesIn: landing.filesIn, filesTotal: landing.filesTotal,
+          pushed: isPushed(u, io.cwd), dirty: 0,
+        });
+      }
       continue;
     }
     const reason = keepReason(u, ctx);
@@ -1176,6 +1197,36 @@ function hasRemoteBranches(cwd, defaultBranch) {
  * lookup failed: both facts are needed to call a branch safe or abandoned.
  * @returns {{merged:{name:string, sha:string}[], stale:{name:string, sha:string, ageDays:number}[]}}
  */
+/**
+ * Remote-only branches with work the default branch lacks and no PR at all, whatever their age: a
+ * cloud session that pushed and ended leaves exactly this, and remoteBranchPlan's `stale` list
+ * stays silent for its first `remoteStaleDays`. A partial branch whose content is at least
+ * 95 % in the base (sub-agent branches of a squashed integration) does not count.
+ * Empty when offline: a squash-merged branch looks the same.
+ * @returns {{name:string, sha:string, ageDays:number, state:string}[]}
+ */
+export function remoteUnlanded(ctx, defaultBranch, now = Date.now()) {
+  if (!ctx.merged || !ctx.open) return [];
+  const local = new Set((gitOut(["for-each-ref", "--format=%(refname:short)", "refs/heads"], ctx.cwd) || "").split("\n").filter(Boolean));
+  const out = gitOut(["for-each-ref", "--format=%(refname)%09%(objectname)%09%(committerdate:unix)", "refs/remotes/origin"], ctx.cwd) || "";
+  const res = [];
+  for (const line of out.split("\n")) {
+    const [ref, sha, ts] = line.trim().split("\t");
+    if (!ref || !sha) continue;
+    const name = ref.slice("refs/remotes/origin/".length);
+    if (isSpecialRemote(name, defaultBranch) || local.has(name)) continue;
+    if (ctx.open.names.has(name) || ctx.open.shas.has(sha) || (ctx.open.bases && ctx.open.bases.has(name))) continue;
+    const { state } = landingState(sha, name, ctx);
+    if (state === "landed") continue;
+    if (state === "partial") {
+      const r = residualOf(sha, ctx);
+      if (r && r.ratio >= 0.95) continue;
+    }
+    res.push({ name, sha, ageDays: Math.floor((now - Number(ts) * 1000) / DAY_MS), state });
+  }
+  return res;
+}
+
 export function remoteBranchPlan(ctx, open, defaultBranch, days, now = Date.now()) {
   const res = { merged: [], stale: [] };
   if (!ctx.merged || !open) return res;

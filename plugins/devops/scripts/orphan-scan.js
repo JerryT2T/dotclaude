@@ -14,6 +14,7 @@
  *              older than 30 days they carry a nudge
  *   landedLeftovers = landed branches/worktrees hygiene may remove
  *   mainOnLanded = branch the main checkout is parked on although it landed (nudge only)
+ *   remoteOnly = origin branches with unlanded work, no PR and no local copy (cloud sessions)
  *   landedOutside = clean landed worktrees outside .claude/worktrees (nudge only)
  *   The SessionStart hook ss.orphan.nudge reads the report (no git calls).
  *
@@ -157,6 +158,7 @@ async function scanOne(repo, opts = {}) {
       landedLeftovers: cls.removable.length,
       mainOnLanded: cls.mainOnLanded[0] ? cls.mainOnLanded[0].branch : null,
       landedOutside: cls.landedOutside.length,
+      remoteOnly: hy.remoteUnlanded(cls.ctx, scan.defaultBranch, now).map((b) => ({ branch: b.name, ageDays: b.ageDays, state: b.state })),
       offline: cls.merged === null,
     },
   };

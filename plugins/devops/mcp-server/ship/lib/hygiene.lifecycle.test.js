@@ -311,10 +311,20 @@ describe("main checkout on a landed local-only branch (#879) and landed worktree
     const { dir } = makeRepo();
     expect(scanRepo(dir, NOW).units.some((u) => u.kind === "main-checkout")).toBe(false);
     git(dir, "checkout", "-q", "-b", "feat/open");
-    commitAt(dir, "b.txt", "x\n", daysAgo(1));
+    commitAt(dir, "b.txt", "x\n", daysAgo(0.5));
     const cls = classify(dir, scanRepo(dir, NOW));
     expect(cls.mainOnLanded).toEqual([]);
     expect(cls.atRisk).toEqual([]);
+  });
+
+  test("an unlanded local-only branch idle on the main checkout is at risk, never removable", () => {
+    const { dir } = makeRepo();
+    git(dir, "checkout", "-q", "-b", "fix/forgotten");
+    commitAt(dir, "b.txt", "x\n", daysAgo(3));
+    const cls = classify(dir, scanRepo(dir, NOW));
+    expect(cls.atRisk).toEqual([expect.objectContaining({ kind: "main-checkout", branch: "fix/forgotten", state: "unlanded", pushed: false })]);
+    expect(cls.removable).toEqual([]);
+    expect(cls.mainOnLanded).toEqual([]);
   });
 
   test("a branch with an upstream is no main-checkout unit", () => {

@@ -95,6 +95,19 @@ describe("orphan-scan", () => {
     expect(entry.landedLeftovers).toBe(0);
   });
 
+  test("a remote-only branch with unlanded work and no PR is reported, whatever its age", async () => {
+    const root = mkRoot();
+    const r = repoIn(root, "app");
+    commitOn(r, "claude/cloud-session", "c.txt", "cloud\n");
+    git(r, "update-ref", "refs/remotes/origin/claude/cloud-session", git(r, "rev-parse", "claude/cloud-session"));
+    git(r, "checkout", "-q", "main");
+    git(r, "branch", "-q", "-D", "claude/cloud-session");
+    const { entry } = await scanOne(r, { ...opts, fetchOpen: () => ({ names: new Set(), shas: new Set() }) });
+    expect(entry.remoteOnly).toEqual([expect.objectContaining({ branch: "claude/cloud-session", state: "unlanded" })]);
+    const withPr = await scanOne(r, { ...opts, fetchOpen: () => ({ names: new Set(["claude/cloud-session"]), shas: new Set() }) });
+    expect(withPr.entry.remoteOnly).toEqual([]);
+  }, 240_000);
+
   test("a landed branch is never listed as parked", async () => {
     const root = mkRoot();
     const r = repoIn(root, "app");
