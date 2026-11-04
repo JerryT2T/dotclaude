@@ -102,6 +102,7 @@ must see their own language. The locale hint is authoritative.
 | `panel.turn_you` | Your turn | Du bist dran |
 | `panel.turn_rethinking` | rethinking | überdenkt |
 | `panel.turn_implementing` | implementing | setzt um |
+| `panel.turn_finalizing` | closing out | schließt ab |
 | `panel.status_reconnecting` | reconnecting… | verbinde… |
 | `panel.journey_label` | Round progress | Rundenverlauf |
 | `panel.journey_rethinking` | Rethinking | Rethinking |

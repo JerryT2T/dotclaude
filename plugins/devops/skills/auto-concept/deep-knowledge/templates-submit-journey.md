@@ -29,7 +29,7 @@ The bottom of every live panel is ONE row plus ONE status line (CSS in
   left → right (`.journey.jr-build`, 120 ms stagger); remembered per round in
   sessionStorage.
 - The phase is mirrored on `body[data-journey]` (round chip colour) and
-  `#panel-status[data-turn]` (you | rethinking | implementing | frozen).
+  `#panel-status[data-turn]` (you | rethinking | finalizing | implementing | frozen).
 
 The split-button markup (`.submit-split`, `#submit-menu`) stays in both
 skeletons as the no-JS source; mountJourney() moves the two buttons into the
@@ -104,7 +104,7 @@ function journeyPhase() {
   const submitted = (typeof _submittedAt === 'number' && _submittedAt > 0)
     || document.body.classList.contains('concept-submitted');
   const action = (typeof _submittedAction === 'string') ? _submittedAction : null;
-  if (submitted) return action === 'implement' ? 'implementing' : 'rethinking';
+  if (submitted) return action === 'implement' ? 'implementing' : (action === 'finalize' ? 'finalizing' : 'rethinking');
   return _journeyUnlocked ? 'unlock' : 'you';
 }
 
@@ -245,12 +245,14 @@ function renderJourney() {
   on('.jr-face-impl', phase === 'unlock');
   on('.jr-face-run', phase === 'implementing');
   const show = (sel, yes) => { const n = row.querySelector(sel); if (n) n.hidden = !yes; };
-  show('#submit-iterate-btn', phase !== 'rethinking');
-  show('.jr-round-other', phase !== 'rethinking');
-  show('.jr-round-done', phase === 'rethinking');
-  show('.jr-round-run', phase === 'rethinking');
+  // 'finalizing' (close-out submitted) runs like 'rethinking' but never says it.
+  const roundRun = (phase === 'rethinking' || phase === 'finalizing');
+  show('#submit-iterate-btn', !roundRun);
+  show('.jr-round-other', !roundRun);
+  show('.jr-round-done', roundRun);
+  show('.jr-round-run', roundRun);
   const lock = row.querySelector('#jr-lock');
-  if (lock) lock.disabled = (phase === 'rethinking');
+  if (lock) lock.disabled = roundRun;
   const back = row.querySelector('#jr-back');
   if (back) {
     back.disabled = (phase === 'implementing');
@@ -260,7 +262,11 @@ function renderJourney() {
   if (wa) { if (phase === 'implementing') wa.dataset.ok = ''; else delete wa.dataset.ok; }
   const conn = (document.getElementById('connection-status') || {}).dataset;
   const paused = !!(conn && conn.state === 'disconnected');
-  if (phase === 'rethinking') paintRunBar(row.querySelector('.jr-round-run'), phase, paused);
+  if (roundRun) {
+    const lab = row.querySelector('.jr-round-run .jr-run-label');
+    if (lab) lab.textContent = phase === 'finalizing' ? '{{panel.journey_finish}}' : '{{panel.journey_rethinking}}';
+    paintRunBar(row.querySelector('.jr-round-run'), phase, paused);
+  }
   if (phase === 'implementing') paintRunBar(row.querySelector('.jr-impl-run'), phase, paused);
   return phase;
 }

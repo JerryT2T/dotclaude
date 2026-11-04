@@ -122,6 +122,24 @@ describe("Ctrl own-pin tip (#929)", () => {
   }, BOOT_TIMEOUT);
 });
 
+describe("close-out page: no tips, notes stay possible", () => {
+  const ctrlDown = (window) => keyEv(window, window.document, { key: "Control", code: "ControlLeft", ctrlKey: true });
+  test("Ctrl tip and every other nudge stay away on a data-final-report section; Ctrl+click still places a note", async () => {
+    const { window, document } = await boot(fixture("decision"));
+    live(document).setAttribute("data-final-report", "");
+    ctrlDown(window);
+    expect(document.querySelectorAll(".hk-nudge")).toHaveLength(0);
+    expect(window.conceptNudge("keys", ["?"], "x")).toBe(false);
+    expect(document.querySelectorAll(".hk-nudge")).toHaveLength(0);
+    ctrlClick(window, live(document).querySelector("section[id]:not([data-iteration]) p"));
+    expect(editorOf(document)).toBeTruthy();
+    // a normal round still shows the tip (guard is per active section)
+    live(document).removeAttribute("data-final-report");
+    ctrlDown(window);
+    expect(document.querySelectorAll('.hk-nudge[data-nudge="pin-tip"]')).toHaveLength(1);
+  }, BOOT_TIMEOUT);
+});
+
 describe("note chrome (static contract)", () => {
   test("auto pins carry data-tip like own pins; chrome list covers the quick nav", () => {
     expect(md).toMatch(/function syncPinTips\(\)[\s\S]*setAttribute\('data-tip', label\)/);

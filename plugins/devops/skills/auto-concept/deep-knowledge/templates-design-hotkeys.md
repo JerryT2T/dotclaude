@@ -220,7 +220,10 @@ the same hotkeys and tips as a design round. Three jobs:
   }
   window.conceptHotkeyUsed = hotkeyUsed;
   const sessionShown = new Set();
+  // Close-out page: no tips of any kind (Ctrl+click notes still work).
+  const finalReportActive = () => !!document.querySelector('section[data-iteration][data-active][data-final-report]');
   function nudge(id, caps, text) {
+    if (finalReportActive()) return false;
     // Calm view (the eye): no new tips while the layer is hidden.
     if (body.classList.contains('anno-hidden')) return false;
     if (silenced(id) || current || Date.now() - lastShown < 60000) return false;
@@ -264,6 +267,7 @@ the same hotkeys and tips as a design round. Three jobs:
       || [...document.querySelectorAll('script[data-frozen-feedback]')].some(n => has(parse(n).userPins));
   }
   function pinTipKind() {
+    if (finalReportActive()) return '';
     if (body.classList.contains('viewing-frozen')) return '';
     if (typeof window.documentPinsActive === 'function' && window.documentPinsActive()) return 'doc';
     const it = document.querySelector('section[data-iteration][data-active]');

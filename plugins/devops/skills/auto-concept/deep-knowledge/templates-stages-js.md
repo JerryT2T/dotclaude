@@ -424,7 +424,7 @@ function renderStageNext() {
   btn.textContent = '{{stage.next}} ›';
   btn.dataset.tip = '{{stage.next_tip}}'.replace('{next}', next.id).replace('{name}', next.name || '');
   const phase = typeof journeyPhase === 'function' ? journeyPhase() : 'you';
-  btn.disabled = phase === 'rethinking' || phase === 'implementing';
+  btn.disabled = phase === 'rethinking' || phase === 'finalizing' || phase === 'implementing';
 }
 
 function renderStages() {
