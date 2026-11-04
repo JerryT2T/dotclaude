@@ -81,7 +81,8 @@ the user starts) finds sessions whose `custom-title.json` sidecar says ⏳, whos
 transcript has been idle ≥ 2 min and whose governor pid is gone, and hands Claude
 the exact old → new titles; Claude renames the ones `list_sessions` reports
 `isRunning:false` to `👉 ➜ ⚡ Interrupted ┃ <title>` — every ⏳ form, a working
-concept page included. Nothing runs before a session is started, and an
+concept page included. The scan runs detached, so the list arrives with a prompt
+of that session, not with its start. Nothing runs before a session is started, and an
 interrupted session asks nothing by itself: it waits for the user's next prompt.
 
 **Dev servers are not pending work (#964).** A background command that never exits

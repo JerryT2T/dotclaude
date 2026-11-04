@@ -211,6 +211,14 @@ window (#324). A session that loses `dotclaude` cannot ship at all.
   process sweeps run behind a cooldown gate or are deferred to a later event —
   never unconditionally at every start. Every manifest entry and every
   subprocess carries an explicit timeout.
+- **SessionStart holds the session's first prompt.** The Desktop app sends the
+  first prompt only after these hooks finished, so their time is the user's.
+  A module blocks only for what must be in the first prompt's context, and it
+  spends no process on it: a `git` spawn costs about a second on Windows with a
+  few sessions running, so git questions go through `lib/git-fs.js` (reads `.git`)
+  and everything else through `lib/deferred-results` (detached, delivered with
+  the next prompt). Budgets are 5 s; only `ss.mcp.deps` may hold longer, because
+  a broken install keeps the servers from booting.
 - **The cache rebuild never rewrites a running server's `cwd` wholesale**:
   exclude `node_modules` from the copy and link it instead.
 - **MCP servers do zero work before `server.connect(transport)`** — no

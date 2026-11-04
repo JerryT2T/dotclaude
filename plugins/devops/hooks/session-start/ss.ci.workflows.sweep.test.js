@@ -21,6 +21,16 @@ describe("ss.ci.workflows.sweep (#949)", () => {
     expect(lanes.lanes.SessionStart.flat()).toContain("ss.ci.workflows.sweep");
   });
 
+  test("hasRecords spares the node start without a paused workflow; a broken store goes to the CLI", () => {
+    expect(hook.hasRecords(file)).toBe(false);
+    fs.writeFileSync(file, JSON.stringify({ version: 1, disabledWorkflows: {} }));
+    expect(hook.hasRecords(file)).toBe(false);
+    fs.writeFileSync(file, JSON.stringify({ disabledWorkflows: { "o/r": {} } }));
+    expect(hook.hasRecords(file)).toBe(true);
+    fs.writeFileSync(file, "{broken");
+    expect(hook.hasRecords(file)).toBe(true);
+  });
+
   test("buildContext is silent without overdue repos and names them otherwise", () => {
     expect(hook.buildContext([])).toBeNull();
     expect(hook.buildContext(["o/r", "o/x"])).toMatch(/o\/r, o\/x/);

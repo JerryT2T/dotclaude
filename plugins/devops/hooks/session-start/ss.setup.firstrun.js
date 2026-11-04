@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook ss.setup.firstrun
- * @version 0.1.0
+ * @version 0.2.0
  * @event SessionStart
  * @plugin devops
  * @description (1) Bootstrap check (#923): git, Git Bash (Windows) and a
@@ -10,8 +10,8 @@
  *   start). Repeats every session until fixed — a broken plugin must not be
  *   silent. (2) Offers the setup guide (skills/auto-setup) ONCE per user,
  *   recorded in ~/.claude/devops-setup.json; "devops setup" re-runs it any
- *   time. Fresh `startup` sessions only. Pure fs + one `git --version`
- *   (3 s cap) — boot-window safe; never blocks, exit 0 always.
+ *   time. Fresh `startup` sessions only. Pure fs (git is looked up on PATH, no
+ *   spawn) — boot-window safe; never blocks, exit 0 always.
  */
 
 require('../lib/plugin-guard');

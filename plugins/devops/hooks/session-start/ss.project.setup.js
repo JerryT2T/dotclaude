@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook ss.project.setup
- * @version 0.4.0
+ * @version 0.5.0
  * @event SessionStart
  * @plugin devops
  * @description The automatic part of project setup (the former /setup-project
@@ -30,8 +30,9 @@
  *
  *   Silent otherwise. Outside a git work tree, for a dotfiles repo rooted at
  *   the home directory seen from a subfolder, and for a git repo at
- *   ~/.claude itself (the home backup), it does nothing. Pure fs plus at most
- *   one `git rev-parse` (5 s cap) — boot-window safe.
+ *   ~/.claude itself (the home backup), it does nothing. Pure fs; only a HEAD
+ *   that does not resolve in `.git` asks `git rev-parse` (5 s cap) — boot-window
+ *   safe.
  */
 
 require('../lib/plugin-guard');
@@ -118,9 +119,11 @@ function syncGitignore(root, isNew, commonDir = null) {
 
 /** Why this repo looks new, or null. */
 function newRepoReason(root) {
-  let hasCommit = true;
-  try {
+  const gitFs = require('../lib/git-fs');
+  let hasCommit = gitFs.hasCommit(gitFs.workTree(root)) === true;
+  if (!hasCommit) try {
     execFileSync('git', ['rev-parse', '--verify', '-q', 'HEAD'], { windowsHide: true, cwd: root, stdio: 'ignore', timeout: 5000 });
+    hasCommit = true;
   } catch (e) {
     // exit 1 = no commit yet; a timeout or missing git proves nothing
     hasCommit = !(e && e.status === 1);

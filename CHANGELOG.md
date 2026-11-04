@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.350.3] — 2026-11-05
+
+### Changed
+- Session start: the first prompt of a Desktop session waits about 1 s for the hooks instead of about 11 s (median of 8 alternating runs). Uncommitted, stash and unpushed findings now arrive in the background with a later prompt; the worktree rule still arrives at once.
+
+### Fixed
+- Session start: a module stuck in a slow git call ends at its budget, so it no longer pushes the dispatcher into the 25 s hook timeout, which discarded every module's reply.
+- Session start: `ss.git.check` no longer loses the worktree rule to its own timeout.
+
 ## [0.350.2] — 2026-11-04
 
 ### Fixed

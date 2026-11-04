@@ -14,7 +14,6 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { spawnSync } = require('child_process');
 
 const MARKER = 'devops-setup.json';
 const DELEGATION_MODES = ['auto', 'ask', 'off'];
@@ -38,12 +37,21 @@ function gitBashCandidates(env = process.env) {
  * the README names it as a prerequisite instead). Git Bash matters on Windows only.
  * @returns {{missing:string[], winget:string[]}}
  */
+/** Is `cmd` an executable on PATH? Env keys are case-insensitive on Windows (`Path`). */
+function onPath(cmd, { platform = process.platform, env = process.env, exists = fs.existsSync } = {}) {
+  const key = Object.keys(env).find((k) => k.toUpperCase() === 'PATH');
+  const dirs = String((key && env[key]) || '').split(platform === 'win32' ? ';' : ':').filter(Boolean);
+  const exts = platform === 'win32' ? String(env.PATHEXT || '.COM;.EXE;.BAT;.CMD').split(';') : [''];
+  return dirs.some((d) => exts.some((e) => exists(`${d.replace(/["']/g, '')}/${cmd}${e}`)));
+}
+
 function checkPrereqs({ platform = process.platform, env = process.env, exists = fs.existsSync, run, nodeVersion = process.versions.node } = {}) {
   const missing = [];
   const winget = [];
-  const exec = run || ((cmd, args) => spawnSync(cmd, args, { timeout: 3000, windowsHide: true }));
+  // A process costs about a second at every session start; PATH answers "is it
+  // installed", which is all the install offer needs.
   let gitOk = false;
-  try { gitOk = exec('git', ['--version']).status === 0; } catch { gitOk = false; }
+  try { gitOk = run ? run('git', ['--version']).status === 0 : onPath('git', { platform, env, exists }); } catch { gitOk = false; }
   if (!gitOk) { missing.push('git'); winget.push(WINGET_GIT); }
   if (platform === 'win32' && !gitBashCandidates(env).some((p) => exists(p))) {
     missing.push('git-bash');
@@ -119,6 +127,6 @@ function setDelegation(mode, { scope = 'global', cwd = process.cwd(), home = os.
 
 module.exports = {
   MARKER, DELEGATION_MODES, LANGUAGES,
-  gitBashCandidates, checkPrereqs, wasOffered, recordOffer, markerPath,
+  gitBashCandidates, checkPrereqs, onPath, wasOffered, recordOffer, markerPath,
   setLanguage, installQuiet, setDelegation,
 };

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook ss.ship.verify
- * @version 0.3.0
+ * @version 0.4.0
  * @event SessionStart
  * @plugin devops
  * @description Surface results from the post-merge watcher (post-ship CI +
@@ -19,6 +19,9 @@
  *   re-inspect history with `gh run view <id>`.
  *
  *   Silent when there are no watcher files at all.
+ *
+ *   The GitHub lookup for an abandoned watcher (up to 30 s of `gh`) runs detached
+ *   (lib/deferred-results); its report arrives with the next user prompt.
  *
  *   Why the main repo and never <cwd>: Claude Desktop seeds every new worktree
  *   with a copy of the main repo's untracked `.claude/` — including
@@ -277,8 +280,8 @@ function lookupRuns({ cwd, mergeSha, base }) {
  * @returns {string}
  */
 function resolveMainRepoRoot(cwd, run) {
-  const exec = run || ((cmd, args) =>
-    execFileSync(cmd, args, { cwd, encoding: 'utf8', timeout: GIT_TIMEOUT_MS, stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true }).trim());
+  // Without an injected runner the answer comes from `.git`: a git spawn costs about a second.
+  const exec = run || (() => require('../lib/project-root').gitCommonDir(cwd));
   try {
     const commonDir = exec('git', ['rev-parse', '--path-format=absolute', '--git-common-dir']);
     if (commonDir && /(^|[\\/])\.git$/.test(commonDir)) return path.dirname(commonDir);
@@ -306,7 +309,10 @@ module.exports = {
 if (require.main === module) {
   require('../lib/plugin-guard');
 
-  const cwd = require('../lib/hook-input').sessionCwd().cwd; // session dir, not the root (hook-input)
+  const session = require('../lib/hook-input').sessionCwd(); // session dir, not the root (hook-input)
+  const cwd = session.cwd;
+  const background = process.env.DEVOPS_DEFERRED_PHASE === 'bg';
+  let abandoned = false;
   const watcherDir = resolveStateDir(cwd);
 
   if (!fs.existsSync(watcherDir)) process.exit(0);
@@ -334,9 +340,10 @@ if (require.main === module) {
 
     if (data.status === 'watching') {
       if (!isAbandoned(data, now)) {
-        inflight.push(data);
+        if (!background) inflight.push(data);
         continue;
       }
+      if (!background) { abandoned = true; continue; }
       // Resolve it: report the real outcome once, then never again. The old
       // code left `status: "watching"` here, so the entry re-entered this
       // branch every session and was never reported at all.
@@ -353,7 +360,16 @@ if (require.main === module) {
     }
   }
 
-  if (reports.length === 0 && inflight.length === 0) process.exit(0);
+  const handOff = () => {
+    if (!abandoned) return;
+    try {
+      require('../lib/deferred-results').deferOrRun({
+        name: 'ship-verify', script: __filename, input: session.hook ? JSON.stringify(session.hook) : '',
+      });
+    } catch { /* retried next session: the entry stays `watching` */ }
+  };
+
+  if (reports.length === 0 && inflight.length === 0) { handOff(); process.exit(0); }
 
   const out = [];
   out.push('Post-ship deploy verification — show the user this summary verbatim as the FIRST action of this turn (Lang: user-preference):');
@@ -371,5 +387,6 @@ if (require.main === module) {
   }
 
   process.stdout.write(out.join('\n') + '\n');
+  handOff();
   process.exit(0);
 }

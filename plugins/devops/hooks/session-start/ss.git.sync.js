@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook ss.git.sync
- * @version 1.2.0
+ * @version 1.3.0
  * @event SessionStart
  * @plugin devops
  * @description Starts ONE detached background git sync for this worktree.
@@ -22,6 +22,7 @@ require('../lib/plugin-guard');
 
 const { execSync } = require('child_process');
 const { claimSyncSlot, startBackgroundSync } = require('../lib/git-sync-bg');
+const gitFs = require('../lib/git-fs');
 
 // The session's directory, not the hook process's: Desktop starts hooks of a
 // worktree session in the repo root (see hook-input sessionCwd).
@@ -41,17 +42,23 @@ function git(cmd) {
   }
 }
 
+// Inside the throttle window nothing below matters: the common case ends here.
+if (!claimSyncSlot(cwd, { peek: true })) process.exit(0);
+
 // Only sync in a git repo on a branch with a remote. The default branch syncs
 // too (#802): git-sync fast-forwards it and detects the default branch itself.
-if (git('rev-parse --is-inside-work-tree') !== 'true') process.exit(0);
-if (!git('remote')) process.exit(0);
+// Read from `.git`, a git spawn costs about a second (lib/git-fs).
+const tree = gitFs.workTree(cwd);
+if (!tree) process.exit(0);
+const remote = gitFs.hasRemote(tree);
+if (remote === false || (remote === null && !git('remote'))) process.exit(0);
 
-// symbolic-ref, not rev-parse --abbrev-ref: the latter answers the literal
-// 'HEAD' on a detached HEAD, which would burn the 30-minute throttle slot on a
-// sync the child then refuses outright. These worktrees sit detached between
-// tasks, so that is the common state.
-const branch = git('symbolic-ref --quiet --short HEAD');
-if (!branch) process.exit(0);
+// HEAD's ref, never `rev-parse --abbrev-ref`: that answers the literal 'HEAD' on
+// a detached HEAD, which would burn the 30-minute throttle slot on a sync the
+// child then refuses outright. These worktrees sit detached between tasks, so
+// that is the common state.
+if (!tree.ref) process.exit(0);
+if (!tree.branch && !git('symbolic-ref --quiet --short HEAD')) process.exit(0);
 
 // A session resumed in the middle of a ship must not merge under the pipeline:
 // ship rebases and releases what it just tested, and a background merge commit

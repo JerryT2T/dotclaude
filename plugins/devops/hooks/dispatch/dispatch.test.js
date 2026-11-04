@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 
 const require = createRequire(import.meta.url);
-const { runEvent, laneGroups, dispatchDisabled, selectModules } = require("./dispatch.js");
+const { runEvent, laneGroups, dispatchDisabled, selectModules, hardExitStdout } = require("./dispatch.js");
 
 let dir;
 const FIXTURES = {
@@ -25,6 +25,11 @@ const FIXTURES = {
   "spin.js": `for(;;){}`,
   // an uncaught throw is a non-blocking error
   "throw.js": `throw new Error('kaboom');`,
+  // sits in a synchronous spawn far past its budget, as a slow git call does
+  "spawn-sync.js": `require('child_process').execSync('node -e "setTimeout(()=>{},30000)"',{windowsHide:true,stdio:'pipe'});process.stdout.write(JSON.stringify({systemMessage:'never'}));`,
+  "spawn-esm.mjs": `import { spawnSync } from 'node:child_process';const r=spawnSync(process.execPath,['-e','setTimeout(()=>{},30000)'],{windowsHide:true});process.stdout.write(JSON.stringify({systemMessage:'esm:'+(r.error&&r.error.code)}));`,
+  // a spawn the worker's cap cannot reach: the thread stays stuck for 4 s
+  "stuck.js": `process.binding('spawn_sync').spawn({file:process.execPath,args:[process.execPath,'-e','setTimeout(()=>{},4000)'],envPairs:[],stdio:[{type:'ignore'},{type:'ignore'},{type:'ignore'}]});`,
   // records the run id the dispatcher handed in, then spins into its budget
   "id-spin.js": `require('fs').writeFileSync(require('path').join(__dirname,'seen-id.txt'),require('worker_threads').workerData.telemetryId);for(;;){}`,
 };
@@ -74,6 +79,35 @@ describe("dispatcher runs modules in worker threads like separate processes", ()
     expect(JSON.parse(r.stdout).hookSpecificOutput.additionalContext).toBe("ctx:Bash");
   });
 
+  test("a module stuck in a synchronous spawn ends at its budget, the others keep their reply", async () => {
+    const t0 = Date.now();
+    const r = await run([mod("spawn-sync.js", { timeoutS: 1 }), mod("ctx.js")]);
+    expect(Date.now() - t0).toBeLessThan(5000);
+    expect(r.results[0].timedOut).toBe(true);
+    expect(JSON.parse(r.stdout).hookSpecificOutput.additionalContext).toBe("ctx:Bash");
+  }, 20_000);
+
+  test("the deadline also reaches a spawn imported as an ES module binding", async () => {
+    const t0 = Date.now();
+    await run([mod("spawn-esm.mjs", { timeoutS: 1 })]);
+    expect(Date.now() - t0).toBeLessThan(5000);
+  }, 20_000);
+
+  test("a thread that cannot be ended is given up: the reply comes anyway, marked stuck", async () => {
+    const t0 = Date.now();
+    const r = await run([mod("stuck.js", { timeoutS: 1 }), mod("ctx.js")]);
+    expect(Date.now() - t0).toBeLessThan(3500);
+    expect(r.results[0]).toMatchObject({ timedOut: true, stuck: true });
+    expect(r.results[1].stuck).toBe(false);
+    expect(JSON.parse(r.stdout).hookSpecificOutput.additionalContext).toBe("ctx:Bash");
+  }, 20_000);
+
+  test("a hard exit keeps plain context, as JSON: exit 1 would drop it as plain text", () => {
+    expect(JSON.parse(hardExitStdout("SessionStart", "rule\n")).hookSpecificOutput).toEqual({ hookEventName: "SessionStart", additionalContext: "rule" });
+    expect(hardExitStdout("SessionStart", '{"systemMessage":"m"}\n')).toBe('{"systemMessage":"m"}\n');
+    expect(hardExitStdout("SessionStart", "")).toBe("");
+  });
+
   test("a module is skipped once the event budget is spent", async () => {
     const r = await run([mod("spin.js", { timeoutS: 5 }), mod("ctx.js")], { budgetS: 1, lanes: [["spin", "ctx"]] });
     expect(r.results[0].timedOut).toBe(true);
@@ -120,6 +154,12 @@ describe("lanes and selection", () => {
     const mods = ["a", "b", "c", "x", "y"].map((name) => ({ name }));
     expect(laneGroups(mods, [["a", "c"], ["b"]])).toEqual([[0, 2], [1], [3, 4]]);
     expect(laneGroups(mods, undefined)).toEqual([[0, 1, 2, 3, 4]]);
+  });
+
+  test("only ss.mcp.deps (npm install when broken) may hold a session start longer than 5 s", () => {
+    const manifest = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, "manifest.json"), "utf8"));
+    const slow = manifest.hooks.SessionStart.flatMap((g) => g.hooks).filter((h) => h.timeout > 5).map((h) => /ss\.[\w.]+(?=\.js)/.exec(h.command)[0]);
+    expect(slow).toEqual(["ss.mcp.deps"]);
   });
 
   test("selectModules applies each module's own matcher", () => {
