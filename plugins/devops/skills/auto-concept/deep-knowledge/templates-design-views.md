@@ -101,7 +101,7 @@ its own entry in the switcher and the panel TOC.
   the views group lists only the views without a (valid) `data-view-for`
   and is not rendered when that list is empty. The top-centre switcher
   stays one flat row — carry the variant name in the `data-nav-label`
-  ("Field mapping · Card A"). `collectDesignDecisions()` adds
+  ("Field mapping · Compact card"). `collectDesignDecisions()` adds
   `"design": "{designId}"` to every `decisions[]` and `mappings[]` entry
   from such a view (§ Decision schema); the key is absent otherwise. A
   `data-view-for` that names no `data-design` of the same iteration is a
@@ -361,15 +361,15 @@ free → Mapping block (optional)); a design concept uses this view instead.
 
 ```html
 <section data-iteration="3" data-iteration-template="design" data-active>
-  <section data-design="card_a" data-nav-label="Card A" data-design-active="true">…</section>
-  <section data-design="card_b" data-nav-label="Card B" hidden>…</section>
+  <section data-design="card_a" data-nav-label="Compact card" data-design-active="true">…</section>
+  <section data-design="card_b" data-nav-label="Detail card" hidden>…</section>
 
   <section data-view="fields_a" data-view-kind="mapping" data-view-for="card_a"
-           data-nav-label="Field mapping · Card A" hidden>
+           data-nav-label="Field mapping · Compact card" hidden>
     <div class="view-frame view-mapping">
-      <h2>Which vehicle fields go where on Card A?</h2>
+      <h2>Which vehicle fields go where on Compact card?</h2>
       <p>Proposal pre-filled — correct it. Phone and desktop are separate.</p>
-      <section data-mapping="veh_a" id="veh_a" data-nav-label="Field mapping · Card A">
+      <section data-mapping="veh_a" id="veh_a" data-nav-label="Field mapping · Compact card">
         <script type="application/json" data-mapping-spec>{ … }</script>
       </section>
     </div>

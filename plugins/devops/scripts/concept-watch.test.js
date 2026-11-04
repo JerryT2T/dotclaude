@@ -533,22 +533,51 @@ describe("run — liveness tells a hidden tab from a closed one (#397)", () => {
   test("the last tab says /bye → exactly one reopen, after BYE_GRACE_MS, not before", async () => {
     // Tab polled at T0, closed at T0+10 s (bye), nothing since.
     const bye = T0 + 10_000;
-    const responses = [
-      poll(T0, 1),                 // t=T0        tab live
-      poll(T0, 0, bye),            // t=T0+20 s   bye 10 s ago → within grace → no reopen
-      poll(T0, 0, bye),            // t=T0+40 s   30 s → still within grace
-      poll(T0, 0, bye),            // t=T0+60 s   50 s → still within grace
-      poll(T0, 0, bye),            // t=T0+80 s   70 s ≥ BYE_GRACE_MS → reopen #1
-      poll(T0, 0, bye),            // t=T0+100 s  still closed → no second reopen
-      poll(T0, 0, bye),
-      pend,
-    ];
+    const responses = [poll(T0, 1)];
+    for (let i = 0; i < 12; i++) responses.push(poll(T0, 0, bye)); // t=T0+20 s … T0+240 s
+    responses.push(pend);
     const w = watcher({ responses });
     await w.done;
     expect(w.reopens()).toBe(1);
     const firstReopenIdx = w.calls.findIndex(c => c.reopen);
     const pendingPollsBefore = w.calls.slice(0, firstReopenIdx).filter(c => c.reqPath === "/pending").length;
-    expect(pendingPollsBefore).toBe(5); // fired on the 5th poll (t = T0+80 s), not the 2nd
+    // bye+120 s = T0+130 s is first reached at poll 8 (t=T0+140 s) and needs a
+    // second confirming closed poll: fired on poll 9 (t=T0+160 s), not earlier.
+    expect(pendingPollsBefore).toBe(9);
+  });
+
+  test("a throttled tab that returns late (poll every ~100 s after a sibling's bye) never reopens", async () => {
+    const bye = T0 + 10_000;
+    const responses = [poll(T0, 1)];
+    // Sibling/verification tab said bye; the registry shows 0 tabs and no poll
+    // since, then the throttled tab polls again 100 s after the bye (< grace).
+    for (let i = 0; i < 5; i++) responses.push(poll(T0, 0, bye));          // t up to T0+100 s
+    for (let i = 0; i < 8; i++) responses.push(poll(T0 + 110_000, 1, bye)); // back, registered
+    responses.push(pend);
+    const w = watcher({ responses });
+    await w.done;
+    expect(w.reopens()).toBe(0);
+  });
+
+  test("a verification tab's bye with a real tab alive never reopens", async () => {
+    const responses = [poll(T0, 1)];
+    for (let i = 0; i < 20; i++) responses.push(poll(T0 + 5_000, 1, T0 + 30_000)); // bye newer than last poll, but a tab is registered
+    responses.push(pend);
+    const w = watcher({ responses });
+    await w.done;
+    expect(w.reopens()).toBe(0);
+  });
+
+  test("a single closed poll that flips back (late tab) does not count toward the confirmation", async () => {
+    const bye = T0 + 10_000;
+    const responses = [poll(T0, 1)];
+    for (let i = 0; i < 7; i++) responses.push(poll(T0, 0, bye));          // up to t=T0+140 s: one closed verdict
+    responses.push(poll(T0 + 150_000, 1, bye));                             // tab back
+    for (let i = 0; i < 4; i++) responses.push(poll(T0 + 150_000, 1, bye));
+    responses.push(pend);
+    const w = watcher({ responses });
+    await w.done;
+    expect(w.reopens()).toBe(0);
   });
 
   test("a reload (bye immediately followed by the fresh load's poll) never reopens", async () => {
@@ -605,21 +634,20 @@ describe("run — liveness tells a hidden tab from a closed one (#397)", () => {
 
   test("after a reopen, a tab registering again re-arms; a later bye reopens once more", async () => {
     // Polls land every 20 s from T0: poll n is at T0 + 20 s × (n − 1).
-    const bye1 = T0 + 1_000, bye2 = T0 + 135_000;
-    const responses = [
-      poll(T0, 0, bye1), poll(T0, 0, bye1), poll(T0, 0, bye1), poll(T0, 0, bye1), poll(T0, 0, bye1), // polls 1–5 → reopen #1 at T0+80 s (79 s after bye)
-      poll(T0 + 90_000, 1, bye1), poll(T0 + 110_000, 1, bye1),                                       // polls 6–7: the reopened tab is registered → re-arm
-      poll(T0 + 130_000, 0, bye2), poll(T0 + 130_000, 0, bye2), poll(T0 + 130_000, 0, bye2), poll(T0 + 130_000, 0, bye2), // polls 8–11: closed again (bye at 135 s) → reopen #2 at T0+200 s
-      pend,
-    ];
+    const bye1 = T0 + 1_000, bye2 = T0 + 235_000;
+    const responses = [];
+    for (let i = 0; i < 9; i++) responses.push(poll(T0, 0, bye1));                  // polls 1–9 → reopen #1 at poll 9 (T0+160 s)
+    responses.push(poll(T0 + 170_000, 1, bye1), poll(T0 + 190_000, 1, bye1));       // the reopened tab is registered → re-arm
+    for (let i = 0; i < 12; i++) responses.push(poll(T0 + 230_000, 0, bye2));       // closed again (bye at 235 s) → reopen #2 once
+    responses.push(pend);
     const w = watcher({ responses });
     await w.done;
     expect(w.reopens()).toBe(2);
   });
 
-  test("DEFAULTS.liveness stays 900 (on) and BYE_GRACE_MS 60 s", () => {
+  test("DEFAULTS.liveness stays 900 (on) and BYE_GRACE_MS 120 s", () => {
     expect(DEFAULTS.liveness).toBe(900);
-    expect(BYE_GRACE_MS).toBe(60_000);
+    expect(BYE_GRACE_MS).toBe(120_000);
     expect(parseArgs([]).liveness).toBe(900);
   });
 });

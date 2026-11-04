@@ -194,6 +194,9 @@ describe("first visit animates, later visits are instant", () => {
     expect(CSS).toMatch(/decision-mode="compare"\] \[data-opt\] \{[^}]*align-items: stretch;/);
     expect(CSS).toMatch(/decision-mode="picture"\] \[data-opt\] \{[^}]*align-content: start;/);
   });
+  test("the composer hint is background only: a zero-width float leaves the caret at the start, and a wrapped hint still grows the field", () => {
+    expect(CSS).toMatch(/\.an-comp-ed\[data-empty="1"\]::before \{[^}]*float: left; width: 100%; margin-right: -100%;[^}]*pointer-events: none;/);
+  });
   test("the chat never scrolls sideways: the briefing glow stays inside the column", () => {
     expect(CSS).toMatch(/\.an-chat \{[^}]*overflow-x: hidden;[^}]*scrollbar-gutter: stable both-edges;/);
     expect(CSS).not.toMatch(/inset: -\d+px -\d+px/);

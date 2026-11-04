@@ -200,7 +200,7 @@ html[data-theme="light"] .an-kind { color: var(--an-ac); }
 .an-comp { position: relative; flex: none; z-index: 6; margin-top: 10px !important; display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; margin-top: 28px; padding: 8px 8px 8px 16px; border-radius: 18px; background: var(--an-s2); border: 1px solid var(--an-bd2); box-shadow: 0 -14px 34px color-mix(in srgb, var(--an-bg) 95%, transparent); }
 .an-comp.an-glow { animation: an-comp-glow 1.8s ease-out 1; }
 .an-comp-ed { min-height: 22px; max-height: 66px; overflow-y: auto; font-size: 14px; line-height: 22px; color: var(--an-tx); white-space: pre-wrap; overflow-wrap: anywhere; outline: none; caret-color: var(--an-tx); }
-.an-comp-ed[data-empty="1"]::before { content: attr(data-ph); color: var(--an-mu2); pointer-events: none; }
+.an-comp-ed[data-empty="1"]::before { content: attr(data-ph); float: left; width: 100%; margin-right: -100%; color: var(--an-mu2); pointer-events: none; }
 .an-comp-ed[contenteditable="false"] { cursor: default; }
 .an-tagw { display: inline-block; height: 18px; padding: 0 4px 0 7px; margin-right: 6px; border-radius: 5px; font-size: 12.5px; font-weight: 600; line-height: 18px; vertical-align: 1px; white-space: nowrap; user-select: none; background: rgba(121,192,255,.14); color: var(--an-b3); }
 html[data-theme="light"] .an-tagw { color: var(--an-ac); }

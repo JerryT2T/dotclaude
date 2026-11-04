@@ -123,8 +123,14 @@ const DEFAULTS = {
 // After the last known tab said /bye, wait this long before re-opening: a
 // reload or an in-place navigation fires pagehide too, and the fresh load
 // registers itself within seconds. A deliberate close still gets exactly one
-// reopen — just not in the same second the user hit Ctrl+W.
-const BYE_GRACE_MS = 60_000;
+// reopen — just not in the same second the user hit Ctrl+W. 120 s, not 60:
+// a throttled background tab (Edge/Chrome intensive throttling) fires its
+// timers once a minute or slower, so a tab that is merely late to register
+// after a bye (a sibling tab's or a verification tab's) must get more than
+// one throttle interval to move browser_ts past the bye (#1030 symptom 2).
+const BYE_GRACE_MS = 120_000;
+// Consecutive polls the closed verdict must hold before the single reopen.
+const CLOSED_CONFIRM = 2;
 
 function parseArgs(argv) {
   const out = { mode: '', port: 0, state: '', owner: '', ...DEFAULTS };
@@ -427,6 +433,7 @@ async function run(opts, deps = {}) {
   // A reopen fires ONCE; the flag re-arms only after a tab is seen again, so
   // a browser closed on purpose gets one reopen, never a storm.
   let reopened = false;
+  let closedRuns = 0;
   // Waker side: version this waker already woke the session for (kept across
   // a re-arm so a fresh waker does not erase the pulser's "already woken").
   const prevBeat = watch ? io.readBeat(opts.state, opts.port) : null;
@@ -502,9 +509,10 @@ async function run(opts, deps = {}) {
           const byeTs = Number.isFinite(body.browser_bye_ts) ? body.browser_bye_ts : 0;
           const closed = body.browser_tabs === 0
             && byeTs > seen && io.now() - byeTs >= BYE_GRACE_MS;
+          closedRuns = closed ? closedRuns + 1 : 0;
           if (!closed) {
             reopened = false;
-          } else if (!reopened) {
+          } else if (!reopened && closedRuns >= CLOSED_CONFIRM) {
             const st = io.readState(opts.state);
             const html = st && typeof st.html_path === 'string' ? st.html_path : '';
             if (html) {

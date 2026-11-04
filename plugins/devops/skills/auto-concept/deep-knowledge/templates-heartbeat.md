@@ -320,7 +320,7 @@ function _setCacheHints(visible) {
 //   heartbeat still connecting              → 👉 Du bist dran · verbindet…
 //   otherwise                               → 👉 Du bist dran · gespeichert
 // The turn half (.status-turn, created on first render) and
-// #panel-status[data-turn] = you | rethinking | implementing | frozen feed the
+// #panel-status[data-turn] = you | rethinking | finalizing | implementing | frozen feed the
 // journey row (§ Submit → Journey row); data-status keeps its six values.
 // The raw heartbeat stays on #connection-status[data-state] (written by
 // checkClaudeConnection); the draft phase comes from § State Persistence
@@ -337,6 +337,7 @@ function renderPanelStatus() {
     || document.body.classList.contains('concept-submitted');
   const frozen = document.body.classList.contains('viewing-frozen');
   const implementing = submitted && typeof _submittedAction === 'string' && _submittedAction === 'implement';
+  const finalizing = submitted && typeof _submittedAction === 'string' && _submittedAction === 'finalize';
   const closed = document.body.classList.contains('concept-closed');
   let status, glyph, text, turn = '', turnKey;
   if (closed) {
@@ -353,9 +354,9 @@ function renderPanelStatus() {
     // "🤖 überdenkt · gespeichert" / "🤖 setzt um · gespeichert" — the save
     // half says "verbinde…" while the bridge is away.
     status = 'submitted'; glyph = '🤖';
-    turn = implementing ? '{{panel.turn_implementing}}' : '{{panel.turn_rethinking}}';
+    turn = implementing ? '{{panel.turn_implementing}}' : (finalizing ? '{{panel.turn_finalizing}}' : '{{panel.turn_rethinking}}');
     text = conn === 'disconnected' ? '{{panel.status_reconnecting}}' : '{{panel.status_working}}';
-    turnKey = implementing ? 'implementing' : 'rethinking';
+    turnKey = implementing ? 'implementing' : (finalizing ? 'finalizing' : 'rethinking');
   } else {
     glyph = '👉'; turn = '{{panel.turn_you}}'; turnKey = 'you';
     if (conn === 'disconnected') {
@@ -469,15 +470,17 @@ function refreshStatusToast() {
   const you = toast.querySelector('.jr-toast-you');
   const fl = toast.querySelector('.jr-float');
   const round = _liveRound();
-  const running = _toastMode === 'status' && (phase === 'rethinking' || phase === 'implementing');
+  const running = _toastMode === 'status' && (phase === 'rethinking' || phase === 'finalizing' || phase === 'implementing');
   toast.dataset.mode = running ? phase : (_toastMode === 'new-round' ? 'new-round' : 'you');
-  if (cap) cap.textContent = _toastMode === 'new-round'
-    ? '{{panel.toast_new_round}}' : '{{panel.toast_round}}'.replace('{n}', round);
+  // The close-out is no round: its cap says "Close-out", never "Round n".
+  if (cap) cap.textContent = _toastMode === 'new-round' ? '{{panel.toast_new_round}}'
+    : (phase === 'finalizing' ? '{{panel.journey_finish}}' : '{{panel.toast_round}}'.replace('{n}', round));
   if (run) {
     run.hidden = !running;
     if (running) {
       const lab = run.querySelector('.jr-run-label');
-      if (lab) lab.textContent = phase === 'implementing' ? '{{panel.journey_implement}}' : '{{panel.journey_rethinking}}';
+      if (lab) lab.textContent = phase === 'implementing' ? '{{panel.journey_implement}}'
+        : (phase === 'finalizing' ? '{{panel.journey_finish}}' : '{{panel.journey_rethinking}}');
       if (typeof paintRunBar === 'function') paintRunBar(run, phase, away);
     }
   }
