@@ -433,6 +433,7 @@ body.viewing-frozen .journey, body.viewing-final .journey { display: none; }
    left pale text on a pale panel. */
 .panel-status[data-turn="you"] .status-turn { color: color-mix(in srgb, var(--jr-you) 70%, var(--text-color, #fff)); }
 .panel-status[data-turn="rethinking"] .status-line,
+.panel-status[data-turn="finalizing"] .status-line,
 .panel-status[data-turn="implementing"] .status-line { color: color-mix(in srgb, var(--jr-ai) 75%, var(--text-color, #fff)); }
 /* The steps list stays the data model of the counter (x/y + tooltip); its
    own dots/disclosure are no longer drawn. */

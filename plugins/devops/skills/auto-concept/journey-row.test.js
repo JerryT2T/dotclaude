@@ -172,6 +172,39 @@ describe("status line — turn + save state", () => {
   });
 });
 
+describe("close-out (finalize) never says Rethinking", () => {
+  const line = (p) => [p.$(".status-glyph").textContent, p.$(".status-turn").textContent, p.$(".conn-label").textContent];
+  test("finalize submit → finalizing phase: run bar labelled Close-out, lock disabled, turn text schließt ab", () => {
+    const p = page({ round: "3" });
+    p.submit("finalize");
+    expect(p.$("#journey").dataset.phase).toBe("finalizing");
+    expect(p.window.document.body.dataset.journey).toBe("finalizing");
+    expect(p.$(".jr-round-run").hidden).toBe(false);
+    expect(p.$(".jr-round-run .jr-run-label").textContent).toBe("panel.journey_finish");
+    expect(p.$("#jr-lock").disabled).toBe(true);
+    expect(line(p)).toEqual(["🤖", "panel.turn_finalizing", "panel.status_working"]);
+    expect(p.$("#panel-status").dataset.turn).toBe("finalizing");
+    expect(p.window.document.body.textContent).not.toContain("panel.journey_rethinking");
+    expect(p.window.document.body.textContent).not.toContain("panel.turn_rethinking");
+  });
+  test("toast: caption is Close-out, not Runde n; label is Close-out", () => {
+    const p = page({ round: "3" });
+    p.submit("finalize");
+    const t = p.$("#submitted-toast");
+    expect(t.dataset.mode).toBe("finalizing");
+    expect(t.querySelector(".jr-toast-cap").textContent).toBe("panel.journey_finish");
+    expect(t.querySelector(".jr-toast-run").hidden).toBe(false);
+    expect(t.querySelector(".jr-run-label").textContent).toBe("panel.journey_finish");
+  });
+  test("locale rows exist in both languages; running states are wired in stages + CSS", () => {
+    const row = md.split("\n").find((l) => l.startsWith("| `panel.turn_finalizing`"));
+    expect(row).toContain("schließt ab");
+    expect(row).toContain("closing out");
+    expect(jsSource).toMatch(/phase === 'finalizing' \|\| phase === 'implementing';/);
+    expect(cssSource).toContain('.panel-status[data-turn="finalizing"] .status-line');
+  });
+});
+
 describe("status toast — the same pill", () => {
   test("in flight: caption Runde n + the run bar, no open button", () => {
     const p = page({ round: "3" });
