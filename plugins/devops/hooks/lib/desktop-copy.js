@@ -12,6 +12,10 @@
  * plugin root is an rpm copy and its version trails the local marketplace
  * clone, which ss.plugin.update has already moved to the channel-resolved tag.
  * The sync itself happens on claude.ai and cannot be done from a hook.
+ *
+ * A machine with only the account copy has no clone to compare with:
+ * remoteCopyLag takes the latest version from the caller instead
+ * (hooks/session-start/ss.catalog.remote.js reads it from GitHub).
  */
 
 const fs = require('fs');
@@ -69,4 +73,25 @@ function desktopCopyLag({ pluginRoot, marketplacesDir }) {
   return { name, running, latest, marketplace: rpm.marketplace, updatedAt: rpm.updatedAt };
 }
 
-module.exports = { isRpmCopy, desktopCopyLag };
+/**
+ * Same verdict as desktopCopyLag, against a version the caller fetched.
+ * @returns {null | { name, running, latest, marketplace, updatedAt }}
+ *   null when the running copy is not an rpm copy, has no manifest entry, or is
+ *   not behind `latest`.
+ */
+function remoteCopyLag({ pluginRoot, latest }) {
+  if (!isRpmCopy(pluginRoot) || !/^\d+\.\d+\.\d+/.test(String(latest || ''))) return null;
+  const running = getVersion(pluginRoot);
+  if (!running) return null;
+  let name;
+  try {
+    name = JSON.parse(fs.readFileSync(path.join(pluginRoot, '.claude-plugin', 'plugin.json'), 'utf8')).name;
+  } catch {
+    return null;
+  }
+  const rpm = rpmMarketplace(pluginRoot);
+  if (!name || !rpm || !rpm.marketplace || compareVersions(running, latest) >= 0) return null;
+  return { name, running, latest, marketplace: rpm.marketplace, updatedAt: rpm.updatedAt };
+}
+
+module.exports = { isRpmCopy, desktopCopyLag, remoteCopyLag };

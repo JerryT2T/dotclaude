@@ -1,6 +1,6 @@
 ---
 name: auto-update
-version: 0.5.0
+version: 0.6.0
 description: >-
   Manually update the devops plugin to the latest GitHub version and report
   the changelog. Explicit user request only. Triggers on: "update plugin",
@@ -28,6 +28,27 @@ MARKETPLACE_DIR = ~/.claude/plugins/marketplaces/dotclaude
 PLUGIN_SUBDIR = plugins/devops
 HOOK_SCRIPT = ${PLUGIN_ROOT}/hooks/session-start/ss.plugin.update.js
 ```
+
+## Step 0a — Which copy runs
+
+`PLUGIN_ROOT` under `…/rpm/<org>/<user>/plugin_<id>` is the Desktop app's
+claude.ai account copy. This skill cannot update that copy, so never report it
+as updated. Run:
+
+```bash
+CLAUDE_PLUGIN_ROOT="{PLUGIN_ROOT}" node "{PLUGIN_ROOT}/hooks/session-start/ss.catalog.remote.js" --force
+```
+
+The variable is required: without it, `plugin-guard` silently ends the hook on a
+machine whose settings do not list the plugin. Show its stdout. No stdout means no lag against GitHub `main`, or GitHub was
+unreachable. Limits: `claude-desktop-app-setup.md` § Account copy of a plugin.
+
+- **No `MARKETPLACE_DIR`:** the account copy is the only install. Report its
+  version and stop here.
+- **`MARKETPLACE_DIR` exists:** continue, and end the report with
+  `This session runs the account copy v{version}; the update below reaches
+  Claude Code sessions only.` Drop the restart and MCP lines from the report:
+  this session runs no files from the cache.
 
 ## Step 0 — Capture current state + channel
 

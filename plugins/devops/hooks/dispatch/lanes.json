@@ -45,6 +45,9 @@
         "ss.project.setup"
       ],
       [
+        "ss.catalog.remote"
+      ],
+      [
         "ss.setup.firstrun"
       ],
       [
