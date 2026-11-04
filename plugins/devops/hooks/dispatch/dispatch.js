@@ -2,7 +2,7 @@
 'use strict';
 /**
  * @hook dispatch
- * @version 0.1.1
+ * @version 0.2.0
  * @event SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, PostToolUseFailure, Stop, SubagentStart, SubagentStop
  * @plugin devops
  * @description One process per hook event. `node dispatch.js <Event>` is the
@@ -64,6 +64,13 @@
  *      fails open the same way (its JSON stdout is still honoured, as Claude
  *      Code does).
  *
+ *      A budget holds even for a thread stuck in a synchronous spawn: the worker
+ *      caps those at its deadline (worker-boot.js), and past TERMINATE_GRACE_MS
+ *      the dispatcher stops waiting for that thread (`stuck`), merges what the
+ *      other modules wrote and ends the process hard, because process.exit()
+ *      would join the thread first. Claude Code cancelling the dispatcher would
+ *      discard every module's reply.
+ *
  *   5. Telemetry — lib/hook-telemetry.js: each module's own start/end records
  *      as before (run id from the dispatcher), plus `dispatch:<Event>` for
  *      the dispatcher run and timeout/skipped end records written here.
@@ -93,6 +100,7 @@ const DEFAULT_TIMEOUT_S = 60;
 const FAST_DEFAULT_TIMEOUT_S = 10;
 const HEADROOM_S = 5;
 const MIN_START_MS = 250;
+const TERMINATE_GRACE_MS = 500;
 
 function telemetry() {
   try { return require('../lib/hook-telemetry'); } catch { return null; }
@@ -220,10 +228,19 @@ function prepareWorker(mod, raw, telemetryId) {
 async function runPrepared(prep, raw, budgetMs) {
   const t0 = Date.now();
   let timedOut = false;
-  const timer = setTimeout(() => { timedOut = true; prep.worker.terminate().catch(() => {}); }, Math.max(1, budgetMs));
-  prep.worker.postMessage('go');
-  const { code, error } = await prep.exited;
+  let giveUp;
+  const stuck = new Promise((resolve) => { giveUp = resolve; });
+  let graceTimer = null;
+  const budget = Math.max(1, budgetMs);
+  const timer = setTimeout(() => {
+    timedOut = true;
+    prep.worker.terminate().catch(() => {});
+    graceTimer = setTimeout(() => giveUp({ code: 1, error: null, stuck: true }), TERMINATE_GRACE_MS);
+  }, budget);
+  prep.worker.postMessage({ deadline: t0 + budget });
+  const { code, error, stuck: isStuck } = await Promise.race([prep.exited, stuck]);
   clearTimeout(timer);
+  if (graceTimer) clearTimeout(graceTimer);
   let stderr = Buffer.concat(prep.err).toString('utf8');
   if (error && !timedOut) stderr += `${error && error.stack ? error.stack : String(error)}\n`;
   return {
@@ -231,8 +248,19 @@ async function runPrepared(prep, raw, budgetMs) {
     stdout: timedOut ? '' : Buffer.concat(prep.out).toString('utf8'),
     stderr: timedOut ? '' : stderr,
     timedOut,
+    stuck: !!isStuck,
     ms: Date.now() - t0,
   };
+}
+
+/**
+ * The reply to write when the process must end hard (a stuck worker): exit code
+ * 1, on which Claude Code honours JSON but drops plain stdout.
+ */
+function hardExitStdout(event, stdout) {
+  const text = String(stdout || '').trim();
+  if (!text || text.startsWith('{')) return stdout;
+  return `${JSON.stringify({ hookSpecificOutput: { hookEventName: event, additionalContext: text } })}\n`;
 }
 
 /** Run one module as its own `node <file>` process (the old model). */
@@ -376,16 +404,21 @@ async function main() {
 if (require.main === module) {
   require('../lib/plugin-guard'); // exits 0 when the plugin is off for this project
   main().then((r) => {
+    // A block outranks a clean exit: only a reply without one may end hard.
+    const hard = !r.code && (r.results || []).some((x) => x && x.stuck);
+    const kill = () => process.kill(process.pid, 'SIGKILL');
     if (r.stderr) process.stderr.write(r.stderr);
-    if (r.stdout) process.stdout.write(r.stdout);
+    const stdout = hard ? hardExitStdout(process.argv[2], r.stdout) : r.stdout;
+    if (stdout) process.stdout.write(stdout, () => { if (hard) kill(); });
+    else if (hard) kill();
     // exitCode, not exit(): the process ends once both pipes drained; the
     // unref'd timer only fires if a stray handle keeps the loop alive
     process.exitCode = r.code || 0;
-    setTimeout(() => process.exit(r.code || 0), 2000).unref();
+    setTimeout(() => { if (hard) kill(); else process.exit(r.code || 0); }, 2000).unref();
   }, () => { process.exitCode = 0; }); // the dispatcher itself fails open
 }
 
 module.exports = {
-  moduleFile, loadManifest, loadLanes, laneGroups, eventModules, laneModules, eventBudgetS, selectModules, runEvent, dispatchDisabled,
-  DEFAULT_TIMEOUT_S, FAST_DEFAULT_TIMEOUT_S, HEADROOM_S, MIN_START_MS, MANIFEST,
+  moduleFile, loadManifest, loadLanes, laneGroups, eventModules, laneModules, eventBudgetS, selectModules, runEvent, dispatchDisabled, hardExitStdout,
+  DEFAULT_TIMEOUT_S, FAST_DEFAULT_TIMEOUT_S, HEADROOM_S, MIN_START_MS, TERMINATE_GRACE_MS, MANIFEST,
 };

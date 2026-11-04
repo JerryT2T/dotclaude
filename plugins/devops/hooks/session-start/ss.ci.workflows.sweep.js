@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook ss.ci.workflows.sweep
- * @version 0.1.0
+ * @version 0.2.0
  * @event SessionStart
  * @plugin devops
  * @description Safety net for #949: workflows the ship pipeline paused while a
@@ -28,7 +28,19 @@ function buildContext(repos) {
     + '"Workflows in <repo> werden wieder aktiviert (Minutenlimit vorbei)"; a failed enable is retried on the next ship or session.';
 }
 
+/**
+ * Any paused workflow on record? The CLI is ESM and costs a node start (1–3 s
+ * under session-start load), and it has nothing to do without a record. An
+ * unreadable store is the CLI's to judge.
+ */
+function hasRecords(file = process.env.DEVOPS_CI_QUOTA_FILE || path.join(require('os').homedir(), '.claude', 'devops-ci-quota.json')) {
+  let raw;
+  try { raw = require('fs').readFileSync(file, 'utf8'); } catch { return false; }
+  try { return Object.keys(JSON.parse(raw).disabledWorkflows || {}).length > 0; } catch { return true; }
+}
+
 function overdue() {
+  if (!hasRecords()) return [];
   const r = spawnSync(process.execPath, [CLI, '--list'], { windowsHide: true, encoding: 'utf8', timeout: 3000 });
   if (r.status !== 0) return [];
   const list = JSON.parse(r.stdout || '[]');
@@ -52,4 +64,4 @@ if (require.main === module) {
   try { require('../lib/hook-input').runHook(main, { event: 'SessionStart' }); } catch { /* fail open */ }
 }
 
-module.exports = { main, buildContext, overdue, CLI };
+module.exports = { main, buildContext, overdue, hasRecords, CLI };

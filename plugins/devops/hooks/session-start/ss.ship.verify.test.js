@@ -10,6 +10,10 @@ import {
   resolveStateDir,
 } from "./ss.ship.verify.js";
 import path from "node:path";
+import fs from "node:fs";
+import os from "node:os";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
 /**
  * The bug: a watcher process that dies before writing a terminal state leaves
@@ -282,4 +286,36 @@ describe("resolveStateDir — anchored to the MAIN repo, never the worktree cwd"
     const run = () => "/srv/gitdirs/proj";
     expect(resolveStateDir("/home/u/proj", run)).toBe(path.join("/home/u/proj", ".claude", ".ship-watcher"));
   });
+});
+
+describe("the GitHub lookup of an abandoned watcher never holds the session start", () => {
+  const HOOK = path.join(path.dirname(fileURLToPath(import.meta.url)), "ss.ship.verify.js");
+  const entry = { status: "watching", pr: 7, base: "main", mergeSha: "abc1234", startedAt: "2026-01-01T00:00:00Z", deadlineAt: "2026-01-01T01:00:00Z" };
+
+  function setup() {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "ship-verify-"));
+    const repo = path.join(root, "repo");
+    const dir = path.join(repo, ".claude", ".ship-watcher");
+    fs.mkdirSync(path.join(repo, ".git"), { recursive: true });
+    fs.writeFileSync(path.join(repo, ".git", "HEAD"), "ref: refs/heads/main\n");
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, "a.json"), JSON.stringify(entry));
+    return { root, repo, file: path.join(dir, "a.json") };
+  }
+  /** No git and no gh on PATH: the run has only the files. */
+  function run({ root, repo }, phase) {
+    const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => k.toUpperCase() !== "PATH" && k !== "DEVOPS_DEFERRED_PHASE"));
+    return spawnSync(process.execPath, [HOOK], {
+      cwd: repo, encoding: "utf8", input: JSON.stringify({ cwd: repo, session_id: "ship-verify-test" }),
+      env: { ...env, PATH: "", HOME: root, USERPROFILE: root, DEVOPS_DEFERRED_PHASE: phase },
+    });
+  }
+
+  test("the worker run reports it once and writes a terminal state", () => {
+    const ctx = setup();
+    const r = run(ctx, "bg");
+    expect(r.stdout).toMatch(/Ship verify — PR #7/);
+    expect(JSON.parse(fs.readFileSync(ctx.file, "utf8"))).toMatchObject({ status: "complete", acknowledged: true });
+    fs.rmSync(ctx.root, { recursive: true, force: true });
+  }, 30_000);
 });

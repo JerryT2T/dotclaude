@@ -58,6 +58,22 @@ describe("ss.setup.firstrun offer", () => {
   });
 });
 
+describe("onPath", () => {
+  test("finds a Windows executable under any spelling of PATH, misses an empty PATH", () => {
+    const has = (p) => p === "C:\\Git\\cmd/git.EXE";
+    expect(setup.onPath("git", { platform: "win32", env: { Path: "C:\\x;C:\\Git\\cmd" }, exists: has })).toBe(true);
+    expect(setup.onPath("git", { platform: "win32", env: { Path: "C:\\x" }, exists: has })).toBe(false);
+    expect(setup.onPath("git", { platform: "win32", env: {}, exists: () => true })).toBe(false);
+  });
+  test("POSIX: bare name, colon separated", () => {
+    expect(setup.onPath("git", { platform: "linux", env: { PATH: "/a:/usr/bin" }, exists: (p) => p === "/usr/bin/git" })).toBe(true);
+  });
+  test("checkPrereqs without a runner asks PATH, not a process", () => {
+    const r = setup.checkPrereqs({ platform: "linux", env: { PATH: "/none" }, exists: () => false });
+    expect(r.missing).toContain("git");
+  });
+});
+
 describe("checkPrereqs", () => {
   const gitOk = () => ({ status: 0 });
   const gitMissing = () => ({ status: null, error: new Error("ENOENT") });

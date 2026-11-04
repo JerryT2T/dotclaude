@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook ss.title.sweep
- * @version 0.1.0
+ * @version 0.2.0
  * @event SessionStart
  * @plugin devops
  * @description Fixes sidebar titles a crash or an app quit left on ⏳. A turn
@@ -14,7 +14,10 @@
  *   list_sessions row says `isRunning:false` to `👉 ➜ ⚡ Interrupted ┃ <title>`.
  *   Reported sessions go into ~/.claude/title-sweep-seen.json (session id →
  *   transcript mtime) so the next session start does not repeat them.
- *   Silent when nothing is stale. Never blocks: fail open.
+ *   The scan walks every project's sessions (1–5 s under session-start load, it
+ *   hit its budget), so it runs detached (lib/deferred-results) and its rename
+ *   list arrives with the next user prompt. Silent when nothing is stale. Never
+ *   blocks: fail open.
  */
 
 require('../lib/plugin-guard');
@@ -71,7 +74,14 @@ function main(hook) {
 }
 
 if (require.main === module) {
-  try { require('../lib/hook-input').runHook(main, { event: 'SessionStart' }); } catch { /* fail open */ }
+  try {
+    const { hook } = require('../lib/hook-input').sessionCwd();
+    const input = hook ? JSON.stringify(hook) : '';
+    if (!require('../lib/deferred-results').deferOrRun({ name: 'title-sweep', script: __filename, input })) {
+      const reply = main(hook || {});
+      if (reply) process.stdout.write(reply.hookSpecificOutput.additionalContext);
+    }
+  } catch { /* fail open */ }
 }
 
 module.exports = { main, buildContext, nextSeen, seenPath };

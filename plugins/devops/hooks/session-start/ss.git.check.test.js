@@ -24,6 +24,16 @@ function runHook() {
   return r.stdout || "";
 }
 
+/** The hook path, with no git on PATH: whatever it prints came without a process. */
+function runHookPath() {
+  const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => k.toUpperCase() !== "PATH" && k !== "DEVOPS_ALLOW_MAIN" && k !== "DEVOPS_DEFERRED_PHASE"));
+  const r = spawnSync(process.execPath, [HOOK], {
+    cwd: work, encoding: "utf8", input: JSON.stringify({ cwd: work, session_id: "git-check-test" }),
+    env: { ...env, PATH: "", HOME: root, USERPROFILE: root, TEMP: root, TMP: root, TMPDIR: root },
+  });
+  return r.stdout || "";
+}
+
 beforeAll(() => {
   root = mkdtempSync(join(tmpdir(), "gitcheck-"));
   const bare = join(root, "origin.git");
@@ -68,5 +78,22 @@ describe("ss.git.check phases (deferred fetch)", () => {
 
   test("the bg part reports the unpushed finding after a fetch", () => {
     expect(run("bg")).toMatch(/unpushed commit\(s\)/);
+  }, 60_000);
+});
+
+describe("ss.git.check hook path", () => {
+  test("the workspace rule comes from .git, without git and without the git-based findings", () => {
+    writeFileSync(join(work, "dirty.txt"), "x");
+    const out = runHookPath();
+    expect(out).toMatch(/Rule \(devops plugin\)/);
+    expect(out).toMatch(/On `main` in repo root/);
+    expect(out).not.toMatch(/uncommitted/);
+    rmSync(join(work, "dirty.txt"));
+  }, 30_000);
+
+  test("the inline run still has the findings", () => {
+    writeFileSync(join(work, "dirty.txt"), "x");
+    expect(runHook()).toMatch(/uncommitted/);
+    rmSync(join(work, "dirty.txt"));
   }, 60_000);
 });

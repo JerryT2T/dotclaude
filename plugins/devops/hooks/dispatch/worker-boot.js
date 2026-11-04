@@ -1,7 +1,7 @@
 'use strict';
 /**
  * @module dispatch/worker-boot
- * @version 0.1.0
+ * @version 0.2.0
  * @plugin devops
  * @description Bootstrap of one dispatcher worker thread: makes a hook file
  *   run as if `node <file>` had started it, then runs it as the main module.
@@ -23,8 +23,15 @@
  *       (prompt.batch.collect writes its verdict with fs.writeSync(1))
  *     - process.argv = [execPath, file] (require.main === module, telemetry's
  *       hook name, mcp-reaper's own-script check)
+ *     - execSync / execFileSync / spawnSync get a timeout no later than the
+ *       module's deadline. worker.terminate() cannot end a thread that sits in
+ *       a synchronous spawn: it waits for the child, whatever the budget says
+ *       (measured: terminate at 1 s, exit event at 6.9 s with a 6 s child), and
+ *       so does process.exit(). That is how ss.git.check ran 23 s on a 10 s
+ *       budget and the dispatcher reached the 25 s hook timeout.
  *   The worker waits for a `go` message so the dispatcher can create the next
- *   worker while the current module runs (thread start-up off the clock).
+ *   worker while the current module runs (thread start-up off the clock). The
+ *   message carries the deadline.
  */
 
 const { workerData, parentPort } = require('worker_threads');
@@ -56,6 +63,25 @@ fs.writeSync = function writeSync(fd, data, ...rest) {
   return realWriteSync.call(this, fd, data, ...rest);
 };
 
+let deadline = 0;
+const cp = require('child_process');
+/** `opts` with a timeout that ends at the deadline at the latest. */
+function capped(opts) {
+  if (!deadline) return opts;
+  const left = Math.max(1, deadline - Date.now());
+  const own = opts && opts.timeout > 0 ? opts.timeout : Infinity;
+  return { ...opts, timeout: Math.min(own, left) };
+}
+for (const fn of ['execSync', 'execFileSync', 'spawnSync']) {
+  const real = cp[fn];
+  cp[fn] = function cappedSpawn(file, a, b) {
+    if (fn === 'execSync') return real.call(this, file, capped(a));
+    if (Array.isArray(a)) return real.call(this, file, a, capped(b));
+    return real.call(this, file, capped(a));
+  };
+}
+require('module').syncBuiltinESMExports();
+
 const { PassThrough } = require('stream');
 const stdin = new PassThrough();
 stdin.fd = 0;
@@ -73,7 +99,8 @@ function run() {
 }
 
 if (workerData.wait && parentPort) {
-  parentPort.once('message', () => {
+  parentPort.once('message', (msg) => {
+    if (msg && msg.deadline > 0) deadline = msg.deadline;
     parentPort.unref();
     run();
   });

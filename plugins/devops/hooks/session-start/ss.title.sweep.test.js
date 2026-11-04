@@ -4,6 +4,8 @@ import os from "os";
 import path from "path";
 import { findStaleTitles, interruptedFor } from "../lib/stale-titles.js";
 import { buildContext, nextSeen } from "./ss.title.sweep.js";
+import { spawnSync } from "child_process";
+import { fileURLToPath } from "url";
 
 const NOW = Date.parse("2026-10-23T12:00:00Z");
 const MIN = 60_000;
@@ -123,4 +125,27 @@ describe("ss.title.sweep context", () => {
     const out = nextSeen({ keep: NOW - MIN, drop: NOW - 15 * 24 * 60 * MIN, bad: "x" }, [{ sessionId: "n", mtimeMs: 5 }], NOW);
     expect(out).toEqual({ keep: NOW - MIN, n: 5 });
   });
+});
+
+describe("the scan runs detached", () => {
+  const HOOK = path.join(path.dirname(fileURLToPath(import.meta.url)), "ss.title.sweep.js");
+  const runPhase = (phase) => {
+    const sess = path.join(tmp, ".claude", "projects", "slug");
+    const id = "11111111-1111-1111-1111-111111111111";
+    fs.mkdirSync(path.join(sess, id), { recursive: true });
+    fs.writeFileSync(path.join(sess, id, "custom-title.json"), JSON.stringify({ customTitle: "⏳ ➜ 🤖 Solo ┃ Stale" }));
+    fs.writeFileSync(path.join(sess, id + ".jsonl"), "{}\n");
+    const old = new Date(Date.now() - 60 * MIN);
+    fs.utimesSync(path.join(sess, id + ".jsonl"), old, old);
+    const env = { ...process.env, HOME: tmp, USERPROFILE: tmp, TEMP: tmp, TMP: tmp, TMPDIR: tmp, DEVOPS_TITLE_SWEEP_SEEN: path.join(tmp, "seen.json") };
+    delete env.DEVOPS_DEFERRED_PHASE;
+    if (phase) env.DEVOPS_DEFERRED_PHASE = phase;
+    return spawnSync(process.execPath, [HOOK], { encoding: "utf8", input: JSON.stringify({ session_id: "other" }), env, cwd: tmp }).stdout;
+  };
+
+  test("the worker prints the plain rename list that is stored for the next prompt", () => {
+    const out = runPhase("bg");
+    expect(out).toMatch(/^\[ss\.title\.sweep\]/);
+    expect(out).toMatch(/Interrupted/);
+  }, 30_000);
 });
