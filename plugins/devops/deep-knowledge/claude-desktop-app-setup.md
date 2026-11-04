@@ -168,3 +168,34 @@ A robust setup:
   wrapper with `start ""`.
 
 This setup survives auto-updates without relinking shortcuts manually.
+
+## Account copy of a plugin
+
+The Desktop Code tab loads a plugin from the claude.ai account copy under
+`Claude-Data/.../rpm/<org>/<user>/plugin_<id>/`, also when a newer Claude Code
+install exists. Hook output names that copy's origin as `devops@inline`.
+
+**A plugin cannot keep this copy current.** Two steps sit outside its reach, and
+neither has a documented trigger:
+
+| Step | Observed behavior |
+|---|---|
+| claude.ai syncs the marketplace from GitHub | "Sync automatically" did not follow a push: 17 h lag on 2026-11-04, see anthropics/claude-code#93825. "Check for updates" is the documented manual trigger. |
+| The Desktop app downloads the synced version | The local copy can stay old with every indicator green, see anthropics/claude-code#90329. |
+
+Whether an app restart alone picks up an already synced version is untested.
+
+**Settings that do not help in the Code tab** (tested 2026-11-04, Windows, new session each):
+
+| `enabledPlugins` entry | Result |
+|---|---|
+| `"devops@synced": false` | No effect: the account copy still loads. |
+| `"devops@inline": false` | The account copy is gone and the Claude Code install does not load either, so the session has no devops at all. Never recommend it. |
+
+**By install type:**
+
+- Claude Code install, terminal: `ss.plugin.update` keeps it current.
+- Account copy in the Desktop app: `ss.plugin.update` and `ss.project.setup` warn when
+  it trails a local clone or install; `ss.catalog.remote` compares it with GitHub
+  `main` when they stay silent, also on a machine with no local install.
+- Cloud sessions: not covered by these warnings, which match the Desktop `rpm` path only.
