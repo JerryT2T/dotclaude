@@ -614,6 +614,20 @@ describe("bake + gate", () => {
     expect(two.map((x) => x.kind)).toEqual(["overview-traits"]);
   });
 
+  test("variant names: a leading letter marker warns in the gate and is stripped by the engine, \"A-Klasse\" is left alone", () => {
+    const it = (a, b) => `<section data-iteration="1" data-iteration-template="design" data-design-set="topics"><section data-design="a" data-nav-label="${a}" data-design-motto="M" data-design-traits="x | y | z" data-design-icon="leaf"></section><section data-design="b" data-nav-label="${b}" data-design-motto="M" data-design-traits="x | y | z" data-design-icon="leaf"></section></section>`;
+    expect(gate.findDesignAuthoringWarnings(it("A · Ruhige Karten", "B: Bunt")).map((x) => x.kind)).toEqual(["overview-letter", "overview-letter"]);
+    expect(gate.findDesignAuthoringWarnings(it("A-Klasse", "Ruhige Karten"))).toEqual([]);
+    const m = md.match(/function variantName\(raw, fallback\) \{[\s\S]*?\n  \}/);
+    const variantName = new Function(`${m[0]}; return variantName;`)();
+    expect(variantName("A · Ruhige Karten", "a")).toBe("Ruhige Karten");
+    expect(variantName("B: Bunt", "b")).toBe("Bunt");
+    expect(variantName("C - Dicht", "c")).toBe("Dicht");
+    expect(variantName("A-Klasse", "a")).toBe("A-Klasse");
+    expect(variantName("A", "a")).toBe("A");
+    expect(variantName("", "a")).toBe("a");
+  });
+
   test("a `>` inside a quoted motto neither drops the design nor truncates its tag", () => {
     const it = (designs) => `<section data-iteration="1" data-iteration-template="design" data-design-set="topics">${designs}</section>`;
     const before = `<section data-design-motto="Fast -> simple" data-design="a" data-design-traits="x | y | z" data-design-icon="leaf"></section>`;

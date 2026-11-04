@@ -288,12 +288,19 @@ returns — the single-design page is untouched.
     else span.appendChild(svgFromPaths(ICONS.grid));
     return span;
   }
+  // A variant is shown as number + name, never a letter: drop a leading letter marker
+  // ("A · ", "B: ", "C - ") from existing pages; "A-Klasse" has no separator + space, so it stays.
+  function variantName(raw, fallback) {
+    const s = String(raw || '').trim();
+    const t = s.replace(/^[A-Z]\s*[·:]\s*|^[A-Z]\s*[.\-–]\s+/, '').trim();
+    return t || s || fallback;
+  }
   function metaOf(d, idx) {
     const traits = String(d.dataset.designTraits || '').split('|').map(t => t.trim()).filter(Boolean).slice(0, 3);
     return {
       id: d.dataset.design,
       n: idx + 1,
-      label: d.dataset.navLabel || d.dataset.design,
+      label: variantName(d.dataset.navLabel, d.dataset.design),
       motto: (d.dataset.designMotto || '').trim(),
       traits,
       icon: d.dataset.designIcon || '',

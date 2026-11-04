@@ -1012,6 +1012,9 @@ function findSubpageOnlyRounds(html) {
   return out;
 }
 
+// Leading "A · ", "B: ", "C - " (same rule as the engine's variantName); "A-Klasse" is a name.
+const LETTER_MARKER_RE = /^[A-Z]\s*[·:]\s*\S|^[A-Z]\s*[.\-–]\s+\S/;
+
 function findDesignAuthoringWarnings(html) {
   const body = String(html || '').replace(/<!--[\s\S]*?-->/g, m => ' '.repeat(m.length));
   const warnings = [];
@@ -1046,6 +1049,11 @@ function findDesignAuthoringWarnings(html) {
       if (missing.length) {
         warnings.push({ kind: 'overview-authoring', at: d.at,
           why: `iteration ${g.n}, design "${d.id}": ${missing.join(', ')} missing — the variant overview slide renders without it (templates-design-views.md § Variant overview)` });
+      }
+      const navLabel = attrOf(d.tag, 'data-nav-label');
+      if (navLabel && LETTER_MARKER_RE.test(navLabel.trim())) {
+        warnings.push({ kind: 'overview-letter', at: d.at,
+          why: `iteration ${g.n}, design "${d.id}": data-nav-label "${navLabel}" starts with a letter marker — variants show number + name ("1 · Name"), so use the bare name (step2-generate.md § Variant name)` });
       }
       if (/\sdata-design-overlay=/i.test(d.tag)) {
         warnings.push({ kind: 'overview-overlay', at: d.at,
