@@ -76,8 +76,7 @@ function main(hook) {
 if (require.main === module) {
   try {
     const { hook } = require('../lib/hook-input').sessionCwd();
-    const input = hook ? JSON.stringify(hook) : '';
-    if (!require('../lib/deferred-results').deferOrRun({ name: 'title-sweep', script: __filename, input })) {
+    if (!require('../lib/deferred-results').deferOrRun({ name: 'title-sweep', script: __filename, input: hook ? JSON.stringify(hook) : '' })) {
       const reply = main(hook || {});
       if (reply) process.stdout.write(reply.hookSpecificOutput.additionalContext);
     }
