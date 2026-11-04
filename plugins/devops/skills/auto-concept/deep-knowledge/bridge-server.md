@@ -421,7 +421,7 @@ AND provides HTTP endpoints for heartbeat and decision exchange.
      `browser_tabs` (tabs registered) and `browser_bye_ts`. The waker
      re-opens `http://localhost:{port}/{html_path}` in the user's Edge only
      when the user **closed the last tab**: no tab registered and a `/bye`
-     after the last poll, 60 s ago (grace for a reload). Silence never
+     after the last poll, 120 s ago and confirmed by two consecutive polls (grace for a reload or a throttled tab that registers late). Silence never
      reopens, however long — a throttled or Sleeping Tab is dropped from the
      registry after 15 min without being closed (#397). A tab that dies without a beacon is not reopened —
      the completion card prints the URL. Once per close, re-armed only after
