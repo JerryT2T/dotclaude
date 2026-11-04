@@ -173,6 +173,7 @@ describe("status line — turn + save state", () => {
 });
 
 describe("close-out (finalize) never says Rethinking", () => {
+  const line = (p) => [p.$(".status-glyph").textContent, p.$(".status-turn").textContent, p.$(".conn-label").textContent];
   test("finalize submit → finalizing phase: run bar labelled Close-out, lock disabled, turn text schließt ab", () => {
     const p = page({ round: "3" });
     p.submit("finalize");
@@ -196,8 +197,7 @@ describe("close-out (finalize) never says Rethinking", () => {
     expect(t.querySelector(".jr-run-label").textContent).toBe("panel.journey_finish");
   });
   test("locale rows exist in both languages; running states are wired in stages + CSS", () => {
-    const row = md.split("
-").find((l) => l.startsWith("| `panel.turn_finalizing`"));
+    const row = md.split("\n").find((l) => l.startsWith("| `panel.turn_finalizing`"));
     expect(row).toContain("schließt ab");
     expect(row).toContain("closing out");
     expect(jsSource).toMatch(/phase === 'finalizing' \|\| phase === 'implementing';/);
