@@ -30,6 +30,20 @@ turn end. Nothing else strips or sets titles.
 
 A named abort keeps its activity (`🟥 ➜ 🚀 Ship ┃ X`).
 
+**How early the ⏳ can appear.** Three paths, fastest first. A session started
+with `start_session` "user_asked" carries the head in the call itself
+(`pre.ask.title`, `startSessionInput`), so its row shows ⏳ before its process
+boots. A session's first prompt gets it from the hook: `prompt.flow.title-work` answers
+with `hookSpecificOutput.sessionTitle`, applied before the first API call, when
+the UserPromptSubmit dispatcher finishes (median ~2 s). Every later prompt goes
+through `set_session_title` in the model's first tool batch. Limits: the app
+adopts a hook title only while its own title is empty or app-generated
+(`yieldsToProposedTitle`; a tool-set title wins, which is why later prompts need
+the model), PostToolUse hooks cannot set a title, the transcript does not exist
+yet during the first UserPromptSubmit hooks (the title comes from the hook
+input's `session_title`), and no prompt-time hook can act while a slow SessionStart
+dispatcher holds the first prompt back.
+
 **A question mid-turn.** A call that waits for the user blocks the session
 before any card — an `AskUserQuestion`, an `ExitPlanMode` plan approval, a
 `start_session` other than `own_initiative` (an "offer" asks; "user_asked"

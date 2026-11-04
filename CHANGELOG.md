@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.350.4] — 2026-11-05
+
+### Fixed
+- Session title: the hourglass appears before the first model round. The hook sets the title itself on a session's first prompt, and a session started with `start_session` "user_asked" carries it from the start.
+
 ## [0.350.3] — 2026-11-05
 
 ### Changed

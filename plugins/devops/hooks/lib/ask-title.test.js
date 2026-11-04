@@ -45,6 +45,34 @@ function run(hookFile, lines, extra = {}) {
   return spawnSync(process.execPath, [hookFile], { cwd: dir, input: JSON.stringify(payload), encoding: "utf8", env: { ...process.env, HOME: dir, USERPROFILE: dir } });
 }
 
+describe("startSessionInput — the new session shows ⏳ from its first moment", () => {
+  const base = { initiation: "user_asked", title: "Fix login", prompt: "p" };
+
+  test("a local user_asked start gets the head and a name free of it", () => {
+    expect(ask.startSessionInput(base)).toEqual({ ...base, title: SOLO + "Fix login", name: "fix-login" });
+    expect(ask.startSessionInput({ ...base, target: "local" }).title).toBe(SOLO + "Fix login");
+    expect(ask.startSessionInput({ ...base, name: "mine" }).name).toBe("mine");
+  });
+
+  test("a card, a remote session or a marked title stays as it is", () => {
+    for (const input of [
+      { ...base, initiation: "offer" },
+      { ...base, initiation: "own_initiative" },
+      { proposal_id: "t1" },
+      { ...base, target: "cloud" },
+      { ...base, target: "ssh", host: "box" },
+      { ...base, preset: "usual" },
+      { ...base, title: SOLO + "Fix" },
+      { ...base, title: "  " },
+      null,
+    ]) expect(ask.startSessionInput(input), JSON.stringify(input)).toBeNull();
+  });
+
+  test("a title without latin letters leaves the name to the app", () => {
+    expect(ask.startSessionInput({ ...base, title: "⏱" }).name).toBeUndefined();
+  });
+});
+
 describe("questionTitle / restoredTitle", () => {
   test("⏳ Solo → Question, keeps the topic", () => {
     expect(ask.questionTitle(SOLO + "Fix X")).toBe(Q + "Fix X");
@@ -79,6 +107,14 @@ describe("pre.ask.title", () => {
     const r = run(PRE, [prompt("go"), title(SOLO + "Backlog")], { tool_name: START, tool_input: { initiation: "user_asked" } });
     expect(r.status).toBe(2);
     expect(r.stderr).toContain(JSON.stringify(Q + "Backlog"));
+  });
+  test("a start that passes the gate puts the ⏳ head on the new session's title", () => {
+    const input = { initiation: "user_asked", title: "Fix login", prompt: "p" };
+    const r = run(PRE, [prompt("go"), title(SOLO + "Backlog"), toolUse(SET, { session_id: "self", title: Q + "Backlog" }, "t1")], { tool_name: START, tool_input: input });
+    expect(r.status).toBe(0);
+    const out = JSON.parse(r.stdout).hookSpecificOutput;
+    expect(out.hookEventName).toBe("PreToolUse");
+    expect(out.updatedInput).toEqual({ ...input, title: SOLO + "Fix login", name: "fix-login" });
   });
   test("own_initiative start_session → silent", () => {
     const r = run(PRE, [prompt("go"), title(SOLO + "Backlog")], { tool_name: START, tool_input: { initiation: "own_initiative" } });

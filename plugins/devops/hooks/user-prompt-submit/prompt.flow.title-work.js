@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook prompt.flow.title-work
- * @version 0.8.0
+ * @version 0.9.0
  * @event UserPromptSubmit
  * @plugin devops
  * @description Marks a session as "being worked on" in the sidebar: on the
@@ -71,10 +71,30 @@
  *   message as a later AskUserQuestion / ExitPlanMode / start_session that
  *   waits on the user — pre.ask.title then has nothing to refuse, and its
  *   one block per turn stays only for a model that ignored the line.
+ *
+ *   0.9.0 (the hourglass came 26 s after the prompt, median of 15 sessions,
+ *   2026-11-04): Claude Code creates the transcript only AFTER the
+ *   UserPromptSubmit hooks, so neither the transcript nor the sidecar can know
+ *   a first prompt's title and 16 of 16 first prompts took the slow fresh
+ *   fallback. Two changes:
+ *   - The title comes from the hook input first (`session_title`, Claude Code's
+ *     own current name).
+ *   - On a session's first prompt the hook sets the title itself:
+ *     `hookSpecificOutput.sessionTitle` is applied before the first API call, no
+ *     model round. The app adopts it only while its title is empty or
+ *     app-generated (SessionTitleSync.yieldsToProposedTitle) — a title set by a
+ *     tool or the user stays, so the instruction to the model remains the
+ *     second stage. Never on a later prompt: by then the title is tool-set, the
+ *     sidebar would ignore the hook, and the transcript would claim a ⏳ the
+ *     sidebar does not show (the next prompt would then skip its rename).
+ *     Unknown title: the prompt's first words stand in until the app's summary
+ *     replaces them; a sub-session's brief never does (its title comes from
+ *     start_session, see lib/ask-title.js startSessionInput).
  */
 
 require('../lib/plugin-guard');
 
+const fs = require('fs');
 const { runOnce, releaseOnce } = require('../lib/run-once');
 const { isSilent, isScheduledTask, isMachineTurn } = require('./prompt.flow.silent-turn');
 const { isShipIntent, isDeferredShip } = require('../lib/ship-intent');
@@ -83,6 +103,13 @@ const { isShipIntent, isDeferredShip } = require('../lib/ship-intent');
 function resumesShip(prompt, cwd) {
   try { return !!require('../lib/ship-resume').shipResumeFor(prompt, cwd); } catch { return false; }
 }
+
+const { ownWords } = require('../lib/prompt-text');
+
+/** A stand-in topic stays short: the app's summary replaces it within seconds. */
+const TOPIC_MAX_CHARS = 60;
+/** How the app opens the first prompt of a session another session started. */
+const SUB_SESSION_BRIEF = /^(Background|Task) \(from the session\b/;
 
 /** The runOnce token name — stop.flow.guard releases it after a card. */
 const ONCE_KEY = 'prompt-title-work';
@@ -128,6 +155,52 @@ function directInstruction(title, { shipping = false, conceptYields = false } = 
   ].join('\n');
 }
 
+/** The title Claude Code reports in the hook input, else the transcript / sidecar one. */
+function currentTitle(hook) {
+  const reported = hook && hook.session_title;
+  if (typeof reported === 'string' && reported.trim()) return reported;
+  return readKnownTitle(hook && hook.transcript_path);
+}
+
+/** The first line of the user's own words as a stand-in topic, or null. */
+function promptTopic(prompt) {
+  const line = ownWords(prompt).split('\n').map(l => l.trim()).find(Boolean);
+  if (!line || /^[<[]/.test(line) || SUB_SESSION_BRIEF.test(line)) return null;
+  const chars = [...line];
+  return chars.length > TOPIC_MAX_CHARS ? chars.slice(0, TOPIC_MAX_CHARS).join('').trimEnd() + '…' : line;
+}
+
+/**
+ * True on a session's very first prompt: the transcript is created after these
+ * hooks, so it does not exist yet. isFreshSession also says yes on the second
+ * prompt (one prompt in the transcript) — too late for a hook title.
+ */
+function isFirstPrompt(transcriptPath) {
+  return typeof transcriptPath === 'string' && !!transcriptPath && !fs.existsSync(transcriptPath);
+}
+
+/**
+ * The title the hook sets itself, without the model, or null: only on a
+ * session's first prompt from the user (see 0.9.0 above).
+ */
+function earlyTitle(hook, prompt, cwd) {
+  if (isMachineTurn(prompt) || !isFirstPrompt(hook.transcript_path)) return null;
+  const prefix = prefixFor(prompt, cwd);
+  const current = currentTitle(hook);
+  if (current !== null) return nextTitle(current, { prefix });
+  const topic = promptTopic(prompt);
+  return topic ? prefix + topic : null;
+}
+
+/** The hook's stdout: plain context, or JSON when it sets the title itself too. */
+function hookReply(hook, prompt, cwd) {
+  const context = titleWorkOutput(hook, prompt, cwd);
+  if (!context) return '';
+  const sessionTitle = earlyTitle(hook, prompt, cwd);
+  if (!sessionTitle) return context;
+  return JSON.stringify({ hookSpecificOutput: { hookEventName: 'UserPromptSubmit', additionalContext: context, sessionTitle } });
+}
+
 /**
  * The output for this prompt: '' (title already right — nothing to do), the
  * direct instruction (title known), or the get_session fallback
@@ -136,7 +209,7 @@ function directInstruction(title, { shipping = false, conceptYields = false } = 
 function titleWorkOutput(hook, prompt, cwd) {
   const prefix = prefixFor(prompt, cwd);
   const machine = isMachineTurn(prompt);
-  const current = readKnownTitle(hook.transcript_path);
+  const current = currentTitle(hook);
   if (current === null) {
     return !machine && isFreshSession(hook.transcript_path) ? freshInstruction(prefix) : instruction(prefix, { machine });
   }
@@ -250,10 +323,10 @@ if (require.main === module) {
     if (!shouldMark(hook)) process.exit(0);
     if (!runOnce(ONCE_KEY, hook.session_id)) process.exit(0);
     const prompt = hook.prompt || hook.user_message || hook.message || '';
-    const out = titleWorkOutput(hook, prompt, hook.cwd || process.cwd());
+    const out = hookReply(hook, prompt, hook.cwd || process.cwd());
     if (out) process.stdout.write(out + '\n');
     process.exit(0);
   });
 }
 
-module.exports = { freshInstruction, questionLine, ONCE_KEY, WORK_PREFIX, LEGACY_PENDING_PREFIX, LEGACY_PREFIXES, SHIPPING_PREFIX, CONCEPT_PREFIX, BATCH_PREFIX, instruction, directInstruction, titleWorkOutput, prefixFor, shouldMark, releaseTitleWork };
+module.exports = { earlyTitle, hookReply, promptTopic, currentTitle, freshInstruction, questionLine, ONCE_KEY, WORK_PREFIX, LEGACY_PENDING_PREFIX, LEGACY_PREFIXES, SHIPPING_PREFIX, CONCEPT_PREFIX, BATCH_PREFIX, instruction, directInstruction, titleWorkOutput, prefixFor, shouldMark, releaseTitleWork };
