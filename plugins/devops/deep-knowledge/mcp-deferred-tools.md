@@ -72,8 +72,8 @@ ToolSearch({ query: "select:mcp__ccd_session_mgmt__get_session,mcp__ccd_session_
 terminal session, where the tools do not exist.
 
 `prompt.flow.title-work` usually needs no `get_session` at all: it reads the
-current title from the transcript tail (`hooks/lib/session-title.js`, last
-`custom-title` entry) and hands Claude the exact new title, to be set in the
+current title from the hook input's `session_title`, else the transcript tail
+(`hooks/lib/session-title.js`, last `custom-title` entry), and hands Claude the exact new title, to be set in the
 same message as the turn's first other tool call (no round trip of its own).
 Only `set_session_title` is loaded then — ToolSearch
 `select:mcp__ccd_session_mgmt__set_session_title` in that first batch, the set

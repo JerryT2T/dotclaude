@@ -60,6 +60,81 @@ describe("prompt.flow.title-work — first prompt", () => {
     fs.rmSync(old.dir, { recursive: true, force: true });
   });
 
+  // Measured 2026-11-04: Claude Code creates the transcript after these hooks,
+  // so every first prompt missed its title and the ⏳ came 26 s late (median).
+  test("the hook input's session_title wins, also without any transcript", () => {
+    const { dir, tp } = session(null);
+    const out = tw.titleWorkOutput({ transcript_path: tp, session_title: "Fix login" }, "fix", dir);
+    expect(out).toContain('title:"⏳ ➜ 🤖 Solo ┃ Fix login"');
+    expect(out).not.toContain("get_session {");
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  describe("the hook sets the title itself", () => {
+    const reply = (hook, text = "fix login") => JSON.parse(tw.hookReply({ prompt: text, ...hook }, text, process.cwd()));
+
+    test("known title on a fresh session → exact title plus the model's instruction", () => {
+      const { dir, tp } = session(null);
+      const r = reply({ transcript_path: tp, session_title: "Fix login" }).hookSpecificOutput;
+      expect(r.hookEventName).toBe("UserPromptSubmit");
+      expect(r.sessionTitle).toBe("⏳ ➜ 🤖 Solo ┃ Fix login");
+      expect(r.additionalContext).toContain('title:"⏳ ➜ 🤖 Solo ┃ Fix login"');
+      fs.rmSync(dir, { recursive: true, force: true });
+    });
+
+    test("unknown title → the prompt's first line stands in, the fallback stays", () => {
+      const { dir, tp } = session(null);
+      const text = "<system-reminder>worktree</system-reminder>\n\nFix login\nmore detail";
+      const r = reply({ transcript_path: tp }, text).hookSpecificOutput;
+      expect(r.sessionTitle).toBe("⏳ ➜ 🤖 Solo ┃ Fix login");
+      expect(r.additionalContext).toBe(tw.freshInstruction());
+      fs.rmSync(dir, { recursive: true, force: true });
+    });
+
+    test("a ship prompt is marked Shipping right away", () => {
+      const { dir, tp } = session(null);
+      expect(reply({ transcript_path: tp }, "/do-ship").hookSpecificOutput.sessionTitle).toBe("⏳ ➜ 🚀 Shipping ┃ /do-ship");
+      fs.rmSync(dir, { recursive: true, force: true });
+    });
+
+    test("a later prompt never: the sidebar would ignore it and the transcript would lie", () => {
+      // One prompt in the transcript is the SECOND prompt: isFreshSession still says yes.
+      for (const entries of [[prompt("first")], [prompt("first"), prompt("second")]]) {
+        const { dir, tp } = session(entries, "🟩 ➜ 📦 Committed ┃ Fix");
+        const out = tw.hookReply({ transcript_path: tp }, "next", dir);
+        expect(out.startsWith("{")).toBe(false);
+        expect(out).toContain('title:"⏳ ➜ 🤖 Solo ┃ Fix"');
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    test("no transcript path (no Claude Code input) → no hook title", () => {
+      expect(tw.earlyTitle({}, "fix login", process.cwd())).toBeNull();
+    });
+
+    test("no stand-in for a sub-session's brief, a tag, or a machine turn", () => {
+      const { dir, tp } = session(null);
+      for (const text of [
+        "Task (from the session that started this one):\nBackground",
+        "Background (from the session that started this one):\nRepo",
+        "<command-name>/x</command-name>",
+        "<task-notification>\n<status>completed</status>\n</task-notification>",
+      ]) {
+        expect(tw.earlyTitle({ transcript_path: tp }, text, dir), text).toBeNull();
+      }
+      fs.rmSync(dir, { recursive: true, force: true });
+    });
+
+    test("already marked → no output at all; a long first line is cut", () => {
+      const { dir, tp } = session(null);
+      expect(tw.hookReply({ transcript_path: tp, session_title: "⏳ ➜ 🤖 Solo ┃ X" }, "fix", dir)).toBe("");
+      const topic = tw.promptTopic("x".repeat(100));
+      expect([...topic].length).toBe(61);
+      expect(topic.endsWith("…")).toBe(true);
+      fs.rmSync(dir, { recursive: true, force: true });
+    });
+  });
+
   test("direct instruction names the exact question-title call (no refused round)", () => {
     const out = tw.directInstruction("⏳ ➜ 🤖 Solo ┃ Fix login");
     expect(out).toContain('mcp__ccd_session_mgmt__set_session_title {session_id:"self", title:"👉 ➜ ❓ Question ┃ Fix login"}');

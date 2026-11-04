@@ -1,6 +1,6 @@
 /**
  * @module ask-title
- * @version 0.3.1
+ * @version 0.4.0
  * @description The session title while a call waits for the user — an
  *   AskUserQuestion, an ExitPlanMode plan approval, or a start_session that
  *   asks the user ("offer", "user_asked": the app's approval card): the card
@@ -17,6 +17,11 @@
  *
  *   The title comes off the transcript tail (lib/session-title.js). Unknown
  *   title (no Desktop app, no transcript) → never refuse, never instruct.
+ *
+ *   A session started with "user_asked" gets its title from this call, before
+ *   its process even boots (45 s until its first prompt, observed 2026-11-04):
+ *   startSessionInput puts the ⏳ head on it right there. The app keeps a
+ *   start_session title as tool-set, so nothing later could prefix it faster.
  */
 
 const S = require('./title-scheme');
@@ -80,6 +85,31 @@ function restoredTitle(current, previous) {
   const waited = kind === 'approval' ? approvalRestoredTitle(previous) : null;
   if (waited) head = leadingPrefix(waited).prefix;
   return head + rest;
+}
+
+/** The session handle the app would derive from the title, without the head. */
+function nameFromTitle(title) {
+  return String(title).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+/, '').slice(0, 24).replace(/-+$/, '');
+}
+
+/**
+ * The start_session input with the ⏳ head on its title, or null for "leave
+ * it": only a local "user_asked" start — an offer and a proposal show the
+ * title on a card and may never start, a cloud or SSH session runs no title
+ * hook that would ever clear the head. The name is pinned too, or the app
+ * would derive it from the head.
+ *
+ * @param {object} input
+ * @returns {object|null}
+ */
+function startSessionInput(input) {
+  if (!input || input.initiation !== 'user_asked' || input.proposal_id) return null;
+  if (input.target && input.target !== 'local') return null;
+  if (input.host || input.preset) return null;
+  const title = typeof input.title === 'string' ? input.title.trim() : '';
+  if (!title || classify(title) !== 'plain') return null;
+  const name = input.name || nameFromTitle(title);
+  return { ...input, title: WORK_PREFIX + title, ...(name ? { name } : {}) };
 }
 
 function parse(line) {
@@ -169,6 +199,7 @@ module.exports = {
   isQuestionTitle,
   questionTitle,
   restoredTitle,
+  startSessionInput,
   turnState,
   previousTitle,
   refusalText,
