@@ -264,7 +264,7 @@ with an overview table carrying a recommendation column and jump links
 ## 1a · Orthogonality test
 
    Test before authoring: if the alternatives would collapse into
-   "Design A / B / C", the view duplicates the dock — drop it. If an
+   "Design 1 / 2 / 3" (variants carry a number and a name, never a letter), the view duplicates the dock — drop it. If an
    alternative only makes sense under one design, say so in ONE line on
    that alternative ("needed by Holotable") and leave the verdict on the
    design itself to the dock. The deterministic gate refuses the crudest
