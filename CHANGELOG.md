@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.351.0] — 2026-11-05
+
+### Added
+- `ss.catalog.remote`: warns when the Desktop app's claude.ai account copy trails GitHub `main`, also on a machine with no local install.
+
+### Changed
+- `auto-update` names the account copy, no longer reports it as updated, and stops cleanly when it is the only install.
+
+### Documentation
+- `claude-desktop-app-setup.md` records that a plugin cannot trigger the account-copy sync, and which settings do not help in the Code tab.
+
 ## [0.350.4] — 2026-11-05
 
 ### Fixed
