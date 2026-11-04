@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.350.1] — 2026-11-04
+
+### Fixed
+- Concept pages: a click into the analysis composer puts the caret at the start; the hint stays background and still wraps on narrow screens
+- Concept pages: after "Abschließen" the page says close-out instead of Rethinking, and the final report shows no tips
+- Concept pages: variants show number plus name; a leading letter marker in a name is dropped and the build gate warns about it
+- Concept pages: the watcher reopens a page only after 120 s and two confirming polls, so a late background tab no longer opens a duplicate (#1030)
+
 ## [0.350.0] — 2026-11-04
 
 ### Added
