@@ -623,7 +623,10 @@ export async function handler(params) {
       // not be registered yet, so the list can read all-green without it. Wait for it
       // to appear (then watch it) instead of falling through to a local full run.
       if (hasCiSuite(cwd) && (shipFullSuiteVia(params) === "ci" || !shipFullSuiteVia(params))) {
-        const graceMs = envMs("DEVOPS_SHIP_SUITE_REGISTER_GRACE_MS", 180_000);
+        // 10 min: a release-only run sat 4 min in GitHub's queue before its gate job
+        // started, `suite` appeared after a 3 min grace and the ship had already
+        // fallen through to a local full run that took 30+ min on a busy machine.
+        const graceMs = envMs("DEVOPS_SHIP_SUITE_REGISTER_GRACE_MS", 600_000);
         const stepMs = Math.max(1, envMs("DEVOPS_SHIP_SUITE_REGISTER_INTERVAL_MS", 10_000));
         const deadline = Math.min(checksStartedAt + graceMs, checksStartedAt + checksTimeoutSec * 1000);
         const suiteMissing = (r) => (r.status === "passed" || r.status === "no-checks") &&

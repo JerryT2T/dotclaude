@@ -121,7 +121,7 @@ export const schema = z.object({
   buildCmd: z.string().nullable().default(null).describe("Build command (null = auto-detect from package.json)"),
   lintCmd: z.string().nullable().default(null).describe("Lint command (null = auto-detect from package.json)"),
   testCmd: z.string().nullable().default(null).describe("Test command (null = auto-detect from package.json)"),
-  stepTimeoutSec: z.number().int().min(30).max(1800).default(DEFAULT_STEP_TIMEOUT_SEC).describe("Per-step limit (build, lint, test) in seconds. Default 300. A step stopped by it fails with failure: 'timeout' and the result names the limit (timeoutHit) — a harness stop, not a red test."),
+  stepTimeoutSec: z.number().int().min(30).max(3600).default(DEFAULT_STEP_TIMEOUT_SEC).describe("Per-step limit (build, lint, test) in seconds. Default 300. A step stopped by it fails with failure: 'timeout' and the result names the limit (timeoutHit) — a harness stop, not a red test."),
   buildIdOnly: z.boolean().default(false).describe("Skip build, only compute build-ID"),
   reuseGreen: z.boolean().default(true).describe("Skip the test step when a green run of the same testCmd on the identical tree (git tree hash) is recorded and younger than 24 h — the result then carries testsReused. false = always run."),
   ciSuite: z.boolean().nullable().default(null).describe("Does a CI check run the FULL suite on the PR (job `suite`)? null = detect (.github/workflows declares job `suite` + github.com origin). true = assume it, false = never. With a CI suite and no known-exhausted Actions quota, the test step runs only the tests related to the diff (result: testScope \"related\", fullSuiteVia \"ci\"); otherwise the full suite runs locally and is recorded (testScope \"full\", fullSuiteVia \"local\"). An explicit testCmd always runs as given."),
@@ -289,6 +289,25 @@ async function runTest(cmd, cwd, limitSec, ctx = {}) {
   return failure ? nameFailure(out, failure, limitSec, tail) : out;
 }
 
+/** More failing files than this is not load noise worth a second look: the red stands. */
+const RERUN_MAX_FILES = 50;
+
+/**
+ * The filtered vitest command for the files of a red full run, or null when
+ * the project's test script is not a plain `vitest run` or no file is named.
+ * A filtered run skips the machine-wide suite lock (vitest.suite-lock.mjs).
+ */
+function rerunFailedCmd(cwd, testCmd, failingTests) {
+  if (!/^npm (run )?t(est)?$/.test(String(testCmd).trim())) return null;
+  let script = "";
+  try { script = JSON.parse(readFileSync(join(cwd, "package.json"), "utf8"))?.scripts?.test || ""; } catch { return null; }
+  if (!/^vitest run\s*$/.test(script)) return null;
+  const files = [...new Set(failingTests.map((n) => n.split(" > ")[0].trim()).filter(Boolean))];
+  if (!files.length || files.length > RERUN_MAX_FILES) return null;
+  const cmd = `npx vitest run ${files.map((f) => `"${f}"`).join(" ")}`;
+  return cmd.length > 6000 ? null : { cmd, files };
+}
+
 /**
  * Test step with green-result reuse, one retry on an EPERM/EBUSY temp-cleanup
  * failure, failure classification and the load signal (#762). Returns
@@ -349,9 +368,27 @@ async function testStep(testCmd, cwd, limitSec, reuseGreen, planScope = null, ct
   // A retried step ran twice — its duration says nothing about "slower than usual".
   const load = buildLoad({ lockWait: parseLockWait(res.full), holderAtStart, cpu, durationMs: retried ? null : durationMs, usualMs });
 
+  // Under proven load a red full run says little: every file below was green alone
+  // when its run went red. Only the failing files get a second run; a real failure
+  // fails again and the first result stands, nothing is hidden.
+  let rerun = null;
+  if (!res.success && !res.failure && load) {
+    const names = parseFailingTests(res.full);
+    const plan = rerunFailedCmd(cwd, testCmd, names);
+    if (plan) {
+      const second = await runTest(plan.cmd, cwd, limitSec, ctx);
+      rerun = { reason: "red under machine load", failingTests: names, files: plan.files.length, passed: second.success };
+      if (second.success) {
+        res = second;
+        load.note = `${load.note} ${names.length} test(s) in ${plan.files.length} file(s) went red in the full run and passed when run again alone.`;
+      }
+    }
+  }
+
   const { full, ...stepRes } = res;
   const step = { step: "test", cmd: testCmd, ...stepRes, durationMs };
   if (retried) step.retried = retried;
+  if (rerun) step.rerunFailed = rerun;
   const extra = { ...scopeExtra };
   if (preRun) extra.preRunWarning = preRun;
   if (load) extra.load = load;
@@ -360,7 +397,7 @@ async function testStep(testCmd, cwd, limitSec, reuseGreen, planScope = null, ct
     // Record only when the tree did not move during the run.
     const after = key ? treeKey(cwd) : null;
     if (after && after.treeHash === key.treeHash) {
-      recordResult(cwd, { treeHash: key.treeHash, testCmd, passed: true, durationMs: retried ? null : durationMs, source: "ship_build" });
+      recordResult(cwd, { treeHash: key.treeHash, testCmd, passed: true, durationMs: retried || rerun ? null : durationMs, source: "ship_build" });
     }
   } else if (!res.failure) {
     extra.failingTests = parseFailingTests(full);

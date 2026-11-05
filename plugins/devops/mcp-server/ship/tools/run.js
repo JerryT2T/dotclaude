@@ -72,7 +72,7 @@ export const schema = z.object({
     buildCmd: z.string().nullable().optional(),
     lintCmd: z.string().nullable().optional(),
     testCmd: z.string().nullable().optional(),
-    stepTimeoutSec: z.number().int().min(30).max(1800).optional(),
+    stepTimeoutSec: z.number().int().min(30).max(3600).optional(),
     ciSuite: z.boolean().nullable().optional(),
   }).default({}).describe("ship_build params (project extension commands)."),
   codexGate: z.boolean().default(false).describe("Codex is installed: return after a green build with stage \"build-done\", needs \"codex-judgment\". Re-call with `codex` set once the review is handled."),
@@ -423,7 +423,8 @@ export async function handler(params, injected = {}) {
         if (rel.reason === "validation-gaps") return needs("validation-gaps", { gaps: rel.gaps || rel.validationGaps || rel.error });
         if (rel.reason === "full-suite-required") {
           if (rebuilt) return needs("full-suite-required", { error: rel.error, prLeftOpen: rel.prLeftOpen || null });
-          const b = await call("ship_build", { ...buildParams, ciSuite: false, testCmd: null }); // full local suite on this tree
+          // Full local suite on this tree. It takes 30+ min on a busy machine: a shorter limit only wastes the run.
+          const b = await call("ship_build", { ...buildParams, ciSuite: false, testCmd: null, stepTimeoutSec: Math.max(buildParams.stepTimeoutSec || 0, 3600) });
           if (!b.success) return needs("build-red", { steps: (b.steps || []).filter((s) => s && !s.success), fullSuite: true });
           saveRun({ build: { ...(run.build || {}), steps: b.steps || [], testScope: b.testScope || "full", fullSuiteVia: "local" } });
           rebuilt = true;

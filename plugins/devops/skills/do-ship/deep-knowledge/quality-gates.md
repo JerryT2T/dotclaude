@@ -43,7 +43,7 @@ jobs + the aggregate `suite`) or a local full run recorded for that tree.
   tests related to the diff and returns `testScope: "related"`, `fullSuiteVia: "ci"`;
   the PR's `suite` check is the full-suite gate.
   `ship_release` then waits for the `suite` check, including its registration right after a
-  draft goes ready (grace `DEVOPS_SHIP_SUITE_REGISTER_GRACE_MS`, default 180s, within
+  draft goes ready (grace `DEVOPS_SHIP_SUITE_REGISTER_GRACE_MS`, default 600s, within
   `checksTimeoutSec`); it never starts a local full run while that check is pending or not yet
   reported. The local fallback applies only if it never appears, is skipped, or quota blocks.
 - No CI suite, quota exhausted (GitHub Actions minutes ran out — it happens regularly),
@@ -61,7 +61,7 @@ Details and result fields: [build-reuse.md](build-reuse.md) § Test scope.
 ### Step time limit
 
 `ship_build` stops each step (build, lint, test) after `stepTimeoutSec`
-(default **300 s**, 30–1800). A stopped step fails with `failure: "timeout"`
+(default **300 s**, 30–3600; the full local fallback of `ship_run` always gets 3600). A stopped step fails with `failure: "timeout"`
 and the result carries `timeoutHit: { step, limitSec, note }` — a harness stop,
 not a red test. Re-run with a higher `stepTimeoutSec`, or run the full suite
 separately and pass a narrower `testCmd`; name the limit on the card. The limit

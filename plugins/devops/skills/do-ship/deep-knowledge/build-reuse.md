@@ -95,4 +95,9 @@ check (`fullSuiteVia: "ci"`) or `findFullGreen` (`"local"`).
 - `failingTests`: every failing test name from vitest's ` FAIL  file > suite > test` summary
   (fallback: inline `×` lines), never truncated. The step `output` keeps the last 4000
   characters of stdout + stderr.
+- Red full run with a `load` signal, at most 50 failing files and a plain `vitest run` script:
+  only the failing files run once more (`steps[test].rerunFailed: { reason, failingTests, files, passed }`).
+  All green → the step passes, `load.note` names the count and the tree is recorded as green:
+  every test then passed on this exact tree, though not all in one run. Red again → the first
+  result stands. Name `rerunFailed` on the card when it was used.
 - Harness stops (`failure: "timeout" | "output-overflow"`) carry neither field.
