@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.353.2] — 2026-11-05
+
+### Fixed
+- `auto-frustrated` no longer appears in the slash menu on any channel. It starts from the stuck-session offer or the do-run option "Erst analysieren"; a manual slash start is gone.
+
 ## [0.353.1] — 2026-11-05
 
 ### Fixed
