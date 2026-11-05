@@ -55,9 +55,8 @@
  *   DESKTOP COPY: the Desktop app loads plugins from its claude.ai account
  *   marketplace copy (<Claude-Data>/rpm/…), not from the CLI cache this hook
  *   rebuilds. When the running copy is such an rpm copy and trails the local
- *   marketplace clone, a notice names both versions and the sync step — also on
- *   the cooldown skip path, so it repeats every session until synced
- *   (../lib/desktop-copy.js).
+ *   install, it is mirrored from that install, also on the cooldown skip path.
+ *   Only a failed mirror prints a line (../lib/desktop-copy.js).
  */
 
 require('../lib/plugin-guard');
@@ -70,7 +69,7 @@ const { latestVisible, readChannelPin } = require('../lib/channels');
 const { runOnce, releaseOnce } = require('../lib/run-once');
 const { syncQuietStyle, customizedTarget, isTempClone } = require('../lib/output-style-sync');
 const { pinToTag } = require('../lib/channel-pin');
-const { desktopCopyLag } = require('../lib/desktop-copy');
+const { mirrorToRpm } = require('../lib/desktop-copy');
 const {
   DEFER_DELAY_MS,
   cacheBroken,
@@ -93,8 +92,8 @@ const DICT = {
     style_synced: '- **Quiet output style**: synced to the shipped version (active from the next session)',
     dk_reread: 'Deep-knowledge index may have changed — re-read INDEX.md on next relevant task.',
     show_asis: 'Show the user this restart notice verbatim.',
-    desktop_lag: '⚠ **The Desktop app runs {name} {running} (claude.ai marketplace "{marketplace}", synced {synced}), but {latest} is available.** Sync the "{marketplace}" marketplace in the claude.ai plugin settings, then restart the Desktop app.',
-    desktop_lag_show: 'Show the user this notice verbatim, once.',
+    mirror_failed: '⚠ devops: Desktop stays on {from}, copying local {to} failed ({reason}) → "update cloud"',
+    mirror_failed_show: 'Show the user this line verbatim, once.',
   },
   de: {
     header: 'Plugin-Updates angewendet (Workaround für claude-code#14061):',
@@ -102,8 +101,8 @@ const DICT = {
     style_synced: '- **Quiet-Ausgabestil**: auf die ausgelieferte Version synchronisiert (aktiv ab der nächsten Session)',
     dk_reread: 'Deep-Knowledge-Index hat sich evtl. geändert — INDEX.md beim nächsten relevanten Task neu lesen.',
     show_asis: 'Dem User diese Restart-Notice verbatim zeigen.',
-    desktop_lag: '⚠ **Die Desktop-App nutzt {name} {running} (claude.ai-Marketplace „{marketplace}“, synchronisiert {synced}), verfügbar ist {latest}.** Den Marketplace „{marketplace}“ in den claude.ai-Plugin-Einstellungen synchronisieren, dann die Desktop-App neu starten.',
-    desktop_lag_show: 'Dem User diese Notice einmal verbatim zeigen.',
+    mirror_failed: '⚠ devops: Desktop bleibt auf {from}, Kopieren von lokal {to} fehlgeschlagen ({reason}) → „Cloud updaten“',
+    mirror_failed_show: 'Dem User diese Zeile einmal verbatim zeigen.',
   },
 };
 
@@ -174,21 +173,18 @@ function clearSentinel() {
 }
 
 /**
- * Notice lines when this hook runs from a Desktop rpm copy that trails the
- * local marketplace clone; [] otherwise. Pure fs — safe on the cooldown path.
+ * Mirror the local install over a Desktop rpm copy that trails it. Returns the
+ * notice lines of a failure; [] otherwise. Pure fs: safe on the cooldown path.
  */
-function desktopLagLines() {
-  const lag = desktopCopyLag({ pluginRoot: path.resolve(__dirname, '..', '..'), marketplacesDir });
-  if (!lag) return [];
-  const synced = lag.updatedAt ? String(lag.updatedAt).slice(0, 10) : '?';
+function desktopMirrorLines() {
+  const result = mirrorToRpm({ pluginRoot: path.resolve(__dirname, '..', '..'), home });
+  if (!result || result.ok) return [];
   return [
-    t('desktop_lag', lang, DICT)
-      .replace('{name}', lag.name)
-      .replace('{running}', lag.running)
-      .replace('{latest}', lag.latest)
-      .replace(/\{marketplace\}/g, lag.marketplace)
-      .replace('{synced}', synced),
-    t('desktop_lag_show', lang, DICT),
+    t('mirror_failed', lang, DICT)
+      .replace('{from}', result.from)
+      .replace('{to}', result.to)
+      .replace('{reason}', result.reason),
+    t('mirror_failed_show', lang, DICT),
     '',
   ];
 }
@@ -245,7 +241,7 @@ if (integrity.broken) {
 
 if (!FORCE && !integrity.broken && !runOnce('ss-plugin-update', null, { cooldownMs: COOLDOWN_MS })) {
   clearSentinel();
-  const lagLines = desktopLagLines();
+  const lagLines = desktopMirrorLines();
   if (lagLines.length) process.stdout.write(lagLines.join('\n'));
   process.exit(0);
 }
@@ -525,7 +521,7 @@ if (customized) {
 // Version changes and failures still surface: those are real.
 const reportable = updated.filter(u => !u.verified || u.from !== u.to);
 // After the loop: the clone now sits on the channel-resolved version.
-const lagLines = desktopLagLines();
+const lagLines = desktopMirrorLines();
 if (reportable.length === 0 && !styleSynced) {
   if (lagLines.length) process.stdout.write(lagLines.join('\n'));
   process.exit(0);

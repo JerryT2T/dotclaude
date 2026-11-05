@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.352.0] — 2026-11-05
+
+### Added
+- `ss.plugin.update` mirrors a newer local install over the Desktop app's claude.ai account copy, effective from the next session. The app re-downloads only on a real sync, and this relies on undocumented app behaviour.
+- The prompts "Backup-Details" (lists left-out files) and "Cloud updaten" (guided claude.ai sync).
+
+### Changed
+- SessionStart notices are one line each, end in a prompt, and use ⚠ only when action is needed.
+- The version line names lokal first, then Cloud, and differs per CLI, Desktop and cloud session. It replaces two overlapping notices.
+- The branch line says "nicht in main gemergt", drops zero counts, and safety copies alone are an info.
+- `ss.catalog.remote` also warns in cloud sessions running an old copy.
+
+### Fixed
+- The backup line no longer says "unbekannt" after a run that left files out (`lastBackupAt`).
+- Startup notices no longer point to `/auto-cleanup`, which users cannot invoke.
+
 ## [0.351.0] — 2026-11-05
 
 ### Added

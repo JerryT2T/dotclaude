@@ -4,13 +4,13 @@ version: 0.6.0
 description: >-
   Manually update the devops plugin to the latest GitHub version and report
   the changelog. Explicit user request only. Triggers on: "update plugin",
-  "plugin updaten", "devops update", "self update".
+  "plugin updaten", "devops update", "self update", "Cloud updaten".
 layer: 2
 invokes: []
 user-invocable: false
 triggers:
   en: ["update plugin", "self update", "devops update"]
-  de: ["plugin updaten", "neue version"]
+  de: ["plugin updaten", "neue version", "Cloud updaten"]
 allowed-tools: Bash(git *), Bash(node *), Read, Glob
 ---
 
@@ -29,11 +29,18 @@ PLUGIN_SUBDIR = plugins/devops
 HOOK_SCRIPT = ${PLUGIN_ROOT}/hooks/session-start/ss.plugin.update.js
 ```
 
+## "Cloud updaten" / "update cloud"
+
+The claude.ai account copy, the one cloud sessions run, syncs only on claude.ai.
+Start `auto-guide` for: claude.ai → Customize → Plugins → Manage marketplaces →
+dotclaude "…" → Check for updates. Tell the user to keep the account copy: it is
+the only way devops reaches cloud sessions. Then stop; skip the steps below.
+
 ## Step 0a — Which copy runs
 
 `PLUGIN_ROOT` under `…/rpm/<org>/<user>/plugin_<id>` is the Desktop app's
-claude.ai account copy. This skill cannot update that copy, so never report it
-as updated. Run:
+claude.ai account copy. The hook below mirrors a newer Claude Code install over
+it, effective from the next session; the claude.ai sync stays out of reach. Run:
 
 ```bash
 CLAUDE_PLUGIN_ROOT="{PLUGIN_ROOT}" node "{PLUGIN_ROOT}/hooks/session-start/ss.catalog.remote.js" --force
@@ -46,9 +53,9 @@ unreachable. Limits: `claude-desktop-app-setup.md` § Account copy of a plugin.
 - **No `MARKETPLACE_DIR`:** the account copy is the only install. Report its
   version and stop here.
 - **`MARKETPLACE_DIR` exists:** continue, and end the report with
-  `This session runs the account copy v{version}; the update below reaches
-  Claude Code sessions only.` Drop the restart and MCP lines from the report:
-  this session runs no files from the cache.
+  `This session runs the account copy v{version}; the Desktop app gets the update
+  below from the next session.` Drop the MCP lines from the report: this session
+  runs no files from the cache.
 
 ## Step 0 — Capture current state + channel
 

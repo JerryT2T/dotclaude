@@ -39,6 +39,7 @@ require('../lib/plugin-guard');
 
 const fs = require('fs');
 const os = require('os');
+const { versionNotice } = require('../lib/desktop-copy');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const { findRepoRoot, gitCommonDir, samePath } = require('../lib/project-root');
@@ -191,71 +192,12 @@ function versionTag(pluginRoot = path.resolve(__dirname, '..', '..')) {
 }
 
 /**
- * True when `root` is the Desktop app's copy of a claude.ai catalog plugin
- * (`…/Claude-Data/…/rpm/<org>/<user>/plugin_<id>`), not a Claude Code install.
- */
-function isCatalogCopy(root) {
-  return /[\\/]rpm[\\/][^\\/]+[\\/][^\\/]+[\\/]plugin_[^\\/]+[\\/]?$/i.test(String(root || ''));
-}
-
-function semverParts(v) {
-  const m = /^(\d+)\.(\d+)\.(\d+)/.exec(String(v || '').replace(/^v/, ''));
-  return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
-}
-
-function semverGreater(a, b) {
-  const x = semverParts(a);
-  const y = semverParts(b);
-  if (!x || !y) return false;
-  for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] > y[i];
-  return false;
-}
-
-/**
- * The newest user-scope devops entry of installed_plugins.json — the Claude
- * Code install the channel pin updates. Dev clones (`..clone`) do not count.
- * @returns {{version:string, channel:string|null}|null}
- */
-function installedRelease(registryFile) {
-  try {
-    const plugins = JSON.parse(fs.readFileSync(registryFile, 'utf8')).plugins || {};
-    let best = null;
-    for (const [key, entries] of Object.entries(plugins)) {
-      if (!/^devops@/.test(key) || key.includes('..clone') || !Array.isArray(entries)) continue;
-      for (const e of entries) {
-        if (!e || e.scope !== 'user' || !semverParts(e.version)) continue;
-        if (!best || String(e.lastUpdated || '') > String(best.lastUpdated || '')) best = e;
-      }
-    }
-    return best ? { version: String(best.version).replace(/^v/, ''), channel: best.channel || null } : null;
-  } catch { return null; }
-}
-
-/**
- * Warning when this session runs the claude.ai catalog copy of devops while
- * the Claude Code install (the one /do-ship and the channel pin update) is
- * newer. The Desktop app prefers the catalog copy, so every release since its
- * last catalog sync is invisible there — a session restart does not help.
+ * The one devops version line (lokal, then Cloud), wrapped for the first reply.
  * @returns {string|null}
  */
-function catalogShadowWarning({
-  pluginRoot = path.resolve(__dirname, '..', '..'),
-  home = os.homedir(),
-} = {}) {
-  if (!isCatalogCopy(pluginRoot)) return null;
-  let loaded;
-  try {
-    loaded = JSON.parse(fs.readFileSync(path.join(pluginRoot, '.claude-plugin', 'plugin.json'), 'utf8')).version;
-  } catch { return null; }
-  const inst = installedRelease(path.join(home, '.claude', 'plugins', 'installed_plugins.json'));
-  if (!inst || !semverGreater(inst.version, loaded)) return null;
-  const ch = inst.channel ? ` (${inst.channel})` : '';
-  return [
-    '[ss.catalog.shadow] Show the user this line verbatim in your first reply, once:',
-    `⚠ Diese Session läuft mit devops v${loaded} aus dem claude.ai-Plugin-Katalog — dein Claude-Code-Install ist v${inst.version}${ch}. ` +
-      'Fix: claude.ai → Anpassungen → Plugins → Marketplaces verwalten → dotclaude „…“ → „Nach Updates suchen“, dann die Desktop-App neu starten. ' +
-      'Die Konto-Kopie bleiben lassen — nur über sie kommt devops in Cloud-Sessions.',
-  ].join('\n');
+function versionLine({ pluginRoot = path.resolve(__dirname, '..', '..'), home = os.homedir(), lang = 'de' } = {}) {
+  const line = versionNotice({ pluginRoot, home, lang });
+  return line ? `[ss.version.notice] Show the user this line verbatim in your first reply, once:\n${line}` : null;
 }
 
 function main() {
@@ -274,9 +216,13 @@ function main() {
     // Always: a short version tag so the plugin audit can attribute a
     // transcript to the running devops version (mining.js VERSION_RE).
     const tag = versionTag();
-    let shadow = null;
-    try { shadow = catalogShadowWarning(); } catch { /* never block the session */ }
-    const ctx = [tag, shadow, res && res.offer].filter(Boolean).join('\n');
+    let version = null;
+    try {
+      let lang = 'de';
+      try { lang = require('../lib/locale').getLocale(hook.session_id); } catch { /* default */ }
+      version = versionLine({ lang });
+    } catch { /* never block the session */ }
+    const ctx = [tag, version, res && res.offer].filter(Boolean).join('\n');
     if (ctx) {
       process.stdout.write(JSON.stringify({
         hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: ctx },
@@ -288,4 +234,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { versionTag, setupProject, syncGitignore, newRepoReason, catalogShadowWarning, isCatalogCopy };
+module.exports = { versionTag, setupProject, syncGitignore, newRepoReason, versionLine };

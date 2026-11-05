@@ -4,14 +4,14 @@
  * @version 0.1.0
  * @event SessionStart
  * @plugin devops
- * @description Warns when the Desktop app's claude.ai account copy of devops
- *   trails GitHub `main`, also on a machine without a local install.
+ * @description Warns when a session runs an old claude.ai account copy of devops
+ *   with no local install to fall back on: a cloud session, or a Desktop app on
+ *   a machine without Claude Code's install.
  *
- *   ss.plugin.update and ss.project.setup compare the account copy with a local
- *   clone or install, so a user who only has the account copy never hears about
- *   a stale one. The account copy tracks `main` with no channels, so this hook
- *   compares with `main`'s manifest. It stays silent when a local check already
- *   warned, so one state never gets two notices from this pair.
+ *   With a local install ss.plugin.update mirrors it over the Desktop copy and
+ *   ss.project.setup prints the version line, so this hook stays silent. The
+ *   account copy tracks `main` with no channels, so it compares with `main`'s
+ *   manifest. A cloud session is recognised by CLAUDE_CODE_REMOTE=true.
  *
  *   The fetch runs off the critical path (lib/deferred-results); the notice is
  *   delivered with the next user prompt. The fetched version is cached for 6 h,
@@ -19,7 +19,7 @@
  *   fetch or an unusable reply stays silent and caches nothing. `--force` (the
  *   auto-update skill) runs inline and skips the cached version.
  *
- *   The hook cannot trigger the sync: see deep-knowledge/claude-desktop-app-setup.md
+ *   The hook cannot trigger the claude.ai sync: see deep-knowledge/claude-desktop-app-setup.md
  *   § Account copy of a plugin.
  */
 
@@ -28,8 +28,9 @@ require('../lib/plugin-guard');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { isRpmCopy, desktopCopyLag, remoteCopyLag } = require('../lib/desktop-copy');
-const { catalogShadowWarning } = require('./ss.project.setup');
+const { isRpmCopy, desktopCopyLag, remoteCopyLag, localInstall, CLOUD_PROMPT } = require('../lib/desktop-copy');
+const { getVersion } = require('../lib/cache-rebuild');
+const { compareVersions } = require('../lib/channels');
 
 const MANIFEST_URL = 'https://raw.githubusercontent.com/Jerry0022/dotclaude/main/plugins/devops/.claude-plugin/plugin.json';
 const MARKETPLACE = 'dotclaude';
@@ -68,6 +69,8 @@ function writeCache(cacheFile, latest, now) {
   } catch { /* the next session fetches again */ }
 }
 
+const isCloudSession = (env = process.env) => env.CLAUDE_CODE_REMOTE === 'true';
+
 /** The notice for this state, or '' when nothing is to be said. */
 async function run({
   pluginRoot = path.resolve(__dirname, '..', '..'),
@@ -76,10 +79,14 @@ async function run({
   now = Date.now(),
   fetcher = fetchLatest,
   fresh = false,
+  cloud = isCloudSession(),
+  lang = 'de',
 } = {}) {
-  if (!isRpmCopy(pluginRoot)) return '';
-  const marketplacesDir = path.join(home, '.claude', 'plugins', 'marketplaces');
-  if (desktopCopyLag({ pluginRoot, marketplacesDir }) || catalogShadowWarning({ pluginRoot, home })) return '';
+  if (!cloud) {
+    if (!isRpmCopy(pluginRoot)) return '';
+    const marketplacesDir = path.join(home, '.claude', 'plugins', 'marketplaces');
+    if (desktopCopyLag({ pluginRoot, marketplacesDir }) || localInstall(home)) return '';
+  }
 
   let latest = fresh ? null : readCache(cacheFile, now);
   if (!latest) {
@@ -88,20 +95,26 @@ async function run({
     writeCache(cacheFile, latest, now);
   }
 
-  const lag = remoteCopyLag({ pluginRoot, latest });
-  if (!lag || lag.marketplace !== MARKETPLACE) return '';
-  const synced = lag.updatedAt ? String(lag.updatedAt).slice(0, 10) : '?';
-  return [
-    `⚠ **The Desktop app runs ${lag.name} ${lag.running} (claude.ai marketplace "${lag.marketplace}", synced ${synced}), but ${lag.latest} is on GitHub.** ` +
-      `On claude.ai: Customize → Plugins → Manage marketplaces → "${lag.marketplace}" → Check for updates, then restart the Desktop app.`,
-    'Show the user this notice verbatim, once.',
-    '',
-  ].join('\n');
+  const en = lang === 'en';
+  const arrow = en ? `→ "${CLOUD_PROMPT.en}"` : `→ „${CLOUD_PROMPT.de}“`;
+  let line;
+  if (cloud) {
+    const running = getVersion(pluginRoot);
+    if (!running || compareVersions(running, latest) >= 0) return '';
+    line = en ? `⚠ devops: Cloud ${running} outdated, newest is ${latest} ${arrow}` : `⚠ devops: Cloud ${running} veraltet, neueste ist ${latest} ${arrow}`;
+  } else {
+    const lag = remoteCopyLag({ pluginRoot, latest });
+    if (!lag || lag.marketplace !== MARKETPLACE) return '';
+    line = en
+      ? `⚠ devops: no local install · Cloud ${lag.running} outdated (runs here), newest is ${lag.latest} ${arrow}`
+      : `⚠ devops: kein lokaler Install · Cloud ${lag.running} veraltet (läuft hier), neueste ist ${lag.latest} ${arrow}`;
+  }
+  return [line, 'Show the user this line verbatim, once.', ''].join('\n');
 }
 
 if (require.main === module) {
   // Cheap gate first: a Claude Code install never needs the worker.
-  if (!isRpmCopy(path.resolve(__dirname, '..', '..'))) process.exit(0);
+  if (!isCloudSession() && !isRpmCopy(path.resolve(__dirname, '..', '..'))) process.exit(0);
   const inline = process.argv.includes('--force');
   if (require('../lib/deferred-results').deferOrRun({ name: 'catalog-remote', script: __filename, inline })) process.exit(0);
   run({ fresh: inline })

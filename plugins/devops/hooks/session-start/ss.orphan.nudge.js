@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook ss.orphan.nudge
- * @version 0.3.0
+ * @version 0.4.0
  * @event SessionStart
  * @plugin devops
  * @description One-line nudge when the current repo has unlanded work,
@@ -18,7 +18,9 @@
  *   Also (hook telemetry, lib/hook-telemetry.js): one line when a hook was
  *   killed/timed out in more than 5 % of its last 200 runs, at most once a day.
  *   Output: additionalContext asking Claude to show the line, e.g.
- *   "⚠ 3 ungelandete Branches / 2 Worktrees mit uncommitteter Arbeit → /auto-cleanup".
+ *   "⚠ Hier: 3 Branches nicht in main gemergt (Stand vor 6 h) → „Branches aufräumen“".
+ *   ⚠ only for unmerged or uncommitted work in the current repo. It ends in a
+ *   prompt, not a slash command: auto-cleanup is not user-invocable.
  */
 
 require('../lib/plugin-guard');
@@ -30,6 +32,7 @@ const path = require('path');
 const { isUndecided } = require('../lib/park-register');
 
 const MAX_AGE_MS = 24 * 3_600_000;
+const PROMPT = { de: '„Branches aufräumen“', en: '"branch cleanup"' };
 
 function reportPath() {
   return process.env.DEVOPS_ORPHAN_REPORT || path.join(os.homedir(), '.claude', 'orphan-report.json');
@@ -60,15 +63,17 @@ function infoLine({ cwd, lang = 'de', report, now = Date.now() }) {
     .sort((a, b) => norm(b.path).length - norm(a.path).length)[0];
   if (!entry) return null;
   const en = lang === 'en';
-  const parts = [];
+  const lines = [];
   if (entry.mainOnLanded) {
-    parts.push(en ? `main checkout sits on landed branch ${entry.mainOnLanded} → switch to main` : `Haupt-Checkout steht auf gelandetem Branch ${entry.mainOnLanded} → auf main wechseln`);
+    lines.push(en ? `ℹ main checkout sits on merged branch ${entry.mainOnLanded} → "switch to main"` : `ℹ Haupt-Checkout steht auf gemergtem Branch ${entry.mainOnLanded} → „auf main wechseln“`);
   }
   const out = Number(entry.landedOutside) || 0;
   if (out > 0) {
-    parts.push(en ? `${out} landed ${out === 1 ? 'worktree' : 'worktrees'} outside .claude/worktrees → /auto-cleanup` : `${out} gelandete ${out === 1 ? 'Worktree' : 'Worktrees'} außerhalb von .claude/worktrees → /auto-cleanup`);
+    lines.push(en
+      ? `ℹ ${out} merged ${out === 1 ? 'worktree' : 'worktrees'} outside .claude/worktrees → ${PROMPT.en}`
+      : `ℹ ${out} gemergte ${out === 1 ? 'Worktree' : 'Worktrees'} außerhalb von .claude/worktrees → ${PROMPT.de}`);
   }
-  return parts.length ? `ℹ ${parts.join(' · ')}` : null;
+  return lines.length ? lines.join('\n') : null;
 }
 
 function buildCore({ cwd, lang = 'de', report, now = Date.now() }) {
@@ -90,31 +95,38 @@ function buildCore({ cwd, lang = 'de', report, now = Date.now() }) {
     if (n > 0) { total += n; repos++; }
   }
   const { unlanded, dirty, undecided } = entry ? counts(entry) : { unlanded: 0, dirty: 0, undecided: 0 };
+  const stand = en ? `(as of ${age} ago)` : `(Stand vor ${age})`;
+  const arrow = `→ ${en ? PROMPT.en : PROMPT.de}`;
+  const machine = en
+    ? `whole machine: ${total} open in ${repos} ${repos === 1 ? 'repo' : 'repos'}`
+    : `Rechner: ${total} offen in ${repos} ${repos === 1 ? 'Repo' : 'Repos'}`;
   if (unlanded + dirty + undecided === 0) {
     // nothing here (or a repo the scan does not know): still name what waits elsewhere
     if (total === 0) return null;
     // a repo the scan does not know gets no "nothing open here" claim
     const lead = entry ? (en ? 'Nothing open here · ' : 'Hier nichts offen · ') : '';
-    return en
-      ? `ℹ ${lead}whole machine: ${total} open in ${repos} ${repos === 1 ? 'repo' : 'repos'} (as of ${age} ago) → /auto-cleanup`
-      : `ℹ ${lead}Rechner gesamt: ${total} offen in ${repos} ${repos === 1 ? 'Repo' : 'Repos'} (Stand vor ${age}) → /auto-cleanup`;
+    return `ℹ ${lead}${machine} ${stand} ${arrow}`;
   }
   const parts = [];
-  if (unlanded + dirty > 0) {
+  if (unlanded > 0) {
     parts.push(en
-      ? `${unlanded} unlanded ${unlanded === 1 ? 'branch' : 'branches'} / ${dirty} ${dirty === 1 ? 'worktree' : 'worktrees'} with uncommitted work`
-      : `${unlanded} ungelandete ${unlanded === 1 ? 'Branch' : 'Branches'} / ${dirty} ${dirty === 1 ? 'Worktree' : 'Worktrees'} mit uncommitteter Arbeit`);
+      ? `${unlanded} ${unlanded === 1 ? 'branch' : 'branches'} not merged into main`
+      : `${unlanded} ${unlanded === 1 ? 'Branch' : 'Branches'} nicht in main gemergt`);
+  }
+  if (dirty > 0) {
+    parts.push(en
+      ? `${dirty} ${dirty === 1 ? 'worktree' : 'worktrees'} with uncommitted work`
+      : `${dirty} ${dirty === 1 ? 'Worktree' : 'Worktrees'} mit uncommitteter Arbeit`);
   }
   if (undecided > 0) {
     parts.push(en
       ? `${undecided} safety ${undecided === 1 ? 'copy' : 'copies'} without a decision`
       : `${undecided} ${undecided === 1 ? 'Sicherungskopie' : 'Sicherungskopien'} ohne Entscheidung`);
   }
-  let line = en
-    ? `⚠ ${parts.join(' / ')} (as of ${age} ago) → /auto-cleanup`
-    : `⚠ ${parts.join(' / ')} (Stand vor ${age}) → /auto-cleanup`;
-  if (repos > 1) line += en ? ` · whole machine: ${total} in ${repos} repos` : ` · Rechner gesamt: ${total} in ${repos} Repos`;
-  return line;
+  // a safety copy is a net, nothing is lost by waiting: only real work at risk warns
+  const icon = unlanded + dirty > 0 ? '⚠' : 'ℹ';
+  const totalPart = repos > 1 ? ` · ${machine}` : '';
+  return `${icon} ${en ? 'Here' : 'Hier'}: ${parts.join(' / ')}${totalPart} ${stand} ${arrow}`;
 }
 
 /** Copies an autosave or cleanup made count once they are this old — a fresh one is the live session's net. */

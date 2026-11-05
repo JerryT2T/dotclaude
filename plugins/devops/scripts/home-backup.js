@@ -687,6 +687,7 @@ function runOnce(ctx, s) {
   }
 
   clearReport(ctx);
+  writeState(ctx, { lastBackupAt: ctx.now().toISOString() });
   const warnNote = warnings.length ? ` warnings: ${warnings.join(' | ')}` : '';
   if (partial) {
     const fingerprint = hitsFingerprint(partial);
@@ -935,6 +936,9 @@ function status(opts = {}) {
   const registered = scheduler.isRegistered(JOB_NAME, schedulerIo(ctx));
   const last = lastLogLine(ctx);
   const report = fs.existsSync(inClaude(ctx, REPORT_TXT));
+  const hits = (readJsonSafe(inClaude(ctx, REPORT_JSON)) || {}).hits;
+  const found = Array.isArray(hits) ? hits : [];
+  const skipped = new Set(found.map((h) => h.file)).size;
   const lines = [
     `enabled: ${s.enabled}`,
     `target: ${s.target}`,
@@ -944,6 +948,7 @@ function status(opts = {}) {
     `job registered: ${registered === null ? 'unknown' : registered}`,
     `last run: ${last || '(none)'}`,
     ...(report ? [`open report: ~/.claude/${REPORT_TXT}`] : []),
+    ...(skipped ? [`left out: ${skipped} files (${found.length} hits)`, ...found.map((h) => `  ${h.file}${h.line ? `:${h.line}` : ''} (${h.rule})`)] : []),
   ];
   return { code: 0, status: 'ok', settings: s, registered, last, lines };
 }
