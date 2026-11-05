@@ -177,6 +177,17 @@ function removeEmptyDirs(dir) {
   }
 }
 
+/** Throws when a path below root runs through a symlink or junction: a write would land outside the copy. */
+function assertNoLink(root, rel) {
+  let cur = root;
+  for (const part of rel.split(path.sep)) {
+    cur = path.join(cur, part);
+    let stat;
+    try { stat = fs.lstatSync(cur); } catch { return; }
+    if (stat.isSymbolicLink()) throw new Error(`link in the way: ${rel}`);
+  }
+}
+
 const MIRROR_LOCK_STALE_MS = 5 * 60 * 1000;
 
 function takeMirrorLock(lockDir, now) {
@@ -218,6 +229,7 @@ function mirrorToRpm({ pluginRoot, home = os.homedir(), now = Date.now(), lockDi
     const manifest = path.join('.claude-plugin', 'plugin.json');
     const files = listFiles(inst.installPath);
     const wanted = new Set(files);
+    for (const rel of files) assertNoLink(pluginRoot, rel);
     for (const rel of files) {
       if (rel === manifest) continue;
       const src = fs.readFileSync(path.join(inst.installPath, rel));

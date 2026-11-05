@@ -114,6 +114,21 @@ describe("desktop-copy", () => {
       expect(mirror()).toBeNull();
     });
 
+    test("refuses before writing when a link inside the copy would redirect a write", () => {
+      install("0.334.1");
+      fs.mkdirSync(path.join(cache, "hooks"), { recursive: true });
+      fs.writeFileSync(path.join(cache, "a.js"), "new");
+      fs.writeFileSync(path.join(cache, "hooks", "z.js"), "new");
+      const outside = path.join(tmp, "outside");
+      fs.mkdirSync(outside);
+      fs.symlinkSync(outside, path.join(rpmRoot, "hooks"), "junction");
+
+      expect(mirror()).toMatchObject({ ok: false, reason: expect.stringContaining("link in the way") });
+      expect(fs.existsSync(path.join(outside, "z.js"))).toBe(false);
+      expect(fs.existsSync(path.join(rpmRoot, "a.js"))).toBe(false);
+      expect(JSON.parse(fs.readFileSync(path.join(rpmRoot, ".claude-plugin", "plugin.json"), "utf8")).version).toBe("0.326.0");
+    });
+
     test("does nothing outside an rpm copy, for another marketplace, or when not behind", () => {
       install("0.334.1");
       expect(mirrorToRpm({ pluginRoot: cache, home, lockDir })).toBeNull();

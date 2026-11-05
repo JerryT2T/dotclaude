@@ -5,8 +5,8 @@
  * @event SessionStart
  * @plugin devops
  * @description One context line about the opt-in backup of ~/.claude: an info
- *   while files were left out of it, a warning when the last finished run is
- *   older than 2 days. Names counts only, never a file or matched value; the
+ *   while files were left out of it, a warning when the last run without an
+ *   error is older than 2 days. Names counts only, never a file or matched value; the
  *   prompt "Backup-Details" lists them. File reads only; silent otherwise; fails open.
  */
 
@@ -47,7 +47,7 @@ function buildLine({ home = os.homedir(), enabled, now = Date.now() } = {}) {
   const skipped = new Set(hits.map((h) => h.file)).size;
   const out = skipped ? `${skipped} ${skipped === 1 ? 'Datei' : 'Dateien'} ausgelassen` : '';
   const failed = Boolean(report && report.kind === 'error');
-  // lastBackupAt: any finished run, also one that left files out. Older state files only have
+  // lastBackupAt: the last run without an error, also one that left files out. A failed run leaves it alone. Older state files only have
   // lastSuccessAt, and a partial report written before lastBackupAt existed dates its own run.
   const stamps = [state.lastBackupAt, state.lastSuccessAt, report && report.kind === 'partial' ? report.generatedAt : null]
     .map((v) => Date.parse(v || '')).filter(Number.isFinite);

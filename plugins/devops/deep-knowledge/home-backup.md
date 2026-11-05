@@ -37,7 +37,7 @@ Switches live in devops-config (global only): `homeBackup.enabled`, `target`, `r
 
 The run lock is considered stale after 40 minutes.
 
-**Reminders:** the toast repeats only when the findings change — plus once per 3 days while the last clean backup (`lastSuccessAt` in `home-backup-state.json`) is 3+ days old. The SessionStart hook `ss.backup.stale` prints one line when `homeBackup.enabled`: an info while files are left out (`ℹ Claude-Konfig-Backup: heute 10:49 gesichert, 9 Dateien ausgelassen → „Backup-Details“`), a warning when the last finished run (`lastBackupAt`) is older than 2 days. It names counts only; a hit excludes the whole file, not just the matched value. Silent otherwise.
+**Reminders:** the toast repeats only when the findings change — plus once per 3 days while the last clean backup (`lastSuccessAt` in `home-backup-state.json`) is 3+ days old. The SessionStart hook `ss.backup.stale` prints one line when `homeBackup.enabled`: an info while files are left out (`ℹ Claude-Konfig-Backup: heute 10:49 gesichert, 9 Dateien ausgelassen → „Backup-Details“`), a warning when the last run without an error (`lastBackupAt`) is older than 2 days. It names counts only; a hit excludes the whole file, not just the matched value. Silent otherwise.
 
 **Token cost:** the daily run and every routine-triggered run cost nothing. Only the one-time setup conversation costs tokens — well under 0.1 % of a Pro plan's weekly usage — plus, with `onRoutineChange ask`, one line once per session.
 
