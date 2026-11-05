@@ -24,7 +24,11 @@ beforeEach(() => { home = fs.mkdtempSync(path.join(os.tmpdir(), 'ssbs-')); });
 afterEach(() => { fs.rmSync(home, { recursive: true, force: true }); });
 
 describe('ss.backup.stale buildLine', () => {
-  it('is silent when the backup is off, fresh, or nothing is known', () => {
+  const partial = { kind: 'partial', generatedAt: ago(0), hits: [
+    { file: 'CLAUDE.md', line: 12, rule: 'email', value: 'a@b.de' }, { file: 'CLAUDE.md', line: 13, rule: 'email' }, { file: 'x.md', line: 1, rule: 'phone' },
+  ] };
+
+  it('is silent when the backup is off, fresh and complete, or nothing is known', () => {
     put('home-backup-state.json', { lastSuccessAt: ago(5) });
     expect(buildLine({ home, enabled: false, now: NOW })).toBeNull();
     put('home-backup-state.json', { lastSuccessAt: ago(1) });
@@ -33,27 +37,42 @@ describe('ss.backup.stale buildLine', () => {
     expect(buildLine({ home, enabled: true, now: NOW })).toBeNull();
   });
 
-  it('warns when the last success is dated in the future', () => {
-    put('home-backup-state.json', { lastSuccessAt: ago(-3) });
-    expect(buildLine({ home, enabled: true, now: NOW })).toContain('Zukunft');
-  });
-
-  it('names age and the report reason as file:line (rule), never a value', () => {
-    put('home-backup-state.json', { lastSuccessAt: ago(4) });
-    put('home-backup-report.json', {
-      kind: 'blocked', message: 'x',
-      hits: [{ file: 'CLAUDE.md', line: 12, rule: 'email', value: 'a@b.de' }, { file: 'x.md', line: 1, rule: 'phone' }],
-    });
+  it('a fresh run that left files out is an info with the unique file count and no names or values', () => {
+    put('home-backup-state.json', { lastBackupAt: ago(0) });
+    put('home-backup-report.json', partial);
     const line = buildLine({ home, enabled: true, now: NOW });
-    expect(line).toContain('vor 4 Tagen');
-    expect(line).toContain('blockiert: CLAUDE.md:12 (email) +1 weitere');
-    expect(line).toContain('Home-Backup Status');
+    expect(line).toMatch(/^ℹ Claude-Konfig-Backup: heute \d\d:\d\d gesichert, 2 Dateien ausgelassen → „Backup-Details“$/);
+    expect(line).not.toContain('CLAUDE.md');
     expect(line).not.toContain('a@b.de');
   });
 
-  it('a stale backup without a report still speaks up', () => {
-    put('home-backup-state.json', { lastSuccessAt: ago(3) });
-    expect(buildLine({ home, enabled: true, now: NOW })).toContain('vor 3 Tagen');
+  it('a partial report from before lastBackupAt existed dates its own run', () => {
+    put('home-backup-state.json', {});
+    put('home-backup-report.json', partial);
+    expect(buildLine({ home, enabled: true, now: NOW })).toMatch(/^ℹ .*heute/);
+  });
+
+  it('a blocked run after a recent backup is the same info: everything else is safe', () => {
+    put('home-backup-state.json', { lastBackupAt: ago(1) });
+    put('home-backup-report.json', { ...partial, kind: 'blocked', generatedAt: undefined });
+    expect(buildLine({ home, enabled: true, now: NOW })).toMatch(/^ℹ .*gestern \d\d:\d\d gesichert, 2 Dateien ausgelassen/);
+  });
+
+  it('warns when the last finished run is older than 2 days, with or without skipped files', () => {
+    put('home-backup-state.json', { lastBackupAt: ago(4) });
+    expect(buildLine({ home, enabled: true, now: NOW })).toBe('⚠ Claude-Konfig-Backup: zuletzt gesichert vor 4 Tagen → „Backup-Details“');
+    put('home-backup-report.json', { kind: 'error', message: 'x' });
+    expect(buildLine({ home, enabled: true, now: NOW })).toContain('vor 4 Tagen, letzter Versuch fehlgeschlagen');
+  });
+
+  it('warns when no run is confirmed but a report exists', () => {
+    put('home-backup-report.json', { ...partial, kind: 'blocked', generatedAt: undefined });
+    expect(buildLine({ home, enabled: true, now: NOW })).toBe('⚠ Claude-Konfig-Backup: noch keine Sicherung bestätigt, 2 Dateien ausgelassen → „Backup-Details“');
+  });
+
+  it('warns when the last run is dated in the future', () => {
+    put('home-backup-state.json', { lastBackupAt: ago(-3) });
+    expect(buildLine({ home, enabled: true, now: NOW })).toContain('Zukunft');
   });
 });
 

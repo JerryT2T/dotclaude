@@ -175,8 +175,14 @@ The Desktop Code tab loads a plugin from the claude.ai account copy under
 `Claude-Data/.../rpm/<org>/<user>/plugin_<id>/`, also when a newer Claude Code
 install exists. Hook output names that copy's origin as `devops@inline`.
 
-**A plugin cannot keep this copy current.** Two steps sit outside its reach, and
-neither has a documented trigger:
+**A plugin cannot trigger the claude.ai sync, but it can replace the files on this
+machine.** `ss.plugin.update` mirrors a newer Claude Code install over the copy
+(`hooks/lib/desktop-copy.js`), effective from the next session. The app re-downloads
+only when the server reports a newer `updatedAt` than `manifest.json` (app 4.16336,
+tested 2026-11-05), so the mirror holds until a real sync. This is undocumented app
+behaviour and may break with an app update. Cloud sessions gain nothing from it.
+
+Two steps of the real sync sit outside a plugin's reach, and neither has a documented trigger:
 
 | Step | Observed behavior |
 |---|---|
@@ -195,7 +201,13 @@ Whether an app restart alone picks up an already synced version is untested.
 **By install type:**
 
 - Claude Code install, terminal: `ss.plugin.update` keeps it current.
-- Account copy in the Desktop app: `ss.plugin.update` and `ss.project.setup` warn when
-  it trails a local clone or install; `ss.catalog.remote` compares it with GitHub
-  `main` when they stay silent, also on a machine with no local install.
-- Cloud sessions: not covered by these warnings, which match the Desktop `rpm` path only.
+- Account copy in the Desktop app: `ss.plugin.update` mirrors the Claude Code install
+  over it. Without a local install `ss.catalog.remote` warns when it trails GitHub `main`.
+- Cloud sessions: run the account copy only, so `ss.catalog.remote` warns when it
+  trails GitHub `main` (recognised by `CLAUDE_CODE_REMOTE=true`, not yet observed in a
+  real cloud session).
+
+**Version line, always lokal first, then Cloud:** `ss.project.setup` prints
+`ℹ devops: lokal X aktuell · Cloud Y updaten (Desktop nutzt schon lokal), unkritisch →
+„Cloud updaten“`, without the bracket in the CLI. A CLI session knows Y only after a
+Desktop session mirrored once (`~/.claude/plugins/.desktop-mirror.json`).

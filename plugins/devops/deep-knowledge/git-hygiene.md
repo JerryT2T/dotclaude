@@ -304,10 +304,11 @@ carries a `parked/` name.
 **Machine-wide view:** `scripts/orphan-scan.js` (daily; refreshed by the
 `ss.orphan.nudge` SessionStart hook) scans every repo under the parent folder
 of the main checkout and writes `~/.claude/orphan-report.json`; the hook then
-shows `⚠ N ungelandete Branches / M Worktrees mit uncommitteter Arbeit / K
-Sicherungskopien ohne Entscheidung → /auto-cleanup · Rechner gesamt: X in Y
-Repos` for the current repo. A clean repo (or one the scan does not know)
-still gets `ℹ Rechner gesamt: X offen in Y Repos → /auto-cleanup` while any
+shows `⚠ Hier: N Branches nicht in main gemergt / M Worktrees mit uncommitteter
+Arbeit / K Sicherungskopien ohne Entscheidung · Rechner: X offen in Y Repos
+(Stand vor Z h) → „Branches aufräumen“` for the current repo; only safety copies
+make it `ℹ`. A clean repo (or one the scan does not know) still gets
+`ℹ Rechner: X offen in Y Repos (Stand vor Z h) → „Branches aufräumen“` while any
 repo on the machine has such work; only a clean machine stays silent. A
 branch whose tip subject says `ARCHIVED` counts as decided. A safety copy (autosave snapshot, legacy
 `wip/`/`backup/`/`salvage/`/`salvage-land/`/`rescue/` ref) is a crash net,

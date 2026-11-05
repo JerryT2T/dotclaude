@@ -17,7 +17,7 @@ function writePlugin(dir, name, version) {
 describe("ss.catalog.remote", () => {
   let tmp, rpmRoot, home, cacheFile, calls;
   const fetcher = (latest) => async () => { calls += 1; return latest; };
-  const go = (latest, extra = {}) => run({ pluginRoot: rpmRoot, home, cacheFile, now: NOW, fetcher: fetcher(latest), ...extra });
+  const go = (latest, extra = {}) => run({ pluginRoot: rpmRoot, home, cacheFile, now: NOW, fetcher: fetcher(latest), cloud: false, lang: "en", ...extra });
 
   beforeEach(() => {
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), "catalog-remote-"));
@@ -37,10 +37,7 @@ describe("ss.catalog.remote", () => {
 
   test("warns an account-copy-only machine that trails GitHub", async () => {
     const text = await go("0.350.0");
-    expect(text).toContain("devops 0.344.2");
-    expect(text).toContain("synced 2026-11-02");
-    expect(text).toContain("0.350.0 is on GitHub");
-    expect(text).toContain("Check for updates");
+    expect(text).toContain('⚠ devops: no local install · Cloud 0.344.2 outdated (runs here), newest is 0.350.0 → "update cloud"');
   });
 
   test("silent when the copy is current or ahead", async () => {
@@ -73,7 +70,15 @@ describe("ss.catalog.remote", () => {
 
   test("warns when a local clone is pinned behind main but level with the copy", async () => {
     writePlugin(path.join(home, ".claude", "plugins", "marketplaces", "dotclaude", "plugins", "devops"), "devops", "0.344.2");
-    expect(await go("0.350.0")).toContain("0.350.0 is on GitHub");
+    expect(await go("0.350.0")).toContain("newest is 0.350.0");
+  });
+
+  test("a cloud session warns on its own copy, without an rpm path, and only when behind", async () => {
+    const root = path.join(tmp, "cloud-plugin");
+    writePlugin(root, "devops", "0.344.2");
+    expect(await go("0.350.0", { pluginRoot: root, cloud: true, lang: "de" })).toContain("⚠ devops: Cloud 0.344.2 veraltet, neueste ist 0.350.0 → „Cloud updaten“");
+    fs.rmSync(cacheFile);
+    expect(await go("0.344.2", { pluginRoot: root, cloud: true })).toBe("");
   });
 
   test("silent for a copy from another marketplace", async () => {
@@ -92,23 +97,23 @@ describe("ss.catalog.remote", () => {
   test("reuses the cached version for 6 h, then fetches again", async () => {
     await go("0.350.0");
     expect(calls).toBe(1);
-    expect(await go("0.999.0")).toContain("0.350.0 is on GitHub");
+    expect(await go("0.999.0")).toContain("newest is 0.350.0");
     expect(calls).toBe(1);
-    expect(await go("0.351.0", { now: NOW + 6 * 60 * 60 * 1000 })).toContain("0.351.0 is on GitHub");
+    expect(await go("0.351.0", { now: NOW + 6 * 60 * 60 * 1000 })).toContain("newest is 0.351.0");
     expect(calls).toBe(2);
   });
 
   test("fresh skips a valid cache and refreshes it", async () => {
     await go("0.350.0");
-    expect(await go("0.351.0", { fresh: true })).toContain("0.351.0 is on GitHub");
+    expect(await go("0.351.0", { fresh: true })).toContain("newest is 0.351.0");
     expect(calls).toBe(2);
-    expect(await go("0.999.0")).toContain("0.351.0 is on GitHub");
+    expect(await go("0.999.0")).toContain("newest is 0.351.0");
     expect(calls).toBe(2);
   });
 
   test("a corrupt cache falls back to the fetch", async () => {
     fs.writeFileSync(cacheFile, "{nope");
-    expect(await go("0.350.0")).toContain("0.350.0 is on GitHub");
+    expect(await go("0.350.0")).toContain("newest is 0.350.0");
     expect(calls).toBe(1);
   });
 

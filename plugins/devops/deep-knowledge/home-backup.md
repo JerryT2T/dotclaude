@@ -37,7 +37,7 @@ Switches live in devops-config (global only): `homeBackup.enabled`, `target`, `r
 
 The run lock is considered stale after 40 minutes.
 
-**Reminders:** the toast repeats only when the findings change — plus once per 3 days while the last clean backup (`lastSuccessAt` in `home-backup-state.json`) is 3+ days old. The SessionStart hook `ss.backup.stale` prints one line when `homeBackup.enabled` and the last clean backup is older than 2 days, naming the reason from the report (e.g. `blockiert: CLAUDE.md:12 (email)`, never the value) and pointing to "Home-Backup Status". Silent otherwise.
+**Reminders:** the toast repeats only when the findings change — plus once per 3 days while the last clean backup (`lastSuccessAt` in `home-backup-state.json`) is 3+ days old. The SessionStart hook `ss.backup.stale` prints one line when `homeBackup.enabled`: an info while files are left out (`ℹ Claude-Konfig-Backup: heute 10:49 gesichert, 9 Dateien ausgelassen → „Backup-Details“`), a warning when the last finished run (`lastBackupAt`) is older than 2 days. It names counts only; a hit excludes the whole file, not just the matched value. Silent otherwise.
 
 **Token cost:** the daily run and every routine-triggered run cost nothing. Only the one-time setup conversation costs tokens — well under 0.1 % of a Pro plan's weekly usage — plus, with `onRoutineChange ask`, one line once per session.
 
@@ -84,7 +84,7 @@ The job runs the launcher `~/.claude/devops-jobs/home-backup.js` (not in the bac
 | User says | Run |
 |---|---|
 | "Home-Backup aus" / "disable home backup" | `node "{PLUGIN_ROOT}/scripts/home-backup.js" disable` — removes the job, sets `homeBackup.enabled=false`; the target and `~/.claude/.git` stay (say so) |
-| "Home-Backup Status" | `node "{PLUGIN_ROOT}/scripts/home-backup.js" status` — enabled, target + destination, keep days, routine mode, job registered, last run |
+| "Backup-Details", "Home-Backup Status" | `node "{PLUGIN_ROOT}/scripts/home-backup.js" status` — enabled, target + destination, keep days, routine mode, job registered, last run, every left-out file as file:line (rule). Offer the choices of § A scan hit for those files. |
 | "was würde gesichert / prüfen" | `node "{PLUGIN_ROOT}/scripts/home-backup.js" scan` — dry run of both scans, prints file:line rule |
 | run now | `node "{PLUGIN_ROOT}/scripts/home-backup.js" run` |
 

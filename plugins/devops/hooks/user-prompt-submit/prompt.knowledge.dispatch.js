@@ -134,7 +134,7 @@ const TOPIC_MAP = [
     file: 'home-backup.md',
     specificity: 3,
     patterns: [
-      /\bhome.?backup/i, /\bclaude.?home\b/i, /\b(?:~\/)?\.claude\b.{0,30}\b(?:sichern|backup|back up)/i,
+      /\bhome.?backup/i, /\bbackup.?(?:details?|status)\b/i, /\bclaude.?home\b/i, /\b(?:~\/)?\.claude\b.{0,30}\b(?:sichern|backup|back up)/i,
       /\broutinen?.{0,30}\b(?:sichern|backup|back up)/i, /\b(?:backup|sicherung)\b.{0,30}\b(?:nas|google.?drive|rclone)\b/i,
     ],
   },

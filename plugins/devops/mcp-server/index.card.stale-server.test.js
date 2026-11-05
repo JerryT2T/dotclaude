@@ -2,7 +2,7 @@ import { describe, test, expect, vi, beforeAll } from "vitest";
 import { mkdtempSync, writeFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { staleServerLine, installedVersion, semverGreater, LOADED_VERSION, LOADED_FROM_CATALOG } from "./lib/server-version.js";
+import { staleServerLine, installedVersion, semverGreater, LOADED_VERSION, } from "./lib/server-version.js";
 
 // A session keeps the MCP server it started with: when the installed plugin is
 // newer, the card says so in one info line (footer area, widget `ov` slot).
@@ -65,15 +65,6 @@ describe("stale session server notice", () => {
   test("line text de + en", () => {
     expect(staleServerLine("de", { loaded: "0.286.0", installed: "0.289.0" })).toBe("ℹ Session-Server v0.286.0 — ein Neustart der Session lädt v0.289.0.");
     expect(staleServerLine("en", { loaded: "0.286.0", installed: "0.289.0" })).toBe("ℹ Session server v0.286.0 — restarting the session loads v0.289.0.");
-  });
-
-  test("catalog copy: a restart does not help, the line says what does", () => {
-    expect(LOADED_FROM_CATALOG).toBe(false);
-    const de = staleServerLine("de", { loaded: "0.326.0", installed: "0.339.1", catalog: true });
-    expect(de).toContain("claude.ai-Plugin-Katalog ist älter als dein Install v0.339.1");
-    expect(de).not.toContain("Neustart");
-    expect(staleServerLine("en", { loaded: "0.326.0", installed: "0.339.1", catalog: true })).toContain("Check for updates");
-    expect(staleServerLine("de", { loaded: "0.339.1", installed: "0.339.1", catalog: true })).toBeNull();
   });
 
   test("card: newer installed -> line in de and en, also in the widget", async () => {
