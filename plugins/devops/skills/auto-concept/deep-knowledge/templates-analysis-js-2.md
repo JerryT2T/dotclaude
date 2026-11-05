@@ -7,13 +7,11 @@
     intro.style.setProperty('--c', g.color);
     intro.dataset.group = String(g.idx);
   }
-  /** Topic page: "Thema n von N", title (<= 5 words), ring with the topic's share of the potential, its questions, the button. */
+  /** Topic page: "Thema n von N", title (<= 5 words), a graphic about the topic (topicVisual), its questions, the button. */
   function fillIntro(inst, st) {
     const g = st.group, el = st.el;
     el.textContent = '';
     const l2 = [...g.topic.children].find(c => c.getAttribute('data-alevel') === '2');
-    const chip = inst.brief && inst.brief.querySelector('[data-briefing-topic="' + cssEsc(g.topic.id) + '"]');
-    const share = chip ? Math.round(num(chip.dataset.share)) : 0;
     const hero = h('div', 'an-topic'), left = h('div', 'an-topic-l');
     left.appendChild(h('div', 'an-meta', L('Thema ', 'Topic ') + (g.idx + 1) + L(' von ', ' of ') + inst.groups.length));
     left.appendChild(h('h2', 'an-h', (l2 && l2.dataset.title) || g.label));
@@ -27,15 +25,34 @@
     left.appendChild(qs);
     left.appendChild(goButtons(inst, L('Starten', 'Start')));
     hero.appendChild(left);
-    if (share) {
-      const ring = h('div', 'an-ring');
-      ring.style.setProperty('--p', clamp(share, 0, 100) + '%');
-      const mid = h('div');
-      mid.append(h('b', '', share + ' %'), h('small', '', L('des Potenzials', 'of the potential')));
-      ring.appendChild(mid);
-      hero.appendChild(ring);
-    }
+    const vis = topicVisual(inst, g, l2);
+    if (vis) hero.appendChild(vis);
     el.appendChild(hero);
+  }
+  /** The topic's own display (L2 long slot); without one, where the topic stands among all topics of the analysis. */
+  function topicVisual(inst, g, l2) {
+    const box = h('div', 'an-topic-viz');
+    const slot = l2 && [...l2.children].find(c => c.getAttribute('data-slot') === 'long');
+    const own = slot && slot.querySelector('[data-viz]');
+    if (own) {
+      const c = own.cloneNode(true);
+      c.removeAttribute('data-viz-done');
+      box.appendChild(c);
+      renderViz(box, 'long');
+      return box;
+    }
+    const items = inst.groups.map(x => {
+      const chip = inst.brief && inst.brief.querySelector('[data-briefing-topic="' + cssEsc(x.topic.id) + '"]');
+      return { label: x.label, value: chip ? Math.round(num(chip.dataset.share)) : 0 };
+    }).filter(i => i.value > 0);
+    if (items.length < 2 || !items.some(i => i.label === g.label)) return null;   // nothing to place the topic against
+    box.appendChild(h('div', 'an-topic-cap', L('Dieses Thema in der Gesamtanalyse', 'This topic in the overall analysis')));
+    const v = h('div');
+    v.setAttribute('data-viz', 'bars');
+    v.setAttribute('data-viz-spec', JSON.stringify({ items, unit: '%', hl: g.label }));
+    box.appendChild(v);
+    renderViz(box, 'long');
+    return box;
   }
   /** [Zurück] [Weiter] pair. */
   function goButtons(inst, nextLabel, opts) {
@@ -723,24 +740,34 @@
     const r = inst.comp.el.getBoundingClientRect();
     if (r.height) document.documentElement.style.setProperty('--an-comp-top', Math.max(0, Math.round(window.innerHeight - r.top)) + 'px');
   }
-  /** First visit of a question: finding now, question after 2.7 s, answer block (+ "Als Nächstes") after 5.4 s.
+  /** First visit of a question: finding now, then each next message once the one before it can have been read
+   *  (dwellMs), the answer block (+ "Als Nächstes") last.
    *  A message that has not entered is display:none, so no empty area waits below; each entry
    *  glides the chat down just far enough to show it - unless the user scrolled (user scroll wins). */
-  const ENTER_GAP = 2700;
+  // Reading pace, counted in letters so long German words do not skew it. Brysbaert 2019 (J. Memory and Language 109):
+  // 238 wpm x 4.6 letters (non-fiction) = 260 wpm x 4.2 letters (fiction) = about 1,095 letters/min = 18.25/s.
+  // +10 %: an average reader who reads a little faster, no speed reader. Figures are from English text; no German value exists.
+  const READ_LPS = 18.25 * 1.1, DWELL_MIN = 1200, DWELL_MAX = 20000;
+  function dwellMs(el) {
+    const letters = (el.textContent.match(/[\p{L}\p{N}]/gu) || []).length;
+    return clamp(Math.round(letters / READ_LPS * 1000), DWELL_MIN, DWELL_MAX);
+  }
   function enterSeq(inst, st) {
     const parts = [st.el.querySelector(':scope > .an-m-find'), st.el.querySelector(':scope > .an-m-q'), st.el.querySelector(':scope > .an-m-a')].filter(Boolean);
     if (!parts.length) return;
     const tail = [inst.peekDn];
     parts.slice(1).concat(tail).forEach(n => n.classList.add('an-wait'));
     parts[0].classList.add('an-enter');
+    let at = 0;
     parts.slice(1).forEach((n, i) => {
+      at += dwellMs(parts[i]);
       inst.timers.push(setTimeout(() => {
         if (inst.stages[inst.idx] !== st) return;
         n.classList.remove('an-wait');
         n.classList.add('an-enter');
         if (n === parts[parts.length - 1]) tail.forEach(t => t.classList.remove('an-wait'));
         glide(inst, n, parts[Math.min(i + 1, 1)]);   // the answer never pushes the question out of view
-      }, ENTER_GAP * (i + 1)));
+      }, at));
     });
     if (parts.length === 1) tail.forEach(t => t.classList.remove('an-wait'));
     inst.timers.push(setTimeout(() => { if (inst.stages[inst.idx] === st) pulse(st.el); }, 1650));

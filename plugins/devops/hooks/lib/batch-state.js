@@ -50,15 +50,16 @@ const DEFAULTS = {
 };
 
 /**
- * The marker the skill offers on first run: the word "go". Older defaults
- * (`>>`, `>go`, `>start`, "los", "Let's go") are dropped; a stored config still
+ * The marker the skill offers on first run: the word "go", language-neutral.
+ * Older defaults and the German "jetzt" (`>>`, `>go`, `>start`, "los", "Let's go",
+ * "jetzt") are dropped, also where "jetzt" was picked by hand; a stored config still
  * holding one of them migrates to `go` in `loadConfig`.
  *
  * Suggestions, not a closed set: whatever the user types via "Other" is the
  * marker, subject only to `validateMarker`.
  */
 const MARKER_SUGGESTIONS = ['go'];
-const LEGACY_MARKER_SUGGESTIONS = ['>>', '>go', '>start', 'los', "let's go", 'let’s go'];
+const LEGACY_MARKER_SUGGESTIONS = ['>>', '>go', '>start', 'los', "let's go", 'let’s go', 'jetzt'];
 
 /**
  * Machine-prompt patterns. Prompts matching these are NEVER collected.

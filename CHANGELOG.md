@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.353.0] — 2026-11-05
+
+### Added
+- Analysis pages keep a 60 px band free at the top on every analysis page.
+- Topic pages show the topic's own display from its L2 long slot, or bars placing the topic among all topics.
+- Analysis messages enter by reading time: 18.25 letters per second from Brysbaert 2019, plus 10 %, clamped to 1.2–20 s.
+- A note send that stays on the stage shows a status line.
+
+### Changed
+- A stored `jetzt` do-batch marker migrates to `go`, also where it was chosen by hand.
+
+### Removed
+- The potential ring on analysis topic pages.
+
 ## [0.352.0] — 2026-11-05
 
 ### Added

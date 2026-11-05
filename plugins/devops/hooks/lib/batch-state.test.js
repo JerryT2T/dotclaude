@@ -213,7 +213,7 @@ describe("custom markers typed via the 'Sonstiges' option", () => {
 
   test("loadConfig migrates legacy suggestions to go and keeps custom markers", () => {
     const p = configPath();
-    for (const [stored, want] of [[">>", "go"], [">go", "go"], [">start", "go"], ["los", "go"], ["Let's go", "go"], ["Let’s  Go", "go"], ["jetzt", "jetzt"]]) {
+    for (const [stored, want] of [[">>", "go"], [">go", "go"], [">start", "go"], ["los", "go"], ["Let's go", "go"], ["Let’s  Go", "go"], ["jetzt", "go"], ["Jetzt", "go"], ["sofort", "sofort"]]) {
       fs.mkdirSync(path.dirname(p), { recursive: true });
       fs.writeFileSync(p, JSON.stringify({ marker: stored }), "utf8");
       expect(loadConfig().marker).toBe(want);

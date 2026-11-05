@@ -149,6 +149,22 @@ describe("persistent composer", () => {
     expect(inst.idx).toBe(ri);
     expect(btn.classList.contains("an-point")).toBe(true);
   });
+  test("a send that stays on the stage says so: the note is kept and a status line appears", () => {
+    const { ca } = page(FULL);
+    const inst = ca.instances[0];
+    const di = inst.stages.findIndex(s => s.kind === "dec");
+    ca.go(inst, di);
+    ca.setTag(inst, "Question 1");
+    inst.comp.ed.appendChild(inst.comp.ed.ownerDocument.createTextNode("long note"));
+    expect(ca.sendNote(inst)).toBe(true);
+    expect(inst.idx).toBe(di);
+    expect(inst.comp.msg.hidden).toBe(false);
+    expect(inst.comp.msg.textContent).toMatch(/next round/);
+    expect(inst.stages[di].el.querySelector('[data-comment$="-note"]').value).toBe("[Question 1] long note");
+    expect(inst.comp.ed.textContent).toContain("long note");
+    ca.go(inst, di + 1);
+    expect(inst.comp.msg.hidden).toBe(true);
+  });
   test("d-emptysend: an empty send advances exactly ONE stage; rapid sends never skip one unseen", () => {
     const { w, doc, ca, env } = page(FULL);
     const inst = ca.instances[0];
