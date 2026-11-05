@@ -513,6 +513,57 @@ describe("ship_build — red test step: retry, classification, names (#762)", ()
   });
 });
 
+describe("ship_build — red full run under load: the failing files run again", () => {
+  const NAMES = ["plugins/a.test.js > s > one", "plugins/a.test.js > s > two", "plugins/b.test.js > s > three"];
+  const REDRUN = () => ({ status: 1, stdout: NAMES.map((n) => ` FAIL  ${n}`).join("\n"), stderr: "" });
+  function setup(second, script = "vitest run") {
+    existsSync.mockImplementation((p) => norm(p) === PLUGIN_ROOT || norm(p).endsWith("package.json"));
+    readFileSync.mockImplementation(() => JSON.stringify({ scripts: { test: script } }));
+    treeKey.mockImplementation(() => ({ treeHash: "t1" }));
+    spawn.mockImplementation((cmd) => {
+      const c = String(cmd);
+      if (c.includes("npx vitest run")) return proc(second);
+      return proc(c.includes("npm run test") ? REDRUN() : {});
+    });
+    sampleCpu.mockImplementation(async () => ({ busyPct: 97, cores: 8 }));
+  }
+  const reruns = () => spawn.mock.calls.map((c) => String(c[0])).filter((c) => c.includes("npx vitest run"));
+
+  test("green on the second run: the step passes, says so, and the tree is recorded", async () => {
+    setup({ status: 0, stdout: "ok", stderr: "" });
+    const res = await handler({ cwd: CWD, ciSuite: false, testCmd: "npm run test" });
+    expect(res.success).toBe(true);
+    expect(reruns()).toEqual(['npx vitest run "plugins/a.test.js" "plugins/b.test.js"']);
+    expect(res.steps.find((s) => s.step === "test").rerunFailed).toMatchObject({ files: 2, passed: true, failingTests: NAMES });
+    expect(res.load.note).toMatch(/3 test\(s\) in 2 file\(s\)/);
+    expect(recordResult).toHaveBeenCalledTimes(1);
+  });
+
+  test("red again: the first result stands and nothing is recorded", async () => {
+    setup({ status: 1, stdout: " FAIL  plugins/a.test.js > s > one", stderr: "" });
+    const res = await handler({ cwd: CWD, ciSuite: false, testCmd: "npm run test" });
+    expect(res.success).toBe(false);
+    expect(res.failingTests).toEqual(NAMES);
+    expect(res.steps.find((s) => s.step === "test").rerunFailed.passed).toBe(false);
+    expect(recordResult).not.toHaveBeenCalled();
+  });
+
+  test("no load: no second run", async () => {
+    setup({ status: 0, stdout: "ok", stderr: "" });
+    sampleCpu.mockImplementation(async () => ({ busyPct: 10, cores: 8 }));
+    const res = await handler({ cwd: CWD, ciSuite: false, testCmd: "npm run test" });
+    expect(res.success).toBe(false);
+    expect(reruns()).toEqual([]);
+  });
+
+  test("a test script other than plain vitest run: no second run", async () => {
+    setup({ status: 0, stdout: "ok", stderr: "" }, "jest");
+    const res = await handler({ cwd: CWD, ciSuite: false, testCmd: "npm run test" });
+    expect(res.success).toBe(false);
+    expect(reruns()).toEqual([]);
+  });
+});
+
 describe("ship_build — load signal (#762)", () => {
   test("a lock wait from the suite-lock stderr lines is returned as load", async () => {
     mockTest(() => proc({

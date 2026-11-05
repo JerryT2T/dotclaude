@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.353.1] — 2026-11-05
+
+### Fixed
+- A ship waits 10 min instead of 3 for the CI `suite` check to register, so a queued CI run no longer forces a local full run.
+- The local full-suite fallback gets 60 min instead of stopping at 30.
+- A red full run under proven machine load runs its failing files once more; `steps[test].rerunFailed` reports it.
+
 ## [0.353.0] — 2026-11-05
 
 ### Added

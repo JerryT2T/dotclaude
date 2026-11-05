@@ -169,7 +169,7 @@ describe("ship_run — decision points", () => {
     const h = harness({ ship_release: () => (r++ === 0 ? { success: false, reason: "full-suite-required", error: "x" } : ok.ship_release()) });
     const res = await handler(P(), h.deps);
     expect(res.ok).toBe(true);
-    expect(h.calls.filter((c) => c[0] === "ship_build")[1][1]).toMatchObject({ ciSuite: false });
+    expect(h.calls.filter((c) => c[0] === "ship_build")[1][1]).toMatchObject({ ciSuite: false, stepTimeoutSec: 3600 });
     const h2 = harness({ ship_release: () => ({ success: false, reason: "full-suite-required", error: "x" }) });
     expect((await handler(P(), h2.deps)).needs).toBe("full-suite-required");
   });
