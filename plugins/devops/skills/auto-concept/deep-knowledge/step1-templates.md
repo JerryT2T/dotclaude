@@ -401,8 +401,9 @@ potential number** with its unit (`kpi`) → one claim sentence
 chips by `data-share`) → "N Fragen · Los geht's · ≈ X min" (`data-briefing-duration`)
 with the button centred. Two sentences at most, no "was wir gemessen haben"
 sub-header, no level numbers. A Full without what / why / potential fails the
-gate (A1). **Topic page:** "Thema n von N", title, a ring with the topic's
-share of the potential, its questions as a numbered list, a button — no
+gate (A1). **Topic page:** "Thema n von N", title, the topic's own display
+(the first `data-viz` of its L2 long slot; without one, bars placing the topic
+among all topics), its questions as a numbered list, a button — no
 "roter Faden" block. **Closing:** a devops message ("Abschluss") introduces every question with a
 dwell bar and a "Nachschärfen" toggle (preset from the hesitation signal), then
 the ☰ panel's "👉 Zur nächsten Runde" / "Jetzt umsetzen" buttons — no count, no

@@ -589,6 +589,7 @@ What the code does, in the order of the file:
   /** Loads the open stage's note into the composer (a leading "[tag] " becomes the tag again). */
   function loadComposer(inst, st) {
     const store = storeOf(inst, st), ed = inst.comp.ed;
+    if (inst.comp.msg) inst.comp.msg.hidden = true;
     let v = store ? store.value : '';
     const m = TAGRE.exec(v);
     ed.textContent = '';
@@ -625,7 +626,22 @@ What the code does, in the order of the file:
     inst.comp.el.classList.remove('an-sent'); void inst.comp.el.offsetWidth; inst.comp.el.classList.add('an-sent');
     // Only a question advances (an untagged note accepts the current choice / recommendation); briefing, topic intro and closing never do.
     if (!inst.tag && st.kind === 'dec') { markTouched(st.el); step(inst, 1); }
+    else showSaved(inst, st);
     return true;
+  }
+  /** A note that does not move the page on still needs an answer: the send must never look like nothing happened. */
+  function showSaved(inst, st) {
+    const c = inst.comp;
+    if (!c.msg) {
+      c.msg = h('div', 'an-comp-msg');
+      c.msg.setAttribute('role', 'status');
+      c.el.appendChild(c.msg);
+    }
+    c.msg.textContent = L('Notiz gespeichert, sie geht mit der nächsten Runde an devops.', 'Note saved, it goes to devops with the next round.')
+      + (st.kind === 'dec' ? ' ' + L('Sie bleibt bei dieser Frage, „Weiter“ geht zur nächsten.', 'It stays on this question, "Next" moves on.') : '');
+    c.msg.hidden = false;
+    clearTimeout(c.msgTimer);
+    c.msgTimer = setTimeout(() => { c.msg.hidden = true; }, 5000);
   }
   /** Empty send / Enter on a question: ONE stage forward, never more. A stage that is still entering simply
    *  shows in full (go() ends the enter sequence); a second send within SEND_GAP ms (the new stage is not

@@ -139,7 +139,7 @@ describe("first visit animates, later visits are instant", () => {
     ca.go(inst, q2);
     expect(inst.stages[q2].el.classList.contains("an-first")).toBe(false);
   });
-  test("the messages enter one by one (2.7 s apart); a waiting message takes no room; reduced motion switches every animation off", () => {
+  test("the messages enter one by one, paced by reading time; a waiting message takes no room; reduced motion switches every animation off", () => {
     const { ca, timers } = page(FULL);
     const inst = ca.instances[0];
     const i = inst.stages.findIndex(s => s.el.id === "a1");
@@ -149,10 +149,13 @@ describe("first visit animates, later visits are instant", () => {
     expect(part(".an-m-q").classList.contains("an-wait")).toBe(true);
     expect(part(".an-m-a").classList.contains("an-wait")).toBe(true);
     expect(inst.peekDn.classList.contains("an-wait")).toBe(true);
-    timers.filter(t => t.ms === 2700).pop().f();
+    const letters = n => (n.textContent.match(/[\p{L}\p{N}]/gu) || []).length;
+    const dwell = n => Math.min(20000, Math.max(1200, Math.round(letters(n) / (18.25 * 1.1) * 1000)));
+    const atQ = dwell(part(".an-m-find")), atA = atQ + dwell(part(".an-m-q"));
+    timers.filter(t => t.ms === atQ).pop().f();
     expect(part(".an-m-q").classList.contains("an-wait")).toBe(false);
     expect(part(".an-m-a").classList.contains("an-wait")).toBe(true);
-    timers.filter(t => t.ms === 5400).pop().f();
+    timers.filter(t => t.ms === atA).pop().f();
     expect(part(".an-m-a").classList.contains("an-enter")).toBe(true);
     expect(inst.peekDn.classList.contains("an-wait")).toBe(false);
     // Leaving mid-sequence shows everything at once on the way back.
@@ -369,15 +372,27 @@ describe("chat flow Full round", () => {
     expect(inst.stages[inst.idx].kind).toBe("topic");
     expect(CSS).toMatch(/\.an-foot-brief \{ display: grid; grid-template-columns: 1fr auto 1fr;/);
   });
-  test("the topic page: Thema n von N, title, ring with the share, numbered questions", () => {
+  test("the topic page: Thema n von N, title, graphic placing the topic, numbered questions", () => {
     const { ca } = page(FULL);
     const inst = ca.instances[0];
     ca.go(inst, 1);
     const el = inst.stages[1].el;
     expect(el.querySelector(".an-meta").textContent).toBe("Topic 1 of 2");
-    expect(el.querySelector(".an-ring").style.getPropertyValue("--p")).toBe("60%");
+    expect(el.querySelector(".an-ring")).toBeNull();
+    expect(el.querySelector(".an-topic-viz .an-bars.an-hl .an-on span").textContent).toBe(inst.groups[0].label);
+    expect(el.querySelectorAll(".an-topic-viz .an-bars > div").length).toBe(2);
     expect(el.querySelectorAll(".an-tqi")).toHaveLength(2);
     expect(el.querySelector(".an-tqi").dataset.go).toBe(String(inst.stages.findIndex(s => s.el.id === "a1")));
+  });
+  test("the topic page prefers the topic's own display from its L2 long slot", () => {
+    const own = FULL.replace('<div data-alevel="2" data-title="One"><div data-slot="short"><p>s</p></div><div data-slot="long"><p>l</p></div></div>',
+      '<div data-alevel="2" data-title="One"><div data-slot="short"><p>s</p></div><div data-slot="long"><div data-viz="kpi" data-viz-spec=\'{"value":"42","unit":"ms"}\'></div><p>l</p></div></div>');
+    const { ca } = page(own);
+    const inst = ca.instances[0];
+    ca.go(inst, 1);
+    const box = inst.stages[1].el.querySelector(".an-topic-viz");
+    expect(box.textContent).toContain("42");
+    expect(box.querySelector(".an-bars")).toBeNull();
   });
   test("the note textarea stays the storage target (hidden, 📎 bar beside it); the composer writes into it", () => {
     const html = FULL.replace('<textarea data-comment="a1-note"></textarea>',

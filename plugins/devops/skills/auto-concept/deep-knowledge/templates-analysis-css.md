@@ -47,7 +47,9 @@ html[data-theme="light"] [data-analysis] {
 .an-enh { box-sizing: border-box; position: relative; display: flex; flex-direction: column; max-width: 780px; margin: 0 auto; padding: 40px 24px 36px; }
 .an-enh > * { flex: 0 0 auto; }
 /* a live Full analysis gives the chat the height: no subtitle, the title up top */
-.concept-content:has(section[data-analysis="full"][data-active]) { padding-top: 0.75rem; }
+/* the top band stays free on every analysis page, active round or not: the fixed bars (frozen, persist warning) live there */
+.concept-content:has(section[data-analysis]) { padding-top: 60px; }
+html:has(section[data-analysis]) { scroll-padding-top: 60px; }
 .concept-content:has(section[data-analysis="full"][data-active]) > header .subtitle { display: none; }
 .concept-content:has(section[data-analysis="full"][data-active]) > header h1 { margin: 0.25rem 0 0.25rem; }
 .an-enh:not(.an-lite) { overflow: hidden; padding-bottom: 28px; }
@@ -154,7 +156,7 @@ html[data-theme="light"] .an-kind { color: var(--an-ac); }
 .an-link[aria-pressed="true"] { color: var(--an-li); }
 .an-go { margin-left: auto; display: flex; align-items: center; gap: 8px; }
 
-/* ---------- first visit: the messages enter one after another (2.7 s apart) with a "read me" glow ----------
+/* ---------- first visit: the messages enter one after another (paced by reading time, dwellMs) with a "read me" glow ----------
    The engine reveals them itself (enterSeq): a message that has not entered yet is
    display:none (.an-wait), so it never reserves an empty area the chat could scroll to,
    and the chat glides down only as far as the message that just entered (glide). */
@@ -214,6 +216,8 @@ html[data-theme="light"] .an-tagw { color: var(--an-ac); }
 .an-send svg { width: 22px; height: 22px; fill: currentColor; }
 .an-send:hover:not(:disabled) { filter: brightness(1.1); }
 .an-sent .an-send { animation: an-fade .4s ease-out 1; }
+.an-comp-msg { position: absolute; left: 8px; right: 8px; bottom: calc(100% + 8px); padding: 8px 12px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--an-b1) 45%, transparent); background: var(--an-s1); color: var(--an-tx); font-size: 13px; line-height: 1.4; z-index: 7; }
+.an-comp-msg[hidden] { display: none; }
 
 /* ---------- briefing + closing: the cool blue of devops concepts, no type colour of their own ---------- */
 .an-brief { position: relative; display: flex; flex-direction: column; align-items: center; min-width: 0; padding-top: 24px; text-align: center; }
@@ -268,13 +272,11 @@ html[data-theme="light"] .an-tagw { color: var(--an-ac); }
 
 /* ---------- topic page: the topic's colour, never blue ---------- */
 .an-intro { margin-top: 10px; }
-.an-topic { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: center; padding: 30px 30px 26px; border-radius: 22px; background: radial-gradient(ellipse at 15% 0%, color-mix(in srgb, var(--c) 26%, transparent), transparent 60%), var(--an-s1); border: 1px solid color-mix(in srgb, var(--c) 30%, transparent); cursor: default; }
+.an-topic { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 300px); gap: 24px; align-items: center; padding: 30px 30px 26px; border-radius: 22px; background: radial-gradient(ellipse at 15% 0%, color-mix(in srgb, var(--c) 26%, transparent), transparent 60%), var(--an-s1); border: 1px solid color-mix(in srgb, var(--c) 30%, transparent); cursor: default; }
 .an-first .an-topic { animation: an-in .9s cubic-bezier(.22,.8,.24,1) both; }
 .an-topic .an-h { margin: 6px 0 12px; font-size: 30px; line-height: 1.2; letter-spacing: -.025em; }
-.an-ring { width: 150px; height: 150px; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(var(--c) 0 var(--p, 0%), rgba(255,255,255,.08) 0 100%); }
-.an-ring > div { width: 112px; height: 112px; border-radius: 50%; display: grid; place-items: center; align-content: center; text-align: center; background: var(--an-bg); }
-.an-ring b { display: block; font-size: 26px; }
-.an-ring small { font-size: 11px; color: var(--an-mu); }
+.an-topic-viz { min-width: 0; }
+.an-topic-cap { margin-bottom: 8px; font-size: 12px; color: var(--an-mu); }
 .an-tq { display: grid; gap: 4px; }
 .an-tqi { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 10px; padding: 4px 0; color: var(--an-tx2); }
 .an-tqi:hover { color: var(--an-tx); }
