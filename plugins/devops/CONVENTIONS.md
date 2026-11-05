@@ -262,7 +262,9 @@ Skill directory names use kebab-case with a role prefix
 - `do-*` — doors the user opens (`do-ship`, `do-run`, `do-learn`, `do-batch`); in the slash menu.
 - `auto-*` — workers, passes and hands Claude invokes itself
   (`user-invocable: false`): hidden from the slash menu, reached through the
-  model, the trigger router (`prompt.skill.enforce`) or a hook.
+  model, the trigger router (`prompt.skill.enforce`) or a hook. A channel-gated
+  `auto-*` also sets `disable-model-invocation: true`; it is entered only by a
+  `Read` of its SKILL.md (`docs/dev/feature-flags.md`).
 
 The former `setup-*` prefix (tools only the user starts) is gone:
 `setup-cleanup` became `auto-cleanup` and `setup-project` was retired into
