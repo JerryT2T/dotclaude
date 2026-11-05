@@ -95,10 +95,13 @@ pin → `stable`. A missing `features.json` means nothing is registered.
      would act.
    - **Skills**: a skill that belongs to a gated feature sets
      `disable-model-invocation: true` in its frontmatter (Claude never picks it
-     on its own; the harness still lists it for slash use) and its first step
+     on its own) and its first step
      runs `node "{PLUGIN_ROOT}/scripts/feature-flag.js" check <name>`; on rc 126
      it says the feature is not on this channel and stops. List the skill dir
-     under `skills` in the registry.
+     under `skills` in the registry. An `auto-*` skill also sets
+     `user-invocable: false`: the harness knows no channels, so a slash entry
+     would sit in every channel's menu. Its entry is then a hook or a mode that
+     tells Claude to `Read` the SKILL.md.
    - **Trigger router** (`hooks/lib/skill-trigger-router.js` `routeMessage`,
      used by `prompt.skill.enforce`): drops `gatedSkills()` before matching,
      so a gated skill is an unknown skill on a lower channel — no hint, no

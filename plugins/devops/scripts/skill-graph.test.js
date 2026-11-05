@@ -184,7 +184,8 @@ describe("trigger preservation: every quoted description-trigger phrase survives
 // docs/superpowers/specs/2026-09-24-skill-restructure-design.md is the single
 // source; this table mirrors it so a frontmatter edit that drifts from the
 // approved design fails here. `visibility`: "menu" = user-invocable (default),
-// "hidden" = `user-invocable: false`, "user-only" = `disable-model-invocation: true`.
+// "hidden" = `user-invocable: false`, "user-only" = `disable-model-invocation: true`,
+// "read-entry" = both: no slash command, no Skill tool, entered by a Read of its SKILL.md.
 const { RENAMED, FOLDED, FOLDED_TRIGGERS, RETIRED, RETIRED_TRIGGERS } = require("../hooks/lib/skill-names.js");
 
 const UNITS = {
@@ -203,14 +204,14 @@ const UNITS = {
   "auto-polish":   { layer: 4, visibility: "hidden",    invokes: ["auto-agents"] },
   "auto-agents":   { layer: 5, visibility: "hidden",    invokes: [] },
   "auto-issue":    { layer: 5, visibility: "hidden",    invokes: [] },
-  // channel-gated (features.json frustrated-mode): user-only per
-  // docs/dev/feature-flags.md rule 2 "Skills"; entry by slash command or the
-  // alpha detector hook, never picked by the model on its own
-  "auto-frustrated": { layer: 0, visibility: "user-only", invokes: ["auto-concept", "do-run", "auto-fix", "do-learn", "auto-guide"] },
+  // channel-gated (features.json frustrated-mode), docs/dev/feature-flags.md
+  // rule 2 "Skills": entry by the alpha detector hook or the do-run Q4 option,
+  // never picked by the model on its own, never in the slash menu
+  "auto-frustrated": { layer: 0, visibility: "read-entry", invokes: ["auto-concept", "do-run", "auto-fix", "do-learn", "auto-guide"] },
 };
 
-// Skills of a gated feature: `disable-model-invocation: true` instead of
-// `user-invocable: false` (the slash command is their explicit entry).
+// Skills of a gated feature: `disable-model-invocation: true` on top, so the
+// model cannot pull them in on a channel that does not offer them.
 const GATED_SKILLS = new Set(Object.values(JSON.parse(fs.readFileSync(path.join(PLUGIN_ROOT, "features.json"), "utf8")).features)
   .flatMap((f) => f.skills || []).map((s) => s.replace(/^skills\//, "")));
 
@@ -220,6 +221,7 @@ const MODE_FILES = {
 };
 
 function visibilityOf(meta) {
+  if (meta.disableModelInvocation === true && meta.userInvocable === false) return "read-entry";
   if (meta.disableModelInvocation === true) return "user-only";
   if (meta.userInvocable === false) return "hidden";
   return "menu";
@@ -249,17 +251,13 @@ describe("spec Units table: layer and visibility", () => {
     expect(visibilityOf(meta), `${name} visibility`).toBe(unit.visibility);
   });
 
-  test("every auto-* unit is hidden from the slash menu (a gated one is user-only instead)", () => {
+  test("every auto-* unit is hidden from the slash menu, a gated one too", () => {
     for (const name of Object.keys(UNITS).filter((n) => n.startsWith("auto-"))) {
-      if (GATED_SKILLS.has(name)) {
-        expect(ALL_SKILLS[name].disableModelInvocation, name).toBe(true);
-        continue;
-      }
       expect(ALL_SKILLS[name].userInvocable, name).toBe(false);
     }
   });
 
-  test("every gated skill is user-only and is a unit", () => {
+  test("every gated skill is closed to the model and is a unit", () => {
     expect(GATED_SKILLS.size).toBeGreaterThan(0);
     for (const name of GATED_SKILLS) {
       expect(UNITS[name], name).toBeTruthy();

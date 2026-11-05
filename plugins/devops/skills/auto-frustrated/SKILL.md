@@ -8,6 +8,7 @@ description: >-
 layer: 0
 invokes: [auto-concept, do-run, auto-fix, do-learn, auto-guide]
 disable-model-invocation: true
+user-invocable: false
 triggers:
   en: []
   de: []
@@ -22,10 +23,11 @@ iterating on) miss the goal, and propose a plan with reasons. **This skill
 changes nothing in the app.** Specs: `docs/superpowers/specs/2026-10-25-frustrated-mode-*.md`;
 user-facing summary: `{PLUGIN_ROOT}/deep-knowledge/frustrated-mode.md`.
 
-Entry points: the slash command, or the alpha detector hook
-(`prompt.frustrated.detect`) after the user said yes to its offer
-(`Read {PLUGIN_ROOT}/skills/auto-frustrated/SKILL.md`), or the do-run Q4
-option "Erst analysieren". All three are the same explicit start.
+Entry points (no slash command, no Skill tool: both are off in the
+frontmatter, the entry is `Read {PLUGIN_ROOT}/skills/auto-frustrated/SKILL.md`):
+the alpha detector hook (`prompt.frustrated.detect`) after the user said yes
+to its offer, or the do-run Q4 option "Erst analysieren". Both are the same
+explicit start.
 
 ## Step 0 — Gate
 

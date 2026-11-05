@@ -12,7 +12,7 @@ detect -> offer -> read-only analysis -> plan -> approval -> hand-off
 
 1. **Detect** - an alpha-only UserPromptSubmit hook (`prompt.frustrated.detect`) flags the signal and injects context telling Claude to offer the analysis. Claude itself judges from the transcript whether the session is really stuck.
 2. **Offer** - one question, never an automatic start. Earlier sessions are read only after an explicit yes.
-3. **Read-only analysis** - the `auto-frustrated` skill (entry on yes: `Read {PLUGIN_ROOT}/skills/auto-frustrated/SKILL.md`; also the explicit slash command). Tests may run and test artifacts, snapshots and caches may be written; the app's source and config must not change.
+3. **Read-only analysis** - the `auto-frustrated` skill (entry on yes: `Read {PLUGIN_ROOT}/skills/auto-frustrated/SKILL.md`; not in the slash menu). Tests may run and test artifacts, snapshots and caches may be written; the app's source and config must not change.
 4. **Plan** - presented by the existing concept-vs-card rules: non-trivial -> `/auto-concept` page, trivial -> inline text above the completion card.
 5. **Approval** - any interpretable yes in the next prompt, no fixed phrase.
 6. **Hand-off** - preset run or fix; it never ships and never asks to ship (only a concept close-out sheet may include a ship choice).
@@ -21,7 +21,7 @@ detect -> offer -> read-only analysis -> plan -> approval -> hand-off
 
 | Key | Default | Meaning |
 |---|---|---|
-| `frustratedMode.suggest` | `true` | `false` silences the prompt detector: no stuck-session notice reaches Claude, nothing is offered. The explicit slash entry stays available. Set with `/devops-config` or in `.claude/devops-config.json` (project) / `~/.claude/devops-config.json` (global). |
+| `frustratedMode.suggest` | `true` | `false` silences the prompt detector: no stuck-session notice reaches Claude, nothing is offered. Set with `/devops-config` or in `.claude/devops-config.json` (project) / `~/.claude/devops-config.json` (global). |
 
 ## Detector log
 
@@ -96,7 +96,7 @@ files.
 
 ## Skill (`auto-frustrated`)
 
-User-only (`disable-model-invocation: true`), first step
+Read-only entry (`disable-model-invocation: true` + `user-invocable: false`: neither the Skill tool nor the slash menu reaches it), first step
 `feature-flag.js check frustrated-mode` (stop on 126). Flow: intake and sealed
 loop hypothesis → arm the guard, build the brief → R1–R5 in parallel →
 synthesis → `plan record` → present (non-trivial: disarm, then
