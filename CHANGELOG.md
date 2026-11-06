@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.358.0] — 2026-11-06
+
+### Added
+- Concept close-out: a finished page after the close-out, with the reported result, real links, what is left and what continues in the chat.
+- Concept close-out: "Nachbessern" sends notes on the report back as change orders, without shipping or closing anything.
+- Concept gate: the report's one-screen budget blocks the build (long texts, extra rows, invented cards).
+
+### Changed
+- Concept report: one narrow column on one screen, the page header as the only title, bars graded by how far a requirement was met, test depth readable without hover, before and after in one place.
+- Close-out panel: one line per Fund with a route pill that cycles on tap, three rows plus "+N weitere", one list "Bleibt für dich" with a "Führ mich" switch.
+- Concept pages: free and decision rounds share the narrow reading width; design rounds, mapping boards and `data-wide` rounds keep theirs.
+
+### Fixed
+- Concept sidebar title: a submission after the first round now takes back the waiting title too.
+
 ## [0.357.1] — 2026-11-06
 
 ### Fixed
