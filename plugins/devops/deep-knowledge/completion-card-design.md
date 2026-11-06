@@ -663,3 +663,6 @@ texts carry only the call-time rules. The reasoning behind them lives here.
   `Empfehlung umsetzen` and sends exactly this text; without it the button
   says only `Umsetzen`. With `ship-successful` + `state.kept` the `Weiter`
   button sends it.
+- **`readOnly`**: `true` on a read-only assignment. An `analysis` card then drops
+  `Umsetzen` / `Empfehlung umsetzen` (nothing can be implemented in that
+  session); the open-point `Nachbessern` button stays. Ignored on other variants.

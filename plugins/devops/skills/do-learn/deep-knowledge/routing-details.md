@@ -10,26 +10,52 @@ rule), B (upstream issue), C (this project), D (another project), E (global).
 ## Detecting a different target project (feeds Step 2, Q3)
 
 Most learnings target the current project — assume that unless the text
-says otherwise. Scan for a hint, in this order:
+says otherwise. Candidates come from Claude Code's own project records, never
+from a hard-coded directory:
 
-1. **Explicit path** — `~/IdeaProjects/<name>`, or an absolute path that
-   resolves inside `~/IdeaProjects/`.
-2. **Project name** — list `~/IdeaProjects/*` one level deep, match
-   case-insensitive substrings.
-3. **Project keyword** — "in projekt X", "im X repo", "for the X app".
+```
+node "{PLUGIN_ROOT}/scripts/recent-projects.js" [--match <name>] [--remote <owner/name>] [--within-min N]
+```
+
+It returns JSON `[{path, remote, lastActivityMs}]` (newest first; worktrees
+normalised to the main repo; read-only; honours `CLAUDE_CONFIG_DIR`). Scan the
+learning text for a hint, in this order:
+
+1. **Explicit path** — an absolute path to a directory that exists.
+2. **Project name** — `--match <name>` (case-insensitive substring of the
+   folder name), or `--remote <owner/name>` for a repo slug.
+3. **Project keyword** — "in projekt X", "im X repo", "for the X app" → as 2.
 
 Three outcomes — keep the middle one distinct from the third:
 
-1. **Exactly one hint, resolving under `~/IdeaProjects/`** → that is the target.
+1. **Exactly one hint, resolving to one known project** → that is the target.
    Confirm once with the user before writing.
-2. **Any hint that does not resolve to a directory under `~/IdeaProjects/`** —
-   path-shaped or not: `H:\work\legacy-crm`, a network share, a path that does
-   not exist, or a bare name like "im Repo legacy-crm" that matches nothing
-   there → **ask**; silently falling back to the current project would file
-   another project's rule into this one.
+2. **Any hint that matches no project, or several** — a path that does not
+   exist, a share, a bare name matching nothing → **ask**; silently falling
+   back to the current project would file another project's rule into this one.
 3. **No hint at all** → current project, no ask.
 
 Conflicting hints → AskUserQuestion with the candidates plus "current project".
+
+### Reach by activity (branches B and D)
+
+Applies when the target repo is not the session's own (B: the plugin repo from
+a consumer session; D: another project). The session's own repo is never
+asked about — implement there, also in a read-only session when the learning is
+the user's explicit order.
+
+1. `recent-projects.js --within-min 60 --remote <slug>` (or `--match <name>`).
+   `lastActivityMs` counts any Claude Code activity there, which includes the
+   user's own sessions.
+2. **A hit** → AskUserQuestion with two options: **(a) new session there /
+   hand-off prompt** — emit the copy-pastable `/do-learn <learning with all
+   context>` block (branch D, no-remote path), nothing is filed; **(b) issue**
+   — the path below.
+3. **No hit, or the script fails** → issue, no question. Without a GitHub
+   remote, the hand-off block replaces the issue.
+
+Never drop the learning: every outcome ends as an edit, an issue, or a block
+the user holds.
 
 ## A — Plugin repo, plugin rule: pick the file
 
@@ -53,6 +79,16 @@ For a rule (no code at fault), in order of preference:
 3. **Agent behavior** → `plugins/devops/agents/<name>.md`.
 4. **Hook behavior** → `plugins/devops/hooks/<phase>/<hook>.js`.
 
+**Eval case instead of (or beside) a `.md`.** A rule about *model behaviour*
+(what Claude does when a skill runs) is proven by an eval case where that makes
+sense: `plugins/devops/evals/skills/<skill>/<case>/` with `case.yaml`,
+`prompt.md` (frontmatter `tags: [skill-body, <skill>, learned]`), `scaffold.sh`
+and `graders.js`, copied from the nearest existing case (`do-learn/*`,
+`auto-issue/bug-with-marker` for a stubbed `gh`). The tag `learned` makes
+`evals/ship-gate.js` run it before the next ship. An eval case is a valid
+solution form beside hook, skill and deep-knowledge; a code defect still gets a
+regression test.
+
 The repo-root `CLAUDE.md` is the last resort — only when neither a skill nor
 deep-knowledge fits and the rule is a one-liner. The plugin directory has no
 CLAUDE.md of its own; its conventions live in `{PLUGIN_ROOT}/CONVENTIONS.md`.
@@ -63,9 +99,16 @@ or say in Step 5 why you left it.
 
 ## B — Upstream issue: what to hand over
 
-The plugin source repo's canonical slug is `Jerry0022/dotclaude`, derivable from
-the installed `marketplace.json` as `{owner.name}/{name}`. Pass the slug straight
-through; do not assume a local checkout exists.
+The plugin source repo's canonical slug is `JerryT2T/dotclaude` (do not derive
+it from `marketplace.json`: its owner field still names the old account). Pass
+the slug straight through; do not assume a local checkout exists. Reaching the
+repo by activity (an ask when it was active in the last hour): see "Reach by
+activity" above.
+
+**Same symptom before?** One call, e.g. `gh issue list --repo <slug> --state all
+--search "<symptom keywords> created:>=<date 30 days ago>"`. A hit → link the
+predecessors in the body and make the issue name the shared cause and prove it
+(escalation), not file a fresh sibling.
 
 Delegate to `/auto-issue` via the **Skill** tool (never `gh issue create`; see
 `{PLUGIN_ROOT}/deep-knowledge/plugin-behavior.md` → "Issue Creation — Always
@@ -93,6 +136,19 @@ Delegate") with a self-contained prompt:
 
   Fill every line from the real source in this session, never from memory; a
   value that cannot be read is written as `unknown`, never left out.
+- **Beweis** (mandatory block in the body, in the language of the rest of the
+  body per `issue-rules.md`; `auto-issue` keeps its own body language rules):
+
+  ```
+  **Beweis**
+  - Kind: Regressionstest | Eval-Case
+  - Trigger: "<the user's words that exposed it, verbatim>"
+  - Pass criterion: <what a green test / a passing grader observes>
+  ```
+
+  Code defect → `Regressionstest`; rule about model behaviour → `Eval-Case`
+  (a consumer project has no eval suite, so this block is how the proof reaches
+  the repo that has). A missing block is a hand-over error.
 - **target repo** — the slug, so the issue lands upstream rather than in the
   consumer repo. `auto-issue` Step 1 takes this as `{target_repo}` and passes
   it to `gh issue create --repo`; its Step 4 verifies the returned URL's
@@ -192,7 +248,9 @@ Resolve the target's remote: `git -C "{target_project}" remote get-url origin`.
   `[CHORE] Capture learning: <short>`, body = the learning plus
   `Captured from a session in {current-project}.` and a `**User value:**` line
   naming what following the rule improves, plus the branch B **Environment**
-  block when the learning is about a tool or plugin behaviour, type `chore`.
+  block when the learning is about a tool or plugin behaviour, plus the branch B
+  **Beweis** block (kind, trigger verbatim, pass criterion) and the branch B
+  same-symptom search, type `chore`.
   If it declines, fall
   through to the no-remote path below.
 - **No GitHub remote** → ask first. Default option (a): emit a copy-pastable
