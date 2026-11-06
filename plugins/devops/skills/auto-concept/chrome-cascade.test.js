@@ -23,6 +23,18 @@ describe("own note layer against mock CSS", () => {
   });
 });
 
+describe("field mic", () => {
+  test("a field inside a mock screen gets none; notes and answers inside a screen keep it", () => {
+    expect(css("templates-voice-js.md")).toContain("if (f.closest('[data-screen]') && !f.closest('[data-anno-layer], .upin-editor')) return;");
+  });
+});
+
+describe("analysis chat", () => {
+  test("the content keeps a gap to the scrollbar", () => {
+    expect(css("templates-analysis-css.md")).toMatch(/.an-chat {[^}]*padding-inline: 8px;/);
+  });
+});
+
 describe("analysis view under the design chrome", () => {
   test("the backdrop runs while an analysis view is open, and the loop wakes for it", () => {
     const src = css("templates-utilities.md");

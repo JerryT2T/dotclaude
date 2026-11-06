@@ -53,7 +53,7 @@ html:has(section[data-analysis]) { scroll-padding-top: 60px; }
 .concept-content:has(section[data-analysis="full"][data-active]) > header .subtitle { display: none; }
 .concept-content:has(section[data-analysis="full"][data-active]) > header h1 { margin: 0.25rem 0 0.25rem; }
 .an-enh:not(.an-lite) { overflow: hidden; padding-bottom: 28px; }
-.an-chat { position: relative; flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable both-edges; display: flex; flex-direction: column; padding-bottom: 28px; scroll-padding-bottom: 28px; }
+.an-chat { position: relative; flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable both-edges; display: flex; flex-direction: column; padding-inline: 8px; padding-bottom: 28px; scroll-padding-bottom: 28px; }
 .an-chat > *, .an-chat .an-stage { flex: 0 0 auto; }   /* a stage inside a display:contents topic is a flex item too: it must never shrink below its content */
 .an-chat > .an-foot-brief { margin-top: auto; }
 .an-enh:not([data-an-stage="brief"]):not(.an-lite) { padding-top: 12px; }
