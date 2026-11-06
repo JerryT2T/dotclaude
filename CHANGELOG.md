@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.359.0] — 2026-11-06
+## [0.360.0] — 2026-11-06
 
 ### Added
 - Concept analysis chat: a "you are here" tag beside the collapsed table of contents always names the open question, and the expanded list highlights it strongly. The compact variant's progress dots are styled and mark the current one.
