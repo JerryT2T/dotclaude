@@ -650,7 +650,9 @@ texts carry only the call-time rules. The reasoning behind them lives here.
   must not read as done; `deployPending` flips the decision heading to
   `👉 ⚠️ Not deployed`.
 - **`open`**: points naming another branch/worktree are dropped (that session's
-  work; leftovers are ship_hygiene's job). Obvious next steps are dropped on
+  work; leftovers are ship_hygiene's job). A live session's unlanded work is no
+  finding at all: never name a dropped point again in `answer`, a closing line or
+  anywhere else on the card. Obvious next steps are dropped on
   test and ready cards unless they end in `?`. The promote nudge belongs in
   `delivery.promote.stableLag` (it replaces the old userFinalTest item).
 - **`paused`** (#583): title and heading name the reason (`🔌 Restart`,
