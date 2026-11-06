@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.355.0] — 2026-11-06
+
+### Added
+- `pre.visible-browser.guard` blocks scripts and commands that would open a visible non-Edge browser window. Visible windows use Edge; headless runs may still use Chrome for Testing.
+
+### Changed
+- `browser-tool-strategy.md` now covers scripts that start their own browser, not only the Claude-in-Chrome extension.
+
 ## [0.354.1] — 2026-11-06
 
 ### Changed
