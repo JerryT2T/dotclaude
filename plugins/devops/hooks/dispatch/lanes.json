@@ -159,6 +159,9 @@
       ],
       [
         "pre.waitloop.guard"
+      ],
+      [
+        "pre.visible-browser.guard"
       ]
     ],
     "PreToolUse:fast": [

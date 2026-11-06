@@ -62,6 +62,25 @@ JSON blocks and fails on large self-contained pages ("page body too large"). JSO
 blocks, DOM state, form values and attributes are read with `javascript_tool` /
 `browser_evaluate`.
 
+## Scripts that start their own browser
+
+A visible window is always Edge, also when a script starts the browser itself
+(Playwright, Puppeteer, `chrome.exe`) and no browser tool is involved:
+
+- **A window is needed** (a real-GPU benchmark, a headed test run): Playwright
+  `channel: 'msedge'` in the same launch options or `--browser=msedge`; Puppeteer
+  `executablePath` pointing at `msedge.exe`. These runs use a temporary profile,
+  never the user's Edge profile. Numbers from Edge and from Chrome for Testing are
+  not comparable without saying so.
+- **No window is needed:** run headless. Chrome for Testing is fine there (`ng test`
+  with ChromeHeadless, Playwright measurements), because the user sees nothing.
+
+`pre.visible-browser.guard` enforces this on written code and shell commands. It
+cannot see options built elsewhere (`launch(opts)`) or a browser path in a shell
+variable, so this rule also applies where the guard stays silent. The text
+`DEVOPS_ALLOW_VISIBLE_BROWSER` overrides the guard, only when the user asked for
+that window.
+
 ## Edge rules — whenever Claude-in-Chrome is the tool
 
 1. **Edge only.** The extension runs in Microsoft Edge (Chromium; the "Chrome" in
