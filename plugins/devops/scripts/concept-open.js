@@ -149,8 +149,16 @@ async function verify(opts, deps = {}) {
   if (page.status !== 200) {
     return { ok: false, error: `concept URL ${url} -> HTTP ${page.status} (expected 200); the server cwd must contain ${st.html_path}`, url };
   }
+  // One open per bridge run: a second verify (a retry, a look at the result) must
+  // not add a tab. A restarted bridge has a new pid and opens again; a tab
+  // closed on a live bridge is the waker's to reopen (concept-watch.js).
+  const who = await req('GET', `${base}/identity`);
+  let run = 0;
+  try { run = Number(JSON.parse(who.body).pid) || 0; } catch { /* no id: run 0 */ }
+  if (run && st.opened_for_run === run) return { ok: true, url, already_open: true };
   const err = await open(url);
   if (err) return { ok: false, error: err, url };
+  try { fs.writeFileSync(opts.state, JSON.stringify({ ...st, opened_for_run: run }, null, 2)); } catch { /* the page is open; only a later verify would repeat it */ }
   return { ok: true, url };
 }
 

@@ -57,6 +57,8 @@ html:has(section[data-analysis]) { scroll-padding-top: 60px; }
 .an-chat > *, .an-chat .an-stage { flex: 0 0 auto; }   /* a stage inside a display:contents topic is a flex item too: it must never shrink below its content */
 .an-chat > .an-foot-brief { margin-top: auto; }
 .an-enh:not([data-an-stage="brief"]):not(.an-lite) { padding-top: 12px; }
+/* a design view runs edge to edge under the fixed variant bar: every stage keeps the chrome's top reserve, not only the briefing */
+section[data-view].an-enh:not(.an-lite) { padding-top: var(--chrome-safe-top, 5.75rem); }
 .an-enh [data-topic] { display: contents; }
 .an-enh .an-off { display: none !important; }
 .an-enh [data-alevel], .an-stores { display: none; }
@@ -161,6 +163,13 @@ html[data-theme="light"] .an-kind { color: var(--an-ac); }
    display:none (.an-wait), so it never reserves an empty area the chat could scroll to,
    and the chat glides down only as far as the message that just entered (glide). */
 .an-wait { display: none !important; }
+/* a message is still held back: dots at the bubbles' left edge, kept in view while the message above is long */
+.an-typing { position: sticky; bottom: 6px; display: flex; gap: 5px; width: max-content; margin: 16px 0 0 42px; padding: 10px 14px; border-radius: 4px 14px 14px 14px; background: var(--an-s1); }
+.an-typing > i { width: 7px; height: 7px; border-radius: 50%; background: var(--an-b2); animation: an-typing 1.2s ease-in-out infinite; }
+.an-typing > i:nth-child(2) { animation-delay: .16s; }
+.an-typing > i:nth-child(3) { animation-delay: .32s; }
+@keyframes an-typing { 0%, 60%, 100% { opacity: .3; transform: none; } 30% { opacity: 1; transform: translateY(-3px); } }
+@media (prefers-reduced-motion: reduce) { .an-typing > i { animation: none; opacity: .7; } }
 .an-enter { animation: an-in 1.35s cubic-bezier(.22,.8,.24,1) both; }
 .an-enter > .an-bub, .an-enter > .an-ans { animation: an-read 3.6s ease-out both; }
 .an-pulse { animation: an-pulse 1.1s ease-in-out 1; }

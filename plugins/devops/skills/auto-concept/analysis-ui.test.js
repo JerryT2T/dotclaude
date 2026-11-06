@@ -149,19 +149,23 @@ describe("first visit animates, later visits are instant", () => {
     expect(part(".an-m-q").classList.contains("an-wait")).toBe(true);
     expect(part(".an-m-a").classList.contains("an-wait")).toBe(true);
     expect(inst.peekDn.classList.contains("an-wait")).toBe(true);
+    // Something is still held back: typing dots below the last visible message, gone with the last one.
+    expect(part(".an-m-find").nextElementSibling.classList.contains("an-typing")).toBe(true);
     const letters = n => (n.textContent.match(/[\p{L}\p{N}]/gu) || []).length;
     const dwell = n => Math.min(20000, Math.max(1200, Math.round(letters(n) / (18.25 * 1.1) * 1000)));
     const atQ = dwell(part(".an-m-find")), atA = atQ + dwell(part(".an-m-q"));
     timers.filter(t => t.ms === atQ).pop().f();
     expect(part(".an-m-q").classList.contains("an-wait")).toBe(false);
     expect(part(".an-m-a").classList.contains("an-wait")).toBe(true);
+    expect(part(".an-m-q").nextElementSibling.classList.contains("an-typing")).toBe(true);
     timers.filter(t => t.ms === atA).pop().f();
     expect(part(".an-m-a").classList.contains("an-enter")).toBe(true);
+    expect(el.querySelector(".an-typing")).toBeNull();
     expect(inst.peekDn.classList.contains("an-wait")).toBe(false);
     // Leaving mid-sequence shows everything at once on the way back.
     ca.go(inst, i + 1);
     ca.go(inst, i);
-    expect(el.querySelectorAll(".an-wait, .an-enter")).toHaveLength(0);
+    expect(el.querySelectorAll(".an-wait, .an-enter, .an-typing")).toHaveLength(0);
     expect(CSS).toMatch(/\.an-wait \{ display: none !important; \}/);
     expect(CSS).toMatch(/\.an-enter \{ animation: an-in 1\.35s/);
     expect(CSS).toMatch(/prefers-reduced-motion: reduce\)[\s\S]*animation: none !important/);
