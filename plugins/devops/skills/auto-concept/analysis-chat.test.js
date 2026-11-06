@@ -251,6 +251,19 @@ describe("persistent composer", () => {
     expect(t).not.toMatch(/did not visibly hesitate on any/);
     expect(t).toMatch(/not look at any/);
   });
+  test("a click in the chat history tags the clicked question, not the open one (#1057)", () => {
+    const { doc, w, ca } = page(LITE);
+    const inst = ca.instances[0];
+    const i = inst.stages.findIndex(s => s.el.id === "q2");
+    ca.go(inst, i);
+    expect(inst.stages[inst.idx].el.id).toBe("q2");
+    const click = n => n.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+    click(doc.querySelector("#q1 .an-m-q .an-bub"));
+    expect(inst.tag).toBe("Question 1");
+    click(doc.querySelector("#q2 .an-m-find .an-av"));
+    expect(inst.tag).toBe("Finding · Question 2");
+  });
+
   test("tagged: the note stays on the stage, one tag at most, the tag comes back on return", () => {
     const { doc, w, ca } = page(LITE);
     const inst = ca.instances[0];
