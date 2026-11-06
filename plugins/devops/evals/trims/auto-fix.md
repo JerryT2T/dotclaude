@@ -282,3 +282,12 @@ are the tested-and-rejected cuts. A follow-up could retry the low-risk cuts
 alone (Step 0 preamble, Codex exit-code list, pre-mortem bullets) with the
 original Steps 2–5 kept.
 
+
+## #1071: root cause before the first edit (2026-11-06)
+
+Step 7 now requires one sentence naming the root cause before the first Edit
+or Write, and `root-cause-before-edit` counts any edit, not only `total.js`.
+`skills/auto-fix/explicit-off-by-one`, one run with the new text: 4/4 graders
+(`fix-skill`, `loop-fixed`, `root-cause-before-edit`, `reports-file-line`).
+One run proves the wording does not break the case, not an improvement: the
+old text already passed this grader 4/4.
