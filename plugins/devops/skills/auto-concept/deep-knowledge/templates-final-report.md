@@ -17,7 +17,10 @@ panel then belongs to the close-out alone:
 - **No TOC window, no journey row, no status line** in the panel body
   (`body.viewing-final .panel-nav-scroll`, `.journey`, `.panel-status` are
   hidden). The body is the **to-do inbox** (`#closeout-sheet`).
-- **Foot, under the divider:** the 🤖 group and the two buttons.
+- **Foot, under the divider:** the plan line, the quiet disposition line, the two
+  ship buttons and "🔧 Nachbessern".
+- **The panel starts closed behind ☰**, like on every round: the report is read
+  first.
 
 The sheet is deliberately **DOM-driven, not connection-driven**: it is
 present because the section carries `data-final-report`, so it survives
@@ -32,79 +35,105 @@ The ☰ panel is page chrome and does not move with that choice.
 
 ### The close-out sheet — a to-do inbox
 
-**Why an inbox.** The close-out panel went through four buttons at once (no
-order, no way to want more than one), a four-step wizard ("Weiter" looked
-like it already did something), a wall of every question, and a sequential
-accordion with "n von N beantwortet" and "Weiter ›". Each was a form. What is
-actually left for the user at the end of a concept is a short list of
-to-dos, most of which Claude can pre-answer — so the panel shows exactly
-that, pre-answered, and the click that confirms it is also the ship answer.
+**Why an inbox.** The close-out panel went through four buttons at once, a
+four-step wizard, a wall of every question, an accordion and a bottom sheet per
+Fund whose pill looked like a menu but opened an overlay over half the panel.
+What is actually left at the end of a concept is a short list of to-dos, most of
+which Claude can pre-answer — so the panel shows exactly that, pre-answered, and
+the click that confirms it is also the ship answer.
 
-**Groups, top → bottom, each at most three rows, one line per row:**
+**Groups, top → bottom:**
 
 | Group | Source in the report body | Row | Default |
 |---|---|---|---|
-| 🧭 **Du entscheidest** | the Funde: elements with `data-issue-title` inside `[data-open-questions]` (not `data-routed`) | name · reason chip (`data-route-reason`) · route pill ⚡ Jetzt / 📌 Issue / ✕ Ignorieren | `data-route-default` (`now` / `issue` / `ignore`); missing → 📌 Issue (writes no code) |
-| 🧪 **Du testest** | `[data-tests] li` — what Claude could not verify | text · criticality chip (`data-crit`) · Muss nicht · Mit Anleitung · Mach ich selbst | `data-crit="low"` → Muss nicht; else `data-guide="web"`/`"desktop"` → Mit Anleitung; else → Mach ich selbst (`data-mode-default` overrides) |
-| 👉 **Du machst danach** | `[data-handoffs] li` — manual hand-offs | same as 🧪 | same as 🧪 |
+| 🧭 **Du entscheidest** | the Funde: elements with `data-issue-title` inside `[data-open-questions]` (not `data-routed`) | ONE line: name · route pill | `data-route-default` (`now` / `issue` / `ignore`); missing → 📌 Issue (writes no code) |
+| **Bleibt für dich** | `[data-tests] li` (🧪, what Claude could not verify) and `[data-handoffs] li` (👉, manual hand-offs), one list | kind glyph · text · "hoch" when `data-crit="high"`, then "Führ mich" switch · ✕ | `data-crit="low"` → struck (`skip`); else `data-guide="web"`/`"desktop"` → Führ mich on (`guide`); else on the card (`self`). `data-mode-default` overrides |
 
-- **More than three Funde** → the first two keep their row and the rest
-  become ONE **Sammel-Issue** row (`closeoutFundeSplit()`), routable to
-  📌 Issue or ✕ Ignorieren only. The order is the report's: list the Funde
-  that most need a decision first.
-- **More than three 🧪/👉 items** → three rows plus "+N weitere im Bericht";
-  the rest keep their default and stay in the payload. Author at most three.
-- **A tap on a 🧭 row opens the bottom sheet** (`#closeout-route-sheet`,
-  inside the FAB, over the inbox): the Fund's name, origin tag
-  (`data-oq-origin`), description (`data-issue-body`), the recommendation with
-  its reason ("Empfohlen: ⚡ Jetzt umsetzen · klein") and three big tiles.
-  A tile sets the route and closes the sheet; ✕ and Escape close it
-  unchanged; focus returns to the row.
-- **"Mit Anleitung" names its kind** under the row: 🧭 Web-Guide (`web`),
-  🖥 Desktop-Hilfe (`desktop`) or 📄 Schritte im Chat (`inline` — what the
-  user gets when they choose guidance on an item Claude cannot walk them
-  through). **The UI never says "nicht führbar"** — Claude can always explain
-  what to do.
+- **A tap on the pill moves to the next route** (⚡ Jetzt → 📌 Issue → Weglassen →
+  ⚡, `cycleRoute()`); focus stays on the pill, the plan line follows. The pill's
+  tooltip says what the route does. ONE hint stands under all Funde
+  (`#closeout-route-hint`).
+- **A tap on the name jumps to the Fund in the report** (`jumpToFund()`): the 🔍
+  fold opens and the Fund is marked for a moment. The report says what, where and
+  why in the page's language; `data-issue-body` stays the English issue text and
+  is never shown in the panel. The name is one line, ellipsis as a safety net.
+- **More than three Funde:** three rows, "+N weitere" shows the rest
+  (`#closeout-decide-more`). Every Fund keeps its own route and is in the payload.
+- **A not-built item is a Fund** with `data-oq-origin="shortfall"`: it carries the
+  ⚠ mark, is listed first, and the report body no longer repeats it.
+- **"Führ mich" on** means Claude guides the step after the close-out: 🧭 Web-Guide
+  (`web`), 🖥 Desktop-Hilfe (`desktop`) or 📄 Schritte im Chat (`inline`). The glyph
+  and tooltip name the kind. **Off** means the item goes on the completion card.
+  **✕ strikes it**, ↩ brings it back. **The UI never says "nicht führbar"** — Claude
+  can always explain what to do.
+- More than three of a kind: three rows plus "+N weitere im Bericht"; the rest keep
+  their default and stay in the payload. Author at most three each.
 - No group with nothing in it is shown; with no group at all the inbox says
   "Nichts mehr zu entscheiden — nur noch abschließen."
 
-**Under the divider — 🤖 Claude macht beim Klick:**
+**Under the divider:**
 
 - the plan line, re-rendered on every change: "⚡ 2 × jetzt umsetzen · 📌 1 ×
   Issue anlegen" (`renderCloseoutPlan()`), hidden when empty;
-- the disposition as ONE line with its default — **"🧹 Diese Seite wird
+- the disposition as ONE quiet line with its default — **"🧹 Diese Seite wird
   gelöscht · ändern"** (`renderDisposeLine()`); "ändern" opens the radios +
   moveTo inline (`toggleDisposeEdit()`, `#panel-dispose-concept`);
 - **two buttons, which ARE the ship answer:** **"🏁🚀 Abschließen & shippen"**
   (`#closeout-ship`, warning fill — the implement colour, no ⚠ glyph) and
   **"🏁 Nur abschließen, nicht shippen"** (`#closeout-noship`, ghost). Both
-  submit `finalize` — `ship.run` true / false. There is no ship row, no files
-  row, no accordion, no progress, no "Weiter ›".
+  submit `finalize` — `ship.run` true / false;
+- **"🔧 Nachbessern"** (`#closeout-refine`, quiet): the result does not fit yet. It
+  sends the user's notes on the report as `action: "refine"` (`submitRefine()`);
+  without a note the 💬 dock opens instead. Nothing ships, nothing closes
+  (`step5-finalize.md` § Nachbessern).
 
 **Colour language** as in the concept rounds: warning = the actions that
 write code or reach outside the repo (⚡ pill, the ship button), accent = the
-issue route (📌 pill), neutral = drop.
+issue route (📌 pill), neutral = Weglassen.
 
-**Choices live in memory only** (`_closeoutChoices`). The 🧪/👉 radios carry
-`data-no-persist`; nothing on the sheet is written to localStorage, because
-`saveState()` restores named radios document-wide and a remembered
-"⚡ Jetzt umsetzen" would sail through a later close-out and write code nobody
-re-authorised. A reload falls back to what Claude authored; a tab switch
-(`refreshCloseout({ reset: true })`) keeps the choices by id. Rows are rebuilt
-only when the item SET changes (by key, never by count), so a choice never
-tears its own row out from under the cursor or the keyboard focus.
+**Choices live in memory only** (`_closeoutChoices`); nothing on the sheet is
+written to localStorage, because a remembered "⚡ Jetzt umsetzen" would sail
+through a later close-out and write code nobody re-authorised. A reload falls back
+to what Claude authored; a tab switch (`refreshCloseout({ reset: true })`) keeps
+the choices by id. Rows are rebuilt only when the item SET changes (by key, never
+by count), so a choice never tears its own row out from under the cursor or the
+keyboard focus.
 
 **After the click the clicked button is the status.**
 `setCloseoutButtonState(state, which)` turns the clicked button into "⏳ Wird
 abgearbeitet …" (submit and in-flight restore) or "⚠ Übermittelt · keine
 Antwort mehr" (`markCloseoutStalled()`, plus the one hint paragraph — it
-carries an instruction), and hides the other. The done state
-(`data-closed`) hides both and shows **"✓ Concept abgeschlossen ·
-schließen"** (`#closeout-close`, closes the panel); the inbox then shows only
-the 🧪/👉 items with the mode the user chose (Claude stamps `data-mode` on each
-`<li>`), "Muss nicht" muted, and nothing else — no 🧭 group (the report body
-says what became of each Fund), no 🤖 group, no line about the completion
-card.
+carries an instruction), and hides the others. What the user sees at the end is
+the Fertig-Seite below.
+
+### Fertig-Seite
+
+The very last view of a concept tab, and deliberately not a document: viewport
+filling and centred on the neural backdrop, a status ring, one word, one line, the
+links, and what continues in the chat. It replaces report, panel and dock
+client-side (`showFinished()`, `body.fin-on`), because the page file may be deleted
+and the bridge gone.
+
+| `state` | Ring | Heading | Under it |
+|---|---|---|---|
+| `shipped` | success ✓ | Fertig. | `sub`, e.g. "v0.360.0 auf Alpha, Concept abgeschlossen." "Live" only with a proven deploy |
+| `closed` | accent ✓ | Abgeschlossen. | `sub`, e.g. "Nichts geshippt, alles liegt auf Branch X." |
+| `partial` | warning ! | Fast fertig. | `sub` and up to three "Nicht erreicht: …" (`misses`), also when the ship was green |
+| `blocked` | danger – | Ship blockiert. | `reason`, "Das Concept bleibt offen", and "Zum Bericht", because the sheet stays usable |
+| `lost` | accent – | Verbindung weg. | "Das Ergebnis steht im Chat" and "Zum Bericht". The page sets this itself after a minute without a bridge during a finalize; never green |
+
+**The result always comes from Claude**, never from a silent bridge or from
+`ship.run`: `POST /status {"phase":"closed","finished":{…}}` (`step5-finalize.md`
+§ D). Fields: `state`, `sub` or `reason`, `misses[]`, `links[]` (`{label, href}`,
+http(s) only), `next[]`, `left[]`.
+
+**The CTAs are the completion card's.** `links` are real links and the only
+buttons: live version, PR, release, issues. `next` holds the labels of the card's
+own actions (Promote, Fix, Nachbessern, …). Those need the chat's input field, so
+they stand as labelled hints under "Weiter im Chat", never as a button that would
+do nothing on a click. `left` is what is left for the user (at most three 👉/🧪
+items): green without "Secret noch hinterlegen" would be untrue. Nothing else goes
+on this page: no report, no bars, no budget, no pipeline line, no confetti.
 
 **Payload:**
 
@@ -114,7 +143,7 @@ card.
   "action": "finalize",
   "submission_id": "sub-…",
   "iteration": "3",
-  "issues":    { "create": true, "items": [ /* 📌 — incl. one Sammel-Issue item with collected[] */ ] },
+  "issues":    { "create": true, "items": [ /* 📌 */ ] },
   "implement": { "run": true,    "items": [ /* ⚡ */ ] },
   "ship":      { "run": true },
   "tests":     [ { "id": "t-mobile", "text": "…", "mode": "guide", "guide": "web" } ],
@@ -124,9 +153,7 @@ card.
 ```
 
 `mode` is `skip` | `guide` | `self`; `guide` is `web` | `desktop` | `inline`
-for `mode: "guide"` and `null` otherwise. The Sammel-Issue item has
-`id: "__sammel"`, a title from `final.sammel_title`, a description listing
-every collected Fund and `collected: [ …the full items… ]`.
+for `mode: "guide"` and `null` otherwise.
 
 `submitFinalize(shipRun)` requires the bridge's **durable ack**
 (`body.durable`), not just a non-throwing fetch — a finalize can ship. On
@@ -141,39 +168,40 @@ answer it hands the sheet back and warns.
 | Reload while running | `restoreInFlightCloseout()` asks `/decisions`, re-freezes and picks the button from `ship.run` |
 | Non-durable answer | `restoreCloseoutToReady()` — re-armed, warning shown; the payload is in the offline queue |
 | Blocked ship / stuck round | `restorePanelToReady()` routes to `markCloseoutStalled()` for a delivered finalize — it must never un-hide `#panel-ready` |
-| Successful close-out | Claude stamps `data-closed` on the section (and `data-mode` on every 🧪/👉 item) before the last `/reload`; `renderCloseout()` then shows only those items and "✓ Concept abgeschlossen · schließen" |
+| Successful close-out | `/status` `closed` + `finished` → the Fertig-Seite. Keep / gitignore: Claude also stamps `data-closed` and `data-finished='{…}'` on the section before the last `/reload`, so a reload shows the same page |
 
 ### Report body
 
-Plain language on the whole report surface; jargon, file paths and numbers
-only in the 🛠 fold. Top → bottom (step5-update-page.md § Final-report append
-has the authoring rules):
+**Budget: one screen at 1440 × 900, in one narrow column** (`--concept-read-width`,
+shared with analysis, free and decision rounds; the page header is the only title). The build
+blocks what breaks it (`validation-gate.md` 33d). Plain language on the whole
+report surface; jargon, file paths and numbers only in the 🛠 fold. Top → bottom
+(step5-update-page.md § Final-report append has the authoring rules):
 
-1. **Heading, always on top:** `.fr-head` with the "🏁 Abschluss" phase label
-   and the topic as `<h2 class="fr-title">`. After the close-out the done
-   banner `.fr-banner` ("🏁 Abgeschlossen · 🚀 live als vX") sits **under** the
-   heading, never instead of it.
-2. **Vorher / Nachher** — `.fr-ba` with two `<figure class="fr-shot">`
-   screenshots from browser QA and the **"▶ Selbst ausprobieren"** link
-   `.fr-try` centred over them (local / preview / live URL; after a ship
-   "▶ Live-Version öffnen"). Nothing visual changed → a short `.fr-flow`
-   sequence instead. **Login-gated route → § Try-it sign-in (#933).**
-3. **One sentence "Was getan wurde"** — `.fr-sentence`.
-4. **Two columns** `.fr-cols`: **"Was kam raus"** (`.fr-wins`, the top three
-   functional results, each with its own glyph disc and one bold key phrase —
-   lively, never a plain bullet list) and **"Was es aushält"** (`.fr-meters`,
-   the top three non-functional results as Belastungs-Balken).
-5. **Prüftiefe-Leiter** — `.fr-depth`: the strongest reached level named big,
-   the 7-step `.fr-ladder`, one foot line on the gaps. **Design implement
-   (#935):** the parity checklist goes into the "🛠 Für Entwickler" fold as
-   one line per checklist item with its parity status (`met` / `partial` /
-   `unmet`) and the evidence (screenshot pair, sampled frame); the
-   Zusammenfassung names every `partial` / `unmet` line as a shortfall. A
-   line counts as met only with that evidence, never on an agent's word.
-6. Folds: **"🔍 N Funde unterwegs"** (the Funde, per Fund was / wo / warum
-   vorbelegt — the data the 🧭 group reads) and **"🛠 Für Entwickler"** (at most
-   five short lines: commit, areas + ≤ 3 key files, tests in one line, CI
-   link).
+1. **The page header** carries the concept's title with the "🏁 Abschluss" pill;
+   the subtitle is hidden. After the close-out of a kept page the done banner
+   `.fr-banner` opens the report.
+2. **One sentence "Was getan wurde"** — `.fr-sentence`, at most 170 characters.
+3. **`.fr-main`, two columns.** Left `.fr-results`: "Was kam raus" (`.fr-wins`, the
+   top three functional results, each with its own glyph disc and one bold key
+   phrase, at most 90 characters each) and the "▶ Selbst ausprobieren" button
+   `.fr-try` (local / preview / live URL; after a ship "▶ Live-Version öffnen").
+   Right `.fr-ba`: Vorher and Nachher share ONE place with a switch under it
+   (`initBeforeAfter()`), the caption stands under the image, a click opens it full
+   size. Nothing visual changed → a short `.fr-flow` there instead. **Login-gated
+   route → § Try-it sign-in (#933).**
+4. **"Was es aushält"** — `.fr-holds`: at most three requirement bars (below).
+5. **Prüftiefe** — `.fr-depth`: visible at once, what passed last and what was not
+   done next. The whole ladder is the tooltip (below). **Design implement (#935):**
+   the parity checklist goes into the "🛠 Für Entwickler" fold as one line per
+   checklist item with its parity status (`met` / `partial` / `unmet`) and the
+   evidence (screenshot pair, sampled frame); every `partial` / `unmet` line is a
+   Fund with `data-oq-origin="shortfall"`. A line counts as met only with that
+   evidence, never on an agent's word.
+6. **`.fr-folds`**, side by side: **"🔍 N Funde unterwegs"** (the Funde, per Fund was
+   / wo / warum vorbelegt, the place the panel's names jump to) and **"🛠 Für
+   Entwickler"** (at most five short lines: commit, areas + ≤ 3 key files, tests in
+   one line, CI link). No other card or section: a "Nachtrag" goes into the 🛠 fold.
 
 **Try-it sign-in (#933).** A try-it link to a route behind a login is worth
 nothing when the user cannot sign in on exactly that origin — a second dev
@@ -189,7 +217,7 @@ and no test account is named. Before writing `.fr-try` for such a route:
    allowlisted host spelling (`localhost` vs `127.0.0.1`) and the default
    port. Port taken by another checkout → say so instead of silently using a
    second port.
-3. **Write one `.fr-try-auth` line under the image pair** naming how to sign
+3. **Write one `.fr-try-auth` line under the button** (at most 110 characters) naming how to sign
    in there (account source, never a password in the page — name where it
    lives). No sign-in path works on that origin → no link, only the
    `.fr-try-auth` note saying what is missing ("OAuth nur auf
@@ -198,24 +226,31 @@ and no test account is named. Before writing `.fr-try` for such a route:
 The same rule holds for a URL in the completion card's `userTest` /
 `userFinalTest` steps (`{PLUGIN_ROOT}/deep-knowledge/completion-card-design.md`).
 
-**Belastungs-Balken** (`.fr-meter`): one per NFR class, picked as the three
-most relevant of seven — Performance, Sicherheit, Stabilität,
-Datenintegrität, Kompatibilität, Barrierefreiheit, Wartbarkeit (a login topic
-weighs security, most others performance). Each meter is one big measured
-value, a bar "getestet bis X" against the tick "Ziel Y", and one context
-sentence. **Claude always estimates the target itself**, and says so in the
-sentence when it is an estimate. `data-met="true"` paints green, `"false"`
-amber; `--fr-tested` / `--fr-target` place the fill and the tick (percent of
-the bar). No badges, no class tags as decoration — the class name is a plain
-line, the value and the sentence carry the meaning.
+**Requirement bars** (`.fr-meter`): one per requirement, the three most relevant
+of seven classes — Performance, Sicherheit, Stabilität, Datenintegrität,
+Kompatibilität, Barrierefreiheit, Wartbarkeit (a login topic weighs security, most
+others performance). **The bar is a grade: how far this requirement was met.**
 
-**Prüftiefe-Leiter** (`.fr-ladder`, seven `<li data-level data-state>`), each
-level independently `done` / `open` / `na` (+ `you` for level 7 while it
-waits on the user): 1 Code-Check (Lint/Typen) · 2 Trockentest (Unit) ·
+| `data-grade` | `--fr-fill` | Colour, glyph | Meaning |
+|---|---|---|---|
+| `full` | 100 % | green ✓ | requirement met |
+| `part` | 60–99 % | amber ▲ | partly met |
+| `low` | under 60 % | red ✕ | clearly missed |
+| `open` | 0 % (dashed) | grey ? | not tested, whatever the code suggests |
+
+The fill is the share of the requirement that was reached, capped at 100 %: for a
+limit, 100 % once the measured value is within it, else limit ÷ measured; for a
+coverage, covered ÷ all. **Claude always estimates the requirement itself** and
+says so in the tooltip. One row: name, bar, the measured value. The context
+sentence is the row's `data-tip`.
+
+**Prüftiefe** (`.fr-depth`): the level that passed last (✓) and the next level not
+done (○), named outright, because "letzte Stufe" is what a reader wants without
+hovering. The levels: 1 Code-Check (Lint/Typen) · 2 Trockentest (Unit) ·
 3 Zusammenspiel (Integration/E2E lokal) · 4 Lokal durchgespielt (echter
 Browser/App) · 5 Prod-Build geprüft · 6 Live vertestet (Staging/Prod) · 7 Von
-dir abgenommen. It replaces test-count prose at the top — the numbers live in
-the 🛠 fold.
+dir abgenommen. A level that does not apply is skipped. The whole list with its
+states is the `data-tip`; test counts live in the 🛠 fold.
 
 **No checkboxes in the report body.** The Funde are plain `<li>` elements;
 the FAB is the only place to answer. After the close-out the body shows what
@@ -225,82 +260,79 @@ became of each Fund (issue link / "umgesetzt").
 
 ```html
 <section id="iter-3" data-iteration="3" data-iteration-template="free" data-final-report data-active>
-  <div class="fr-head">
-    <span class="fr-phase">🏁 {{final.phase}}</span>
-    <h2 class="fr-title">Token-Login für die API</h2>
-  </div>
-  <!-- After the close-out, under the heading (never instead of it):
+  <!-- After the close-out of a kept page, first in the section:
   <div class="fr-banner">🏁 {{final.banner_done}} · 🚀 {{final.banner_live}}<em>21:40</em></div> -->
-
-  <div class="fr-ba">
-    <figure class="fr-shot"><img src="{date}-{slug}/shots/before.png" alt=""><figcaption>{{final.before}}</figcaption></figure>
-    <figure class="fr-shot"><img src="{date}-{slug}/shots/after.png" alt=""><figcaption>{{final.after}}</figcaption></figure>
-    <a class="fr-try" href="{try-it URL on the sign-in origin}" target="_blank" rel="noopener noreferrer">▶ {{final.try_it}}</a>
-    <!-- after a ship: ▶ {{final.open_live}} -->
-  </div>
-  <!-- Login-gated route only (#933) — how to sign in on exactly this origin: -->
-  <p class="fr-try-auth">🔑 Anmelden mit dem Testkonto aus <code>docs/test-accounts.md</code> (E-Mail + Passwort)</p>
-  <!-- No sign-in works on that origin → no link, only the note:
-  <p class="fr-try-auth">🔑 Nicht direkt testbar: OAuth erlaubt nur localhost:4200, der Server läuft auf :4201</p> -->
-
-  <p class="fr-label">{{final.done_what}}</p>
   <p class="fr-sentence">Die API meldet jetzt per Token an statt per Session-Cookie, und abgelaufene Tokens erneuern sich von selbst.</p>
 
-  <div class="fr-cols">
-    <div class="fr-card">
+  <div class="fr-main">
+    <div class="fr-results">
       <p class="fr-label">{{final.results}}</p>
       <ul class="fr-wins">
         <li><span class="fr-win-icon" aria-hidden="true">🔑</span><span><b>Ein Login</b> reicht für Web und App.</span></li>
         <li><span class="fr-win-icon" aria-hidden="true">♻️</span><span>Abgelaufene Tokens <b>erneuern sich still</b>.</span></li>
         <li><span class="fr-win-icon" aria-hidden="true">🚪</span><span><b>Abmelden</b> wirkt sofort auf allen Geräten.</span></li>
       </ul>
+      <a class="fr-try" href="{try-it URL on the sign-in origin}" target="_blank" rel="noopener noreferrer">▶ {{final.try_it}}</a>
+      <!-- after a ship: ▶ {{final.open_live}} -->
+      <!-- Login-gated route only (#933) — how to sign in on exactly this origin: -->
+      <p class="fr-try-auth">🔑 Testkonto aus <code>docs/test-accounts.md</code></p>
+      <!-- No sign-in works on that origin → no link, only the note:
+      <p class="fr-try-auth">🔑 OAuth erlaubt nur localhost:4200, der Server läuft auf :4201</p> -->
     </div>
-    <div class="fr-card">
-      <p class="fr-label">{{final.holds}}</p>
-      <div class="fr-meters">
-        <div class="fr-meter" data-met="true" style="--fr-tested: 92%; --fr-target: 80%">
-          <span class="fr-meter-name">🛡 Sicherheit</span>
-          <b class="fr-meter-value">0 / 40</b>
-          <div class="fr-meter-bar" aria-hidden="true"></div>
-          <p class="fr-meter-context">Gefälschte Tokens kamen durch — 40 Versuche, Ziel 0 (geschätzt). <span class="fr-meter-verdict">✓ {{final.target_met}}</span></p>
-        </div>
-        <div class="fr-meter" data-met="false" style="--fr-tested: 70%; --fr-target: 86%">
-          <span class="fr-meter-name">⚡ Performance</span>
-          <b class="fr-meter-value">140 ms</b>
-          <div class="fr-meter-bar" aria-hidden="true"></div>
-          <p class="fr-meter-context">bis zur Anmeldung, Ziel unter 120 ms (geschätzt). <span class="fr-meter-verdict">▲ {{final.target_short}}</span></p>
-        </div>
+    <div class="fr-ba" data-label-before="{{final.before}}" data-label-after="{{final.after}}">
+      <figure class="fr-shot"><img src="{date}-{slug}/shots/before.png" alt=""><figcaption>Login mit Session-Cookie</figcaption></figure>
+      <figure class="fr-shot"><img src="{date}-{slug}/shots/after.png" alt=""><figcaption>Login mit Token</figcaption></figure>
+    </div>
+  </div>
+
+  <div class="fr-holds">
+    <p class="fr-label">{{final.holds}}<small>{{final.holds_hint}}</small></p>
+    <div class="fr-meters">
+      <div class="fr-meter" data-grade="full" style="--fr-fill: 100%" data-tip="Keiner von 40 gefälschten Tokens kam durch; Anforderung 0 (geschätzt).">
+        <span class="fr-meter-name">🛡 Sicherheit</span>
+        <div class="fr-meter-bar" aria-hidden="true"></div>
+        <b class="fr-meter-value">0 / 40</b>
+      </div>
+      <div class="fr-meter" data-grade="part" style="--fr-fill: 86%" data-tip="140 ms bis zur Anmeldung; Anforderung unter 120 ms (geschätzt).">
+        <span class="fr-meter-name">⚡ Performance</span>
+        <div class="fr-meter-bar" aria-hidden="true"></div>
+        <b class="fr-meter-value">140 ms</b>
       </div>
     </div>
   </div>
 
-  <div class="fr-depth">
-    <p class="fr-label">{{final.depth}}</p>
-    <p class="fr-ladder-top">{{final.level_prod}}<small>{{final.level_of}}</small></p>
-    <ol class="fr-ladder">
-      <li data-level="1" data-state="done">{{final.level_code}}</li>
-      <li data-level="2" data-state="done">{{final.level_dry}}</li>
-      <li data-level="3" data-state="done">{{final.level_interplay}}</li>
-      <li data-level="4" data-state="done">{{final.level_local}}</li>
-      <li data-level="5" data-state="done">{{final.level_prod}}</li>
-      <li data-level="6" data-state="open">{{final.level_live}}</li>
-      <li data-level="7" data-state="you">{{final.level_accept}}</li>
-    </ol>
-    <p class="fr-ladder-foot">Noch nicht auf der Live-Version getestet. Stufe 7 machst du über 🧪 im Menü.</p>
+  <div class="fr-depth" tabindex="0" data-tip="5 / 7 · ✓ {{final.level_code}} · ✓ {{final.level_dry}} · ✓ {{final.level_interplay}} · ✓ {{final.level_local}} · ✓ {{final.level_prod}} · ○ {{final.level_live}} · ◌ {{final.level_accept}}">
+    <span class="fr-depth-done">✓ {{final.depth_done}}: <b>{{final.level_prod}}</b></span>
+    <span class="fr-depth-next">○ {{final.depth_next}}: <b>{{final.level_live}}</b></span>
   </div>
 
-  <!-- The Funde — out-of-scope finds and points the user parked. NO
-       checkboxes: plain <li> carrying the data the 🧭 group and the payload
-       read. Mandatory: data-oq-id, data-issue-title, data-issue-type,
-       data-oq-origin ("deferred" | "found"), data-route-default
+  <div class="fr-folds">
+  <!-- The Funde — out-of-scope finds, points the user parked, and what could not
+       be built. NO checkboxes: plain <li> carrying the data the 🧭 group and the
+       payload read. Mandatory: data-oq-id, data-issue-title, data-issue-type,
+       data-oq-origin ("deferred" | "found" | "shortfall"), data-route-default
        ("now" | "issue" | "ignore") and data-route-reason (one word). -->
   <details class="fr-fold" data-open-questions>
-    <summary>🔍 {{final.funde_fold}}</summary>
+    <summary>🔍 2 {{final.funde_fold}}</summary>
     <ul class="fr-funde">
-      <!-- Visible label (.oq-label, and the text of a 🧪 / 👉 item): a short noun
-           phrase of AT MOST 48 characters — the close-out sheet shows two lines
-           and nothing more. Details belong in data-issue-body and the report
-           body. The gate blocks a longer one (validation-gate.md 33c). -->
+      <!-- Visible label (.oq-label): a short noun phrase of AT MOST 28 characters —
+           the panel shows one line. The text of a 🧪 / 👉 item: at most 48 (two
+           lines). Details belong in .fr-fkv and data-issue-body. The gate blocks a
+           longer one (validation-gate.md 33c). -->
+      <li data-oq-id="oq-wizard"
+          data-issue-title="[FEATURE] Add the backup step to the wizard"
+          data-issue-type="feature"
+          data-issue-body="Approved in round 2, not built: the wizard has no step type for it yet."
+          data-oq-origin="shortfall"
+          data-route-default="now"
+          data-route-reason="nicht-gebaut">
+        <span class="oq-label">Backup-Schritt fehlt</span>
+        <dl class="fr-fkv">
+          <dt>{{final.fund_what}}</dt><dd>Nicht umgesetzt, weil dem Wizard der Schritt-Typ fehlt.</dd>
+          <dt>{{final.fund_where}}</dt><dd>Einrichtungs-Wizard</dd>
+          <dt>{{final.fund_why}}</dt><dd>⚡ Jetzt — ein zweiter Anlauf kann gelingen.</dd>
+        </dl>
+      </li>
       <li data-oq-id="oq-saml"
           data-issue-title="[BUG] Auth fails for SAML users"
           data-issue-type="bug"
@@ -316,21 +348,19 @@ became of each Fund (issue link / "umgesetzt").
           <dt>{{final.fund_why}}</dt><dd>📌 Issue — riskant, berührt einen fremden Anbieter.</dd>
         </dl>
       </li>
-      <li data-oq-id="oq-typo"
-          data-issue-title="[CHORE] Fix the outdated login hint text"
-          data-issue-type="chore"
-          data-oq-origin="found"
-          data-route-default="now"
-          data-route-reason="kosmetisch">
-        <span class="oq-label">Veralteter Hinweistext am Login</span>
-        <dl class="fr-fkv">
-          <dt>{{final.fund_what}}</dt><dd>Der Hinweis nennt noch das alte Passwort-Feld.</dd>
-          <dt>{{final.fund_where}}</dt><dd>Login-Seite</dd>
-          <dt>{{final.fund_why}}</dt><dd>⚡ Jetzt — klein, im Repo.</dd>
-        </dl>
-      </li>
     </ul>
   </details>
+
+  <details class="fr-fold">
+    <summary>🛠 {{final.dev_fold}}</summary>
+    <ul class="fr-dev">
+      <li>Commit <code>a1b2c3d</code> · Bereiche: auth, api</li>
+      <li><code>src/auth/middleware.ts</code>, <code>src/auth/refresh.ts</code>, <code>src/api/client.ts</code></li>
+      <li>Tests: 412 grün, 1 übersprungen (SAML, s. Funde)</li>
+      <li>CI: <a href="https://github.com/{owner}/{repo}/actions/runs/123">Lauf #123</a></li>
+    </ul>
+  </details>
+  </div>
 
   <!-- 🧪 what Claude could not verify, 👉 what the user does by hand after
        the merge. Data for the FAB only (hidden): at most three each, one short
@@ -346,16 +376,6 @@ became of each Fund (issue link / "umgesetzt").
       <li data-todo-id="h-secret" data-crit="high" data-guide="desktop">Neues Token-Secret im Hosting hinterlegen</li>
     </ul>
   </section>
-
-  <details class="fr-fold">
-    <summary>🛠 {{final.dev_fold}}</summary>
-    <ul class="fr-dev">
-      <li>Commit <code>a1b2c3d</code> · Bereiche: auth, api</li>
-      <li><code>src/auth/middleware.ts</code>, <code>src/auth/refresh.ts</code>, <code>src/api/client.ts</code></li>
-      <li>Tests: 412 grün, 1 übersprungen (SAML, s. Funde)</li>
-      <li>CI: <a href="https://github.com/{owner}/{repo}/actions/runs/123">Lauf #123</a></li>
-    </ul>
-  </details>
 </section>
 ```
 
@@ -366,10 +386,10 @@ became of each Fund (issue link / "umgesetzt").
 | `data-oq-id` | yes | Stable identifier, returned as the payload item's `id` (a legacy `name`/`id` still works) |
 | `data-issue-title` | yes | Verbatim `gh issue create` title (`[TYPE] Imperative title`). Marks the element as a Fund for `openQuestionBoxes()` |
 | `data-issue-type` | yes | Issue label (`bug`, `feature`, `refactor`, `chore`, `docs`, `design`); defaults to `chore` |
-| `data-oq-origin` | yes | `deferred` (the user parked it during this concept) or `found` (surfaced on the way, unrelated to the scope). Nothing else is admissible (`SKILL.md` § Open points admission gate; validation gate 33b) |
+| `data-oq-origin` | yes | `deferred` (the user parked it during this concept), `found` (surfaced on the way, unrelated to the scope) or `shortfall` (approved scope that could not be built; list these first). Nothing else is admissible (`SKILL.md` § Open points admission gate; validation gate 33b) |
 | `data-route-default` | yes | Claude's pre-selection: `now` (⚡) / `issue` (📌) / `ignore` (✕) — the rules are in step5-update-page.md § Funde defaults. Missing → 📌 Issue |
-| `data-route-reason` | yes | ONE word for the reason chip: `klein`, `kosmetisch`, `riskant`, `braucht Concept`, `außerhalb Repo`, … |
-| `data-issue-body` | recommended | The issue body and the bottom sheet's description — the context someone needs to act on it cold |
+| `data-route-reason` | yes | ONE word for the reason, shown in the report's "Warum vorbelegt": `klein`, `riskant`, `braucht Concept`, `außerhalb Repo`, … |
+| `data-issue-body` | recommended | The issue body (English artefact, never shown in the panel) — the context someone needs to act on it cold |
 | `data-issue-role` / `-module` / `-milestone` | optional | Project label hints, honoured only when they exist |
 | `data-routed` | set by Claude | Added with the issue link / "umgesetzt" note once the Fund is routed; drops it from the 🧭 group |
 

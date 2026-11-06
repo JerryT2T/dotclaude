@@ -362,7 +362,7 @@ function restorePanelToReady() {
     // A delivered finalize is never re-armed by the safety net — see
     // markCloseoutStalled(). Every other stuck round on a final report is
     // handed back so the user can act.
-    if (_submittedAction === 'finalize' && typeof markCloseoutStalled === 'function') {
+    if ((_submittedAction === 'finalize' || _submittedAction === 'refine') && typeof markCloseoutStalled === 'function') {
       markCloseoutStalled();
     } else if (typeof restoreCloseoutToReady === 'function') {
       restoreCloseoutToReady();

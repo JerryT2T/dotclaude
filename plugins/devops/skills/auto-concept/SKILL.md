@@ -280,6 +280,9 @@ Exit 126 or `"known":false` → nothing changes. `known:true` → read the `doc`
      `phase: "implemented"` — no code was written.
 See `deep-knowledge/step5-process.md` § 5b · implement steps 1–4. Mapping as spec, execution through `auto-agents`, the full approved scope, the `implemented` phase POST and the final-report append.
 
+**`action: "refine"` ("🔧 Nachbessern" — only on the final report):** the user's notes are change orders; build them, rewrite the report in place, never ship.
+See `deep-knowledge/step5-finalize.md` § Nachbessern. The change-order loop and the in-place rewrite.
+
 **`action: "finalize"` (close-out sheet — only on the final report):**
 
 See `deep-knowledge/step5-process.md` § 5b · finalize payload and zero-prompt invariant. The one `finalize` payload, disjoint item buckets, and never a follow-up question.
@@ -315,7 +318,9 @@ See `deep-knowledge/step5-finalize.md` § C · Disposition staging per mode. Ste
 2. **On a blocked ship, stop the whole finalize here.** Issues created in
    part A and follow-ups built in part B stand; part D does NOT run. POST
    `/reload` then `/reset`, leave the concept session open so the user can
-   retry from the sheet, and report the blocker verbatim. Never fall through
+   retry from the sheet, and report the blocker verbatim. Last, POST
+   `/status {"phase":"ship-blocked","finished":{"state":"blocked","reason":"…","next":["Fix","Skip"]}}`
+   without a version, so the tab shows it (`templates-final-report.md` § Fertig-Seite). Never fall through
    to cleanup — a `discard` disposition would delete the concept the user
    still needs.
 3. On a successful release, rewrite the final-report fragment in place (then `build`):

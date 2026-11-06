@@ -377,37 +377,35 @@ document.addEventListener('change', e => {
 
 // --- Final-report close-out sheet (action: "finalize") ---
 // The panel of a final report is a TO-DO INBOX, not a questionnaire. Its
-// history, in short: four buttons at once (no order, no way to want more than
-// one), a four-step wizard (every "Weiter" looked like it already did
-// something), a wall of questions, and a sequential accordion with "n von N"
-// and "Weiter ›" (one line per question, still a staged form). What the user
-// actually has to do at the end of a concept is smaller than any of those:
-//   🧭 Du entscheidest  the Funde — each PRE-SELECTED (⚡ / 📌 / ✕) with a
-//                       one-word reason; a tap opens a bottom sheet to change it
-//   🧪 Du testest       what Claude could not verify — Muss nicht · Mit
-//                       Anleitung · Mach ich selbst, pre-selected
-//   👉 Du machst danach the manual hand-offs — the same three-way choice
-// and under the divider the 🤖 group (what Claude does on the click, the
-// disposition as one editable line) plus TWO buttons that ARE the ship answer:
-// "🏁🚀 Abschließen & shippen" / "🏁 Nur abschließen, nicht shippen". Both
-// submit `finalize`; there is nothing else to confirm, so there is no
-// progress counter and no "Weiter ›". Claude runs the parts in a fixed order
-// (issues → implement → ship → cleanup, § One submission, four consequences).
+// history, in short: four buttons at once, a four-step wizard, a wall of
+// questions, an accordion, then a bottom sheet per Fund whose pill looked like
+// a menu but opened an overlay over half the panel. What is left:
+//   🧭 Du entscheidest  the Funde, one line each: the name jumps to the Fund in
+//                       the report, the pill cycles ⚡ → 📌 → Weglassen on a tap;
+//                       one hint under all of them
+//   Bleibt für dich     🧪 what Claude could not verify and 👉 the manual
+//                       hand-offs, one list: each goes on the completion card,
+//                       "Führ mich" asks for guidance, ✕ strikes it
+// and under the divider the plan line, the disposition as one quiet line, TWO
+// buttons that ARE the ship answer ("🏁🚀 Abschließen & shippen" / "🏁 Nur
+// abschließen, nicht shippen") and "🔧 Nachbessern". Claude runs a finalize in
+// a fixed order (issues → implement → ship → cleanup, § One submission, four
+// consequences).
 //
 // Pre-selection is AUTHORED, not guessed here: Claude writes
 // data-route-default / data-route-reason on every Fund and data-crit /
 // data-guide on every 🧪/👉 item (step5-update-page.md § Final-report append).
 // The engine only falls back to the harmless choice when an attribute is
-// missing: 📌 Issue for a Fund (writes no code), and "Mach ich selbst" for a
+// missing: 📌 Issue for a Fund (writes no code), and the completion card for a
 // to-do whose criticality is not low.
 const CLOSEOUT_DEFAULT_ROUTE = 'issue';
+// The order is the tap cycle of the route pill.
 const CLOSEOUT_ROUTES = ['implement', 'issue', 'ignore'];
 const CLOSEOUT_MODES = ['skip', 'guide', 'self'];
-// At most three rows per group — the inbox must stay readable at a glance.
-// More than three Funde: the first two keep their own row and the rest
-// become ONE Sammel-Issue row (closeoutFundeSplit()).
+// At most three rows in view per group — the inbox must stay readable at a
+// glance. More Funde stay behind "+N weitere" and keep their own route; more
+// 🧪/👉 items keep their default and stay in the payload.
 const CLOSEOUT_GROUP_MAX = 3;
-const CLOSEOUT_SAMMEL_KEY = '__sammel';
 // The user's choices on the sheet, in memory only. Never localStorage and
 // never a named, persisted radio: saveState() restores named radios
 // document-wide, and a remembered "⚡ Jetzt umsetzen" would sail through a
@@ -500,45 +498,17 @@ function followUpItem(el) {
   };
 }
 
-// ≤ 3 Funde: one row each. More: the first two keep their row, the rest are
-// ONE Sammel-Issue row — the order is the report's, so Claude lists the Funde
-// that most need a decision first.
+// Every Fund is one row with its own route, in the report's order, so Claude
+// lists the Funde that most need a decision first. Rows past the third wait
+// behind "+N weitere" (decideRowsExpanded), hidden but fully in the payload.
 function closeoutFundeSplit() {
   const items = openQuestionBoxes();
   const keys = followUpKeys(items);
-  const all = items.map((el, i) => ({ el, key: keys[i] }));
-  if (all.length <= CLOSEOUT_GROUP_MAX) return { rows: all, rest: [] };
-  return { rows: all.slice(0, CLOSEOUT_GROUP_MAX - 1), rest: all.slice(CLOSEOUT_GROUP_MAX - 1) };
-}
-// The Sammel row is an issue or nothing — building a bundle of unrelated
-// Funde in one go is not a route this sheet offers.
-function sammelRoute() {
-  return _closeoutChoices.route[CLOSEOUT_SAMMEL_KEY] === 'ignore' ? 'ignore' : 'issue';
-}
-function sammelItem(rest) {
-  const sheet = document.getElementById('closeout-sheet');
-  const tpl = (sheet && sheet.dataset.labelSammelTitle) || '{n}';
-  return {
-    id: CLOSEOUT_SAMMEL_KEY,
-    title: tpl.replace('{n}', String(rest.length)),
-    type: 'chore',
-    description: rest.map(r => {
-      const it = followUpItem(r.el);
-      return '- ' + it.title + (it.description && it.description !== it.title ? ': ' + it.description : '');
-    }).join('\n'),
-    role: null,
-    module: null,
-    milestone: null,
-    selected: true,
-    collected: rest.map(r => followUpItem(r.el))
-  };
+  return { rows: items.map((el, i) => ({ el, key: keys[i] })) };
 }
 
 function collectFollowUps(route) {
-  const { rows, rest } = closeoutFundeSplit();
-  const out = rows.filter(r => followUpRoute(r.key, r.el) === route).map(r => followUpItem(r.el));
-  if (rest.length && sammelRoute() === route) out.push(sammelItem(rest));
-  return out;
+  return closeoutFundeSplit().rows.filter(r => followUpRoute(r.key, r.el) === route).map(r => followUpItem(r.el));
 }
 
 // Two buckets out of one list. They are disjoint by construction — a row has
@@ -560,11 +530,11 @@ function todoId(kind, el, i) {
   return el.dataset.todoId || el.id || (kind + '-' + (i + 1));
 }
 function todoKey(kind, el, i) { return kind + ':' + todoId(kind, el, i); }
-// Criticality decides first: low → "Muss nicht". Needed and guidable (a web
-// task → auto-guide, a PC task → desktop scripts / takeover help) → "Mit
-// Anleitung"; needed and not guidable → "Mach ich selbst". An explicit
-// data-mode-default wins. "Not guidable" is never shown — choosing "Mit
-// Anleitung" there simply means written steps (guide: "inline").
+// Criticality decides first: low → struck (skip, muted, ↩ brings it back).
+// Needed and guidable (a web task → auto-guide, a PC task → desktop scripts /
+// takeover help) → "Führ mich" on (guide); needed and not guidable → on the
+// completion card (self). An explicit data-mode-default wins. "Not guidable" is
+// never shown — "Führ mich" there simply means written steps (guide: "inline").
 function todoDefaultMode(el) {
   const explicit = el.dataset.modeDefault;
   if (CLOSEOUT_MODES.includes(explicit)) return explicit;

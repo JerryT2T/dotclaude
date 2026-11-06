@@ -244,9 +244,8 @@ difference: the next round belongs to the next stage.
    step, every feedback item on a design round — is part of this order.
    Nothing accepted may be deferred into the final report's open points
    (§ Open points admission gate): a part that could not be built is a
-   shortfall, reported in the *Zusammenfassung* / *Tests* with its reason
-   ("nicht umgesetzt, weil …"), never re-labelled as a follow-up for the
-   user to sign off.
+   shortfall: a Fund with data-oq-origin="shortfall" that says why, never
+   re-labelled as a deferred or found follow-up.
 
    **Every implement: verbatim brief, acceptance table, independent check
    (#1004).** A brief written from the orchestrator's memory shortens what
@@ -270,9 +269,8 @@ difference: the next round belongs to the next stage.
      built nothing compares the checklist and every quoted pin against the
      diff and, for visible items, against screenshots of the real result
      (never mock data). Its verdict wins over the builders' tables.
-   - **Gaps are shortfalls.** Every `partial` / `not done` line goes into the
-     *Zusammenfassung* as a shortfall with its reason — never an open point
-     for the user to sign off (§ Open points admission gate).
+   - **Gaps are shortfalls.** Every `partial` / `not done` line becomes a Fund
+     with data-oq-origin="shortfall" and its reason (§ Open points admission gate).
 
    **Design concepts: build to the mocks, prove parity (#935).** A design
    concept's approved behaviour lives in its round fragments — the mock

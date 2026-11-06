@@ -78,7 +78,8 @@ Rules:
 - A concept session has **at most one** `data-final-report` section.
   Once it exists, no further iterate/implement submissions are
   accepted (the panel-final-report has no such buttons). The only
-  submission the final-report tab can produce is `action: "finalize"`.
+  submissions the final-report tab can produce are `action: "finalize"` and
+  `action: "refine"` ("🔧 Nachbessern", rewrites the report in place).
 - `data-reality-check` marks a round the implement path inserted because the
   default branch drifted. It goes on **both** the section and its tab, and it
   is load-bearing, not decorative: submitting implement from a section that

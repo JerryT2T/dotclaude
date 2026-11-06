@@ -178,8 +178,8 @@ describe("panel anatomy — markup (both skeletons)", () => {
     // The three groups and the bottom sheet live in the scrolling body; the
     // 🤖 group and both buttons in the foot below it.
     const body = sheet.slice(sheet.indexOf('class="closeout-body"'), sheet.indexOf('class="closeout-foot"'));
-    for (const g of ["decide", "tests", "handoffs"]) expect(body, g).toContain(`data-closeout-group="${g}"`);
-    expect(body).toContain('id="closeout-route-sheet"');
+    for (const g of ["decide", "todo"]) expect(body, g).toContain(`data-closeout-group="${g}"`);
+    expect(body).not.toContain('id="closeout-route-sheet"');
     const foot = sheet.slice(sheet.indexOf('class="closeout-foot"'));
     for (const s of ['class="closeout-claude"', 'id="closeout-plan"', "data-dispose-summary", 'id="closeout-ship"', 'id="closeout-noship"', 'id="closeout-close"']) {
       expect(foot, s).toContain(s);
@@ -256,8 +256,8 @@ describe("panel anatomy — markup (both skeletons)", () => {
     expect(fn).toContain("renderDecideGroup(closed)");
     expect(fn).toContain("if (claude) claude.hidden = closed;");
     expect(fn).toContain("setCloseoutButtonState('done')");
-    expect(fnSource("closeoutDecideSplit")).toContain("closed ? { rows: [], rest: [] }");
-    expect(fnSource("renderTodoGroup")).toContain("closed ? todoDoneRow(kind, el, i) : todoRow(kind, el, i)");
+    expect(fnSource("closeoutDecideSplit")).toContain("closed ? { rows: [] }");
+    expect(fnSource("renderTodoGroup")).toContain("closed ? todoDoneRow(t.kind, t.el, t.i) : todoRow(t.kind, t.el, t.i)");
   });
 
   test("locale table carries the status-line and menu strings in en and de", () => {
@@ -749,5 +749,20 @@ describe("panel anatomy — freeze-aware connection verdict (the \"connection ke
     expect(fnSource("startHeartbeatWorker")).toContain("terminate()");
     // Single-flight poll: wake-up paths share one fetch.
     expect(block).toMatch(/_pollInFlight/);
+  });
+});
+
+describe("one reading width for document rounds", () => {
+  const css = fs.readFileSync(new URL("./deep-knowledge/templates-panel-state-3.md", import.meta.url), "utf8").replace(/\r\n/g, "\n");
+  const rule = css.slice(css.indexOf(":root { --concept-read-width"), css.indexOf("section[data-final-report] .fr-banner"));
+
+  test("free and decision rounds read narrow; design, analysis, mapping and data-wide keep their width", () => {
+    expect(rule).toContain('html:is([data-template="free"], [data-template="decision"]) section[data-iteration][data-active]:not([data-wide], [data-analysis="full"], :has([data-mapping], [data-map-wide]))');
+    expect(rule).not.toContain('[data-template="design"]');
+  });
+
+  test("the header follows the round, and both give way to the open panel", () => {
+    expect(rule).toContain("body:not(:has(section[data-iteration][data-active]:is([data-wide], :has([data-mapping], [data-map-wide])))) .concept-content > header");
+    expect(rule).toContain("body.panel-open section[data-iteration][data-active]:not([data-wide]");
   });
 });

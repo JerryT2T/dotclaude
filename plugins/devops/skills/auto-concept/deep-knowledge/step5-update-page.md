@@ -131,54 +131,44 @@ lives in the single built `{date}-{slug}.html` and its source folder
    classes (`fr-*`, § Final Report Panel → Report body — no round
    stylesheet, no checkboxes). Top → bottom, copy the example HTML in
    `deep-knowledge/templates-final-report.md` § Final-report section HTML:
-   - **Heading, always on top** — `.fr-head`: "🏁 Abschluss" + the topic as
-     `<h2 class="fr-title">`. After the close-out the done banner
-     `.fr-banner` ("🏁 Abgeschlossen · 🚀 live als vX") goes UNDER it.
-   - **Vorher / Nachher** — `.fr-ba`: two screenshots from browser QA
-     (before / after, in the source folder) with **"▶ Selbst ausprobieren"**
-     (`.fr-try`, the local / preview / live URL) centred over them; after a
-     ship "▶ Live-Version öffnen". Nothing visual changed → a short
-     `.fr-flow` sequence instead. A login-gated route gets the one-line
-     `.fr-try-auth` sign-in note, or the note alone when no sign-in works on
-     that origin (`templates-final-report.md` → Try-it sign-in, #933).
-   - **One sentence "Was getan wurde"** — `.fr-sentence`. One sentence, not a
-     paragraph.
-   - **"Was kam raus"** (`.fr-wins`) — the top three functional results, each
-     with its own glyph and one bold key phrase. Lively, never overloaded:
-     one line each, no sub-bullets.
-   - **"Was es aushält"** (`.fr-meters`) — the top three non-functional
-     results as Belastungs-Balken. Pick the three most relevant of seven
-     classes — Performance, Sicherheit, Stabilität, Datenintegrität,
-     Kompatibilität, Barrierefreiheit, Wartbarkeit (a login weighs security,
-     most topics performance). Per meter: one big measured value, a bar
-     "getestet bis X" against the tick "Ziel Y" (`--fr-tested` /
-     `--fr-target` in percent of the bar), `data-met="true"` / `"false"`, and
-     one context sentence. **Estimate the target yourself, always** — never
-     leave it blank or ask; say "(geschätzt)" when it is an estimate. No
-     badges or tags as decoration.
-   - **Prüftiefe-Leiter** (`.fr-depth`) — the 7 levels, each `data-state`
-     `done` / `open` / `na` (`you` for level 7 while it waits on the user):
-     1 Code-Check · 2 Trockentest · 3 Zusammenspiel · 4 Lokal durchgespielt ·
-     5 Prod-Build geprüft · 6 Live vertestet · 7 Von dir abgenommen. Name the
-     strongest reached level big ("Stufe 5 von 7"); one foot line on the
-     gaps. Test counts never go here — they go in the 🛠 fold.
+   - **No heading of its own**: the page header is the only title.
+   - **One sentence "Was getan wurde"** — `.fr-sentence`, at most 170 characters.
+     One sentence, not a paragraph.
+   - **`.fr-main`**: left `.fr-results` with **"Was kam raus"** (`.fr-wins`, the top
+     three functional results, each with its own glyph and one bold key phrase, at
+     most 90 characters, no sub-bullets) and **"▶ Selbst ausprobieren"** (`.fr-try`,
+     always when a URL exists; after a ship "▶ Live-Version öffnen"); right `.fr-ba`:
+     two screenshots from browser QA (`data-label-before` / `-after`, one short
+     caption each). Nothing visual changed → a short `.fr-flow` there instead. A
+     login-gated route gets the one-line `.fr-try-auth` sign-in note, or the note
+     alone when no sign-in works on that origin (`templates-final-report.md` →
+     Try-it sign-in, #933).
+   - **"Was es aushält"** (`.fr-holds`) — at most three requirement bars. The bar is
+     a grade: `--fr-fill` is how far the requirement was met, `data-grade` is
+     `full` / `part` / `low` / `open` (rules: `templates-final-report.md`). **Estimate
+     the requirement yourself, always** and say "(geschätzt)" in the `data-tip`.
+   - **Prüftiefe** (`.fr-depth`) — `.fr-depth-done` names the level that passed last,
+     `.fr-depth-next` the next one not done; the whole ladder goes in `data-tip`.
+     Test counts go in the 🛠 fold.
    - **🔍 N Funde unterwegs** (`<details class="fr-fold" data-open-questions>`,
      *optional — usually absent, see § Open points admission gate below*) —
      one plain `<li>` per Fund with was / wo / warum vorbelegt and the data
-     attributes the panel reads.
+     attributes the panel reads. Together with the 🛠 fold inside `.fr-folds`.
    - **🧪 / 👉 data lists** (`<section data-tests hidden>` /
      `<section data-handoffs hidden>`, *only when there is something*) — at
      most three each, one short line: 🧪 what you could not verify yourself,
      👉 what the user has to do by hand after the merge (flip a cron, rotate
      a key). Each `<li>` carries `data-todo-id`, `data-crit` and `data-guide`
      (§ Funde, 🧪 and 👉 defaults below). The panel shows them as
-     "🧪 Du testest" / "👉 Du machst danach"; they are the only items left in
-     it after the close-out. Never a place for recommendations: work that is
+     one list, "Bleibt für dich". Never a place for recommendations: work that is
      worth doing and in scope was built; work that is out of scope goes
      through the gate below or nowhere.
    - **🛠 Für Entwickler** (`<details class="fr-fold">`) — **at most five short
      lines** (every line costs output tokens): commit, areas + at most three
      key files, tests in one line, CI link. The only place for jargon.
+   - **Nothing else.** No card, no "Nachtrag" section, no explanation paragraph: the
+     build blocks them (`validation-gate.md` 33d). What could not be built is a Fund
+     with `data-oq-origin="shortfall"`, not text on the report.
 4. `build`. The build generates the final-report chip:
    **tab label `iteration.final_tab`** (locale: "Abschlussbericht" /
    "Final report"), never "{{iteration.tab}} N+1", with `aria-selected="true"` and
@@ -197,10 +187,11 @@ it (it is part of the engine) — this directive binds whatever assembles the
 page, and is why a fragment never carries its own close-out JS.
 The final-report JS block — `refreshCloseout`, `renderCloseout`,
 `openQuestionBoxes`, `followUpRoute`, `routeDefault`, `followUpItem`,
-`closeoutFundeSplit`, `sammelItem`, `collectFollowUps`, `collectIssueItems`,
+`closeoutFundeSplit`, `collectFollowUps`, `collectIssueItems`,
 `collectImplementItems`, `todoItems`, `todoDefaultMode`, `todoMode`,
 `collectTodos`, `collectDisposition`, `renderGroup`, `renderDecideGroup`,
-`renderTodoGroup`, `openRouteSheet`, `closeRouteSheet`, `chooseRoute`,
+`renderTodoGroup`, `cycleRoute`, `jumpToFund`, `toggleTodoGuide`, `toggleTodoDrop`,
+`showFinished`, `submitRefine`, `initBeforeAfter`,
 `renderCloseoutPlan`, `renderDisposeLine`, `toggleDisposeEdit`,
 `updateCloseoutButton`, `setCloseoutButtonState`, `setCloseoutFrozen`,
 `restoreCloseoutToReady`, `submitFinalize`, `restoreInFlightCloseout`,
@@ -226,22 +217,23 @@ place. Do NOT go looking for candidates — keep noticing things while you
 implement, but noticing something is not the same as putting it in front of
 the user.
 
-Exactly two origins are admissible, and every item declares its origin with
+Exactly three origins are admissible, and every item declares its origin with
 `data-oq-origin`:
 
 | Origin | `data-oq-origin` | What qualifies |
 |---|---|---|
 | Deferred by the user | `deferred` | The user explicitly parked it during THIS concept — a "später" / "nicht jetzt" comment, a variant they rejected for now but asked to keep, a decision card answered with "aufschieben". Name where (iteration + card) in `data-issue-body`. |
 | Found on the way | `found` | Surfaced during implementation, has no or at most a remote relation to the concept's scope, and would be lost otherwise — a bug in a neighbouring module, a broken script you had to work around, a stale doc for a different feature. |
+| Not built | `shortfall` | Approved scope that could not be built. Tried and failed, with the reason in the report's "Was" line ("nicht umgesetzt, weil …"); listed first; default route ⚡ when another try can work, else 📌. This is where a gap is reported: the report body does not repeat it. |
 
 **Never an open point** — these are the rows that made the list a nuisance:
 
 - **Anything in the approved scope.** If the user clicked implement on a
   round that contained it, it is scope: build it (see § `action:
   "implement"` step 2 — the approved scope is built in full). If it could
-  not be built, that is a shortfall and belongs in "Was getan wurde" / the
-  Prüftiefe foot line as "nicht umgesetzt, weil …" — moving it to the open points
-  quietly turns a shortfall into a request for the user's signature.
+  not be built after a real attempt, it is a Fund with `data-oq-origin="shortfall"`
+  and says why. Never a `found` or `deferred` label on a gap: that quietly turns a
+  shortfall into a request for the user's signature.
 - **The no-brainer next step of the scope** — "add the tests", "update the
   README for this change", "phase 4 of the same plan". If it is obvious, it
   is scope (`{PLUGIN_ROOT}/deep-knowledge/documentation-maintenance.md`
@@ -270,9 +262,9 @@ an issue read cold in three months and a brief handed to an implementing
 agent ten minutes later. The presence of the block is what adds the 🧭 group
 — see `deep-knowledge/templates-final-report.md` § Final Report Panel for the
 HTML pattern. Funde are plain `<li>` elements, **never checkboxes** — the
-panel is the only place to answer. More than three Funde: the panel keeps two
-rows and folds the rest into ONE Sammel-Issue row, so list the ones that most
-need a decision first. The validation gate rejects a final report whose Funde
+panel is the only place to answer. More than three Funde: the panel keeps three
+rows in view and "+N weitere" shows the rest, so list the ones that most need a
+decision first. The validation gate rejects a final report whose Funde
 lack `data-oq-origin`, or that carries a checkbox among them
 (`deep-knowledge/validation-gate.md` pattern 33b).
 
@@ -280,37 +272,45 @@ lack `data-oq-origin`, or that carries a checkbox among them
 
 Claude pre-selects every answer in the panel; the user only corrects.
 
-**Visible label length — hard rule.** The close-out sheet shows each row title in
-two lines at most. The visible label of a Fund (`.oq-label`) and the text of
-every 🧪 / 👉 item (`.todo-text`, else the `<li>` text) is a short noun phrase
-of **at most 48 characters** — "Veralteter Hinweistext am Login", not a
-sentence. Everything longer goes into `data-issue-body` / the report body. The
-gate blocks a longer label (`validation-gate.md` pattern 33c).
+**Visible label length — hard rule.** The visible label of a Fund (`.oq-label`)
+is a short noun phrase of **at most 28 characters**, because the panel shows it in
+one line beside the route pill. The text of a 🧪 / 👉 item (`.todo-text`, else the
+`<li>` text) is at most **48 characters** (two lines). Everything longer goes into
+the report's `.fr-fkv` / `data-issue-body`. The gate blocks a longer label
+(`validation-gate.md` pattern 33c).
+
+**Small things are done, not asked (the row has to earn its place).** A
+low-criticality point inside this repo that Claude can settle alone — a typo, a
+stale hint, a cosmetic fix, a check Claude can run itself — is **done during the
+implement** and named in the 🛠 fold; it never becomes a Fund or a to-do. Only what
+lies in **another repo**, or is **large and complex and needs the user's input**,
+stays visible.
 
 **Funde — `data-route-default` + `data-route-reason` (one word):**
 
 | Route | `data-route-default` | When | Typical reason |
 |---|---|---|---|
-| ⚡ Jetzt umsetzen | `now` | **The default tendency.** Small and inside this repo — **cosmetics included**. | `klein`, `kosmetisch`, `im Repo` |
+| ⚡ Jetzt umsetzen | `now` | **The default tendency** for what is left after the rule above: inside this repo, and big enough to want a yes. | `im Repo`, `mittel` |
 | 📌 Issue | `issue` | Only when it is **risky**, or **needs more preparation than a guide** (e.g. a concept first), or lies **outside the repo**. Size alone is NOT a reason. | `riskant`, `braucht Concept`, `außerhalb Repo` |
-| ✕ Ignorieren | `ignore` | The rarest: the current state works as is, is not a workaround, and the alternative would just be another way of doing the same. | `nur anders` |
+| Weglassen | `ignore` | The rarest: the current state works as is, is not a workaround, and the alternative would just be another way of doing the same. | `nur anders` |
 
 **🧪 / 👉 — `data-crit` first, then `data-guide`:**
 
-1. **Criticality** (`data-crit` = `low` / `mid` / `high`): `low` → the panel
-   pre-selects **Muss nicht**. `mid` / `high` → it is needed, go on.
-2. **Guidable?** (`data-guide`): a web task → `web` (Web-Guide via
-   `auto-guide`); a task on the PC → `desktop` (desktop scripts / takeover
-   help) → pre-selected **Mit Anleitung**. Otherwise leave `data-guide=""`
-   → pre-selected **Mach ich selbst**. When the user picks "Mit Anleitung"
-   on such an item, they get written steps (`guide: "inline"`).
+1. **Criticality** (`data-crit` = `low` / `mid` / `high`): a low item that survived the
+   rule above is shown muted and struck (`skip`); ↩ brings it back. `mid` / `high` →
+   it is needed, go on.
+2. **Guidable?** (`data-guide`): a web task → `web` (Web-Guide via `auto-guide`); a
+   task on the PC → `desktop` (desktop scripts / takeover help) → "Führ mich" starts
+   on. Otherwise leave `data-guide=""` → it starts off and goes on the completion
+   card. When the user switches "Führ mich" on for such an item, they get written
+   steps (`guide: "inline"`).
 3. **Never write or show "nicht führbar"** — Claude can always explain what
    to do. The gate rejects the phrase on a final report (pattern 37b).
 
-**No further iterations from the final report.** The panel deliberately
-omits the iterate/implement buttons. If the user wants more work after
-the final report, they can start a new concept session — that's a clear
-new scope, not an additional iteration on a closed one.
+**No further rounds from the final report; "🔧 Nachbessern" stays inside it.** The
+panel omits the iterate / implement buttons. When the result does not fit, the
+user's notes come back as `action: "refine"` (`step5-finalize.md` § Nachbessern)
+and the same report is rewritten in place. A genuinely new scope is a new concept.
 
 ## 5d · Re-launch the waker, re-confirm every wake
 
@@ -379,5 +379,6 @@ user wants built now), `ship` (run the release or not) and `disposition`
 still send `ship`, `create-issues` or `dispose-concept` individually; map them
 per Step 5b § Legacy final-report actions.
 
-All other action types from the final-report panel should be treated as
+`refine` ("🔧 Nachbessern") is the other expected action: `step5-finalize.md`
+§ Nachbessern. All other action types from the final-report panel should be treated as
 protocol errors and reported back to the user.

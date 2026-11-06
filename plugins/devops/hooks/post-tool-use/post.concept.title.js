@@ -16,9 +16,10 @@
  *   The signal is the bridge's durable store, read from disk — no HTTP probe:
  *   `.claude/concept-active.json` names the concept, its store
  *   (`.claude/concepts/<html basename>/state.json`) holds the live payload.
- *   A payload with `submitted: true` that is not processed yet
- *   (`processed_at` empty; `picked_up_at` may already be set by the waker, #956)
- *   is a submission Claude is on. Each
+ *   A payload with `submitted: true` is a submission Claude is on: `/reset` replaces
+ *   the live payload with `submitted: false`, so that alone says the round is open.
+ *   `picked_up_at` may already be set by the waker (#956) and `processed_at` is the
+ *   LAST reset, which a new submission does not clear, so neither says anything. Each
  *   submission `version` is announced once (`<store>/.title-notified`), and
  *   only when the transcript shows the title still on the waiting prefix.
  *
@@ -66,9 +67,9 @@ function waitingVersion(state) {
   if (!state || typeof state !== 'object') return null;
   // Not gated on picked_up_at: the pickup waker's /pending=true poll stamps it
   // before the model's first tool call, so that gate never let the waker path
-  // through (#956). A processed round is over; the per-version marker is the
-  // once-guard.
-  if (state.processed_at) return null;
+  // through (#956). Not gated on processed_at either: it holds the last /reset and
+  // stays set through the next submission, so that gate silenced every round after
+  // the first. /reset clears the payload; the per-version marker is the once-guard.
   let payload = null;
   try { payload = JSON.parse(state.decisions); } catch { return null; }
   if (!payload || payload.submitted !== true) return null;

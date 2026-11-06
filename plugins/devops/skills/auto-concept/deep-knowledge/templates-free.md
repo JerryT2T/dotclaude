@@ -134,7 +134,10 @@ does not have because the dock provides it there.
   `31/40 · 2 ⚠` (assigned items / items · open constraints), refreshed
   after every cell write and every restore (§ Section Navigation,
   `updateSectionNavState()` → `mappingProgress()`).
-- **Width.** The block keeps the 1100 px column: the matrix is its own
+- **Width.** A free or decision round reads in the narrow column
+  (`--concept-read-width`, shared with the report and the analysis header); a round
+  with a mapping block keeps the 1100 px column, and so does any round marked
+  `data-wide` (a comparison table that really needs it). The matrix is its own
   two-axis scroll box (`max-height: 80vh` in the document column) and the
   two tier columns fit side by side (chips wrap). `data-map-wide` on the
   section widens the whole column via

@@ -241,6 +241,11 @@ _phase = ''
 # "Umsetzung n/m" bar; None = the browser shows an indeterminate bar. Not
 # persisted (transient UI hint), cleared together with _phase.
 _progress = None
+# Result of the close-out for the Fertig-Seite (POST /status {"finished": {...}}),
+# echoed as `_finished`; transient like _progress. _closed_ack turns true once the
+# page confirmed it holds the result (POST /closed-ack, read via GET /closed-ack).
+_finished = None
+_closed_ack = False
 # Submission-id de-dup ring (#finding-10). The offline queue's own check
 # (GET /decisions, compare submission_id) only works until Claude POSTs
 # /reset — that clears `_decisions`, so a payload that was already fsynced
@@ -622,6 +627,18 @@ def _clean_progress(raw):
     if total < 1 or done < 0 or done > total:
         return None
     return {"done": done, "total": total}
+
+
+def _clean_finished(raw):
+    """Validate the optional /status `finished` field: the result the Fertig-Seite
+    shows. A dict of at most 8 KB; the page renders it as plain text and only
+    follows http(s) links. Anything else is dropped (None)."""
+    if not isinstance(raw, dict):
+        return None
+    try:
+        return raw if len(json.dumps(raw)) <= 8192 else None
+    except (TypeError, ValueError):
+        return None
 
 
 def _snapshot(decisions, version, processed_at, picked_up_at, phase):
@@ -1324,6 +1341,7 @@ class ConceptBridgeHandler(http.server.SimpleHTTPRequestHandler):
                 picked_up_at = _picked_up_at
                 phase = _phase
                 progress = _progress
+                finished = _finished
             try:
                 obj = json.loads(data)
                 if not isinstance(obj, dict):
@@ -1335,6 +1353,7 @@ class ConceptBridgeHandler(http.server.SimpleHTTPRequestHandler):
             obj["_picked_up_at"] = picked_up_at
             obj["_phase"] = phase
             obj["_progress"] = progress
+            obj["_finished"] = finished
             self._json_response(obj)
         elif route == '/pending':
             # Deterministic one-shot signal for Claude's cron: unambiguous
@@ -1417,6 +1436,10 @@ class ConceptBridgeHandler(http.server.SimpleHTTPRequestHandler):
                 _stamp_browser_poll(_tab_from_query(query))
                 counter = _reload_counter
             self._json_response({"counter": counter})
+        elif self.path == '/closed-ack':
+            with _lock:
+                ack = _closed_ack
+            self._json_response({"ack": ack})
         elif self.path == '/recovery':
             # "Where did we stand?" — the endpoint a resumed session asks
             # before doing anything else. Reports whether a submission is
@@ -1518,7 +1541,7 @@ class ConceptBridgeHandler(http.server.SimpleHTTPRequestHandler):
             super().do_GET()
 
     def do_POST(self):
-        global _server_ts, _claude_ts, _claude_pulser, _decisions, _version, _processed_at, _reload_counter, _picked_up_at, _phase, _progress, _browser_bye_ts, _reload_at_submit
+        global _server_ts, _claude_ts, _claude_pulser, _decisions, _version, _processed_at, _reload_counter, _picked_up_at, _phase, _progress, _finished, _closed_ack, _browser_bye_ts, _reload_at_submit
         if not self._host_ok():
             self.send_error(403, "forbidden host")
             return
@@ -1619,6 +1642,7 @@ class ConceptBridgeHandler(http.server.SimpleHTTPRequestHandler):
                         # before Claude's cron had actually noticed it.
                         _picked_up_at = ''
                         _phase = ''
+                        _finished = None
                         _progress = None
                         _reload_at_submit = _reload_counter
                         # Only remember an id once it is actually on disk — a
@@ -1766,6 +1790,10 @@ class ConceptBridgeHandler(http.server.SimpleHTTPRequestHandler):
                 })
                 return
             self._json_response({"ok": True, "seq": seq, "durable": _store_ok})
+        elif self.path == '/closed-ack':
+            with _lock:
+                _closed_ack = True
+            self._json_response({"ok": True})
         elif self.path == '/status':
             # Free-form phase channel: Claude POSTs {"phase": "implemented",
             # "version": N} after the implement branch finished its code
@@ -1786,6 +1814,7 @@ class ConceptBridgeHandler(http.server.SimpleHTTPRequestHandler):
                 return
             phase_val = ''
             progress_val = None
+            finished_val = None
             expected_version = None
             if length > 0:
                 try:
@@ -1794,6 +1823,7 @@ class ConceptBridgeHandler(http.server.SimpleHTTPRequestHandler):
                     phase_val = str(payload.get('phase') or '')
                     expected_version = payload.get('version')
                     progress_val = _clean_progress(payload.get('progress'))
+                    finished_val = _clean_finished(payload.get('finished'))
                 except Exception:
                     phase_val = ''
                     expected_version = None
@@ -1801,6 +1831,8 @@ class ConceptBridgeHandler(http.server.SimpleHTTPRequestHandler):
                 if expected_version is None or expected_version == _version:
                     _phase = phase_val
                     _progress = progress_val
+                    _finished = finished_val
+                    _closed_ack = False
                     self._json_response({"ok": True, "phase": _phase, "progress": _progress, "version": _version})
                 else:
                     self._conflict_response({
@@ -1929,6 +1961,7 @@ class ConceptBridgeHandler(http.server.SimpleHTTPRequestHandler):
                     # state so the next submission starts from a clean panel.
                     _picked_up_at = ''
                     _phase = ''
+                    _finished = None
                     _progress = None
                     # Durable side of the reset. The journal is append-only,
                     # so the processed submission stays recoverable forever;

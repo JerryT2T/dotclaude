@@ -98,7 +98,7 @@ describe("open points — the admission gate in prose", () => {
   test("the validation gate enforces the origin on every open point of a final report", () => {
     const row = gate.split("\n").find((l) => l.startsWith("| 33b | "));
     expect(row, "gate row 33b").toBeTruthy();
-    expect(row).toContain('`data-oq-origin="deferred"` or `data-oq-origin="found"`');
+    expect(row).toContain('`data-oq-origin="deferred"`, `"found"` or `"shortfall"`');
     expect(row).toContain("Hard fail on the final-report section");
     expect(row).toContain("no `[data-open-questions]` block passes");
     expect(gate).toContain("`data-oq-origin` missing on an open point");
@@ -110,7 +110,7 @@ describe("open points — the origin and pre-selection in the reference markup",
     const funde = htmlSource.match(/<li[^>]*data-issue-title=[^>]*>/g) || [];
     expect(funde.length, "example Funde").toBeGreaterThanOrEqual(4);
     for (const el of funde) {
-      expect(el, el).toMatch(/data-oq-origin="(deferred|found)"/);
+      expect(el, el).toMatch(/data-oq-origin="(deferred|found|shortfall)"/);
       expect(el, el).toMatch(/data-route-default="(now|issue|ignore)"/);
       expect(el, el).toMatch(/data-route-reason="[^"]+"/);
     }
@@ -124,14 +124,6 @@ describe("open points — the origin and pre-selection in the reference markup",
     expect(md).toMatch(/\| `data-route-default` \| yes \|/);
     expect(md).toMatch(/\| `data-route-reason` \| yes \|/);
     expect(md).toMatch(/\| `data-routed` \| set by Claude \|/);
-  });
-
-  test("the sheet carries both origin labels through the locale, never hard-coded", () => {
-    expect(md).toMatch(/\| `final\.origin_deferred`\s+\| deferred by you\s+\| bewusst vertagt \|/);
-    expect(md).toMatch(/\| `final\.origin_found`\s+\| found on the way\s+\| unterwegs gefunden \|/);
-    expect(SKELETON.code).toContain('data-label-origin-deferred="{{final.origin_deferred}}"');
-    expect(SKELETON.code).toContain('data-label-origin-found="{{final.origin_found}}"');
-    expect(cssSource).toContain(".closeout-sheet .closeout-route-origin {");
   });
 });
 
@@ -203,55 +195,35 @@ function page(items, { handoffs = [], closed = false } = {}) {
   return document;
 }
 
-const originIn = (doc, key) => {
-  doc.querySelector(`#closeout-decide-list [data-route-open="${key}"]`).click();
-  const el = doc.querySelector("#closeout-route-sheet [data-route-origin]");
-  const out = { hidden: el.hidden, text: el.textContent };
-  doc.querySelector("#closeout-route-sheet [data-route-close]").click();
-  return out;
-};
-
-describe("open points — the origin tag in the bottom sheet", () => {
-  test("a deferred Fund and a found Fund each get their own tag, from the locale", () => {
+describe("open points — a Fund's name leads to the report", () => {
+  test("the name jumps; the panel adds no origin tag of its own", () => {
     const doc = page([
       { id: "oq-a", title: "[FEATURE] Rate-limit", origin: "deferred" },
       { id: "oq-b", title: "[BUG] SAML", origin: "found" },
     ]);
-    expect(originIn(doc, "oq-a")).toEqual({ hidden: false, text: "final.origin_deferred" });
-    expect(originIn(doc, "oq-b")).toEqual({ hidden: false, text: "final.origin_found" });
-    // Context, not a choice: the three tiles are untouched.
-    expect(doc.querySelectorAll("#closeout-route-sheet [data-route-tile]").length).toBe(3);
-  });
-
-  test("a Fund without an admissible origin shows no tag rather than a made-up one", () => {
-    const doc = page([
-      { id: "oq-x", title: "[CHORE] Phase 4" },
-      { id: "oq-y", title: "[CHORE] Something", origin: "scope" },
-    ]);
-    expect(doc.querySelectorAll("#closeout-decide-list [data-route-open]").length).toBe(2);
-    expect(originIn(doc, "oq-x").hidden).toBe(true);
-    expect(originIn(doc, "oq-y").hidden).toBe(true);
+    expect(doc.querySelectorAll("#closeout-decide-list [data-route-jump]").length).toBe(2);
+    expect(doc.getElementById("closeout-route-sheet")).toBeNull();
   });
 });
 
 // The steps the user has to take by hand after the merge are the 👉 group:
 // in the panel where the close-out happens, with a mode each, and still there
 // after the close-out.
-describe("hand-offs — 👉 Du machst danach", () => {
+describe("hand-offs — 👉 in Bleibt für dich", () => {
   const STEPS = ["Set the cron to <code>0,20,40 * * * *</code>", "Watch the first run"];
 
-  test("the 👉 group mirrors the report's hand-off list, with a count", () => {
+  test("the list mirrors the report's hand-offs, with a count", () => {
     const doc = page([], { handoffs: STEPS });
-    const group = doc.querySelector('[data-closeout-group="handoffs"]');
+    const group = doc.querySelector('[data-closeout-group="todo"]');
     expect(group.hidden).toBe(false);
-    const items = Array.from(doc.querySelectorAll("#closeout-handoffs-list .closeout-todo-title")).map((el) => el.textContent);
+    const items = Array.from(doc.querySelectorAll("#closeout-todo-list .closeout-todo-title")).map((el) => el.textContent);
     expect(items).toEqual(["Set the cron to 0,20,40 * * * *", "Watch the first run"]);
     expect(group.querySelector("[data-closeout-count]").textContent).toBe("2");
   });
 
   test("no hand-offs, no group — the normal case renders nothing", () => {
     const doc = page([{ id: "oq-a", title: "[BUG] SAML", origin: "found" }]);
-    expect(doc.querySelector('[data-closeout-group="handoffs"]').hidden).toBe(true);
+    expect(doc.querySelector('[data-closeout-group="todo"]').hidden).toBe(true);
   });
 
   test("after the close-out the 👉 items stay; the 🧭 group and the buttons do not", () => {
@@ -259,10 +231,10 @@ describe("hand-offs — 👉 Du machst danach", () => {
     const visible = Array.from(doc.querySelectorAll("[data-closeout-group]"))
       .filter((el) => !el.hidden)
       .map((el) => el.dataset.closeoutGroup);
-    expect(visible).toEqual(["handoffs"]);
+    expect(visible).toEqual(["todo"]);
     expect(doc.getElementById("closeout-ship").hidden).toBe(true);
     expect(doc.getElementById("closeout-close").hidden).toBe(false);
-    expect(doc.querySelectorAll("#closeout-handoffs-list .closeout-todo").length).toBe(2);
+    expect(doc.querySelectorAll("#closeout-todo-list .closeout-todo").length).toBe(2);
   });
 
   test("a closed report without hand-offs shows the done button and no group", () => {
@@ -276,14 +248,13 @@ describe("hand-offs — 👉 Du machst danach", () => {
     expect(htmlSource).toContain('<section data-tests hidden aria-label="{{final.group_tests}}">');
     expect(htmlSource).toMatch(/<li data-todo-id="[^"]+" data-crit="(low|mid|high)" data-guide="(web|desktop|)">/);
     expect(md).toMatch(/\| `final\.group_handoffs`\s+\| You do afterwards\s+\| Du machst danach \|/);
-    expect(SKELETON.code).toContain('id="closeout-handoffs-list"');
-    expect(SKELETON.code).toContain('id="closeout-tests-list"');
+    expect(SKELETON.code).toContain('id="closeout-todo-list"');
   });
 
   test("the gate carries the rule", () => {
     const row = gate.split("\n").find((l) => l.startsWith("| 37b | "));
     expect(row, "gate row 37b").toBeTruthy();
-    expect(row).toContain("`closeout-handoffs-list`");
+    expect(row).toContain("`closeout-todo-list`");
     expect(row).toContain("A report without the section passes");
   });
 });

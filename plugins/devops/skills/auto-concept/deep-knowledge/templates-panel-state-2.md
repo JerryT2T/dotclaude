@@ -45,16 +45,14 @@
   color: var(--text-secondary, #8b949e);
 }
 .closeout-sheet .closeout-list { display: flex; flex-direction: column; gap: 0.35rem; }
-/* One row = one to-do. The 🧭 rows are buttons (the whole line opens the
-   bottom sheet); the 🧪/👉 rows hold their three-way choice. Same surface,
-   radius and padding for both, so the inbox reads as one list. */
+/* One row = one to-do, same surface for both lists. */
 .closeout-sheet .closeout-todo {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.3rem;
   width: 100%;
   box-sizing: border-box;
-  padding: 0.45rem 0.6rem;
+  padding: 0.4rem 0.55rem;
   border: 1px solid var(--border-color, #30363d);
   border-radius: 8px;
   background: color-mix(in srgb, var(--text-color, #c9d1d9) 3%, var(--panel-bg, #161b22));
@@ -62,58 +60,66 @@
   font: inherit;
   text-align: left;
 }
+/* 🧭 One line per Fund: name (jumps to the report) and route pill (cycles). */
 .closeout-sheet .closeout-decide {
   flex-direction: row;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.45rem;
-  cursor: pointer;
-  /* border only: a background transition on a color-mix() of page tokens
-     left the rows painted in the OLD theme after a theme switch (Chromium
-     kept the stale paint although the computed value had changed). */
-  transition: border-color 0.15s;
 }
-.closeout-sheet .closeout-decide:hover {
-  border-color: color-mix(in srgb, var(--accent-color, #58a6ff) 55%, var(--border-color, #30363d));
+.closeout-sheet .closeout-decide[data-shortfall] { border-left: 3px solid var(--warning-color, #d29922); }
+.closeout-sheet .closeout-jump,
+.closeout-sheet .closeout-decide .closeout-pill { font-family: inherit; cursor: pointer; }
+.closeout-sheet .closeout-jump {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-decoration: underline dotted color-mix(in srgb, currentColor 45%, transparent);
+  text-underline-offset: 3px;
 }
-.closeout-sheet .closeout-decide:focus-visible,
-.closeout-sheet .closeout-tile:focus-visible,
-.closeout-sheet .closeout-go:focus-visible,
-.closeout-sheet .closeout-route-close:focus-visible {
+.closeout-sheet .closeout-jump:hover { color: var(--accent-color, #58a6ff); text-decoration: underline; }
+.closeout-sheet .closeout-jump:focus-visible,
+.closeout-sheet .closeout-decide .closeout-pill:focus-visible,
+.closeout-sheet .closeout-guide:focus-visible,
+.closeout-sheet .closeout-drop:focus-visible,
+.closeout-sheet .closeout-go:focus-visible {
   outline: 2px solid var(--accent-color, #58a6ff);
   outline-offset: 2px;
 }
-.closeout-sheet .closeout-todo-head { display: flex; align-items: flex-start; gap: 0.45rem; min-width: 0; }
-/* At most TWO lines per row title, never a one-line ellipsis: the title wraps
-   (overflow-wrap: anywhere breaks even an unbroken string), the chips and the
-   pill stay top-right (align-items: flex-start). Authoring caps the visible
-   label at 48 characters (templates-final-report.md, validation-gate.md 33c),
-   so the clamp is only a safety net; when it does cut, syncClampTips() puts
-   the full text on the row's data-tip. */
+.closeout-sheet .closeout-route-hint {
+  margin: 0.1rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--text-secondary, #8b949e);
+}
+.closeout-sheet .closeout-more-btn { align-self: flex-start; margin: 0; font-size: 0.75rem; }
+.closeout-sheet .closeout-todo-head { display: flex; align-items: flex-start; gap: 0.4rem; min-width: 0; }
+.closeout-sheet .closeout-kind { flex: none; font-size: 0.78rem; line-height: var(--pill-line-height, 1.3); }
+/* A Fund title is one line (ellipsis, full text on hover); a to-do title at
+   most TWO lines, never a one-line ellipsis: the title wraps
+   (overflow-wrap: anywhere breaks even an unbroken string). Authoring caps both
+   (templates-final-report.md, validation-gate.md 33c), so the clamp is only a
+   safety net; when it does cut, syncClampTips() puts the full text on data-tip. */
 .closeout-sheet .closeout-todo-title {
   flex: 1 1 auto;
   min-width: 0;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
   overflow: hidden;
   overflow-wrap: anywhere;
   line-height: var(--pill-line-height, 1.3);
   font-size: 0.82rem;
 }
-.closeout-sheet .closeout-sammel .closeout-todo-title { color: var(--text-secondary, #8b949e); }
-/* The one-word reason Claude pre-selected for ("klein", "riskant"). */
-.closeout-sheet .closeout-why {
-  flex: none;
-  font-size: 0.68rem;
-  padding: 1px 6px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--text-color, #c9d1d9) 9%, transparent);
-  color: var(--text-secondary, #8b949e);
-  white-space: nowrap;
+.closeout-sheet .closeout-todo-mode .closeout-todo-title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 /* Route pill — ⚡ warning (the one route that writes code, the implement
-   colour), 📌 accent (the issue colour), ✕ neutral. */
+   colour), 📌 accent (the issue colour), Weglassen neutral. */
 .closeout-sheet .closeout-pill {
   flex: none;
   font-size: 0.72rem;
@@ -121,6 +127,7 @@
   padding: 2px 8px;
   border-radius: 999px;
   white-space: nowrap;
+  background: transparent;
   border: 1px solid var(--border-color, #30363d);
   color: var(--text-secondary, #8b949e);
 }
@@ -141,121 +148,61 @@
   padding: 1px 6px;
   border-radius: 4px;
   white-space: nowrap;
-  color: var(--text-secondary, #8b949e);
-  background: color-mix(in srgb, var(--text-color, #c9d1d9) 9%, transparent);
-}
-.closeout-sheet .closeout-crit[data-crit="mid"] {
-  color: var(--warning-color, #d29922);
-  background: color-mix(in srgb, var(--warning-color, #d29922) 15%, transparent);
-}
-.closeout-sheet .closeout-crit[data-crit="high"] {
   color: var(--danger-color, #f85149);
   background: color-mix(in srgb, var(--danger-color, #f85149) 15%, transparent);
 }
-/* Muss nicht · Mit Anleitung · Mach ich selbst — a segmented control built
-   on real radios: the radio is the state (visually hidden, still focusable
-   and arrow-key operable), the span is the paint. */
-.closeout-sheet .closeout-seg {
-  display: flex;
+/* "Führ mich" switch + ✕. Off = the item goes on the completion card. */
+.closeout-sheet .closeout-todo-ctl { display: flex; align-items: center; justify-content: flex-end; gap: 0.4rem; }
+.closeout-sheet .closeout-guide {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 2px 8px;
   border: 1px solid var(--border-color, #30363d);
-  border-radius: 6px;
-  overflow: hidden;
-}
-.closeout-sheet .closeout-seg-opt { flex: 1 1 0; position: relative; display: flex; }
-.closeout-sheet .closeout-seg-opt + .closeout-seg-opt { border-left: 1px solid var(--border-color, #30363d); }
-.closeout-sheet .closeout-seg-opt input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
-.closeout-sheet .closeout-seg-opt span {
-  flex: 1 1 auto;
-  text-align: center;
-  padding: 0.3rem 0.15rem;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary, #8b949e);
+  font: inherit;
   font-size: 0.72rem;
   font-weight: 600;
-  color: var(--text-secondary, #8b949e);
-  line-height: var(--pill-line-height, 1.3);
+  cursor: pointer;
 }
-.closeout-sheet .closeout-seg-opt:hover span { color: var(--text-color, #c9d1d9); }
-.closeout-sheet .closeout-seg-opt input:checked + span {
-  background: color-mix(in srgb, var(--accent-color, #58a6ff) 15%, transparent);
-  color: var(--accent-color, #58a6ff);
-}
-.closeout-sheet .closeout-seg-opt input:focus-visible + span {
-  outline: 2px solid var(--accent-color, #58a6ff);
-  outline-offset: -2px;
-}
-.closeout-sheet .closeout-guide-kind { font-size: 0.72rem; color: var(--accent-color, #58a6ff); }
-.closeout-sheet .closeout-more,
-.closeout-sheet .closeout-empty { margin: 0; font-size: 0.74rem; color: var(--text-secondary, #8b949e); }
-/* Done state: the chosen mode as a plain line; "Muss nicht" muted. */
-.closeout-sheet .closeout-todo-done { flex-direction: row; align-items: center; gap: 0.45rem; }
-.closeout-sheet .closeout-todo-done[data-mode="skip"] { opacity: 0.55; }
-
-/* Bottom sheet over the inbox — inside the FAB panel, never a page modal. */
-.closeout-sheet .closeout-route-sheet {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 2;
-  max-height: 100%;
-  overflow-y: auto;
+.closeout-sheet .closeout-guide-dot {
+  width: 8px;
+  height: 8px;
   box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.85rem 0.9rem 0.9rem;
-  border: 1px solid var(--border-color, #30363d);
-  border-radius: 12px 12px 8px 8px;
-  background: var(--panel-bg, #161b22);
-  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.35);
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
 }
-.closeout-sheet .closeout-route-head { display: flex; align-items: flex-start; gap: 0.5rem; }
-.closeout-sheet .closeout-route-head strong { flex: 1 1 auto; font-size: 0.9rem; line-height: 1.35; }
-.closeout-sheet .closeout-route-close {
-  flex: none;
-  border: 0;
-  background: none;
-  color: var(--text-secondary, #8b949e);
-  font: inherit;
-  cursor: pointer;
-  padding: 0 0.2rem;
-}
-.closeout-sheet .closeout-route-origin { margin: 0; font-size: 0.72rem; color: var(--text-secondary, #8b949e); }
-.closeout-sheet .closeout-route-body { margin: 0; font-size: 0.78rem; line-height: 1.45; color: var(--text-secondary, #8b949e); }
-.closeout-sheet .closeout-route-why {
-  margin: 0;
-  font-size: 0.76rem;
-  line-height: 1.45;
-  padding: 0.35rem 0.55rem;
-  border-left: 3px solid var(--accent-color, #58a6ff);
-  border-radius: 4px;
-  background: color-mix(in srgb, var(--accent-color, #58a6ff) 8%, transparent);
-}
-.closeout-sheet .closeout-tiles { display: flex; flex-direction: column; gap: 0.4rem; }
-.closeout-sheet .closeout-tile {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  padding: 0.55rem 0.7rem;
-  border: 1px solid var(--border-color, #30363d);
-  border-radius: 8px;
-  background: transparent;
-  color: var(--text-color, #c9d1d9);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-.closeout-sheet .closeout-tile b { font-size: 0.84rem; }
-.closeout-sheet .closeout-tile span { font-size: 0.74rem; color: var(--text-secondary, #8b949e); line-height: 1.4; }
-.closeout-sheet .closeout-tile[aria-checked="true"] {
+.closeout-sheet .closeout-guide[aria-checked="true"] {
+  color: var(--accent-color, #58a6ff);
   border-color: var(--accent-color, #58a6ff);
   background: color-mix(in srgb, var(--accent-color, #58a6ff) 12%, transparent);
 }
-.closeout-sheet .closeout-tile[data-route-tile="implement"][aria-checked="true"] {
-  border-color: var(--warning-color, #d29922);
-  background: color-mix(in srgb, var(--warning-color, #d29922) 12%, transparent);
+.closeout-sheet .closeout-guide[aria-checked="true"] .closeout-guide-dot { background: currentColor; }
+.closeout-sheet .closeout-drop {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-secondary, #8b949e);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
 }
+.closeout-sheet .closeout-drop:hover { color: var(--text-color, #c9d1d9); background: color-mix(in srgb, var(--text-color, #c9d1d9) 8%, transparent); }
+.closeout-sheet .closeout-todo-mode[data-mode="skip"] .closeout-todo-title { opacity: 0.55; text-decoration: line-through; }
+.closeout-sheet .closeout-todo-mode[data-mode="skip"] .closeout-kind { opacity: 0.55; }
+.closeout-sheet .closeout-more,
+.closeout-sheet .closeout-empty { margin: 0; font-size: 0.74rem; color: var(--text-secondary, #8b949e); }
+/* Done state: the chosen mode as a plain line; a struck item muted. */
+.closeout-sheet .closeout-todo-done { flex-direction: row; align-items: center; gap: 0.45rem; }
+.closeout-sheet .closeout-todo-done[data-mode="skip"] { opacity: 0.55; }
 
-/* Under the divider: the 🤖 group, then the two buttons. */
+/* Under the divider: the plan line, the quiet disposition line, the buttons. */
 .closeout-sheet .closeout-foot {
   flex: none;
   display: flex;
@@ -270,8 +217,8 @@
   display: flex;
   align-items: baseline;
   gap: 0.4rem;
-  font-size: 0.78rem;
-  color: var(--text-color, #c9d1d9);
+  font-size: 0.72rem;
+  color: var(--text-secondary, #8b949e);
 }
 .closeout-sheet .closeout-dispose-line .link-btn { margin: 0 0 0 auto; font-size: 0.75rem; }
 .closeout-sheet .dispose-fieldset { margin-top: 0.3rem; }
@@ -306,6 +253,16 @@
 .closeout-sheet .closeout-ghost:hover {
   background: color-mix(in srgb, var(--text-color, #c9d1d9) 6%, transparent);
 }
+/* "🔧 Nachbessern": no release, nothing closes — the quietest of the three. */
+.closeout-sheet .closeout-quiet {
+  padding: 0.35rem 0.8rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-secondary, #8b949e);
+  background: transparent;
+  border: 1px dashed var(--border-color, #30363d);
+}
+.closeout-sheet .closeout-quiet:hover { color: var(--text-color, #c9d1d9); }
 .closeout-sheet .closeout-go:disabled { cursor: default; }
 /* After the click the clicked button is the status: running (accent),
    stalled (warning outline) — full opacity, a readout, not a greyed-out

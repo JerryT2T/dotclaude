@@ -19,21 +19,24 @@ function closeoutEl(tag, cls, text) {
   return el;
 }
 
-// 🧭 One line per Fund: name · reason chip · route pill. The whole line is
-// the button — it opens the bottom sheet (openRouteSheet()).
+// 🧭 One line per Fund: the name (a tap jumps to the Fund in the report, which
+// holds what, where and why) and the route pill (a tap moves to the next
+// route). Everything is visible and nothing covers the rest of the panel. A
+// not-built item (data-oq-origin="shortfall") carries the ⚠ mark.
 function decideRow(key, el) {
-  const row = closeoutEl('button', 'closeout-todo closeout-decide');
-  row.type = 'button';
-  row.dataset.routeOpen = key;
+  const row = closeoutEl('div', 'closeout-todo closeout-decide');
+  row.dataset.routeRow = key;
   row.dataset.followup = followUpId(el) || key;
-  // Two lines at most (CSS line-clamp): the full name becomes the tooltip
-  // only when the clamp really cuts it (syncClampTips()).
-  row.dataset.tipFull = followUpLabel(el);
-  row.appendChild(closeoutEl('span', 'closeout-todo-title', followUpLabel(el)));
+  if (el.dataset.oqOrigin === 'shortfall') row.dataset.shortfall = '';
+  const name = closeoutEl('button', 'closeout-todo-title closeout-jump', followUpLabel(el));
+  name.type = 'button';
+  name.dataset.routeJump = key;
+  name.dataset.tipFull = followUpLabel(el);
+  row.appendChild(name);
   queueClampTips();
-  const reason = el.dataset.routeReason;
-  if (reason) row.appendChild(closeoutEl('span', 'closeout-why', reason));
-  const pill = closeoutEl('span', 'closeout-pill');
+  const pill = closeoutEl('button', 'closeout-pill');
+  pill.type = 'button';
+  pill.dataset.routeCycle = key;
   pill.dataset.routePill = '';
   row.appendChild(pill);
   return row;
@@ -43,7 +46,7 @@ function decideRow(key, el) {
 function syncClampTips() {
   document.querySelectorAll('.closeout-sheet [data-tip-full]').forEach(host => {
     const t = host.classList.contains('closeout-todo-title') ? host : host.querySelector('.closeout-todo-title');
-    if (t && t.scrollHeight > t.clientHeight + 1) host.dataset.tip = host.dataset.tipFull;
+    if (t && (t.scrollHeight > t.clientHeight + 1 || t.scrollWidth > t.clientWidth + 1)) host.dataset.tip = host.dataset.tipFull;
     else delete host.dataset.tip;
   });
 }
@@ -54,78 +57,103 @@ function queueClampTips() {
   requestAnimationFrame(() => { _clampTipsQueued = false; syncClampTips(); });
 }
 window.addEventListener('resize', queueClampTips);
-function sammelRow(rest) {
-  const row = closeoutEl('button', 'closeout-todo closeout-decide closeout-sammel');
-  row.type = 'button';
-  row.dataset.routeOpen = CLOSEOUT_SAMMEL_KEY;
-  row.appendChild(closeoutEl('span', 'closeout-todo-title',
-    closeoutLabel('sammelRow', '{n}').replace('{n}', String(rest.length))));
-  const pill = closeoutEl('span', 'closeout-pill');
-  pill.dataset.routePill = '';
-  row.appendChild(pill);
-  return row;
-}
+// Rows past the third wait behind "+N weitere"; the choice stays in memory for
+// the session of the sheet, like every other answer on it.
+let _decideExpanded = false;
 function syncDecideRows() {
   const host = document.getElementById('closeout-decide-list');
   if (!host) return;
   const { rows } = closeoutFundeSplit();
   const byKey = {};
   rows.forEach(r => { byKey[r.key] = r.el; });
-  host.querySelectorAll('[data-route-open]').forEach(row => {
-    const key = row.dataset.routeOpen;
-    const route = key === CLOSEOUT_SAMMEL_KEY ? sammelRoute() : followUpRoute(key, byKey[key]);
+  let i = 0;
+  host.querySelectorAll('[data-route-row]').forEach(row => {
+    const key = row.dataset.routeRow;
+    row.hidden = !_decideExpanded && i >= CLOSEOUT_GROUP_MAX;
+    i += 1;
+    const route = followUpRoute(key, byKey[key]);
     const pill = row.querySelector('[data-route-pill]');
     if (pill) {
       pill.dataset.route = route;
-      // The pill is short ("⚡ Jetzt ▾"); the bottom sheet names the route in full.
-      pill.textContent = (route === 'implement'
+      pill.textContent = route === 'implement'
         ? CLOSEOUT_ROUTE_GLYPH.implement + ' ' + closeoutLabel('routeImplementShort', 'implement')
-        : closeoutRouteText(route)) + ' ▾';
+        : closeoutRouteText(route);
+      pill.dataset.tip = closeoutLabel('route' + route.charAt(0).toUpperCase() + route.slice(1) + 'Hint', '');
+      pill.setAttribute('aria-label', pill.textContent + ' · ' + closeoutLabel('routeHint', ''));
     }
   });
+  const more = document.getElementById('closeout-decide-more');
+  if (more) {
+    const hiddenRows = rows.length - CLOSEOUT_GROUP_MAX;
+    more.hidden = _decideExpanded || hiddenRows <= 0;
+    more.textContent = closeoutLabel('fundeMore', '+{n}').replace('{n}', String(Math.max(0, hiddenRows)));
+  }
+  const hint = document.getElementById('closeout-route-hint');
+  if (hint) hint.hidden = rows.length === 0;
+}
+// A tap on the pill moves on to the next route; the row stays in place, so
+// focus stays on the pill and the plan line follows.
+function cycleRoute(key) {
+  const hit = closeoutFundeSplit().rows.find(r => r.key === key);
+  if (!hit) return;
+  const at = CLOSEOUT_ROUTES.indexOf(followUpRoute(key, hit.el));
+  _closeoutChoices.route[key] = CLOSEOUT_ROUTES[(at + 1) % CLOSEOUT_ROUTES.length];
+  refreshCloseout();
+}
+// A tap on the name opens the 🔍 fold and brings that Fund into view, marked
+// for a moment. The report is the one place that says what, where and why, in
+// the page's language (the issue body is an English artefact).
+function jumpToFund(key) {
+  const hit = closeoutFundeSplit().rows.find(r => r.key === key);
+  if (!hit) return;
+  const fold = hit.el.closest('details');
+  if (fold) fold.open = true;
+  hit.el.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+  hit.el.classList.add('fr-fund-hit');
+  setTimeout(() => hit.el.classList.remove('fr-fund-hit'), 1600);
+  if (window.innerWidth < 900) window.closePanel?.();
 }
 
-// 🧪 / 👉 One line per to-do: text · criticality chip, then the three-way
-// choice, then — only for "Mit Anleitung" — which kind of guidance it gets.
-// Real radios (keyboard: Tab into the group, arrows to choose), unnamed in
-// the persistence sense: data-no-persist keeps saveState() off them.
+// 🧪 / 👉 One row per to-do in one list: the kind glyph and the text, then the
+// "Führ mich" switch and ✕. Off means it goes on the completion card, on means
+// Claude guides the step, ✕ strikes it (↩ brings it back). The switch names its
+// kind of guidance in the glyph and the tooltip. Criticality shows only when it
+// is high: the other chips said little.
+const CLOSEOUT_GUIDE_GLYPH = { web: '🧭', desktop: '🖥', inline: '📄' };
+const CLOSEOUT_KIND_GLYPH = { tests: '🧪', handoffs: '👉' };
 function todoRow(kind, el, i) {
   const key = todoKey(kind, el, i);
   const row = closeoutEl('div', 'closeout-todo closeout-todo-mode');
   row.dataset.todoKey = key;
+  row.dataset.todoKind = kind;
   const head = closeoutEl('div', 'closeout-todo-head');
+  const glyph = closeoutEl('span', 'closeout-kind', CLOSEOUT_KIND_GLYPH[kind]);
+  glyph.dataset.tip = closeoutLabel(kind === 'tests' ? 'groupTests' : 'groupHandoffs', '');
+  head.appendChild(glyph);
   const title = closeoutEl('span', 'closeout-todo-title', todoText(el));
   title.dataset.tipFull = title.textContent;
   head.appendChild(title);
   queueClampTips();
-  const crit = String(el.dataset.crit || '').toLowerCase();
-  if (crit === 'low' || crit === 'mid' || crit === 'high') {
-    const chip = closeoutEl('span', 'closeout-crit',
-      closeoutLabel('crit' + crit.charAt(0).toUpperCase() + crit.slice(1), crit));
-    chip.dataset.crit = crit;
+  if (String(el.dataset.crit || '').toLowerCase() === 'high') {
+    const chip = closeoutEl('span', 'closeout-crit', closeoutLabel('critHigh', 'high'));
+    chip.dataset.crit = 'high';
     head.appendChild(chip);
   }
   row.appendChild(head);
-  const seg = closeoutEl('div', 'closeout-seg');
-  seg.setAttribute('role', 'radiogroup');
-  seg.setAttribute('aria-label', title.textContent);
-  CLOSEOUT_MODES.forEach(mode => {
-    const label = closeoutEl('label', 'closeout-seg-opt');
-    const input = document.createElement('input');
-    input.type = 'radio';
-    input.name = 'td-' + key;
-    input.value = mode;
-    input.dataset.noPersist = '';
-    input.dataset.todoMode = key;
-    label.appendChild(input);
-    label.appendChild(closeoutEl('span', '',
-      closeoutLabel('mode' + mode.charAt(0).toUpperCase() + mode.slice(1), mode)));
-    seg.appendChild(label);
-  });
-  row.appendChild(seg);
-  const kindLine = closeoutEl('div', 'closeout-guide-kind');
-  kindLine.dataset.guideKind = '';
-  row.appendChild(kindLine);
+  const ctl = closeoutEl('div', 'closeout-todo-ctl');
+  const sw = closeoutEl('button', 'closeout-guide');
+  sw.type = 'button';
+  sw.setAttribute('role', 'switch');
+  sw.dataset.todoGuide = key;
+  sw.appendChild(closeoutEl('span', 'closeout-guide-glyph'));
+  sw.appendChild(closeoutEl('span', '', closeoutLabel('guideToggle', 'guide')));
+  sw.appendChild(closeoutEl('span', 'closeout-guide-dot'));
+  ctl.appendChild(sw);
+  const drop = closeoutEl('button', 'closeout-drop');
+  drop.type = 'button';
+  drop.dataset.todoDrop = key;
+  ctl.appendChild(drop);
+  row.appendChild(ctl);
   return row;
 }
 // Done state (data-closed): the chosen mode as a plain line, no controls.
@@ -140,22 +168,52 @@ function todoDoneRow(kind, el, i) {
     : g === 'desktop' ? '🖥 ' + text : g === 'inline' ? '📄 ' + text : text));
   return row;
 }
-function syncTodoRows(kind) {
-  const host = document.getElementById('closeout-' + kind + '-list');
+function todoEntries() {
+  return ['tests', 'handoffs'].flatMap(kind => todoItems(kind).map((el, i) => ({ kind, el, i })));
+}
+function syncTodoRows() {
+  const host = document.getElementById('closeout-todo-list');
   if (!host) return;
-  const items = todoItems(kind);
+  const all = todoEntries();
   host.querySelectorAll('[data-todo-key]').forEach(row => {
-    const i = items.findIndex((el, j) => todoKey(kind, el, j) === row.dataset.todoKey);
-    if (i < 0) return;
-    const mode = todoMode(kind, items[i], i);
-    row.querySelectorAll('input[type="radio"]').forEach(inp => { inp.checked = inp.value === mode; });
-    const line = row.querySelector('[data-guide-kind]');
-    const g = todoGuide(items[i], mode);
-    if (line) {
-      line.hidden = !g;
-      line.textContent = g ? closeoutLabel('guide' + g.charAt(0).toUpperCase() + g.slice(1), g) : '';
+    const hit = all.find(t => todoKey(t.kind, t.el, t.i) === row.dataset.todoKey);
+    if (!hit) return;
+    const mode = todoMode(hit.kind, hit.el, hit.i);
+    row.dataset.mode = mode;
+    const sw = row.querySelector('[data-todo-guide]');
+    if (sw) {
+      const g = todoGuide(hit.el, 'guide');
+      sw.hidden = mode === 'skip';
+      sw.setAttribute('aria-checked', mode === 'guide' ? 'true' : 'false');
+      sw.querySelector('.closeout-guide-glyph').textContent = CLOSEOUT_GUIDE_GLYPH[g];
+      sw.dataset.tip = closeoutLabel('guide' + g.charAt(0).toUpperCase() + g.slice(1), g);
+    }
+    const drop = row.querySelector('[data-todo-drop]');
+    if (drop) {
+      drop.textContent = mode === 'skip' ? '↩' : '✕';
+      const label = closeoutLabel(mode === 'skip' ? 'todoRestore' : 'todoDrop', '');
+      drop.setAttribute('aria-label', label);
+      drop.dataset.tip = label;
     }
   });
+}
+function todoChoose(key, mode) {
+  _closeoutChoices.mode[key] = mode;
+  refreshCloseout();
+}
+// "Führ mich" flips between guidance and the completion card.
+function toggleTodoGuide(key) {
+  const hit = todoEntries().find(t => todoKey(t.kind, t.el, t.i) === key);
+  if (hit) todoChoose(key, todoMode(hit.kind, hit.el, hit.i) === 'guide' ? 'self' : 'guide');
+}
+// ✕ strikes the item; ↩ brings back what Claude authored (a low item, authored
+// as struck, comes back onto the card).
+function toggleTodoDrop(key) {
+  const hit = todoEntries().find(t => todoKey(t.kind, t.el, t.i) === key);
+  if (!hit) return;
+  if (todoMode(hit.kind, hit.el, hit.i) !== 'skip') { todoChoose(key, 'skip'); return; }
+  const authored = todoDefaultMode(hit.el);
+  todoChoose(key, authored === 'skip' ? 'self' : authored);
 }
 
 // Rebuild a group only when its item SET changes (by key, never by count) —
@@ -176,104 +234,42 @@ function renderGroup(kind, keys, build) {
   return keys.length;
 }
 function renderDecideGroup(closed) {
-  const { rows, rest } = closeoutDecideSplit(closed);
-  const keys = rows.map(r => r.key).concat(rest.length ? [CLOSEOUT_SAMMEL_KEY + ':' + rest.length] : []);
-  const n = renderGroup('decide', keys, host => {
+  const { rows } = closeoutDecideSplit(closed);
+  const n = renderGroup('decide', rows.map(r => r.key), host => {
     rows.forEach(r => host.appendChild(decideRow(r.key, r.el)));
-    if (rest.length) host.appendChild(sammelRow(rest));
   });
   const count = document.querySelector('[data-closeout-group="decide"] [data-closeout-count]');
-  if (count) count.textContent = n ? String(rows.length + rest.length) : '';
+  if (count) count.textContent = n ? String(n) : '';
   syncDecideRows();
   return n;
 }
 // The done state shows no Funde in the FAB — the report body says what
 // became of each one (issue link / "umgesetzt").
 function closeoutDecideSplit(closed) {
-  return closed ? { rows: [], rest: [] } : closeoutFundeSplit();
+  return closed ? { rows: [] } : closeoutFundeSplit();
 }
-function renderTodoGroup(kind, closed) {
-  const items = todoItems(kind);
-  const shown = items.slice(0, CLOSEOUT_GROUP_MAX);
-  const keys = shown.map((el, i) => todoKey(kind, el, i)).concat(closed ? ['closed'] : []);
-  const n = renderGroup(kind, items.length ? keys : [], host => {
-    shown.forEach((el, i) => host.appendChild(closed ? todoDoneRow(kind, el, i) : todoRow(kind, el, i)));
-    // More than three: the rest keep their authored default and stay in the
-    // payload; the line only says they exist.
-    if (items.length > shown.length) {
+function renderTodoGroup(closed) {
+  const all = todoEntries();
+  const shown = all.filter(t => t.i < CLOSEOUT_GROUP_MAX);
+  const keys = shown.map(t => todoKey(t.kind, t.el, t.i)).concat(closed ? ['closed'] : []);
+  const n = renderGroup('todo', all.length ? keys : [], host => {
+    shown.forEach(t => host.appendChild(closed ? todoDoneRow(t.kind, t.el, t.i) : todoRow(t.kind, t.el, t.i)));
+    // More than three of a kind: the rest keep their authored default and stay
+    // in the payload; the line only says they exist.
+    if (all.length > shown.length) {
       host.appendChild(closeoutEl('p', 'closeout-more',
-        closeoutLabel('todoMore', '{n}').replace('{n}', String(items.length - shown.length))));
+        closeoutLabel('todoMore', '{n}').replace('{n}', String(all.length - shown.length))));
     }
   });
-  const count = document.querySelector('[data-closeout-group="' + kind + '"] [data-closeout-count]');
-  if (count) count.textContent = items.length ? String(items.length) : '';
-  if (!closed) syncTodoRows(kind);
+  const count = document.querySelector('[data-closeout-group="todo"] [data-closeout-count]');
+  if (count) count.textContent = all.length ? String(all.length) : '';
+  if (!closed) syncTodoRows();
   return n;
 }
 
-// --- Bottom sheet: one Fund, its reason, three big tiles ---
-let _routeSheetKey = null;
-function openRouteSheet(key) {
-  const sheet = document.getElementById('closeout-sheet');
-  const box = document.getElementById('closeout-route-sheet');
-  if (!sheet || !box || sheet.dataset.frozen === 'true') return;
-  const { rows, rest } = closeoutFundeSplit();
-  const isSammel = key === CLOSEOUT_SAMMEL_KEY;
-  const hit = rows.find(r => r.key === key);
-  if (!isSammel && !hit) return;
-  _routeSheetKey = key;
-  const el = hit ? hit.el : null;
-  const route = isSammel ? sammelRoute() : followUpRoute(key, el);
-  const authored = isSammel ? 'issue' : routeDefault(el);
-  box.querySelector('[data-route-title]').textContent = isSammel
-    ? closeoutLabel('sammelRow', '{n}').replace('{n}', String(rest.length))
-    : followUpLabel(el);
-  const origin = box.querySelector('[data-route-origin]');
-  const o = el ? el.dataset.oqOrigin : '';
-  origin.hidden = !(o === 'deferred' || o === 'found');
-  origin.textContent = o === 'deferred' ? closeoutLabel('originDeferred') : o === 'found' ? closeoutLabel('originFound') : '';
-  const body = box.querySelector('[data-route-body]');
-  body.textContent = isSammel
-    ? rest.map(r => followUpLabel(r.el)).join(' · ')
-    : (el.dataset.issueBody || '');
-  body.hidden = !body.textContent;
-  const reason = el ? el.dataset.routeReason : '';
-  box.querySelector('[data-route-why]').textContent = closeoutLabel('routeRecommended')
-    + ' ' + closeoutRouteText(authored) + (reason ? ' · ' + reason : '');
-  box.querySelectorAll('[data-route-tile]').forEach(tile => {
-    const v = tile.dataset.routeTile;
-    tile.hidden = isSammel && v === 'implement';
-    tile.setAttribute('aria-checked', v === route ? 'true' : 'false');
-  });
-  box.hidden = false;
-  sheet.dataset.routeSheet = 'open';
-  const current = box.querySelector('[data-route-tile][aria-checked="true"]');
-  if (current) current.focus();
-}
-function closeRouteSheet() {
-  const sheet = document.getElementById('closeout-sheet');
-  const box = document.getElementById('closeout-route-sheet');
-  if (box) box.hidden = true;
-  if (sheet) delete sheet.dataset.routeSheet;
-  const key = _routeSheetKey;
-  _routeSheetKey = null;
-  // Focus goes back to the row it came from, so the keyboard path continues.
-  if (key != null) {
-    const row = document.querySelector('#closeout-decide-list [data-route-open="' + CSS.escape(key) + '"]');
-    if (row) row.focus();
-  }
-}
-function chooseRoute(route) {
-  if (_routeSheetKey == null || !CLOSEOUT_ROUTES.includes(route)) return;
-  if (_routeSheetKey === CLOSEOUT_SAMMEL_KEY && route === 'implement') return;
-  _closeoutChoices.route[_routeSheetKey] = route;
-  closeRouteSheet();
-  refreshCloseout();
-}
-
-// --- 🤖 Claude macht beim Klick ---
-// The plan line ("⚡ 2 × jetzt umsetzen · 📌 1 × Issue anlegen") is the
-// readout of the inbox above — re-rendered on every change, so it can never
+// --- Under the divider ---
+// The plan line ("⚡ 2 × jetzt umsetzen · 📌 1 × Issue anlegen") is what the
+// click will do, read out of the inbox above — re-rendered on every change, so it can never
 // describe an older answer than the one on screen.
 function renderCloseoutPlan() {
   const el = document.getElementById('closeout-plan');
@@ -305,8 +301,8 @@ function toggleDisposeEdit(open) {
 }
 
 // --- The two buttons: the ship answer, then the status ---
-// Before the click: "🏁🚀 Abschließen & shippen" (warning fill) and "🏁 Nur
-// abschließen, nicht shippen" (ghost). While the bridge is disconnected both
+// Before the click: "🏁🚀 Abschließen & shippen" (warning fill), "🏁 Nur
+// abschließen, nicht shippen" (ghost) and "🔧 Nachbessern" (quiet). While the bridge is disconnected both
 // say "· wird zwischengespeichert" — the final report has no status line
 // (§ CSS body.viewing-final .panel-status), so the buttons are the one place
 // left to say the click will be queued. checkClaudeConnection() calls this
@@ -376,7 +372,6 @@ function setCloseoutFrozen(frozen) {
   const sheet = document.getElementById('closeout-sheet');
   if (!sheet) return;
   sheet.dataset.frozen = frozen ? 'true' : 'false';
-  if (frozen) closeRouteSheet();
   sheet.querySelectorAll('input, button').forEach(el => {
     if (el.id === 'closeout-close') return;
     el.disabled = frozen;
@@ -406,7 +401,8 @@ function renderCloseout() {
   const closed = !!(section && section.hasAttribute('data-closed'));
   sheet.dataset.closed = closed ? 'true' : 'false';
   const decided = renderDecideGroup(closed);
-  const todos = renderTodoGroup('tests', closed) + renderTodoGroup('handoffs', closed);
+  const todos = renderTodoGroup(closed);
+  initBeforeAfter(section);
   const claude = sheet.querySelector('.closeout-claude');
   if (claude) claude.hidden = closed;
   const empty = document.getElementById('closeout-empty');
@@ -414,7 +410,6 @@ function renderCloseout() {
   renderCloseoutPlan();
   renderDisposeLine();
   if (closed) {
-    closeRouteSheet();
     setCloseoutButtonState('done');
     return;
   }
@@ -427,6 +422,36 @@ function renderCloseout() {
 // Called from showIteration() with { reset: true } (a tab switch re-reads the
 // report from scratch) and from the change listener without it. "reset" is
 // about the row SET only — the choices are kept, by id.
+// Vorher / Nachher share one place: the switch shows one image at a time,
+// Nachher first. A click on the image opens it full size. One figure, or a
+// .fr-flow in its place, needs no switch. Idempotent: refreshCloseout() runs on
+// every change.
+function initBeforeAfter(section) {
+  const ba = section && section.querySelector('.fr-ba');
+  if (!ba || ba.dataset.switch) return;
+  ba.dataset.switch = 'none';
+  ba.querySelectorAll('.fr-shot img').forEach(img => {
+    img.addEventListener('click', () => window.open(img.src, '_blank', 'noopener'));
+  });
+  const figs = Array.from(ba.querySelectorAll('.fr-shot'));
+  if (figs.length !== 2) return;
+  ba.dataset.switch = 'on';
+  const bar = closeoutEl('div', 'fr-ba-switch');
+  bar.setAttribute('role', 'group');
+  const show = i => {
+    figs.forEach((f, j) => { f.hidden = j !== i; });
+    bar.querySelectorAll('button').forEach((b, j) => b.setAttribute('aria-pressed', j === i ? 'true' : 'false'));
+  };
+  [ba.dataset.labelBefore, ba.dataset.labelAfter].forEach((label, i) => {
+    const b = closeoutEl('button', '', label || (figs[i].querySelector('figcaption') || {}).textContent || String(i + 1));
+    b.type = 'button';
+    b.addEventListener('click', () => show(i));
+    bar.appendChild(b);
+  });
+  ba.appendChild(bar);
+  show(1);
+}
+
 function refreshCloseout(opts) {
   const sheet = document.getElementById('closeout-sheet');
   if (!sheet) return;

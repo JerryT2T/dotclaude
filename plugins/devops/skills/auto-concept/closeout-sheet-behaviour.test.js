@@ -139,7 +139,7 @@ function page({ funde = [], tests = [], handoffs = [], closed = false } = {}) {
       "  if (!opts || opts.method !== 'POST') {",
       "    return { ok: true, json: async () => window.__decisions };",
       "  }",
-      "  window.__posted.push({ url, body: JSON.parse(opts.body) });",
+      "  window.__posted.push({ url, body: opts.body ? JSON.parse(opts.body) : null });",
       "  if (window.__reply.throws) throw new Error('offline');",
       "  return { ok: window.__reply.ok, json: async () => window.__reply.body };",
       "};",
@@ -157,27 +157,20 @@ function page({ funde = [], tests = [], handoffs = [], closed = false } = {}) {
     sheet: () => $("#closeout-sheet"),
     render: () => window.refreshCloseout({ reset: true }),
     group: (kind) => $(`[data-closeout-group="${kind}"]`),
-    decideRows: () => Array.from(document.querySelectorAll("#closeout-decide-list [data-route-open]")),
-    pill: (key) => $(`#closeout-decide-list [data-route-open="${key}"] [data-route-pill]`),
-    todoRows: (kind) => Array.from(document.querySelectorAll(`#closeout-${kind}-list .closeout-todo`)),
-    routeSheet: () => $("#closeout-route-sheet"),
-    /** Tap a 🧭 row, then a tile — the way a user re-routes a Fund. */
+    decideRows: () => Array.from(document.querySelectorAll("#closeout-decide-list [data-route-row]")),
+    pill: (key) => $(`#closeout-decide-list [data-route-row="${key}"] [data-route-pill]`),
+    todoRows: () => Array.from(document.querySelectorAll("#closeout-todo-list .closeout-todo")),
+    /** Tap the pill until the Fund has this route — the way a user re-routes it. */
     route: (key, value) => {
-      const row = $(`#closeout-decide-list [data-route-open="${key}"]`);
-      expect(row, "row " + key).toBeTruthy();
-      row.click();
-      const tile = $(`#closeout-route-sheet [data-route-tile="${value}"]`);
-      expect(tile, "tile " + value).toBeTruthy();
-      tile.click();
+      const pill = $(`#closeout-decide-list [data-route-cycle="${key}"]`);
+      expect(pill, "pill " + key).toBeTruthy();
+      for (let i = 0; i < 3 && pill.dataset.route !== value; i++) pill.click();
+      expect(pill.dataset.route).toBe(value);
     },
-    /** Pick one of Muss nicht / Mit Anleitung / Mach ich selbst. */
-    mode: (kind, id, value) => {
-      const input = $(`#closeout-${kind}-list input[data-todo-mode="${kind}:${id}"][value="${value}"]`);
-      expect(input, `${kind}:${id} → ${value}`).toBeTruthy();
-      input.checked = true;
-      input.dispatchEvent(new window.Event("change", { bubbles: true }));
-    },
+    guide: (key) => $(`#closeout-todo-list [data-todo-guide="${key}"]`),
+    drop: (key) => $(`#closeout-todo-list [data-todo-drop="${key}"]`),
     ship: () => $("#closeout-ship"),
+    refine: () => $("#closeout-refine"),
     noship: () => $("#closeout-noship"),
     close: () => $("#closeout-close"),
     lastPayload: () => window.__posted[window.__posted.length - 1]?.body,
@@ -218,11 +211,10 @@ describe("🧭 Du entscheidest — pre-selected routes", () => {
       description: "repro steps",
       selected: true,
     });
-    // The pill shows the pre-selection, the chip its one-word reason.
+    // The pill shows the pre-selection.
     expect(p.pill("oq-typo").dataset.route).toBe("implement");
     expect(p.pill("oq-saml").dataset.route).toBe("issue");
     expect(p.pill("oq-alt").dataset.route).toBe("ignore");
-    expect(p.decideRows()[1].querySelector(".closeout-why").textContent).toBe("kosmetisch");
   });
 
   test("a Fund without data-route-default falls back to 📌 Issue — nothing gets built unseen", () => {
@@ -231,15 +223,20 @@ describe("🧭 Du entscheidest — pre-selected routes", () => {
     expect(p.window.collectImplementItems()).toEqual([]);
   });
 
-  test("a tile in the bottom sheet re-routes one Fund, and only it", () => {
+  test("a tap on the pill moves to the next route, for one Fund only, and focus stays", () => {
     const p = page({ funde: FUNDE });
-    p.route("oq-saml", "implement");
+    const pill = p.pill("oq-saml");
+    pill.focus();
+    pill.click();
+    expect(pill.dataset.route).toBe("ignore");
+    pill.click();
+    expect(pill.dataset.route).toBe("implement");
     expect(p.window.collectImplementItems().map((i) => i.id)).toEqual(["oq-saml", "oq-typo"]);
     expect(p.window.collectIssueItems()).toEqual([]);
-    expect(p.pill("oq-saml").dataset.route).toBe("implement");
-    // The sheet closed again and focus is back on the row.
-    expect(p.routeSheet().hidden).toBe(true);
-    expect(p.document.activeElement.dataset.routeOpen).toBe("oq-saml");
+    pill.click();
+    expect(pill.dataset.route).toBe("issue");
+    expect(p.pill("oq-saml")).toBe(pill);
+    expect(p.document.activeElement).toBe(pill);
   });
 
   test("the buckets never overlap, whatever the user taps", () => {
@@ -253,29 +250,38 @@ describe("🧭 Du entscheidest — pre-selected routes", () => {
     }
   });
 
-  test("the bottom sheet shows name, origin, description, recommendation + reason, and the current tile", () => {
+  test("one line per Fund, one hint under all of them, no overlay left", () => {
     const p = page({ funde: FUNDE });
-    p.decideRows()[0].click();
-    const box = p.routeSheet();
-    expect(box.hidden).toBe(false);
-    expect(box.querySelector("[data-route-title]").textContent).toBe("SAML login fails");
-    expect(box.querySelector("[data-route-origin]").textContent).toBe("final.origin_found");
-    expect(box.querySelector("[data-route-body]").textContent).toBe("repro steps");
-    const why = box.querySelector("[data-route-why]").textContent;
-    expect(why).toContain("final.route_recommended");
-    expect(why).toContain("📌 final.route_issue");
-    expect(why).toContain("riskant");
-    expect(box.querySelector('[data-route-tile="issue"]').getAttribute("aria-checked")).toBe("true");
-    expect(p.document.activeElement.dataset.routeTile).toBe("issue");
-    // Escape closes it unchanged.
-    box.dispatchEvent(new p.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
-    expect(box.hidden).toBe(true);
-    expect(p.window.collectIssueItems().map((i) => i.id)).toEqual(["oq-saml"]);
+    expect(p.document.getElementById("closeout-route-sheet")).toBeNull();
+    expect(p.decideRows()[0].querySelector(".closeout-why")).toBeNull();
+    const hint = p.document.getElementById("closeout-route-hint");
+    expect(hint.hidden).toBe(false);
+    expect(p.document.querySelectorAll("#closeout-route-hint").length).toBe(1);
+    expect(page({}).document.getElementById("closeout-route-hint").hidden).toBe(true);
+    // The pill says what the route does.
+    expect(p.pill("oq-saml").dataset.tip).toBe("final.route_issue_hint");
+  });
+
+  test("a tap on the name opens the fold and marks the Fund in the report; the issue text stays out of the panel", () => {
+    const p = page({ funde: FUNDE });
+    const fund = p.document.querySelector('[data-oq-id="oq-saml"]');
+    const fold = fund.closest("details");
+    expect(fold.open).toBe(false);
+    p.document.querySelector('[data-route-jump="oq-saml"]').click();
+    expect(fold.open).toBe(true);
+    expect(fund.classList.contains("fr-fund-hit")).toBe(true);
+    expect(p.sheet().textContent).not.toContain("repro steps");
+  });
+
+  test("a not-built item carries the shortfall mark", () => {
+    const p = page({ funde: [{ id: "oq-gap", title: "[FEATURE] Step", origin: "shortfall", route: "now" }, FUNDE[0]] });
+    expect(p.decideRows()[0].hasAttribute("data-shortfall")).toBe(true);
+    expect(p.decideRows()[1].hasAttribute("data-shortfall")).toBe(false);
   });
 
   test("a routed Fund (data-routed) leaves the inbox; with all routed the group disappears", () => {
     const p = page({ funde: [{ ...FUNDE[0], routed: true }, FUNDE[1]] });
-    expect(p.decideRows().map((r) => r.dataset.routeOpen)).toEqual(["oq-typo"]);
+    expect(p.decideRows().map((r) => r.dataset.routeRow)).toEqual(["oq-typo"]);
     p.document.querySelector('[data-oq-id="oq-typo"]').setAttribute("data-routed", "");
     p.render();
     expect(p.group("decide").hidden).toBe(true);
@@ -302,45 +308,40 @@ describe("🧭 Du entscheidest — pre-selected routes", () => {
       '<label><input type="checkbox" name="oq-c" data-issue-title="[BUG] C" checked disabled><span class="oq-label">C</span></label>';
     p.document.querySelector("section[data-final-report]").appendChild(block);
     p.render();
-    expect(p.decideRows().map((r) => r.dataset.routeOpen)).toEqual(["oq-a", "oq-b"]);
+    expect(p.decideRows().map((r) => r.dataset.routeRow)).toEqual(["oq-a", "oq-b"]);
     expect(p.window.collectIssueItems().map((i) => i.id)).toEqual(["oq-a"]);
   });
 });
 
-describe("🧭 at most three rows — the rest is one Sammel-Issue", () => {
+describe("🧭 three rows in view, the rest behind +N weitere", () => {
   const FIVE = [1, 2, 3, 4, 5].map((n) => ({ id: "oq-" + n, title: "[CHORE] Fund " + n, route: "now", reason: "klein" }));
 
-  test("three Funde stay three rows, no Sammel row", () => {
+  test("three Funde stay three rows, no button", () => {
     const p = page({ funde: FIVE.slice(0, 3) });
     expect(p.decideRows()).toHaveLength(3);
-    expect(p.document.querySelector(".closeout-sammel")).toBeNull();
+    expect(p.document.getElementById("closeout-decide-more").hidden).toBe(true);
   });
 
-  test("five Funde: two rows + one Sammel row; the payload files ONE issue for the other three", () => {
+  test("five Funde: three in view, every one keeps its own route and stays in the payload", () => {
     const p = page({ funde: FIVE });
     const rows = p.decideRows();
-    expect(rows).toHaveLength(3);
-    expect(rows.map((r) => r.dataset.routeOpen)).toEqual(["oq-1", "oq-2", "__sammel"]);
-    expect(rows[2].textContent).toContain("final.sammel_row");
-    expect(p.window.collectImplementItems().map((i) => i.id)).toEqual(["oq-1", "oq-2"]);
-    const issues = p.window.collectIssueItems();
-    expect(issues).toHaveLength(1);
-    expect(issues[0].id).toBe("__sammel");
-    expect(issues[0].collected.map((i) => i.id)).toEqual(["oq-3", "oq-4", "oq-5"]);
-    expect(issues[0].description).toContain("[CHORE] Fund 4");
-  });
-
-  test("the Sammel row offers Issue or Ignorieren — never a bundled build", () => {
-    const p = page({ funde: FIVE });
-    p.decideRows()[2].click();
-    expect(p.routeSheet().querySelector('[data-route-tile="implement"]').hidden).toBe(true);
-    p.routeSheet().querySelector('[data-route-tile="ignore"]').click();
-    expect(p.window.collectIssueItems()).toEqual([]);
-    expect(p.pill("__sammel").dataset.route).toBe("ignore");
+    expect(rows.map((r) => r.hidden)).toEqual([false, false, false, true, true]);
+    const more = p.document.getElementById("closeout-decide-more");
+    expect(more.hidden).toBe(false);
+    expect(more.textContent).toBe("final.funde_more");
+    expect(p.window.collectImplementItems().map((i) => i.id)).toEqual(FIVE.map((f) => f.id));
+    more.focus();
+    more.click();
+    expect(p.decideRows().every((r) => !r.hidden)).toBe(true);
+    expect(more.hidden).toBe(true);
+    // The button is gone, so focus goes to the first row it revealed, not to the page.
+    expect(p.document.activeElement).toBe(p.pill("oq-4"));
+    p.route("oq-5", "issue");
+    expect(p.window.collectIssueItems().map((i) => i.id)).toEqual(["oq-5"]);
   });
 });
 
-describe("🧪 / 👉 — criticality, then guidability", () => {
+describe("Bleibt für dich — criticality, then guidability", () => {
   const TESTS = [
     { id: "t-low", text: "Read the English copy", crit: "low", guide: "web" },
     { id: "t-web", text: "Try the login on a phone", crit: "mid", guide: "web" },
@@ -348,7 +349,7 @@ describe("🧪 / 👉 — criticality, then guidability", () => {
   ];
   const HANDOFFS = [{ id: "h-secret", text: "Store the token secret", crit: "high", guide: "desktop" }];
 
-  test("defaults: low → Muss nicht; guidable → Mit Anleitung (its kind); not guidable → Mach ich selbst", () => {
+  test("defaults: low → struck; guidable → Führ mich on; not guidable → the card", () => {
     const p = page({ tests: TESTS, handoffs: HANDOFFS });
     expect(p.window.collectTodos("tests")).toEqual([
       { id: "t-low", text: "Read the English copy", mode: "skip", guide: null },
@@ -358,46 +359,59 @@ describe("🧪 / 👉 — criticality, then guidability", () => {
     expect(p.window.collectTodos("handoffs")).toEqual([
       { id: "h-secret", text: "Store the token secret", mode: "guide", guide: "desktop" },
     ]);
-    // The radios show it, and the guidance kind is named under the row.
-    const web = p.todoRows("tests")[1];
-    expect(web.querySelector('input[value="guide"]').checked).toBe(true);
-    expect(web.querySelector("[data-guide-kind]").textContent).toBe("final.guide_web");
-    expect(p.todoRows("tests")[2].querySelector("[data-guide-kind]").hidden).toBe(true);
+    expect(p.guide("tests:t-web").getAttribute("aria-checked")).toBe("true");
+    expect(p.guide("tests:t-web").dataset.tip).toBe("final.guide_web");
+    expect(p.guide("tests:t-game").getAttribute("aria-checked")).toBe("false");
+    // A struck row hides its switch and offers ↩.
+    expect(p.guide("tests:t-low").hidden).toBe(true);
+    expect(p.drop("tests:t-low").textContent).toBe("↩");
   });
 
-  test("Mit Anleitung on something Claude cannot walk through becomes written steps — never 'nicht führbar'", () => {
+  test("🧪 and 👉 are one list, kind glyph on each row, one count", () => {
+    const p = page({ tests: TESTS, handoffs: HANDOFFS });
+    expect(p.todoRows()).toHaveLength(4);
+    expect(p.todoRows().map((r) => r.querySelector(".closeout-kind").textContent)).toEqual(["🧪", "🧪", "🧪", "👉"]);
+    expect(p.group("todo").querySelector("[data-closeout-count]").textContent).toBe("4");
+  });
+
+  test("Führ mich on something Claude cannot walk through becomes written steps — never 'nicht führbar'", () => {
     const p = page({ tests: TESTS });
-    p.mode("tests", "t-game", "guide");
+    p.guide("tests:t-game").click();
     expect(p.window.collectTodos("tests")[2]).toMatchObject({ mode: "guide", guide: "inline" });
-    expect(p.todoRows("tests")[2].querySelector("[data-guide-kind]").textContent).toBe("final.guide_inline");
+    expect(p.guide("tests:t-game").dataset.tip).toBe("final.guide_inline");
     expect(p.sheet().textContent).not.toMatch(/nicht führbar|not guidable/i);
     expect(md).not.toMatch(/final\.[a-z_]+`\s*\|[^|\n]*\|[^|\n]*nicht führbar/);
   });
 
-  test("the radios never persist and choosing one keeps focus on its row (no rebuild)", () => {
+  test("✕ strikes, ↩ brings back what was authored, the row stays in place, nothing persists", () => {
     const p = page({ tests: TESTS });
-    const input = p.document.querySelector('input[data-todo-mode="tests:t-web"][value="self"]');
-    expect(input.hasAttribute("data-no-persist")).toBe(true);
-    const row = p.todoRows("tests")[1];
-    p.mode("tests", "t-web", "self");
-    expect(p.todoRows("tests")[1]).toBe(row);
-    expect(p.window.collectTodos("tests")[1]).toMatchObject({ mode: "self", guide: null });
+    const row = p.todoRows()[1];
+    p.drop("tests:t-web").click();
+    expect(p.window.collectTodos("tests")[1]).toMatchObject({ mode: "skip", guide: null });
+    expect(row.dataset.mode).toBe("skip");
+    p.drop("tests:t-web").click();
+    expect(p.window.collectTodos("tests")[1]).toMatchObject({ mode: "guide", guide: "web" });
+    expect(p.todoRows()[1]).toBe(row);
+    // A low item, authored as struck, comes back onto the card.
+    p.drop("tests:t-low").click();
+    expect(p.window.collectTodos("tests")[0]).toMatchObject({ mode: "self", guide: null });
+    expect(p.window.localStorage.length).toBe(0);
   });
 
-  test("more than three: three rows, '+N weitere', and every item still in the payload", () => {
+  test("more than three of a kind: three rows, '+N weitere', and every item still in the payload", () => {
     const many = [1, 2, 3, 4, 5].map((n) => ({ id: "t" + n, text: "Check " + n, crit: "mid", guide: "" }));
     const p = page({ tests: many });
-    expect(p.todoRows("tests")).toHaveLength(3);
-    expect(p.document.querySelector("#closeout-tests-list .closeout-more").textContent).toBe("final.todo_more".replace("{n}", "2"));
+    expect(p.todoRows()).toHaveLength(3);
+    expect(p.document.querySelector("#closeout-todo-list .closeout-more").textContent).toBe("final.todo_more".replace("{n}", "2"));
     expect(p.window.collectTodos("tests")).toHaveLength(5);
   });
 
-  test("criticality chip from data-crit; an empty group is not shown", () => {
-    const p = page({ tests: TESTS });
-    expect(p.todoRows("tests")[2].querySelector(".closeout-crit").dataset.crit).toBe("mid");
-    expect(p.group("tests").hidden).toBe(false);
-    expect(p.group("handoffs").hidden).toBe(true);
-    expect(p.group("decide").hidden).toBe(true);
+  test("criticality shows only when high; an empty group is not shown", () => {
+    const p = page({ tests: TESTS, handoffs: HANDOFFS });
+    expect(p.todoRows().map((r) => !!r.querySelector(".closeout-crit"))).toEqual([false, false, false, true]);
+    const q = page({ tests: TESTS });
+    expect(q.group("todo").hidden).toBe(false);
+    expect(q.group("decide").hidden).toBe(true);
   });
 
   test("an inbox with nothing in it says so", () => {
@@ -489,7 +503,147 @@ describe("the two buttons are the ship answer", () => {
   });
 });
 
-describe("🤖 Claude macht beim Klick", () => {
+describe("🔧 Nachbessern", () => {
+  const withNote = (p) => {
+    p.window.collectDecisions = () => ({ comments: { general: { text: "Knopf zu klein" }, items: [] } });
+    return p;
+  };
+  test("sends the notes as refine: no ship, no disposition, and the clicked button is the status", async () => {
+    const p = withNote(page({ funde: FUNDE }));
+    p.refine().click();
+    await tick();
+    const body = p.lastPayload();
+    expect(body).toMatchObject({ submitted: true, action: "refine", iteration: "2", comments: { general: { text: "Knopf zu klein" } } });
+    expect(body.ship).toBeUndefined();
+    expect(body.disposition).toBeUndefined();
+    expect(body.submission_id).toMatch(/^sub-/);
+    expect(p.refine().dataset.finalizeState).toBe("running");
+    expect(p.ship().hidden).toBe(true);
+    expect(p.window.__submitted().action).toBe("refine");
+  });
+  test("without a note nothing is sent and the dock opens", async () => {
+    const p = page({ funde: FUNDE });
+    if (!p.document.querySelector(".feedback-fab")) {
+      const fab = p.document.createElement("button");
+      fab.className = "feedback-fab";
+      p.document.body.appendChild(fab);
+    }
+    let opened = 0;
+    p.document.addEventListener("click", (e) => { if (e.target.matches(".feedback-fab")) opened++; });
+    p.refine().click();
+    await tick();
+    expect(p.posted).toHaveLength(0);
+    expect(opened).toBe(1);
+    expect(p.sheet().dataset.frozen).not.toBe("true");
+    expect(p.window.__stub.warn).toBe("{{final.refine_empty}}");
+  });
+  test("a reload during a refine comes back frozen on that button", async () => {
+    const p = await pageWithBridge({ submitted: true, action: "refine", iteration: "2" }, { funde: FUNDE });
+    expect(p.refine().dataset.finalizeState).toBe("running");
+    expect(p.window.__submitted().action).toBe("refine");
+  });
+});
+
+describe("Fertig-Seite", () => {
+  const closed = (finished) => {
+    const p = page({ funde: FUNDE });
+    p.window.submitFinalize(true);
+    p.window.noteCloseoutPhase({ _phase: "closed", _finished: finished });
+    return p;
+  };
+  const fin = (p) => p.document.querySelector(".fin");
+
+  test("shows the reported result: heading, line, real links, the card's next steps as hints", () => {
+    const p = closed({
+      state: "shipped", sub: "v1.2.0 auf Alpha",
+      links: [{ label: "PR #7", href: "https://github.com/o/r/pull/7" }, { label: "bad", href: "javascript:alert(1)" }],
+      next: ["Nach Beta heben"], left: ["Secret hinterlegen"],
+    });
+    const f = fin(p);
+    expect(f.dataset.fin).toBe("shipped");
+    expect(p.document.body.classList.contains("fin-on")).toBe(true);
+    expect(f.querySelector(".fin-h").textContent).toBe("{{final.fin_shipped}}");
+    expect(f.querySelector(".fin-s").textContent).toBe("v1.2.0 auf Alpha");
+    const links = Array.from(f.querySelectorAll(".fin-links a"));
+    expect(links.map((a) => a.textContent)).toEqual(["PR #7"]);
+    expect(links[0].rel).toContain("noopener");
+    // A chat action is a hint, never a dead button.
+    expect(f.querySelectorAll(".fin-next li")).toHaveLength(1);
+    expect(f.querySelector(".fin-next button, .fin-next a")).toBeNull();
+    expect(f.querySelector(".fin-left li").textContent).toBe("Secret hinterlegen");
+    expect(f.querySelector(".fin-back")).toBeNull();
+    expect(f.querySelector(".fr-sentence, .fr-meter")).toBeNull();
+  });
+
+  test("the result is data, never markup", () => {
+    const p = closed({ state: "closed", sub: "<img src=x onerror=alert(1)>" });
+    expect(fin(p).querySelector("img")).toBeNull();
+    expect(fin(p).querySelector(".fin-s").textContent).toContain("<img");
+  });
+
+  test("a closed phase without a result stays neutral: never green", () => {
+    expect(fin(closed(undefined)).dataset.fin).toBe("closed");
+    expect(fin(closed({ state: "nonsense" })).dataset.fin).toBe("closed");
+  });
+
+  test("partial names what was missed, at most three plus a count", () => {
+    const f = fin(closed({ state: "partial", misses: ["a", "b", "c", "d"] }));
+    expect(f.dataset.fin).toBe("partial");
+    expect(Array.from(f.querySelectorAll(".fin-misses li")).map((l) => l.textContent)).toEqual(["{{final.fin_miss}}: a", "{{final.fin_miss}}: b", "{{final.fin_miss}}: c", "+1"]);
+  });
+
+  test("a blocked ship keeps the way back to the report, which stays gone once dismissed", () => {
+    const p = page({ funde: FUNDE });
+    p.window.noteCloseoutPhase({ _phase: "ship-blocked", _finished: { state: "blocked", reason: "CI rot", next: ["Fix"] } });
+    expect(fin(p).dataset.fin).toBe("blocked");
+    fin(p).querySelector(".fin-back").click();
+    expect(fin(p)).toBeNull();
+    expect(p.document.body.classList.contains("fin-on")).toBe(false);
+    p.window.noteCloseoutPhase({ _phase: "ship-blocked", _finished: { state: "blocked", reason: "CI rot", next: ["Fix"] } });
+    expect(fin(p)).toBeNull();
+  });
+
+  test("a finalize whose bridge stays gone ends neutral, and a late result replaces it", () => {
+    const p = page({ funde: FUNDE });
+    p.window.submitFinalize(true);
+    p.document.getElementById("connection-status").dataset.state = "disconnected";
+    for (let i = 0; i < 3; i++) p.window.watchFinalizeLost();
+    expect(fin(p)).toBeNull();
+    p.window.watchFinalizeLost();
+    expect(fin(p).dataset.fin).toBe("lost");
+    p.window.noteCloseoutPhase({ _phase: "closed", _finished: { state: "shipped" } });
+    expect(fin(p).dataset.fin).toBe("shipped");
+  });
+
+  test("the tab confirms it has the result, so the bridge may stop", () => {
+    const p = closed({ state: "closed" });
+    expect(p.posted.some((x) => x.url === "/closed-ack")).toBe(true);
+  });
+});
+
+describe("Vorher / Nachher", () => {
+  test("two pictures share one place, Nachher first; the switch trades them", () => {
+    const p = page({});
+    const sec = p.document.querySelector("section[data-final-report]");
+    const ba = p.document.createElement("div");
+    ba.className = "fr-ba";
+    ba.dataset.labelBefore = "Vorher";
+    ba.dataset.labelAfter = "Nachher";
+    ba.innerHTML = '<figure class="fr-shot"><img src="a.png"></figure><figure class="fr-shot"><img src="b.png"></figure>';
+    sec.appendChild(ba);
+    p.render();
+    p.render();
+    const [before, after] = ba.querySelectorAll(".fr-shot");
+    expect(ba.querySelectorAll(".fr-ba-switch")).toHaveLength(1);
+    expect([before.hidden, after.hidden]).toEqual([true, false]);
+    const btns = ba.querySelectorAll(".fr-ba-switch button");
+    expect(btns[1].getAttribute("aria-pressed")).toBe("true");
+    btns[0].click();
+    expect([before.hidden, after.hidden]).toEqual([false, true]);
+  });
+});
+
+describe("under the divider", () => {
   test("the plan line counts what the click will do and follows every re-route", () => {
     const p = page({ funde: FUNDE });
     const plan = p.document.getElementById("closeout-plan");
@@ -565,7 +719,7 @@ describe("a finalize that outlives its tab, and the done state", () => {
     expect(p.window.__submitted().at).toBe(0);
   });
 
-  test("data-closed: only 🧪/👉 with the chosen mode, and one '✓ Concept abgeschlossen · schließen'", () => {
+  test("data-closed: the buttons step aside for the kept page's stamped result", () => {
     const p = page({
       closed: true,
       funde: FUNDE,
@@ -576,12 +730,12 @@ describe("a finalize that outlives its tab, and the done state", () => {
     expect(p.sheet().querySelector(".closeout-claude").hidden).toBe(true);
     expect(p.ship().hidden).toBe(true);
     expect(p.noship().hidden).toBe(true);
+    expect(p.refine().hidden).toBe(true);
     expect(p.close().hidden).toBe(false);
-    expect(p.close().textContent).toContain("final.closeout_done_close");
-    const rows = p.todoRows("tests");
-    expect(rows.map((r) => r.dataset.mode)).toEqual(["self", "skip"]);
-    expect(p.sheet().querySelectorAll("#closeout-tests-list input").length).toBe(0);
-    expect(p.todoRows("handoffs")[0].textContent).toContain("🖥 final.mode_guide");
+    expect(p.document.querySelector(".fin").dataset.fin).toBe("closed");
+    expect(p.todoRows().map((r) => r.dataset.mode)).toEqual(["self", "skip", "guide"]);
+    expect(p.sheet().querySelectorAll("#closeout-todo-list [data-todo-guide]").length).toBe(0);
+    expect(p.todoRows()[2].textContent).toContain("🖥 final.mode_guide");
     // No line about the completion card.
     expect(p.sheet().textContent).not.toMatch(/Completion Card/i);
     p.close().click();

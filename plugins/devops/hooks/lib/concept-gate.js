@@ -144,7 +144,12 @@ function finalReportRegion(html) {
  * current final-report engine — an older page is the stale-engine finding's
  * job, not this one.
  */
-const FR_LABEL_MAX = 48;
+const FR_FUND_LABEL_MAX = 28;
+const FR_TODO_LABEL_MAX = 48;
+const FR_SENTENCE_MAX = 170;
+const FR_WIN_MAX = 90;
+const FR_TRY_AUTH_MAX = 110;
+const FR_ROW_MAX = 3;
 function findFinalReportIssues(html) {
   const region = finalReportRegion(html);
   if (!region) return [];
@@ -168,22 +173,23 @@ function findFinalReportIssues(html) {
       const tag = m[0];
       if (/\sdata-routed\b/.test(tag)) continue;
       const origin = /\sdata-oq-origin=["']([^"']*)["']/.exec(tag);
-      if (!origin || (origin[1] !== 'deferred' && origin[1] !== 'found')) {
+      if (!origin || !['deferred', 'found', 'shortfall'].includes(origin[1])) {
         const title = /\sdata-issue-title=["']([^"']*)["']/.exec(tag);
-        issues.push({ kind: 'final-report-origin', why: `Fund "${title ? title[1] : '?'}" has no data-oq-origin="deferred" | "found" — it skipped the open-points admission gate (validation-gate.md 33b)`, at: region.at });
+        issues.push({ kind: 'final-report-origin', why: `Fund "${title ? title[1] : '?'}" has no data-oq-origin="deferred" | "found" | "shortfall" — it skipped the open-points admission gate (validation-gate.md 33b)`, at: region.at });
       }
     }
   }
   // Visible label length (validation-gate.md 33c): the close-out sheet shows a
   // row title in two lines at most, and a longer one is cut by the clamp.
-  const tooLong = (kind, text) => {
-    const t = text.replace(/<[^>]*>/g, '').replace(/&[a-z#0-9]+;/gi, 'x').replace(/\s+/g, ' ').trim();
-    if ([...t].length > FR_LABEL_MAX) {
-      issues.push({ kind: 'final-report-label-length', why: `${kind} "${t.slice(0, 40)}…" is ${[...t].length} characters — the visible label is a noun phrase of at most ${FR_LABEL_MAX} (the sheet shows two lines); details go into data-issue-body / the report body (validation-gate.md 33c)`, at: region.at });
+  const plain = (text) => text.replace(/<[^>]*>/g, '').replace(/&[a-z#0-9]+;/gi, 'x').replace(/\s+/g, ' ').trim();
+  const tooLong = (kind, text, max) => {
+    const t = plain(text);
+    if ([...t].length > max) {
+      issues.push({ kind: 'final-report-label-length', why: `${kind} "${t.slice(0, 40)}…" is ${[...t].length} characters — the visible label is a noun phrase of at most ${max} (the panel shows it in ${max === FR_FUND_LABEL_MAX ? 'one line' : 'two lines'}); details go into the report's .fr-fkv / data-issue-body (validation-gate.md 33c)`, at: region.at });
     }
   };
   if (oqStart >= 0) {
-    for (const m of body.slice(oqStart).matchAll(/<[a-z]+\b[^>]*\sclass=["'][^"']*\boq-label\b[^"']*["'][^>]*>([\s\S]*?)<\/[a-z]+>/gi)) tooLong('Fund label', m[1]);
+    for (const m of body.slice(oqStart).matchAll(/<[a-z]+\b[^>]*\sclass=["'][^"']*\boq-label\b[^"']*["'][^>]*>([\s\S]*?)<\/[a-z]+>/gi)) tooLong('Fund label', m[1], FR_FUND_LABEL_MAX);
   }
   for (const attr of ['data-tests', 'data-handoffs']) {
     const at = body.search(new RegExp('\\s' + attr + '(?=[\\s=>/])'));
@@ -192,11 +198,37 @@ function findFinalReportIssues(html) {
     const seg = body.slice(at, end < 0 ? undefined : end);
     for (const m of seg.matchAll(/<li\b[^>]*>([\s\S]*?)<\/li>/gi)) {
       const todo = /<[a-z]+\b[^>]*class=["'][^"']*\btodo-text\b[^"']*["'][^>]*>([\s\S]*?)<\/[a-z]+>/i.exec(m[1]);
-      tooLong(attr === 'data-tests' ? '🧪 item' : '👉 item', todo ? todo[1] : m[1]);
+      tooLong(attr === 'data-tests' ? '🧪 item' : '👉 item', todo ? todo[1] : m[1], FR_TODO_LABEL_MAX);
     }
   }
+  // One screen at 1440 × 900 (validation-gate.md 33d): nine of the last ten
+  // reports broke it through long sentences, a growing foot line and invented
+  // extra cards, although the rule stood in the authoring docs.
+  const budget = (why) => issues.push({ kind: 'final-report-budget', why: why + ' — the report fits one screen (validation-gate.md 33d)', at: region.at });
+  const byClass = (cls) => [...body.matchAll(new RegExp('<([a-z]+)\\b[^>]*\\sclass=["\'][^"\']*\\b' + cls + '\\b[^"\']*["\'][^>]*>([\\s\\S]*?)</\\1>', 'gi'))];
+  const over = (cls, label, max) => byClass(cls).forEach(m => {
+    const n = [...plain(m[2])].length;
+    if (n > max) budget(`${label} is ${n} characters, at most ${max}`);
+  });
+  over('fr-sentence', '.fr-sentence', FR_SENTENCE_MAX);
+  over('fr-try-auth', '.fr-try-auth', FR_TRY_AUTH_MAX);
+  const wins = byClass('fr-wins')[0];
+  if (wins) {
+    const items = [...wins[2].matchAll(/<li\b[^>]*>([\s\S]*?)<\/li>/gi)];
+    if (items.length > FR_ROW_MAX) budget(`${items.length} results in .fr-wins, at most ${FR_ROW_MAX}`);
+    items.forEach(m => {
+      const n = [...plain(m[1])].length;
+      if (n > FR_WIN_MAX) budget(`a result in .fr-wins is ${n} characters, at most ${FR_WIN_MAX}`);
+    });
+  }
+  const meters = [...body.matchAll(/<[a-z]+\b[^>]*\sclass=["'][^"']*\bfr-meter(?![-\w])[^"']*["'][^>]*>/gi)];
+  if (meters.length > FR_ROW_MAX) budget(`${meters.length} bars in .fr-meters, at most ${FR_ROW_MAX}`);
+  if (meters.some(m => !/\sdata-grade=["'](full|part|low|open)["']/.test(m[0]))) budget('a .fr-meter has no data-grade="full|part|low|open", so its colour says nothing');
+  for (const cls of ['fr-card', 'fr-cols', 'fr-ladder-foot']) {
+    if (new RegExp('\\sclass=["\'][^"\']*\\b' + cls + '\\b').test(body)) budget(`.${cls} is not part of the report: a gap is a Fund with data-oq-origin="shortfall", a Nachtrag goes in the 🛠 fold`);
+  }
   if (/nicht führbar|not guidable/i.test(body)) {
-    issues.push({ kind: 'final-report-not-guidable', why: 'the final report says "nicht führbar" — never shown: "Mit Anleitung" on such an item means written steps (validation-gate.md 37b)', at: region.at });
+    issues.push({ kind: 'final-report-not-guidable', why: 'the final report says "nicht führbar" — never shown: "Führ mich" on such an item means written steps (validation-gate.md 37b)', at: region.at });
   }
   return issues;
 }
