@@ -40,6 +40,11 @@ describe("findInScript", () => {
     expect(findInScript("chromium.launch({ headless: false, args: [knowledge, bridge] })")).toHaveLength(1);
   });
 
+  test("Edge in an argument does not make the window Edge", () => {
+    expect(findInScript("chromium.launch({ headless: false, args: ['--app=https://edge.example'] })")).toHaveLength(1);
+    expect(findInScript("chromium.launch({ executablePath: knowledgePath, headless: false })")).toHaveLength(1);
+  });
+
   test("Edge in another launch does not excuse this one", () => {
     const text = "chromium.launch({ channel: 'msedge', headless: false });\nchromium.launch({ headless: false });";
     expect(findInScript(text)).toHaveLength(1);
@@ -64,6 +69,8 @@ describe("findInCommand", () => {
     ["quoted path with a space", '"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" http://x'],
     ["PowerShell call operator", '& "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" http://x'],
     ["debug port without headless", "chrome.exe --remote-debugging-port=9222"],
+    ["Chrome with a URL naming Edge", 'start "" chrome https://edge.example'],
+    ["headed run with a filter naming Edge", "npx playwright test --headed --grep edge"],
     ["heredoc script", "node - <<'EOF'\nchromium.launch({ headless: false })\nEOF"],
     ["node -e", 'node -e "chromium.launch({ headless: false })"'],
     ["written by heredoc", "cat > page.cjs <<'EOF'\nchromium.launch({ headless: false })\nEOF"],
@@ -74,6 +81,8 @@ describe("findInCommand", () => {
   test.each([
     ["headless test run", "npx playwright test"],
     ["Edge test run", "npx playwright test --headed --browser=msedge"],
+    ["Edge project", "npx playwright test --headed --project=edge"],
+    ["Edge channel flag", "npx playwright open --channel msedge http://x"],
     ["Edge start", 'start "" msedge --new-window http://x'],
     ["headless Chrome", "chrome.exe --headless --dump-dom http://x"],
     ["version check", "chrome.exe --version"],

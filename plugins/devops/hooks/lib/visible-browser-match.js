@@ -21,8 +21,11 @@
 const CODE_FILE = /\.(?:[cm]?js|jsx|[cm]?ts|tsx|py)$/i;
 const BROWSER_LIB = /playwright|puppeteer|chromium|firefox|webkit|\.launch\w*\s*\(/i;
 const VISIBLE_OPTION = /['"]?\bheadless['"]?\s*[:=]\s*(?:false|False)\b/g;
-// Case-sensitive parts keep "knowledge" and "bridge" from counting as Edge.
-const EDGE = /[Mm][Ss][Ee][Dd][Gg][Ee]|\b[Ee][Dd][Gg][Ee]|[a-z]Edge|_EDGE/;
+// Only the option that picks the browser counts: a URL or argument naming Edge
+// does not make the window Edge. Case-sensitive parts keep "knowledge" and
+// "bridge" from counting.
+const EDGE_OPTION = /\b(?:channel|executablePath|executable_path)['"]?\s*[:=]\s*[^,})\n]*(?:[Mm][Ss][Ee][Dd][Gg][Ee]|\b[Ee][Dd][Gg][Ee]|[a-z]Edge|_EDGE)/;
+const EDGE_FLAG = /--(?:browser|channel|project)[=\s]+\S*edge\b|(?:^|\s)-b\s+\S*edge\b|\bmsedge(?:\.exe)?(?=["'\s]|$)/i;
 const INLINE_SCRIPT = /<<|\bnode\s+(?:-e|--eval|-p)\b|\bpython3?\s+-c\b|@['"]/;
 const BYPASS = /\bDEVOPS_ALLOW_VISIBLE_BROWSER\b/;
 
@@ -66,7 +69,7 @@ function findInScript(text) {
   const found = [];
   for (const m of text.matchAll(VISIBLE_OPTION)) {
     const options = enclosing(text, m.index);
-    if (!EDGE.test(options)) found.push({ kind: 'option', shown: shown(options) });
+    if (!EDGE_OPTION.test(options)) found.push({ kind: 'option', shown: shown(options) });
   }
   return found;
 }
@@ -80,9 +83,8 @@ function findInCommand(command) {
   if (typeof command !== 'string') return [];
   const found = [];
   for (const segment of splitSegments(command)) {
-    if (EDGE.test(segment)) continue;
     if (PLAYWRIGHT_WINDOW.test(segment) || (RUNNER.test(segment) && /(?:^|\s)--headed\b/.test(segment))) {
-      found.push({ kind: 'runner', shown: shown(segment) });
+      if (!EDGE_FLAG.test(segment)) found.push({ kind: 'runner', shown: shown(segment) });
     } else if (CHROME_EXE.test(segment) && !/--headless\b|--version\b/.test(segment)) {
       found.push({ kind: 'executable', shown: shown(segment) });
     }
