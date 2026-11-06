@@ -225,8 +225,17 @@ html[data-theme="light"] .an-tagw { color: var(--an-ac); }
 .an-send svg { width: 22px; height: 22px; fill: currentColor; }
 .an-send:hover:not(:disabled) { filter: brightness(1.1); }
 .an-sent .an-send { animation: an-fade .4s ease-out 1; }
-.an-comp-msg { position: absolute; left: 8px; right: 8px; bottom: calc(100% + 8px); padding: 8px 12px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--an-b1) 45%, transparent); background: var(--an-s1); color: var(--an-tx); font-size: 13px; line-height: 1.4; z-index: 7; }
-.an-comp-msg[hidden] { display: none; }
+/* sent notes: chat messages right before the Weiter row. Pen and x lie over the message on hover, so a short note needs no room for them */
+.an-notes { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; margin-top: 14px; }
+.an-notes[hidden] { display: none; }
+.an-note-m { position: relative; white-space: pre-wrap; overflow-wrap: anywhere; }
+.an-note-m .an-tagw { height: auto; padding: 0 7px; }
+.an-note-acts { position: absolute; top: 50%; right: 6px; display: flex; gap: 12px; opacity: 0; pointer-events: none; transform: translateY(-50%); transition: opacity .12s ease; }
+.an-note-m:hover .an-note-acts, .an-note-m:focus-within .an-note-acts { opacity: 1; pointer-events: auto; }
+.an-note-b { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 1px solid var(--an-bd2); border-radius: 50%; background: var(--an-s2); color: var(--an-tx); cursor: pointer; }
+.an-note-b svg { width: 18px; height: 18px; fill: currentColor; }
+.an-note-b:hover, .an-note-b:focus-visible { background: var(--an-s1); border-color: var(--an-b2); }
+@media (hover: none) { .an-note-m { padding-right: 104px; } .an-note-acts { opacity: 1; pointer-events: auto; } }
 
 /* ---------- briefing + closing: the cool blue of devops concepts, no type colour of their own ---------- */
 .an-brief { position: relative; display: flex; flex-direction: column; align-items: center; min-width: 0; padding-top: 24px; text-align: center; }
