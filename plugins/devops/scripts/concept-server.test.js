@@ -481,6 +481,40 @@ describe.skipIf(!PY)("concept-server reports its html_path (C1 — foreign bridg
   });
 });
 
+describe.skipIf(!PY)("concept-server keeps the last /reset stamp across a new submission (#1068)", () => {
+  test("_processed_at survives the next submission: the browser and the title hook rely on it", async () => {
+    const port = PORT + 42;
+    const url = (p) => `http://127.0.0.1:${port}${p}`;
+    const proc = spawn(PY, [SERVER, String(port), "--store", storeFor(port)], { stdio: ["ignore", "pipe", "pipe"] });
+    const submit = () => fetch(url("/decisions"), {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ submitted: true, action: "finalize", decisions: [], comments: [] }),
+    });
+    try {
+      const deadline = Date.now() + 10000;
+      while (Date.now() < deadline) {
+        try { if ((await fetch(url("/reload"))).ok) break; } catch { /* not up yet */ }
+        await new Promise(r => setTimeout(r, 150));
+      }
+      expect((await (await submit()).json()).version).toBe(1);
+      const reset = await fetch(url("/reset"), {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ version: 1 }),
+      });
+      expect(reset.ok).toBe(true);
+      const stamp = (await (await fetch(url("/decisions"))).json())._processed_at;
+      expect(stamp).toBeTruthy();
+
+      expect((await (await submit()).json()).version).toBe(2);
+      const second = await (await fetch(url("/decisions"))).json();
+      expect(second.submitted).toBe(true);
+      expect(second._version).toBe(2);
+      expect(second._processed_at).toBe(stamp);
+    } finally {
+      await stopServer(proc);
+    }
+  }, 30000);
+});
+
 describe.skipIf(!PY)("concept-server no-new-round gate — /reset needs a /reload after an iterate submission", () => {
   test("428 until /reload advanced; no_round opt-out is journalled; finalize stays exempt", async () => {
     const port = PORT + 41;
