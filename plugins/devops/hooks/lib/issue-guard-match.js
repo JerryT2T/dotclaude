@@ -1,6 +1,6 @@
 /**
  * @module issue-guard-match
- * @version 0.3.0
+ * @version 0.3.1
  * @description Pure matcher for pre.issue.guard — decides whether a Bash or
  *   PowerShell command contains a REAL issue write that must instead go
  *   through the auto-issue skill (formerly setup-issue), the single
@@ -37,56 +37,21 @@
  *   been invoked in the current turn.
  */
 
-const { maskQuoted } = require('./ship-guard-match');
+const { maskQuoted, ghVerbRe, ghApiRe, joinContinuations, segmentBounds, isApiWrite } = require('./ship-guard-match');
 
-const BOUNDARY = String.raw`(?:^|[\n;&|(){}\x60])[ \t]*`;
-const PREFIX = String.raw`(?:(?:env|command|exec|sudo|time|nohup)[ \t]+|[A-Za-z_][A-Za-z0-9_]*=\S*[ \t]+)*`;
-const GH = String.raw`(?:[^\s;&|()]*[\\/])?gh(?:\.exe)?`;
-/** A flag, optionally with a value that is not itself the next keyword. */
-const FLAG = String.raw`[ \t]+-{1,2}[\w-]+(?:=\S*|[ \t]+(?!issue\b|create\b|edit\b|api\b|-)[^\s;&|]+)?`;
+const WRITE_RE = ghVerbRe('issue', ['create', 'edit']);
 
-const WRITE_RE = new RegExp(
-  BOUNDARY + PREFIX + GH + `(?:${FLAG})*` + String.raw`[ \t]+issue` + `(?:${FLAG})*` + String.raw`[ \t]+(create|edit)\b`,
-  'gi'
-);
-
-/** `gh api` at a command position — the rest of the segment decides. */
-const API_RE = new RegExp(BOUNDARY + PREFIX + GH + `(?:${FLAG})*` + String.raw`[ \t]+api\b`, 'gi');
+/** `gh api` at a command position: the rest of the segment decides. */
+const API_RE = ghApiRe(['issue', 'create', 'edit', 'api']);
 
 /** An issue (or its labels/assignees) endpoint — not comments, not timeline. */
 const API_ISSUE_PATH_RE =
   /(?:^|\s)\/?repos\/[^\s/]+\/[^\s/]+\/issues(?:\/\d+(?:\/(?:labels|assignees)(?:\/[^\s/?]+)?)?)?(?:\?\S*)?(?=\s|$)/i;
-const API_METHOD_RE = /(?:^|\s)(?:-X|--method)(?:[ \t]+|=)?([A-Za-z]+)/;
-const API_WRITE_METHODS = new Set(['POST', 'PATCH', 'PUT', 'DELETE']);
-const API_FIELD_RE = /(?:^|\s)(?:-[fF]|--field|--raw-field|--input)/;
 
 /** The marker auto-issue appends to every issue write it performs. The
  *  pre-PR-2 skill wrote `# via setup-issue`; both stay valid so an old
  *  extension or a cached skill body still passes. */
 const MARKER_RE = /#\s*via\s+(?:auto|setup)-issue\b/i;
-
-/** Separators that end a command segment (after quote masking). */
-const SEGMENT_END_RE = /[\n;|&]/;
-
-/**
- * Join line continuations: bash `\` + newline, PowerShell backtick + newline.
- * @param {string} cmd
- */
-function joinContinuations(cmd) {
-  return cmd.replace(/\\\r?\n/g, '  ').replace(/\x60\r?\n/g, '  ');
-}
-
-/**
- * Where the segment starting at `from` ends in the masked command, and the
- * index of its unquoted `#` comment (or -1).
- */
-function segmentBounds(masked, from) {
-  const rest = masked.slice(from);
-  const sep = rest.search(SEGMENT_END_RE);
-  const end = sep === -1 ? masked.length : from + sep;
-  const hash = masked.slice(from, end).indexOf('#');
-  return { end, hash: hash === -1 ? -1 : from + hash };
-}
 
 /** Does the segment's own trailing comment carry the marker? */
 function segmentMarked(cmd, masked, from) {
@@ -100,10 +65,7 @@ function segmentMarked(cmd, masked, from) {
 
 /** Is this `gh api` segment (quotes removed, comment cut) an issue write? */
 function isApiIssueWrite(args) {
-  if (!API_ISSUE_PATH_RE.test(args)) return false;
-  const method = API_METHOD_RE.exec(args);
-  if (method) return API_WRITE_METHODS.has(method[1].toUpperCase());
-  return API_FIELD_RE.test(args);
+  return API_ISSUE_PATH_RE.test(args) && isApiWrite(args);
 }
 
 /**

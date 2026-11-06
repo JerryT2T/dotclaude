@@ -53,10 +53,12 @@ html:has(section[data-analysis]) { scroll-padding-top: 60px; }
 .concept-content:has(section[data-analysis="full"][data-active]) > header .subtitle { display: none; }
 .concept-content:has(section[data-analysis="full"][data-active]) > header h1 { margin: 0.25rem 0 0.25rem; }
 .an-enh:not(.an-lite) { overflow: hidden; padding-bottom: 28px; }
-.an-chat { position: relative; flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable both-edges; display: flex; flex-direction: column; padding-bottom: 28px; scroll-padding-bottom: 28px; }
+.an-chat { position: relative; flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable both-edges; display: flex; flex-direction: column; padding-inline: 8px; padding-bottom: 28px; scroll-padding-bottom: 28px; }
 .an-chat > *, .an-chat .an-stage { flex: 0 0 auto; }   /* a stage inside a display:contents topic is a flex item too: it must never shrink below its content */
 .an-chat > .an-foot-brief { margin-top: auto; }
 .an-enh:not([data-an-stage="brief"]):not(.an-lite) { padding-top: 12px; }
+/* a design view runs edge to edge under the fixed variant bar: every stage keeps the chrome's top reserve, not only the briefing */
+section[data-view].an-enh:not(.an-lite) { padding-top: var(--chrome-safe-top, 5.75rem); }
 .an-enh [data-topic] { display: contents; }
 .an-enh .an-off { display: none !important; }
 .an-enh [data-alevel], .an-stores { display: none; }
@@ -161,6 +163,13 @@ html[data-theme="light"] .an-kind { color: var(--an-ac); }
    display:none (.an-wait), so it never reserves an empty area the chat could scroll to,
    and the chat glides down only as far as the message that just entered (glide). */
 .an-wait { display: none !important; }
+/* a message is still held back: dots at the bubbles' left edge, kept in view while the message above is long */
+.an-typing { position: sticky; bottom: 6px; display: flex; gap: 5px; width: max-content; margin: 16px 0 0 42px; padding: 10px 14px; border-radius: 4px 14px 14px 14px; background: var(--an-s1); }
+.an-typing > i { width: 7px; height: 7px; border-radius: 50%; background: var(--an-b2); animation: an-typing 1.2s ease-in-out infinite; }
+.an-typing > i:nth-child(2) { animation-delay: .16s; }
+.an-typing > i:nth-child(3) { animation-delay: .32s; }
+@keyframes an-typing { 0%, 60%, 100% { opacity: .3; transform: none; } 30% { opacity: 1; transform: translateY(-3px); } }
+@media (prefers-reduced-motion: reduce) { .an-typing > i { animation: none; opacity: .7; } }
 .an-enter { animation: an-in 1.35s cubic-bezier(.22,.8,.24,1) both; }
 .an-enter > .an-bub, .an-enter > .an-ans { animation: an-read 3.6s ease-out both; }
 .an-pulse { animation: an-pulse 1.1s ease-in-out 1; }
@@ -216,8 +225,17 @@ html[data-theme="light"] .an-tagw { color: var(--an-ac); }
 .an-send svg { width: 22px; height: 22px; fill: currentColor; }
 .an-send:hover:not(:disabled) { filter: brightness(1.1); }
 .an-sent .an-send { animation: an-fade .4s ease-out 1; }
-.an-comp-msg { position: absolute; left: 8px; right: 8px; bottom: calc(100% + 8px); padding: 8px 12px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--an-b1) 45%, transparent); background: var(--an-s1); color: var(--an-tx); font-size: 13px; line-height: 1.4; z-index: 7; }
-.an-comp-msg[hidden] { display: none; }
+/* sent notes: chat messages right before the Weiter row. Pen and x lie over the message on hover, so a short note needs no room for them */
+.an-notes { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; margin-top: 14px; }
+.an-notes[hidden] { display: none; }
+.an-note-m { position: relative; white-space: pre-wrap; overflow-wrap: anywhere; }
+.an-note-m .an-tagw { height: auto; padding: 0 7px; }
+.an-note-acts { position: absolute; top: 50%; right: 6px; display: flex; gap: 12px; opacity: 0; pointer-events: none; transform: translateY(-50%); transition: opacity .12s ease; }
+.an-note-m:hover .an-note-acts, .an-note-m:focus-within .an-note-acts { opacity: 1; pointer-events: auto; }
+.an-note-b { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 1px solid var(--an-bd2); border-radius: 50%; background: var(--an-s2); color: var(--an-tx); cursor: pointer; }
+.an-note-b svg { width: 18px; height: 18px; fill: currentColor; }
+.an-note-b:hover, .an-note-b:focus-visible { background: var(--an-s1); border-color: var(--an-b2); }
+@media (hover: none) { .an-note-m { padding-right: 104px; } .an-note-acts { opacity: 1; pointer-events: auto; } }
 
 /* ---------- briefing + closing: the cool blue of devops concepts, no type colour of their own ---------- */
 .an-brief { position: relative; display: flex; flex-direction: column; align-items: center; min-width: 0; padding-top: 24px; text-align: center; }

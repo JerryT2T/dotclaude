@@ -57,6 +57,7 @@ function fakeBridge({ advance = true, pageStatus = 200 } = {}) {
       res.setHeader("content-type", "application/json");
       return res.end(JSON.stringify({ claude_ts: ts }));
     }
+    if (req.url.startsWith("/identity")) return res.end(JSON.stringify({ pid: 4242 }));
     res.statusCode = pageStatus;
     res.end("x");
   });
@@ -79,6 +80,24 @@ describe("verify", () => {
       const r = await verify({ state: stateFor(srv.address().port) }, { openBrowser: (u) => { opened.push(u); return null; }, waitMs: 0 });
       expect(r.ok).toBe(true);
       expect(opened).toEqual([r.url]);
+    } finally { srv.close(); }
+  });
+
+  test("a second verify on the same bridge run opens no second tab", async () => {
+    const srv = await fakeBridge();
+    try {
+      const opened = [];
+      const deps = { openBrowser: (u) => { opened.push(u); return null; }, waitMs: 0 };
+      const state = stateFor(srv.address().port);
+      await verify({ state }, deps);
+      const again = await verify({ state }, deps);
+      expect(again).toMatchObject({ ok: true, already_open: true });
+      expect(opened).toHaveLength(1);
+      // A restarted bridge is a new run: the page opens again.
+      const st = JSON.parse(fs.readFileSync(state, "utf8"));
+      fs.writeFileSync(state, JSON.stringify({ ...st, opened_for_run: 12345 }));
+      await verify({ state }, deps);
+      expect(opened).toHaveLength(2);
     } finally { srv.close(); }
   });
 

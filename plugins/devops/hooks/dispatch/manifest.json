@@ -50,16 +50,16 @@
       },
       {
         "hooks": [
-          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.ship.guard.js\"", "onFailure": "block" },
-          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.main.guard.js\"", "onFailure": "block" },
-          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.worktree.split-guard.js\"" },
-          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.test.fullguard.js\"" }
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.ship.guard.js\"", "onFailure": "block", "commandFilter": "\\b[Gg][Hh]\\b" },
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.main.guard.js\"", "onFailure": "block", "commandFilter": "\\b[Gg][Ii][Tt]\\b" },
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.worktree.split-guard.js\"", "commandFilter": "\\b[Gg][Ii][Tt]\\b" },
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.test.fullguard.js\"", "commandFilter": "\\b(?:npm|vitest)\\b" }
         ],
         "matcher": "Bash|PowerShell"
       },
       {
         "hooks": [
-          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.issue.guard.js\"" }
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.issue.guard.js\"", "commandFilter": "\\b[Gg][Hh]\\b" }
         ],
         "matcher": "Bash|PowerShell|mcp__.*github.*__(issue_write|create_issue|update_issue)"
       },
@@ -71,7 +71,7 @@
       },
       {
         "hooks": [
-          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.redirect.scope.js\"" }
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.redirect.scope.js\"", "commandFilter": ">" }
         ],
         "matcher": "Bash|PowerShell"
       },
@@ -162,6 +162,18 @@
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.governor.gate.js\"", "timeout": 10 }
         ],
         "matcher": "Bash|PowerShell"
+      },
+      {
+        "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.waitloop.guard.js\"", "timeout": 5, "commandFilter": "\\b(?:while|until)\\b" }
+        ],
+        "matcher": "Bash"
+      },
+      {
+        "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.visible-browser.guard.js\"", "timeout": 5, "commandFilter": "headless|--headed|[Cc]hrome|playwright\\s+(?:open|codegen|cr|ff|wk)\\b" }
+        ],
+        "matcher": "Bash|PowerShell|Write|Edit|MultiEdit"
       }
     ],
     "SubagentStop": [
@@ -266,13 +278,13 @@
       },
       {
         "hooks": [
-          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use/post.flow.title-mode.js\"", "timeout": 5 }
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use/post.flow.title-mode.js\"", "timeout": 5, "commandFilter": "batch-state" }
         ],
         "matcher": "Skill|Bash|PowerShell"
       },
       {
         "hooks": [
-          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use/post.project.setup.js\"" }
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use/post.project.setup.js\"", "commandFilter": "\\binit\\b" }
         ],
         "matcher": "Bash|PowerShell"
       },
@@ -296,7 +308,7 @@
       },
       {
         "hooks": [
-          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use/post.test.record.js\"", "timeout": 40 }
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use/post.test.record.js\"", "timeout": 40, "commandFilter": "\\b(?:npm|vitest)\\b" }
         ],
         "matcher": "Bash|PowerShell"
       }

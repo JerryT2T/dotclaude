@@ -48,7 +48,8 @@ no crons, no Edge start. The steps, the wrapper contract and the card:
 **Fast path → no manual open (#1030).** When the page is opened through
 `concept-open.js verify` (§ Bridge server below), `verify` already opens Edge
 once after its 200 check. Running the command below as well opens the page
-twice. The command is for the non-fast path only.
+twice. The command is for the non-fast path only. A repeated `verify` on the
+same bridge run opens nothing and answers `already_open: true`.
 
 The **only** correct invocation is the OS `start`/`open` shell command
 that hands the URL to the user's default Edge window, which then opens

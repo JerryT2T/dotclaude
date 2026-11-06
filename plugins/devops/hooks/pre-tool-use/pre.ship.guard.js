@@ -1,14 +1,15 @@
 #!/usr/bin/env node
 /**
  * @hook pre.ship.guard
- * @version 0.4.3
+ * @version 0.5.0
  * @event PreToolUse
  * @plugin devops
- * @description Block manual PR creation/merging via Bash.
+ * @description Block manual PR creation/merging via Bash or PowerShell.
  *   These operations MUST go through /do-ship MCP tools.
- *   Detects: gh pr create, gh pr merge, gh api .../pulls/.../merge
+ *   Detects: gh pr create, gh pr merge, a writing gh api .../pulls/.../merge,
+ *   also as gh.exe, behind a path, env prefix or global flag (lib/ship-guard-match).
  *   Does NOT block: git push (needed for branch work before shipping).
- *   Does NOT block: MCP tool calls (tool_name !== "Bash").
+ *   Does NOT block: MCP tool calls (only the shell tools are guarded).
  *
  *   #198 fixes:
  *     - Matching is delegated to lib/ship-guard-match, which strips quoted text
@@ -38,8 +39,8 @@ process.stdin.on('end', () => {
   try { hook = JSON.parse(inputData); }
   catch { process.exit(0); }
 
-  // Only guard Bash tool calls — MCP tools (ship_release etc.) are pipeline-internal
-  if ((hook.tool_name || '') !== 'Bash') process.exit(0);
+  // Only guard the shell tools — MCP tools (ship_release etc.) are pipeline-internal
+  if (hook.tool_name !== 'Bash' && hook.tool_name !== 'PowerShell') process.exit(0);
 
   const cmd = (hook.tool_input || {}).command || '';
   if (!isManualShipCommand(cmd)) process.exit(0);

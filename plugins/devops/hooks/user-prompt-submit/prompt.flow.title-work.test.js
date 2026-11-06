@@ -242,6 +242,10 @@ describe("prompt.flow.title-work — title known from the transcript", () => {
     }
   });
 
+  test("a message from another session leaves an outcome alone (#1049)", () => {
+    expect(out("🟩 ➜ 🚀 Released Alpha ┃ Login", '<cross-session-message from="local_1">\nStatus?\n</cross-session-message>')).toBe("");
+  });
+
   test("a machine turn leaves an outcome alone", () => {
     expect(out("🟩 ➜ 🚀 Released Alpha ┃ Login", "<task-notification>\n<status>completed</status>\n</task-notification>")).toBe("");
   });
