@@ -4,11 +4,11 @@
 const { happensBefore } = require("../../order.js");
 
 const ROOT_CAUSE = /root cause|ursache|off-by-one|index 1|i = 1|skips the first/i;
-const EDIT_TOTAL = (e) => e.kind === "tool" && /^(Edit|Write|MultiEdit)$/.test(e.name) && /total\.js/.test(e.input);
+const ANY_EDIT = (e) => e.kind === "tool" && /^(Edit|Write|MultiEdit)$/.test(e.name);
 
 module.exports = (g) => ({
   "fix-skill": g.skillInvoked("auto-fix"),
   "loop-fixed": g.fileMatches("src/total.js", /let i = 0/),
-  "root-cause-before-edit": (ctx) => happensBefore(ctx.raw, (e) => e.kind === "text" && ROOT_CAUSE.test(e.text), EDIT_TOTAL),
+  "root-cause-before-edit": (ctx) => happensBefore(ctx.raw, (e) => e.kind === "text" && ROOT_CAUSE.test(e.text), ANY_EDIT),
   "reports-file-line": g.textMatches(/total\.js:3\b|total\.js.{0,20}line 3\b/i),
 });

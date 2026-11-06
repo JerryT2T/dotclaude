@@ -74,6 +74,10 @@ Find the actual broken invariant — not just the symptom. Ask:
 
 ## Step 7 — Implement fix (if appropriate)
 
+**Before the first Edit or Write, state the root cause in one sentence** in
+your reply: the broken invariant, not the symptom. If you cannot name it in
+one sentence, the root cause is still unclear: go back to Step 6.
+
 Before writing the fix, run the inline pre-mortem from
 `{PLUGIN_ROOT}/deep-knowledge/pre-mortem.md` — with special focus on the
 question: **"How could this fix break something else?"** A fix that resolves
