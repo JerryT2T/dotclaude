@@ -232,7 +232,8 @@ See `deep-knowledge/step5-process.md` § Step 5 · The cycle. Submit → read �
 ### Mark the round as work
 
 See `deep-knowledge/step5-process.md` § Mark the round as work. The compass-to-hourglass swap on a confirmed wake and the card that ends the round.
-n### Bring main in
+
+### Bring main in
 
 See `deep-knowledge/step5-process.md` § Bring main in before the round. Every real submission merges main into the branch before it is read, ahead of the reality check.
 
