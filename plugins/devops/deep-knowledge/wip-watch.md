@@ -10,10 +10,10 @@ prunes, fetches, pushes or starts Claude.
 "WIP-Wächter an":
 
 ```bash
-node "{PLUGIN_ROOT}/scripts/wip-watch.js" enable --roots ~/IdeaProjects --day sun
+node "{PLUGIN_ROOT}/scripts/wip-watch.js" enable --day sun
 ```
 
-`--roots` (comma-separated, default `~/IdeaProjects`) and `--day` (mon..sun,
+`--roots` (comma-separated, default: every project Claude Code has worked in) and `--day` (mon..sun,
 default sun) are optional; they are saved in the global `wipWatch.*` settings
 (`devops-config.md`) and the weekly job is registered at 10:00 (Windows Task
 Scheduler with catch-up after a missed run, crontab elsewhere). If the job

@@ -455,7 +455,7 @@ stable?`, `🟩 🎊 Stable — v0.179.0 — done.`, `⏳ 🤖 Team — not done
   title `h3` (card-guard reads the card title from it; it is also the first
   paint), the card data as JSON in `<script type="application/json"
   id="dc-card-data">` (`<` escaped), and a `<script src>` to
-  `https://cdn.jsdelivr.net/gh/Jerry0022/dotclaude@alpha/v<version>/plugins/devops/mcp-server/lib/card-widget.client.js`.
+  `https://cdn.jsdelivr.net/gh/JerryT2T/dotclaude@alpha/v<version>/plugins/devops/mcp-server/lib/card-widget.client.js`.
   The version is the running plugin's (`.claude-plugin/plugin.json`), as its
   `alpha/v<version>` ring tag: every ship tags alpha and a promotion re-tags
   the same commit, so that tag exists for every shipped version (there are no
@@ -663,3 +663,6 @@ texts carry only the call-time rules. The reasoning behind them lives here.
   `Empfehlung umsetzen` and sends exactly this text; without it the button
   says only `Umsetzen`. With `ship-successful` + `state.kept` the `Weiter`
   button sends it.
+- **`readOnly`**: `true` on a read-only assignment. An `analysis` card then drops
+  `Umsetzen` / `Empfehlung umsetzen` (nothing can be implemented in that
+  session); the open-point `Nachbessern` button stays. Ignored on other variants.

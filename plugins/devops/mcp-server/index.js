@@ -2198,6 +2198,7 @@ function buildCardModel(input, lang, key, buildId, usageData, delta5h, deltaWk, 
     guideHandoff: decision.guideHandoff || null,
     appStart: !!decision.appStart,
     nextStep: decision.nextStep || '',
+    readOnly: input.readOnly === true,
     // #757: the answer to the user's question, drawn above the card body.
     answerHtml: answerHtml(input.answer),
   };
@@ -3130,6 +3131,7 @@ server.registerTool(
         }).optional(),
       ).describe("CTA placeholders - an OBJECT, e.g. { reason } for aborted, { version } for ship, { description } for test-minimal. A plain string is accepted as { info }."),
       nextStep: z.string().optional().describe("analysis: the ONE step you recommend Claude does next, as the user's instruction ('Bau im Governor eine Summen-Drossel ein.'); the Desktop button sends exactly this text. ship-successful with state.kept: the follow-up on the kept branch."),
+      readOnly: z.boolean().optional().describe("analysis: true when this session is read-only (assignment forbids edits): the card then offers no Umsetzen / Empfehlung-umsetzen button, since nothing can be implemented here. Open-point replies (Nachbessern) stay."),
       userTest: z.preprocess(
         v => typeof v === 'string' ? tryParse(v) : v,
         z.array(z.string()).optional(),

@@ -186,8 +186,8 @@ const SCHEMA = Object.freeze({
       doc: 'Opt-in: a weekly pure-node job looks for unlanded branches, dirty or broken worktrees and old stashes under the roots and notifies only when it finds something (scripts/wip-watch.js).',
     }),
     roots: Object.freeze({
-      type: 'list', default: Object.freeze(['~/IdeaProjects']), globalOnly: true,
-      doc: 'Comma-separated folders whose git repos the WIP watch scans (one level deep plus the folder itself).',
+      type: 'list', default: Object.freeze([]), globalOnly: true,
+      doc: 'Comma-separated folders whose git repos the WIP watch scans (one level deep plus the folder itself). Empty: every project Claude Code has worked in.',
     }),
     day: Object.freeze({
       type: 'enum', default: 'sun', globalOnly: true, values: Object.freeze(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']),

@@ -174,7 +174,7 @@ describe("machine-level opt-ins: string, enum and list settings (homeBackup, wip
     expect(v.homeBackup).toEqual({
       enabled: false, repo: "", target: "github", path: "", remote: "", command: "", keepDays: 14, keepWeeks: 4, onRoutineChange: "ask",
     });
-    expect(v.wipWatch).toEqual({ enabled: false, roots: ["~/IdeaProjects"], day: "sun", discardAfterWeeks: 8 });
+    expect(v.wipWatch).toEqual({ enabled: false, roots: [], day: "sun", discardAfterWeeks: 8 });
   });
 
   test("parseValue: repo pattern, weekday words, comma lists", () => {
@@ -195,7 +195,7 @@ describe("machine-level opt-ins: string, enum and list settings (homeBackup, wip
     expect(() => cfg.setValue("wipWatch.enabled", "true", "project", home, { home })).toThrow(/machine-wide/);
     cfg.setValue("wipWatch.roots", ["C:/a", "C:/b"], "global", home, { home });
     expect(cfg.load(home, { home }).values.wipWatch.roots).toEqual(["C:/a", "C:/b"]);
-    fs.writeFileSync(path.join(home, ".claude", "devops-config.json"), JSON.stringify({ wipWatch: { roots: [], day: 7 } }));
-    expect(cfg.load(home, { home }).values.wipWatch).toMatchObject({ roots: ["~/IdeaProjects"], day: "sun" });
+    fs.writeFileSync(path.join(home, ".claude", "devops-config.json"), JSON.stringify({ wipWatch: { roots: 7, day: 7 } }));
+    expect(cfg.load(home, { home }).values.wipWatch).toMatchObject({ roots: [], day: "sun" });
   });
 });

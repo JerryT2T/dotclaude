@@ -1,7 +1,7 @@
 ---
 max_turns: 20
 allowed_tools: [Read, Glob, Grep, Write, Edit, Skill, Bash]
-tags: [skill-body, do-learn]
+tags: [skill-body, do-learn, learned]
 env: { EVAL_DOTCLAUDE_BUDGET: free }
 ---
 

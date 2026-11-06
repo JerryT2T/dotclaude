@@ -254,6 +254,16 @@ describe("buttonsFor — § 3 table, Buttons column", () => {
     expect(buttonsFor("vv-running", "en").map((a) => a.label)).toEqual(["Ship now"]);
   });
 
+  // r6: a read-only assignment cannot implement anything.
+  test("readOnly analysis: no Umsetzen / Empfehlung umsetzen button", () => {
+    expect(buttonsFor("analysis", "de", { readOnly: true })).toEqual([]);
+    expect(buttonsFor("analysis", "de", { readOnly: true, nextStep: "Bau X." })).toEqual([]);
+    const withOpen = buttonsFor("analysis", "en", { readOnly: true, nextStep: "Bau X.", replies: ["A."] });
+    expect(withOpen).toHaveLength(1);
+    expect(withOpen[0].prompt).not.toBe("Bau X.");
+    expect(buttonsFor("analysis", "de", { readOnly: false })[0].label).toBe("Umsetzen");
+  });
+
   // A bare "Umsetzen" left the user unable to tell what a click starts: with
   // nextStep the primary button names the recommendation and sends it as is.
   test("analysis with nextStep: primary button sends the recommended step", () => {

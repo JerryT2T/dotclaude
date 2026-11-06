@@ -1,6 +1,6 @@
 ---
 name: do-learn
-version: 0.4.0
+version: 0.5.0
 description: >-
   Capture a long-term learning and route it into the right project
   instructions (skill, extension, deep-knowledge, runbook, CLAUDE.md last),
@@ -122,15 +122,23 @@ session with no git root. This mirrors `isPluginSourceRepo` in
 
 **Q3 — Which project?** Only relevant when Q1 = *a project*. Scan the learning
 **text** for a named project; nothing named → the current one. The scan reads
-the text, it does not survey the disk. Recipe and the `~/IdeaProjects/` bound:
+the text, it does not survey the disk. Recipe (uses
+`scripts/recent-projects.js`, Claude Code's own project records):
 `deep-knowledge/routing-details.md` (sibling of this file).
 
 | Q1 — changes rules of | Q2 — session is plugin repo | Q3 — which project | Branch                                             |
 |-----------------------|-----------------------------|--------------------|----------------------------------------------------|
 | the devops plugin     | yes                         | —                  | **A** — edit the plugin files directly             |
-| the devops plugin     | no                          | —                  | **B** — issue in the plugin repo, nothing local    |
+| the devops plugin     | no                          | —                  | **B** — plugin repo: issue, or ask when it was active in the last hour |
 | a project             | either                      | this one           | **C** — this project's own `.claude/` instructions |
-| a project             | either                      | another one        | **D** — issue there, or a hand-off prompt          |
+| a project             | either                      | another one        | **D** — that repo: issue, or ask when it was active in the last hour |
+
+**Reach into another repo (B, D) — by activity.** The session's own repo is
+always implemented right here, also in a read-only session; a read-only
+session is no reason to drop a rule. Another repo with Claude or user activity in the last hour (check:
+`node "{PLUGIN_ROOT}/scripts/recent-projects.js" --within-min 60 --match <name>`)
+→ AskUserQuestion: **new session there / hand-off prompt** vs **issue**.
+Any other repo → always an issue. Recipe: `deep-knowledge/routing-details.md`.
 
 | Special case — overrides the table above                                                  | Branch                                         |
 |-----------------------------------------------------------------------------------------------|------------------------------------------------|
@@ -157,14 +165,18 @@ Three tie-breakers, in force order:
    the tie tie-breaker 2 covers. Filing an issue against dotclaude from inside
    dotclaude is never the answer.
 
+None of this drops a rule: whatever the branch, the learning ends as a file
+edit, an issue, or a hand-off prompt the user holds.
+
 Worked examples — each lands in exactly one branch:
 
 | Learning (session in parentheses)                                                  | Branch                                       |
 |------------------------------------------------------------------------------------|----------------------------------------------|
-| "`/do-ship` bricht ab, wenn der Branchname einen Slash enthält" (consumer project)     | **B** — plugin defect, upstream issue        |
+| "`/do-ship` bricht ab, wenn der Branchname einen Slash enthält" (consumer project)     | **B** — plugin defect, upstream issue (ask first when the plugin repo was active in the last hour) |
 | same learning (dotclaude)                                                            | **A** — implement it here                    |
 | "In diesem Repo muss vor jedem Commit `npm run lint` laufen" (dotclaude)             | **C** — its `.claude/`, per tie-breaker 2    |
-| "Im Projekt Foo brauchen DB-Migrationen einen eigenen Commit" (a third project)      | **D** — Q1 = a project, Q3 = Foo             |
+| "Im Projekt Foo brauchen DB-Migrationen einen eigenen Commit" (a third project)      | **D** — Q1 = a project, Q3 = Foo: issue; Foo active in the last hour → ask new session vs issue |
+| same learning (read-only session in Foo, user ordered the learning)                  | **C** — own repo, implemented despite read-only |
 | same learning (session is Foo)                                                       | **C** — Q3 resolves to the current project   |
 | "Antworte mir immer auf Deutsch" (any)                                               | **E** — the gate catches it before Q1        |
 | "In jedem Projekt soll `/do-ship` die Issue-Nummer schreiben" (consumer project)        | **B** — plugin default, not the gate         |
@@ -187,6 +199,17 @@ in a `.md` beside a bug leaves the bug live. A rule goes to a `.md`. Shipping
 the fix is the user's call, not this skill's: ship only when a ship was asked
 for in this session.
 
+**Proof by kind.** Code defect → regression test. Rule about model behaviour →
+an eval case where it makes sense: in the plugin source repo
+`evals/skills/<skill>/<case>` tagged `learned`, modelled on an existing case
+(`routing-details.md` → A). An eval case is itself a valid form of the
+solution, beside hook, skill and deep-knowledge. A consumer project has no
+eval suite: it only passes the proof on through the **Beweis** block of B / D.
+
+**Same symptom before?** Target is an issue repo or the plugin repo → one call:
+`gh issue list --state all --search "<symptom>"` (last 30 days). A hit →
+link the predecessors and escalate: the fix or issue must name the shared
+cause and prove it. One call, no survey — "Capture, don't audit" holds.
 Within whatever container you land in, prefer **deep-knowledge > skill >
 CLAUDE.md**, and re-route to the next-larger container rather than busting a
 budget. Sizing, re-route triggers, the reference-over-duplicate rule, and tone:

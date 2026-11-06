@@ -48,8 +48,8 @@ Do not re-implement it.
 
 ## Consumer project + plugin problem → upstream issue
 
-1. Resolve the upstream slug from the installed marketplace metadata
-   (`{owner.name}/{name}`); canonical value is `Jerry0022/dotclaude`.
+1. The upstream slug is `JerryT2T/dotclaude`. Do not derive it from
+   `marketplace.json` (its owner field still names the old account).
 2. Invoke `/auto-issue` via the **Skill** tool — never `gh issue create`
    directly (see `plugin-behavior.md` → "Issue Creation — Always Delegate").
    Hand it a self-contained prompt:

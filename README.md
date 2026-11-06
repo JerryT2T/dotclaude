@@ -1,6 +1,6 @@
 # dotclaude
 
-**Version: 0.356.0**
+**Version: 0.357.0**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
 
@@ -391,7 +391,7 @@ Runbook: [`home-backup.md`](plugins/devops/deep-knowledge/home-backup.md).
 <summary><strong>WIP watch</strong></summary>
 
 Once a week (default Sunday) a plain node script scans every git repo under
-your roots (default `~/IdeaProjects`) against the existing `origin/<default>`
+your roots (default: every project Claude Code has worked in) against the existing `origin/<default>`
 — no fetch, nothing deleted. Squash merges count as landed. Each finding gets
 a suggestion: delete (in main), push + PR, reimplement on current main, commit
 or discard a dirty worktree, secure or drop an old stash, `git worktree prune`.

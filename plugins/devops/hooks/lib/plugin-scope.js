@@ -20,7 +20,7 @@ const os = require('os');
 const { execFileSync } = require('node:child_process');
 
 /** Last-resort slug when no installed marketplace can be read. */
-const FALLBACK_SLUG = 'Jerry0022/dotclaude';
+const FALLBACK_SLUG = 'JerryT2T/dotclaude';
 
 /** Install roots that are managed by the plugin installer, never by hand. */
 const MANAGED_SUBDIRS = ['cache', 'marketplaces', 'repos'];
