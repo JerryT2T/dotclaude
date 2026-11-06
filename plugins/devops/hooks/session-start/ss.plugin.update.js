@@ -57,6 +57,10 @@
  *   rebuilds. When the running copy is such an rpm copy and trails the local
  *   install, it is mirrored from that install, also on the cooldown skip path.
  *   Only a failed mirror prints a line (../lib/desktop-copy.js).
+ *
+ *   CHANNEL LAG: the cooldown skip path updates nothing, so it asks the remote
+ *   once whether the pinned channel moved past the install and says so. The
+ *   channel is the user's pin: a stable consumer never hears about alpha.
  */
 
 require('../lib/plugin-guard');
@@ -69,7 +73,7 @@ const { latestVisible, readChannelPin } = require('../lib/channels');
 const { runOnce, releaseOnce } = require('../lib/run-once');
 const { syncQuietStyle, customizedTarget, isTempClone } = require('../lib/output-style-sync');
 const { pinToTag } = require('../lib/channel-pin');
-const { mirrorToRpm } = require('../lib/desktop-copy');
+const { channelLag, mirrorToRpm } = require('../lib/desktop-copy');
 const {
   DEFER_DELAY_MS,
   cacheBroken,
@@ -94,6 +98,7 @@ const DICT = {
     show_asis: 'Show the user this restart notice verbatim.',
     mirror_failed: '⚠ devops: Desktop stays on {from}, copying local {to} failed ({reason}) → "update cloud"',
     mirror_failed_show: 'Show the user this line verbatim, once.',
+    channel_lag: '⚠ devops: local {version} is behind {channel}, {latest} is out → "devops update"',
   },
   de: {
     header: 'Plugin-Updates angewendet (Workaround für claude-code#14061):',
@@ -103,6 +108,7 @@ const DICT = {
     show_asis: 'Dem User diese Restart-Notice verbatim zeigen.',
     mirror_failed: '⚠ devops: Desktop bleibt auf {from}, Kopieren von lokal {to} fehlgeschlagen ({reason}) → „Cloud updaten“',
     mirror_failed_show: 'Dem User diese Zeile einmal verbatim zeigen.',
+    channel_lag: '⚠ devops: lokal {version} hinter {channel}, {latest} ist draußen → „devops update“',
   },
 };
 
@@ -189,6 +195,18 @@ function desktopMirrorLines() {
   ];
 }
 
+/** One line when the install trails its pinned channel; [] when current, offline or unknown. */
+function channelLagLines() {
+  const remoteTags = (dir) => run('git ls-remote --tags origin', dir).split('\n').map((l) => l.split('\t')[1]).filter(Boolean);
+  const lag = channelLag({ home, remoteTags });
+  if (!lag) return [];
+  return [
+    t('channel_lag', lang, DICT).replace('{version}', lag.version).replace('{channel}', lag.channel).replace('{latest}', lag.latest),
+    t('mirror_failed_show', lang, DICT),
+    '',
+  ];
+}
+
 // If the marketplaces directory is missing, there are no updates to run.
 if (!fs.existsSync(marketplacesDir)) {
   clearSentinel();
@@ -241,7 +259,7 @@ if (integrity.broken) {
 
 if (!FORCE && !integrity.broken && !runOnce('ss-plugin-update', null, { cooldownMs: COOLDOWN_MS })) {
   clearSentinel();
-  const lagLines = desktopMirrorLines();
+  const lagLines = [...desktopMirrorLines(), ...channelLagLines()];
   if (lagLines.length) process.stdout.write(lagLines.join('\n'));
   process.exit(0);
 }

@@ -1,0 +1,12 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "mcp__plugin_devops_dotclaude__render_completion_card",
+        "hooks": [
+          { "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/post-ship-sync.js\"", "timeout": 10 }
+        ]
+      }
+    ]
+  }
+}

@@ -73,8 +73,7 @@ automatically sync to every ship.
      > `{ action: "devops lokal (alpha) wird auf v<vNew> synchronisiert — danach Claude einmal neu starten, dann ist die neue Version aktiv.", afterDeployment: true }`
 
      When Step 8's verify loop gives up (the clone still reports vOld after three
-     attempts), that is said in ONE line before the card widget (Step 8) — never
-     after the card, and never as a claimed sync.
+     attempts), the next session's version line says so (Step 8).
    - **Pin is `alpha` AND a `backlog-runner` lockout is active** (Step 8 guard below —
      this ship is one of several in a `/do-run backlog` queue): the finalizer is deferred
      to the runner's own Step 5, so do not claim a sync yet:
@@ -100,18 +99,22 @@ Desktop app; the only route into cloud sessions). Before the render, read the De
 mirror's version and add the one `userFinalTest` item that asks the user to confirm the
 synced commit: `deep-knowledge/account-copy.md`. Same guards as Step 8.
 
-## Step 8 — Self-update finalizer (silent, between the render and the card widget)
+## Step 8 — Self-update finalizer (a project hook, nothing for you to run)
 
-> **Ordering is mandatory.** This MUST run **after** `render_completion_card` (Step 6)
-> and **before** the card reaches the user: on the Desktop app before the
-> `show_widget` call the render result asks for, in the terminal before the card
-> markdown is output. The sync rebuilds the cache to a new `installPath` and writes
+**`.claude/hooks/post-ship-sync.js` runs this step**, wired in `.claude/settings.json` as
+PostToolUse of `render_completion_card`: on a `ship-successful` or `released` card it starts
+the sync detached, applies the guards below, and also mirrors the install over the Desktop
+copy, so the next Desktop session starts on vNew. Do not run it yourself after a normal
+ship. Only a queue orchestrator (backlog Step 5, auto-cleanup Step 10b), whose per-ship cards
+were skipped by the guards, runs `node .claude/hooks/post-ship-sync.js --now` once from the
+repo root, as § Action says. This hook and the file live outside `plugins/`: plugin
+consumers never get them and follow their channel pin through `ss.plugin.update`.
+
+> **Why that trigger.** The sync rebuilds the cache to a new `installPath` and writes
 > `~/.claude/plugins/.mcp-stale.json`; once that sentinel exists, `pre.mcp.health`
-> blocks every further `mcp__plugin_devops_*` call — running it before the render
-> would brick the card. `show_widget` belongs to the Desktop app, not to this
-> plugin, so the sentinel never blocks it. This step used to run after the card:
-> its Bash row sat under the widget and drew a closing "synced, restart" sentence
-> the card already carried (observed 2026-09-25).
+> blocks every further `mcp__plugin_devops_*` call, so it must not start before the
+> render. A refused render is a tool error and fires no PostToolUse. `show_widget`
+> belongs to the Desktop app, not to this plugin, so the sentinel never blocks it.
 
 > **Channel-aware — NOT a guaranteed move to vNew.** The finalizer runs
 > `ss.plugin.update`, which is channel-pinned (ring model): it reconciles the local
@@ -156,51 +159,25 @@ synced commit: `deep-knowledge/account-copy.md`. Same guards as Step 8.
 
 ### Action
 
-Run the canonical updater (same hook `/auto-update` delegates to — single
-source of truth, no duplicated logic).
+The hook does this on its own. An orchestrator's one finalizer run, and an explicit
+re-run after a miss, is `node .claude/hooks/post-ship-sync.js --now` from the repo root.
+Result of the last run: `~/.claude/plugins/.post-ship-sync.log`. What it does:
+it runs the canonical updater (same hook `/auto-update` delegates to — single source of
+truth, no duplicated logic), checks the result against the newest remote tag the pin sees,
+retries up to three times, then mirrors to the Desktop copy.
 
-**Resolve the hook path fresh — do NOT use `${CLAUDE_PLUGIN_ROOT}`.** That variable
-pins the version dir the session started with (e.g. `…/devops/0.106.0`), which a
-cache rebuild (a parallel session's SessionStart, or a prior finalizer run) may have
-**deleted** by the time Step 8 runs — observed as `MODULE_NOT_FOUND` right after the
-0.107.0 ship. Take the **marketplace clone's** hook first: it is always present, it
-survives every rebuild, and it is the newest hook on disk (the clone was pulled by
-the previous sync and is pulled again by this run). Only when the clone is missing,
-fall back to the cache — the **highest** version dir, never the first one `ls`
-prints: several version dirs coexist and `ls | head -1` returns the lexically first,
-i.e. the OLDEST (observed 2026-09-21: the 0.179.0 hook ran with `--force`, exited 0,
-printed nothing and moved nothing; only the clone's hook synced 0.183.8 → 0.183.9).
-Same version-glob rule as `CONVENTIONS.md` (Scripts → Version-glob rule).
-
-```bash
-M="$HOME/.claude/plugins/marketplaces/dotclaude"
-f="$M/plugins/devops/hooks/session-start/ss.plugin.update.js"
-[ -f "$f" ] || f="$(ls -d "$HOME/.claude/plugins/cache/dotclaude/devops"/*/hooks/session-start/ss.plugin.update.js 2>/dev/null | sort -V | tail -1)"
-# sed, not node: under Git Bash `$M` is a POSIX path (/c/Users/…) that node's
-# require() cannot resolve — the helper printed '' and the loop never saw success.
-installed() { sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' "$M/plugins/devops/.claude-plugin/plugin.json" | head -1; }
-for attempt in 1 2 3; do
-  node "$f" --force
-  [ "$(installed)" = "<vNew>" ] && break
-  echo "[finalizer] attempt $attempt: clone still on $(installed), expected <vNew> — refetching tags" >&2
-  git -C "$M" fetch --tags origin >/dev/null 2>&1
-  sleep 5
-done
-echo "[finalizer] installed: $(installed)"
-```
-
-**Verify, then retry — never trust one silent run;** `--force` is mandatory (it bypasses
-the SessionStart cooldown); a pin failure prints `pin to <tag> failed …` — carry that line
-into the honest-miss item. Why, and the already-synced race signature:
+The sync uses the **marketplace clone's** hook, never `${CLAUDE_PLUGIN_ROOT}`: that
+variable pins the version dir the session started with, which a rebuild may have deleted
+(`MODULE_NOT_FOUND` right after the 0.107.0 ship), and only the clone is sure to hold the
+newest hook. `--force` is mandatory (it bypasses the SessionStart cooldown). Why it
+verifies and retries, and the already-synced race signature:
 `deep-knowledge/step8-finalizer.md`.
 
-**Then deliver the card — and nothing after it.** The completion card (with the restart
-item from Step 6.5) is the last thing the user sees: call `show_widget` (Desktop) or output
-the markdown (terminal) right after this step. Capture the hook's stdout into the tool
-result only — do not echo it into the chat. Only when the verify loop gave up (the clone
-still on vOld) write ONE line before the card, in the user's language — never a claimed
-sync:
-> `{ line: "devops lokal (alpha) steht noch auf v<vOld> — der Sync-Hook hat das Tag alpha/v<vNew> nicht gesehen. Claude »devops update« sagen, dann Claude einmal neu starten." }`
+The hook runs after the card is rendered, so a miss cannot go on that card. It lands in
+the log above, and the next session's `ss.plugin.update` says `⚠ devops: lokal X hinter
+<channel>` because the install still trails its channel. When a `--now` run ends on a miss, tell
+the user in ONE line, never a claimed sync:
+> `{ line: "devops lokal (alpha) steht noch auf v<vOld> — der Sync hat das neue Alpha-Tag nicht erreicht. Claude »devops update« sagen, dann Claude einmal neu starten." }`
 
 The session is now in a deliberately MCP-stale state; that is expected and resolves on the
 user's single restart.

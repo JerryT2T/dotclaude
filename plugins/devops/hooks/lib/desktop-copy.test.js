@@ -5,7 +5,7 @@ import path from "node:path";
 import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
-const { isRpmCopy, desktopCopyLag, localInstall, cloudVersion, mirrorToRpm, versionNotice } = require("./desktop-copy");
+const { isRpmCopy, desktopCopyLag, localInstall, cloudVersion, channelLag, mirrorToRpm, versionNotice } = require("./desktop-copy");
 
 function writePlugin(dir, name, version) {
   fs.mkdirSync(path.join(dir, ".claude-plugin"), { recursive: true });
@@ -166,14 +166,29 @@ describe("desktop-copy", () => {
     test("Desktop before the mirror, Desktop after it, and the CLI each get their line", () => {
       install("0.334.1");
       expect(versionNotice({ pluginRoot: rpmRoot, home }))
-        .toBe("ℹ devops: lokal 0.334.1 (alpha) aktuell, Desktop zieht ab der nächsten Session nach · Cloud 0.326.0 updaten → „Cloud updaten“");
+        .toBe("ℹ devops: lokal 0.334.1 (alpha), Desktop zieht ab der nächsten Session nach · Cloud 0.326.0 updaten → „Cloud updaten“");
       mirror();
       expect(versionNotice({ pluginRoot: rpmRoot, home }))
-        .toBe("ℹ devops: lokal 0.334.1 (alpha) aktuell · Cloud 0.326.0 updaten (Desktop nutzt schon lokal), unkritisch → „Cloud updaten“");
+        .toBe("ℹ devops: lokal 0.334.1 (alpha) · Cloud 0.326.0 updaten (Desktop nutzt schon lokal), unkritisch → „Cloud updaten“");
       expect(versionNotice({ pluginRoot: cache, home }))
-        .toBe("ℹ devops: lokal 0.334.1 (alpha) aktuell · Cloud 0.326.0 updaten, unkritisch → „Cloud updaten“");
+        .toBe("ℹ devops: lokal 0.334.1 (alpha) · Cloud 0.326.0 updaten, unkritisch → „Cloud updaten“");
       expect(versionNotice({ pluginRoot: cache, home, lang: "en" }))
-        .toBe('ℹ devops: local 0.334.1 (alpha) current · update Cloud 0.326.0, not urgent → "update cloud"');
+        .toBe('ℹ devops: local 0.334.1 (alpha) · update Cloud 0.326.0, not urgent → "update cloud"');
+    });
+
+    test("channelLag compares the install with the channel it is pinned to", () => {
+      install("0.356.0");
+      const pluginsDir = path.join(home, ".claude", "plugins");
+      const pin = (channel) => fs.writeFileSync(path.join(pluginsDir, ".channels.json"), JSON.stringify({ dotclaude: channel }));
+      const remoteTags = () => ["refs/tags/alpha/v0.358.0", "refs/tags/alpha/v0.358.0^{}", "refs/tags/beta/v0.353.1", "refs/tags/stable/v0.330.7"];
+      pin("alpha");
+      expect(channelLag({ home, remoteTags })).toEqual({ version: "0.356.0", latest: "0.358.0", channel: "alpha" });
+      pin("stable");
+      expect(channelLag({ home, remoteTags })).toBeNull();
+      install("0.300.0");
+      expect(channelLag({ home, remoteTags })).toEqual({ version: "0.300.0", latest: "0.330.7", channel: "stable" });
+      expect(channelLag({ home, remoteTags: () => [] })).toBeNull();
+      expect(channelLag({ home, remoteTags: () => { throw new Error("offline"); } })).toBeNull();
     });
 
     test("no line when Cloud has caught up, is ahead, or nothing is known", () => {

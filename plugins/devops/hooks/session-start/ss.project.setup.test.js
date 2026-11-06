@@ -189,7 +189,7 @@ describe("catalog shadow warning", () => {
     fs.writeFileSync(path.join(path.dirname(root), "manifest.json"), JSON.stringify({ plugins: [{ id: path.basename(root), name: "devops", marketplaceName: "dotclaude", updatedAt: "x" }] }));
     const w = versionLine({ pluginRoot: root, home });
     expect(w).toMatch(/Show the user this line verbatim/);
-    expect(w).toContain("ℹ devops: lokal 0.339.1 (alpha) aktuell, Desktop zieht ab der nächsten Session nach · Cloud 0.326.0 updaten → „Cloud updaten“");
+    expect(w).toContain("ℹ devops: lokal 0.339.1 (alpha), Desktop zieht ab der nächsten Session nach · Cloud 0.326.0 updaten → „Cloud updaten“");
   });
 
   test("silent for a plain Claude Code install or a missing registry", () => {
