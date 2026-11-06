@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.358.1] — 2026-11-06
+
+### Changed
+- Do-batch: the execute marker is always the word `go` as the first word of a prompt, in any language. Stored custom markers migrate to `go`; the marker question and `/do-batch marker` are gone.
+
+### Fixed
+- Concept notes: for auto and own notes, Enter only closes, Shift+Enter inserts a paragraph, and Ctrl+Enter closes and opens the next note with the cursor in its field.
+- Tooltips: a tooltip showing only a key now reads "Hotkey:" before it, on concept pages and as a standing UI rule for projects.
+
 ## [0.358.0] — 2026-11-06
 
 ### Added
