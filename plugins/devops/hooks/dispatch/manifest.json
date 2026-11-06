@@ -168,6 +168,12 @@
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.waitloop.guard.js\"", "timeout": 5, "commandFilter": "\\b(?:while|until)\\b" }
         ],
         "matcher": "Bash"
+      },
+      {
+        "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.visible-browser.guard.js\"", "timeout": 5, "commandFilter": "headless|--headed|[Cc]hrome|playwright\\s+(?:open|codegen|cr|ff|wk)\\b" }
+        ],
+        "matcher": "Bash|PowerShell|Write|Edit|MultiEdit"
       }
     ],
     "SubagentStop": [
