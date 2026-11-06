@@ -28,7 +28,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { compareVersions } = require('./channels');
+const { compareVersions, latestVisible, readChannelPin } = require('./channels');
 const { getVersion } = require('./cache-rebuild');
 
 const RPM_DIR = /[\\/]rpm[\\/][^\\/]+[\\/][^\\/]+[\\/]plugin_[^\\/]+[\\/]?$/i;
@@ -253,11 +253,35 @@ function mirrorToRpm({ pluginRoot, home = os.homedir(), now = Date.now(), lockDi
   }
 }
 
+/**
+ * The local install measured against the channel it is pinned to: a consumer on
+ * stable against stable, the plugin developer on alpha against alpha.
+ * @param {{ home?: string, remoteTags: (cloneDir: string) => string[] }} opts
+ * @returns {null | { version, latest, channel }} null when current or unknown.
+ */
+function channelLag({ home = os.homedir(), remoteTags }) {
+  const inst = localInstall(home);
+  if (!inst || !inst.marketplace) return null;
+  const pluginsDir = path.join(home, '.claude', 'plugins');
+  const channel = readChannelPin(pluginsDir, inst.marketplace);
+  let tags;
+  try {
+    tags = remoteTags(path.join(pluginsDir, 'marketplaces', inst.marketplace));
+  } catch {
+    return null;
+  }
+  const best = latestVisible(tags || [], channel);
+  if (!best || compareVersions(best.version, inst.version) <= 0) return null;
+  return { version: inst.version, latest: best.version, channel };
+}
+
 const CLOUD_PROMPT = { de: 'Cloud updaten', en: 'update cloud' };
 
 /**
  * The one version line of a CLI or Desktop session, or null when the local
- * install and the account copy agree. Always lokal first, then Cloud.
+ * install and the account copy agree. Always lokal first, then Cloud. It claims
+ * nothing about the channel: this path has no network, ss.plugin.update reports
+ * an install behind its channel (channelLag).
  * A cloud session has no local install: ss.catalog.remote speaks there.
  */
 function versionNotice({ pluginRoot, home = os.homedir(), lang = 'de' }) {
@@ -268,7 +292,7 @@ function versionNotice({ pluginRoot, home = os.homedir(), lang = 'de' }) {
   const cloud = cloudVersion({ pluginRoot, home });
   if (!cloud || compareVersions(cloud, inst.version) >= 0) return null;
   const channel = inst.channel ? ` (${inst.channel})` : '';
-  const local = en ? `local ${inst.version}${channel} current` : `lokal ${inst.version}${channel} aktuell`;
+  const local = en ? `local ${inst.version}${channel}` : `lokal ${inst.version}${channel}`;
   const arrow = en ? `→ "${CLOUD_PROMPT.en}"` : `→ „${CLOUD_PROMPT.de}“`;
   const running = desktop ? getVersion(pluginRoot) : null;
   if (running && compareVersions(running, inst.version) < 0) {
@@ -282,4 +306,4 @@ function versionNotice({ pluginRoot, home = os.homedir(), lang = 'de' }) {
     : `ℹ devops: ${local} · Cloud ${cloud} updaten${note}, unkritisch ${arrow}`;
 }
 
-module.exports = { isRpmCopy, desktopCopyLag, remoteCopyLag, localInstall, cloudVersion, mirrorToRpm, versionNotice, CLOUD_PROMPT };
+module.exports = { isRpmCopy, desktopCopyLag, remoteCopyLag, localInstall, cloudVersion, channelLag, mirrorToRpm, versionNotice, CLOUD_PROMPT };

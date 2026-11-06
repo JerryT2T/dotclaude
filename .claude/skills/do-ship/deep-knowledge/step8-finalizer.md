@@ -1,6 +1,9 @@
 # Step 8 finalizer — verify loop, `--force`, race signature (dotclaude)
 
-Detail for the Step 8 action in `reference.md` (sibling folder).
+Detail for the Step 8 action in `reference.md` (sibling folder), implemented by
+`.claude/hooks/post-ship-sync.js`. "The loop" below is that script's `runSync`, which
+reads the expected version from the remote tags; its last line goes to
+`~/.claude/plugins/.post-ship-sync.log`.
 
 **Verify, then retry — never trust one silent run.** Observed 2026-09-21 twice: the hook
 run seconds after `ship_release` returned (tag verified on the remote) exited 0 with no
