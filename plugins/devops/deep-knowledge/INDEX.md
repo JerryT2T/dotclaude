@@ -40,6 +40,7 @@ Quick-reference for all deep-knowledge topics. Read this FIRST to find the right
 | [local-llm-delegation.md](local-llm-delegation.md) | Local LLM Delegation | Rule for the main session on when to delegate mechanical code generation to |
 | [mcp-deferred-tools.md](mcp-deferred-tools.md) | MCP Deferred Tools | Cross-cutting rule: in sessions with a large tool inventory (Computer Use, Ch... |
 | [merge-safety.md](merge-safety.md) | Merge Safety — Parallel Development | Cross-cutting reference for preventing silent overwrites when multiple develo... |
+| [plans.md](plans.md) | Plans — ids, limits, thresholds | Single doc for the plan facts. The code source is `hooks/lib/plan.js`; a test |
 | [plugin-behavior.md](plugin-behavior.md) | Plugin Behavior Rules | Core behavioral rules enforced by the devops plugin. |
 | [plugin-scope-routing.md](plugin-scope-routing.md) | Plugin Scope Routing — Where a Fix Belongs | Cross-cutting rule for every skill, hook, and agent: a devops-plugin defect f... |
 | [pre-mortem.md](pre-mortem.md) | Pre-Mortem / Red-Team Self-Critique | Cross-cutting rule for reducing blind spots before non-trivial changes. |

@@ -441,7 +441,8 @@ Save the returned `jobId` as `$RESUME_JOB_ID` and log `fireAtLocal` + `source` t
 **Notes:**
 - **Timing source:** `source=reset-window` means the fire time was derived from the
   live `resetInMinutes` (fires shortly after the actual reset — no needless waiting);
-  `source=fallback-5h` means usage data was missing/stale, so a safe flat 5h was used.
+  `source=reset-week` means the week is exhausted, so the cron waits for the weekly reset (can be days).
+  `source=fallback-5h` means usage data was missing/stale or no 5 h reset exists, so a safe flat 5h was used.
   5h is always past the current window's reset (it started ≤ now), so the fallback
   never fires too early.
 - One-shot — it never re-arms, so there is no resume loop. A single nudge per run. If

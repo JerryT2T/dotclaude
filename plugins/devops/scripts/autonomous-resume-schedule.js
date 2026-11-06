@@ -22,6 +22,9 @@
  *   - Fall back to a flat 5h whenever usage data is missing, stale (>5h old),
  *     future-dated, or already reset. 5h is always safe: the active window started
  *     at or before "now", so its reset is at or before now+5h ("im Zweifel 5h").
+ *   - A week at WEEK_EXHAUSTED_PCT or above wins: the next 5 h window brings
+ *     nothing back, so the cron fires just after the WEEKLY reset. This is also
+ *     the only real limit on a plan without a 5 h window (verified Ultra).
  *
  * Unlike autonomous-shutdown-timer.js there is NO 90-min floor: firing close to
  * an imminent reset is exactly what we want (don't wait a needless 5h), and the
@@ -48,6 +51,23 @@ const WINDOW_MAX_MIN = 5 * 60; // 300 — one full token period (cap & flat fall
 const RESET_BUFFER_MIN = 15;   // pad past the reset boundary so budget is truly back
 const MAX_STALE_MIN = 300;     // usage older than a full window → unreliable → fallback
 const REFRESH_MAX_AGE_MIN = 3; // cache younger than this is fresh enough → skip the scrape
+const WEEK_EXHAUSTED_PCT = 98; // from here the week, not the 5 h window, decides when budget is back
+
+/**
+ * The wait for an exhausted week, or null when the week is not the limit or its
+ * reset is unknown, stale or already past. Not capped: it can be days. Pure.
+ */
+function weeklyResetDelay(usageData, nowMs, bufferMin) {
+  const week = usageData && usageData.weekly;
+  const ts = usageData && usageData.timestamp;
+  if (!week || !ts || typeof week.pct !== 'number' || week.pct < WEEK_EXHAUSTED_PCT) return null;
+  if (typeof week.resetInMinutes !== 'number' || !Number.isFinite(week.resetInMinutes)) return null;
+  const ageMin = (nowMs - new Date(ts).getTime()) / 60000;
+  if (!Number.isFinite(ageMin) || ageMin < 0 || ageMin > MAX_STALE_MIN) return null;
+  const effectiveMin = week.resetInMinutes - ageMin;
+  if (effectiveMin <= 0) return null;
+  return { delayMinutes: Math.round(effectiveMin) + bufferMin, source: 'reset-week', effectiveMin: Math.round(effectiveMin) };
+}
 
 /**
  * Pure delay resolver — no I/O, exported for tests.
@@ -57,6 +77,9 @@ const REFRESH_MAX_AGE_MIN = 3; // cache younger than this is fresh enough → sk
  */
 function computeResumeDelayMinutes(usageData, nowMs, bufferMin = RESET_BUFFER_MIN) {
   const fallback = { delayMinutes: WINDOW_MAX_MIN, source: 'fallback-5h' };
+
+  const weekly = weeklyResetDelay(usageData, nowMs, bufferMin);
+  if (weekly) return weekly;
 
   const resetMin = usageData && usageData.session && usageData.session.resetInMinutes;
   const ts = usageData && usageData.timestamp;

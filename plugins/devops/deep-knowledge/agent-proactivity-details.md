@@ -58,8 +58,8 @@ The spare path's levers are `model: sonnet` and a tool-call ceiling in the
 agent prompt; `effort` at spawn only per `agent-orchestration.md`.
 
 - **free** → tiers as above; ceilings per `agent-orchestration.md`.
-- **ask-before-parallel** (Pro from 0 %, Max 5x ≥ 80 %/90 %, Ultra
-  ≥ 90 %/95 %, unknown plan with unknown usage) → the 1-agent tier runs on
+- **ask-before-parallel** (thresholds per plan in `plans.md`; Pro asks
+  from 0 %; unknown plan with unknown usage) → the 1-agent tier runs on
   `model: sonnet` with ≤ 10 tool calls, no question. Before a **parallel**
   spawn or a **ceremony**, ask ONCE per session via AskUserQuestion — one
   question, three options, localized per `[ui-locale]`, first = default:
@@ -67,7 +67,7 @@ agent prompt; `effort` at spawn only per `agent-orchestration.md`.
   *the right agents regardless of the window* / *no agent, inline now*.
   For a ceremony the second option is the ceremony itself (never two
   questions in a row).
-- **sonnet-only** (Pro ≥ 70 %/85 %, Max 5x ≥ 95 %/98 %, Ultra ≥ 98 %/99 %)
+- **sonnet-only** (thresholds per plan in `plans.md`)
   → the 1-agent tier runs on `model: sonnet` with ≤ 5 tool calls;
   parallel/ceremony ask as above, naming the binding reset ("window
   resets in N min" / "week resets in N h").

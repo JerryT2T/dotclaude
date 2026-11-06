@@ -162,3 +162,41 @@ describe("--buffer — an interactive defer lands 5 min past the reset", () => {
     expect(parseBufferArg(["--buffer", "2.5"])).toBe(RESET_BUFFER_MIN);
   });
 });
+
+describe("computeResumeDelayMinutes — an exhausted week decides", () => {
+  const snap = (week, session = { pct: 0, resetInMinutes: null }, ageMin = 0) => ({
+    timestamp: new Date(NOW - ageMin * 60000).toISOString(),
+    session,
+    weekly: week,
+  });
+
+  test("verified Ultra at its weekly limit waits for the weekly reset", () => {
+    const r = computeResumeDelayMinutes(snap({ pct: 100, resetInMinutes: 2600 }), NOW);
+    expect(r).toMatchObject({ source: "reset-week", delayMinutes: 2615 });
+  });
+
+  test("Max with a full week ignores a soon 5 h reset", () => {
+    const r = computeResumeDelayMinutes(snap({ pct: 99, resetInMinutes: 600 }, { pct: 40, resetInMinutes: 30 }), NOW);
+    expect(r).toMatchObject({ source: "reset-week", delayMinutes: 615 });
+  });
+
+  test("the age of the snapshot is taken off the weekly reset, and the buffer applies", () => {
+    const r = computeResumeDelayMinutes(snap({ pct: 100, resetInMinutes: 600 }, undefined, 100), NOW, 5);
+    expect(r).toMatchObject({ source: "reset-week", delayMinutes: 505 });
+  });
+
+  test("a week with room leaves the 5 h behaviour unchanged", () => {
+    const r = computeResumeDelayMinutes(snap({ pct: 97, resetInMinutes: 600 }, { pct: 90, resetInMinutes: 30 }), NOW);
+    expect(r).toMatchObject({ source: "reset-window", delayMinutes: 45 });
+  });
+
+  test.each([
+    ["Ultra with room in the week", { pct: 50, resetInMinutes: 600 }, undefined],
+    ["unknown weekly reset", { pct: 100, resetInMinutes: null }, undefined],
+    ["weekly reset already past", { pct: 100, resetInMinutes: 10 }, 20],
+    ["stale snapshot", { pct: 100, resetInMinutes: 5000 }, 301],
+  ])("%s → flat 5 h", (_label, week, age) => {
+    const r = computeResumeDelayMinutes(snap(week, undefined, age || 0), NOW);
+    expect(r).toMatchObject({ source: "fallback-5h", delayMinutes: 300 });
+  });
+});

@@ -4,7 +4,7 @@ Run devops' read-only side work on the monthly Claude API credit of a Max/Team p
 
 ## What is billed where (measured, not assumed)
 
-Since 2026-10-07 Max 5x / Ultra (then Max 20x) / Team plans include monthly API credits
+Since 2026-10-07 Max / Ultra / Team plans include monthly API credits
 ($100 / $200 / up to $500 pooled) in one linked Claude Console organization.
 They expire at the end of each billing cycle and never roll over. Sources:
 [platform doc](https://platform.claude.com/docs/en/about-claude/api-credits-for-subscribers),

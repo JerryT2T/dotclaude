@@ -1,0 +1,11 @@
+{
+  "usage": {
+    "five_hour": null,
+    "seven_day": { "utilization": 31, "resets_at": "2026-11-08T07:00:00.274418+00:00" },
+    "seven_day_sonnet": null,
+    "limits": [
+      { "kind": "weekly_all", "group": "weekly", "percent": 31, "severity": "normal", "resets_at": "2026-11-08T07:00:00.274418+00:00", "scope": null, "is_active": true }
+    ]
+  },
+  "rateLimits": { "rate_limit_tier": "default_claude_max_5x" }
+}

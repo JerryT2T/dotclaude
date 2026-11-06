@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import http from "node:http";
 import { createRequire } from "node:module";
+import { spawn } from "node:child_process";
 
 const require = createRequire(import.meta.url);
 const { prepare, verify, buildLaunch } = require("./concept-open.js");
@@ -138,6 +139,74 @@ test("buildLaunch quotes paths and uses forward slashes", () => {
 
 // #1030: verify owns the open on the fast path — the docs must not tell the
 // model to run the manual `start msedge` on top of it (page opened twice).
+describe("the real open in its own process", () => {
+  const SCRIPT = path.join(import.meta.dirname, "concept-open.js");
+  const launcher = (code) => [process.execPath, "-e", code];
+
+  // Runs in a fresh node process: inside vitest other handles keep the event loop
+  // alive, which is exactly what hid the silent exit.
+  function runChild(body, env = {}) {
+    return new Promise((resolve) => {
+      const c = spawn(process.execPath, ["-e", `
+        const { verify, openBrowser } = require(${JSON.stringify(SCRIPT)});
+        (async () => { ${body} })();
+      `], { env: { ...process.env, CONCEPT_OPEN_NO_BROWSER: "", ...env }, windowsHide: true });
+      let out = "";
+      c.stdout.on("data", (d) => { out += d; });
+      c.on("exit", (code) => resolve({ code, out }));
+    });
+  }
+
+  test("openBrowser resolves after the launcher exits", async () => {
+    const cmd = JSON.stringify(launcher("setTimeout(() => {}, 300)"));
+    const r = await runChild(`const e = await openBrowser("u", { command: ${cmd} }); console.log("RESOLVED", e);`);
+    expect(r.out).toContain("RESOLVED null");
+  }, 20000);
+
+  test("a launcher failure is reported, not swallowed", async () => {
+    const cmd = JSON.stringify(launcher("process.exit(7)"));
+    const r = await runChild(`const e = await openBrowser("u", { command: ${cmd} }); console.log("RESOLVED", e);`);
+    expect(r.out).toMatch(/RESOLVED .*exited with 7/);
+  }, 20000);
+
+  test("a launcher that never exits does not hold the opener", async () => {
+    const cmd = JSON.stringify(launcher("setTimeout(() => {}, 15000)"));
+    const started = Date.now();
+    const r = await runChild(`const e = await openBrowser("u", { command: ${cmd}, settleMs: 200 }); console.log("RESOLVED", e); process.exit(0);`);
+    expect(r.out).toContain("RESOLVED null");
+    expect(Date.now() - started).toBeLessThan(12000);
+  }, 20000);
+
+  test("verify prints its result, stamps the run, and a second verify opens nothing", async () => {
+    let ts = 1;
+    const srv = http.createServer((req, res) => {
+      if (req.method === "POST") ts++;
+      if (req.url === "/identity") return res.end(JSON.stringify({ pid: 4242 }));
+      if (req.url === "/heartbeat") return res.end(JSON.stringify({ claude_ts: ts }));
+      res.end("ok");
+    });
+    await new Promise((r) => srv.listen(0, "127.0.0.1", r));
+    const state = path.join(tmp, "state.json");
+    const marker = path.join(tmp, "opened.log");
+    fs.writeFileSync(state, JSON.stringify({ port: srv.address().port, html_path: HTML }));
+    const cmd = JSON.stringify(launcher(`require("fs").appendFileSync(${JSON.stringify(marker)}, "x")`));
+    const body = `
+      const res = await verify({ state: ${JSON.stringify(state)} }, { openBrowser: (u) => openBrowser(u, { command: ${cmd} }), waitMs: 0 });
+      console.log(JSON.stringify(res));
+    `;
+    try {
+      const first = await runChild(body);
+      expect(JSON.parse(first.out)).toMatchObject({ ok: true });
+      expect(JSON.parse(fs.readFileSync(state, "utf8")).opened_for_run).toBe(4242);
+      const second = await runChild(body);
+      expect(JSON.parse(second.out)).toMatchObject({ ok: true, already_open: true });
+      expect(fs.readFileSync(marker, "utf8")).toBe("x");
+    } finally {
+      await new Promise((r) => srv.close(r));
+    }
+  }, 30000);
+});
+
 describe("docs name one owner of the open", () => {
   const read = (p) => fs.readFileSync(path.join(__dirname, "..", p), "utf8");
   test("step3-open-browser.md and SKILL.md say verify opens Edge itself", () => {

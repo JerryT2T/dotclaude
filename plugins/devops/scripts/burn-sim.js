@@ -50,7 +50,7 @@ const filler = (id, size = 'S') => ({ id, task: `${id} filler`, size, priority: 
 const SCENARIOS = {
   'happy-path': {
     description: 'Enough budget and time, one lane. Everything the user asked for lands; nothing is lost.',
-    plan: 'Max 20x',
+    plan: 'Ultra',
     start: { weeklyUsed: 70, weeklyResetMin: 20 * 60, sessionUsed: 10, sessionResetMin: 200 },
     sessionPerWeekly: 6,
     queue: [core('p0', 'M', 'P0'), core('i1', 'M'), core('i2', 'M'), core('i3', 'L')],
@@ -59,7 +59,7 @@ const SCENARIOS = {
   },
   'five-hour-window': {
     description: 'The 5-hour window runs out long before the weekly budget. Old: a hard stop mid-task, one resume, then stuck in the next window. New: pause at 92 %, resume after each reset.',
-    plan: 'Max 20x',
+    plan: 'Ultra',
     start: { weeklyUsed: 55, weeklyResetMin: 30 * 60, sessionUsed: 40, sessionResetMin: 240 },
     sessionPerWeekly: 12,
     queue: [core('p0', 'L', 'P0'), core('i1', 'L'), core('i2', 'L'), core('i3', 'L'), core('i4', 'M'), core('i5', 'M'), core('i6', 'M'), core('i7', 'M')],
@@ -68,7 +68,7 @@ const SCENARIOS = {
   },
   'weekly-stop-other-session': {
     description: 'Another session spends 17 % of the week in one go while the burn runs; the weekly limit hits mid-task. Later the user nudges after the weekly reset.',
-    plan: 'Max 20x',
+    plan: 'Ultra',
     start: { weeklyUsed: 82, weeklyResetMin: 10 * 60, sessionUsed: 5, sessionResetMin: 280 },
     sessionPerWeekly: 4,
     queue: [core('p0', 'L', 'P0'), core('i1', 'L'), core('i2', 'M'), core('i3', 'M')],
@@ -79,7 +79,7 @@ const SCENARIOS = {
   },
   'usage-blind': {
     description: 'The usage scraper goes blind (logged out, cache served) 30 minutes in. Old: keeps spawning on a frozen number until the limit. New: holds, then drains.',
-    plan: 'Max 20x',
+    plan: 'Ultra',
     start: { weeklyUsed: 78, weeklyResetMin: 40 * 60, sessionUsed: 5, sessionResetMin: 290 },
     sessionPerWeekly: 3,
     queue: [core('p0', 'L', 'P0'), core('i1', 'L'), core('i2', 'L'), core('i3', 'L'), core('i4', 'L'), core('i5', 'L'), core('i6', 'L'), core('i7', 'L'), core('i8', 'L'), core('i9', 'L')],
@@ -89,7 +89,7 @@ const SCENARIOS = {
   },
   'multi-lane-drain': {
     description: 'Lots of budget, little time, four lanes of L tasks — and tasks really cost 30 % more than estimated. Old: fixed 5 % reserve, the lanes still in flight overrun it and the limit hits during the drain. New: the reserve covers every busy lane and the over-burn drops lanes.',
-    plan: 'Max 20x',
+    plan: 'Ultra',
     start: { weeklyUsed: 50, weeklyResetMin: 3.5 * 60, sessionUsed: 0, sessionResetMin: 300 },
     sessionPerWeekly: 1,
     queue: Array.from({ length: 16 }, (_, i) => core(i === 0 ? 'p0' : `i${i}`, 'L', i === 0 ? 'P0' : 'P2')),
@@ -100,7 +100,7 @@ const SCENARIOS = {
   },
   'manual-resume-after-limit': {
     description: 'Work in another session empties the 5-hour window and stops the burn; no auto-resume was chosen. The user comes back after the reset and types "weiter". Old: the burn silently keeps burning. New: asks; the default switches the burn off.',
-    plan: 'Max 20x',
+    plan: 'Ultra',
     start: { weeklyUsed: 60, weeklyResetMin: 40 * 60, sessionUsed: 55, sessionResetMin: 260 },
     sessionPerWeekly: 12,
     queue: [core('p0', 'L', 'P0'), core('i1', 'L'), core('i2', 'M'), filler('f1'), filler('f2'), filler('f3'), filler('f4'), filler('f5', 'M')],
@@ -112,7 +112,7 @@ const SCENARIOS = {
   },
   'window-pause-manual': {
     description: 'The 5-hour window fills up and no auto-resume was chosen. Old: a hard stop mid-task. New: a pause before the window runs out; hours later the user types "weiter", is asked, and the default switches the burn off.',
-    plan: 'Max 20x',
+    plan: 'Ultra',
     start: { weeklyUsed: 55, weeklyResetMin: 30 * 60, sessionUsed: 40, sessionResetMin: 240 },
     sessionPerWeekly: 12,
     queue: [core('p0', 'L', 'P0'), core('i1', 'L'), core('i2', 'L'), filler('f1'), filler('f2', 'M')],
@@ -122,7 +122,7 @@ const SCENARIOS = {
   },
   'auto-resume-burn-off': {
     description: 'Auto-resume is armed, but the user answered "Burn abschalten" for it (F7). After the window pause the run continues without burn: filler dropped, standard depth.',
-    plan: 'Max 20x',
+    plan: 'Ultra',
     start: { weeklyUsed: 60, weeklyResetMin: 40 * 60, sessionUsed: 60, sessionResetMin: 200 },
     sessionPerWeekly: 12,
     queue: [core('p0', 'L', 'P0'), core('i1', 'L'), core('i2', 'M'), filler('f1'), filler('f2'), filler('f3', 'M')],
@@ -131,7 +131,7 @@ const SCENARIOS = {
   },
   'no-uplift': {
     description: 'Little budget, a big queue: a normal run spends it anyway. Old: the uplift gate cannot fire, the burn starts. New: refuses and says so.',
-    plan: 'Max 20x',
+    plan: 'Ultra',
     start: { weeklyUsed: 88, weeklyResetMin: 20 * 60, sessionUsed: 5, sessionResetMin: 280 },
     sessionPerWeekly: 4,
     queue: [core('p0', 'L', 'P0'), core('i1', 'L'), core('i2', 'L'), core('i3', 'L'), core('i4', 'L'), core('i5', 'L'), core('i6', 'L'), core('i7', 'L'), core('i8', 'L')],
@@ -140,7 +140,7 @@ const SCENARIOS = {
   },
   'filler-heavy': {
     description: 'One real task plus eight discovery fillers. Old: fillers run at full depth. New: fillers stay at standard depth, the user\'s task gets the depth.',
-    plan: 'Max 20x',
+    plan: 'Ultra',
     start: { weeklyUsed: 70, weeklyResetMin: 20 * 60, sessionUsed: 5, sessionResetMin: 290 },
     sessionPerWeekly: 4,
     queue: [core('p0', 'L', 'P0'), ...Array.from({ length: 8 }, (_, i) => filler(`f${i + 1}`, i % 3 === 0 ? 'M' : 'S'))],
@@ -149,7 +149,7 @@ const SCENARIOS = {
   },
   'agent-cannot-continue': {
     description: 'Like the weekly stop, but the cut-off agent cannot be continued (new session / SendMessage fails): its salvaged wip branch is picked up by a fresh agent that re-reads first.',
-    plan: 'Max 20x',
+    plan: 'Ultra',
     start: { weeklyUsed: 82, weeklyResetMin: 10 * 60, sessionUsed: 5, sessionResetMin: 280 },
     sessionPerWeekly: 4,
     queue: [core('p0', 'L', 'P0'), core('i1', 'L'), core('i2', 'M')],

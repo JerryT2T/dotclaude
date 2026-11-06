@@ -65,6 +65,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { execFileSync, spawnSync } = require('child_process');
+const { PLANS, PLAN_IDS, CALIBRATION_KEYS, planId } = require('../hooks/lib/plan');
 const {
   STATE_FILE, PREV_STATE_FILE, readStateFile, isOpenRun, tally,
 } = require('../hooks/lib/burn-state');
@@ -100,11 +101,11 @@ const MAX_READINGS = 50;
 const CALIBRATION_KEEP = 10;
 const CALIBRATION_MIN_SAMPLES = 3;
 
-/** Relative weekly capacity per plan (claude.com/pricing) — Ultra, formerly labelled Max 20x, is the baseline. */
-const PLAN_CAPACITY = { Pro: 1, 'Max 5x': 5, 'Max 20x': 10, Ultra: 10 };
-/** Calibration samples of Ultra stay under the label they were first measured with. */
-const calibrationKey = (plan) => (plan === 'Ultra' ? 'Max 20x' : plan);
-/** Planning defaults at Max 20x, standard depth. Scaled for other plans. */
+/** Relative weekly capacity per plan, from plan.js (claude.com/pricing). Keyed by display label. */
+const PLAN_CAPACITY = Object.fromEntries(PLAN_IDS.filter((id) => PLANS[id].capacity).map((id) => [PLANS[id].label, PLANS[id].capacity]));
+/** Calibration samples stay under the key they were first measured with (stored files keep working). */
+const calibrationKey = (plan) => { const id = planId(plan); return CALIBRATION_KEYS[id] || plan; };
+/** Planning defaults measured on the largest plan (Ultra), standard depth. Scaled for other plans. */
 const DEFAULTS_AT_MAX20 = { laneHourlyPct: 1.5, unitCostPct: 0.2 };
 const SIZE_WEIGHT = { S: 1, M: 2.5, L: 5 };
 const PRIORITY_ORDER = ['P0', 'P1', 'P2', 'P3', 'P4', 'P5'];
@@ -174,7 +175,7 @@ function localStamp(ms) {
  * @returns {{ok:true, weeklyUsed, weeklyRemaining, weeklyResetMin, sessionUsed, sessionResetMin, plan, ageMin} | {ok:false, reason}}
  */
 function normalizeUsage(raw, nowMs, maxAgeMin = USAGE_FRESH_MIN) {
-  if (!raw || typeof raw !== 'object' || !raw.weekly || !raw.session) return { ok: false, reason: 'no-data' };
+  if (!raw || typeof raw !== 'object' || !raw.weekly) return { ok: false, reason: 'no-data' };
   if (raw._cached) return { ok: false, reason: `cached${raw._failureReason ? `: ${raw._failureReason}` : ''}` };
   const ts = Date.parse(raw.timestamp);
   if (!Number.isFinite(ts)) return { ok: false, reason: 'no-timestamp' };
@@ -182,14 +183,15 @@ function normalizeUsage(raw, nowMs, maxAgeMin = USAGE_FRESH_MIN) {
   if (ageMin < -1) return { ok: false, reason: 'future-dated' };
   if (ageMin > maxAgeMin) return { ok: false, reason: `stale (${Math.round(ageMin)} min)` };
   const wPct = Number(raw.weekly.pct);
-  const sPct = Number(raw.session.pct);
+  // No session window (Ultra has no 5 h limit; a weekly-only snapshot): the window counts as unused.
+  const sPct = raw.session ? Number(raw.session.pct) : 0;
   if (!Number.isFinite(wPct) || !Number.isFinite(sPct)) return { ok: false, reason: 'no-percent' };
   const age = Math.max(0, ageMin);
   // `null` = reset unknown (an idle 5-hour window, #1009) — Number(null) would
   // read it as "resets now".
   const minutesOf = (v) => (v == null ? NaN : Number(v));
   const wReset = minutesOf(raw.weekly.resetInMinutes);
-  const sReset = minutesOf(raw.session.resetInMinutes);
+  const sReset = raw.session ? minutesOf(raw.session.resetInMinutes) : NaN;
   return {
     ok: true,
     ageMin: round1(age),
@@ -207,8 +209,8 @@ function normalizeUsage(raw, nowMs, maxAgeMin = USAGE_FRESH_MIN) {
 // ---------------------------------------------------------------------------
 
 function planScale(plan) {
-  const cap = PLAN_CAPACITY[plan] || PLAN_CAPACITY['Max 5x'];
-  return PLAN_CAPACITY['Max 20x'] / cap;
+  const cap = PLANS[planId(plan)]?.capacity || PLANS.max.capacity;
+  return PLANS.ultra.capacity / cap;
 }
 
 /**

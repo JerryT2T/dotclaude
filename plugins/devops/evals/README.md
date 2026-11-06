@@ -103,6 +103,7 @@ an eval case tags it `learned`. Runs go through `ab-run.js --runs 1
 no case applies or every graded check passed (`null`, undecided, never
 blocks); exit 1: a check failed, was rerun once for that case and failed again,
 one `ship-gate: FAIL <case> ...` line per case; exit 2: usage or git error.
+The gate runs a copy of the plugin outside the repo (uncommitted changes included), because a plugin path inside the source repo misleads the routing of branch A cases.
 Wired into this repo's ship extension (`.claude/skills/do-ship/reference.md`).
 
 ## skills/

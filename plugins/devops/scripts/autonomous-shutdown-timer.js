@@ -10,7 +10,9 @@
  * watchdog (autonomous-watchdog.js) remains the outer net for the case where even
  * this `shutdown.exe` call could not be placed.
  *
- * Timer length — "remaining 5h-period + floor" (user choice):
+ * Timer length — "remaining 5h-period + floor" (user choice). Stays capped at 5 h
+ * also on a plan without a 5 h window or with a full week: this is a power-off
+ * watchdog, and a PC must not stay on for days waiting for a weekly reset.
  *   - FRESHEN first (arm, no override): when ~/.claude/usage-live.json is stale
  *     (older than REFRESH_MAX_AGE_MIN, or absent), best-effort run the headless
  *     refresh-usage scraper (`--no-login`, bounded) so the timer tracks the REAL

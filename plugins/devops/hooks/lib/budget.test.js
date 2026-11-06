@@ -36,12 +36,12 @@ const read = (h, extra = {}) => readBudget({ home: h, nowMs: NOW, env: {}, ...ex
 
 describe("planTier", () => {
   test("labels from usage-live.json and rateLimitTier both resolve", () => {
-    expect(planTier("Max 20x")).toBe("max20");
-    expect(planTier("Ultra")).toBe("max20");
-    expect(planTier("Max 5x")).toBe("max5");
+    expect(planTier("Max 20x")).toBe("ultra");
+    expect(planTier("Ultra")).toBe("ultra");
+    expect(planTier("Max 5x")).toBe("max");
     expect(planTier("Pro")).toBe("pro");
-    expect(planTier("default_claude_max_20x")).toBe("max20");
-    expect(planTier("default_claude_max_5x")).toBe("max5");
+    expect(planTier("default_claude_max_20x")).toBe("ultra");
+    expect(planTier("default_claude_max_5x")).toBe("max");
     expect(planTier("default_claude_pro")).toBe("pro");
     expect(planTier("Max Plan")).toBe("unknown"); // the status line's placeholder
     expect(planTier(null)).toBe("unknown");
@@ -58,12 +58,12 @@ describe("classify", () => {
   });
 
   test("Max 5x / Max 20x are free until their thresholds", () => {
-    expect(classify({ tier: "max5", fivePct: 79, weeklyPct: 89 })).toBe("free");
-    expect(classify({ tier: "max5", fivePct: 80, weeklyPct: 0 })).toBe("ask-before-parallel");
-    expect(classify({ tier: "max5", fivePct: 0, weeklyPct: 98 })).toBe("sonnet-only");
-    expect(classify({ tier: "max20", fivePct: 89, weeklyPct: 94 })).toBe("free");
-    expect(classify({ tier: "max20", fivePct: 90, weeklyPct: 0 })).toBe("ask-before-parallel");
-    expect(classify({ tier: "max20", fivePct: 98, weeklyPct: 0 })).toBe("sonnet-only");
+    expect(classify({ tier: "max", fivePct: 79, weeklyPct: 89 })).toBe("free");
+    expect(classify({ tier: "max", fivePct: 80, weeklyPct: 0 })).toBe("ask-before-parallel");
+    expect(classify({ tier: "max", fivePct: 0, weeklyPct: 98 })).toBe("sonnet-only");
+    expect(classify({ tier: "ultra", fivePct: 89, weeklyPct: 94 })).toBe("free");
+    expect(classify({ tier: "ultra", fivePct: 90, weeklyPct: 0 })).toBe("ask-before-parallel");
+    expect(classify({ tier: "ultra", fivePct: 98, weeklyPct: 0 })).toBe("sonnet-only");
   });
 
   test("unknown tier: no usage → ask; with usage → Max 5x rules", () => {
@@ -79,14 +79,14 @@ describe("readBudget", () => {
       "usage-live.json": { timestamp: iso(NOW - 60_000), session: { pct: 56, resetInMinutes: 52 }, weekly: { pct: 43, resetInMinutes: 7942 }, plan: "Max 20x" },
     });
     const b = read(h);
-    expect(b).toMatchObject({ plan: "Ultra", tier: "max20", fivePct: 56, weeklyPct: 43, resetInMinutes: 51, stale: false, cls: "free", binding: "5h" });
+    expect(b).toMatchObject({ plan: "Ultra", tier: "ultra", fivePct: 56, weeklyPct: 43, resetInMinutes: 51, stale: false, cls: "free", binding: "5h" });
     expect(budgetLine(b)).toBe("[budget] Ultra · window 56% (reset 51 min) · week 43% → free");
     expect(nudgeSuffix(b)).toBe("");
   });
 
   test("the $200 tier reads as Ultra, from credentials and from an old snapshot label", () => {
-    expect(tierLabel("max20")).toBe("Ultra");
-    expect(planTier("Ultra")).toBe("max20");
+    expect(tierLabel("ultra")).toBe("Ultra");
+    expect(planTier("Ultra")).toBe("ultra");
   });
 
   test("an unattended do-run keeps the class without a question and names the analysis ceiling", () => {
@@ -101,7 +101,7 @@ describe("readBudget", () => {
       ".credentials.json": { claudeAiOauth: { accessToken: "SECRET", refreshToken: "ALSO-SECRET", rateLimitTier: "default_claude_max_20x" } },
     });
     const b = read(h);
-    expect(b.tier).toBe("max20");
+    expect(b.tier).toBe("ultra");
     expect(b.cls).toBe("free");
     expect(JSON.stringify(b) + budgetLine(b) + nudgeSuffix(b)).not.toMatch(/SECRET/);
   });
@@ -136,7 +136,7 @@ describe("readBudget", () => {
     const b = read(h);
     expect(b.cls).toBe("free");
     expect(b.announce).toBe(true); // the positive signal: the previous reading no longer applies
-    expect(budgetLine(b)).toBe("[budget] Max 5x · usage unknown (snapshot past its reset) → free — earlier limit messages and usage claims in this conversation no longer apply");
+    expect(budgetLine(b)).toBe("[budget] Max · usage unknown (snapshot past its reset) → free — earlier limit messages and usage claims in this conversation no longer apply");
   });
 
   test("weekly-driven sonnet-only names the week as the binding limit, not the 5h window", () => {
@@ -176,9 +176,9 @@ describe("readBudget", () => {
   test("credentials are parsed once per session (cache file), then never re-read", () => {
     const h = home({ ".credentials.json": { claudeAiOauth: { rateLimitTier: "default_claude_max_5x" } } });
     const sid = `vitest-budget-${process.pid}-${Date.now()}`;
-    expect(read(h, { sessionId: sid }).tier).toBe("max5");
+    expect(read(h, { sessionId: sid }).tier).toBe("max");
     fs.unlinkSync(path.join(h, ".claude", ".credentials.json"));
-    expect(read(h, { sessionId: sid }).tier).toBe("max5"); // served from the session cache
+    expect(read(h, { sessionId: sid }).tier).toBe("max"); // served from the session cache
     fs.unlinkSync(path.join(os.tmpdir(), `dotclaude-budget-tier-${sid}`));
   });
 });
@@ -361,7 +361,7 @@ describe("age-based refresh — due when the class may have tightened, plan-scal
   /**
    * Usage is monotonic until a reset. A reading is worth refreshing only when
    * the worst-case burn since then could have crossed the next threshold:
-   * headroom × window fill time (Pro 30 min, Max 5x 150, Max 20x 600). At
+   * headroom × window fill time (Pro 30 min, Max 150, Ultra 300). At
    * 99 % nothing above can change — only the reset informs (expired path),
    * and a reset a few minutes away makes a reading now worthless.
    */
@@ -382,15 +382,15 @@ describe("age-based refresh — due when the class may have tightened, plan-scal
   };
   const refreshes = (h, root) => { clearMarker(); const r = maybeRefreshUsage(read(h), { home: h, nowMs: NOW, env: {}, pluginRoot: root }); clearMarker(); return r; };
 
-  test("due time = headroom × fill time: Max 20x at 85 % → 30 min, Pro at 10 % → 18 min, Max 20x at 40 % → the 3 h cap", () => {
-    expect(refreshDueMinutes({ tier: "max20", fivePct: 85, weeklyPct: 10 })).toBe(30);   // 5 pts to askAt 90 × 600/100
+  test("due time = headroom × fill time: Ultra at 85 % → 15 min, Pro at 10 % → 18 min, Ultra at 40 % → 150 min", () => {
+    expect(refreshDueMinutes({ tier: "ultra", fivePct: 85, weeklyPct: 10 })).toBe(15);   // 5 pts to askAt 90 × 300/100
     expect(refreshDueMinutes({ tier: "pro", fivePct: 10, weeklyPct: 10 })).toBe(18);     // 60 pts to sonnetAt 70 × 30/100
-    expect(refreshDueMinutes({ tier: "max20", fivePct: 40, weeklyPct: 10 })).toBe(180);  // capped at STALE_MS
-    expect(refreshDueMinutes({ tier: "max5", fivePct: 79, weeklyPct: 10 })).toBe(5);     // 1 pt × 150/100 = 1.5 → floor 5
+    expect(refreshDueMinutes({ tier: "ultra", fivePct: 40, weeklyPct: 10 })).toBe(150);  // 50 pts to sonnetAt 98 × 300/100, under the STALE_MS cap
+    expect(refreshDueMinutes({ tier: "max", fivePct: 79, weeklyPct: 10 })).toBe(5);     // 1 pt × 150/100 = 1.5 → floor 5
   });
 
-  test("the weekly window counts too, at a slower rate: Max 20x week 93 % → 96 min", () => {
-    expect(refreshDueMinutes({ tier: "max20", fivePct: 10, weeklyPct: 93 })).toBe(96); // 2 pts to askAt 95 × 600 × 8 / 100
+  test("the weekly window counts too, at a slower rate: Ultra week 93 % → 48 min", () => {
+    expect(refreshDueMinutes({ tier: "ultra", fivePct: 10, weeklyPct: 93 })).toBe(48); // 2 pts to askAt 95 × 300 × 8 / 100
   });
 
   test("the same 31 min: Max 20x at 85 % refreshes, Max 20x at 40 % does not, Pro at 40 % does", () => {
@@ -428,7 +428,7 @@ describe("budgetSummary — the block get_usage returns", () => {
       snapshot: { timestamp: iso(NOW), session: { pct: 3, resetInMinutes: 290 }, weekly: { pct: 1, resetInMinutes: 5000 }, plan: "Max 20x" },
     });
     expect(budgetSummary(b)).toEqual({
-      plan: "Ultra", tier: "max20", cls: "free", binding: "5h",
+      plan: "Ultra", tier: "ultra", cls: "free", binding: "5h",
       expired: false, recentReset: "5h", refreshFailed: null, refreshDueMinutes: 180, override: null,
       line: budgetLine(b),
     });
@@ -483,6 +483,6 @@ describe("defer to the reset — the fill triggers, the reset time picks the def
 
   test("an env override or an unknown window never defers", () => {
     expect(deferInfo({ ...win(95, 20), override: "free" })).toBeNull();
-    expect(deferInfo({ tier: "max20", fivePct: null, resetInMinutes: 20 })).toBeNull();
+    expect(deferInfo({ tier: "ultra", fivePct: null, resetInMinutes: 20 })).toBeNull();
   });
 });

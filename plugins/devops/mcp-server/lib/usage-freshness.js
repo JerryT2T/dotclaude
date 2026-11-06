@@ -38,7 +38,8 @@ export function assessFreshness(data, nowMs) {
  * froze the card at "+0%" for a month.
  */
 export function isLiveSnapshot(data) {
-  return !!(data && data.session && !data._cached);
+  // A weekly-only snapshot (the status line writes one when only the week is delivered) is a reading too.
+  return !!(data && (data.session || data.weekly) && !data._cached);
 }
 
 // The completion card serves a live snapshot up to this old at once and

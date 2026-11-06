@@ -47,6 +47,8 @@ const { execSync, execFileSync, spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { planId, planLabel } = require('../hooks/lib/plan');
+const { usageShape, weeklyAllLimit, recordDrift, clearDrift } = require('../hooks/lib/usage-drift');
 
 // Store usage data in ~/.claude — same location regardless of CWD or worktree
 const SCRIPTS_DIR = path.join(os.homedir(), '.claude');
@@ -241,40 +243,56 @@ function mapApiUsage(usage, rateLimits, nowMs) {
     return Number.isFinite(t) ? Math.max(0, Math.round((t - nowMs) / 60_000)) : null;
   };
 
-  const weeklyPct = pctOf(usage && usage.seven_day && usage.seven_day.utilization);
+  // seven_day stays primary; limits[] (weekly_all) is the fallback when it is absent.
+  const weeklyAll = weeklyAllLimit(usage);
+  const weeklySrc = usage && usage.seven_day && pctOf(usage.seven_day.utilization) !== null
+    ? { pct: pctOf(usage.seven_day.utilization), resetsAt: usage.seven_day.resets_at }
+    : (weeklyAll ? { pct: pctOf(weeklyAll.percent), resetsAt: weeklyAll.resets_at } : null);
+  const weeklyPct = weeklySrc ? weeklySrc.pct : null;
   // #1009: `five_hour: null` means the 5-hour window has not started (no usage
-  // since its reset). With a valid weekly reading that is 0 %, not "no data";
-  // any other missing or garbage session value still writes nothing.
-  const windowIdle = !!usage && usage.five_hour === null && weeklyPct !== null;
-  const sessionPct = windowIdle ? 0 : pctOf(usage && usage.five_hour && usage.five_hour.utilization);
-  if (sessionPct === null) return null; // no usable session window → don't write garbage
+  // since its reset) or, on Ultra, that there is no such limit. With a valid weekly
+  // reading that is 0 %, not "no data". Anything else that is not a usable window
+  // writes NOTHING, so a good snapshot is never overwritten by a guess: a garbage
+  // `five_hour` (Pro at 95 % must not read as 0 % and free), and an absent key on
+  // every plan but Ultra. Only Ultra without the key is weekly-only (session null).
+  const fh = usage ? usage.five_hour : undefined;
+  let session;
+  if (fh === null) {
+    if (weeklyPct === null) return null;
+    session = { pct: 0, resetInMinutes: null };
+  } else if (fh === undefined) {
+    if (weeklyPct === null || planId(rateLimits && rateLimits.rate_limit_tier) !== 'ultra') return null;
+    session = null;
+  } else {
+    const p = pctOf(fh.utilization);
+    if (p === null) return null;
+    session = { pct: p, resetInMinutes: resetMin(fh.resets_at) };
+  }
 
   const snapshot = {
     timestamp: new Date(nowMs).toISOString(),
-    session: { pct: sessionPct, resetInMinutes: windowIdle ? null : resetMin(usage.five_hour.resets_at) },
+    session,
     weekly: weeklyPct === null ? null : {
       pct: weeklyPct,
       resetDay: null,  // API carries durations only — no day/time strings
       resetTime: null,
-      resetInMinutes: resetMin(usage.seven_day.resets_at),
+      resetInMinutes: resetMin(weeklySrc.resetsAt),
     },
     plan: tierLabel(rateLimits && rateLimits.rate_limit_tier),
   };
+  // Scoped weekly limits (Fable) come from limits[] only, so a plan without one has none.
+  const scoped = (Array.isArray(usage.limits) ? usage.limits : [])
+    .filter((l) => l && l.kind === 'weekly_scoped' && l.scope && l.scope.model && typeof l.scope.model.display_name === 'string' && pctOf(l.percent) !== null)
+    .map((l) => ({ name: l.scope.model.display_name, pct: pctOf(l.percent), resetInMinutes: resetMin(l.resets_at) }));
+  if (scoped.length) snapshot.scoped = scoped;
   const sonnetPct = pctOf(usage.seven_day_sonnet && usage.seven_day_sonnet.utilization);
   if (sonnetPct !== null) snapshot.weeklySonnet = { pct: sonnetPct };
   return snapshot;
 }
 
-/** 'default_claude_max_5x' → 'Max 5x', 'default_claude_max_20x' → 'Ultra' (its sales name); unknown/absent tiers → generic label. */
+/** Plan label from the API's rate_limit_tier (plan.js resolves the aliases); unknown/absent tiers → generic label. */
 function tierLabel(tier) {
-  if (typeof tier === 'string') {
-    if (/ultra/i.test(tier)) return 'Ultra';
-    const max = tier.match(/max_(\d+)x/i);
-    if (max) return Number(max[1]) >= 20 ? 'Ultra' : `Max ${max[1]}x`;
-    if (/pro/i.test(tier)) return 'Pro';
-    if (/free/i.test(tier)) return 'Free';
-  }
-  return 'Max Plan';
+  return planLabel(planId(tier)) || 'Max Plan';
 }
 
 async function isCDPAvailable() {
@@ -755,6 +773,10 @@ async function scrapeViaCDP() {
       return 2;
     }
 
+    if (evalData.usage != null) {
+      const drift = usageShape(evalData.usage);
+      if (drift) recordDrift(drift); else clearDrift();
+    }
     let parsed = evalData.usage ? mapApiUsage(evalData.usage, evalData.rateLimits, Date.now()) : null;
 
     // Last resort: one single DOM text grab (no polling — the old 24s poll is

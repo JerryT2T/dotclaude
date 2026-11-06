@@ -4,14 +4,14 @@ When the 5 h window is almost full, larger work can wait for the reset: a one-sh
 
 The per-prompt delegation nudge carries a `· defer: window N%, resets in M min`
 suffix when the 5 h window reaches the plan's threshold
-(`hooks/lib/budget.js` `deferInfo`): Ultra 90 %, Max 5x 80 %, Pro 70 %
-(unknown plan → Max 5x). The fill alone triggers it. The time to the reset
+(`hooks/lib/budget.js` `deferInfo`; values per plan in `plans.md`,
+unknown plan → Max's). The fill alone triggers it. The time to the reset
 only picks the recommended answer. A limit hit mid-change leaves a half-done
 edit across logic and tests. That is worse than a wait, and when the wait
 is long, the timer still resumes the work on its own after a limit stop.
 
 No suffix while the week is the tight limit (the plan's weekly sonnet-only
-threshold, e.g. Ultra ≥ 99 %): the 5 h reset brings nothing back then.
+threshold in `plans.md`): the 5 h reset brings nothing back then.
 
 **Not the card's yellow marker.** The card colours a budget bar by pace,
 usage minus elapsed time (yellow from +10 points, red from +25). 90 % with

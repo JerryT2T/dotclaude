@@ -107,7 +107,7 @@ the `redteam` agent in Wave 0.
 
 - `ss.tokens.scan` scans for expensive files at session start
 - `pre.tokens.guard` blocks operations exceeding the plan-scaled share of the
-  context window (`plan-defaults`: 5% pro · 8% max_5 · 10% max_20)
+  context window (`plan-defaults`, values per plan in `plans.md`)
 - Each block/release (and each local-llm delegation) appends one estimate line
   to `~/.claude/devops-savings.jsonl` (override `DEVOPS_SAVINGS_LOG`, capped at
   256 KB) — estimates only, read by the plugin audit, never a gate

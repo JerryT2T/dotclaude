@@ -106,16 +106,28 @@ async function claudeTs(base) {
   try { return Number(JSON.parse(r.body).claude_ts) || 0; } catch { return null; }
 }
 
-function openBrowser(url) {
-  if (process.env.CONCEPT_OPEN_NO_BROWSER === '1') return null;
+// How long the open may report a launcher failure before it counts as done. The
+// launcher normally exits at once (Windows `start`, macOS `open`); on Linux the
+// browser itself can stay in the foreground for its whole life.
+const OPEN_SETTLE_MS = 5000;
+
+function openBrowser(url, { command = null, settleMs = OPEN_SETTLE_MS } = {}) {
+  if (!command && process.env.CONCEPT_OPEN_NO_BROWSER === '1') return null;
   let cmd; let args;
-  if (process.platform === 'win32') { cmd = 'cmd.exe'; args = ['/c', 'start', '""', 'msedge', url]; }
+  if (command) { [cmd, ...args] = command; }
+  else if (process.platform === 'win32') { cmd = 'cmd.exe'; args = ['/c', 'start', '""', 'msedge', url]; }
   else if (process.platform === 'darwin') { cmd = 'open'; args = ['-a', 'Microsoft Edge', url]; }
   else { cmd = 'microsoft-edge'; args = [url]; }
   return new Promise((resolve) => {
-    const c = spawn(cmd, args, { stdio: 'ignore', detached: true, windowsHide: true, windowsVerbatimArguments: true });
-    c.on('error', (e) => resolve(`could not open Edge (${cmd}): ${e.message}`));
-    c.on('exit', (code) => resolve(code ? `${cmd} exited with ${code}` : null));
+    const c = spawn(cmd, args, { stdio: 'ignore', detached: true, windowsHide: true, windowsVerbatimArguments: !command && process.platform === 'win32' });
+    // The child is unref'd so a long-lived browser cannot hold this process, and
+    // an unref'd child alone does not keep the event loop alive: without this
+    // timer node exits with 0 before 'exit' fires, so the caller's result is never
+    // printed and opened_for_run is never written.
+    const settle = setTimeout(() => resolve(null), settleMs);
+    const done = (result) => { clearTimeout(settle); resolve(result); };
+    c.on('error', (e) => done(`could not open Edge (${cmd}): ${e.message}`));
+    c.on('exit', (code) => done(code ? `${cmd} exited with ${code}` : null));
     c.unref();
   });
 }

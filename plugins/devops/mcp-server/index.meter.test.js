@@ -145,7 +145,7 @@ describe("classifyBudget — the budget block get_usage returns", () => {
       session: { pct: 26, resetInMinutes: 148 }, weekly: { pct: 97, resetInMinutes: 2058 }, plan: "Max 5x",
       _cached: true, _failureReason: "not logged in", _failedAt: new Date().toISOString(),
     }));
-    expect(["max5", "max20"]).toContain(block.tier); // the credentials tier of the host beats the label
+    expect(["max", "ultra"]).toContain(block.tier); // the credentials tier of the host beats the label
     expect(block.refreshFailed).toBe("not logged in");
     expect(block.line).toContain('(refresh failed: not logged in — say "refresh usage" to log in once)');
     expect(["free", "ask-before-parallel", "sonnet-only"]).toContain(block.cls);

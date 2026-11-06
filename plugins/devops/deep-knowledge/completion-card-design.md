@@ -125,11 +125,17 @@ it is the card's footer, not part of the evidence.
 - A light glint (24 px, 12 % white) sweeps once every 4 s across the **filled
   part only** — never over time that has not passed; disabled under
   `prefers-reduced-motion`.
-- **When a window shows.** `5h`: from 50 % used or 1 h before reset.
+- **When a window shows.** `5h`: from 50 % used or 1 h before reset, and only where a 5-hour window
+  applies (no row for Ultra without a window; a delivered value shows on every
+  plan, see `plans.md`); with an unknown reset there is no pace verdict.
+  `Fb`: a scoped weekly limit (Fable, read from `limits[]` of the usage
+  response, so only on plans that have one) follows the SAME rule as `Wk` and
+  shows only while its percent is above 0.
   `Wk`: once usage runs > 10 pp ahead of elapsed time (the yellow marker
   threshold — the user must see they are ahead of the linear weekly pace)
   or in the last 24 h before reset, whatever the pace. Absolute weekly
-  percent alone never shows it. With neither window due, the line is
+  percent alone never shows it, and a weekly reset that is not known shows
+  nothing (it is never read as 100 % elapsed). With neither window due, the line is
   **omitted entirely**.
 - Terminal / markdown fallback: `5h ▰▰▰▰▰▰▰│▱▱▱▱▱▱ 3 h 39 m   Wk ▰▰│▱▱▱▱▱▱ 6 d 20 h`
   (▰ = time, │ = usage); a yellow/red condition is written as a leading `⚠`.
