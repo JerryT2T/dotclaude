@@ -208,6 +208,9 @@ Whether an app restart alone picks up an already synced version is untested.
   real cloud session).
 
 **Version line, always lokal first, then Cloud:** `ss.project.setup` prints
-`ℹ devops: lokal X aktuell · Cloud Y updaten (Desktop nutzt schon lokal), unkritisch →
+`ℹ devops: lokal X · Cloud Y updaten (Desktop nutzt schon lokal), unkritisch →
 „Cloud updaten“`, without the bracket in the CLI. A CLI session knows Y only after a
-Desktop session mirrored once (`~/.claude/plugins/.desktop-mirror.json`).
+Desktop session mirrored once (`~/.claude/plugins/.desktop-mirror.json`). The line says
+nothing about the channel; on the cooldown path `ss.plugin.update` compares the install
+with the newest remote tag its own pin sees and prints `⚠ devops: lokal X hinter <channel>,
+Y ist draußen → „devops update“`, delivered with the next prompt.
