@@ -10,6 +10,14 @@ run flags.
 |---|---|
 | `.claude/.ship-queue` marker in the target repo root (`{ owner, since }`) | Written by the orchestrator before its first ship, deleted after its own finalizer. Project ship extensions MUST skip any post-ship step that mutates this install (plugin self-sync, cache rebuild, MCP restart) while it exists — the orchestrator runs that step exactly once at the end. Not a lockout: `AskUserQuestion` gates stay interactive unless Pre-Step A says otherwise. **Stale rule:** a marker whose `since` is older than 6 h belongs to a queue that died; a plain `/do-ship` (no `--queued`) deletes it and proceeds as if absent, so one crashed cleanup run never defers finalizers forever. |
 
+## Standing mandate
+
+"Ship everything together" covers every linked session until each has landed, not one merge event.
+
+- Work that arrives after a combined ship joins a follow-up ship without asking. Only the "run a follow-up ship?" question drops; safety gates (ambiguous merge, security finding, major bump) still stop the ship.
+- Each follow-up ship re-arms `.claude/.ship-queue`, so an active mandate does not go stale. It ends when no linked session is left to land.
+- A session started for a combined ship gets the no-ship rule in its brief. A later message cannot stop it: a message queues until that session's turn ends, and it may merge first.
+
 ## Run flags
 
 | Signal | Effect on this run |
