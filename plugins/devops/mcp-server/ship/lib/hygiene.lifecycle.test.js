@@ -317,6 +317,17 @@ describe("main checkout on a landed local-only branch (#879) and landed worktree
     expect(cls.atRisk).toEqual([]);
   });
 
+  test("an unlanded branch named after a session worktree that still exists is no finding", () => {
+    const { dir } = makeRepo();
+    git(dir, "checkout", "-q", "-b", "claude/batch-ab12");
+    commitAt(dir, "b.txt", "x\n", daysAgo(0.5));
+    git(dir, "checkout", "-q", "-");
+    git(dir, "worktree", "add", "-q", "--detach", path.join(dir, ".claude", "worktrees", "batch-ab12"));
+    expect(classify(dir, scanRepo(dir, NOW)).atRisk).toEqual([]);
+    git(dir, "worktree", "remove", "--force", path.join(dir, ".claude", "worktrees", "batch-ab12"));
+    expect(classify(dir, scanRepo(dir, NOW)).atRisk).toEqual([expect.objectContaining({ branch: "claude/batch-ab12" })]);
+  });
+
   test("an unlanded local-only branch idle on the main checkout is at risk, never removable", () => {
     const { dir } = makeRepo();
     git(dir, "checkout", "-q", "-b", "fix/forgotten");

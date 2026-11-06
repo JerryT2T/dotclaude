@@ -974,6 +974,9 @@ export function classifyUnits(scan, io) {
   const parkedUnits = [];
   const mainOnLanded = [];
   const landedOutside = [];
+  // A session keeps its worktree until it is closed, also after switching branch or
+  // detaching: the branch named after that folder is its work in progress, no finding.
+  const sessionFolders = new Set((scan.paths || []).map((p) => path.basename(p)));
   for (const u of scan.units) {
     // never removable: the user stands on it; landed ones are only reported (#879). Unlanded and
     // idle it is at risk: the autosave skips main checkouts and the branch was never pushed, so
@@ -1004,6 +1007,7 @@ export function classifyUnits(scan, io) {
     const live = u.kind === "worktree"
       && (hasLiveSession(u.path, io.projectsDir) || hasMovedSession(u.path, ctx.mainPath, io.projectsDir));
     if (live) continue;
+    if (u.kind === "branch" && u.branch && sessionFolders.has(u.branch.split("/").pop())) continue;
     const dirty = u.kind === "worktree" ? uncommittedCount(u.path) : 0;
     const openPr = Boolean(open && ((u.branch && open.names.has(u.branch)) || open.shas.has(u.head)));
     const landing = landingState(u.head, u.branch, ctx);

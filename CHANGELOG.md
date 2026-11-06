@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.357.1] — 2026-11-06
+
+### Fixed
+- Ship hygiene: a branch named after a session worktree that still exists is no longer reported as unlanded work.
+- Completion card: a dropped point about another session is not named again in the answer.
+
 ## [0.357.0] — 2026-11-06
 
 ### Added
