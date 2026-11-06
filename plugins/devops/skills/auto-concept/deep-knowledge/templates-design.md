@@ -118,6 +118,8 @@ does not change. Inside `section[data-screen]`, therefore:
   browser window, not the frame: a `height: 100vh` hero renders 1080px tall
   inside a 390×844 phone shell and bursts out of it. Use `100%` (the frame
   is definitely sized) or `cqh` / `cqw` against `container-name: device`.
+  The overview card clones the screen into a 1000×625 canvas, so `100%` means
+  625px there. A preview that still measures empty logs a console warning.
 - **No `@media` queries for the device breakpoints.** They key off the
   window, which never changes. Style device variants off the shell instead —
   `.device-shell[data-device="phone"] .nav { … }`,

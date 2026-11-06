@@ -1609,6 +1609,10 @@ returns — the single-design page is untouched.
         if (!(n.firstElementChild && r.width / k >= 0.9 * (wrap.offsetWidth || 1000))) add(tight, r);
       });
       const u = tight.r > tight.l ? tight : all;
+      if (!(u.r > u.l) && wrap.firstElementChild && p.offsetParent && !p.dataset.emptyWarned) {
+        p.dataset.emptyWarned = 'true';
+        console.warn('[concept] overview preview measures empty: the mock has content but no size in the 1000×625 clone (templates-design.md § Mock authoring constraints)', (ovPreviews.get(p) || {}).design || '');
+      }
       const PAD = 24;
       const content = u.r > u.l ? Math.min(1000, u.r - u.l + 2 * PAD) : 1000;
       const from = u.r > u.l ? Math.max(0, u.l - PAD) : 0;
