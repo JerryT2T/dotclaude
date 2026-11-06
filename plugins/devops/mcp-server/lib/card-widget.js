@@ -525,7 +525,7 @@ export function cardWidgetScript(lang = "de") {
 }
 
 /** jsDelivr's GitHub endpoint for this repo, and the client file inside it. */
-export const CARD_CLIENT_CDN = "https://cdn.jsdelivr.net/gh/Jerry0022/dotclaude";
+export const CARD_CLIENT_CDN = "https://cdn.jsdelivr.net/gh/JerryT2T/dotclaude";
 export const CARD_CLIENT_PATH = "plugins/devops/mcp-server/lib/card-widget.client.js";
 
 let pluginVersionCache;

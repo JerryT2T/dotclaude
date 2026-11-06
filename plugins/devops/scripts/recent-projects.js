@@ -16,6 +16,9 @@ const { spawnSync } = require("child_process");
 
 const HEAD_BYTES = 64 * 1024;
 
+/** Claude Desktop's throwaway session folders are no projects. */
+const SCRATCH_WORKSPACE = /[\\/]scratch[\\/]workspaces[\\/]/i;
+
 function configRoot(env = process.env) {
   return env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), ".claude");
 }
@@ -77,7 +80,7 @@ function recentProjects(o = {}) {
     if (!newest) continue;
     if (o.withinMin != null && now - newest.mtime > o.withinMin * 60000) continue;
     const cwd = cwdFromHead(newest.file);
-    if (!cwd || !fs.existsSync(cwd)) continue;
+    if (!cwd || !fs.existsSync(cwd) || SCRATCH_WORKSPACE.test(cwd)) continue;
     const root = mainRoot(cwd);
     const prev = byPath.get(root);
     if (!prev || newest.mtime > prev.lastActivityMs) byPath.set(root, { path: root, remote: null, lastActivityMs: Math.round(newest.mtime) });

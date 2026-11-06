@@ -28,6 +28,16 @@ function transcript(root, name, cwd, ageMin) {
   fs.utimesSync(f, t, t);
 }
 
+test("skips Claude Desktop scratch workspaces", () => {
+  const root = tmp(), work = tmp();
+  repo(path.join(work, "alpha"));
+  const scratch = path.join(work, "scratch", "workspaces", "s1");
+  fs.mkdirSync(scratch, { recursive: true });
+  transcript(root, "a", path.join(work, "alpha"), 5);
+  transcript(root, "s", scratch, 1);
+  expect(recentProjects({ root }).map((p) => path.basename(p.path))).toEqual(["alpha"]);
+});
+
 test("lists projects with remote slug, newest first, honours --within-min, --match, --remote", () => {
   const root = tmp(), work = tmp();
   repo(path.join(work, "alpha"), "https://github.com/acme/alpha.git");
