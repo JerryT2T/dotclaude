@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.355.1] — 2026-11-06
+
+### Fixed
+- `pre.ship.guard` blocks manual PR commands also as `gh.exe`, in any case, behind a path, env prefix or global flag, across line continuations and in PowerShell. A plain `gh api` read of a PR's merge status now passes.
+- `pre.redirect.scope` no longer warns about `$(ls x 2>/dev/null)`, and frustrated mode no longer refuses a redirect to `/dev/null` at the end of a subshell.
+
 ## [0.355.0] — 2026-11-06
 
 ### Added
