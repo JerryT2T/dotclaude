@@ -173,7 +173,7 @@ describe("replay B — batch session", () => {
   test("refused at the first Edit after the fire until do-run is invoked", () => {
     B.activate(dir, { marker: ">>" });
     B.appendNote(dir, "types aufräumen");
-    const fire = run(BATCH, { prompt: ">> los: implementiere alles direkt" });
+    const fire = run(BATCH, { prompt: "go implementiere alles direkt" });
     expect(fire.code).toBe(0);
     expect(fire.stdout).toContain("per Hook erzwungen");
     expect(fs.existsSync(store.batchHandoffPath(dir))).toBe(true);
