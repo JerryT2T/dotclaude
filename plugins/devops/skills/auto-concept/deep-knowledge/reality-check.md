@@ -44,6 +44,10 @@ two forced rounds in a row. Neither is allowed to be treated as optional.
 
 ## Step 0 — the skip ladder
 
+Main is already merged into the branch at this point (`step5-process.md`
+§ Bring main in before the round). The merge does not replace this check: it
+brings the code in, this check asks whether the plan still fits it.
+
 Run this **before** any code is written and before any `POST /status
 {phase:"implemented"}`. First hit wins:
 
