@@ -905,21 +905,35 @@ returns — the single-design page is untouched.
 
   // ── Variant switch that keeps the page ────────────────────────────────
   // Comparing variants means looking at the SAME page in each: on design A
-  // page 2, key 2 / the quick-nav segment opens design B page 2. A design
-  // without that page opens on its first page. A question view tied to a
-  // design (data-view-for) maps the same way, by its position among that
-  // design's views. From the overview or a free view the design opens where
-  // it was last left (plain showDesign()).
+  // page 2, key 2 / the quick-nav segment / the ☰ panel opens the page of
+  // design B with the same data-nav-label, else the one at the same position,
+  // from the overview too. A design without that page opens on its first page,
+  // and the wanted page stays remembered while the user does not move on: page
+  // III of A → a two-page B → back to A is page III again (#1069). A question
+  // view tied to a design (data-view-for) maps by its position among that
+  // design's views. From a free view the design opens where it was last left
+  // (plain showDesign()).
+  let wantedPage = null;
+  const screenLabel = s => (s.dataset.navLabel || '').trim().toLowerCase();
+  function alignedScreen(cur, target) {
+    const from = activeScreenOf(cur);
+    const held = wantedPage && from && wantedPage.landed === from.id;
+    const idx = held ? wantedPage.idx : [...cur.querySelectorAll('section[data-screen][id]')].indexOf(from);
+    const label = held ? wantedPage.label : (from ? screenLabel(from) : '');
+    const screens = [...target.querySelectorAll('section[data-screen][id]')];
+    const same = s => !!s && !!label && screenLabel(s) === label;
+    const sec = same(screens[idx]) ? screens[idx] : (label && screens.find(same)) || screens[idx];
+    wantedPage = !sec && idx > 0 && screens[0] ? { idx, label, landed: screens[0].id } : null;
+    return sec || screens[0];
+  }
   function showDesignAligned(id) {
     const it = visibleIteration();
     const target = designsOf(it).find(d => d.dataset.design === id);
     if (!target) return;
     const md = mode();
     const cur = activeDesignOf(it);
-    if (md === 'design' && cur && cur !== target) {
-      const idx = [...cur.querySelectorAll('section[data-screen][id]')].indexOf(activeScreenOf(cur));
-      const screens = [...target.querySelectorAll('section[data-screen][id]')];
-      const sec = screens[idx] || screens[0];
+    if ((md === 'design' || md === 'overview') && cur && cur !== target) {
+      const sec = alignedScreen(cur, target);
       window.showDesign(id, sec ? sec.id : undefined);
       return;
     }
@@ -937,6 +951,7 @@ returns — the single-design page is untouched.
     }
     window.showDesign(id);
   }
+  window.showDesignAligned = showDesignAligned;
 
   // ── Questions (views) ──────────────────────────────────────────────────
   // A question view counts as answered once the user left anything in it: a

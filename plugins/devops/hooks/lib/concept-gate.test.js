@@ -22,6 +22,7 @@ import {
   findChromeCollisions,
   ENGINE_CLASSES,
   findIdenticalFirstScreens,
+  findDifferingAlternativePages,
   findSubpageOnlyRounds,
   findStageIssues,
   findDesignAuthoringWarnings,
@@ -1098,6 +1099,16 @@ describe("design-round differentiation (validation-gate.md V7 / V8 / P34)", () =
     expect(w).toHaveLength(1);
     expect(w[0].why).toMatch(/ignored.*bottom-left/);
     expect(findDesignAuthoringWarnings(round([design("d1", [screen("Home", body())]), design("d2", [screen("Home", body("<p>x</p>"))])])).filter((x) => x.kind === "overview-overlay")).toEqual([]);
+  });
+
+  test("V9: alternatives with different pages warn; same pages, single pages and topics do not", () => {
+    const pages = (...labels) => labels.map((l) => screen(l, body()));
+    const warned = (html) => findDifferingAlternativePages(html).map((x) => x.kind);
+    expect(warned(round([design("d1", pages("Home", "Detail", "End")), design("d2", pages("Home", "Detail"))]))).toEqual(["overview-pages-differ"]);
+    expect(warned(round([design("d1", pages("Home", "Detail")), design("d2", pages("Detail", "Home"))]))).toEqual(["overview-pages-differ"]);
+    expect(warned(round([design("d1", pages("Home", "Detail")), design("d2", pages("Home", "Detail"))]))).toEqual([]);
+    expect(warned(round([design("d1", pages("Home")), design("d2", pages("Start"))]))).toEqual([]);
+    expect(warned(round([design("d1", pages("Home", "Detail")), design("d2", pages("Home"))], "topics"))).toEqual([]);
   });
 
   test("V8: identical first screens of two designs warn and name data-ov-demo; ids and d1-/d2- prefixes do not hide it", () => {

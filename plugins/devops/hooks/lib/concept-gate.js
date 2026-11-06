@@ -984,6 +984,28 @@ function parseDesignRounds(html) {
 }
 
 /**
+ * Advisory (V9): the designs of an `alternatives` round have different pages
+ * (count, labels or order). A reviewer compares variants page by page, and a
+ * switch can only keep the page when each variant has it. A round where every
+ * design has one page has nothing to align.
+ * @returns {Array<{kind:string, why:string, at:number}>}
+ */
+function findDifferingAlternativePages(html) {
+  const out = [];
+  for (const g of parseDesignRounds(html)) {
+    const set = attrOf(g.tag, 'data-design-set');
+    if (!set || set.trim() !== 'alternatives') continue;
+    const ds = g.designs.filter(d => d.screens.length);
+    if (ds.length < 2 || ds.every(d => d.screens.length === 1)) continue;
+    const pages = d => d.screens.map(s => s.label).join(' | ');
+    if (ds.every(d => d.screens.length === ds[0].screens.length && pages(d) === pages(ds[0]))) continue;
+    out.push({ kind: 'overview-pages-differ', at: g.at,
+      why: `iteration ${g.n}: the alternatives have different pages (${ds.map(d => `${d.id}: ${d.screens.length}`).join(', ')}) — give every design the same pages in the same order (data-nav-label) so a variant switch keeps the page (validation-gate.md V9)` });
+  }
+  return out;
+}
+
+/**
  * Advisory (V8): the first screens of ≥2 designs in one round are identical
  * or near-identical and neither design carries `data-ov-demo` — the overview
  * then shows two indistinguishable previews.
@@ -1187,7 +1209,7 @@ function evaluate(filePath, html) {
     finalReport,
     analysis: a.errors,
     // Advisory, never part of `ok`.
-    warnings: [...findDesignAuthoringWarnings(html), ...findIdenticalFirstScreens(html), ...findFinalReportPlaceholders(html), ...a.warnings, ...st.warnings],
+    warnings: [...findDesignAuthoringWarnings(html), ...findIdenticalFirstScreens(html), ...findDifferingAlternativePages(html), ...findFinalReportPlaceholders(html), ...a.warnings, ...st.warnings],
   };
 }
 
@@ -1389,6 +1411,7 @@ module.exports = {
   finalReportRegion,
   findDesignAuthoringWarnings,
   findIdenticalFirstScreens,
+  findDifferingAlternativePages,
   findSubpageOnlyRounds,
   findStageIssues,
   SCREEN_SIM_THRESHOLD,
