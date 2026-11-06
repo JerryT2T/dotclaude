@@ -226,3 +226,6 @@ only a system-pressure signal of the 80 % rule.
 - Restored priority class is always Normal (the original is not recorded).
 - Docker containers are not attributed (vmmem counts as OS load).
 - GPU generators are capped, never killed and re-queued (flagged `requeue`).
+- The governor does not end leaked wait loops. `pre.waitloop.guard` keeps new
+  unbounded or sleepless `until`/`while` loops in Bash from starting; PowerShell
+  loops and loops already running are not covered.
