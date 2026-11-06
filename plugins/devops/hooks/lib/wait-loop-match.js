@@ -144,6 +144,17 @@ function modifiedVars(text) {
   return vars;
 }
 
+/**
+ * `text` without the steps behind `CHECK &&`: `grep -q x log && ((i++))` may
+ * never count. A step behind `sleep` or `true` always runs, so it stays.
+ */
+function unguarded(text) {
+  return text.split(/;|\n/).map((statement) => {
+    const parts = statement.split('&&');
+    return parts.filter((_, i) => i === 0 || /^\s*(?:sleep\b|true\b|:\s*$)/.test(parts[i - 1])).join(' && ');
+  }).join('\n');
+}
+
 function comparedVars(segment) {
   const vars = new Set();
   let m;
@@ -171,7 +182,7 @@ function boundedBy(cond, body, maskBody, kind) {
       if (a && isTime(a[2])) tainted.add(a[1]);
     }
   }
-  const moved = kind === 'counter' ? modifiedVars(text) : null;
+  const moved = kind === 'counter' ? modifiedVars(unguarded(text)) : null;
   const hits = (seg) => COMPARE.test(seg) && (kind === 'time' ? isTime(seg) : [...comparedVars(seg)].some((v) => moved.has(v)));
   if (segments(cond).some(hits)) return true;
   return EXIT.test(maskBody) && segments(body).some(hits);
@@ -197,7 +208,8 @@ function classifyLoop(loop, loops, raw, mask, wrapped) {
   const body = raw.slice(loop.doAt + 2, loop.doneAt);
   const maskCond = mask.slice(condStart, loop.doAt);
   const maskBody = mask.slice(loop.doAt + 2, loop.doneAt);
-  const ownBody = withoutNested(mask, loop, loops);
+  // A timed read in the body returns with or without input, so it drives nothing.
+  const ownBody = withoutNested(mask, loop, loops).replace(/\bread\b[^;&|\n]*\s-[a-z]*t\b[^;&|\n]*/g, ' ');
   if (INPUT_CMD.test(maskCond.trimStart()) || INPUT_CMD.test(ownBody.trimStart()) || /\$#/.test(cond) || /(?:^|[\s;&|])shift\b/.test(ownBody)) return null;
   if (boundedBy(cond, body, maskBody, 'counter')) return null;
   const sleeps = SLEEP.test(maskCond) || SLEEP.test(maskBody);

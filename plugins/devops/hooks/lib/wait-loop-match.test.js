@@ -38,7 +38,9 @@ describe("blocked", () => {
     ["heredoc fed to bash", "bash <<'EOF'\nuntil grep -q ok log; do sleep 5; done\nEOF", "unbounded"],
     ["line continuation", "until grep -q ok log; \\\ndo sleep 5; done", "unbounded"],
     ["read in a nested loop does not excuse the outer one", "while true; do cat f | while read l; do echo $l; done; sleep 5; done", "unbounded"],
-    ["echo only, no sleep", "while ! grep -q ok log; do echo .; done", "busy"],
+    ["a timed read in the body", "while true; do read -t 0.1 x || :; sleep 5; done", "unbounded"],
+    ["a counter behind a check may never move", 'i=0; while [ "$i" -lt 10 ]; do grep -q ok log && ((i++)); sleep 1; done', "unbounded"],
+    ["echo only, no sleep","while ! grep -q ok log; do echo .; done", "busy"],
     ["empty probe body", "while pgrep x; do true; done", "busy"],
     ["read-only probe in the body", "until test -f x; do ls /tmp; done", "busy"],
     ["spin under a deadline", "until test -f x || [ $SECONDS -gt 60 ]; do :; done", "busy"],
@@ -64,7 +66,10 @@ describe("allowed: bounded", () => {
     ["counter with a break", "n=0; until grep -q ok log; do n=$((n+1)); [ $n -ge 30 ] && break; sleep 5; done"],
     ["counter with ((++))", "while (( i < 10 )); do sleep 1; ((i++)); done"],
     ["counter with expr", "while [ $i -lt 3 ]; do sleep 1; i=$(expr $i + 1); done"],
-    ["counter with let", "while [ $i -lt 3 ]; do sleep 1; let i++; done"],
+    ["counter behind sleep &&", "while [ $i -lt 3 ]; do sleep 1 && i=$((i+1)); done"],
+    ["counter in an if with a break", "while true; do if curl x; then break; else n=$((n+1)); fi; [ $n -ge 5 ] && break; sleep 1; done"],
+    ["a timed read in the condition", "while read -t 5 -r l; do echo $l; done < fifo"],
+    ["counter with let","while [ $i -lt 3 ]; do sleep 1; let i++; done"],
     ["counter inside (( )) with a no-op body", "while (( i++ < 10 )); do :; done"],
   ])("%s", (_name, cmd) => {
     expect(findWaitLoops(cmd)).toEqual([]);
