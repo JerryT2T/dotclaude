@@ -124,6 +124,40 @@ function classifyBudget(snapshot) {
   }
 }
 
+/** Plan id of a usage snapshot: its label first, the credentials tier when the label is the generic placeholder. */
+function usagePlanId(usageData) {
+  try {
+    const { planId } = cjsRequire(join(PLUGIN_ROOT, 'hooks', 'lib', 'plan.js'));
+    const id = planId(usageData && usageData.plan);
+    if (id !== 'unknown') return id;
+    return cjsRequire(join(PLUGIN_ROOT, 'hooks', 'lib', 'budget.js')).credentialsTier(homedir()).tier;
+  } catch { return 'unknown'; }
+}
+
+/**
+ * The 5 h window of a snapshot as the displays see it (plan.js fiveHourWindow is
+ * the one rule): `applies` false means no row anywhere. Without a `session`
+ * there is nothing to show on any plan.
+ */
+function fiveHourView(usageData) {
+  const { fiveHourWindow } = cjsRequire(join(PLUGIN_ROOT, 'hooks', 'lib', 'plan.js'));
+  const view = fiveHourWindow(usagePlanId(usageData), usageData && usageData.session);
+  if (!usageData || !usageData.session) return { ...view, applies: false };
+  return view;
+}
+
+/** Share of a window already elapsed; an unknown reset is no elapsed time at all (never 100 %, never a pace). */
+function elapsedOf(resetMinutes, windowMin) {
+  return resetMinutes != null ? ((windowMin - resetMinutes) / windowMin) * 100 : 0;
+}
+
+/** Scoped weekly limits (Fable) from the snapshot, those with a percent above 0 only. */
+function usedScopedLimits(usageData) {
+  return Array.isArray(usageData && usageData.scoped)
+    ? usageData.scoped.filter((l) => l && typeof l.pct === 'number' && l.pct > 0)
+    : [];
+}
+
 // Named constants — avoid magic numbers scattered through the module
 const BAR_WIDTH              = 14;
 const WINDOW_5H_MIN          = 300;
@@ -258,7 +292,7 @@ function renderUsageLine(label, pct, elapsedPct, delta, resetMinutes) {
   // space-padded inside so their digits align too.
   const resetStr = formatResetShort(resetMinutes).padEnd(6, ' ');
   const pace = pct - elapsedPct;
-  const warn = pace > PACE_WARN_PP ? '  \u26a0 Pace!' : '';
+  const warn = resetMinutes != null && pace > PACE_WARN_PP ? '  \u26a0 Pace!' : '';
   return label.padEnd(2, ' ') + '  ' + bar + ' ' + pctStr + ' ' + deltaPart + '\u00b7 ' + resetStr + warn;
 }
 
@@ -334,7 +368,7 @@ function describeFailureForUser(reason, lang = 'en') {
 }
 
 function renderUsageMeter(usageData, delta5h, deltaWk) {
-  if (!usageData || !usageData.session) {
+  if (!usageData || (!usageData.session && !usageData.weekly)) {
     return '\u26a0 Usage data unavailable';
   }
 
@@ -343,16 +377,17 @@ function renderUsageMeter(usageData, delta5h, deltaWk) {
     return renderExpiredNote(usageData, freshness);
   }
 
-  const s = usageData.session;
   const w = usageData.weekly;
   const lines = [];
 
-  const elapsed5hPct = s.resetInMinutes != null ? ((WINDOW_5H_MIN - s.resetInMinutes) / WINDOW_5H_MIN) * 100 : 0;
-  lines.push(renderUsageLine('5h', s.pct, elapsed5hPct, delta5h, s.resetInMinutes));
+  const fw = fiveHourView(usageData);
+  if (fw.applies) lines.push(renderUsageLine('5h', fw.pct, elapsedOf(fw.resetInMinutes, WINDOW_5H_MIN), delta5h, fw.resetInMinutes));
 
   if (w) {
-    const elapsedWkPct = ((WINDOW_WK_MIN - w.resetInMinutes) / WINDOW_WK_MIN) * 100;
-    lines.push(renderUsageLine('Wk', w.pct, elapsedWkPct, deltaWk, w.resetInMinutes));
+    lines.push(renderUsageLine('Wk', w.pct, elapsedOf(w.resetInMinutes, WINDOW_WK_MIN), deltaWk, w.resetInMinutes));
+  }
+  for (const l of usedScopedLimits(usageData)) {
+    lines.push(renderUsageLine('Fb', l.pct, elapsedOf(l.resetInMinutes, WINDOW_WK_MIN), null, l.resetInMinutes));
   }
 
   // Staleness is surfaced here too \u2014 get_usage consumers previously saw stale
@@ -381,7 +416,7 @@ function fence(block) {
 }
 
 function renderUsageMeterForCard(usageData, delta5h, deltaWk, healthLine) {
-  if (!usageData || !usageData.session) {
+  if (!usageData || (!usageData.session && !usageData.weekly)) {
     // The context-health note is independent of the usage scrape \u2014 keep it.
     const noteLines = ['\u26a0 Usage data unavailable'];
     if (healthLine) noteLines.unshift(healthLine, '');
@@ -397,16 +432,18 @@ function renderUsageMeterForCard(usageData, delta5h, deltaWk, healthLine) {
     return blockquote(noteLines.join('\n'));
   }
 
-  const s = usageData.session;
   const w = usageData.weekly;
   const bars = [];
 
-  const elapsed5hPct = s.resetInMinutes != null ? ((WINDOW_5H_MIN - s.resetInMinutes) / WINDOW_5H_MIN) * 100 : 0;
-  bars.push(renderUsageLine('5h', s.pct, elapsed5hPct, delta5h, s.resetInMinutes));
+  const fw = fiveHourView(usageData);
+  if (fw.applies) bars.push(renderUsageLine('5h', fw.pct, elapsedOf(fw.resetInMinutes, WINDOW_5H_MIN), delta5h, fw.resetInMinutes));
 
   if (w) {
-    const elapsedWkPct = ((WINDOW_WK_MIN - w.resetInMinutes) / WINDOW_WK_MIN) * 100;
-    bars.push(renderUsageLine('Wk', w.pct, elapsedWkPct, deltaWk, w.resetInMinutes));
+    bars.push(renderUsageLine('Wk', w.pct, elapsedOf(w.resetInMinutes, WINDOW_WK_MIN), deltaWk, w.resetInMinutes));
+  }
+  for (const l of usedScopedLimits(usageData)) {
+    const elapsedFb = elapsedOf(l.resetInMinutes, WINDOW_WK_MIN);
+    if (!omitWeeklyWindow(l.pct, elapsedFb, l.resetInMinutes)) bars.push(renderUsageLine('Fb', l.pct, elapsedFb, null, l.resetInMinutes));
   }
 
   // Trailing pad columns would show up as stray whitespace inside the fence.
@@ -1061,6 +1098,7 @@ function omitWindow(pct, resetMinutes) {
  */
 const WEEKLY_SHOW_BEFORE_RESET_MIN = 1440;
 function omitWeeklyWindow(pct, elapsedPct, resetMinutes) {
+  if (resetMinutes == null) return true; // no reset known: no pace, no last-day rule
   if (markerLevel(pct || 0, elapsedPct) !== 'white') return false;
   return resetMinutes == null || resetMinutes > WEEKLY_SHOW_BEFORE_RESET_MIN;
 }
@@ -1081,29 +1119,30 @@ function buildBudgetModel(usageData, delta5h, deltaWk, healthLine, lang = 'de') 
   const ageMin = usageData && usageData._swrAgeMinutes;
   const ageTail = ageMin >= 1 ? (BUDGET_AGE_TAIL[lang] || BUDGET_AGE_TAIL.de)(ageMin) : '';
   const tooltipFor = (pct, reset) => baseTooltip(pct, reset) + ageTail;
-  if (!usageData || !usageData.session) return null;
+  if (!usageData || (!usageData.session && !usageData.weekly)) return null;
   const freshness = assessFreshness(usageData, Date.now());
   if (freshness.expired) {
     return { omitted: false, expiredNote: renderExpiredNote(usageData, freshness, lang), bars: [], contextHealth: healthLine || '' };
   }
 
-  const s = usageData.session;
+  const fw = fiveHourView(usageData);
   const w = usageData.weekly;
-  const elapsed5h = s.resetInMinutes != null ? ((WINDOW_5H_MIN - s.resetInMinutes) / WINDOW_5H_MIN) * 100 : 0;
+  const elapsed5h = elapsedOf(fw.resetInMinutes, WINDOW_5H_MIN);
   const bars = [];
   let warn = false;
 
-  if (!omitWindow(s.pct, s.resetInMinutes)) {
-    const level = markerLevel(s.pct, elapsed5h);
+  if (fw.applies && !omitWindow(fw.pct, fw.resetInMinutes)) {
+    // No pace verdict without a known reset (the bar still draws, never as ahead of time).
+    const level = fw.resetInMinutes == null ? 'white' : markerLevel(fw.pct, elapsed5h);
     if (level !== 'white') warn = true;
     bars.push({
-      label: '5h', pct: s.pct, elapsedPct: elapsed5h, level,
-      watermark: formatResetSpaced(s.resetInMinutes),
-      tooltip: tooltipFor(Math.round(s.pct), formatResetSpaced(s.resetInMinutes)),
+      label: '5h', pct: fw.pct, elapsedPct: elapsed5h, level,
+      watermark: formatResetSpaced(fw.resetInMinutes),
+      tooltip: tooltipFor(Math.round(fw.pct), formatResetSpaced(fw.resetInMinutes)),
     });
   }
   if (w) {
-    const elapsedWk = ((WINDOW_WK_MIN - w.resetInMinutes) / WINDOW_WK_MIN) * 100;
+    const elapsedWk = elapsedOf(w.resetInMinutes, WINDOW_WK_MIN);
     if (!omitWeeklyWindow(w.pct, elapsedWk, w.resetInMinutes)) {
       const level = markerLevel(w.pct, elapsedWk);
       if (level !== 'white') warn = true;
@@ -1113,6 +1152,18 @@ function buildBudgetModel(usageData, delta5h, deltaWk, healthLine, lang = 'de') 
         tooltip: tooltipFor(Math.round(w.pct), formatResetSpaced(w.resetInMinutes)),
       });
     }
+  }
+  // Scoped weekly limits (Fable): the SAME rule as Wk, and only once used.
+  for (const l of usedScopedLimits(usageData)) {
+    const elapsedFb = elapsedOf(l.resetInMinutes, WINDOW_WK_MIN);
+    if (omitWeeklyWindow(l.pct, elapsedFb, l.resetInMinutes)) continue;
+    const level = markerLevel(l.pct, elapsedFb);
+    if (level !== 'white') warn = true;
+    bars.push({
+      label: 'Fb', pct: l.pct, elapsedPct: elapsedFb, level,
+      watermark: formatResetSpaced(l.resetInMinutes),
+      tooltip: tooltipFor(Math.round(l.pct), formatResetSpaced(l.resetInMinutes)),
+    });
   }
   return { omitted: bars.length === 0, bars, warn, contextHealth: healthLine || '' };
 }
@@ -2361,7 +2412,7 @@ function refreshUsage({ swr = false } = {}) {
     let delta5h = null;
     let deltaWk = null;
     if (isLiveSnapshot(data)) {
-      if (baseline?.session) {
+      if (baseline?.session || baseline?.weekly) {
         delta5h = computeDelta(data.session?.pct, baseline.session?.pct);
         deltaWk = computeDelta(data.weekly?.pct, baseline.weekly?.pct);
       }
@@ -2422,7 +2473,7 @@ function refreshUsage({ swr = false } = {}) {
 
   // 3. Last resort — stale data, honestly labelled. Deltas stay null and the
   //    baseline is untouched, so the next live read shows real movement.
-  if (fresh?.session) {
+  if (fresh?.session || fresh?.weekly) {
     fresh._cached = true;
     fresh._ageMinutes = Math.round(usageAgeMs(fresh) / 60_000);
     const reason = scrapeErr
@@ -3019,6 +3070,7 @@ server.registerTool(
           session: result.data.session,
           weekly: result.data.weekly,
           weeklySonnet: result.data.weeklySonnet,
+          scoped: result.data.scoped,
           plan: result.data.plan,
           timestamp: result.data.timestamp,
           delta5h: result.delta5h ?? null,
@@ -3292,7 +3344,7 @@ function pendingDismissedReason(p) {
 
 export {
   insideWorkTree, withDetectedRepoMode, pendingDismissTrace,
-  renderBar, renderUsageLine, formatResetShort, renderUsageMeterForCard, classifyBudget,
+  renderBar, renderUsageLine, formatResetShort, renderUsageMeter, renderUsageMeterForCard, classifyBudget,
   buildBudgetModel, renderBudgetLineMd, sanitizeSessionId, buildResultLines, buildEvidencePosts, renderPipelineLine, buildChannelLadder, renderChannelLadderMd,
   ctaInput, resolveCardKey, sessionArchiveNote, buildDecisionBlock, buildCardModel, sessionFileCandidates, readSessionFlagRaw,
   openQuestionOf, localShipInstruction, renderExpiredNote, formatLastReading, cardHead, outcomeTitlePrefix, HEADINGS,

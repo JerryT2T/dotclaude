@@ -81,7 +81,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
-const { PLANS, PLAN_IDS, planId, planLabel } = require('./plan');
+const { PLANS, PLAN_IDS, planId, planLabel, fiveHourWindow } = require('./plan');
 
 const STALE_MS = 3 * 60 * 60 * 1000; // snapshot older than 3 h → flagged (still used unless its window reset)
 // Usage is monotonic until a reset, so an ageing snapshot can only drift
@@ -140,6 +140,7 @@ function pct(v) {
 }
 
 function minutes(v) {
+  if (v == null) return null; // Number(null) is 0: an unknown reset must not read as "reset now"
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 }
@@ -162,7 +163,8 @@ function classify({ tier, fivePct, weeklyPct }) {
 }
 
 /** Which window drives the class — named in the line and in the question (redteam #9). */
-function bindingWindow({ tier, fivePct, weeklyPct }) {
+function bindingWindow({ tier, fivePct, weeklyPct, fiveApplies }) {
+  if (fiveApplies === false) return 'week'; // no 5 h window on this plan: the week is the only limit
   const rules = RULES[tier] || RULES.max;
   const fiveScore = fivePct == null ? -1 : fivePct - rules.askAt[0];
   const weekScore = weeklyPct == null ? -1 : weeklyPct - rules.askAt[1];
@@ -260,13 +262,16 @@ function readBudget({ home = os.homedir(), nowMs = Date.now(), env = process.env
     if (fromLabel !== 'unknown') { tier = fromLabel; plan = tierLabel(fromLabel); }
   }
 
-  const five = liveWindow(live.session, ts, nowMs);
+  // One rule for every plan (plan.js fiveHourWindow): delivered data is used, a
+  // missing window means "idle" or, on Ultra, "no 5 h limit" (no row, week binds).
+  const fw = fiveHourWindow(tier, live.session);
+  const five = fw.applies ? liveWindow(live.session, ts, nowMs) : { pct: null, resetInMinutes: null, expired: false };
   const week = liveWindow(live.weekly, ts, nowMs);
 
   const b = {
     plan, tier, stale,
     ageMinutes: ageMs == null ? null : Math.round(ageMs / 60_000),
-    fivePct: five.pct, weeklyPct: week.pct,
+    fivePct: five.pct, weeklyPct: week.pct, fiveApplies: fw.applies,
     resetInMinutes: five.resetInMinutes, weeklyResetInMinutes: week.resetInMinutes,
     expired: five.expired || week.expired,
     recentReset: recentReset(five, week),
@@ -338,6 +343,9 @@ function budgetLine(b) {
   const planTxt = b.plan ? b.plan : 'plan unknown';
   const usage = b.fivePct == null && b.weeklyPct == null
     ? (b.expired ? 'usage unknown (snapshot past its reset)' : 'usage unknown')
+    : b.fiveApplies === false
+    ? `week ${b.weeklyPct}%` +
+      (b.weeklyResetInMinutes != null && b.cls !== 'free' ? ` (reset ${Math.round(b.weeklyResetInMinutes / 60)} h)` : '')
     : `window ${b.fivePct == null ? '?' : b.fivePct + '%'}` +
       (b.resetInMinutes != null ? ` (reset ${b.resetInMinutes} min)` : '') +
       ` · week ${b.weeklyPct == null ? '?' : b.weeklyPct + '%'}` +
@@ -423,7 +431,7 @@ function classSuffix(b) {
 }
 
 module.exports = {
-  RULES, CLASSES, planTier, tierLabel, classify, bindingWindow, refreshDueMinutes, readBudget, maybeRefreshUsage,
+  RULES, CLASSES, planTier, tierLabel, credentialsTier, classify, bindingWindow, refreshDueMinutes, readBudget, maybeRefreshUsage,
   budgetLine, budgetSummary, nudgeSuffix, unattendedSuffix, deferInfo, DEFER_AT, DEFER_SOON_MIN,
   STALE_MS, REFRESH_COOLDOWN_MS, FAILURE_BACKOFF_MS, REFRESH_MARKER, RESET_IMMINENT_MIN, WINDOW_FILL_MIN, WEEK_TO_WINDOW,
   RECENT_RESET_5H_MIN, RECENT_RESET_WEEK_MIN,

@@ -113,8 +113,8 @@ Write results to `~/.claude/usage-live.json`:
 
 ```json
 {
-  "session": { "used_pct": 42, "resetInMinutes": 192 },
-  "weekly": { "used_pct": 18, "resetInMinutes": 2885 },
+  "session": { "pct": 42, "resetInMinutes": 192 },
+  "weekly": { "pct": 18, "resetInMinutes": 2885 },
   "timestamp": "2026-03-27T10:30:00Z",
   "_cached": false
 }

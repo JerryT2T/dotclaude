@@ -48,6 +48,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { planId, planLabel } = require('../hooks/lib/plan');
+const { usageShape, weeklyAllLimit, recordDrift } = require('../hooks/lib/usage-drift');
 
 // Store usage data in ~/.claude — same location regardless of CWD or worktree
 const SCRIPTS_DIR = path.join(os.homedir(), '.claude');
@@ -242,25 +243,37 @@ function mapApiUsage(usage, rateLimits, nowMs) {
     return Number.isFinite(t) ? Math.max(0, Math.round((t - nowMs) / 60_000)) : null;
   };
 
-  const weeklyPct = pctOf(usage && usage.seven_day && usage.seven_day.utilization);
+  // seven_day stays primary; limits[] (weekly_all) is the fallback when it is absent.
+  const weeklyAll = weeklyAllLimit(usage);
+  const weeklySrc = usage && usage.seven_day && pctOf(usage.seven_day.utilization) !== null
+    ? { pct: pctOf(usage.seven_day.utilization), resetsAt: usage.seven_day.resets_at }
+    : (weeklyAll ? { pct: pctOf(weeklyAll.percent), resetsAt: weeklyAll.resets_at } : null);
+  const weeklyPct = weeklySrc ? weeklySrc.pct : null;
   // #1009: `five_hour: null` means the 5-hour window has not started (no usage
   // since its reset). With a valid weekly reading that is 0 %, not "no data";
   // any other missing or garbage session value still writes nothing.
   const windowIdle = !!usage && usage.five_hour === null && weeklyPct !== null;
   const sessionPct = windowIdle ? 0 : pctOf(usage && usage.five_hour && usage.five_hour.utilization);
-  if (sessionPct === null) return null; // no usable session window → don't write garbage
+  // No usable session window: a valid weekly reading is still a reading (weekly-only
+  // snapshot); with neither window there is nothing trustworthy to write.
+  if (sessionPct === null && weeklyPct === null) return null;
 
   const snapshot = {
     timestamp: new Date(nowMs).toISOString(),
-    session: { pct: sessionPct, resetInMinutes: windowIdle ? null : resetMin(usage.five_hour.resets_at) },
+    session: sessionPct === null ? null : { pct: sessionPct, resetInMinutes: windowIdle ? null : resetMin(usage.five_hour.resets_at) },
     weekly: weeklyPct === null ? null : {
       pct: weeklyPct,
       resetDay: null,  // API carries durations only — no day/time strings
       resetTime: null,
-      resetInMinutes: resetMin(usage.seven_day.resets_at),
+      resetInMinutes: resetMin(weeklySrc.resetsAt),
     },
     plan: tierLabel(rateLimits && rateLimits.rate_limit_tier),
   };
+  // Scoped weekly limits (Fable) come from limits[] only, so a plan without one has none.
+  const scoped = (Array.isArray(usage.limits) ? usage.limits : [])
+    .filter((l) => l && l.kind === 'weekly_scoped' && l.scope && l.scope.model && typeof l.scope.model.display_name === 'string' && pctOf(l.percent) !== null)
+    .map((l) => ({ name: l.scope.model.display_name, pct: pctOf(l.percent), resetInMinutes: resetMin(l.resets_at) }));
+  if (scoped.length) snapshot.scoped = scoped;
   const sonnetPct = pctOf(usage.seven_day_sonnet && usage.seven_day_sonnet.utilization);
   if (sonnetPct !== null) snapshot.weeklySonnet = { pct: sonnetPct };
   return snapshot;
@@ -749,6 +762,10 @@ async function scrapeViaCDP() {
       return 2;
     }
 
+    if (evalData.usage != null) {
+      const drift = usageShape(evalData.usage);
+      if (drift) recordDrift(drift);
+    }
     let parsed = evalData.usage ? mapApiUsage(evalData.usage, evalData.rateLimits, Date.now()) : null;
 
     // Last resort: one single DOM text grab (no polling — the old 24s poll is

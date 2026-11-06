@@ -57,9 +57,14 @@ describe("isLiveSnapshot — gate for baseline advancement AND delta computation
     expect(isLiveSnapshot({ session: { pct: 93 }, _cached: true })).toBe(false);
   });
 
-  test("null / missing session → false", () => {
+  test("null / nothing at all → false", () => {
     expect(isLiveSnapshot(null)).toBe(false);
-    expect(isLiveSnapshot({ weekly: { pct: 1 } })).toBe(false);
+    expect(isLiveSnapshot({})).toBe(false);
+  });
+
+  test("a weekly-only snapshot is a live reading (U7); a cached one still is not", () => {
+    expect(isLiveSnapshot({ weekly: { pct: 1 } })).toBe(true);
+    expect(isLiveSnapshot({ weekly: { pct: 1 }, _cached: true })).toBe(false);
   });
 });
 

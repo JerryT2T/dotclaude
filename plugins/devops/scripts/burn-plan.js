@@ -175,7 +175,7 @@ function localStamp(ms) {
  * @returns {{ok:true, weeklyUsed, weeklyRemaining, weeklyResetMin, sessionUsed, sessionResetMin, plan, ageMin} | {ok:false, reason}}
  */
 function normalizeUsage(raw, nowMs, maxAgeMin = USAGE_FRESH_MIN) {
-  if (!raw || typeof raw !== 'object' || !raw.weekly || !raw.session) return { ok: false, reason: 'no-data' };
+  if (!raw || typeof raw !== 'object' || !raw.weekly) return { ok: false, reason: 'no-data' };
   if (raw._cached) return { ok: false, reason: `cached${raw._failureReason ? `: ${raw._failureReason}` : ''}` };
   const ts = Date.parse(raw.timestamp);
   if (!Number.isFinite(ts)) return { ok: false, reason: 'no-timestamp' };
@@ -183,14 +183,15 @@ function normalizeUsage(raw, nowMs, maxAgeMin = USAGE_FRESH_MIN) {
   if (ageMin < -1) return { ok: false, reason: 'future-dated' };
   if (ageMin > maxAgeMin) return { ok: false, reason: `stale (${Math.round(ageMin)} min)` };
   const wPct = Number(raw.weekly.pct);
-  const sPct = Number(raw.session.pct);
+  // No session window (Ultra has no 5 h limit; a weekly-only snapshot): the window counts as unused.
+  const sPct = raw.session ? Number(raw.session.pct) : 0;
   if (!Number.isFinite(wPct) || !Number.isFinite(sPct)) return { ok: false, reason: 'no-percent' };
   const age = Math.max(0, ageMin);
   // `null` = reset unknown (an idle 5-hour window, #1009) — Number(null) would
   // read it as "resets now".
   const minutesOf = (v) => (v == null ? NaN : Number(v));
   const wReset = minutesOf(raw.weekly.resetInMinutes);
-  const sReset = minutesOf(raw.session.resetInMinutes);
+  const sReset = raw.session ? minutesOf(raw.session.resetInMinutes) : NaN;
   return {
     ok: true,
     ageMin: round1(age),

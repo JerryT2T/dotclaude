@@ -80,6 +80,29 @@ function fiveHourState(id, delivered) {
 }
 
 /**
+ * The one decision every display and gate calls: the 5 h window of a snapshot's
+ * `session` on a plan. A delivered window (a percent AND either a reset or usage
+ * above 0) is always used, on every plan, verified or not. The usage mapper
+ * writes an absent `five_hour` as `{ pct: 0, resetInMinutes: null }`, which no
+ * live window ever looks like (a live window has a reset).
+ * Returns `{ state, pct, resetInMinutes, applies }`:
+ * - 'delivered': real data. applies = true.
+ * - 'idle': non-Ultra window not started. pct 0, no reset. applies = true (rows
+ *   stay as they always were).
+ * - 'none': Ultra without a window. pct null. applies = false (rows disappear).
+ */
+function fiveHourWindow(id, session) {
+  const pct = session && session.pct != null && Number.isFinite(Number(session.pct)) ? Number(session.pct) : null;
+  const rawReset = session ? session.resetInMinutes : null;
+  const reset = rawReset != null && Number.isFinite(Number(rawReset)) ? Number(rawReset) : null;
+  const delivered = pct != null && (reset != null || pct > 0);
+  const state = fiveHourState(id, delivered ? session : null);
+  if (state === 'delivered') return { state, pct, resetInMinutes: reset, applies: true };
+  if (state === 'none') return { state, pct: null, resetInMinutes: null, applies: false };
+  return { state, pct: pct == null ? 0 : pct, resetInMinutes: null, applies: true };
+}
+
+/**
  * Keys of the stored burn calibration (`burn` file). They predate the renames and
  * must not change, or existing calibration samples would be orphaned.
  */
@@ -88,4 +111,4 @@ const CALIBRATION_KEYS = { free: 'Free', pro: 'Pro', max: 'Max 5x', ultra: 'Max 
 /** Legacy keys of the token config (`"plan":"max_20"`), read through aliases. */
 const TOKEN_KEYS = { pro: 'pro', max_5: 'max', max_20: 'ultra' };
 
-module.exports = { SOURCE, PLANS, PLAN_IDS, FABLE, TOKEN_KEYS, CALIBRATION_KEYS, planId, planLabel, fiveHourState };
+module.exports = { SOURCE, PLANS, PLAN_IDS, FABLE, TOKEN_KEYS, CALIBRATION_KEYS, planId, planLabel, fiveHourState, fiveHourWindow };

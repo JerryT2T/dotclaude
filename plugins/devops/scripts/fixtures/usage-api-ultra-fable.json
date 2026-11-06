@@ -1,0 +1,203 @@
+{
+  "usage": {
+    "five_hour": null,
+    "seven_day": {
+      "utilization": 76,
+      "resets_at": "2026-11-08T07:00:00.274418+00:00",
+      "limit_dollars": null,
+      "used_dollars": null,
+      "remaining_dollars": null,
+      "locked_reason": null
+    },
+    "seven_day_oauth_apps": null,
+    "seven_day_opus": null,
+    "seven_day_sonnet": null,
+    "seven_day_cowork": null,
+    "seven_day_omelette": null,
+    "tangelo": null,
+    "iguana_necktie": null,
+    "omelette_promotional": null,
+    "nimbus_quill": null,
+    "cinder_cove": null,
+    "copper_kite": null,
+    "brass_thimble": null,
+    "harbor_lantern": null,
+    "wattle_ember": null,
+    "promo_credits": null,
+    "amber_ladder": null,
+    "granite_teacup": null,
+    "amber_cistern": null,
+    "amber_cistern_offer": null,
+    "juniper_tide": null,
+    "cedar_ember": null,
+    "starry_waterfall": null,
+    "amber_gauge": null,
+    "pace": null,
+    "extra_usage": {
+      "is_enabled": false,
+      "monthly_limit": 1500,
+      "used_credits": 0,
+      "utilization": 0,
+      "currency": "EUR",
+      "decimal_places": 2,
+      "disabled_reason": "out_of_credits",
+      "user_disabled": false,
+      "spend_limit_reached": false,
+      "credits_ever_enabled": true,
+      "daily": null,
+      "weekly": null
+    },
+    "limits": [
+      {
+        "kind": "weekly_all",
+        "group": "weekly",
+        "percent": 76,
+        "severity": "warning",
+        "resets_at": "2026-11-08T07:00:00.274418+00:00",
+        "scope": null,
+        "is_active": true
+      },
+      {
+        "kind": "weekly_scoped",
+        "group": "weekly",
+        "percent": 0,
+        "severity": "normal",
+        "resets_at": "2026-11-08T07:00:00+00:00",
+        "scope": {
+          "model": {
+            "id": null,
+            "display_name": "Fable"
+          },
+          "surface": null
+        },
+        "is_active": false
+      }
+    ],
+    "spend": {
+      "used": {
+        "amount_minor": 0,
+        "currency": "EUR",
+        "exponent": 2
+      },
+      "limit": {
+        "amount_minor": 1500,
+        "currency": "EUR",
+        "exponent": 2
+      },
+      "percent": 0,
+      "severity": "normal",
+      "enabled": false,
+      "disabled_reason": "out_of_credits",
+      "cap": {
+        "money": {
+          "amount_minor": 1500,
+          "currency": "EUR",
+          "exponent": 2
+        },
+        "credits": null
+      },
+      "balance": null,
+      "auto_reload": null,
+      "disclaimer": "Usage credits cover you when you hit your plan limits. [Learn more](https://support.claude.com/articles/12429409)",
+      "can_purchase_credits": true,
+      "can_toggle": true
+    },
+    "member_dashboard_available": false,
+    "seven_day_breakdown": {
+      "as_of": "2026-11-06T11:26:23.294876+00:00",
+      "window_started_at": "2026-11-01T07:00:00.274418+00:00",
+      "rows": [
+        {
+          "key": "claude_code",
+          "display_name": "Claude Code",
+          "percent": 99
+        },
+        {
+          "key": "chat",
+          "display_name": "Chats",
+          "percent": 1
+        },
+        {
+          "key": "cowork",
+          "display_name": "Cowork",
+          "percent": 0
+        },
+        {
+          "key": "other",
+          "display_name": "Sonstige",
+          "percent": 0
+        }
+      ]
+    },
+    "weekly_scoped_shares": [
+      {
+        "limit_index": 1,
+        "used_percent_of_weekly": 0,
+        "allowance_percent_of_weekly": 50
+      }
+    ]
+  },
+  "rateLimits": {
+    "rate_limit_tier": "default_claude_max_20x",
+    "tier_model_rate_limiters": [
+      {
+        "limiter": "concurrents",
+        "value": 3,
+        "source": "default",
+        "model_group": "claude_fable_5"
+      },
+      {
+        "limiter": "concurrents",
+        "value": 6,
+        "source": "default",
+        "model_group": "claude_haiku_4"
+      },
+      {
+        "limiter": "concurrents",
+        "value": 3,
+        "source": "default",
+        "model_group": "claude_haiku_5_5"
+      },
+      {
+        "limiter": "concurrents",
+        "value": 3,
+        "source": "default",
+        "model_group": "claude_opus_4_5"
+      },
+      {
+        "limiter": "concurrents",
+        "value": 3,
+        "source": "default",
+        "model_group": "claude_opus_5"
+      },
+      {
+        "limiter": "concurrents",
+        "value": 3,
+        "source": "default",
+        "model_group": "claude_opus_5_5"
+      },
+      {
+        "limiter": "concurrents",
+        "value": 3,
+        "source": "default",
+        "model_group": "claude_sonnet_4"
+      },
+      {
+        "limiter": "concurrents",
+        "value": 3,
+        "source": "default",
+        "model_group": "claude_sonnet_5"
+      },
+      {
+        "limiter": "concurrents",
+        "value": 3,
+        "source": "default",
+        "model_group": "claude_sonnet_5_5"
+      }
+    ],
+    "custom_default_rate_limiters": null,
+    "custom_model_rate_limiters": null,
+    "spend_threshold": null,
+    "effective_rate_limiters": null
+  }
+}

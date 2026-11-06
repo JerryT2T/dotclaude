@@ -222,7 +222,9 @@ function main() {
       try { lang = require('../lib/locale').getLocale(hook.session_id); } catch { /* default */ }
       version = versionLine({ lang });
     } catch { /* never block the session */ }
-    const ctx = [tag, version, res && res.offer].filter(Boolean).join('\n');
+    let drift = null;
+    try { drift = require('../lib/usage-drift').driftNotice(); } catch { /* never block the session */ }
+    const ctx = [tag, version, drift, res && res.offer].filter(Boolean).join('\n');
     if (ctx) {
       process.stdout.write(JSON.stringify({
         hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: ctx },

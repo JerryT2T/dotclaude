@@ -26,6 +26,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
+const { planId, fiveHourWindow } = require('../hooks/lib/plan');
 
 const USAGE_JSON_PATH = path.join(os.homedir(), '.claude', 'usage-live.json');
 // Rewrite at most this often when values are unchanged — but DO bump the
@@ -44,6 +45,24 @@ function validPct(v) {
 function resetInMinutes(resetsAtSec, nowMs) {
   if (typeof resetsAtSec !== 'number' || !Number.isFinite(resetsAtSec)) return null;
   return Math.max(0, Math.round((resetsAtSec * 1000 - nowMs) / 60000));
+}
+
+/**
+ * The previous 5 h window carried over while the host sends none. An old value
+ * lives only until its own reset (the countdown is aged by the time since the
+ * previous write, so it never looks current beyond that), and never on Ultra,
+ * where a missing window means there is no 5 h limit. An idle window (0 %, no
+ * reset) has nothing to expire and carries as is.
+ */
+function carriedSession(prev, nowMs) {
+  const s = prev && prev.session;
+  if (!s) return null;
+  if (planId(prev.plan) === 'ultra') return null;
+  if (s.resetInMinutes == null) return Number(s.pct) > 0 ? null : s;
+  const prevTs = Date.parse(prev.timestamp || '');
+  const age = Number.isFinite(prevTs) ? Math.max(0, (nowMs - prevTs) / 60000) : 0;
+  const left = Number(s.resetInMinutes) - age;
+  return left > 0 ? { ...s, resetInMinutes: Math.round(left) } : null;
 }
 
 /**
@@ -70,7 +89,7 @@ function buildSnapshot(statusJson, prev, nowMs) {
 
   const session = sessionValid
     ? { pct: five.used_percentage, resetInMinutes: resetInMinutes(five.resets_at, nowMs) }
-    : ((prev && prev.session) || null);
+    : carriedSession(prev, nowMs);
 
   const weekly = weeklyValid
     ? {
@@ -112,7 +131,7 @@ function renderStatusLine(snapshot, statusJson) {
   if (!snapshot) return model || '';
   const parts = [];
   if (model) parts.push(model);
-  if (snapshot.session) parts.push(`5h ${snapshot.session.pct}%`);
+  if (snapshot.session && fiveHourWindow(planId(snapshot.plan), snapshot.session).applies) parts.push(`5h ${snapshot.session.pct}%`);
   if (snapshot.weekly) parts.push(`Wk ${snapshot.weekly.pct}%`);
   return parts.join('  ·  ');
 }
