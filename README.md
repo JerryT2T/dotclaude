@@ -337,7 +337,7 @@ ship. Setup: [INSTALL.md](INSTALL.md#optional-codex-integration).
 <details>
 <summary><strong>Claude API credits</strong></summary>
 
-Max, Ultra and Team plans include monthly API credits ($100 on Max 5x, $200 on
+Max, Ultra and Team plans include monthly API credits ($100 on Max, $200 on
 Ultra, up to $500 pooled on Team) that expire every cycle and do **not** cover
 Claude Code itself. Switched on, the plugin runs its read-only side work there
 first and falls back to the plan:
@@ -486,17 +486,13 @@ or `{"mode":"ask"}` — every agent tier is offered first.
 | Skill invocations (~15–25/week) | ~15K–30K | Only when you call `/do-ship`, `/do-run`, … |
 | **Total** | **~500K–900K** | **~0.7M tokens/week** |
 
-| Plan | Model | Weekly budget (approx.) | Plugin overhead |
-|---|---|---|---|
-| Pro ($20) | Sonnet / Opus | ~10M / ~3M | **~7 % / ~23 %** |
-| Max 5x ($100) | Sonnet / Opus | ~55M / ~18M | **~1.3 % / ~3.9 %** |
-| Ultra ($200) | Sonnet / Opus | ~225M / ~75M | **~0.3 % / ~0.9 %** |
-
-*Rough estimates; Anthropic adjusts limits dynamically.*
+Anthropic publishes no absolute token budget per plan, only multiples of Pro
+(5x for Max, 10x for Ultra; checked 2026-11-06), so the plugin states no
+overhead percentages. Plan facts and thresholds: `plugins/devops/deep-knowledge/plans.md`.
 
 **Payoff.** The token guard blocks any single operation above your plan's
-share of the ~200K context window — **5 % (~10K) on Pro, 8 % (~16K) on Max 5×,
-10 % (~20K) on Max 20×**; sub-agents get 4× that, capped at 50 %
+share of the ~200K context window — the share per plan is in
+`plugins/devops/deep-knowledge/plans.md` (about 10K to 20K tokens); sub-agents get 4× that, capped at 50 %
 (`subagentConfirmThresholdPct`, per agent `subagentTypeThresholdPct`). A
 typical session attempts 5–15 reads of 20–80K tokens each; across ~10
 sessions/week the guard saves **~1–4M tokens/week** — 1.5–6× the plugin's own

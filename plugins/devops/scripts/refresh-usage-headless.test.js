@@ -244,7 +244,7 @@ describe("mapApiUsage — claude.ai internal usage API → usage-live.json schem
   });
 
   test("plan label is humanized from the rate_limit_tier", () => {
-    expect(mapApiUsage(apiUsage, { rate_limit_tier: "default_claude_max_5x" }, NOW).plan).toBe("Max 5x");
+    expect(mapApiUsage(apiUsage, { rate_limit_tier: "default_claude_max_5x" }, NOW).plan).toBe("Max");
     expect(mapApiUsage(apiUsage, { rate_limit_tier: "default_claude_max_20x" }, NOW).plan).toBe("Ultra");
     expect(mapApiUsage(apiUsage, { rate_limit_tier: "default_claude_pro" }, NOW).plan).toBe("Pro");
   });

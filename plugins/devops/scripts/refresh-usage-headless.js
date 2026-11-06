@@ -47,6 +47,7 @@ const { execSync, execFileSync, spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { planId, planLabel } = require('../hooks/lib/plan');
 
 // Store usage data in ~/.claude — same location regardless of CWD or worktree
 const SCRIPTS_DIR = path.join(os.homedir(), '.claude');
@@ -265,16 +266,9 @@ function mapApiUsage(usage, rateLimits, nowMs) {
   return snapshot;
 }
 
-/** 'default_claude_max_5x' → 'Max 5x', 'default_claude_max_20x' → 'Ultra' (its sales name); unknown/absent tiers → generic label. */
+/** Plan label from the API's rate_limit_tier (plan.js resolves the aliases); unknown/absent tiers → generic label. */
 function tierLabel(tier) {
-  if (typeof tier === 'string') {
-    if (/ultra/i.test(tier)) return 'Ultra';
-    const max = tier.match(/max_(\d+)x/i);
-    if (max) return Number(max[1]) >= 20 ? 'Ultra' : `Max ${max[1]}x`;
-    if (/pro/i.test(tier)) return 'Pro';
-    if (/free/i.test(tier)) return 'Free';
-  }
-  return 'Max Plan';
+  return planLabel(planId(tier)) || 'Max Plan';
 }
 
 async function isCDPAvailable() {

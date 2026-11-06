@@ -71,7 +71,7 @@ asks: Step 4, and only for the full-ceremony tier — the lower tiers run
 ### Plan and usage — `get_usage`, once per run
 
 Call `mcp__plugin_devops_dotclaude__get_usage` once at the start.
-It returns the plan (Pro / Max 5x / Ultra), the 5-hour and weekly usage
+It returns the plan (Pro / Max / Ultra; plans in `deep-knowledge/plans.md`), the 5-hour and weekly usage
 with their resets, and `budget.cls` — the budget class the tier table and
 the model/ceiling override (§ Budget in `agent-proactivity.md`) run on.
 

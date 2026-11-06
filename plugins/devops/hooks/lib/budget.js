@@ -81,6 +81,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
+const { PLANS, PLAN_IDS, planId, planLabel } = require('./plan');
 
 const STALE_MS = 3 * 60 * 60 * 1000; // snapshot older than 3 h → flagged (still used unless its window reset)
 // Usage is monotonic until a reset, so an ageing snapshot can only drift
@@ -91,7 +92,7 @@ const STALE_MS = 3 * 60 * 60 * 1000; // snapshot older than 3 h → flagged (sti
 // hour; Max 5x / 20x have 5× / 20× the budget, so the same 30 min mean a
 // fifth / a twentieth of the drift. Snapshots at sonnet-only have no next
 // threshold: only the reset informs (the `expired` path), never age.
-const WINDOW_FILL_MIN = { pro: 30, max5: 150, max20: 600 };
+const WINDOW_FILL_MIN = Object.fromEntries(PLAN_IDS.map((id) => [id, PLANS[id].fillMin]));
 const WEEK_TO_WINDOW = 8; // the weekly budget is roughly this many 5 h windows
 const REFRESH_MIN_AGE_MS = 5 * 60 * 1000; // never more often than the cooldown
 // A reset this close makes a reading now worthless — the `expired` path
@@ -114,30 +115,19 @@ const CLASSES = ['free', 'ask-before-parallel', 'sonnet-only'];
 // Thresholds per plan tier: [fiveHourPct, weeklyPct] at which the class flips.
 // `pro` asks from the first prompt — a parallel spawn is always a real share
 // of its window, so the question is asked there even at 0 %.
-const RULES = {
-  pro:   { askAt: [0, 0],   sonnetAt: [70, 85] },
-  max5:  { askAt: [80, 90], sonnetAt: [95, 98] },
-  max20: { askAt: [90, 95], sonnetAt: [98, 99] },
-};
+const RULES = Object.fromEntries(PLAN_IDS.map((id) => [id, { askAt: PLANS[id].askAt, sonnetAt: PLANS[id].sonnetAt }]));
 
 /**
- * Human label for a tier — the credentials string is an internal id. The
- * $200 plan is sold as "Ultra", while its rate-limit tier is still
- * `default_claude_max_20x`, so the tier id stays `max20`.
+ * Human label for a tier (plan id) — the credentials string is an internal id.
+ * The $200 plan is sold as "Ultra" while its rate-limit tier is still
+ * `default_claude_max_20x`; plan.js resolves both to `ultra`.
  */
 function tierLabel(tier, raw) {
-  return { pro: 'Pro', max5: 'Max 5x', max20: 'Ultra' }[tier] || (raw == null ? null : String(raw));
+  return planLabel(tier) || (raw == null ? null : String(raw));
 }
 
-function planTier(label) {
-  if (typeof label !== 'string') return 'unknown';
-  if (/ultra/i.test(label)) return 'max20';
-  const m = label.match(/max[\s_]*(\d+)x/i);
-  if (m) return Number(m[1]) >= 20 ? 'max20' : 'max5';
-  if (/(?:^|[^a-z])pro(?:$|[^a-z])/i.test(label)) return 'pro'; // "_" is a word char — \bpro\b misses default_claude_pro
-  if (/free/i.test(label)) return 'pro'; // a free tier is at least as tight
-  return 'unknown';
-}
+/** Any plan string (credentials tier, snapshot label, config key) → plan id or 'unknown'. */
+const planTier = planId;
 
 function readJson(file) {
   try { return JSON.parse(fs.readFileSync(file, 'utf8')); }
@@ -161,7 +151,7 @@ function minutes(v) {
 function classify({ tier, fivePct, weeklyPct }) {
   if (!RULES[tier]) {
     return fivePct == null && weeklyPct == null ? 'ask-before-parallel'
-      : classify({ tier: 'max5', fivePct, weeklyPct });
+      : classify({ tier: 'max', fivePct, weeklyPct });
   }
   const rules = RULES[tier];
   const five = fivePct == null ? 0 : fivePct;
@@ -173,7 +163,7 @@ function classify({ tier, fivePct, weeklyPct }) {
 
 /** Which window drives the class — named in the line and in the question (redteam #9). */
 function bindingWindow({ tier, fivePct, weeklyPct }) {
-  const rules = RULES[tier] || RULES.max5;
+  const rules = RULES[tier] || RULES.max;
   const fiveScore = fivePct == null ? -1 : fivePct - rules.askAt[0];
   const weekScore = weeklyPct == null ? -1 : weeklyPct - rules.askAt[1];
   return weekScore > fiveScore ? 'week' : '5h';
@@ -234,8 +224,8 @@ function headroom(pct, askAt, sonnetAt) {
  */
 function refreshDueMinutes({ tier, fivePct, weeklyPct, override }) {
   if (override) return null;
-  const rules = RULES[tier] || RULES.max5;
-  const fill = WINDOW_FILL_MIN[RULES[tier] ? tier : 'max5'];
+  const rules = RULES[tier] || RULES.max;
+  const fill = WINDOW_FILL_MIN[RULES[tier] ? tier : 'max'];
   const due = [];
   const five = headroom(fivePct, rules.askAt[0], rules.sonnetAt[0]);
   if (five != null) due.push(five * fill / 100);
@@ -267,7 +257,7 @@ function readBudget({ home = os.homedir(), nowMs = Date.now(), env = process.env
   let { tier, label: plan } = credentialsTier(home, sessionId);
   if (tier === 'unknown' && typeof live.plan === 'string') {
     const fromLabel = planTier(live.plan);
-    if (fromLabel !== 'unknown') { tier = fromLabel; plan = fromLabel === 'max20' ? tierLabel(fromLabel) : live.plan; }
+    if (fromLabel !== 'unknown') { tier = fromLabel; plan = tierLabel(fromLabel); }
   }
 
   const five = liveWindow(live.session, ts, nowMs);
@@ -380,7 +370,7 @@ function budgetSummary(b) {
 // the time to the reset only picks the recommended answer. It is not the
 // card's yellow marker, which measures pace (usage ahead of elapsed time):
 // 90 % with 30 min left is on pace and still may not hold a large change.
-const DEFER_AT = { pro: 70, max5: 80, max20: 90 };
+const DEFER_AT = Object.fromEntries(PLAN_IDS.map((id) => [id, PLANS[id].deferAt]));
 const DEFER_SOON_MIN = 60;
 
 /**
@@ -389,7 +379,7 @@ const DEFER_SOON_MIN = 60;
  */
 function deferInfo(b) {
   if (!b || b.override || b.fivePct == null || b.resetInMinutes == null || b.resetInMinutes <= 0) return null;
-  const tier = RULES[b.tier] ? b.tier : 'max5';
+  const tier = RULES[b.tier] ? b.tier : 'max';
   if (b.fivePct < DEFER_AT[tier]) return null;
   if (b.weeklyPct != null && b.weeklyPct >= RULES[tier].sonnetAt[1]) return null;
   return { minutes: b.resetInMinutes, soon: b.resetInMinutes <= DEFER_SOON_MIN };

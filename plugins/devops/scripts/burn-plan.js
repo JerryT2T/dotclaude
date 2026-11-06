@@ -65,6 +65,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { execFileSync, spawnSync } = require('child_process');
+const { PLANS, PLAN_IDS, CALIBRATION_KEYS, planId } = require('../hooks/lib/plan');
 const {
   STATE_FILE, PREV_STATE_FILE, readStateFile, isOpenRun, tally,
 } = require('../hooks/lib/burn-state');
@@ -100,10 +101,10 @@ const MAX_READINGS = 50;
 const CALIBRATION_KEEP = 10;
 const CALIBRATION_MIN_SAMPLES = 3;
 
-/** Relative weekly capacity per plan (claude.com/pricing) — Ultra, formerly labelled Max 20x, is the baseline. */
-const PLAN_CAPACITY = { Pro: 1, 'Max 5x': 5, 'Max 20x': 10, Ultra: 10 };
-/** Calibration samples of Ultra stay under the label they were first measured with. */
-const calibrationKey = (plan) => (plan === 'Ultra' ? 'Max 20x' : plan);
+/** Relative weekly capacity per plan, from plan.js (claude.com/pricing). Keyed by display label. */
+const PLAN_CAPACITY = Object.fromEntries(PLAN_IDS.filter((id) => PLANS[id].capacity).map((id) => [PLANS[id].label, PLANS[id].capacity]));
+/** Calibration samples stay under the key they were first measured with (stored files keep working). */
+const calibrationKey = (plan) => { const id = planId(plan); return CALIBRATION_KEYS[id] || plan; };
 /** Planning defaults at Max 20x, standard depth. Scaled for other plans. */
 const DEFAULTS_AT_MAX20 = { laneHourlyPct: 1.5, unitCostPct: 0.2 };
 const SIZE_WEIGHT = { S: 1, M: 2.5, L: 5 };
@@ -207,8 +208,8 @@ function normalizeUsage(raw, nowMs, maxAgeMin = USAGE_FRESH_MIN) {
 // ---------------------------------------------------------------------------
 
 function planScale(plan) {
-  const cap = PLAN_CAPACITY[plan] || PLAN_CAPACITY['Max 5x'];
-  return PLAN_CAPACITY['Max 20x'] / cap;
+  const cap = PLANS[planId(plan)]?.capacity || PLANS.max.capacity;
+  return PLANS.ultra.capacity / cap;
 }
 
 /**
