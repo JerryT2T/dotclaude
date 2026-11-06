@@ -98,3 +98,25 @@ test("parseArgs rejects unknown flags", () => {
   expect(() => parseArgs(["--nope"])).toThrow();
   expect(parseArgs(["--base", "main"]).base).toBe("main");
 });
+
+test("isolatedPluginCopy: copies the tree outside the repo, without node_modules and results", () => {
+  const { isolatedPluginCopy } = require("./ship-gate.js");
+  const src = fs.mkdtempSync(path.join(os.tmpdir(), "gate-src-"));
+  fs.mkdirSync(path.join(src, "skills", "x"), { recursive: true });
+  fs.mkdirSync(path.join(src, "node_modules", "dep"), { recursive: true });
+  fs.mkdirSync(path.join(src, "evals", "results", "old"), { recursive: true });
+  fs.writeFileSync(path.join(src, "skills", "x", "SKILL.md"), "uncommitted");
+  fs.writeFileSync(path.join(src, "node_modules", "dep", "a.js"), "x");
+  fs.writeFileSync(path.join(src, "evals", "results", "old", "r.json"), "{}");
+  const copy = isolatedPluginCopy(src);
+  try {
+    expect(copy.dir.replace(/\\/g, "/")).toMatch(/plugins\/devops$/);
+    expect(fs.readFileSync(path.join(copy.dir, "skills", "x", "SKILL.md"), "utf8")).toBe("uncommitted");
+    expect(fs.existsSync(path.join(copy.dir, "node_modules"))).toBe(false);
+    expect(fs.existsSync(path.join(copy.dir, "evals", "results"))).toBe(false);
+  } finally {
+    copy.cleanup();
+    fs.rmSync(src, { recursive: true, force: true });
+  }
+  expect(fs.existsSync(copy.dir)).toBe(false);
+});

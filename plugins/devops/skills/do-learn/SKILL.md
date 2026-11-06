@@ -139,6 +139,9 @@ session is no reason to drop a rule. Another repo with Claude or user activity i
 `node "{PLUGIN_ROOT}/scripts/recent-projects.js" --within-min 60 --match <name>`)
 → AskUserQuestion: **new session there / hand-off prompt** vs **issue**.
 Any other repo → always an issue. Recipe: `deep-knowledge/routing-details.md`.
+Every issue of B / D hands `/auto-issue` a body with the `**Beweis**` block (Kind:
+`Regressionstest` or `Eval-Case` · Trigger verbatim · Pass criterion), and the issue
+keeps it word for word; a missing block is a hand-over error.
 
 | Special case — overrides the table above                                                  | Branch                                         |
 |-----------------------------------------------------------------------------------------------|------------------------------------------------|

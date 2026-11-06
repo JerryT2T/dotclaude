@@ -84,13 +84,33 @@ function failuresIn(dir) {
   return failed;
 }
 
+/**
+ * The tree's plugin, copied outside the repo. A plugin path inside the source
+ * repo tells the model it is not in the scaffold's plugin repo, so branch A
+ * cases fail for a reason the shipped plugin never meets. Uncommitted changes
+ * are part of the copy, like the diff the gate selects its cases from.
+ */
+function isolatedPluginCopy(src = path.join(__dirname, ".."), tmpRoot = os.tmpdir()) {
+  const root = fs.mkdtempSync(path.join(tmpRoot, "ship-gate-plugin-"));
+  const dir = path.join(root, "plugins", "devops");
+  const skip = new Set(["node_modules", ".git"]);
+  const results = path.join(src, "evals", "results");
+  fs.cpSync(src, dir, { recursive: true, filter: (p) => !skip.has(path.basename(p)) && p !== results });
+  return { dir, cleanup: () => fs.rmSync(root, { recursive: true, force: true }) };
+}
+
 /** Default runner: ab-run.js on plan login, one run per case. */
 function runCases(ids, out) {
-  const args = [path.join(__dirname, "ab-run.js"), "--runs", "1", "--no-api-credit", "--out", out];
-  for (const id of ids) args.push("--case", id);
-  const r = spawnSync(process.execPath, args, { stdio: ["ignore", "inherit", "inherit"], windowsHide: true });
-  if (r.error) throw r.error;
-  return failuresIn(out);
+  const plugin = isolatedPluginCopy();
+  try {
+    const args = [path.join(__dirname, "ab-run.js"), "--runs", "1", "--no-api-credit", "--out", out, "--b", plugin.dir];
+    for (const id of ids) args.push("--case", id);
+    const r = spawnSync(process.execPath, args, { stdio: ["ignore", "inherit", "inherit"], windowsHide: true });
+    if (r.error) throw r.error;
+    return failuresIn(out);
+  } finally {
+    plugin.cleanup();
+  }
 }
 
 function changedFiles(base, cwd) {
@@ -125,4 +145,4 @@ if (require.main === module) {
   catch (err) { console.error(`[ship-gate] ${err.message}`); process.exitCode = 2; }
 }
 
-module.exports = { parseArgs, changedSkills, selectCases, failuresIn, changedFiles, main };
+module.exports = { parseArgs, changedSkills, selectCases, failuresIn, changedFiles, isolatedPluginCopy, main };
