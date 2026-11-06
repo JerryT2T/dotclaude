@@ -158,3 +158,5 @@ released only after a card, and one card-less answer after a ship pinned
 Shipped for the rest of the session.) A ship keyword is an order only in a
 short prompt (`KEYWORD_MAX_CHARS` in `ship-intent.js`): long prose that
 mentions a ship in passing is work, not a ship, and gets the Solo prefix.
+
+**Machine turns keep the title (#1049).** A prompt nobody typed (task notification, channel message, a `<cross-session-message>` from another Claude session) is a machine turn (`isMachineTurn`, mirrored in `batch-state.js` MACHINE_PATTERNS): `prompt.flow.title-work` leaves every known prefix alone, so a peer's status question cannot turn a shipped session back to `⏳ ➜ 🤖 Solo ┃`. Title bugs #956, #959, #964, #1049 share no code, only the shape: each state change is an advisory, model-relayed step, and a bug in its trigger leaves the title stale. Fix the trigger's classifier, and pin it with a test; eval case `evals/skills/session-title/`.
