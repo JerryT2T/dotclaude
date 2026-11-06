@@ -2,7 +2,7 @@
 'use strict';
 /**
  * @hook dispatch
- * @version 0.2.0
+ * @version 0.3.0
  * @event SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, PostToolUseFailure, Stop, SubagentStart, SubagentStop
  * @plugin devops
  * @description One process per hook event. `node dispatch.js <Event>` is the
@@ -78,6 +78,13 @@
  *   6. Opt-out — DEVOPS_HOOK_DISPATCH=0 (or off/false) runs every module as
  *      its own `node <file>` child process, all in parallel, each with its
  *      own timeout — the old process model, merged by the same rules.
+ *
+ *   7. Command filter — every Bash call starts every Bash module, and one worker
+ *      costs about 35 ms of CPU before the module does anything (measured
+ *      2026-11-05, 13 modules per call). A module that only acts on commands
+ *      naming a certain word gets `"commandFilter": "<regex>"` in the manifest:
+ *      no match on tool_input.command → no worker, at the price of one regex.
+ *      A payload without a command or a broken regex starts the module anyway.
  */
 
 const path = require('path');
@@ -171,6 +178,7 @@ function eventModules(manifest, event, pluginRoot = PLUGIN_ROOT) {
         dispatch: h.dispatch !== false && !fast,
         fast,
         onFailure: h.onFailure,
+        commandFilter: h.commandFilter,
       });
     }
   }
@@ -187,9 +195,17 @@ function laneModules(manifest, event, pluginRoot = PLUGIN_ROOT, { fast = false }
   return eventModules(manifest, event, pluginRoot).filter((m) => (fast ? m.fast : m.dispatch));
 }
 
+/** False only when the module's commandFilter proves the command is not its business. */
+function passesCommandFilter(mod, payload) {
+  if (!mod.commandFilter) return true;
+  const command = payload && payload.tool_input && payload.tool_input.command;
+  if (typeof command !== 'string') return true;
+  try { return new RegExp(mod.commandFilter).test(command); } catch { return true; }
+}
+
 function selectModules(manifest, event, payload, pluginRoot = PLUGIN_ROOT, opts = {}) {
   const query = queryFor(event, payload);
-  return laneModules(manifest, event, pluginRoot, opts).filter((m) => matches(query, m.matcher));
+  return laneModules(manifest, event, pluginRoot, opts).filter((m) => matches(query, m.matcher) && passesCommandFilter(m, payload));
 }
 
 function collect(stream, sink) {
