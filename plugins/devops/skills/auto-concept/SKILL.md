@@ -30,6 +30,7 @@ Each step keeps its contract here and names the deep-knowledge section that hold
 others only when the payload needs them (attachments, a mapping, an implement):
 
 - `deep-knowledge/step5-process.md` § Mark the round as work
+- `deep-knowledge/step5-process.md` § Bring main in before the round
 - `deep-knowledge/step5-process.md` § 5a · Read and parse
 - `deep-knowledge/step5-process.md` § 5b · iterate steps 3–5
 - `deep-knowledge/step2-build.md` § Freezing the submitted round — `bake`
@@ -231,6 +232,10 @@ See `deep-knowledge/step5-process.md` § Step 5 · The cycle. Submit → read �
 ### Mark the round as work
 
 See `deep-knowledge/step5-process.md` § Mark the round as work. The compass-to-hourglass swap on a confirmed wake and the card that ends the round.
+
+### Bring main in
+
+See `deep-knowledge/step5-process.md` § Bring main in before the round. Every real submission merges main into the branch before it is read, ahead of the reality check.
 
 ### 5a. Read & Parse
 See `deep-knowledge/step5-process.md` § 5a · Read and parse. Parsing, opening every attachment, the coverage check and reading `mappings[]`.

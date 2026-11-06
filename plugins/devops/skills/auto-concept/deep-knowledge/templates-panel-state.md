@@ -327,36 +327,29 @@ body.panel-open #content-dimmer { background: transparent; -webkit-backdrop-filt
    clicked away by reflex; the bar is what still says "you are in history"
    afterwards, so it deliberately uses the WARNING tint rather than the muted
    history colour of .frozen-indicator — being overlooked is the failure mode
-   it exists to fix. Sits above the dimmer (50) and the design chrome sharing
-   its band (switcher 95, anno pill 96), below the FABs (100), the panel
+   it exists to fix. Sits above the dimmer (50), below the FABs (100), the panel
    backdrop (150) and the panel itself. */
 .frozen-bar {
-  position: fixed; top: 0.75rem; left: 50%; transform: translateX(-50%);
+  /* the exact spot and size of the status toast (.jr-toast), which steps aside on a past round: a caption over a 42 px pill */
+  position: fixed; left: 50%; bottom: calc(var(--an-comp-top, 1.25rem) + 14px); transform: translateX(-50%);
   z-index: 97;
   box-sizing: border-box;
-  display: flex; align-items: center; gap: 0.6rem;
-  max-width: min(560px, calc(100vw - 2rem));
-  padding: 0.4rem 0.45rem 0.4rem 0.85rem;
-  border-radius: 999px;
-  border: 1px solid var(--warning-color, #d29922);
-  background: color-mix(in srgb, var(--warning-color, #d29922) 16%, var(--panel-bg, #161b22));
-  color: var(--text-color, #c9d1d9);
-  font-size: 0.82rem;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  width: min(340px, calc(100vw - 184px));
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
 }
 .frozen-bar[hidden] { display: none; }
 .frozen-bar-text {
-  min-width: 0;
+  max-width: 100%; min-width: 0;
+  font-size: 11px; font-weight: 600; color: var(--warning-color, #d29922);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.frozen-bar-text strong { color: var(--text-color, #c9d1d9); }
+.frozen-bar-text strong { color: inherit; }
 .frozen-bar button {
-  flex-shrink: 0;
-  padding: 0.3rem 0.75rem; border-radius: 999px; border: none;
-  background: var(--accent-color, #58a6ff); color: #fff;
-  font-size: 0.8rem; font-weight: 600; cursor: pointer;
+  box-sizing: border-box; width: 100%; height: 42px; flex: none;
+  padding: 0 16px; border-radius: 999px; border: none;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent-color, #388bfd) 88%, #fff), var(--accent-color, #388bfd));
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--accent-color, #388bfd) 40%, transparent), inset 0 1px 0 rgba(255, 255, 255, .22);
+  color: #fff; font-size: 14px; font-weight: 600; white-space: nowrap; cursor: pointer;
   transition: filter 0.15s ease;
 }
 .frozen-bar button:hover { filter: brightness(1.12); }
@@ -364,22 +357,7 @@ body.panel-open #content-dimmer { background: transparent; -webkit-backdrop-filt
   outline: 2px solid var(--accent-color, #58a6ff);
   outline-offset: 2px;
 }
-/* Design template: the top-centre band at 0.75rem belongs to .design-switcher.
-   Drop into the row below it (same 3.75rem derivation as .anno-toggle-fab)
-   and stay inside the switcher's 34vw width band, so the bar can never run
-   into the screen-indicator column on the left or the ☰ FAB on the right —
-   the same geometry contract every other piece of design chrome follows. */
-/* Document rounds: the ☰ FAB (top: 2rem; right: 2rem, a 60px circle) is new
-   here — it used to be design-only — and the bar's band runs straight through
-   it on a narrow viewport. Measured at 375px before this cap: the circle
-   covered ~44px of #frozen-bar-back, the on-content way back to the live
-   round. Ending the bar before the FAB's column costs nothing wide (the bar
-   is centred and far narrower than the cap there). */
-.frozen-bar { max-width: min(560px, calc(100vw - 184px)); }
-html[data-template="design"] .frozen-bar {
-  top: 3.75rem;
-  max-width: min(34vw, 560px);
-}
+body:has(.draft-offline-strip:not([hidden])) .frozen-bar { bottom: calc(var(--an-comp-top, 1.25rem) + 14px + 2.75rem); }
 
 /* Submitted toast — renderSubmittedToast() (§ Status line). Bottom centre,
    between the viewport toggle (bottom-left) and the 💬 FAB (bottom-right),

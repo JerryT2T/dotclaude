@@ -121,20 +121,23 @@ describe("frozen veil + floating bar — CSS", () => {
     const fabWidth = parseFloat(/width:\s*(\d+)px/.exec(shared[1])[1]);
     // The bar is centred, so half of it must fit beside the FAB's column on
     // BOTH sides: max-width ≤ 100vw - 2 × (right + width).
-    const cap = /\n\.frozen-bar \{ max-width: min\(560px, calc\(100vw - (\d+)px\)\); \}/.exec(css);
+    const cap = /\n\.frozen-bar \{[^}]*width: min\(340px, calc\(100vw - (\d+)px\)\);/.exec(css);
     expect(cap, "document-round width cap").toBeTruthy();
     expect(Number(cap[1]), "cap must clear the FAB column on both sides")
       .toBeGreaterThanOrEqual(2 * (fabRight + fabWidth));
   });
 
-  // On design pages the 0.75rem top-centre band belongs to .design-switcher.
-  // The bar drops into the row below it and stays inside the switcher's
-  // width band — the same geometry contract as the rest of the chrome.
-  test("design template moves the bar below the switcher and caps it to the switcher's band", () => {
-    const rule = cssSource.match(/html\[data-template="design"\] \.frozen-bar \{([\s\S]*?)\}/);
-    expect(rule).not.toBeNull();
-    expect(rule[1]).toContain("top: 3.75rem");
-    expect(rule[1]).toMatch(/max-width:\s*min\(34vw/);
+  // The user's eyes are on the status toast's spot: on a past round the toast steps aside and the bar takes
+  // exactly its place and width, on every template (a caption over a 42 px pill, right above the notes field).
+  test("the bar sits in the status toast's spot, at its width, with a 42 px pill", () => {
+    const css = cssSource.replace(/\/\*[\s\S]*?\*\//g, "");
+    const bar = /\n\.frozen-bar \{([^}]*)\}/.exec(css)[1];
+    const toast = /\n\.jr-toast \{([^}]*)\}/.exec(css)[1];
+    const pick = (rule, prop) => new RegExp("(?:^|[\\s;])" + prop + ":\\s*([^;]+);").exec(rule)[1];
+    for (const prop of ["left", "bottom", "transform", "width"]) expect(pick(bar, prop), prop).toBe(pick(toast, prop));
+    expect(css).toMatch(/\.frozen-bar button \{[^}]*height: 42px/);
+    expect(css).toMatch(/body\.viewing-frozen \.jr-toast \{ display: none; \}/);
+    expect(css).not.toMatch(/html\[data-template="design"\] \.frozen-bar/);
   });
 });
 

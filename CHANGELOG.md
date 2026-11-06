@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.360.0] — 2026-11-06
+
+### Added
+- Concept analysis chat: a "you are here" tag beside the collapsed table of contents always names the open question, and the expanded list highlights it strongly. The compact variant's progress dots are styled and mark the current one.
+- Concept analysis chat: messages on earlier questions can be edited in place or deleted without leaving the current question.
+- Concept analysis input: pasted or dropped images become a floating row of thumbnails above the field, click enlarges, × removes. Works on every stage, also the paperclip.
+- Concept flow: every submitted round and implementation merges main into the branch before the submission is read, ahead of the reality check.
+
+### Changed
+- Concept pages: on an earlier round the "Go to current round" bar now sits exactly where the status toast sits and has its size, on every template.
+
+### Fixed
+- Concept analysis input: pasted multi-line text no longer loses its line breaks.
+
 ## [0.359.0] — 2026-11-06
 
 ### Added

@@ -687,17 +687,22 @@
     inst.root.dispatchEvent(new CustomEvent('conceptanalysis:stage', { bubbles: true, detail: { index: i, kind: st.kind } }));
   }
   /** The user's side of the chat: the answer (and the note) of a question as a right-aligned message under it. */
-  function fillMe(inst, s) {
+  function fillMe(inst, s, force) {
     const d = s.el;
     let me = s.me;
-    if (!me) { me = s.me = h('div', 'an-m-me'); me.appendChild(h('div', 'an-bub-me')); d.appendChild(me); }
-    const store = storeOf(inst, s), note = store ? String(store.value || '').trim() : '';
+    if (!me) { me = s.me = h('div', 'an-m-me an-m-list'); d.appendChild(me); }
+    const store = storeOf(inst, s);
     let ans = '';
     try { ans = valueText(d, entryOf(d)); } catch (e) { ans = ''; }
-    const txt = [ans && ans !== '–' ? ans : '', note].filter(Boolean).join('\n');
-    const b = me.firstChild;
-    if (b.textContent !== txt) b.textContent = txt;
-    me.hidden = !txt;
+    // Redrawn only when something changed, and never under an inline edit (a go() must not eat the field).
+    const sig = [ans, store ? store.value : '', frozen(inst) ? 'f' : ''].join('\u0001');
+    if (!force && (s.editing || me.__sig === sig)) return;
+    me.__sig = sig;
+    me.textContent = '';
+    // The answer is a bubble of its own (it is a choice, not a message: no pen); every message is one with pen and x.
+    if (ans && ans !== '–') me.appendChild(h('div', 'an-bub-me an-ans-m', ans));
+    if (store) msgsOf(s, store).forEach((m, i) => me.appendChild(noteRow(inst, s, m, i, !frozen(inst))));
+    me.hidden = !me.firstChild;
   }
   /** Earlier messages scroll up and away: the open stage glides to the top of the chat (its min-height gives it the room). */
   function toStage(inst, st) {
@@ -823,7 +828,7 @@
     // A scroll position the glide did not set is the user's (scrollbar drag, middle-click autoscroll ...).
     c.addEventListener('scroll', () => { if (inst.gliding && Math.abs(c.scrollTop - inst.autoTop) > 3) stop(); }, { passive: true });
   }
-  window.addEventListener('resize', () => instances.forEach(fitChat));
+  window.addEventListener('resize', () => instances.forEach(i => { fitChat(i); placeHere(i); }));
   function step(inst, dir) {
     const cur = inst.stages[inst.idx];
     const k = inst.seq.indexOf(cur);
@@ -1032,6 +1037,8 @@
     if (e.defaultPrevented || e.isComposing) return;
     const inst = visibleInst(e.target);
     if (!inst) return;
+    // A large image view and the inline edit of an earlier message own their keys.
+    if (inst.lb || (e.target.closest && e.target.closest('.an-ied'))) return;
     const t = e.target, tag0 = t.tagName, type = (t.type || '').toLowerCase();
     const typing = tag0 === 'TEXTAREA' || tag0 === 'SELECT' || (tag0 === 'INPUT' && !/^(radio|checkbox|range|button|submit)$/.test(type)) || t.isContentEditable || !!(t.closest && t.closest('.an-comp-ed'));
     const st = inst.stages[inst.idx], d = st && st.kind === 'dec' ? st.el : null;

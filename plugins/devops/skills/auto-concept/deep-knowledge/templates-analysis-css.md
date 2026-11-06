@@ -74,6 +74,8 @@ section[data-view].an-lite { max-width: none; margin: 0; border: 0; border-radiu
 .an-vh { position: absolute; width: 1px; height: 1px; margin: 0; padding: 0; border: 0; opacity: 0; overflow: hidden; clip-path: inset(50%); pointer-events: none; }
 .an-att { margin-top: 6px; }
 .an-att .attach-btn { display: none; }
+/* the composer's floating strip shows a question's attachments; the engine's own bar stays out of sight */
+.an-att .attach-thumbs { display: none; }
 
 /* ---------- messages: devops avatar left, only the CURRENT message glows ---------- */
 .an-msg { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 12px; margin-top: 16px; transition: opacity .18s ease; }
@@ -92,6 +94,12 @@ section[data-view].an-lite { max-width: none; margin: 0; border: 0; border-radiu
 .an-past > .an-m-q .an-av { box-shadow: none; }
 .an-m-me { display: flex; justify-content: flex-end; margin-top: 12px; }
 .an-m-me[hidden] { display: none; }
+.an-m-list { flex-direction: column; align-items: flex-end; gap: 8px; }
+/* inline edit of an earlier message: the bubble itself is the field */
+.an-ied-on .an-note-acts { display: none; }
+.an-ied-on { padding-right: 16px; }
+.an-ied { display: inline-block; min-width: 140px; max-width: 100%; outline: 2px solid var(--an-ac); outline-offset: 3px; border-radius: 4px; caret-color: var(--an-tx); white-space: pre-wrap; overflow-wrap: anywhere; }
+
 .an-bub-me { max-width: 78%; padding: 10px 16px; border-radius: 18px 18px 4px 18px; background: color-mix(in srgb, var(--an-ac) 30%, var(--an-s2)); color: var(--an-tx); font-size: 14px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
 .an-past > .an-m-me:not([hidden]) { animation: an-in .5s cubic-bezier(.22,.8,.24,1) both; }
 .an-pane:not([hidden]) { animation: an-fade .32s ease-out both; }
@@ -199,10 +207,19 @@ html[data-theme="light"] .an-kind { color: var(--an-ac); }
 .an-ri-topic > i { width: 8px; height: 8px; margin-right: .5px; }
 .an-ri-edge > i { width: 7px; height: 7px; margin-right: 1px; }
 .an-ri.an-done > i { opacity: .55; }
-.an-ri.an-here > i { width: 9px; height: 9px; margin-right: 0; opacity: 1; box-shadow: 0 0 10px var(--dc), 0 0 2px var(--dc); }
+.an-ri.an-here > i { width: 9px; height: 9px; margin-right: 0; opacity: 1; box-shadow: 0 0 0 2px var(--an-bg), 0 0 0 4px var(--dc), 0 0 12px var(--dc); }
 .an-ri > b { margin-right: 5px; font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
 .an-rail:hover .an-ri-topic, .an-rail:hover .an-ri-edge { color: var(--an-mu); }
-.an-rail:hover .an-ri.an-here { color: var(--an-tx); font-weight: 650; }
+/* expanded: the open row is a filled pill in its colour with a bold name and an edge bar, unmistakable among the others */
+.an-rail:hover .an-ri.an-here, .an-rail:focus-within .an-ri.an-here { padding-left: 12px; border-radius: 12px 0 0 12px; background: color-mix(in srgb, var(--dc) 24%, transparent); box-shadow: inset -3px 0 0 var(--dc); color: var(--an-tx); font-size: 13px; font-weight: 750; }
+/* collapsed: "you are here" as a tag in the row's colour with its short name, pointing at the dot. A fixed element beside the
+   rail (the rail clips and masks its own content), placed by JS level with the open row; the expanded rail names the row itself. */
+.an-here-tag { position: fixed; right: 40px; z-index: 5; display: flex; align-items: center; max-width: clamp(72px, calc((100vw - 780px) / 2 - 44px), 168px); height: 24px; padding: 0 9px; transform: translateY(-50%); border-radius: 7px; background: var(--dc, var(--an-b2)); color: #0d1117; font-size: 11.5px; font-weight: 750; line-height: 24px; white-space: nowrap; pointer-events: none; box-shadow: 0 2px 10px rgba(0,0,0,.3); transition: opacity .15s ease; }
+.an-here-tag[hidden] { display: none; }
+.an-here-tag > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.an-here-tag::after { content: ""; position: absolute; left: 100%; top: 50%; margin-top: -6px; border-style: solid; border-width: 6px 0 6px 7px; border-color: transparent transparent transparent var(--dc, var(--an-b2)); }
+[data-analysis]:has(> .an-rail:hover) > .an-here-tag, [data-analysis]:has(> .an-rail:focus-within) > .an-here-tag { opacity: 0; }
+@media (prefers-reduced-motion: reduce) { .an-here-tag { transition: none; } }
 .an-ri:hover { font-size: 14px; color: var(--an-tx); font-weight: 700; }
 .an-ri:has(+ .an-ri:hover), .an-ri:hover + .an-ri { font-size: 12.5px; color: var(--an-tx2); }
 .an-ri:has(+ .an-ri + .an-ri:hover), .an-ri:hover + .an-ri + .an-ri { font-size: 11.5px; color: var(--an-mu); }
@@ -210,6 +227,31 @@ html[data-theme="light"] .an-kind { color: var(--an-ac); }
 /* ---------- persistent composer: THE note field (sticky, clear of the concept chrome) ---------- */
 .an-comp { position: relative; flex: none; z-index: 6; margin-top: 10px !important; display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; margin-top: 28px; padding: 8px 8px 8px 16px; border-radius: 18px; background: var(--an-s2); border: 1px solid var(--an-bd2); box-shadow: 0 -14px 34px color-mix(in srgb, var(--an-bg) 95%, transparent); }
 .an-comp.an-glow { animation: an-comp-glow 1.8s ease-out 1; }
+.an-comp.an-drag { outline: 2px dashed var(--an-ac); outline-offset: -3px; }
+/* attachments: thumbnails floating over the chat, right above the field, left to right (wrapping upwards) */
+.an-strip { position: absolute; left: 0; right: 0; bottom: calc(100% + 8px); z-index: 2; display: flex; flex-wrap: wrap; align-content: flex-end; gap: 8px; padding: 0 4px; pointer-events: none; }
+.an-strip[hidden] { display: none; }
+body:has(.an-strip:not([hidden])) .jr-toast, body:has(.an-strip:not([hidden])) .frozen-bar { bottom: calc(var(--an-comp-top, 1.25rem) + 78px); }
+.an-strip > * { pointer-events: auto; }
+.an-att-i { position: relative; flex: none; height: 56px; border-radius: 10px; border: 1px solid var(--an-bd2); background: var(--an-s2); box-shadow: 0 6px 18px rgba(0,0,0,.35); overflow: hidden; }
+html[data-theme="light"] .an-att-i { box-shadow: 0 6px 18px rgba(31,35,40,.18); }
+.an-att-i[data-error="true"] { border-color: var(--an-warn); }
+.an-att-t { appearance: none; display: block; width: 56px; height: 100%; padding: 0; margin: 0; border: 0; background: none; cursor: zoom-in; }
+.an-att-t img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.an-att-t:focus-visible, .an-att-x:focus-visible, .an-att-r:focus-visible, .an-lb-x:focus-visible { outline: 2px solid var(--an-ac); outline-offset: -2px; }
+.an-att-file { display: flex; align-items: center; gap: 6px; width: auto; max-width: 150px; padding: 0 28px 0 10px; font-size: 12.5px; color: var(--an-tx); cursor: default; }
+.an-att-n { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.an-att-p { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--an-b2); transition: width .2s; }
+.an-att-x, .an-att-r { position: absolute; top: 3px; display: grid; place-items: center; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 50%; background: rgba(0,0,0,.62); color: #fff; font-size: 13px; line-height: 1; cursor: pointer; }
+.an-att-x { right: 3px; }
+.an-att-r { right: 26px; }
+.an-att-x:hover, .an-att-r:hover { background: rgba(0,0,0,.85); }
+@media (pointer: coarse) { .an-att-x, .an-att-r { width: 28px; height: 28px; font-size: 16px; } .an-att-r { right: 34px; } }
+.an-att-msg { padding: 6px 10px; border-radius: 8px; background: var(--an-s2); border: 1px solid var(--an-bd2); color: var(--an-tx2); font-size: 12.5px; }
+.an-lb { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 24px; background: rgba(1,4,9,.78); }
+.an-lb > img { max-width: min(96vw, 1100px); max-height: 88vh; object-fit: contain; border-radius: 10px; background: var(--an-s1); box-shadow: 0 20px 60px rgba(0,0,0,.6); }
+.an-lb-x { position: absolute; top: 16px; right: 16px; display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 50%; background: rgba(255,255,255,.16); color: #fff; font-size: 24px; line-height: 1; cursor: pointer; }
+.an-lb-x:hover { background: rgba(255,255,255,.28); }
 .an-comp-ed { min-height: 22px; max-height: 66px; overflow-y: auto; font-size: 14px; line-height: 22px; color: var(--an-tx); white-space: pre-wrap; overflow-wrap: anywhere; outline: none; caret-color: var(--an-tx); }
 .an-comp-ed[data-empty="1"]::before { content: attr(data-ph); float: left; width: 100%; margin-right: -100%; color: var(--an-mu2); pointer-events: none; }
 .an-comp-ed[contenteditable="false"] { cursor: default; }
@@ -306,6 +348,13 @@ html[data-theme="light"] .an-tagw { color: var(--an-ac); }
 .an-lhead { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--an-bd); }
 .an-lhead .an-lt { font-size: 13px; font-weight: 700; color: var(--an-tx2); }
 .an-lhead .an-lpr { display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--an-mu); }
+.an-lcount { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--an-tx); }
+.an-dots { display: flex; align-items: center; gap: 6px; }
+.an-dot { width: 9px; height: 9px; padding: 0; border: 0; border-radius: 50%; background: var(--an-s3); cursor: pointer; transition: transform .15s ease; }
+.an-dot.an-s-ok { background: var(--an-ok); }
+.an-dot.an-s-dev { background: var(--an-warn); }
+.an-dot.an-s-iss { background: var(--an-li); }
+.an-dot.an-cur { transform: scale(1.5); box-shadow: 0 0 0 2px var(--an-bg), 0 0 0 4px var(--an-ac); }
 [data-analysis] input[type=text] { flex: 1; min-width: 0; height: 30px; border: 0; background: none; color: var(--an-tx); font: inherit; outline: none; }
 /* slider over a bar */
 .an-sl { position: relative; padding: 24px 26px 14px; border-radius: 16px; background: var(--an-s1); border: 1.5px solid var(--an-bd2); }
@@ -498,7 +547,7 @@ html[data-theme="light"] .an-tagw { color: var(--an-ac); }
   [data-analysis] [data-opt-steps] { grid-row: 4; }
 }
 @media (max-width: 900px) {
-  .an-rail { display: none; }
+  .an-rail, .an-here-tag { display: none; }
   .an-enh { padding: 24px 14px 28px; }
   /* the feedback FAB sits bottom-right: the column keeps clear of it (the composer stays in the flow) */
   .an-enh:not(.an-lite) { padding-bottom: 76px; }
