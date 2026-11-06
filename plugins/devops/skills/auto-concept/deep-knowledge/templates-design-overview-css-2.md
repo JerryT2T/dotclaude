@@ -56,7 +56,11 @@ body:has(.draft-offline-strip:not([hidden])) .upin-hint { bottom: 4.75rem; }
 body.upin-armed section[data-screen][data-screen-active="true"],
 body.upin-armed section[data-screen][data-screen-active="true"] * { cursor: crosshair !important; }
 .upin-host { position: relative; }
-.upin-layer { position: absolute; inset: 0; pointer-events: none; z-index: 30; }
+/* !important: the layer is appended as a child of the mock's own root, so a
+   mock rule such as `.app > * { position: relative }` would otherwise win. The
+   layer then falls into the flow at the end of the mock with no height, and
+   every pin lands at the bottom of the page, whatever y was clicked. */
+.upin-layer { position: absolute !important; inset: 0 !important; pointer-events: none; z-index: 30 !important; }
 .upin {
   --upin-color: #d2a8ff;
   /* A saved note shows its text in the SAME bubble an auto annotation uses
@@ -104,7 +108,7 @@ body.upin-armed section[data-screen][data-screen-active="true"] * { cursor: cros
    (z-index 40) — nothing draws over the editor. Every other note, auto and
    own, dims per note via body[data-note-editing] (templates-design-css.md),
    never by fading a whole layer, so both kinds look the same. */
-.upin-layer:has(.upin[data-editing="true"]) { z-index: 45; }
+.upin-layer:has(.upin[data-editing="true"]) { z-index: 45 !important; }
 .upin[data-editing="true"] { z-index: 4; }
 .upin-editor-head { font-size: 0.72rem; color: var(--text-secondary, #8b949e); margin-bottom: 0.35rem; }
 .upin-editor textarea {

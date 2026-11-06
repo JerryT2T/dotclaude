@@ -184,7 +184,7 @@ describe("overview feedback — questions, notes", () => {
   test("the own-note editor keeps the 📎 in its foot row and rises above the auto pins while open", () => {
     expect(md).toContain("foot.appendChild(slot);");
     expect(css).not.toContain(".upin-editor .attach-slot .attach-btn { position: absolute");
-    expect(css).toMatch(/\.upin-layer:has\(\.upin\[data-editing="true"\]\) \{ z-index: 45; \}/);
+    expect(css).toMatch(/\.upin-layer:has\(\.upin\[data-editing="true"\]\) \{ z-index: 45 !important; \}/);
   });
 
   test("the open-questions hint opens the call-to-action block, above the journey row", () => {

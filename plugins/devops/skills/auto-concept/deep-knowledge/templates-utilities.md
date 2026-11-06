@@ -295,7 +295,8 @@ arrives. Morphology after the MadMaze phase transitions (`neural-net.ts`).
 It is decoration, so it never competes with the text: low alpha, accent colour
 only, `pointer-events: none`, behind every element (`z-index: -1`, the body
 background propagates to the canvas below it). Off on design rounds (the mock
-is the stage), static under `prefers-reduced-motion`, paused while the tab is
+is the stage), but on while an analysis view of a design round is open: that
+view is the same document page and has no mock behind it. Static under `prefers-reduced-motion`, paused while the tab is
 hidden, ~30 fps. It reads like a micrograph: depth-of-field blur per plane,
 shaded tubes for every strand, lit spheres with a nucleus for the somata —
 all pre-rendered once per plane, so a frame only
@@ -305,6 +306,7 @@ draws three bitmaps plus the impulses.
 #neural-bg { position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; opacity: .38; }
 html[data-theme="light"] #neural-bg { opacity: .24; }
 html[data-template="design"] #neural-bg { display: none; }
+html[data-template="design"] body[data-view-active="true"]:has(section[data-view-kind="analysis"][data-view-active="true"]) #neural-bg { display: block; }
 @media print { #neural-bg { display: none; } }
 ```
 
@@ -318,7 +320,8 @@ html[data-template="design"] #neural-bg { display: none; }
   const ctx = cv.getContext('2d');
   if (!ctx) return;
   const still = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const off = () => document.documentElement.dataset.template === 'design';
+  const off = () => document.documentElement.dataset.template === 'design'
+    && !(document.body.dataset.viewActive === 'true' && document.querySelector('section[data-view-kind="analysis"][data-view-active="true"]'));
   // Back -> front: drawn size, share of cells, tissue alpha, parallax depth, depth-of-field blur.
   const PLANES = [{ s: 0.55, share: 0.42, a: 0.45, z: 0.35, blur: 1.6 }, { s: 0.8, share: 0.34, a: 0.7, z: 0.65, blur: 0.6 }, { s: 1.1, share: 0.24, a: 1, z: 1, blur: 0 }];
   const PAD = 40;
@@ -515,6 +518,8 @@ html[data-template="design"] #neural-bg { display: none; }
   document.addEventListener('visibilitychange', kick);
   document.addEventListener('iteration:changed', kick);
   if (window.MutationObserver) new MutationObserver(() => { color(); layers = PLANES.map((_, p) => paintPlane(p)); kick(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-template'] });
+  // Opening an analysis view of a design round wakes the loop (off() stopped it).
+  if (window.MutationObserver) new MutationObserver(kick).observe(document.body, { attributes: true, subtree: true, attributeFilter: ['data-view-active'] });
   color(); build(); kick();
 })();
 ```

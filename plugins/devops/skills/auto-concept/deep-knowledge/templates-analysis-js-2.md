@@ -639,6 +639,7 @@
     inst.timers.forEach(clearTimeout);
     inst.timers = [];
     inst.root.querySelectorAll('.an-wait, .an-enter').forEach(n => n.classList.remove('an-wait', 'an-enter'));
+    inst.root.querySelectorAll('.an-typing').forEach(n => n.remove());
     // The chat is a history: the questions already answered stay above (finding + question + the user's answer as
     // their own right-aligned message), so the user can always scroll back; only the open stage is shown in full.
     const k0 = inst.seq.indexOf(st);
@@ -743,7 +744,8 @@
   /** First visit of a question: finding now, then each next message once the one before it can have been read
    *  (dwellMs), the answer block (+ "Als Nächstes") last.
    *  A message that has not entered is display:none, so no empty area waits below; each entry
-   *  glides the chat down just far enough to show it - unless the user scrolled (user scroll wins). */
+   *  glides the chat down just far enough to show it - unless the user scrolled (user scroll wins).
+   *  While one is still held back, typing dots stand below the last one: a pause never reads as the end. */
   // Reading pace, counted in letters so long German words do not skew it. Brysbaert 2019 (J. Memory and Language 109):
   // 238 wpm x 4.6 letters (non-fiction) = 260 wpm x 4.2 letters (fiction) = about 1,095 letters/min = 18.25/s.
   // +10 %: an average reader who reads a little faster, no speed reader. Figures are from English text; no German value exists.
@@ -758,6 +760,14 @@
     const tail = [inst.peekDn];
     parts.slice(1).concat(tail).forEach(n => n.classList.add('an-wait'));
     parts[0].classList.add('an-enter');
+    let typing = null;
+    if (parts.length > 1) {
+      typing = h('div', 'an-typing');
+      typing.setAttribute('role', 'status');
+      typing.setAttribute('aria-label', L('Es kommt noch etwas', 'More is coming'));
+      typing.append(h('i'), h('i'), h('i'));
+      parts[0].after(typing);
+    }
     let at = 0;
     parts.slice(1).forEach((n, i) => {
       at += dwellMs(parts[i]);
@@ -765,7 +775,8 @@
         if (inst.stages[inst.idx] !== st) return;
         n.classList.remove('an-wait');
         n.classList.add('an-enter');
-        if (n === parts[parts.length - 1]) tail.forEach(t => t.classList.remove('an-wait'));
+        if (n === parts[parts.length - 1]) { typing.remove(); tail.forEach(t => t.classList.remove('an-wait')); }
+        else n.after(typing);
         glide(inst, n, parts[Math.min(i + 1, 1)]);   // the answer never pushes the question out of view
       }, at));
     });
