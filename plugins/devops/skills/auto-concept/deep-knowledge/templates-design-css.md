@@ -611,9 +611,7 @@ textarea[hidden] + .attach-bar { display: none; }
      reserving it on both sides keeps both clear. Measured: 1280px → 776px,
      1920px → 1416px of room. Only below ~900px, where even that room
      cannot hold a row, does a row wrap a third time.
-     z-index 98 lifts the open bar over .frozen-bar (97), which sits in the
-     row below on a frozen design round — it is only open while the user is
-     pointing at it, and the frozen bar is back the moment they leave. */
+     z-index 98 keeps the open bar over the page chrome below it. */
   max-width: calc(100vw - 2 * (1rem + min(33vw - 1.5rem, 240px) + 0.75rem));
   z-index: 98;
   flex-wrap: wrap; justify-content: center; row-gap: 2px;

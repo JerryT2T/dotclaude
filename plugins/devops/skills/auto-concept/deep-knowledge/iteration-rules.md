@@ -42,7 +42,7 @@ selections, read-only comments).
 - **Veil + floating bar on every past tab (all templates).** Entering a
   non-live tab locks it behind the shared `#content-dimmer` (the "veil";
   `showIteration()` → `lockFrozenView()`) and unhides `#frozen-bar`, a fixed
-  top-centre pill reading "🕘 Runde N · frühere Runde, schreibgeschützt"
+  pill in the status toast's spot above the notes field, reading "🕘 Runde N · frühere Runde, schreibgeschützt"
   with a `#frozen-bar-back` button to the live round. The veil is
   click/Escape-to-lift so the round can be read in full; the bar stays up
   after the lift — it is the signal that survives the reflex click. Lock

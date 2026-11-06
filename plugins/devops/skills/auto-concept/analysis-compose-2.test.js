@@ -316,3 +316,25 @@ describe("attachments in the composer", () => {
     expect(CSS).not.toMatch(/\.an-comp-ed img/);
   });
 });
+
+describe("a question's attachments show once", () => {
+  test("the engine's own thumbnails stay hidden, and the status spot steps over the strip", () => {
+    expect(CSS).toMatch(/\.an-att \.attach-thumbs \{ display: none; \}/);
+    expect(CSS).toMatch(/body:has\(\.an-strip:not\(\[hidden\]\)\) \.jr-toast, body:has\(\.an-strip:not\(\[hidden\]\)\) \.frozen-bar \{ bottom:/);
+  });
+});
+
+describe("multi-line text in the composer", () => {
+  test("lines the browser wraps in one <div> each stay separate lines", () => {
+    const { w, doc, ca } = page(LITE);
+    const inst = ca.instances[0];
+    inst.comp.ed.innerHTML = "eins<div>zwei</div><div><br></div><div>drei</div>";
+    inst.comp.ed.dispatchEvent(new w.Event("input", { bubbles: true }));
+    ca.sendNote(inst);
+    expect(doc.querySelector("#q1 .an-note").value).toBe("eins\nzwei\n\u00a0\ndrei");
+  });
+  test("a hidden position tag stays hidden, and the tag never grows over the column", () => {
+    expect(CSS).toMatch(/\.an-here-tag\[hidden\] \{ display: none; \}/);
+    expect(CSS).toMatch(/\.an-here-tag \{[^}]*max-width: clamp\(72px, calc\(\(100vw - 780px\) \/ 2 - 44px\), 168px\)/);
+  });
+});

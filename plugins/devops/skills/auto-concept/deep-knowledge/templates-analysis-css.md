@@ -74,6 +74,8 @@ section[data-view].an-lite { max-width: none; margin: 0; border: 0; border-radiu
 .an-vh { position: absolute; width: 1px; height: 1px; margin: 0; padding: 0; border: 0; opacity: 0; overflow: hidden; clip-path: inset(50%); pointer-events: none; }
 .an-att { margin-top: 6px; }
 .an-att .attach-btn { display: none; }
+/* the composer's floating strip shows a question's attachments; the engine's own bar stays out of sight */
+.an-att .attach-thumbs { display: none; }
 
 /* ---------- messages: devops avatar left, only the CURRENT message glows ---------- */
 .an-msg { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 12px; margin-top: 16px; transition: opacity .18s ease; }
@@ -212,7 +214,8 @@ html[data-theme="light"] .an-kind { color: var(--an-ac); }
 .an-rail:hover .an-ri.an-here, .an-rail:focus-within .an-ri.an-here { padding-left: 12px; border-radius: 12px 0 0 12px; background: color-mix(in srgb, var(--dc) 24%, transparent); box-shadow: inset -3px 0 0 var(--dc); color: var(--an-tx); font-size: 13px; font-weight: 750; }
 /* collapsed: "you are here" as a tag in the row's colour with its short name, pointing at the dot. A fixed element beside the
    rail (the rail clips and masks its own content), placed by JS level with the open row; the expanded rail names the row itself. */
-.an-here-tag { position: fixed; right: 40px; z-index: 5; display: flex; align-items: center; max-width: 168px; height: 24px; padding: 0 9px; transform: translateY(-50%); border-radius: 7px; background: var(--dc, var(--an-b2)); color: #0d1117; font-size: 11.5px; font-weight: 750; line-height: 24px; white-space: nowrap; pointer-events: none; box-shadow: 0 2px 10px rgba(0,0,0,.3); transition: opacity .15s ease; }
+.an-here-tag { position: fixed; right: 40px; z-index: 5; display: flex; align-items: center; max-width: clamp(72px, calc((100vw - 780px) / 2 - 44px), 168px); height: 24px; padding: 0 9px; transform: translateY(-50%); border-radius: 7px; background: var(--dc, var(--an-b2)); color: #0d1117; font-size: 11.5px; font-weight: 750; line-height: 24px; white-space: nowrap; pointer-events: none; box-shadow: 0 2px 10px rgba(0,0,0,.3); transition: opacity .15s ease; }
+.an-here-tag[hidden] { display: none; }
 .an-here-tag > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .an-here-tag::after { content: ""; position: absolute; left: 100%; top: 50%; margin-top: -6px; border-style: solid; border-width: 6px 0 6px 7px; border-color: transparent transparent transparent var(--dc, var(--an-b2)); }
 [data-analysis]:has(> .an-rail:hover) > .an-here-tag, [data-analysis]:has(> .an-rail:focus-within) > .an-here-tag { opacity: 0; }
@@ -228,10 +231,11 @@ html[data-theme="light"] .an-kind { color: var(--an-ac); }
 /* attachments: thumbnails floating over the chat, right above the field, left to right (wrapping upwards) */
 .an-strip { position: absolute; left: 0; right: 0; bottom: calc(100% + 8px); z-index: 2; display: flex; flex-wrap: wrap; align-content: flex-end; gap: 8px; padding: 0 4px; pointer-events: none; }
 .an-strip[hidden] { display: none; }
+body:has(.an-strip:not([hidden])) .jr-toast, body:has(.an-strip:not([hidden])) .frozen-bar { bottom: calc(var(--an-comp-top, 1.25rem) + 78px); }
 .an-strip > * { pointer-events: auto; }
 .an-att-i { position: relative; flex: none; height: 56px; border-radius: 10px; border: 1px solid var(--an-bd2); background: var(--an-s2); box-shadow: 0 6px 18px rgba(0,0,0,.35); overflow: hidden; }
 html[data-theme="light"] .an-att-i { box-shadow: 0 6px 18px rgba(31,35,40,.18); }
-.an-att-i[data-error="true"] { border-color: #f85149; }
+.an-att-i[data-error="true"] { border-color: var(--an-warn); }
 .an-att-t { appearance: none; display: block; width: 56px; height: 100%; padding: 0; margin: 0; border: 0; background: none; cursor: zoom-in; }
 .an-att-t img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .an-att-t:focus-visible, .an-att-x:focus-visible, .an-att-r:focus-visible, .an-lb-x:focus-visible { outline: 2px solid var(--an-ac); outline-offset: -2px; }

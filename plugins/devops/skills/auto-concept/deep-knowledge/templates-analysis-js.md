@@ -558,7 +558,10 @@ What the code does, in the order of the file:
   function compText(ed) {
     const c = ed.cloneNode(true);
     c.querySelectorAll('.an-tagw').forEach(n => n.remove());
+    // Pasted or typed lines arrive as one <div> per line: each is a line break, and its own trailing <br> is none.
+    c.querySelectorAll('div > br:last-child').forEach(b => { if (!b.nextSibling) b.remove(); });
     c.querySelectorAll('br').forEach(b => b.replaceWith('\n'));
+    c.querySelectorAll('div, p').forEach(d => { if (d.previousSibling) d.before('\n'); });
     return c.textContent.replace(/ /g, ' ').replace(/\s+$/, '');
   }
   const frozen = inst => frozenEl(inst.root);
