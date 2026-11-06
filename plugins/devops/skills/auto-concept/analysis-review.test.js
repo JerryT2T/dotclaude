@@ -219,13 +219,13 @@ describe("R9 / R10 / R11 the composer's note", () => {
     expect(doc.querySelector('[data-comment="q1-note"]').value).toBe("my answer");
     expect(analysis.findAnalysisIssues(html).warnings.some(x => x.kind === "decision-note")).toBe(true);
   });
-  test("R10: a note filled from outside shows in the composer and is not overwritten", () => {
+  test("R10: a note filled from outside shows as a message and is not overwritten", () => {
     const { w, doc, ca, inst } = page(lite("l", decision("q1"), decision("q2")));
     doc.querySelector('[data-comment="q1-note"]').value = "restored text";
     ca.instances.length && w.conceptAnalysis.restored();
-    expect(inst.comp.ed.textContent).toContain("restored text");
+    expect(doc.querySelector("#q1 .an-notes").textContent).toContain("restored text");
     type(w, inst, " more");
-    expect(doc.querySelector('[data-comment="q1-note"]').value).toBe("restored text more");
+    expect(doc.querySelector('[data-comment="q1-note"]').value).toBe("restored text\n\nmore");
   });
   test("R11: toggling another row keeps the tag of the text already typed", () => {
     const { w, ca, doc, inst } = page(full("p"));

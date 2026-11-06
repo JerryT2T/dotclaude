@@ -458,7 +458,7 @@
     if (d.__none) {
       const on = (ctl1(d, 'dm-' + id + '-none') || {}).value === '1';
       d.__none.setAttribute('aria-pressed', on ? 'true' : 'false');
-      d.__none.textContent = on ? '✓ ' + L('Keine passt — deine Antwort steht im Notizfeld unten', 'None fits — your answer is in the note field below') : NONE_TXT();
+      d.__none.textContent = on ? '✓ ' + L('Keine passt — schreib deine Antwort unten ins Notizfeld', 'None fits — write your answer in the note field below') : NONE_TXT();
       d.classList.toggle('an-is-none', on);
       const i0 = instances.find(i => i.root.contains(d));
       // Only the OPEN question owns the composer's placeholder (refresh() syncs every decision).
@@ -564,8 +564,7 @@
       refresh(inst);
       const st = inst.stages[inst.idx], store = storeOf(inst, st);
       if (!st || !store || !inst.comp) return;
-      const want = store.value || '', have = compText(inst.comp.ed);
-      if (want !== (have ? (inst.tag ? '[' + inst.tag + '] ' : '') + have : '')) loadComposer(inst, st);
+      if (st.msgSig !== store.value) loadComposer(inst, st);
     });
   }
   /** Writes every record now (the collect path calls this before reading dm-{id}-hes). */
@@ -1034,7 +1033,7 @@
     const inst = visibleInst(e.target);
     if (!inst) return;
     const t = e.target, tag0 = t.tagName, type = (t.type || '').toLowerCase();
-    const typing = tag0 === 'TEXTAREA' || tag0 === 'SELECT' || (tag0 === 'INPUT' && !/^(radio|checkbox|range|button|submit)$/.test(type)) || t.isContentEditable;
+    const typing = tag0 === 'TEXTAREA' || tag0 === 'SELECT' || (tag0 === 'INPUT' && !/^(radio|checkbox|range|button|submit)$/.test(type)) || t.isContentEditable || !!(t.closest && t.closest('.an-comp-ed'));
     const st = inst.stages[inst.idx], d = st && st.kind === 'dec' ? st.el : null;
     if (typing) {
       if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); e.stopPropagation(); step(inst, e.shiftKey ? -1 : 1); }
