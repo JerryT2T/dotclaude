@@ -164,6 +164,16 @@ describe("Quiet style — an analysis with decisions goes to a concept page", ()
     expect(flat).toContain("An artifact only for a read-only report that leaves nothing to decide");
     expect(flat).not.toContain("`/auto-concept` page or an artifact");
   });
+
+  // "Refine the concept close-out, e.g. these two things" got one
+  // AskUserQuestion and an immediate build: rule 1 (decision → question) won
+  // over rule 3 (analysis with picks → concept), and the two named annoyances
+  // were read as the complete list.
+  test("a complex refine goes to a concept page; named problems are examples", () => {
+    expect(flat).toContain("A complex topic is not a decision of this kind");
+    expect(flat).toContain("never a question plus an immediate build");
+    expect(flat).toContain("main examples, not the whole list");
+  });
 });
 
 // A German session got English three times: "No response requested." to the
