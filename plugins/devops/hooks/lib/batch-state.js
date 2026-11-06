@@ -50,16 +50,10 @@ const DEFAULTS = {
 };
 
 /**
- * The marker the skill offers on first run: the word "go", language-neutral.
- * Older defaults and the German "jetzt" (`>>`, `>go`, `>start`, "los", "Let's go",
- * "jetzt") are dropped, also where "jetzt" was picked by hand; a stored config still
- * holding one of them migrates to `go` in `loadConfig`.
- *
- * Suggestions, not a closed set: whatever the user types via "Other" is the
- * marker, subject only to `validateMarker`.
+ * The execute marker is fixed: the word "go" as the first word of the prompt,
+ * in any language. It is not configurable; a stored or pinned marker of any
+ * other value is migrated to it (`loadConfig`) or ignored (`effectiveMarker`).
  */
-const MARKER_SUGGESTIONS = ['go'];
-const LEGACY_MARKER_SUGGESTIONS = ['>>', '>go', '>start', 'los', "let's go", 'let’s go', 'jetzt'];
 
 /**
  * Machine-prompt patterns. Prompts matching these are NEVER collected.
@@ -157,7 +151,7 @@ function clauseAround(s, index) {
 }
 
 /** Words that are pure routing (Step 1 of the skill), never note content. */
-const ROUTE_WORDS = /\b(on|an|start|off|aus|stop|go|los|merge|marker|status|bitte|mal|jetzt)\b/gi;
+const ROUTE_WORDS = /\b(on|an|start|off|aus|stop|go|los|merge|status|bitte|mal|jetzt)\b/gi;
 
 /**
  * Below this many characters of residue, an invocation is "activation only" —
@@ -189,16 +183,11 @@ function lockPath(cwd)     { return path.join(claudeDir(cwd), 'batch-watchdog.lo
 // ── config ─────────────────────────────────────────────────────────────────
 
 /**
- * Config with an ALWAYS-USABLE marker.
+ * Config. The marker is always `DEFAULTS.marker`: whatever an older config
+ * stored (`sofort`, `>>`, a custom phrase) migrates to `go` on read and is
+ * persisted once, so the file never keeps an old value alive.
  *
- * A stored marker is re-validated on every read, not just on write: configs
- * written before the reserved-prefix rule existed carry `!`, and honouring one
- * would leave collection running with no way to fire the merge. When that
- * happens the default takes over and `markerFallback` records it, so the skill
- * can tell the user instead of the mode silently behaving differently than the
- * config file says.
- *
- * @returns {{marker:string,inactivityMinutes:number,expiryHours:number,maxNotes:number,markerFallback?:{was:string,reason:string}}}
+ * @returns {{marker:string,inactivityMinutes:number,expiryHours:number,maxNotes:number}}
  */
 function loadConfig() {
   let raw = {};
@@ -208,34 +197,18 @@ function loadConfig() {
   } catch { /* missing or corrupt — defaults below */ }
   const cfg = { ...DEFAULTS, ...raw };
   delete cfg.markerFallback;
-  if (typeof raw.marker === 'string' && LEGACY_MARKER_SUGGESTIONS.includes(raw.marker.trim().replace(/\s+/g, ' ').toLowerCase())) {
-    // Old suggestion → new default, persisted once. A custom marker never gets here.
-    cfg.marker = DEFAULTS.marker;
+  if ('marker' in raw && raw.marker !== DEFAULTS.marker) {
     try {
-      fs.writeFileSync(configPath(), JSON.stringify({ ...raw, marker: cfg.marker }, null, 2) + '\n', 'utf8');
+      fs.writeFileSync(configPath(), JSON.stringify({ ...raw, marker: DEFAULTS.marker }, null, 2) + '\n', 'utf8');
     } catch { /* read-only config — the in-memory migration still applies */ }
   }
-  const v = validateMarker(cfg.marker);
-  if (!v.ok) {
-    return {
-      ...cfg,
-      marker: DEFAULTS.marker,
-      markerFallback: { was: String(cfg.marker ?? ''), reason: v.reason },
-    };
-  }
-  cfg.marker = v.marker;
+  cfg.marker = DEFAULTS.marker;
   return cfg;
 }
 
 function saveConfig(cfg) {
   const incoming = { ...(cfg || {}) };
-  if ('marker' in incoming) {
-    const v = validateMarker(incoming.marker);
-    if (!v.ok) throw new Error(`invalid marker (${v.reason})`);
-    incoming.marker = v.marker;
-  }
-  const merged = { ...loadConfig(), ...incoming };
-  // Derived state, never persisted — it would outlive the condition it reports.
+  const merged = { ...loadConfig(), ...incoming, marker: DEFAULTS.marker };
   delete merged.markerFallback;
   const dir = path.dirname(configPath());
   fs.mkdirSync(dir, { recursive: true });
@@ -285,7 +258,6 @@ function expiryReason(cwd, now) {
 
 function activate(cwd, opts = {}) {
   const cfg = loadConfig();
-  const asked = validateMarker(opts.marker);
   const startedAt = opts.startedAt ? new Date(opts.startedAt) : new Date();
   const hours = opts.expiryHours ?? cfg.expiryHours;
   const mode = {
@@ -293,9 +265,7 @@ function activate(cwd, opts = {}) {
     startedAt: startedAt.toISOString(),
     expiresAt: new Date(startedAt.getTime() + hours * 3600_000).toISOString(),
     maxNotes: opts.maxNotes ?? cfg.maxNotes,
-    // Pinned so a later config edit cannot change the marker mid-collection —
-    // but never an unusable one, or the mode starts with no way out.
-    marker: asked.ok ? asked.marker : cfg.marker,
+    marker: DEFAULTS.marker,
   };
   // The collecting session (#841). Optional: the skill activates from a shell
   // that has no session id, so the hook stamps it on the first prompt it sees
@@ -951,19 +921,14 @@ function stripMarker(text, marker) {
 }
 
 /**
- * The marker actually in force for this project.
+ * The marker in force: always the fixed `go`. A marker pinned in an older mode
+ * file is ignored.
  *
- * The mode file wins over the config (it pins the marker the mode was started
- * with), but only if it is still usable: a mode file written before the
- * reserved-prefix rule carries `!`, and returning it would mean no prompt can
- * ever fire the merge.
- *
- * @param {string} cwd
+ * @param {string} _cwd
  * @returns {string}
  */
-function effectiveMarker(cwd) {
-  const pinned = validateMarker(readMode(cwd)?.marker);
-  return pinned.ok ? pinned.marker : loadConfig().marker;
+function effectiveMarker(_cwd) {
+  return DEFAULTS.marker;
 }
 
 // ── invocation routing ─────────────────────────────────────────────────────
@@ -973,7 +938,6 @@ const BATCH_ROUTES = {
   on:     /^(on|an|start)$/i,
   off:    /^(off|aus|stop)$/i,
   go:     /^(go|los|merge)$/i,
-  marker: /^marker$/i,
   status: /^status$/i,
   help:   /^(help|hilfe|\?)$/i,
 };
@@ -985,7 +949,7 @@ const BATCH_ROUTES = {
  * collecting are not requests for a turn: the user either forgot the mode is
  * on, or is filing a note through the command. `help` is a static text.
  * Letting any of them reach the model costs a full turn — the exact cost the
- * mode exists to avoid. `off`, `go`, `status` and `marker` are the exits and
+ * mode exists to avoid. `off`, `go` and `status` are the exits and
  * stay passthrough, as does anything carrying an attachment (Step 2.6).
  */
 const REARM_ROUTES = new Set(['bare', 'on', 'content', 'help']);
@@ -999,7 +963,7 @@ const REARM_ROUTES = new Set(['bare', 'on', 'content', 'help']);
  * only; everything after it is `residue` — note content, never an instruction.
  *
  * @param {string} text
- * @returns {{route:'bare'|'on'|'off'|'go'|'marker'|'status'|'content',residue:string}|null}
+ * @returns {{route:'bare'|'on'|'off'|'go'|'status'|'content',residue:string}|null}
  */
 function parseBatchCommand(text) {
   const s = typeof text === 'string' ? text : '';
@@ -1055,7 +1019,7 @@ function renderCommandLines(p = {}) {
   return [
     `${I.fire} Umsetzen:  "${marker} <text>" oder /do-batch go (merged main, plant EINE Umsetzung)`,
     `${I.stop} Stoppen:   /do-batch off (Notizen bleiben) · /do-batch on sammelt weiter`,
-    `${I.autoEnd} Auto-Ende: ${hours} h oder ${max} Notizen · /do-batch status · marker · help`,
+    `${I.autoEnd} Auto-Ende: ${hours} h oder ${max} Notizen · /do-batch status · help`,
   ].join('\n');
 }
 
@@ -1112,9 +1076,8 @@ function renderHelp(p = {}) {
     'do-batch — Sammelmodus: erst sammeln, dann EINMAL gebündelt umsetzen.',
     '',
     'A) Was DU machst',
-    '1. /do-batch                 Einschalten. Beim ersten Mal fragt Claude nach dem',
-    `                             Ausführungs-Marker (aktuell "${marker}"). Text hinter dem`,
-    '                             Aufruf wird sofort Notiz #1.',
+    '1. /do-batch                 Einschalten. Text hinter dem',
+    `                             Aufruf wird sofort Notiz #1. Ausführungs-Wort: "${marker}".`,
     '2. Prompts tippen            Jeder Prompt ohne Marker wird Notiz. Das rote',
     '                             "Eingabe blockiert"-Panel ist normal, kein Fehler.',
     '                             Screenshots und @Dateien gehen zu Claude durch, der',
@@ -1126,12 +1089,12 @@ function renderHelp(p = {}) {
     '                             (dessen Fragen sind die Freigabe). Der Modus ist aus.',
     '',
     'Weitere Befehle: /do-batch off (nur stoppen, Notizen bleiben) · on (weiter',
-    'sammeln, auch nach dem Auto-Ende) · status · marker (Ausführungs-Marker ändern)',
+    'sammeln, auch nach dem Auto-Ende) · status',
     `· help. Auto-Ende nach ${hours} Stunden oder ${max} Notizen — der Marker erreicht`,
     'die Notizen auch danach.',
     '',
     'B) Was CLAUDE macht',
-    '1. Einschalten     Marker sichern, Modus-Datei schreiben, .claude/batch.md aus',
+    '1. Einschalten     Modus-Datei schreiben, .claude/batch.md aus',
     '                   git ausschließen, Erinnerungs-Watchdog starten.',
     '2. Sammeln         Ein Hook stoppt den Prompt VOR dem Modell (kostet nichts) und',
     '                   hängt ihn wörtlich an .claude/batch.md an.',
@@ -1327,7 +1290,6 @@ function willBeCollected(hookInput) {
 
 module.exports = {
   DEFAULTS,
-  MARKER_SUGGESTIONS,
   HARNESS_RESERVED_PREFIXES,
   MACHINE_PATTERNS,
   ATTACHMENT_PATTERNS,

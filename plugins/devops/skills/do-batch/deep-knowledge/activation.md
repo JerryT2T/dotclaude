@@ -13,28 +13,13 @@ absence is not permission to act — the detection is best-effort. For the conte
 fallback (`/do-batch <Gedanke>`) the hook's `detectActivation()` (`viaCommand`)
 injects the same guard.
 
-## Marker validation (Step 2.1)
+## Execute marker
 
-**`!`, `/`, `#` and `@` cannot be the first character of a marker.** The harness
-claims those before a prompt exists — `!` opens bash mode and runs the line as a
-shell command, `/` expands a slash command, `#` writes to CLAUDE.md, `@` expands
-a file mention. Such a prompt never reaches the collect hook, so the marker would
-be dead: collection keeps swallowing everything and the advertised escape does
-nothing. `validateMarker` rejects them with `reason: 'harness-reserved'`; never
-suggest one, and never write one into the config by hand.
-
-**A free-text answer via "Sonstiges" IS the answer** — never fall back to the
-recommendation instead. `validateMarker(raw)` from `batch-state.js` normalises
-it; only `ok: false` goes back to the user, quoting the reason (`empty`, `too-long` = over 32 characters,
-`harness-reserved` = starts with `!`, `/`, `#` or `@` — name the mechanism in one
-clause and ask for a different one). A `warning: 'wordy'` marker (letters only,
-e.g. `jetzt`; never raised for the default `go`) is **accepted** — say once, in a single clause, that a collected
-prompt starting with those words would fire the merge, then move on. Matching is
-case-insensitive and requires a word boundary, so retyping it in lower case still
-works. The default `go` fires whenever it is the first word of the prompt, in any language and
-whatever follows (`go`, `go!`, `go, ohne B3`, `go mach X`, `Go ahead`); `google …` and
-`gopher` do not (word boundary). Legacy stored markers `>>`, `>go`, `>start`, `los` and
-`Let's go` migrate to `go` in `loadConfig` (persisted); other custom ones stay.
+Fixed to the word `go` as the first word of a prompt, any language, word boundary
+(`go`, `go!`, `go, ohne B3`, `Go ahead` fire; `google`, `gopher` do not). No first-run
+question, no `/do-batch marker`. Every stored marker (`sofort`, `>>`, `los`, custom)
+migrates to `go` in `loadConfig` and is persisted; a marker pinned in an older
+`.claude/batch-mode.json` is ignored by `effectiveMarker`.
 
 ## Session title prefix (Step 2.2b)
 
