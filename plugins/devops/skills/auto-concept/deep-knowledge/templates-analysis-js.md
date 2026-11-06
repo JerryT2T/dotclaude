@@ -378,7 +378,7 @@ What the code does, in the order of the file:
     buildComposer(inst);
     if (!lite) {   // the stage messages scroll in their own container; title and composer stay fixed
       const chat = h('div', 'an-chat');
-      [...root.children].forEach(c => { if (c !== inst.comp.el && c !== inst.stores && !c.classList.contains('an-rail')) chat.appendChild(c); });
+      [...root.children].forEach(c => { if (c !== inst.comp.el && c !== inst.stores && !c.classList.contains('an-rail') && !c.classList.contains('an-here-tag')) chat.appendChild(c); });
       root.insertBefore(chat, inst.comp.el);
       inst.chat = chat;
       watchUserScroll(inst);
@@ -395,9 +395,12 @@ What the code does, in the order of the file:
     return inst;
   }
 
+  /** Drops the "you are here" tag of an earlier build. */
+  function dropHereTag(inst) { inst.root.querySelectorAll(':scope > .an-here-tag').forEach(n => n.remove()); inst.hereEl = null; }
   /** Right rail: dots on a hairline, fixed 24 px rows (+ a lead-in per group), topics carry a "THEMA" prefix. Lite keeps its progress dots. */
   function buildNav(inst) {
     const old = inst.root.querySelector(':scope > .an-rail, :scope > .an-lhead');
+    dropHereTag(inst);
     if (old) old.remove();
     if (inst.lite) {
       const head = h('div', 'an-lhead');
@@ -430,8 +433,35 @@ What the code does, in the order of the file:
       nav.appendChild(b);
     });
     // Last in the DOM (it is position: fixed): Tab reaches the chat and its answers before the rail.
-    inst.root.appendChild(nav);
+    // The rail stays LAST in the DOM; the tag sits right before it.
     inst.stepEl = nav;
+    // "You are here" stays visible while the rail is collapsed: a tag in the rail's colour with the short label,
+    // pointing at the dot. It is a fixed sibling OUTSIDE the rail (the rail clips and masks its own content) and
+    // follows the open row by JS (rail scroll, resize); the expanded rail names the row itself, so the tag steps back (CSS :has).
+    const tag = h('div', 'an-here-tag');
+    tag.setAttribute('aria-hidden', 'true');
+    tag.hidden = true;
+    tag.appendChild(h('span'));
+    inst.hereEl = tag;
+    inst.root.append(tag, nav);
+    nav.addEventListener('scroll', () => placeHere(inst), { passive: true });
+  }
+  /** Short label of the open stage for the tag: "Question 3", "Topic X", "Briefing", "Closing". */
+  function hereLabel(inst, st) {
+    if (st.kind === 'dec') return L('Frage ', 'Question ') + stageNo(inst, st);
+    if (st.kind === 'topic') return L('Thema ', 'Topic ') + stageLabel(inst, st);
+    return stageLabel(inst, st);
+  }
+  /** Puts the tag level with the open row (clamped to the rail's ends when the row is scrolled away). */
+  function placeHere(inst) {
+    const t = inst.hereEl, r = inst.stepEl, b = inst.hereRow;
+    if (!t || !r || !b || inst.lite) return;
+    const rr = r.getBoundingClientRect(), br = b.getBoundingClientRect();
+    if (!rr.height || !br.height) { t.hidden = true; return; }
+    const y = Math.min(Math.max(br.top + br.height / 2, rr.top + 12), rr.bottom - 12);
+    t.hidden = false;
+    t.style.top = Math.round(y) + 'px';
+    t.style.setProperty('--dc', b.style.getPropertyValue('--dc'));
   }
   function refreshNav(inst) {
     const cur = inst.stages[inst.idx];
@@ -457,6 +487,8 @@ What the code does, in the order of the file:
       b.classList.toggle('an-done', !on && inst.stages.indexOf(st) <= inst.maxIdx);
       if (on) { here = b; b.setAttribute('aria-current', 'step'); } else b.removeAttribute('aria-current');
     });
+    inst.hereRow = here;
+    if (inst.hereEl) inst.hereEl.firstChild.textContent = hereLabel(inst, cur);
     // The current item stays in view when the rail scrolls.
     const r = inst.stepEl;
     if (here && r.clientHeight) {
@@ -464,6 +496,7 @@ What the code does, in the order of the file:
       if (top < r.scrollTop + 24) r.scrollTop = Math.max(0, top - 24);
       else if (bot > r.scrollTop + r.clientHeight - 24) r.scrollTop = bot - r.clientHeight + 24;
     }
+    placeHere(inst);
   }
 
   function prepBrief(inst) {
@@ -541,15 +574,51 @@ What the code does, in the order of the file:
     const att = btn('an-comp-b an-attach', '📎');
     att.setAttribute('aria-label', L('Anhang', 'Attachment'));
     tip(att, L('Anhang hinzufügen', 'Add an attachment'));
-    att.addEventListener('click', () => { const b = (inst.stages[inst.idx].el.querySelector('.attach-btn')); if (b) b.click(); });
+    // The paperclip and paste / drop work on EVERY stage: the files go to the open stage's own slot (its store's data-comment key).
+    const fi = h('input');
+    fi.type = 'file'; fi.multiple = true; fi.hidden = true; fi.tabIndex = -1;
+    fi.addEventListener('change', () => { addFiles(inst, Array.from(fi.files || [])); fi.value = ''; });
+    att.addEventListener('click', () => { if (!frozen(inst)) fi.click(); });
+    const strip = h('div', 'an-strip');
+    strip.hidden = true;
+    strip.setAttribute('role', 'list');
+    strip.setAttribute('aria-label', L('Anhänge', 'Attachments'));
     const send = btn('an-comp-b an-send');
     send.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2z"/></svg>';
     send.setAttribute('aria-label', L('Senden', 'Send'));
     tip(send, L('Senden', 'Send'), 'Enter');
     send.addEventListener('click', () => sendNote(inst));
-    el.append(ed, att, send);
-    inst.comp = { el, ed, att, send };
-    ed.addEventListener('input', () => composeSync(inst));
+    el.append(strip, ed, att, fi, send);
+    inst.comp = { el, ed, att, send, strip, fi };
+    ed.addEventListener('input', () => { ed.querySelectorAll('img').forEach(n => n.remove()); composeSync(inst); });
+    ed.addEventListener('paste', e => {
+      // Never the browser's own paste: an image would land in the field as a raw <img> (clipped, lost on send) and rich
+      // text would bring its markup. Files become attachments, text goes in as plain text.
+      e.preventDefault();
+      if (frozen(inst)) return;
+      const cd = e.clipboardData || {};
+      const files = Array.from(cd.items || []).filter(i => i.kind === 'file').map(i => i.getAsFile()).filter(Boolean);
+      const text = typeof cd.getData === 'function' ? cd.getData('text/plain') : '';
+      if (files.length) addFiles(inst, files);
+      if (text) { insertPlain(text, ed); composeSync(inst); }
+    });
+    el.addEventListener('dragover', e => {
+      const dt = e.dataTransfer;
+      if (frozen(inst) || !dt || !Array.from(dt.types || []).includes('Files')) return;
+      e.preventDefault();
+      el.classList.add('an-drag');
+    });
+    el.addEventListener('dragleave', e => { if (!e.relatedTarget || !el.contains(e.relatedTarget)) el.classList.remove('an-drag'); });
+    el.addEventListener('drop', e => {
+      el.classList.remove('an-drag');
+      const dt = e.dataTransfer || {};
+      const files = Array.from(dt.files || []), text = typeof dt.getData === 'function' ? dt.getData('text/plain') : '';
+      if (frozen(inst) || (!files.length && !text)) return;
+      e.preventDefault();
+      if (files.length) addFiles(inst, files);
+      else { focusComposer(inst); insertPlain(text, ed); composeSync(inst); }
+    });
+    hookAttachments();
     ed.addEventListener('keydown', e => {
       if (e.target.closest && e.target.closest('.an-tagw')) return;   // the tag's x is a real button: Enter / Space activate it
       if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.isComposing) { e.preventDefault(); e.stopPropagation(); if (!e.repeat) sendNote(inst); }
@@ -623,19 +692,21 @@ What the code does, in the order of the file:
     }
     box.textContent = '';
     const editable = !frozen(inst);
-    msgsOf(st, store).forEach((m, i) => {
-      const row = h('div', 'an-bub-me an-note-m'), tag = TAGRE.exec(m);
-      if (tag) row.appendChild(h('span', 'an-tagw', tag[1]));
-      row.appendChild(document.createTextNode(tag ? m.slice(tag[0].length) : m));
-      if (editable) {
-        const acts = h('div', 'an-note-acts');
-        acts.append(noteBtn(L('Nachricht bearbeiten', 'Edit message'), NOTE_PEN, () => editNote(inst, st, i)),
-          noteBtn(L('Nachricht löschen', 'Delete message'), NOTE_X, () => deleteNote(inst, st, i)));
-        row.appendChild(acts);
-      }
-      box.appendChild(row);
-    });
+    msgsOf(st, store).forEach((m, i) => box.appendChild(noteRow(inst, st, m, i, editable)));
     box.hidden = !box.firstChild;
+  }
+  /** One chat message of the user with its pen and x; the same bubble on the open stage and on an earlier question. */
+  function noteRow(inst, st, m, i, editable) {
+    const row = h('div', 'an-bub-me an-note-m'), tag = TAGRE.exec(m);
+    if (tag) row.appendChild(h('span', 'an-tagw', tag[1]));
+    row.appendChild(document.createTextNode(tag ? m.slice(tag[0].length) : m));
+    if (editable) {
+      const acts = h('div', 'an-note-acts');
+      acts.append(noteBtn(L('Nachricht bearbeiten', 'Edit message'), NOTE_PEN, () => editNote(inst, st, i)),
+        noteBtn(L('Nachricht löschen', 'Delete message'), NOTE_X, () => deleteNote(inst, st, i)));
+      row.appendChild(acts);
+    }
+    return row;
   }
   const NOTE_PEN = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 17.25V21h3.75L17.8 9.94l-3.75-3.75zM20.7 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75z"/></svg>';
   const NOTE_X = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>';
@@ -651,6 +722,8 @@ What the code does, in the order of the file:
   function editNote(inst, st, i) {
     const store = storeOf(inst, st);
     if (!store || frozen(inst)) return;
+    // A message of an earlier question is edited where it stands: no composer (it belongs to the OPEN stage), no jump.
+    if (st !== inst.stages[inst.idx]) { editInline(inst, st, i); return; }
     composeSync(inst);
     const list = msgsOf(st, store).slice(), m = list[i];
     if (compText(inst.comp.ed)) { commitDraft(st); clearComposer(inst); }
@@ -669,12 +742,176 @@ What the code does, in the order of the file:
   function deleteNote(inst, st, i) {
     const store = storeOf(inst, st);
     if (!store || frozen(inst)) return;
-    const draft = compText(inst.comp.ed), list = msgsOf(st, store).slice();
+    const open = st === inst.stages[inst.idx];
+    const draft = open ? compText(inst.comp.ed) : '', list = msgsOf(st, store).slice();
     list.splice(i, 1);
     st.msgs = list;
     writeMsgs(st, store, list);
     if (draft) composeSync(inst);
-    renderNotes(inst, st);
+    if (open) renderNotes(inst, st);
+    else { if (st.notes) renderNotes(inst, st); fillMe(inst, st, true); }
+  }
+  /** A message is stored with a no-break space between its paragraphs (a blank line would split it in two messages). */
+  const packText = t => t.trim().replace(/\n\s*\n/g, '\n\u00a0\n');
+  /** Plain text at the caret, never markup. */
+  function insertPlain(text, host) {
+    if (!text) return;
+    if (typeof document.execCommand === 'function' && document.execCommand('insertText', false, text)) return;
+    const sel = window.getSelection && window.getSelection();
+    const n = document.createTextNode(text);
+    if (!sel || !sel.rangeCount || !host.contains(sel.getRangeAt(0).commonAncestorContainer)) { host.appendChild(n); return; }
+    const r = sel.getRangeAt(0);
+    r.deleteContents(); r.insertNode(n); r.setStartAfter(n); r.collapse(true);
+    sel.removeAllRanges(); sel.addRange(r);
+  }
+  /** Pen on an earlier question's message: the bubble itself becomes the field (Enter saves, Esc cancels, an empty text deletes). */
+  function editInline(inst, st, i) {
+    const store = storeOf(inst, st);
+    if (!store || frozen(inst) || !st.me) return;
+    const row = st.me.querySelectorAll('.an-note-m')[i], m = msgsOf(st, store)[i];
+    if (!row || m == null || row.querySelector('.an-ied')) return;
+    const tag = TAGRE.exec(m), ed = h('div', 'an-ied');
+    row.classList.add('an-ied-on');
+    row.textContent = '';
+    if (tag) row.appendChild(h('span', 'an-tagw', tag[1]));
+    ed.contentEditable = 'true';
+    ed.setAttribute('role', 'textbox');
+    ed.setAttribute('aria-multiline', 'true');
+    ed.setAttribute('aria-label', L('Nachricht bearbeiten', 'Edit message'));
+    tip(ed, L('Enter speichert · Esc verwirft', 'Enter saves · Esc cancels'));
+    ed.textContent = tag ? m.slice(tag[0].length) : m;
+    row.appendChild(ed);
+    st.editing = true;
+    let done = false;
+    const finish = save => {
+      if (done) return;
+      done = true; st.editing = false;
+      if (save && !frozen(inst)) {
+        const list = msgsOf(st, store).slice(), t = compText(ed), next = t.trim() ? (tag ? '[' + tag[1] + '] ' : '') + packText(t) : '';
+        if (next !== list[i]) {
+          if (next) list[i] = next; else list.splice(i, 1);
+          st.msgs = list;
+          writeMsgs(st, store, list);
+          if (st.notes) renderNotes(inst, st);
+        }
+      }
+      fillMe(inst, st, true);
+    };
+    ed.addEventListener('keydown', e => {
+      if (e.isComposing) return;
+      if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) { e.preventDefault(); e.stopPropagation(); finish(true); }
+      else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); finish(false); }
+    });
+    ed.addEventListener('blur', () => finish(true));
+    ed.addEventListener('paste', e => { e.preventDefault(); const cd = e.clipboardData; insertPlain(cd && typeof cd.getData === 'function' ? cd.getData('text/plain') : '', ed); });
+    ed.focus({ preventScroll: true });
+    const sel = window.getSelection && window.getSelection();
+    if (sel && document.createRange) { const r = document.createRange(); r.selectNodeContents(ed); r.collapse(false); sel.removeAllRanges(); sel.addRange(r); }
+  }
+  /* ----- attachments of the open stage: a thumbnail strip floating over the chat, right above the field ----- */
+  const slotOf = (inst, st) => { const s = storeOf(inst, st); return (s && s.dataset.comment) || ''; };
+  const recsOf = slot => (typeof _attachments !== 'undefined' && _attachments.get(slot)) || [];
+  /** The engine re-renders its own (hidden) bar after every upload step; the strip follows the same call. */
+  function hookAttachments() {
+    const f0 = window.renderAttachments;
+    if (typeof f0 !== 'function' || f0.__an) return;
+    const f1 = function () { const r = f0.apply(this, arguments); instances.forEach(renderStrip); return r; };
+    f1.__an = true;
+    window.renderAttachments = f1;
+  }
+  /** Files into the open stage's slot. A stage without a slot or a page without the engine says so, it never drops them silently. */
+  function addFiles(inst, files) {
+    if (frozen(inst) || !files.length) return;
+    const slot = slotOf(inst, inst.stages[inst.idx]);
+    if (!slot || typeof addAttachments !== 'function') {
+      inst.comp.strip.textContent = '';
+      inst.comp.strip.appendChild(h('div', 'an-att-msg', L('Anhänge sind hier nicht verfügbar.', 'Attachments are not available here.')));
+      inst.comp.strip.hidden = false;
+      return;
+    }
+    Promise.resolve(addAttachments(slot, files)).then(() => renderStrip(inst), () => renderStrip(inst));
+    renderStrip(inst);
+  }
+  const RASTER = /^image\/(png|jpeg|gif|webp)$/;
+  function attUrl(rec) {
+    if (rec.synced && rec.id) return '/attachments/' + rec.id;
+    if (!rec.__url && typeof URL.createObjectURL === 'function') rec.__url = URL.createObjectURL(rec.blob);
+    return rec.__url || '';
+  }
+  function renderStrip(inst) {
+    const c = inst.comp;
+    if (!c) return;
+    const slot = slotOf(inst, inst.stages[inst.idx]), recs = slot ? recsOf(slot) : [], locked = frozen(inst);
+    c.strip.textContent = '';
+    recs.forEach(rec => {
+      const it = h('div', 'an-att-i'), raster = RASTER.test(rec.mime || '');
+      it.setAttribute('role', 'listitem');
+      it.dataset.synced = String(!!rec.synced);
+      it.dataset.error = String(!!rec.error);
+      const status = typeof attachStatusText === 'function' ? attachStatusText(rec) : '';
+      if (raster) {
+        const open = btn('an-att-t');
+        const img = h('img');
+        img.src = attUrl(rec); img.alt = rec.name || '';
+        open.appendChild(img);
+        open.setAttribute('aria-label', L('Bild vergrößern: ', 'Enlarge image: ') + (rec.name || ''));
+        tip(open, (rec.name || '') + status);
+        open.addEventListener('click', () => openLightbox(inst, rec, open));
+        it.appendChild(open);
+      } else {
+        const fl = h('div', 'an-att-t an-att-file');
+        fl.append(h('span', '', typeof attachFileIcon === 'function' ? attachFileIcon(rec.mime, rec.name) : '📎'), h('span', 'an-att-n', rec.name || ''));
+        tip(fl, (rec.name || '') + status);
+        it.appendChild(fl);
+      }
+      if (!rec.synced && !rec.error) { const p = h('i', 'an-att-p'); p.style.width = (rec.progress || 0) + '%'; it.appendChild(p); }
+      if (!locked) {
+        if (rec.error && typeof uploadAttachment === 'function') {
+          const rt = btn('an-att-r', '⟳');
+          rt.setAttribute('aria-label', L('Erneut senden', 'Retry'));
+          tip(rt, L('Erneut senden', 'Retry'));
+          rt.addEventListener('click', () => { uploadAttachment(rec).then(() => renderStrip(inst)); });
+          it.appendChild(rt);
+        }
+        const x = btn('an-att-x', '×');
+        x.setAttribute('aria-label', L('Anhang entfernen: ', 'Remove attachment: ') + (rec.name || ''));
+        tip(x, L('Anhang entfernen', 'Remove attachment'));
+        x.addEventListener('click', () => { Promise.resolve(removeAttachment(slot, rec.key)).then(() => renderStrip(inst)); renderStrip(inst); });
+        it.appendChild(x);
+      }
+      c.strip.appendChild(it);
+    });
+    c.strip.hidden = !c.strip.firstChild;
+  }
+  /** Large view of an image: Esc, the x or a click beside it closes; focus goes in and returns to the thumbnail. */
+  function openLightbox(inst, rec, opener) {
+    closeLightbox(inst);
+    const ov = h('div', 'an-lb'), img = h('img'), x = btn('an-lb-x', '×');
+    ov.setAttribute('role', 'dialog');
+    ov.setAttribute('aria-modal', 'true');
+    ov.setAttribute('aria-label', rec.name || L('Bild', 'Image'));
+    img.src = attUrl(rec); img.alt = rec.name || '';
+    x.setAttribute('aria-label', L('Schließen', 'Close'));
+    tip(x, L('Schließen', 'Close'), 'Esc');
+    x.addEventListener('click', () => closeLightbox(inst));
+    ov.addEventListener('click', e => { if (e.target !== img) closeLightbox(inst); });
+    ov.append(img, x);
+    const onKey = e => {
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeLightbox(inst); }
+      else if (e.key === 'Tab') { e.preventDefault(); x.focus(); }
+    };
+    document.addEventListener('keydown', onKey, true);
+    inst.lb = { ov, onKey, opener };
+    inst.root.appendChild(ov);
+    x.focus();
+  }
+  function closeLightbox(inst) {
+    const lb = inst.lb;
+    if (!lb) return;
+    inst.lb = null;
+    document.removeEventListener('keydown', lb.onKey, true);
+    lb.ov.remove();
+    if (lb.opener && lb.opener.isConnected) lb.opener.focus(); else focusComposer(inst);
   }
   /** Opens a stage in the composer: its sent notes stand in the chat, the field is empty. An unsent draft of
    *  the stage left becomes a message there; a draft of this same stage stays while typing goes on. */
@@ -687,7 +924,9 @@ What the code does, in the order of the file:
     if (!keep) clearComposer(inst);
     renderNotes(inst, st);
     ed.contentEditable = frozen(inst) ? 'false' : 'true';
-    inst.comp.att.hidden = !(st.kind === 'dec' && st.el.querySelector('.attach-btn'));
+    inst.comp.att.hidden = false;   // every stage takes attachments (its own slot), not only the questions with an attach bar
+    closeLightbox(inst);
+    renderStrip(inst);
   }
   function focusComposer(inst) {
     const ed = inst.comp.ed;

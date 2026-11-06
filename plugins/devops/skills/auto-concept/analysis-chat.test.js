@@ -138,7 +138,7 @@ describe("persistent composer", () => {
     ca.go(inst, 0);
     expect(inst.comp.ed.textContent).toBe("");
     expect(doc.querySelector("#q1 .an-note").value).toBe("sent\n\ndraft");
-    expect(doc.querySelectorAll("#q1 .an-note-m")).toHaveLength(2);
+    expect(doc.querySelectorAll("#q1 .an-notes .an-note-m")).toHaveLength(2);
   });
   test("pen moves a message back into the composer, x deletes it", () => {
     const { doc, w, ca } = page(LITE);
@@ -187,7 +187,7 @@ describe("persistent composer", () => {
     enter({ ctrlKey: true });
     expect(inst.stages[inst.idx].el.id).toBe("q2");
     expect(doc.querySelector("#q1 .an-note").value).toBe("stays\n\nand on");
-    expect(doc.querySelectorAll("#q1 .an-note-m")).toHaveLength(2);
+    expect(doc.querySelectorAll("#q1 .an-notes .an-note-m")).toHaveLength(2);
   });
   test("topic intro and closing notes never advance", () => {
     const { w, ca } = page(FULL);
