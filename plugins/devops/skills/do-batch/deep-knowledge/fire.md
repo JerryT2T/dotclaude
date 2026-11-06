@@ -10,9 +10,6 @@ SAME hook merge: the collect hook syncs main, matches late images to their notes
 injects the full note set and arms the hand-off gate. Only when that context
 is absent (no `[do-batch] Der Nutzer hat N Notiz(en)` block in the turn — hook
 disabled, or the prompt carried an attachment) do the steps below run by hand.
-On the `go` route the Step 1 marker
-pre-check runs first — a `markerFallback` is repaired before the merge, so the
-next collection window starts with a marker that actually fires.
 
 **Firing ends collection.** The hook deactivates the mode in the same run that
 injects the notes — the answers and corrections that follow must not be

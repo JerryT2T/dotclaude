@@ -206,13 +206,9 @@ describe("batch interaction", () => {
 
   test("the batch execute marker still gets the contract when strict is on", () => {
     S.activate(cwd, { reason: "on" });
-    // Pin the marker: without it activate() copies whatever marker the real
-    // ~/.claude/claude-batch.json holds, and `>> los` is then collected instead
-    // of executed — the hook exits before injecting and the test fails only on
-    // machines with a custom marker.
-    B.activate(cwd, { marker: ">>" });
+    B.activate(cwd);
     B.appendNote(cwd, "Rand dünner");
-    const r = runHook({ prompt: ">> los" });
+    const r = runHook({ prompt: "go los" });
     expect(r.ctx).toContain(S.CONTRACT_OPEN);
   });
 });

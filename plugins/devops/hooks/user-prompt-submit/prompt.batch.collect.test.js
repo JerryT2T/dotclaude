@@ -166,7 +166,7 @@ describe("mode on — firing the merge", () => {
   test("the marker injects every note as context and does not block", () => {
     appendNote(cwd, "Button verrutscht");
     appendNote(cwd, "Fehlertext falsch");
-    const r = runHook({ prompt: ">> leg los" });
+    const r = runHook({ prompt: "go leg los" });
     expect(r.code).toBe(0);
     expect(r.stdout).toContain("Button verrutscht");
     expect(r.stdout).toContain("Fehlertext falsch");
@@ -178,7 +178,7 @@ describe("mode on — firing the merge", () => {
     // run-contract spec E: pre.run.contract refuses edits and commits until
     // do-run / auto-concept is invoked.
     appendNote(cwd, "Button verrutscht");
-    const r = runHook({ prompt: ">> leg los", session_id: "sess-1" });
+    const r = runHook({ prompt: "go leg los", session_id: "sess-1" });
     expect(r.code).toBe(0);
     expect(r.stdout).toContain("per Hook erzwungen: Edits und Commits werden abgelehnt");
     const marker = JSON.parse(fs.readFileSync(path.join(cwd, ".claude", "batch-handoff.json"), "utf8"));
@@ -187,13 +187,13 @@ describe("mode on — firing the merge", () => {
   });
 
   test("an early marker on an empty queue writes no hand-off marker", () => {
-    runHook({ prompt: ">> leg los" });
+    runHook({ prompt: "go leg los" });
     expect(fs.existsSync(path.join(cwd, ".claude", "batch-handoff.json"))).toBe(false);
   });
 
   test("the marked prompt itself is not stored as a note", () => {
     appendNote(cwd, "eine notiz");
-    runHook({ prompt: ">> jetzt umsetzen" });
+    runHook({ prompt: "go jetzt umsetzen" });
     expect(readNotes(cwd).map(n => n.text)).toEqual(["eine notiz"]);
   });
 
@@ -201,7 +201,7 @@ describe("mode on — firing the merge", () => {
     // Exiting silently here was data loss disguised as a normal turn: the model
     // saw a bare `>> leg los` and truthfully said it had no notes — which is
     // indistinguishable from ten notes the parser failed to read.
-    const r = runHook({ prompt: ">> leg los" });
+    const r = runHook({ prompt: "go leg los" });
     expect(r.code).toBe(0);
     expect(r.stdout).toContain("KEINE Notiz lesen");
     expect(r.stdout).toContain(path.join(cwd, ".claude", "batch.md"));
@@ -214,7 +214,7 @@ describe("mode on — firing the merge", () => {
     appendNote(cwd, "eine notiz");
     const file = path.join(cwd, ".claude", "batch.md");
     fs.writeFileSync(file, "hier stehen zehn Beobachtungen, aber ohne Trenner\n", "utf8");
-    const r = runHook({ prompt: ">> leg los" });
+    const r = runHook({ prompt: "go leg los" });
     expect(r.stdout).toContain("Sag dem Nutzer NICHT, es gebe keine Notizen");
     expect(r.stdout).toContain("Lies die Datei roh");
     // AUD-C029: the turn merges the raw file — collection ends, so its
@@ -229,7 +229,7 @@ describe("mode on — firing the merge", () => {
     // turn — no notes injected, and Claude reporting an empty batch while ten
     // notes sat in the file.
     appendNote(cwd, "Button verrutscht");
-    const r = runHook({ prompt: ">> so wie auf dem Screenshot [Image #1]" });
+    const r = runHook({ prompt: "go so wie auf dem Screenshot [Image #1]" });
     expect(r.code).toBe(0);
     expect(r.stdout).toContain("Button verrutscht");
     expect(r.stdout).toContain("so wie auf dem Screenshot");
@@ -237,14 +237,14 @@ describe("mode on — firing the merge", () => {
 
   test("a marker prompt carrying an @file mention still fires the merge", () => {
     appendNote(cwd, "Fehlertext falsch");
-    const r = runHook({ prompt: ">> und @src/app/Header.tsx dabei beachten" });
+    const r = runHook({ prompt: "go und @src/app/Header.tsx dabei beachten" });
     expect(r.stdout).toContain("Fehlertext falsch");
     expect(r.stdout).toContain("Header.tsx");
   });
 
   test("the enriched execute prompt is carried as part of the job", () => {
     appendNote(cwd, "eine notiz");
-    const r = runHook({ prompt: ">> und warum ist das eigentlich so langsam?" });
+    const r = runHook({ prompt: "go und warum ist das eigentlich so langsam?" });
     expect(r.stdout).toContain("warum ist das eigentlich so langsam?");
     expect(r.stdout).toContain("Ist es eine Frage, beantworte sie");
   });
@@ -256,7 +256,7 @@ describe("mode on — firing the merge", () => {
     appendNote(cwd, "Button verrutscht");
     activate(cwd, { marker: ">>", startedAt: Date.now() - 9 * 3600_000, expiryHours: 8 });
     expect(isModeActive(cwd)).toBe(false);
-    const r = runHook({ prompt: ">> leg los" });
+    const r = runHook({ prompt: "go leg los" });
     expect(r.stdout).toContain("Button verrutscht");
     expect(r.stdout).toContain("bereits beendet");
   });
@@ -264,7 +264,7 @@ describe("mode on — firing the merge", () => {
   test("the merge context demands a per-note disposition", () => {
     appendNote(cwd, "eins");
     appendNote(cwd, "zwei");
-    const r = runHook({ prompt: ">> leg los" });
+    const r = runHook({ prompt: "go leg los" });
     expect(r.stdout).toContain("GENAU 2 Zeilen");
     expect(r.stdout).toContain("Abdeckungsliste");
   });
@@ -308,7 +308,7 @@ describe("mode on — an attachment prompt is filed, not executed", () => {
     // plan approval, answers to Claude's questions. Collecting those blocks and
     // erases exactly the prompts the implementation depends on.
     appendNote(cwd, "Button verrutscht");
-    expect(runHook({ prompt: ">> leg los" }).code).toBe(0);
+    expect(runHook({ prompt: "go leg los" }).code).toBe(0);
     expect(isModeActive(cwd)).toBe(false);
 
     const followUp = runHook({ prompt: "ja, so umsetzen" });
@@ -318,7 +318,7 @@ describe("mode on — an attachment prompt is filed, not executed", () => {
 
   test("a marker prompt on an empty queue leaves the mode armed", () => {
     // Nothing fired, so nothing ended — the user just typed the marker early.
-    expect(runHook({ prompt: ">> leg los" }).code).toBe(0);
+    expect(runHook({ prompt: "go leg los" }).code).toBe(0);
     expect(isModeActive(cwd)).toBe(true);
     expect(runHook({ prompt: "noch eine beobachtung" }).blocked).toBe(true);
   });
@@ -334,7 +334,7 @@ describe("mode on — an attachment prompt is filed, not executed", () => {
       "utf8",
     );
     appendNote(cwd, "eine notiz");
-    const r = runHook({ prompt: "los: leg los" }, fakeHome({ marker: "los:" }));
+    const r = runHook({ prompt: "go leg los" }, fakeHome({ marker: "los:" }));
     expect(r.code).toBe(0);
     expect(r.stdout).toContain("eine notiz");
   });
@@ -572,7 +572,7 @@ describe("mode on — a re-activation is absorbed, never a turn", () => {
     expect(readNotes(cwd).map(n => n.text)).toEqual(["die Filter-API fehlt"]);
   });
 
-  test.each(["off", "go", "status", "marker"])("the exit `%s` still reaches the skill", (args) => {
+  test.each(["off", "go", "status"])("the exit `%s` still reaches the skill", (args) => {
     const r = runHook({ prompt: expanded(args) });
     expect(r.code).toBe(0);
     expect(r.panel).not.toContain("läuft schon");
@@ -600,7 +600,7 @@ describe("the collected-prompt panel carries the mode summary", () => {
   test("every blocked prompt explains the mode with the pinned bounds", () => {
     const r = runHook({ prompt: "der Button ist verrutscht" });
     expect(r.panel).toContain("NOTIZ #1 GESPEICHERT");
-    expect(r.panel).toContain("\">go <text>\"");
+    expect(r.panel).toContain("\"go <text>\"");
     expect(r.panel).toContain("/do-batch off");
     expect(r.panel).toContain("3 h oder 50 Notizen");
   });
@@ -611,7 +611,7 @@ describe("firing the merge brings main in first", () => {
 
   test("the merge context opens with the sync result (temp dir: nothing to merge)", () => {
     appendNote(cwd, "Button verrutscht");
-    const r = runHook({ prompt: ">> leg los" });
+    const r = runHook({ prompt: "go leg los" });
     expect(r.code).toBe(0);
     const ctx = r.stdout;
     expect(ctx).toContain("SCHRITT 0 — Stand von main");
@@ -623,14 +623,14 @@ describe("firing the merge brings main in first", () => {
 
   test("a sync that could not run hands the command to the turn", () => {
     appendNote(cwd, "Button verrutscht");
-    const r = runHook({ prompt: ">> leg los" }, { DEVOPS_BATCH_NO_SYNC: "1" });
+    const r = runHook({ prompt: "go leg los" }, { DEVOPS_BATCH_NO_SYNC: "1" });
     expect(r.stdout).toContain("konnte im Hook nicht laufen");
     expect(r.stdout).toContain("git-sync.js");
     expect(r.stdout).toContain("Button verrutscht");
   });
 
   test("an empty queue does not trigger a sync", () => {
-    const r = runHook({ prompt: ">> leg los" });
+    const r = runHook({ prompt: "go leg los" });
     expect(r.stdout).not.toContain("SCHRITT 0");
     expect(r.stdout).toContain("KEINE Notiz lesen");
   });
@@ -659,9 +659,9 @@ describe("message builders — 0.4.0", () => {
   });
 
   test("the ack still opens with the all-clear and names both exits", () => {
-    const ack = buildAck(2, ">start", false, { expiryHours: 8, maxNotes: 100 });
+    const ack = buildAck(2, "go", false, { expiryHours: 8, maxNotes: 100 });
     expect(ack.split("\n").slice(0, 2).join("\n")).toContain("kein Fehler");
-    expect(ack).toContain("\">start <text>\"");
+    expect(ack).toContain("\"go <text>\"");
     expect(ack).toContain("/do-batch off");
     expect(ack).toContain("8 h oder 100 Notizen");
   });
@@ -721,7 +721,7 @@ describe("help — the long form, free of charge while collecting", () => {
     expect(r.blocked).toBe(true);
     expect(r.panel).toContain("A) Was DU machst");
     expect(r.panel).toContain("B) Was CLAUDE macht");
-    expect(r.panel).toContain("\">start <text>\"");
+    expect(r.panel).toContain("\"go <text>\"");
     expect(r.panel).not.toContain("läuft schon");
     expect(readNotes(cwd)).toEqual([]);
     expect(isModeActive(cwd)).toBe(true);
@@ -733,10 +733,10 @@ describe("help — the long form, free of charge while collecting", () => {
     expect(r.panel).toBe("");
   });
 
-  test("the collected-prompt panel names status, marker and help", () => {
+  test("the collected-prompt panel names status and help", () => {
     activate(cwd, { marker: ">>" });
     const r = runHook({ prompt: "der Rand ist zu dick" });
-    expect(r.panel).toContain("status · marker · help");
+    expect(r.panel).toContain("status · help");
   });
 });
 
@@ -802,7 +802,7 @@ describe("mode on — a pasted Desktop image is kept with its note (#490)", () =
     const img = path.join(imagesDir, "2.webp");
     fs.writeFileSync(img, "webp-bytes");
     fs.utimesSync(img, new Date(at), new Date(at));
-    const r = runHook({ prompt: ">> leg los", session_id: SID }, { ...tmpEnv(), DEVOPS_BATCH_NO_SYNC: "1" });
+    const r = runHook({ prompt: "go leg los", session_id: SID }, { ...tmpEnv(), DEVOPS_BATCH_NO_SYNC: "1" });
     expect(r.code).toBe(0);
     expect(r.stdout).toContain("siehe Screenshot");
     expect(r.stdout).toContain("[Anhang-Datei] ");
@@ -843,7 +843,7 @@ describe("merge fallback marks an uncertain image match (#490)", () => {
     fs.writeFileSync(img, "png-bytes");
     fs.utimesSync(img, new Date(at - 15_000), new Date(at - 15_000));
     const r = runHook(
-      { prompt: ">> leg los", session_id: SID },
+      { prompt: "go leg los", session_id: SID },
       { TEMP: tmpRoot, TMP: tmpRoot, TMPDIR: tmpRoot, DEVOPS_BATCH_NO_SYNC: "1" },
     );
     expect(r.stdout).toContain("[Anhang-Datei] ");
@@ -889,7 +889,7 @@ describe("image tracking — the cases seen in real batch sessions (2026-10-03)"
       JSON.stringify({ type: "user", timestamp: new Date().toISOString(), message: { content: [{ type: "tool_result", content: [{ type: "image", source: { type: "base64", media_type: "image/png", data: Buffer.from("tool-shot").toString("base64") } }] }] } }),
       JSON.stringify({ type: "attachment", timestamp: new Date(Date.now() - 125_000).toISOString(), attachment: { type: "queued_command", prompt: [{ type: "image", source: { type: "base64", media_type: "image/webp", data } }, { type: "text", text: promptText }] } }),
     ].join("\n"));
-    const r = runHook({ prompt: ">> leg los", session_id: SID, transcript_path: transcript }, { ...tmpEnv(), DEVOPS_BATCH_NO_SYNC: "1" });
+    const r = runHook({ prompt: "go leg los", session_id: SID, transcript_path: transcript }, { ...tmpEnv(), DEVOPS_BATCH_NO_SYNC: "1" });
     expect(r.code).toBe(0);
     expect(r.stdout).toContain("aus dem Sitzungsprotokoll gerettet");
     const line = r.stdout.split("\n").find(l => l.includes("gerettet"));
@@ -954,14 +954,14 @@ describe("H-B15: the hand-off marker follows the merge context", () => {
   });
 
   test("H-B15: a merge context that throws leaves no hand-off marker", () => {
-    const ctx = { cwd, text: ">> leg los", marker: ">>", modeActive: true, sessionId: "s1" };
+    const ctx = { cwd, text: "go leg los", marker: "go", modeActive: true, sessionId: "s1" };
     const boom = () => { throw new Error("build failed"); };
     expect(() => fireMerge(ctx, { buildMergeContext: boom, write: () => {} })).toThrow("build failed");
     expect(fs.existsSync(handoff())).toBe(false);
   });
 
   test("H-B15: the marker is written only after the context was written", () => {
-    const ctx = { cwd, text: ">> leg los", marker: ">>", modeActive: true, sessionId: "s1" };
+    const ctx = { cwd, text: "go leg los", marker: "go", modeActive: true, sessionId: "s1" };
     const seen = [];
     fireMerge(ctx, { write: (s) => seen.push({ s, marker: fs.existsSync(handoff()) }) });
     expect(seen).toHaveLength(1);
@@ -985,7 +985,7 @@ describe("session scope (#841)", () => {
   });
 
   test("foreign session marker: passthrough, notes archived, no hand-off gate", () => {
-    const r = runHook({ prompt: "los, mach das Ding", session_id: "other" });
+    const r = runHook({ prompt: "go, mach das Ding", session_id: "other" });
     expect(r.code).toBe(0);
     expect(r.stdout).not.toContain("alte Idee");
     expect(r.stdout).toContain("archiviert");
@@ -995,7 +995,7 @@ describe("session scope (#841)", () => {
   });
 
   test("same session with an expired mode still merges", () => {
-    const r = runHook({ prompt: "los, mach das Ding", session_id: "owner" });
+    const r = runHook({ prompt: "go, mach das Ding", session_id: "owner" });
     expect(r.stdout).toContain("alte Idee");
   });
 

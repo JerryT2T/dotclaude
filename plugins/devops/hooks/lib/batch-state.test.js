@@ -12,7 +12,7 @@ import {
   loadConfig, saveConfig, configPath, effectiveMarker,
   parseBatchCommand, renderModeSummary, describeMode, renderHelp,
   PANEL_ICONS, renderCommandLines, renderAutoEndNotice,
-  DEFAULTS, HARNESS_RESERVED_PREFIXES, MARKER_SUGGESTIONS,
+  DEFAULTS, HARNESS_RESERVED_PREFIXES,
 } from "./batch-state.js";
 
 let cwd;
@@ -211,13 +211,13 @@ describe("custom markers typed via the 'Sonstiges' option", () => {
     expect(stripMarker("go, ohne B3", "go")).toBe("ohne B3");
   });
 
-  test("loadConfig migrates legacy suggestions to go and keeps custom markers", () => {
+  test("loadConfig migrates every stored marker to go and persists it", () => {
     const p = configPath();
-    for (const [stored, want] of [[">>", "go"], [">go", "go"], [">start", "go"], ["los", "go"], ["Let's go", "go"], ["Let’s  Go", "go"], ["jetzt", "go"], ["Jetzt", "go"], ["sofort", "sofort"]]) {
+    for (const stored of [">>", ">go", "los", "Let's go", "jetzt", "sofort", "Sofort", "!", "x".repeat(40)]) {
       fs.mkdirSync(path.dirname(p), { recursive: true });
       fs.writeFileSync(p, JSON.stringify({ marker: stored }), "utf8");
-      expect(loadConfig().marker).toBe(want);
-      expect(JSON.parse(fs.readFileSync(p, "utf8")).marker).toBe(want);
+      expect(loadConfig().marker).toBe("go");
+      expect(JSON.parse(fs.readFileSync(p, "utf8")).marker).toBe("go");
     }
   });
 });
@@ -242,8 +242,9 @@ describe("harness-reserved prefixes cannot be markers", () => {
     expect(HARNESS_RESERVED_PREFIXES).not.toContain(DEFAULTS.marker[0]);
   });
 
-  test("saveConfig refuses one", () => {
-    expect(() => saveConfig({ marker: "!" })).toThrow(/harness-reserved/);
+  test("saveConfig cannot store a custom marker", () => {
+    expect(saveConfig({ marker: "!" }).marker).toBe("go");
+    expect(saveConfig({ marker: "sofort" }).marker).toBe("go");
   });
 
   test("a reserved marker never matches, so it cannot masquerade as working", () => {
@@ -252,9 +253,7 @@ describe("harness-reserved prefixes cannot be markers", () => {
   });
 });
 
-describe("stored config with an unusable marker falls back instead of trapping", () => {
-  // Configs written before the reserved-prefix rule carry `!`. Honouring one
-  // would leave collect mode running with no way to fire the merge.
+describe("the execute marker is fixed to go", () => {
   let home, prevHome, prevProfile;
 
   beforeEach(() => {
@@ -280,40 +279,35 @@ describe("stored config with an unusable marker falls back instead of trapping",
     expect(configPath().startsWith(home)).toBe(true);
   });
 
-  test("a legacy `!` config yields the default marker plus a fallback report", () => {
-    writeConfig({ marker: "!" });
-    const cfg = loadConfig();
-    expect(cfg.marker).toBe(DEFAULTS.marker);
-    expect(cfg.markerFallback).toEqual({ was: "!", reason: "harness-reserved" });
-  });
-
-  test("a usable stored marker is honoured with no fallback", () => {
-    writeConfig({ marker: "los:" });
-    const cfg = loadConfig();
-    expect(cfg.marker).toBe("los:");
-    expect(cfg.markerFallback).toBeUndefined();
-  });
-
-  test("the fallback flag is never persisted back into the config file", () => {
-    writeConfig({ marker: "!" });
-    saveConfig({ inactivityMinutes: 5 });
-    expect(JSON.parse(fs.readFileSync(configPath(), "utf8")).markerFallback).toBeUndefined();
-  });
-
-  test("a mode file pinned to `!` still fires on the fallback marker", () => {
-    writeConfig({ marker: "los:" });
+  test("a config with marker \"sofort\" fires on go and collects a sofort prompt", () => {
+    writeConfig({ marker: "sofort" });
     activate(cwd);
-    // Simulate a mode file written before the rule existed.
-    const mode = { ...readMode(cwd), marker: "!" };
-    fs.writeFileSync(modePath(cwd), JSON.stringify(mode), "utf8");
-    expect(effectiveMarker(cwd)).toBe("los:");
-    expect(willBeCollected({ cwd, prompt: "los: leg los" })).toBe(false);
+    const marker = effectiveMarker(cwd);
+    expect(marker).toBe("go");
+    expect(classify({ text: "go", hookInput: {}, marker, modeActive: true })).toBe("execute");
+    expect(classify({ text: "go, ohne B3", hookInput: {}, marker, modeActive: true })).toBe("execute");
+    expect(classify({ text: "sofort bau das", hookInput: {}, marker, modeActive: true })).toBe("collect");
+    expect(willBeCollected({ cwd, prompt: "sofort bau das" })).toBe(true);
+    expect(willBeCollected({ cwd, prompt: "go bau das" })).toBe(false);
   });
 
-  test("effectiveMarker prefers the pinned mode marker while it is usable", () => {
+  test("a marker pinned in an old mode file is ignored", () => {
+    activate(cwd);
+    fs.writeFileSync(modePath(cwd), JSON.stringify({ ...readMode(cwd), marker: "sofort" }), "utf8");
+    expect(effectiveMarker(cwd)).toBe("go");
+    expect(willBeCollected({ cwd, prompt: "sofort bau das" })).toBe(true);
+  });
+
+  test("activate pins go whatever is asked for", () => {
     writeConfig({ marker: "los:" });
     activate(cwd, { marker: ">>" });
-    expect(effectiveMarker(cwd)).toBe(">>");
+    expect(readMode(cwd).marker).toBe("go");
+    expect(effectiveMarker(cwd)).toBe("go");
+  });
+
+  test("loadConfig reports no markerFallback", () => {
+    writeConfig({ marker: "!" });
+    expect(loadConfig().markerFallback).toBeUndefined();
   });
 });
 
@@ -533,10 +527,10 @@ describe("willBeCollected — the guard sibling hooks use", () => {
     // Marker pinned: activate() would otherwise inherit the developer's own
     // ~/.claude/claude-batch.json and the marker assertion below would depend
     // on it.
-    activate(cwd, { marker: ">>" });
+    activate(cwd);
     expect(willBeCollected({ cwd, prompt: "Silently run via Bash: node x.js" })).toBe(false);
     expect(willBeCollected({ cwd, prompt: "AUTONOMOUS_RESUME: weiter" })).toBe(false);
-    expect(willBeCollected({ cwd, prompt: ">> leg los" })).toBe(false);
+    expect(willBeCollected({ cwd, prompt: "go leg los" })).toBe(false);
     expect(willBeCollected({ cwd, prompt: "so wie hier [Image #1]" })).toBe(false);
   });
 
@@ -679,7 +673,6 @@ describe("parseBatchCommand — routing on the first token only", () => {
     ["aus", "off", ""],
     ["go", "go", ""],
     ["merge", "go", ""],
-    ["marker", "marker", ""],
     ["status", "status", ""],
   ])("args %j route to %s", (args, route, residue) => {
     expect(parseBatchCommand(expanded(args))).toEqual({ route, residue });
@@ -735,7 +728,7 @@ describe("classify — a re-activation while collecting is absorbed", () => {
     },
   );
 
-  test.each(["off", "aus", "status", "marker"])(
+  test.each(["off", "aus", "status"])(
     "the exit %j while active → passthrough", (args) => {
       expect(on(expanded(args))).toBe("passthrough");
     },
@@ -767,24 +760,7 @@ describe("classify — a re-activation while collecting is absorbed", () => {
   });
 });
 
-describe("marker suggestions", () => {
-  test("are just `go` — colon-free, equal to the default", () => {
-    expect(MARKER_SUGGESTIONS).toEqual(["go"]);
-    expect(MARKER_SUGGESTIONS[0]).toBe(DEFAULTS.marker);
-    for (const m of MARKER_SUGGESTIONS) {
-      expect(m.endsWith(":")).toBe(false);
-      expect(validateMarker(m)).toMatchObject({ ok: true, marker: m, warning: null });
-    }
-  });
-
-  test("each suggestion fires and strips cleanly", () => {
-    for (const m of MARKER_SUGGESTIONS) {
-      expect(startsWithMarker(`${m} bau das jetzt`, m)).toBe(true);
-      expect(stripMarker(`${m} bau das jetzt`, m)).toBe("bau das jetzt");
-      expect(startsWithMarker("google das mal", m)).toBe(false);
-    }
-  });
-
+describe("the fixed go marker", () => {
   test("the default marker `go` fires on any first-word go", () => {
     const m = DEFAULTS.marker;
     expect(m).toBe("go");
@@ -812,12 +788,12 @@ describe("mode summary — one block, three places", () => {
   });
 
   test("describeMode reads the pinned bounds and the live note count", () => {
-    activate(cwd, { marker: ">start", expiryHours: 2, maxNotes: 7 });
+    activate(cwd, { expiryHours: 2, maxNotes: 7 });
     appendNote(cwd, "eins");
     appendNote(cwd, "zwei");
     const s = describeMode(cwd);
     expect(s).toContain("2 Notiz(en)");
-    expect(s).toContain("Marker \">start\"");
+    expect(s).toContain("Marker \"go\"");
     expect(s).toContain("2 h oder 7 Notizen");
   });
 });
@@ -839,8 +815,9 @@ describe("help route and the long-form summary", () => {
     const h = renderHelp({ marker: ">go", expiryHours: 8, maxNotes: 100 });
     expect(h).toContain("A) Was DU machst");
     expect(h).toContain("B) Was CLAUDE macht");
+    expect(h).not.toMatch(/\/do-batch marker|marker \(/);
     expect(h).toContain("\">go <text>\"");
-    for (const cmd of ["off", "on", "status", "marker", "help", "/do-batch go"]) {
+    for (const cmd of ["off", "on", "status", "help", "/do-batch go"]) {
       expect(h, `help does not mention ${cmd}`).toContain(cmd);
     }
     expect(h).toContain("8 Stunden oder 100 Notizen");
@@ -852,12 +829,12 @@ describe("help route and the long-form summary", () => {
     expect(h).toContain("do-batch setzt");
   });
 
-  test("the short summary points at status, marker and help in one line", () => {
+  test("the short summary points at status and help in one line", () => {
     const s = renderModeSummary({ marker: ">>" });
     const line = s.split("\n").find((l) => l.includes("Auto-Ende"));
     expect(line).toBeTruthy();
     expect(line).toContain("status");
-    expect(line).toContain("marker");
+    expect(line).not.toContain("marker");
     expect(line).toContain("help");
     expect(s).toContain("/do-batch on sammelt weiter");
   });

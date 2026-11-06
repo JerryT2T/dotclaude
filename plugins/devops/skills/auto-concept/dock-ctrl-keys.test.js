@@ -117,18 +117,84 @@ describe("notes Ctrl+Enter inside a note", () => {
     expect([open(d, "n1"), open(d, "n2"), open(d, "n3")]).toEqual(["false", "false", "false"]);
   }, T);
 
-  test("from the user's own note it closes that note and opens the next unhandled auto note", async () => {
-    const { window } = await boot(html);
+  const OWN = (id) => `<div class="upin" data-upin-id="${id}"><button class="upin-pin" type="button" data-pin="${id}"></button><div class="upin-editor" hidden><textarea id="ta-${id}"></textarea></div></div>`;
+  // Stand-in for the pin button: toggles the editor and focuses its field, like
+  // the real handler (closeEditors + hidden=false + focus).
+  const wireOwn = (d, w) => d.querySelectorAll(".upin").forEach((u) => {
+    const ed = u.querySelector(".upin-editor"), ta = u.querySelector("textarea");
+    u.querySelector(".upin-pin").addEventListener("click", () => {
+      d.querySelectorAll(".upin-editor").forEach((x) => { if (x !== ed) x.hidden = true; });
+      ed.hidden = !ed.hidden; if (!ed.hidden) ta.focus();
+    });
+    ta.addEventListener("keydown", (e) => { // the real own-note handler: plain Enter saves + closes
+      e.stopPropagation();
+      if (e.key === "Enter" && !e.shiftKey && !e.ctrlKey && !e.metaKey) { e.preventDefault(); ed.hidden = true; ta.dataset.saves = String(+(ta.dataset.saves || 0) + 1); }
+    });
+  });
+  // n1, own1, n2, own2, n3 in document order
+  const mixed = base.replace(
+    /(<section id="d1-s1" data-screen[^>]*>)/,
+    `$1<div class="anno-layer" data-anno-layer>${ANNO("n1")}${OWN("p1")}${ANNO("n2")}${OWN("p2")}${ANNO("n3")}</div>`,
+  );
+
+  test("Enter in an auto note only closes it; Shift+Enter is left alone", async () => {
+    const { window } = await boot(mixed);
     const d = window.document;
-    d.querySelector("section[data-screen]").insertAdjacentHTML("beforeend",
-      '<div class="upin"><div class="upin-editor"><textarea id="own"></textarea></div></div>');
     d.querySelector('[data-anno-pin="n1"]').click();
-    const own = d.getElementById("own");
-    own.value = "mine";
-    const ev = key(window, own, { key: "Enter", code: "Enter", ctrlKey: true });
+    const ta = d.querySelector('[data-annotation="n1"]');
+    const sh = key(window, ta, { key: "Enter", code: "Enter", shiftKey: true });
+    expect(sh.defaultPrevented).toBe(false);
+    expect(open(d, "n1")).toBe("true");
+    const ev = key(window, ta, { key: "Enter", code: "Enter" });
     expect(ev.defaultPrevented).toBe(true);
     await tick(window);
-    // n1 was opened (seen) before, so the first unhandled one is n2.
+    expect([open(d, "n1"), open(d, "n2"), open(d, "n3")]).toEqual(["false", "false", "false"]);
+  }, T);
+
+  test("Ctrl+Enter walks auto and own notes in document order and focuses the next field", async () => {
+    const { window } = await boot(mixed);
+    const d = window.document;
+    wireOwn(d, window);
+    const editorOpen = (id) => !d.querySelector(`[data-upin-id="${id}"] .upin-editor`).hidden;
+    d.querySelector('[data-anno-pin="n1"]').click();
+    key(window, d.querySelector('[data-annotation="n1"]'), { key: "Enter", code: "Enter", ctrlKey: true });
+    await tick(window);
+    expect(open(d, "n1")).toBe("false");
+    expect(editorOpen("p1")).toBe(true);
+    expect(d.activeElement).toBe(d.getElementById("ta-p1"));
+    // own -> auto: saved once (no double save), closed, next auto bubble gets focus
+    const ev = key(window, d.getElementById("ta-p1"), { key: "Enter", code: "Enter", metaKey: true });
+    expect(ev.defaultPrevented).toBe(true);
+    await tick(window);
+    expect(d.getElementById("ta-p1").dataset.saves).toBe("1");
+    expect(editorOpen("p1")).toBe(false);
     expect(open(d, "n2")).toBe("true");
+    expect(d.activeElement).toBe(d.querySelector('[data-annotation="n2"]'));
+    key(window, d.querySelector('[data-annotation="n2"]'), { key: "Enter", code: "Enter", ctrlKey: true });
+    await tick(window);
+    expect(editorOpen("p2")).toBe(true);
+    expect(d.activeElement).toBe(d.getElementById("ta-p2"));
+    // own -> auto n3, then the last note only closes
+    key(window, d.getElementById("ta-p2"), { key: "Enter", code: "Enter", ctrlKey: true });
+    await tick(window);
+    expect(open(d, "n3")).toBe("true");
+    expect(d.activeElement).toBe(d.querySelector('[data-annotation="n3"]'));
+    key(window, d.querySelector('[data-annotation="n3"]'), { key: "Enter", code: "Enter", ctrlKey: true });
+    await tick(window);
+    expect([open(d, "n1"), open(d, "n2"), open(d, "n3"), editorOpen("p1"), editorOpen("p2")]).toEqual(["false", "false", "false", false, false]);
+  }, T);
+
+  test("Enter and Shift+Enter in an own note never open another note", async () => {
+    const { window } = await boot(mixed);
+    const d = window.document;
+    wireOwn(d, window);
+    d.querySelector('[data-upin-id="p1"] .upin-pin').click();
+    const ta = d.getElementById("ta-p1");
+    expect(key(window, ta, { key: "Enter", code: "Enter", shiftKey: true }).defaultPrevented).toBe(false);
+    key(window, ta, { key: "Enter", code: "Enter" });
+    await tick(window);
+    expect(ta.dataset.saves).toBe("1");
+    expect(d.querySelector('[data-upin-id="p1"] .upin-editor').hidden).toBe(true);
+    expect([open(d, "n1"), open(d, "n2"), open(d, "n3")]).toEqual(["false", "false", "false"]);
   }, T);
 });

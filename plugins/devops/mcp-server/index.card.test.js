@@ -1639,16 +1639,16 @@ describe("render_completion_card — armed batch carries the how-to", () => {
     const B = createRequire(import.meta.url)("../hooks/lib/batch-state.js");
     const cwd = mkdtempSync(join(tmpdir(), "card-batch-"));
     try {
-      B.activate(cwd, { marker: ">go", expiryHours: 8, maxNotes: 100 });
+      B.activate(cwd, { expiryHours: 8, maxNotes: 100 });
       B.appendNote(cwd, "erste Notiz");
       const de = await cardText({ variant: "analysis", summary: "x", lang: "de", cwd, session_id: "test-batch-guide-de" });
       expect(de).toMatch(/^## 👉 📚 Batch — sammelt — 1 Eintrag$/m);
-      expect(de).toMatch(/1 Notiz · nächster Prompt wird Notiz #2 · ">go" löst aus/);
+      expect(de).toMatch(/1 Notiz · nächster Prompt wird Notiz #2 · "go" löst aus/);
       expect(de).toMatch(/^1\. Sammeln: jeder Prompt ohne Marker wird Notiz/m);
-      expect(de).toMatch(/^2\. Umsetzen: „>go <text>" oder \/do-batch go/m);
+      expect(de).toMatch(/^2\. Umsetzen: „go <text>" oder \/do-batch go/m);
       expect(de).toMatch(/^3\. Stoppen: \/do-batch off \(Notizen bleiben\) · Auto-Ende nach 8 h oder 100 Notizen$/m);
       const en = await cardText({ variant: "analysis", summary: "x", lang: "en", cwd, session_id: "test-batch-guide-en" });
-      expect(en).toMatch(/^2\. Execute: ">go <text>" or \/do-batch go/m);
+      expect(en).toMatch(/^2\. Execute: "go <text>" or \/do-batch go/m);
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }

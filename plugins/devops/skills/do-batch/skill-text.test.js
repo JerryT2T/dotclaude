@@ -8,8 +8,8 @@
  *   1. A free-text argument (`/do-batch <Gedanke>`) must have an explicit
  *      routing row — the old table only knew keywords + "none", so unrecognised
  *      content matched nothing and was silently dropped.
- *   2. A dead marker (`markerFallback`) must be repaired from EVERY route, not
- *      only `on` / `marker` — otherwise `status` re-reports it forever.
+ *   2. The execute marker is fixed to `go`: no first-run question, no
+ *      `marker` route, no pre-check.
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
@@ -57,22 +57,12 @@ describe("do-batch SKILL.md routing — issue #306", () => {
     expect(fallbackRow).toMatch(/activate/i);
   });
 
-  it("runs the marker pre-check on every route", () => {
-    expect(step1).toMatch(/Marker pre-check — on EVERY route/);
-    for (const route of ["`on`", "`off`", "`go`", "`status`", "`marker`", "content fallback"]) {
-      expect(step1, `pre-check paragraph does not name route ${route}`).toContain(route);
-    }
-    expect(step1).toMatch(/saveConfig\(\{ marker \}\)/);
-  });
-
-  it("Step 3 no longer treats a dead marker as report-only", () => {
-    const step3 = section("## Step 3 — Status", "## Step 4 — Fire the merge");
-    expect(step3).toMatch(/pre-check has\s+already asked the marker question/);
-  });
-
-  it("Step 4 and Step 5 reference the pre-check", () => {
-    expect(section("## Step 4 — Fire the merge", "## Step 5 — Deactivate")).toMatch(/marker\s+pre-check/);
-    expect(section("## Step 5 — Deactivate", "## Optional")).toMatch(/marker pre-check/);
+  it("fixes the marker to go: no question, no marker route, no pre-check", () => {
+    expect(step1).toMatch(/The execute marker is fixed: the word `go`/);
+    expect(rawSkill).not.toMatch(/markerFallback|MARKER_SUGGESTIONS|saveConfig|\/do-batch marker|pre-check/);
+    expect(rawSkill).not.toMatch(/First-run marker/);
+    const rows = step1.split(/\r?\n/).filter((l) => l.startsWith("|"));
+    expect(rows.join(" ")).not.toMatch(/`marker`/);
   });
 });
 
@@ -132,16 +122,12 @@ describe("do-batch SKILL.md — 0.4.0: activation ends ON, markers, main sync", 
 
   it("tells the skill the hook absorbs a re-activation", () => {
     expect(step1).toMatch(/rearm/);
-    expect(step1).toMatch(/`off`, `go`, `status` and `marker` always/);
+    expect(step1).toMatch(/`off`, `go` and `status` always/);
   });
 
-  it("offers only `go`", () => {
-    const options = step2.split("\n").filter((l) => /^> \d\. /.test(l));
-    expect(options).toHaveLength(1);
-    expect(options[0]).toMatch(/`go` \(empfohlen\)/);
-    expect(step2).not.toMatch(/`los:`/);
-    expect(step2).not.toMatch(/`jetzt:`/);
-    expect(step2).toMatch(/MARKER_SUGGESTIONS/);
+  it("asks no marker question", () => {
+    expect(step2).not.toMatch(/AskUserQuestion/);
+    expect(step2).not.toMatch(/MARKER_SUGGESTIONS|validateMarker/);
   });
 
   // The card carries the how-to itself (mode-state.js#batchGuide). A mode

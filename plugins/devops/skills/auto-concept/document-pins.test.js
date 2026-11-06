@@ -59,6 +59,34 @@ function typeAndSave(window, d, text) {
   key(window, ta, { key: "Enter", code: "Enter" });
 }
 
+describe("document pins · note keys", () => {
+  test("Enter only closes, Ctrl+Enter saves once and opens the next real pin; the last one only closes", async () => {
+    const { window, document: d, errors } = await boot(fixture("decision"));
+    const ps = [...live(d).querySelectorAll("section[id]:not([data-iteration]) p")];
+    ctrlClick(window, ps[0]);
+    typeAndSave(window, d, "first");
+    expect(editorOf(d), "plain Enter opens nothing").toBeUndefined();
+    ctrlClick(window, ps[1]);
+    typeAndSave(window, d, "second");
+
+    // jsdom has no layout, so the placement pass hides every pin; a real page shows them (checked in a browser).
+    d.querySelectorAll(".dpin-layer .upin").forEach((u) => { u.hidden = false; });
+    d.querySelector(".dpin-layer .upin .upin-pin").click();
+    const ta = editorOf(d).querySelector("textarea");
+    ta.value = "first edited";
+    key(window, ta, { key: "Enter", code: "Enter", ctrlKey: true });
+    await new Promise((r) => window.setTimeout(r, 30));
+    expect(window.collectDecisions("iterate").userPins.map((p) => p.text)).toEqual(["first edited", "second"]);
+    const next = editorOf(d).querySelector("textarea");
+    expect(next.value).toBe("second"); // focus needs layout: dock-ctrl-keys.test.js and a browser check cover it
+
+    key(window, next, { key: "Enter", code: "Enter", metaKey: true });
+    await new Promise((r) => window.setTimeout(r, 30));
+    expect(editorOf(d), "the last note only closes").toBeUndefined();
+    expect(errors).toEqual([]);
+  }, BOOT_TIMEOUT);
+});
+
 describe("document pins · set, save, payload", () => {
   test("Ctrl + click on a paragraph opens a note editor with attachments; Enter saves it into the payload", async () => {
     const { window, document, errors } = await boot(fixture("decision"));

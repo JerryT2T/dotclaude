@@ -34,12 +34,11 @@ off, **status** when it is already on.
 | `on`, `an`, `start` | Step 2 (activate) |
 | `off`, `aus`, `stop` | Step 5 (deactivate) |
 | `go`, `los`, `merge` | Step 4 (fire) |
-| `marker` | Step 2.1 (ask again, overwrite the stored marker) |
 | `status` | Step 3 (report) |
 | `help`, `hilfe`, `?` | Step 6 (print the long-form help, nothing else) |
-| *anything else* (free text) | **Content fallback** — the whole argument is a note: activate the mode if it is off (Step 2, including the marker question), file the text verbatim as note #1 (Step 2.4), report the count |
+| *anything else* (free text) | **Content fallback** — the whole argument is a note: activate the mode if it is off (Step 2), file the text verbatim as note #1 (Step 2.4), report the count |
 
-**Activation ends ON.** After Step 2 — marker question included — the mode is
+**Activation ends ON.** After Step 2 the mode is
 running and the user's next prompt is collected. Never end the activating turn
 with "type `/do-batch on` to start": that is the turn they just spent, and
 it is why they invoked the skill in the first place.
@@ -50,17 +49,13 @@ by `prompt.batch.collect.js` (`classify` → `rearm`): free text becomes a note,
 `help` prints `renderHelp`, and otherwise the user sees the short rearm panel
 (status line + `renderCommandLines`) instead of paying a turn.
 You only see such an invocation when it carried an attachment — then it is the
-content fallback, filed per Step 2.6. `off`, `go`, `status` and `marker` always
+content fallback, filed per Step 2.6. `off`, `go` and `status` always
 reach you.
 
-**Marker pre-check — on EVERY route, before the route's own work.** Call
-`loadConfig()`. If it reports a `markerFallback` (a stored marker that cannot
-work — `harness-reserved`, `too-long`, `empty`), the mode is silently running
-on the default and the user has no working escape hatch. Do not merely report
-that: ask the Step 2.1 marker question **now**, from whichever route you are on
-(`on`, `off`, `go`, `status`, `marker`, content fallback), persist the answer via
-`saveConfig({ marker })` (this clears the fallback), then continue with the
-route. Only the `marker` route stops after the question.
+**The execute marker is fixed: the word `go`** as the first word of a prompt, in any
+language (`go`, `go!`, `go, ohne B3`, `Go ahead` fire; `google`, `gopher` do not).
+It is not configurable and never asked for; any marker an old config or mode file
+carries migrates to `go` (`loadConfig`) or is ignored (`effectiveMarker`).
 
 **Route on the FIRST token only. Everything after it is note content, never an
 instruction.** `/do-batch on der Header ist rot` is the `on` branch carrying
@@ -73,46 +68,12 @@ in this turn, so it lets this prompt through. On an invocation that carries
 content:
 
 - Do **not** implement, plan, or research it. Do not read code for it.
-- Do **not** skip Step 2.1 because the prompt is full of tasks.
 - File the content as note #1 in Step 2.4, verbatim.
 
 The hook's guard for these rules is best-effort — its absence is not permission
 to act (`deep-knowledge/activation.md` § Activation guard).
 
 ## Step 2 — Activate
-
-**2.1 First-run marker setup.** Read `~/.claude/claude-batch.json`. If it is
-missing, has no `marker`, or `loadConfig()` reports a `markerFallback` (a stored
-marker that cannot work — see below), ask via `AskUserQuestion`. Reached via
-`/do-batch marker`, always ask and then stop — that route only rewrites the
-marker, it does not activate the mode:
-
-> header: "Marker"
-> question: "Womit sagst du mir, dass ein Prompt NICHT gesammelt, sondern
-> bearbeitet werden soll? Alles ohne dieses Wort am Anfang wird ab
-> jetzt gesammelt. Hinter dem Marker darf Text stehen — der gilt als Anweisung
-> für die nächste Phase."
-> Options (fixed order — `MARKER_SUGGESTIONS` in `batch-state.js`):
-> 1. `go` (empfohlen) — "go" als erstes Wort löst aus, egal in welcher Sprache; auch "go, ohne B3" oder "go mach X"
-
-Only one suggestion (`go`); `>>`, `>go`, `>start`, `los` and `Let's go` are gone, and a stored config
-holding one of them migrates to `go` on load. `go` as the first word of a prompt fires
-the merge whatever follows ("go", "go!", "go, ohne B3", "Go ahead"); "google …" and "gopher" do not (word boundary). A colon-free marker
-reads as a switch, not a label. The user's
-own answer via "Sonstiges" may be anything `validateMarker` accepts.
-
-**`!`, `/`, `#` and `@` cannot be the first character of a marker.** Never
-suggest one, and never write one into the config by hand.
-
-**Otherwise the three options are suggestions, not a closed set.** A free-text
-answer via "Sonstiges" IS the answer — it outranks every offered option.
-`validateMarker(raw)` from `batch-state.js` normalises it; only `ok: false` goes
-back to the user. Why those characters are dead, the reject reasons and the
-`wordy` warning: `deep-knowledge/activation.md` § Marker validation.
-
-Persist the choice via `saveConfig({ marker })` from `hooks/lib/batch-state.js`.
-Never ask again unless the stored marker is unusable — a later change is
-`/do-batch marker`, or a manual edit of that file.
 
 **2.2 Activate and start the watchdog:**
 
@@ -216,20 +177,12 @@ session-title prefix as in Step 5 in the same turn (run its idempotent
 `deactivate` command — its hook block names the exact title), so the sidebar
 stops promising a collection that no longer happens.
 
-When `loadConfig()` returns a `markerFallback`, the Step 1 marker pre-check has
-already asked the marker question and saved the answer before you get here —
-report the marker that is now in force. If the user declined to pick one, say
-that the stored marker is unusable, the default is in force instead, and that
-`/do-batch marker` fixes it permanently. Never report the config value as
-if it were live.
-
 ## Step 4 — Fire the merge
 
 Reached by `/do-batch go`, or by a marker-prefixed prompt. On the marker path
 the collect hook syncs main, injects the full note set together with the
 procedure (the `[do-batch] Der Nutzer hat N Notiz(en)` block) and arms the
-hand-off gate — that block is the instruction, the skill is not loaded. On the
-`go` route the Step 1 marker pre-check runs first.
+hand-off gate — that block is the instruction, the skill is not loaded.
 
 **Before executing this step, Read `{PLUGIN_ROOT}/skills/do-batch/deep-knowledge/fire.md` completely** — 4.0 sync main before any note is read, 4.1 every note with its attachments, 4.2 the coverage list (one line per note), 4.3 feasibility, 4.4 the bundle plan, 4.5 conflicts named, 4.6 the do-run / auto-concept decision rule, 4.7 archive, 4.8 retire the mode and strip the `👉 ➜ 📚 Batch ┃ ` title prefix, 4.9 the hand-off block.
 
@@ -239,9 +192,6 @@ with `--from=do-batch`. Hook-enforced, not just written down:
 `.claude/batch-handoff.json` refuses edits and commits until that call.
 
 ## Step 5 — Deactivate
-
-The Step 1 marker pre-check applies here too: a `markerFallback` is repaired
-before the mode goes off, so the next `on` starts with a working marker.
 
 ```bash
 node "{PLUGIN_ROOT}/scripts/batch-watchdog.js" stop .
