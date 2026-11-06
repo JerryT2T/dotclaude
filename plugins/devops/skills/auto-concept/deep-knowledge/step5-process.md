@@ -50,14 +50,14 @@ node "{PLUGIN_ROOT}/scripts/git-sync.js" --explain
 
 The waker's turn is no user prompt, so no prompt hook does this for you, and
 the throttled background sync at turn end is no substitute. Read the output as
-in do-batch `deep-knowledge/merge.md` § Sync main:
+in `{PLUGIN_ROOT}/skills/do-batch/deep-knowledge/merge.md` § Sync main:
 
 - `=` — nothing to merge, say nothing and go on.
 - `– skipped:` is not "up to date". Fix the named cause (commit the WIP, finish
   the operation) and run it again. Two causes you cannot fix do not hold the
   round up, name them in it instead: a `/do-ship` running elsewhere, and a
   failed fetch (offline, no remote).
-- `⚠` / `✗` — a conflict. Resolve it now per `merge-safety.md`, never with
+- `⚠` / `✗` — a conflict. Resolve it now per `{PLUGIN_ROOT}/deep-knowledge/merge-safety.md`, never with
   `--ours` / `--theirs`: it has to be solved sooner or later anyway, and the
   round must not be planned on a base it cannot merge with.
 
