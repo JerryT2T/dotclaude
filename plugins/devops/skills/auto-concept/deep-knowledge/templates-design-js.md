@@ -188,7 +188,7 @@ design round has: the three row builders and the ordering of stash → rebuild
       btn.dataset.designId = d.dataset.design;
       btn.dataset.active = String(d === active);
       btn.textContent = d.dataset.navLabel || d.dataset.design;
-      btn.addEventListener('click', () => { showDesign(d.dataset.design); });
+      btn.addEventListener('click', () => { (window.showDesignAligned || showDesign)(d.dataset.design); });
       switcher.appendChild(btn);
     });
     // Views (§ Views (optional)) — appended to the SAME row after a thin
@@ -243,7 +243,7 @@ design round has: the three row builders and the ordering of stash → rebuild
       heading.dataset.active = String(d === active);
       navRowLabel(heading, d.dataset.navLabel || d.dataset.design, null);
       navRowMarker(heading, 'designNoteMarker', d.dataset.design);
-      heading.addEventListener('click', () => { showDesign(d.dataset.design); closePanel(); });
+      heading.addEventListener('click', () => { (window.showDesignAligned || showDesign)(d.dataset.design); closePanel(); });
       group.appendChild(heading);
 
       const screens = [...d.querySelectorAll('section[data-screen][id]')];

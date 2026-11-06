@@ -301,6 +301,7 @@ stripping comments, `<script>` / `<style>`, ids, `data-screen` / `data-nav-label
 |---|------|----------|
 | V7 | A design that sets `data-design-overlay` (kind `overview-overlay`). The overview card is always bottom-left; the attribute is ignored. Supersedes the old "must be a known anchor" check in `validation-gate-phase2.md` V7. | warning |
 | V8 | First screens of ≥2 designs in one round are identical or near-identical and neither carries `data-ov-demo` (kind `overview-identical-first-screen`). Fix: `data-ov-demo="<selector>"` on the designs — the overview shows the differing element as a looping, zoomed demo. | warning |
+| V9 | The designs of a `data-design-set="alternatives"` round have different pages: page count, `data-nav-label` or order (kind `overview-pages-differ`). Rounds where every design has one page are exempt. Fix: the same pages in the same order, so a variant switch keeps the page. | warning |
 | P34 | A `data-design-set="alternatives"` round whose designs share every screen label (≥2 screens each), whose first screens are alike, and where per design pair at most `SUBPAGE_MAX_DIFF` (2) screens differ or ≥ `SUBPAGE_MIN_SAME_SHARE` (2/3) are alike (kind `design-round-subpage-only`, reported through `structural`). Fix: the differing sub-page's takes become the round's variants (one design per take), refined on their own; a later round zooms back out to the main variants. | **error (blocks)** |
 
 ## Etappen (stages)

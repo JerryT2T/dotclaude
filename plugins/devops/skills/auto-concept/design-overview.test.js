@@ -701,6 +701,59 @@ describe("☰ overview row, the eye on the overview, draggable pins", () => {
     expect(document.getElementById("d2b-s1").hidden, "d2b has no page 3 → its first page").toBe(false);
   }, BOOT_TIMEOUT);
 
+  test("the wanted page survives a shorter variant (#1069)", async () => {
+    const html = page(3).replace(/<section id="d2b-s3"[\s\S]*?<\/section>/, "");
+    const { window, document, errors } = await boot(html);
+    expect(errors).toEqual([]);
+    window.showDesign("d2", "d2-s3");
+    window.showDesignAligned("d2b");
+    expect(document.getElementById("d2b-s1").hidden, "no page 3 here → first page").toBe(false);
+    window.showDesignAligned("d2c");
+    expect(document.getElementById("d2c-s3").hidden, "on to a three-page variant → page 3").toBe(false);
+    window.showDesign("d2", "d2-s3");
+    window.showDesignAligned("d2b");
+    window.showDesignAligned("d2");
+    expect(document.getElementById("d2-s3").hidden, "back to the first variant → page 3").toBe(false);
+  }, BOOT_TIMEOUT);
+
+  test("moving on inside the shorter variant drops the wanted page (#1069)", async () => {
+    const html = page(3).replace(/<section id="d2b-s3"[\s\S]*?<\/section>/, "");
+    const { window, document } = await boot(html);
+    window.showDesign("d2", "d2-s3");
+    window.showDesignAligned("d2b");
+    window.showDesign("d2b", "d2b-s2");
+    window.showDesignAligned("d2");
+    expect(document.getElementById("d2-s2").hidden, "the page the user moved to wins").toBe(false);
+  }, BOOT_TIMEOUT);
+
+  test("the same label in a different position lands on that label (#1069)", async () => {
+    const html = page(3)
+      .replace(/(<section id="d2b-s1"[^>]*data-nav-label=")[^"]*/, "$1Alpha")
+      .replace(/(<section id="d2b-s2"[^>]*data-nav-label=")[^"]*/, "$1Beta")
+      .replace(/(<section id="d2-s2"[^>]*data-nav-label=")[^"]*/, "$1Alpha");
+    const { window, document } = await boot(html);
+    window.showDesign("d2", "d2-s2");
+    window.showDesignAligned("d2b");
+    expect(document.getElementById("d2b-s1").hidden, "Alpha is page 1 in d2b").toBe(false);
+  }, BOOT_TIMEOUT);
+
+  test("the ☰ panel heading keeps the page like the chips do (#1069)", async () => {
+    const { window, document } = await boot(page(3));
+    window.showDesign("d2", "d2-s2");
+    document.querySelector('.screen-nav-design-heading[data-design-id="d2b"]').click();
+    expect(activeDesign(document).dataset.design).toBe("d2b");
+    expect(document.getElementById("d2b-s2").hidden).toBe(false);
+  }, BOOT_TIMEOUT);
+
+  test("a switch out of the overview keeps the page last viewed (#1069)", async () => {
+    const { window, document } = await boot(page(3));
+    window.showDesign("d2", "d2-s2");
+    window.showOverview();
+    key(window, document.body, { key: "2", code: "Digit2" });
+    expect(activeDesign(document).dataset.design).toBe("d2b");
+    expect(document.getElementById("d2b-s2").hidden).toBe(false);
+  }, BOOT_TIMEOUT);
+
   test("a question view tied to a design maps to the target design's view at the same position", async () => {
     const views = '<section data-view="qa" data-view-for="d2" data-nav-label="Frage A" hidden><p>A</p></section>'
       + '<section data-view="qb" data-view-for="d2b" data-nav-label="Frage B" hidden><p>B</p></section>';

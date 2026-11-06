@@ -153,6 +153,9 @@ with an overview table carrying a recommendation column and jump links
    wants to keep working on that part. An `alternatives` round whose designs share
    all screen labels and their first screen and differ only on one or two
    sub-pages is blocked by the gate (`design-round-subpage-only`, P34).
+   Designs of an `alternatives` round have the same pages in the same order
+   (page count and `data-nav-label`), so a reviewer can compare page by page: a
+   variant switch keeps the page by its label. The gate warns otherwise (V9).
 
    **Etappen (stages) — optional.** In round 1 propose Etappen (e.g. use cases →
    structure → design → animation) only when content, UX or visual dependencies
