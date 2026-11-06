@@ -13,8 +13,8 @@ explains a disabled control. The engine detects those three cases itself;
 `data-tip-tier="label"` / `"info"` overrides the detection (e.g. `info` on a
 universal ✕); `data-tip-tier="help"` (0 ms) is reserved for an "i" / "?"
 button that exists only for its tip. A tip never repeats a visible label: an
-item with a visible name gets only its hotkey via `data-tip-key` +
-`data-tip-key-only`, and siblings of one group carry the same kind of tip
+item with a visible name gets only "Hotkey:" plus its key via `data-tip-key`
++ `data-tip-key-only` (never a bare keycap), and siblings of one group carry the same kind of tip
 (ui-defaults R1). Once a tip has closed, the next one opens instantly within
 300 ms; keyboard focus opens it instantly; the pointer can move onto it;
 Escape, a click or a scroll closes it; touch opens it on long-press. A stray
@@ -107,10 +107,11 @@ the element. Pair it with `aria-keyshortcuts` on the element.
 
   // Label text plus, for `data-tip-key`, one keycap per key part.
   // `data-tip-key-only`: the element's label is already visible, so the tip
-  // carries only its keycaps — never an echo of the label (ui-defaults R1).
+  // carries "Hotkey:" and its keycaps — never an echo of the label, never a
+  // bare keycap (ui-defaults R1). The word is the same in German and English.
   function fill(el) {
     const keyOnly = el.hasAttribute('data-tip-key-only');
-    tip.textContent = keyOnly ? '' : el.dataset.tip;
+    tip.textContent = keyOnly ? 'Hotkey: ' : el.dataset.tip;
     const key = el.dataset.tipKey;
     if (!key) return;
     if (!keyOnly) tip.appendChild(document.createTextNode(' '));

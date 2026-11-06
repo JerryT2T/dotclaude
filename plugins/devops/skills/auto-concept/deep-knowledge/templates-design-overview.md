@@ -338,10 +338,11 @@ returns — the single-design page is untouched.
   }
   // A control whose name is on screen gets no tooltip that repeats it
   // (ui-defaults: no tooltip that merely restates visible text): only its
-  // hotkey as a keycap, or no tooltip at all. Uniform per kind — every named
+  // hotkey, or no tooltip at all. Uniform per kind — every named
   // segment / page with a hotkey shows the keycap, every one without none.
   // The tooltip component needs a non-empty data-tip, so the label is an
-  // invisible word joiner and data-tip-key-only marks the case.
+  // invisible word joiner and data-tip-key-only marks the case (the tip then
+  // reads "Hotkey: [key]", never a bare keycap).
   const KEY_ONLY = String.fromCharCode(0x2060);
   function keyTip(node, key) {
     delete node.dataset.tipKey;

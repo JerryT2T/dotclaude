@@ -71,6 +71,11 @@ No rule repeats it.
   the same kind of tooltip content — all hotkey, all description, or none —
   unless the user asked for something else. Why: an echo tooltip is noise, and
   "Radar" without a hotkey next to "Orte" with one reads as a bug.
+- **A hotkey never stands alone:** a tooltip whose only content is the key
+  (a keycap, plain or themed) reads at least `Hotkey: ` before it, the same
+  word in every language. A tooltip that has other text next to the key
+  ("Cockpit [1]", "Senden [Enter]") needs no prefix. Why: a bare keycap does
+  not say what it is.
 - **Delay — two tiers, long is the default, plus help buttons:**
 
   | Tier | Delay | Use when |
@@ -101,7 +106,8 @@ No rule repeats it.
   tooltip-only button, when a call site sets a raw delay number, or when the
   tooltip component does not carry the tiers.
 - **Static (content):** a finding when a tooltip's text equals the element's
-  visible label, or when siblings of one group mix tooltip kinds.
+  visible label, when siblings of one group mix tooltip kinds, or when a
+  tooltip renders only a key without `Hotkey: ` or other text.
 - **Runtime:** an Info tooltip opens at ~1.5 s and a Label tooltip at ~0.5 s
   (±150 ms); the next tooltip opens instantly within the skip window; focus
   opens it; the pointer can move onto it; Escape closes it.

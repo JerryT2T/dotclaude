@@ -131,6 +131,33 @@ describe("app tooltips — two delay tiers", () => {
   });
 });
 
+describe("app tooltips — a hotkey never stands alone", () => {
+  const WJ = String.fromCharCode(0x2060);
+
+  test("a key-only tip reads Hotkey: and the keycap", () => {
+    const p = page(`<button id="b" data-tip="${WJ}" data-tip-key="1" data-tip-key-only="true">Cockpit</button>`);
+    p.over(p.d.getElementById("b"));
+    p.flush();
+    expect(p.tip().textContent).toBe("Hotkey: 1");
+    expect(p.tip().querySelector("kbd.app-kbd").textContent).toBe("1");
+  });
+
+  test("a combination and alternatives keep their keycaps behind the prefix", () => {
+    const p = page(`<button id="b" data-tip="${WJ}" data-tip-key="⇧+←|A" data-tip-key-only="true">Back</button>`);
+    p.over(p.d.getElementById("b"));
+    p.flush();
+    expect(p.tip().textContent).toBe("Hotkey: ⇧+←/A");
+    expect(p.tip().querySelectorAll("kbd.app-kbd").length).toBe(3);
+  });
+
+  test("a tip with its own text gets no prefix", () => {
+    const p = page('<button id="b" data-tip="Senden" data-tip-key="Enter">Go</button>');
+    p.over(p.d.getElementById("b"));
+    p.flush();
+    expect(p.tip().textContent).toBe("Senden Enter");
+  });
+});
+
 describe("app tooltips — app style and gate", () => {
   test("the bubble is drawn from the page tokens", () => {
     for (const token of ["--panel-bg", "--text-color", "--border-color"]) {
