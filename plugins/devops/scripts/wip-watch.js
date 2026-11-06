@@ -38,6 +38,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { spawnSync } = require('child_process');
 
+const { recentProjects } = require('./recent-projects.js');
 const cfg = require('../hooks/lib/devops-config');
 const { contentInBase } = require('./lib/content-landed');
 const scheduler = require('./lib/scheduler');
@@ -362,7 +363,11 @@ function fingerprintOf(ids) {
 function scanAll(io = {}, override = {}) {
   const home = homeOf(io);
   const conf = cfg.load(home, { home }).values.wipWatch;
-  const roots = override.roots || conf.roots;
+  const configured = override.roots || conf.roots;
+  // No roots set: every project Claude Code has worked in on this machine.
+  const roots = configured.length ? configured : recentProjects({
+    root: process.env.CLAUDE_CONFIG_DIR || path.join(home, '.claude'),
+  }).map((p) => p.path);
   const discardAfterWeeks = override.discardAfterWeeks || conf.discardAfterWeeks;
   const repos = [];
   for (const repo of discoverRepos(roots, home)) {

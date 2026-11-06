@@ -39,6 +39,22 @@ problem, observed cache/registry drift): `deep-knowledge/self-update-rationale.m
 
 This extension is **additive** — every plugin-default step still runs unchanged.
 
+## Pre-step — Learned-eval gate (before the release, before `ship_run`)
+
+Run once, from the repo root, before the release is started:
+
+```
+node plugins/devops/evals/ship-gate.js [--base origin/main]
+```
+
+It maps the changed `plugins/devops/skills/<skill>/**` to the `learned`-tagged
+eval cases of those skills and runs them through `ab-run.js` (plan login, one
+run each; real model runs). **Exit 1 stops the ship**: relay its
+`ship-gate: FAIL <case> ...` lines verbatim and fix the skill or the case;
+never skip the gate silently. Exit 0 (no case applies, all pass, or only
+undecided `null` grades) continues. `--dry-run` prints the selection. Details:
+`plugins/devops/evals/README.md` "Ship gate".
+
 ## Step 6.5 — Announce the local channel outcome IN the completion card
 
 Do this **before** calling `render_completion_card` in Step 6, using pure file reads

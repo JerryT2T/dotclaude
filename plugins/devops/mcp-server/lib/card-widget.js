@@ -253,7 +253,7 @@ export function conclusionPrompt(replies, lang = "de") {
  *
  * @param {string|null} buttonsKey resolved by index.js#buildCardModel
  * @param {'de'|'en'} lang
- * @param {{ version?: string|null, replies?: string[], noShip?: boolean, guideHandoff?: {service:string}|null, appStart?: boolean }} [opts] the version the card is about, the prepared answers to its open points, whether a no-remote ready/test card drops its ship buttons (#500), a detected manual web hand-off (#506), and whether to offer "App starten" (#680)
+ * @param {{ version?: string|null, replies?: string[], noShip?: boolean, guideHandoff?: {service:string}|null, appStart?: boolean, readOnly?: boolean, nextStep?: string }} [opts] the version the card is about, the prepared answers to its open points, whether a no-remote ready/test card drops its ship buttons (#500), a detected manual web hand-off (#506), and whether to offer "App starten" (#680)
  * @returns {Array<{ label: string, icon: string, prompt: string, primary?: boolean, tooltip: string }>}
  */
 export function buttonsFor(buttonsKey, lang = "de", opts = {}) {
@@ -270,6 +270,8 @@ export function buttonsFor(buttonsKey, lang = "de", opts = {}) {
       .filter((a) => !(a.onlyOpen && !conclusion))
       .filter((a) => !isPromotePrompt(a.prompt) || semver)
       .filter((a) => !(opts && opts.noShip && isShipPrompt(a.prompt)))
+      // A read-only assignment cannot implement anything: no "Umsetzen" (r6).
+      .filter((a) => !(opts && opts.readOnly && buttonsKey === "analysis" && !a.conclude))
       .map(({ conclude: isConclude, onlyOpen: _onlyOpen, ...a }) => {
         if (isPromotePrompt(a.prompt)) return { ...a, prompt: `${a.prompt} ${semver}` };
         if (isConclude && conclusion) return { ...a, ...concludeButton };
@@ -282,7 +284,7 @@ export function buttonsFor(buttonsKey, lang = "de", opts = {}) {
   // An analysis names its one recommended step: "Umsetzen" alone left the user
   // guessing what a click would start.
   const step = String((opts && opts.nextStep) || "").trim().replace(/^\/+/, "");
-  if (buttonsKey === "analysis" && step && buttons.length) {
+  if (buttonsKey === "analysis" && step && buttons.length && !(opts && opts.readOnly)) {
     const n = NEXT_STEP[lang] || NEXT_STEP.de;
     buttons[0] = { ...buttons[0], label: n.label, prompt: step, tooltip: step.length > 140 ? step.slice(0, 139) + "…" : step };
   }
@@ -418,7 +420,7 @@ export function cardWidgetData(model, repoUrl = "") {
   const nz = (v) => (v ? v : undefined);
   const arr = (a) => (Array.isArray(a) ? a : []);
   const list = (a) => (arr(a).length ? a : undefined);
-  const buttons = buttonsFor(model.buttonsKey, lang, { version: model.promoteVersion, replies: model.replies, noShip: model.noShip, guideHandoff: model.guideHandoff, appStart: model.appStart, nextStep: model.nextStep });
+  const buttons = buttonsFor(model.buttonsKey, lang, { version: model.promoteVersion, replies: model.replies, noShip: model.noShip, guideHandoff: model.guideHandoff, appStart: model.appStart, nextStep: model.nextStep, readOnly: model.readOnly });
   const prNum = model.pipelinePr && model.pipelinePr.number;
   const b = model.budget;
   let bu;
@@ -523,7 +525,7 @@ export function cardWidgetScript(lang = "de") {
 }
 
 /** jsDelivr's GitHub endpoint for this repo, and the client file inside it. */
-export const CARD_CLIENT_CDN = "https://cdn.jsdelivr.net/gh/Jerry0022/dotclaude";
+export const CARD_CLIENT_CDN = "https://cdn.jsdelivr.net/gh/JerryT2T/dotclaude";
 export const CARD_CLIENT_PATH = "plugins/devops/mcp-server/lib/card-widget.client.js";
 
 let pluginVersionCache;

@@ -170,7 +170,7 @@ Runbook: `deep-knowledge/home-backup.md`.
 | Key | Default | Meaning |
 |---|---|---|
 | `enabled` | `false` | A weekly OS job runs `scripts/wip-watch.js run`: un-landed local branches, dirty or broken worktrees, old stashes under the roots → `~/.claude/wip-watch/report.json`, one notification only when something new turned up. Pure node — zero model tokens. |
-| `roots` | `~/IdeaProjects` | Comma-separated folders; each folder and its direct child repos are scanned. |
+| `roots` | empty | Comma-separated folders; each folder and its direct child repos are scanned. Empty: every project Claude Code has worked in on this machine. |
 | `day` | `sun` | Weekday of the run (`mon` … `sun`). |
 | `discardAfterWeeks` | `8` | Dirty worktrees and stashes untouched longer than this get "discard" instead of "secure" as suggestion. |
 

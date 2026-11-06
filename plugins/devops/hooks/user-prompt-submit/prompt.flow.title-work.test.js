@@ -250,6 +250,15 @@ describe("prompt.flow.title-work — title known from the transcript", () => {
     expect(out("🟩 ➜ 🚀 Released Alpha ┃ Login", "<task-notification>\n<status>completed</status>\n</task-notification>")).toBe("");
   });
 
+  test("a cross-session message keeps a finished session's title (#1049)", () => {
+    const peer = '<cross-session-message from="s1">status?</cross-session-message>';
+    for (const cur of ["🟩 ➜ 🚀 Released Alpha ┃ Login", "👉 ➜ 📦 Ready ┃ Login", "👉 ➜ 🧭 Concept ┃ Login"]) {
+      expect(out(cur, peer), cur).toBe("");
+    }
+    // a typed prompt still marks work
+    expect(out("🟩 ➜ 🚀 Released Alpha ┃ Login", "status?")).toContain(WORK_PREFIX);
+  });
+
   test("title unknown (no entry, no transcript) → the get_session fallback", () => {
     // 0.8.0: a transcript without any earlier prompt is a fresh session → the short fallback.
     expect(out(null)).toBe(freshInstruction(WORK_PREFIX));

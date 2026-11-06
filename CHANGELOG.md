@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.357.0] — 2026-11-06
+
+### Added
+- Do-learn: every learning brings proof by kind, a regression test for a code defect or an eval case for a model-behaviour rule. An eval case counts as a solution in its own right.
+- Do-learn: issues carry a mandatory proof block, and a repeated symptom links its predecessors and asks for the shared cause.
+- Do-learn: routing by activity. The session's own repo is implemented, also in a read-only session; another repo active in the last hour offers a new session or hand-off; anything else becomes an issue.
+- Evals: a ship gate runs the learned cases of the skills or paths a diff touches, plus new do-learn cases for branches A, B and E.
+- Completion card: `readOnly` removes the Umsetzen button on a read-only assignment.
+
+### Changed
+- Do-learn finds other projects from Claude Code's own project records instead of a fixed folder.
+- WIP watch: without configured roots it scans every project Claude Code has worked in, instead of a personal default folder.
+- Marketplace owner and card CDN follow the rename to JerryT2T/dotclaude.
+
 ## [0.356.0] — 2026-11-06
 
 ### Added
