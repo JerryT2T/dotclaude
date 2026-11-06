@@ -166,11 +166,8 @@ must see their own language. The locale hint is authoritative.
 | `reality.evidence`             | Landed on the default branch   | Auf dem Default-Branch gelandet |
 | `reality.recommendation`       | Recommendation                 | Empfehlung |
 | `final.phase`                  | Close-out                      | Abschluss |
-| `final.done_what`              | What was done                  | Was getan wurde |
 | `final.results`                | What came out                  | Was kam raus |
 | `final.holds`                  | What it withstands             | Was es aushält |
-| `final.depth`                  | Test depth                     | Prüftiefe |
-| `final.level_of`               | level {n} of 7                 | Stufe {n} von 7 |
 | `final.level_code`                | Code check                     | Code-Check |
 | `final.level_dry`                | Dry run                        | Trockentest |
 | `final.level_interplay`                | Interplay                      | Zusammenspiel |
@@ -178,15 +175,16 @@ must see their own language. The locale hint is authoritative.
 | `final.level_prod`                | Prod build checked             | Prod-Build geprüft |
 | `final.level_live`                | Tested live                    | Live vertestet |
 | `final.level_accept`                | Accepted by you                | Von dir abgenommen |
-| `final.target_met`             | target met                     | Ziel erreicht |
-| `final.target_short`           | {n} short of the target        | {n} fehlen bis Ziel |
+| `final.depth_done`             | Last passed                    | Zuletzt bestanden |
+| `final.depth_next`             | Not done yet                   | Noch nicht gemacht |
+| `final.holds_hint`             | bar = how far the requirement is met | Balken = wie weit die Anforderung erfüllt ist |
 | `final.before`                 | Before                         | Vorher |
 | `final.after`                  | After                          | Nachher |
 | `final.try_it`                 | Try it yourself                | Selbst ausprobieren |
 | `final.open_live`              | Open the live version          | Live-Version öffnen |
 | `final.banner_done`            | Closed                         | Abgeschlossen |
 | `final.banner_live`            | live as {version}              | live als {version} |
-| `final.funde_fold`             | {n} findings on the way        | {n} Funde unterwegs |
+| `final.funde_fold`             | findings on the way            | Funde unterwegs |
 | `final.dev_fold`               | For developers                 | Für Entwickler |
 | `final.fund_what`              | What                           | Was |
 | `final.fund_where`             | Where                          | Wo |
@@ -194,28 +192,25 @@ must see their own language. The locale hint is authoritative.
 | `final.route_issue`            | Issue                          | Issue |
 | `final.route_implement`        | Implement now                  | Jetzt umsetzen |
 | `final.route_implement_short`  | Now                            | Jetzt |
-| `final.route_ignore`           | Drop                           | Ignorieren |
+| `final.route_ignore`           | Leave out                      | Weglassen |
+| `final.route_hint`             | ↻ Tap to switch: ⚡ Now → 📌 Issue → Leave out. The name opens it in the report. | ↻ Tippen wechselt: ⚡ Jetzt → 📌 Issue → Weglassen. Der Name zeigt den Fund im Bericht. |
+| `final.funde_more`             | +{n} more                      | +{n} weitere |
 | `final.route_implement_hint`   | Built in this close-out, before any ship. | Wird in diesem Abschluss gebaut, vor dem Shippen. |
 | `final.route_issue_hint`       | Filed as a GitHub issue for later. Nothing is built now. | Wird als GitHub-Issue für später angelegt. Jetzt wird nichts gebaut. |
 | `final.route_ignore_hint`      | Ends with the concept. Nothing is filed or built. | Fällt mit dem Concept weg. Nichts wird angelegt oder gebaut. |
-| `final.route_recommended`      | Recommended:                   | Empfohlen: |
-| `final.origin_deferred`        | deferred by you                | bewusst vertagt |
-| `final.origin_found`           | found on the way               | unterwegs gefunden |
-| `final.sammel_row`             | {n} more findings → one collected issue | {n} weitere Funde → ein Sammel-Issue |
-| `final.sammel_title`           | [CHORE] Collected findings ({n}) | [CHORE] Gesammelte Funde ({n}) |
-| `final.sheet_close`            | Close without changing         | Ohne Änderung schließen |
 | `final.group_decide`           | You decide                     | Du entscheidest |
+| `final.group_todo`             | Left for you                   | Bleibt für dich |
 | `final.group_tests`            | You test                       | Du testest |
 | `final.group_handoffs`         | You do afterwards              | Du machst danach |
-| `final.group_claude`           | Claude does on the click       | Claude macht beim Klick |
-| `final.mode_skip`              | Not needed                     | Muss nicht |
+| `final.mode_skip`              | Struck                         | Gestrichen |
 | `final.mode_guide`             | With guidance                  | Mit Anleitung |
-| `final.mode_self`              | I'll do it                     | Mach ich selbst |
+| `final.mode_self`              | On the card                    | Auf der Card |
+| `final.guide_toggle`           | Guide me                       | Führ mich |
+| `final.todo_drop`              | Strike                         | Streichen |
+| `final.todo_restore`           | Bring back                     | Zurückholen |
 | `final.guide_web`              | Guidance: 🧭 web guide          | Anleitung: 🧭 Web-Guide |
 | `final.guide_desktop`          | Guidance: 🖥 desktop help       | Anleitung: 🖥 Desktop-Hilfe |
 | `final.guide_inline`           | Guidance: 📄 written steps in the chat | Anleitung: 📄 Schritte im Chat |
-| `final.crit_low`               | low                            | niedrig |
-| `final.crit_mid`               | medium                         | mittel |
 | `final.crit_high`              | high                           | hoch |
 | `final.todo_more`              | +{n} more in the report        | +{n} weitere im Bericht |
 | `final.plan_implement`         | {n} × implement now            | {n} × jetzt umsetzen |
@@ -240,11 +235,27 @@ must see their own language. The locale hint is authoritative.
 | `final.closeout_noship_go`     | Close out only, don't ship     | Nur abschließen, nicht shippen |
 | `final.closeout_ship_go_hint`  | One click, all of it: findings, then the full ship pipeline (build, version bump, release, merge), then this page. | Ein Klick, alles davon: die Funde, dann die komplette Ship-Pipeline (Build, Version-Bump, Release, Merge), dann diese Seite. |
 | `final.closeout_noship_go_hint` | One click: findings and this page — no release. You can ship later from the chat. | Ein Klick: die Funde und diese Seite — kein Release. Shippen geht später jederzeit im Chat. |
+| `final.refine_go`              | Rework                         | Nachbessern |
+| `final.refine_go_hint`         | Your notes get built and this report is updated. No release, nothing closes. | Deine Notizen werden umgesetzt und dieser Bericht aktualisiert. Kein Release, nichts wird abgeschlossen. |
+| `final.refine_empty`           | Write a note first: 💬 or Ctrl + click on the report. | Schreib zuerst eine Notiz: 💬 oder Strg + Klick auf den Bericht. |
 | `final.closeout_go_offline`    | · will be queued               | · wird zwischengespeichert |
 | `final.closeout_running` | Working through it … | Wird abgearbeitet … |
 | `final.closeout_done_close`    | Concept closed · close         | Concept abgeschlossen · schließen |
 | `final.closeout_stalled` | Delivered, but nothing is answering any more. Nothing more can be sent from this page — check the chat. | Übermittelt, aber es kommt keine Antwort mehr. Von dieser Seite kann nichts mehr gesendet werden — schau in den Chat. |
 | `final.closeout_stalled_short` | Delivered · no answer any more | Übermittelt · keine Antwort mehr |
+| `final.fin_shipped`            | Done.                          | Fertig. |
+| `final.fin_closed`             | Closed.                        | Abgeschlossen. |
+| `final.fin_partial`            | Almost done.                   | Fast fertig. |
+| `final.fin_blocked`            | Ship blocked.                  | Ship blockiert. |
+| `final.fin_blocked_sub`        | The concept stays open.        | Das Concept bleibt offen. |
+| `final.fin_lost`               | Connection lost.               | Verbindung weg. |
+| `final.fin_lost_sub`           | The result is in the chat.     | Das Ergebnis steht im Chat. |
+| `final.fin_miss`               | Not reached                    | Nicht erreicht |
+| `final.fin_left`               | Left for you                   | Bleibt bei dir |
+| `final.fin_next`               | Next, in the chat              | Weiter im Chat |
+| `final.fin_back`               | To the report                  | Zum Bericht |
+| `final.fin_tab`                | You can close this tab.        | Den Tab kannst du schließen. |
+| `final.fin_nothing`            | Nothing left to do. You can close this tab. | Nichts mehr zu tun. Den Tab kannst du schließen. |
 | `proto.feedback_title` | Notes | Notizen |
 | `proto.feedback_toggle` | Open notes | Notizen öffnen |
 | `proto.feedback_general`       | General notes on this concept  | Allgemeine Notizen zum Konzept |

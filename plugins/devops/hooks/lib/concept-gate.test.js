@@ -998,17 +998,37 @@ describe("final report (templates-final-report.md, validation-gate.md 33b / 37b)
     expect(reason).toMatch(/breaks the close-out authoring rules/);
   });
 
-  test("a visible label over 48 characters blocks (Fund, 🧪, 👉); 48 passes (33c)", () => {
-    const L48 = "x".repeat(48), L49 = "x".repeat(49);
+  test("a Fund label over 28 and a to-do over 48 characters block (33c)", () => {
     const fund = (l) => FUND.replace(">A</span>", ">" + l + "</span>");
     const kinds = (body) => evaluate("docs/concepts/x.html", report(body)).finalReport.map((i) => i.kind);
-    expect(kinds(`<details data-open-questions><ul>${fund(L48)}</ul></details>`)).toEqual([]);
-    expect(kinds(`<details data-open-questions><ul>${fund(L49)}</ul></details>`)).toEqual(["final-report-label-length"]);
+    expect(kinds(`<details data-open-questions><ul>${fund("x".repeat(28))}</ul></details>`)).toEqual([]);
+    expect(kinds(`<details data-open-questions><ul>${fund("x".repeat(29))}</ul></details>`)).toEqual(["final-report-label-length"]);
+    const L48 = "x".repeat(48), L49 = "x".repeat(49);
     const li = (l, a) => `<section data-${a} hidden><ul><li data-crit="mid" data-guide=""><span class="todo-text">${l}</span> <small>lange Details sind erlaubt, weil nur der Text zählt</small></li></ul></section>`;
     expect(kinds(li(L48, "tests"))).toEqual([]);
     expect(kinds(li(L49, "tests"))).toEqual(["final-report-label-length"]);
     expect(kinds(li(L49, "handoffs"))).toEqual(["final-report-label-length"]);
     expect(kinds(`<section data-tests hidden><ul><li>${L49}</li></ul></section>`)).toEqual(["final-report-label-length"]);
+  });
+
+  test("the one-screen budget blocks long texts, extra rows and invented cards (33d)", () => {
+    const kinds = (body) => findFinalReportIssues(report(body)).map((i) => i.kind);
+    const wins = (n, len = 10) => `<ul class="fr-wins">${`<li><span>${"x".repeat(len)}</span></li>`.repeat(n)}</ul>`;
+    const meter = (attrs = 'data-grade="full"') => `<div class="fr-meter" ${attrs}><span class="fr-meter-name">a</span></div>`;
+    expect(kinds(`<p class="fr-sentence">${"x".repeat(170)}</p>${wins(3, 90)}${meter().repeat(3)}`)).toEqual([]);
+    expect(kinds(`<p class="fr-sentence">${"x".repeat(171)}</p>`)).toEqual(["final-report-budget"]);
+    expect(kinds(wins(4))).toEqual(["final-report-budget"]);
+    expect(kinds(wins(1, 91))).toEqual(["final-report-budget"]);
+    expect(kinds(`<p class="fr-try-auth">${"x".repeat(111)}</p>`)).toEqual(["final-report-budget"]);
+    expect(kinds(meter().repeat(4))).toEqual(["final-report-budget"]);
+    expect(kinds(meter('style="--fr-fill: 80%"'))).toEqual(["final-report-budget"]);
+    expect(kinds('<div class="fr-card"><p>Nachtrag</p></div>')).toEqual(["final-report-budget"]);
+    expect(kinds('<p class="fr-ladder-foot">x</p>')).toEqual(["final-report-budget"]);
+  });
+
+  test("a not-built item is an admissible Fund", () => {
+    const gap = FUND.replace('data-oq-origin="found"', 'data-oq-origin="shortfall"');
+    expect(findFinalReportIssues(report(`<details data-open-questions><ul>${gap}</ul></details>`))).toEqual([]);
   });
 
   test("a Fund without an admissible origin blocks; a routed one is exempt", () => {

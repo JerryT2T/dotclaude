@@ -530,3 +530,36 @@ describe.skipIf(!PY)("concept-server no-new-round gate — /reset needs a /reloa
     }
   }, 30000);
 });
+
+describe.skipIf(!PY)("concept-server close-out result for the Fertig-Seite", () => {
+  test("/status finished is echoed to the tab, junk is dropped, /closed-ack reports the tab has it", async () => {
+    const port = PORT + 9;
+    const url = (p) => `http://127.0.0.1:${port}${p}`;
+    const proc = spawn(PY, [SERVER, String(port), "--store", storeFor(port)], { stdio: ["ignore", "pipe", "pipe"] });
+    const post = (p, body) => fetch(url(p), { method: "POST", headers: { "Content-Type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body) });
+    const decisions = async () => (await fetch(url("/decisions"))).json();
+    try {
+      const deadline = Date.now() + 10000;
+      while (Date.now() < deadline) {
+        try { if ((await fetch(url("/reload"))).ok) break; } catch { /* not up yet */ }
+        await new Promise(r => setTimeout(r, 150));
+      }
+      expect(await (await fetch(url("/closed-ack"))).json()).toEqual({ ack: false });
+
+      const finished = { state: "shipped", sub: "v1.2.0", links: [{ label: "PR", href: "https://x.test/1" }], next: ["Promote"] };
+      expect((await post("/status", { phase: "closed", finished })).ok).toBe(true);
+      expect(await decisions()).toMatchObject({ _phase: "closed", _finished: finished });
+
+      await post("/status", { phase: "closed", finished: "not an object" });
+      expect((await decisions())._finished ?? null).toBeNull();
+      await post("/status", { phase: "closed", finished: { state: "closed", sub: "x".repeat(9000) } });
+      expect((await decisions())._finished ?? null).toBeNull();
+
+      // The page answers without a body: the wait loop in step5-finalize.md § D ends on it.
+      expect((await post("/closed-ack")).ok).toBe(true);
+      expect(await (await fetch(url("/closed-ack"))).json()).toEqual({ ack: true });
+    } finally {
+      await stopServer(proc);
+    }
+  }, 30000);
+});

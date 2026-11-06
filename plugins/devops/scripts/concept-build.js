@@ -753,12 +753,9 @@ function build(dir, opts = {}) {
  * the first build; the gate blocks a page that still carries them.
  */
 const REPORT_SKELETON = `<section id="iter-1" data-iteration="1" data-iteration-template="free" data-final-report data-active>
-  <div class="iteration-intro">
-    <h2>{{iteration.final_tab}}</h2>
-    <p><!-- TODO: one sentence — what was done --></p>
-  </div>
+  <p class="fr-sentence"><!-- TODO: one sentence — what was done --></p>
 
-  <!-- TODO: before/after pair, results, resilience, test ladder, findings (data-oq-origin items), dev fold — see templates-final-report.md -->
+  <!-- TODO: results + picture, requirement bars, test depth, findings (data-oq-origin items), dev fold — see templates-final-report.md -->
 </section>
 `;
 

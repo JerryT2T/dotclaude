@@ -61,8 +61,14 @@ describe("post.concept.title", () => {
     activate();
     writeState({ submitted: false });
     expect(run(`${CONCEPT_PREFIX}Header`)).toBeNull();
-    writeState({ processed_at: "2026-10-28T12:00:00Z" });
-    expect(run(`${CONCEPT_PREFIX}Header`)).toBeNull();
+  });
+
+  // processed_at is the LAST /reset. A new submission does not clear it, and the
+  // gate on it left 👉 in the sidebar for every round after the first.
+  test("fires on a later round, whose state still carries the previous reset", () => {
+    activate();
+    writeState({ version: 2, processed_at: "2026-10-28T12:00:00Z" });
+    expect(run(`${CONCEPT_PREFIX}Header`)).not.toBeNull();
   });
 
   // #956: the waker's /pending=true poll stamps picked_up_at before the wake-up

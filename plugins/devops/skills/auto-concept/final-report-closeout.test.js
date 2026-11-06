@@ -82,20 +82,17 @@ describe("final-report close-out sheet", () => {
     expect(rule.slice(0, 200)).toContain("background: var(--warning-color");
   });
 
-  test("the inbox has the three groups in order, then the 🤖 group under the divider", () => {
+  test("the inbox has its two groups in order, then the plan and buttons under the divider", () => {
     const at = (s) => htmlSource.indexOf(s);
     const order = [
       'data-closeout-group="decide"',
-      'data-closeout-group="tests"',
-      'data-closeout-group="handoffs"',
+      'data-closeout-group="todo"',
       'class="closeout-foot"',
-      "{{final.group_claude}}",
       "data-dispose-summary",
       'id="closeout-ship"',
       'id="closeout-noship"',
     ];
     for (let i = 1; i < order.length; i++) expect(at(order[i]), order[i]).toBeGreaterThan(at(order[i - 1]));
-    expect(htmlSource).toContain("<span aria-hidden=\"true\">👉</span> {{final.group_handoffs}}");
     expect(htmlSource).not.toContain("✋");
     expect(jsSource).toContain("const CLOSEOUT_GROUP_MAX = 3;");
   });
@@ -141,7 +138,6 @@ describe("final-report close-out sheet", () => {
 
   test("no choice on the sheet is restored from storage", () => {
     expect(jsSource).toContain("const _closeoutChoices = { route: {}, mode: {} };");
-    expect(jsSource).toContain("input.dataset.noPersist = ''");
     expect(jsSource).toContain("if (el.dataset.noPersist !== undefined) return;");
     const block = md.slice(md.indexOf('// --- Final-report close-out sheet'), md.indexOf("// --- Offline Submit Queue ---"));
     expect(block).not.toMatch(/\b(localStorage|sessionStorage)\s*\./);

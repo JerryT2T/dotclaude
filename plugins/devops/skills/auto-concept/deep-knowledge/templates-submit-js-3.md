@@ -87,6 +87,67 @@ async function submitFinalize(shipRun) {
   }
 }
 
+// "🔧 Nachbessern": the result does not fit yet. The user's notes on the report
+// (💬 dock, Ctrl + click pins) go to Claude as one `refine` submission; Claude
+// builds them and rewrites this report in place, so the sheet comes back armed
+// (step5-finalize.md § Nachbessern). It never ships and never closes anything.
+// Without a note there is nothing to act on: the dock opens instead.
+async function submitRefine() {
+  const active = finalReportSection();
+  const sheet = document.getElementById('closeout-sheet');
+  if (!active || !sheet || sheet.dataset.frozen === 'true') return;
+  const data = typeof collectDecisions === 'function' ? collectDecisions('refine') : {};
+  const pins = (typeof window.documentPinsPayload === 'function') ? window.documentPinsPayload(active) : [];
+  const c = data.comments || {};
+  const hasNote = !!((c.general && c.general.text) || (c.items && c.items.length) || pins.length);
+  if (!hasNote) {
+    document.querySelector('.feedback-fab')?.click();
+    if (typeof showSubmitWarning === 'function') showSubmitWarning('{{final.refine_empty}}');
+    return;
+  }
+  const payload = Object.assign({}, data, {
+    submitted: true,
+    action: 'refine',
+    submission_id: newSubmissionId(),
+    iteration: active.dataset.iteration,
+    userPins: pins
+  });
+  setCloseoutFrozen(true);
+  setCloseoutButtonState('running', 'fix');
+  document.getElementById('concept-decisions')?.replaceChildren(document.createTextNode(JSON.stringify(payload)));
+  document.body.classList.add('concept-submitted', 'content-dimmed');
+  showContentDimmer();
+  _submittedAt = Date.now();
+  _submittedReloadCounter = _bootReloadCounter;
+  _submittedAction = 'refine';
+  let durable = false;
+  let transportFailed = false;
+  try {
+    const res = await fetch('/decisions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const body = res.ok ? await res.json().catch(() => ({})) : {};
+    durable = res.ok && body.durable !== false;
+  } catch (e) {
+    transportFailed = true;
+  }
+  if (durable) return;
+  _guardedSetItem(STORAGE_KEY + '-pending', JSON.stringify(payload));
+  if (transportFailed) {
+    if (typeof showSubmitWarning === 'function') showSubmitWarning('{{panel.submit_queued_offline}}');
+    return;
+  }
+  restoreCloseoutToReady();
+  document.body.classList.remove('concept-submitted', 'content-dimmed');
+  hideContentDimmer();
+  _submittedAt = 0;
+  _submittedReloadCounter = null;
+  _submittedAction = null;
+  if (typeof showSubmitWarning === 'function') showSubmitWarning('{{panel.submit_not_durable}}');
+}
+
 // A finalize takes minutes — issues, follow-ups built by agents, a release.
 // If the tab is reloaded while it runs, the sheet would come back fully
 // re-armed, and a second click would carry a NEW submission_id that the
@@ -100,24 +161,27 @@ async function restoreInFlightCloseout() {
     const res = await fetch('/decisions', { cache: 'no-store' });
     if (!res.ok) return;
     const data = await res.json();
-    // A reload between /status closed and /shutdown (#932).
-    if (data && data._phase === 'closed') { markCloseoutDone(); return; }
+    // A reload between /status closed and /shutdown (#932), or after a blocked ship.
+    if (data && (data._phase === 'closed' || data._phase === 'ship-blocked')) {
+      noteCloseoutPhase(data);
+      if (data._phase === 'closed') return;
+    }
     // Processed means `submitted: false` — /reset replaces the payload. The
     // `_processed_at` stamp is NOT that signal: the bridge keeps the stamp of
     // the LAST /reset across new submissions.
-    if (!data || data.submitted !== true || data.action !== 'finalize') return;
+    if (!data || data.submitted !== true || (data.action !== 'finalize' && data.action !== 'refine')) return;
     // A payload that names another round is not this sheet's (older pages
     // sent none — kept as before).
     const live = finalReportSection();
     if (data.iteration != null && String(data.iteration) !== String(live.dataset.iteration)) return;
     setCloseoutFrozen(true);
-    setCloseoutButtonState('running', data.ship && data.ship.run ? 'yes' : 'no');
+    setCloseoutButtonState('running', data.action === 'refine' ? 'fix' : (data.ship && data.ship.run ? 'yes' : 'no'));
     // Same veil submitFinalize() put up — a reload must not lift it.
     document.body.classList.add('concept-submitted', 'content-dimmed');
     showContentDimmer();
     _submittedAt = Date.now();
     _submittedReloadCounter = _bootReloadCounter;
-    _submittedAction = 'finalize';
+    _submittedAction = data.action;
     if (typeof renderPanelStatus === 'function') renderPanelStatus();
   } catch (e) { /* bridge unreachable — leave the sheet as the DOM has it */ }
 }
@@ -156,26 +220,133 @@ function markCloseoutDone() {
   if (typeof renderPanelStatus === 'function') renderPanelStatus();
 }
 function noteCloseoutPhase(data) {
-  if (data && data._phase === 'closed') markCloseoutDone();
+  if (!data) return;
+  if (data._phase === 'closed') {
+    markCloseoutDone();
+    showFinished(data._finished || { state: 'closed' });
+    // Tells Claude the tab has the result, so the bridge may stop now.
+    fetch('/closed-ack', { method: 'POST' }).catch(() => {});
+  } else if (data._phase === 'ship-blocked') {
+    showFinished(data._finished || { state: 'blocked' });
+  }
+}
+
+// --- Fertig-Seite (§ Final Report Panel → Fertig-Seite) ---
+// The result comes from Claude (`/status` `finished`), so the page never
+// concludes success from a silent bridge. It only renders; every text arrives
+// as data and goes through textContent. A real link is a link; what the
+// completion card offers as a button needs the chat, so it is a labelled hint.
+const FIN_COPY = {
+  shipped: { h: '{{final.fin_shipped}}', d: 'M29 49l13 13 25-27' },
+  closed:  { h: '{{final.fin_closed}}',  d: 'M29 49l13 13 25-27' },
+  partial: { h: '{{final.fin_partial}}', d: 'M48 26v28M48 68v2' },
+  blocked: { h: '{{final.fin_blocked}}', d: 'M30 48h36', s: '{{final.fin_blocked_sub}}' },
+  lost:    { h: '{{final.fin_lost}}',    d: 'M30 48h36', s: '{{final.fin_lost_sub}}' }
+};
+let _finDismissed = '';
+function finList(cls, items, build) {
+  const ul = closeoutEl('ul', cls);
+  items.forEach(it => ul.appendChild(build(it)));
+  return ul;
+}
+function showFinished(raw) {
+  const f = raw && typeof raw === 'object' ? raw : {};
+  const state = FIN_COPY[f.state] ? f.state : 'closed';
+  if (_finDismissed === state) return;
+  const sig = JSON.stringify(f);
+  let root = document.querySelector('.fin');
+  if (root && root.dataset.sig === sig) return;
+  if (root) root.remove();
+  const copy = FIN_COPY[state];
+  root = closeoutEl('div', 'fin');
+  root.dataset.fin = state;
+  root.dataset.sig = sig;
+  const inner = closeoutEl('div', 'fin-in');
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('class', 'fin-ring');
+  svg.setAttribute('viewBox', '0 0 96 96');
+  svg.setAttribute('aria-hidden', 'true');
+  const circle = document.createElementNS(NS, 'circle');
+  circle.setAttribute('cx', '48'); circle.setAttribute('cy', '48'); circle.setAttribute('r', '44');
+  const path = document.createElementNS(NS, 'path');
+  path.setAttribute('pathLength', '1');
+  path.setAttribute('d', copy.d);
+  svg.append(circle, path);
+  inner.appendChild(svg);
+  const h = closeoutEl('h1', 'fin-h', String(f.headline || copy.h));
+  h.tabIndex = -1;
+  inner.appendChild(h);
+  const line = String(f.sub || f.reason || copy.s || '');
+  if (line) inner.appendChild(closeoutEl('p', 'fin-s', line));
+  const texts = (v) => (Array.isArray(v) ? v.filter(x => typeof x === 'string' && x) : []);
+  const misses = texts(f.misses);
+  if (misses.length) {
+    const shown = misses.slice(0, 3).map(m => '{{final.fin_miss}}: ' + m);
+    if (misses.length > 3) shown.push('+' + (misses.length - 3));
+    inner.appendChild(finList('fin-misses', shown, t => closeoutEl('li', '', t)));
+  }
+  const links = (Array.isArray(f.links) ? f.links : []).filter(l => l && /^https?:\/\//.test(String(l.href)) && l.label);
+  if (links.length) {
+    inner.appendChild(finList('fin-links', links, l => {
+      const li = closeoutEl('li');
+      const a = closeoutEl('a', '', String(l.label));
+      a.href = String(l.href);
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      li.appendChild(a);
+      return li;
+    }));
+  }
+  const left = texts(f.left);
+  if (left.length) {
+    inner.appendChild(closeoutEl('p', 'fin-l', '{{final.fin_left}}'));
+    inner.appendChild(finList('fin-left', left.slice(0, 3), t => closeoutEl('li', '', t)));
+  }
+  const next = texts(f.next);
+  if (next.length) {
+    inner.appendChild(closeoutEl('p', 'fin-l', '{{final.fin_next}}'));
+    inner.appendChild(finList('fin-next', next, t => closeoutEl('li', '', t)));
+  }
+  if (state === 'blocked' || state === 'lost') {
+    const back = closeoutEl('button', 'fin-back', '{{final.fin_back}}');
+    back.type = 'button';
+    back.addEventListener('click', () => {
+      _finDismissed = state;
+      root.remove();
+      document.body.classList.remove('fin-on');
+    });
+    inner.appendChild(back);
+  } else {
+    inner.appendChild(closeoutEl('p', 'fin-n', (next.length || left.length) ? '{{final.fin_tab}}' : '{{final.fin_nothing}}'));
+  }
+  root.appendChild(inner);
+  document.body.appendChild(root);
+  document.body.classList.add('fin-on');
+  h.focus({ preventScroll: true });
+}
+// A finalize whose bridge went away without a result: never green, never a
+// spinner forever. Connection down for a minute → the neutral "look in the
+// chat" state; a result that still arrives replaces it.
+let _finLostTicks = 0;
+function watchFinalizeLost() {
+  const conn = document.getElementById('connection-status');
+  const running = _submittedAction === 'finalize' && !!_submittedAt;
+  _finLostTicks = running && conn && conn.dataset.state === 'disconnected' ? _finLostTicks + 1 : 0;
+  if (_finLostTicks >= 4) showFinished({ state: 'lost' });
 }
 
 // No "Runden ansehen" link on the sheet: earlier rounds are one click away
 // through the panel head's 🕘 rounds chip.
 
-// A 🧪/👉 choice is stored, then the sheet re-syncs (the plan line, the
-// guidance-kind line). The disposition radios and moveTo only re-render the
-// 🧹 line. A frozen sheet describes a payload already on its way — nothing
-// on screen may re-render against newer input.
+// The disposition radios and moveTo only re-render the 🧹 line. A frozen sheet
+// describes a payload already on its way — nothing on screen may re-render
+// against newer input.
 document.addEventListener('change', e => {
   const t = e.target;
   if (!t || !t.matches) return;
   if (document.getElementById('closeout-sheet')?.dataset.frozen === 'true') return;
-  if (t.matches('#closeout-sheet input[data-todo-mode]')) {
-    if (t.checked) _closeoutChoices.mode[t.dataset.todoMode] = t.value;
-    refreshCloseout();
-  } else if (t.matches('input[name="dispose-mode"]')) {
-    renderDisposeLine();
-  }
+  if (t.matches('input[name="dispose-mode"]')) renderDisposeLine();
 });
 document.addEventListener('input', e => {
   if (e.target && e.target.id === 'dispose-move-to') renderDisposeLine();
@@ -188,23 +359,25 @@ function closeoutSheetClick(e) {
   const go = e.target.closest('[data-closeout-go]');
   if (go) {
     if (sheet.dataset.frozen === 'true' || sheet.dataset.finalizeState) return;
-    submitFinalize(go.dataset.closeoutGo === 'yes');
+    if (go.dataset.closeoutGo === 'fix') submitRefine();
+    else submitFinalize(go.dataset.closeoutGo === 'yes');
     return;
   }
   if (e.target.closest('#closeout-close')) { window.closePanel?.(); return; }
   if (sheet.dataset.frozen === 'true') return;
-  const tile = e.target.closest('[data-route-tile]');
-  if (tile) { chooseRoute(tile.dataset.routeTile); return; }
-  if (e.target.closest('[data-route-close]')) { closeRouteSheet(); return; }
-  const row = e.target.closest('[data-route-open]');
-  if (row) { openRouteSheet(row.dataset.routeOpen); return; }
-  if (e.target.closest('#closeout-dispose-edit')) toggleDisposeEdit();
-}
-function closeoutSheetKeydown(e) {
-  if (e.key === 'Escape' && _routeSheetKey != null) {
-    e.stopPropagation();
-    closeRouteSheet();
+  const pick = (attr) => e.target.closest('[data-' + attr + ']');
+  let hit;
+  if ((hit = pick('route-cycle'))) { cycleRoute(hit.dataset.routeCycle); return; }
+  if ((hit = pick('route-jump'))) { jumpToFund(hit.dataset.routeJump); return; }
+  if ((hit = pick('todo-guide'))) { toggleTodoGuide(hit.dataset.todoGuide); return; }
+  if ((hit = pick('todo-drop'))) { toggleTodoDrop(hit.dataset.todoDrop); return; }
+  if (e.target.closest('#closeout-decide-more')) {
+    _decideExpanded = true;
+    syncDecideRows();
+    document.querySelectorAll('#closeout-decide-list [data-route-row] [data-route-pill]')[CLOSEOUT_GROUP_MAX]?.focus();
+    return;
   }
+  if (e.target.closest('#closeout-dispose-edit')) toggleDisposeEdit();
 }
 // Wired on DOM-ready, not at parse time: this block is copied verbatim into
 // generated pages, and one whose script ends up before the markup would
@@ -213,9 +386,16 @@ function closeoutSheetKeydown(e) {
 function wireCloseout() {
   const sheet = document.getElementById('closeout-sheet');
   sheet?.addEventListener('click', closeoutSheetClick);
-  sheet?.addEventListener('keydown', closeoutSheetKeydown, true);
   refreshCloseout({ reset: true });
   restoreInFlightCloseout();
+  // A kept page reloaded after its close-out: Claude stamped the result on it.
+  const done = finalReportSection();
+  if (done && done.hasAttribute('data-closed')) {
+    let f = { state: 'closed' };
+    try { f = JSON.parse(done.dataset.finished || '') || f; } catch (e) { /* keep the neutral default */ }
+    showFinished(f);
+  }
+  setInterval(watchFinalizeLost, 15000);
 }
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', wireCloseout);

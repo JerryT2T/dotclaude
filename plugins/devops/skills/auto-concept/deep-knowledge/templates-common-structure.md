@@ -282,15 +282,14 @@
            data-final-report. No iterate/implement submit, no status line, no
            TOC, no journey row — the panel body belongs to the CLOSE-OUT
            SHEET, a to-do inbox (§ Final Report Panel):
-             🧭 Du entscheidest   the Funde, pre-selected route + reason chip,
-                                  a tap opens the bottom sheet
-             🧪 Du testest        what Claude could not verify, 3-way choice
-             👉 Du machst danach  the manual hand-offs, 3-way choice
-           each at most three rows (more Funde → one Sammel-Issue row). Under
-           the divider: the 🤖 group (plan line + the disposition as one
-           editable line) and the TWO buttons that are the ship answer — both
-           submit `action: "finalize"` (ship.run true / false) and then the
-           clicked one becomes the status of that submission. -->
+             🧭 Du entscheidest   the Funde, one line each: the name jumps to
+                                  the Fund in the report, the pill cycles the route
+             Bleibt für dich      🧪 and 👉 in one list: "Führ mich" and ✕
+           Under the divider: the plan line, the disposition as one quiet line,
+           the TWO buttons that are the ship answer — both submit
+           `action: "finalize"` (ship.run true / false), then the clicked one
+           becomes the status of that submission — and "🔧 Nachbessern"
+           (`action: "refine"`). -->
       <div id="panel-final-report" style="display: none;">
         <!-- Every data-label-* carries a localised string into the JS; the JS
              itself never hard-codes user-facing text. -->
@@ -299,19 +298,22 @@
              data-label-route-implement-short="{{final.route_implement_short}}"
              data-label-route-issue="{{final.route_issue}}"
              data-label-route-ignore="{{final.route_ignore}}"
-             data-label-route-recommended="{{final.route_recommended}}"
-             data-label-origin-deferred="{{final.origin_deferred}}"
-             data-label-origin-found="{{final.origin_found}}"
-             data-label-sammel-row="{{final.sammel_row}}"
-             data-label-sammel-title="{{final.sammel_title}}"
+             data-label-route-implement-hint="{{final.route_implement_hint}}"
+             data-label-route-issue-hint="{{final.route_issue_hint}}"
+             data-label-route-ignore-hint="{{final.route_ignore_hint}}"
+             data-label-route-hint="{{final.route_hint}}"
+             data-label-funde-more="{{final.funde_more}}"
              data-label-mode-skip="{{final.mode_skip}}"
              data-label-mode-guide="{{final.mode_guide}}"
              data-label-mode-self="{{final.mode_self}}"
+             data-label-guide-toggle="{{final.guide_toggle}}"
              data-label-guide-web="{{final.guide_web}}"
              data-label-guide-desktop="{{final.guide_desktop}}"
              data-label-guide-inline="{{final.guide_inline}}"
-             data-label-crit-low="{{final.crit_low}}"
-             data-label-crit-mid="{{final.crit_mid}}"
+             data-label-todo-drop="{{final.todo_drop}}"
+             data-label-todo-restore="{{final.todo_restore}}"
+             data-label-group-tests="{{final.group_tests}}"
+             data-label-group-handoffs="{{final.group_handoffs}}"
              data-label-crit-high="{{final.crit_high}}"
              data-label-todo-more="{{final.todo_more}}"
              data-label-plan-implement="{{final.plan_implement}}"
@@ -326,50 +328,20 @@
             <section class="closeout-group" data-closeout-group="decide" hidden>
               <h3 class="closeout-gh"><span aria-hidden="true">🧭</span> {{final.group_decide}} <em data-closeout-count></em></h3>
               <div class="closeout-list" id="closeout-decide-list"></div>
+              <button type="button" class="link-btn closeout-more-btn" id="closeout-decide-more" hidden></button>
+              <p class="closeout-route-hint" id="closeout-route-hint" hidden>{{final.route_hint}}</p>
             </section>
-            <section class="closeout-group" data-closeout-group="tests" hidden>
-              <h3 class="closeout-gh"><span aria-hidden="true">🧪</span> {{final.group_tests}} <em data-closeout-count></em></h3>
-              <div class="closeout-list" id="closeout-tests-list"></div>
-            </section>
-            <section class="closeout-group" data-closeout-group="handoffs" hidden>
-              <h3 class="closeout-gh"><span aria-hidden="true">👉</span> {{final.group_handoffs}} <em data-closeout-count></em></h3>
-              <div class="closeout-list" id="closeout-handoffs-list"></div>
+            <section class="closeout-group" data-closeout-group="todo" hidden>
+              <h3 class="closeout-gh">{{final.group_todo}} <em data-closeout-count></em></h3>
+              <div class="closeout-list" id="closeout-todo-list"></div>
             </section>
             <p class="hint closeout-empty" id="closeout-empty" hidden>{{final.closeout_empty}}</p>
-
-            <!-- Bottom sheet for ONE Fund (openRouteSheet()): its name, origin,
-                 Claude's description, the recommendation with its reason, and
-                 three big tiles. Inside the FAB, over the inbox — never a page
-                 modal. A tile click sets the route and closes it; ✕ and
-                 Escape close it unchanged. -->
-            <div class="closeout-route-sheet" id="closeout-route-sheet" role="dialog" aria-labelledby="closeout-route-title" hidden>
-              <div class="closeout-route-head">
-                <strong id="closeout-route-title" data-route-title></strong>
-                <button type="button" class="closeout-route-close" data-route-close
-                        aria-label="{{final.sheet_close}}" data-tip="{{final.sheet_close}}">✕</button>
-              </div>
-              <p class="closeout-route-origin" data-route-origin hidden></p>
-              <p class="closeout-route-body" data-route-body hidden></p>
-              <p class="closeout-route-why" data-route-why></p>
-              <div class="closeout-tiles" role="radiogroup" aria-labelledby="closeout-route-title">
-                <button type="button" class="closeout-tile" role="radio" aria-checked="false" data-route-tile="implement">
-                  <b>⚡ {{final.route_implement}}</b><span>{{final.route_implement_hint}}</span>
-                </button>
-                <button type="button" class="closeout-tile" role="radio" aria-checked="false" data-route-tile="issue">
-                  <b>📌 {{final.route_issue}}</b><span>{{final.route_issue_hint}}</span>
-                </button>
-                <button type="button" class="closeout-tile" role="radio" aria-checked="false" data-route-tile="ignore">
-                  <b>✕ {{final.route_ignore}}</b><span>{{final.route_ignore_hint}}</span>
-                </button>
-              </div>
-            </div>
           </div>
 
           <!-- Below the divider: what Claude does on the click, then the two
                buttons. Pinned, never scrolled away. -->
           <div class="closeout-foot">
             <div class="closeout-claude">
-              <h3 class="closeout-gh"><span aria-hidden="true">🤖</span> {{final.group_claude}}</h3>
               <p class="closeout-plan" id="closeout-plan" hidden></p>
               <!-- The disposition as one line with its default; "ändern"
                    opens the radios + moveTo inline (toggleDisposeEdit()). -->
@@ -444,6 +416,17 @@
                     data-tip="{{final.closeout_noship_go_hint}}">
               <span aria-hidden="true" data-closeout-btn-icon>🏁</span>
               <span data-closeout-btn-label>{{final.closeout_noship_go}}</span>
+            </button>
+            <button type="button" id="closeout-refine" class="closeout-go closeout-quiet" data-closeout-go="fix"
+                    data-icon="🔧"
+                    data-label="{{final.refine_go}}"
+                    data-label-offline="{{final.closeout_go_offline}}"
+                    data-label-running="{{final.closeout_running}}"
+                    data-label-stalled="{{final.closeout_stalled_short}}"
+                    data-title-ready="{{final.refine_go_hint}}"
+                    data-tip="{{final.refine_go_hint}}">
+              <span aria-hidden="true" data-closeout-btn-icon>🔧</span>
+              <span data-closeout-btn-label>{{final.refine_go}}</span>
             </button>
             <button type="button" id="closeout-close" class="closeout-go closeout-done-btn" hidden>
               <span aria-hidden="true">✓</span> {{final.closeout_done_close}}

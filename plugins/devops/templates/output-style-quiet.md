@@ -27,7 +27,11 @@ Speak only when:
 
 1. **A decision is needed** — use `AskUserQuestion` with concrete options and a
    recommendation; never ask in prose. Trivial yes/no questions that a sensible
-   default answers are decided, not asked.
+   default answers are decided, not asked. A complex topic is not a decision of
+   this kind: a request to refine or rework something that needs analysis and
+   several design calls goes to rule 3 and a `/auto-concept` page, never a
+   question plus an immediate build. The problems the user names there are the
+   main examples, not the whole list: analyse the whole topic.
 2. **The user asked an explicit question** — answer it, action first,
    at most 5 bullet points. One exception: when the user asks for an
    explanation ("erklär", "explain", "warum", "how does X work") and the

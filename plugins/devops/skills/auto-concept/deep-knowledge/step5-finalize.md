@@ -15,12 +15,7 @@ substituted by the build, but writing the locale VALUE stays correct too.
    `{ id, title, type, description, role?, module?, milestone?, selected: true }`.
    `description` falls back to the visible `.oq-label` text when the
    author of the final-report did not set `data-issue-body`; either is
-   enough to skip prompting. An item with `id: "__sammel"` is the
-   **Sammel-Issue** the sheet builds when the report lists more than three
-   Funde: it carries `collected[]` (the folded items, same shape). File it
-   as ONE issue — title naming the shared theme, each collected item a
-   checklist line in the body — and route every collected item to it in
-   step 7.
+   enough to skip prompting.
 2. Read the `disposition` sub-object from the same payload and store it for
    part D. Do NOT apply it here — cleanup runs last, after ship.
 3. **User-value gate (silent, mandatory).** Apply the gate from the
@@ -75,7 +70,7 @@ substituted by the build, but writing the locale VALUE stays correct too.
    (the 🔍 fold, `data-oq-id`), set `data-routed`, append the
    `[Issue #NNN]` link to the issue URL and a small ✓ badge
    (`templates-final-report.md` § After a point is routed). For items
-   that were merged by the user-value gate or folded into the Sammel-Issue,
+   that were merged by the user-value gate,
    link ALL source items to the one issue. `data-routed` is what drops the
    row from the to-do inbox on the next render — an already-routed item can
    never be submitted twice. (Pages from before the inbox still carry a
@@ -109,13 +104,12 @@ because the session feels like it is ending.
    are substituted at generation time, and this rewrite happens long after
    that, so a token written here stays on screen as a token. `data-routed`
    is what drops the row from the to-do inbox on the next render.
-5. Add a short **Nachtrag** section to the final report naming what was built
-   and where. Do NOT append a new iteration — the final report is the closing
-   artefact and stays the last tab.
+5. Name what was built in the 🛠 fold. Do NOT append a new iteration or a section:
+   the final report is the closing artefact and stays the last tab.
 6. If an item cannot be built (it turns out to need a decision, or it breaks
-   something), stop that item, leave it unrouted, and say so in the
-   Nachtrag. Never silently downgrade it to an issue: the user asked for code
-   and has to see that they did not get it.
+   something), stop that item, leave it unrouted, and report it in `misses` of the
+   `finished` result (§ D). Never silently downgrade it to an issue: the user asked
+   for code and has to see that they did not get it.
 
 ## C · Disposition staging per mode
 
@@ -221,20 +215,33 @@ asks to close out a concept that is closed a minute later. Details:
    here is a coin flip on whether the user's closing impression is the final
    report or an HTTP 404. The bridge shutdown that follows is the honest
    end-of-session signal.
-   **Every disposition: the done signal last (#932).** Right after `/reset`
-   (and before Step 6a's `/shutdown`) post the closing checkpoint and the
-   page's done phase — without a `version`, so it is written unconditionally:
+   **Every disposition: the result last (#932).** Right after `/reset` (and before
+   Step 6a's `/shutdown`) post the closing checkpoint and the page's done phase with
+   the **result the Fertig-Seite shows** (`templates-final-report.md` § Fertig-Seite),
+   without a `version`, so it is written unconditionally. The page never concludes
+   success on its own, so state what really happened: `shipped` only after a merged
+   release, "live" only with a proven deploy, `partial` whenever a ⚡ item or an
+   approved part did not land, also when the ship was green. `next` holds the labels
+   the completion card will offer (same logic as its buttons,
+   `{PLUGIN_ROOT}/deep-knowledge/completion-card-design.md` § 4), `links` the real URLs,
+   `left` the 🧪/👉 items of mode `self`:
    ```bash
    curl -s -X POST -H "Content-Type: application/json" \
      -d '{"action":"finalize:done","step":"closed","status":"done","artifacts":{"pr":<N|null>,"version":"<vX.Y.Z|null>"}}' \
      http://localhost:$PORT/progress
-   curl -s -X POST -H "Content-Type: application/json" -d '{"phase":"closed"}' \
+   curl -s -X POST -H "Content-Type: application/json" \
+     -d '{"phase":"closed","finished":{"state":"shipped","sub":"v0.360.0 auf Alpha, Concept abgeschlossen.","misses":[],"links":[{"label":"PR #1060","href":"https://github.com/o/r/pull/1060"}],"next":["Nach Beta heben"],"left":[]}}' \
      http://localhost:$PORT/status
    ```
-   The page's poll turns `_phase: "closed"` into its done state ("✓ Concept
-   abgeschlossen"), and the open tab keeps showing it after the bridge is
-   gone — never a spinning "läuft" step or a reconnect warning. Give the poll
-   one cycle (~3 s) before `/shutdown`.
+   Then wait for the tab, because a hidden one polls only once a minute: a tab that
+   has the result answers `/closed-ack`. No tab open (`browser_tabs` 0 on `/pending`)
+   → skip the wait. The user pays at most a minute on the card, and without this
+   wait the last thing they see is a frozen spinner:
+   ```bash
+   for i in $(seq 1 13); do curl -s http://localhost:$PORT/closed-ack | grep -q true && break; sleep 5; done
+   ```
+   Keep / gitignore: also stamp `data-finished='{…the same JSON…}'` next to
+   `data-closed`, so a reload shows the same page.
 
    When the concept wrote code, Step 6a moves the spec
    into the local store instead of deleting it (`step6-closeout.md` § Keep
@@ -275,27 +282,45 @@ Rules:
 - The report fragment's done state lists only the 🧪/👉 items with their chosen
   mode (write the mode word in the locale); `skip` items are gone. No line that
   the card repeats them.
-- An item the report offered as "Muss nicht" (criticality low, pre-selected
-  `skip`) and the user left that way produces nothing.
+- An item the report offered struck (criticality low, pre-selected `skip`) and the
+  user left that way produces nothing.
 
 ### Pre-selection rules (for the author of the report)
 
 Claude sets the defaults when it writes the Funde, 🧪 and 👉 rows (authoring:
 `step5-update-page.md` § Final-report append); the user only corrects them.
 
-- **Fund route.** ⚡ *Jetzt umsetzen* is the default tendency: small, in the
-  repo, cosmetics included. 📌 *Issue* only when the fix is **risky**, needs
-  **more preparation than a guide** (a concept first) or lies outside the
-  repo — size alone is no criterion. ✕ *Ignorieren* is the rarest: only when
-  the current state works as is, is no workaround, and the alternative would
-  merely be another way. Every Fund carries a one-word reason chip ("klein",
-  "kosmetisch", "riskant", "braucht Concept").
-- **🧪 / 👉 mode.** Criticality decides between *Muss nicht* (`skip`) and
-  needed. If needed and guidable (a web task → web guide via `auto-guide`; a PC
-  task → desktop script / takeover help) pre-select *Mit Anleitung* (`guide`);
-  otherwise pre-select *Mach ich selbst* (`self`). Never print "nicht
-  führbar" — a non-guidable item picked with *Mit Anleitung* simply gets
-  written steps (`inline`).
+- **Fund route.** Small low-risk points inside the repo are done during the implement
+  and never become a row. For what is left, ⚡ *Jetzt umsetzen* is the default
+  tendency; 📌 *Issue* only when the fix is **risky**, needs **more preparation than
+  a guide** (a concept first) or lies outside the repo — size alone is no criterion.
+  *Weglassen* is the rarest: only when the current state works as is, is no
+  workaround, and the alternative would merely be another way. Every Fund carries a
+  one-word reason, shown in the report ("riskant", "braucht Concept").
+- **🧪 / 👉 mode.** Criticality decides between struck (`skip`, muted) and needed. If
+  needed and guidable (a web task → web guide via `auto-guide`; a PC task → desktop
+  script / takeover help) "Führ mich" starts on (`guide`); otherwise it starts off
+  (`self`, the completion card). Never print "nicht führbar" — a non-guidable item
+  with "Führ mich" on simply gets written steps (`inline`).
+
+## Nachbessern
+
+The user read the report, the result does not fit yet, and "🔧 Nachbessern" sent
+their notes: `comments` (💬 dock), `userPins` (Ctrl + click on the report). Nothing
+else is in the payload: no ship, no disposition, no Fund routes. Treat each note as
+a change order on the approved scope:
+
+1. Read and apply the notes, through the same execution path as an implement
+   (`step5-process.md` § 5b · implement steps 1–4, its inline exception included).
+   Answer every note; a note that needs a decision becomes a Fund.
+2. Re-verify what changed and rewrite the final-report fragment **in place** (no new
+   round, no new tab): sentence, results, bars and depth now describe the new state,
+   a `shortfall` that was fixed is gone.
+3. `build`, POST `/reload`, then `/reset` with the captured `_version`, re-launch the
+   waker, end the turn with the `waiting` card. The sheet comes back armed with the
+   same choices Claude authored.
+
+`refine` never ships and never disposes of anything. Only `finalize` does.
 
 ## Legacy mapping, rationale and the critical invariant
 
