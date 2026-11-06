@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.358.2] — 2026-11-06
+
+### Fixed
+- The version line no longer claims "current" without checking. An install behind its pinned channel is now reported from the remote tags; a stable install never hears about alpha.
+
+### Changed
+- Plugin source repo only: the post-ship self-update runs as a project hook when a ship card renders and also mirrors to the Desktop copy.
+
 ## [0.358.1] — 2026-11-06
 
 ### Changed
