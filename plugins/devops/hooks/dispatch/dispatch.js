@@ -85,6 +85,9 @@
  *      naming a certain word gets `"commandFilter": "<regex>"` in the manifest:
  *      no match on tool_input.command → no worker, at the price of one regex.
  *      A payload without a command or a broken regex starts the module anyway.
+ *      The regex must pass everything the module's own matcher acts on, and a
+ *      module with side effects or state-driven work on any command gets none
+ *      (dispatch/command-filters.test.js checks both against the real matchers).
  */
 
 const path = require('path');

@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.354.1] — 2026-11-06
+
+### Changed
+- Nine Bash hooks start no worker when the command lacks their word: `pre.ship.guard`, `pre.issue.guard`, `pre.main.guard`, `pre.worktree.split-guard`, `pre.test.fullguard`, `pre.redirect.scope`, `post.test.record`, `post.project.setup`, `post.flow.title-mode`. `echo hi` lists 12 modules instead of 22.
+
 ## [0.354.0] — 2026-11-06
 
 ### Added
