@@ -2211,7 +2211,7 @@ returns — the single-design page is untouched.
         e.preventDefault();
         if (isDraft) discardDraft();
         else { ta.value = pin.text; persistTyped(pin, pin.text); ed.hidden = true; btn.focus(); }
-      } else if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+      } else if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.isComposing) {
         e.preventDefault();
         if (live) savePin(pin, ta.value); else ed.hidden = true;
       }

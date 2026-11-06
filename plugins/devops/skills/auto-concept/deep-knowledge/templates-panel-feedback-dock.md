@@ -109,21 +109,30 @@
     if (next) next.focus();
     else closeDock();
   }, true);
-  // Ctrl/Cmd + Enter inside a NOTE (an auto note's bubble or the user's own
-  // pin editor) closes that note; when auto notes of the same screen are
-  // still unhandled (neither answered nor opened — the eye counter's rule)
-  // the next one opens, otherwise nothing else happens. An own note is saved
-  // through its own Enter handler (re-dispatched plain), the next note opens
-  // in a macrotask once that has closed the editor.
-  const unhandledAutoNote = from => {
-    const cur = from.closest('[data-anno]');
-    const scope = (cur && cur.closest('section[data-screen]'))
-      || document.querySelector('section[data-iteration]:not([hidden]) section[data-screen][data-screen-active="true"]')
-      || document.querySelector('section[data-iteration]:not([hidden])') || document;
-    return [...scope.querySelectorAll('[data-anno]')].find(a => {
-      const p = a.querySelector('[data-anno-pin]');
-      return a !== cur && a.dataset.annoSeen !== 'true' && !(p && p.dataset.answered === 'true');
-    });
+  // Notes keys (auto note bubbles AND the user's own pin editors):
+  //   Enter        closes the note only (an own note is saved by closing it);
+  //   Shift+Enter  the textarea's default — a paragraph break, nothing else;
+  //   Ctrl/Cmd+Enter closes the note, opens the NEXT note in document order
+  //                on this screen (auto and own alike) and focuses its field;
+  //                on the last note it only closes. The only key that moves on.
+  // An own note is saved through its own Enter handler (re-dispatched plain; it
+  // ignores Ctrl/Meta itself, so the real event never saves twice); the next
+  // note opens in a macrotask once that has closed the editor and any re-render
+  // has settled, so own notes are re-found by id.
+  const noteHidden = n => !!n.closest('[hidden], section[data-screen]:not([data-screen-active="true"])');
+  const nextNote = from => {
+    const cur = from.closest('[data-anno], .upin') || from;
+    const it = cur.closest('section[data-iteration]') || document.querySelector('section[data-iteration]:not([hidden])') || document;
+    const list = [...it.querySelectorAll('[data-anno], .upin')].filter(n => n === cur || !noteHidden(n));
+    return list[list.indexOf(cur) + 1] || null;
+  };
+  const openNote = (id, own) => {
+    const sel = own ? '.upin[data-upin-id="' + (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]' : '[data-anno="' + id + '"]';
+    const n = document.querySelector(sel);
+    if (!n) return;
+    n.querySelector(own ? '.upin-pin' : '[data-anno-pin]')?.click();
+    const f = n.querySelector(own ? '.upin-editor textarea' : '[data-anno-bubble] textarea');
+    if (f) { f.focus(); const l = f.value.length; try { f.setSelectionRange(l, l); } catch (_) { /* not text */ } }
   };
   document.addEventListener('keydown', e => {
     if (e.defaultPrevented || e.repeat || e.altKey || e.shiftKey || e.isComposing) return;
@@ -131,11 +140,23 @@
     const from = e.target && e.target.closest ? e.target.closest('[data-anno-bubble], .upin-editor') : null;
     if (!from) return;
     e.preventDefault();
-    const next = unhandledAutoNote(from);
+    const next = nextNote(from);
+    const nextOwn = !!(next && next.matches('.upin'));
+    const nextId = next ? (nextOwn ? next.dataset.upinId : next.dataset.anno) : '';
     if (from.matches('[data-anno-bubble]')) window.closeAnnoBubbles?.();
     else from.querySelector('textarea')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
-    if (next) setTimeout(() => next.querySelector('[data-anno-pin]')?.click(), 0);
+    if (next) setTimeout(() => openNote(nextId, nextOwn), 0);
   }, true);
+  // Plain Enter in an auto note's field only closes the bubble. Bubble phase on
+  // purpose: the voice capture handler (Enter ends a dictation first, text
+  // kept) stops the event before it gets here, so the second Enter closes.
+  document.addEventListener('keydown', e => {
+    if (e.defaultPrevented || e.key !== 'Enter' || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey || e.isComposing) return;
+    const ta = e.target && e.target.closest ? e.target.closest('[data-anno-bubble] textarea') : null;
+    if (!ta) return;
+    e.preventDefault();
+    window.closeAnnoBubbles?.();
+  });
   // ── "Wusstest du schon?" — one static fact per dock open (rules below).
   // Every tip is about USING this page (never about the reviewed content or
   // the plugin's internals), understandable on a first visit, one line.
@@ -150,7 +171,7 @@
       "←/→ oder A/D blättern durch die Seiten.",
       "Esc führt eine Ebene zurück.",
       "Esc im Notizfeld schließt die Notizen.",
-      "Strg + Enter springt zum nächsten Notizfeld.",
+      "Strg + Enter öffnet die nächste Notiz.",
       "Strg + Leertaste schließt die Notizen.",
       "Das Auge 👁 blendet Notizen und Leisten aus.",
       "☰ zeigt alle Seiten und offenen Fragen.",
@@ -182,7 +203,7 @@
       "←/→ or A/D flip through the pages.",
       "Esc goes back one level.",
       "Esc in a note field closes the notes.",
-      "Ctrl + Enter jumps to the next note field.",
+      "Ctrl + Enter opens the next note.",
       "Ctrl + Space closes the notes at once.",
       "The eye 👁 hides notes and toolbars.",
       "☰ lists every page and open question.",
