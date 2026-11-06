@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.356.0] — 2026-11-06
+
+### Added
+- Analysis pages: a sent note becomes a chat message before the Weiter row and stays out of the note field. Hovering shows a pen to edit it and an x to delete it.
+- Analysis pages: typing dots show that a held-back message is still coming.
+
+### Changed
+- Analysis pages: Enter sends a note without moving on; only "Keine passt" also moves on. Ctrl+Enter moves on.
+- Analysis pages: the reading pace is 25 % faster, up from 10 %.
+- Do-ship: "ship everything together" is a standing mandate until every linked session has landed (#1041).
+
+### Fixed
+- Concept pages: an own note lands at the click point, also when the mock styles its direct children.
+- Concept pages: analysis views in a design round keep clear of the variant bar on every stage and show the backdrop.
+- Concept pages: `concept-open.js verify` opens one tab per bridge run.
+- Concept pages: the analysis chat keeps a gap to its scrollbar (#1056).
+- Concept pages: mock inputs get no field mic (#1051).
+- Concept pages: the composer tag names the clicked question (#1057).
+- A message from another session no longer sets a finished session back to a working title (#1049).
+
+## [0.355.1] — 2026-11-06
+
+### Fixed
+- `pre.ship.guard` blocks manual PR commands also as `gh.exe`, in any case, behind a path, env prefix or global flag, across line continuations and in PowerShell. A plain `gh api` read of a PR's merge status now passes.
+- `pre.redirect.scope` no longer warns about `$(ls x 2>/dev/null)`, and frustrated mode no longer refuses a redirect to `/dev/null` at the end of a subshell.
+
 ## [0.355.0] — 2026-11-06
 
 ### Added

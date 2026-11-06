@@ -148,6 +148,11 @@ It never lives in a design round: there the analysis is a Full view (below).
 
 ### Full inside a design round
 
+Such a view is the same page as a standalone analysis, not a stripped copy: same
+backdrop, and every stage (not only the briefing) clears the fixed variant bar. A
+change to the analysis page is checked in both places. Messages held back by the
+reading pace always show that more is coming (typing dots).
+
 ```html
 <section data-view="analysis" data-view-kind="analysis" data-analysis="full" data-nav-label="Analysis" hidden>
   <section data-analysis-briefing>…</section>   <!-- exactly the Full markup above -->

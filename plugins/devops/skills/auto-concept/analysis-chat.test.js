@@ -100,17 +100,96 @@ describe("hesitation signal", () => {
 });
 
 describe("persistent composer", () => {
-  test("untagged: the note is the stage's note and sending advances (not on the briefing)", () => {
+  test("a sent note becomes a chat message before the Weiter row and does not move on", () => {
     const { doc, w, ca } = page(LITE);
     const inst = ca.instances[0];
     type(w, inst, "hello there");
     expect(doc.querySelector("#q1 .an-note").value).toBe("hello there");
     expect(ca.sendNote(inst)).toBe(true);
-    expect(inst.stages[inst.idx].el.id).toBe("q2");
+    expect(inst.stages[inst.idx].el.id).toBe("q1");
     expect(doc.querySelector("#q1 .an-note").value).toBe("hello there");
-    expect(inst.comp.ed.textContent).toBe("");           // the next stage starts with an empty composer
+    expect(inst.comp.ed.textContent).toBe("");
+    const box = doc.querySelector("#q1 .an-notes");
+    expect(box.textContent).toContain("hello there");
+    expect(box.nextElementSibling.classList.contains("an-foot")).toBe(true);
+    type(w, inst, "second");
+    ca.sendNote(inst);
+    expect(doc.querySelector("#q1 .an-note").value).toBe("hello there\n\nsecond");
+    expect(doc.querySelectorAll("#q1 .an-note-m")).toHaveLength(2);
   });
-  test("an untagged note on a question accepts it; topic intro and closing never advance", () => {
+  test("under Keine passt a sent note also moves on, and stays a message", () => {
+    const { doc, w, ca } = page(LITE);
+    const inst = ca.instances[0];
+    doc.querySelector("#q1 .an-none").click();
+    type(w, inst, "my own answer");
+    ca.sendNote(inst);
+    expect(inst.stages[inst.idx].el.id).toBe("q2");
+    expect(doc.querySelector("#q1 .an-note").value).toBe("my own answer");
+    expect(doc.querySelector("#q1 .an-notes").textContent).toContain("my own answer");
+  });
+  test("sent notes do not return to the composer; an unsent draft becomes a message on leaving", () => {
+    const { doc, w, ca } = page(LITE);
+    const inst = ca.instances[0];
+    type(w, inst, "sent");
+    ca.sendNote(inst);
+    type(w, inst, "draft");
+    ca.go(inst, 1);
+    expect(inst.comp.ed.textContent).toBe("");
+    ca.go(inst, 0);
+    expect(inst.comp.ed.textContent).toBe("");
+    expect(doc.querySelector("#q1 .an-note").value).toBe("sent\n\ndraft");
+    expect(doc.querySelectorAll("#q1 .an-note-m")).toHaveLength(2);
+  });
+  test("pen moves a message back into the composer, x deletes it", () => {
+    const { doc, w, ca } = page(LITE);
+    const inst = ca.instances[0];
+    type(w, inst, "first");
+    ca.sendNote(inst);
+    type(w, inst, "second");
+    ca.sendNote(inst);
+    doc.querySelectorAll("#q1 .an-note-m")[0].querySelector(".an-note-b").click();
+    expect(inst.comp.ed.textContent).toBe("first");
+    expect(doc.querySelectorAll("#q1 .an-note-m")).toHaveLength(1);
+    expect(doc.querySelector("#q1 .an-note").value).toBe("second\n\nfirst");
+    ca.sendNote(inst);
+    doc.querySelectorAll("#q1 .an-note-m")[1].querySelectorAll(".an-note-b")[1].click();
+    expect(doc.querySelector("#q1 .an-note").value).toBe("second");
+    expect(doc.querySelectorAll("#q1 .an-note-m")).toHaveLength(1);
+  });
+  test("a paragraph break stays inside its message", () => {
+    const { doc, w, ca } = page(LITE);
+    const inst = ca.instances[0];
+    type(w, inst, "one\n\ntwo");
+    ca.sendNote(inst);
+    type(w, inst, "next");
+    ca.sendNote(inst);
+    const notes = doc.querySelectorAll("#q1 .an-note-m");
+    expect(notes).toHaveLength(2);
+    expect(notes[0].textContent).toMatch(/^one\n\s*\ntwo/);
+  });
+  test("Shift+Enter in the composer is a line break, not the page's back key", () => {
+    const { w, ca } = page(LITE);
+    const inst = ca.instances[0];
+    ca.go(inst, 1);
+    const ev = new w.KeyboardEvent("keydown", { key: "Enter", shiftKey: true, bubbles: true, cancelable: true });
+    inst.comp.ed.dispatchEvent(ev);
+    expect(ev.defaultPrevented).toBe(false);
+    expect(inst.idx).toBe(1);
+  });
+  test("Ctrl+Enter moves on and keeps a typed note as a message; plain Enter with text stays", () => {
+    const { doc, w, ca } = page(LITE);
+    const inst = ca.instances[0];
+    const enter = o => inst.comp.ed.dispatchEvent(new w.KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true, ...o }));
+    type(w, inst, "stays");
+    enter({});
+    expect(inst.stages[inst.idx].el.id).toBe("q1");
+    type(w, inst, "and on");
+    enter({ ctrlKey: true });
+    expect(inst.stages[inst.idx].el.id).toBe("q2");
+    expect(doc.querySelector("#q1 .an-note").value).toBe("stays\n\nand on");
+    expect(doc.querySelectorAll("#q1 .an-note-m")).toHaveLength(2);
+  });
+  test("topic intro and closing notes never advance", () => {
     const { w, ca } = page(FULL);
     const inst = ca.instances[0];
     const ti = inst.stages.findIndex(s => s.kind === "topic");
@@ -118,11 +197,6 @@ describe("persistent composer", () => {
     type(w, inst, "on the topic");
     ca.sendNote(inst);
     expect(inst.idx).toBe(ti);
-    const di = inst.stages.findIndex(s => s.kind === "dec");
-    ca.go(inst, di);
-    type(w, inst, "ok");
-    ca.sendNote(inst);
-    expect(inst.idx).toBeGreaterThan(di);
     ca.go(inst, inst.stages.findIndex(s => s.kind === "review"));
     type(w, inst, "closing");
     const ri = inst.idx;
@@ -149,7 +223,7 @@ describe("persistent composer", () => {
     expect(inst.idx).toBe(ri);
     expect(btn.classList.contains("an-point")).toBe(true);
   });
-  test("a send that stays on the stage says so: the note is kept and a status line appears", () => {
+  test("a tagged send stays on the stage and empties the composer", () => {
     const { ca } = page(FULL);
     const inst = ca.instances[0];
     const di = inst.stages.findIndex(s => s.kind === "dec");
@@ -158,12 +232,9 @@ describe("persistent composer", () => {
     inst.comp.ed.appendChild(inst.comp.ed.ownerDocument.createTextNode("long note"));
     expect(ca.sendNote(inst)).toBe(true);
     expect(inst.idx).toBe(di);
-    expect(inst.comp.msg.hidden).toBe(false);
-    expect(inst.comp.msg.textContent).toMatch(/next round/);
     expect(inst.stages[di].el.querySelector('[data-comment$="-note"]').value).toBe("[Question 1] long note");
-    expect(inst.comp.ed.textContent).toContain("long note");
-    ca.go(inst, di + 1);
-    expect(inst.comp.msg.hidden).toBe(true);
+    expect(inst.comp.ed.textContent).toBe("");
+    expect(inst.stages[di].el.querySelector(".an-notes").textContent).toContain("long note");
   });
   test("d-emptysend: an empty send advances exactly ONE stage; rapid sends never skip one unseen", () => {
     const { w, doc, ca, env } = page(FULL);
@@ -251,7 +322,20 @@ describe("persistent composer", () => {
     expect(t).not.toMatch(/did not visibly hesitate on any/);
     expect(t).toMatch(/not look at any/);
   });
-  test("tagged: the note stays on the stage, one tag at most, the tag comes back on return", () => {
+  test("a click in the chat history tags the clicked question, not the open one (#1057)", () => {
+    const { doc, w, ca } = page(LITE);
+    const inst = ca.instances[0];
+    const i = inst.stages.findIndex(s => s.el.id === "q2");
+    ca.go(inst, i);
+    expect(inst.stages[inst.idx].el.id).toBe("q2");
+    const click = n => n.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+    click(doc.querySelector("#q1 .an-m-q .an-bub"));
+    expect(inst.tag).toBe("Question 1");
+    click(doc.querySelector("#q2 .an-m-find .an-av"));
+    expect(inst.tag).toBe("Finding · Question 2");
+  });
+
+  test("tagged: the note stays on the stage, one tag at most, the tag shows on the message", () => {
     const { doc, w, ca } = page(LITE);
     const inst = ca.instances[0];
     ca.setTag(inst, "Question 1");
@@ -262,8 +346,9 @@ describe("persistent composer", () => {
     expect(inst.stages[inst.idx].el.id).toBe("q1");
     expect(doc.querySelector("#q1 .an-note").value).toBe("[Finding · Question 1] a thought");
     ca.go(inst, 1); ca.go(inst, 0);
-    expect(inst.comp.ed.querySelector(".an-tagw").textContent).toContain("Finding · Question 1");
-    expect(inst.comp.ed.textContent).toContain("a thought");
+    expect(inst.comp.ed.querySelector(".an-tagw")).toBeNull();
+    expect(doc.querySelector("#q1 .an-note-m .an-tagw").textContent).toBe("Finding · Question 1");
+    expect(doc.querySelector("#q1 .an-note-m").textContent).toContain("a thought");
   });
   test("a click on the finding or the question sets the tag; the briefing never advances on send", () => {
     const { doc, w, ca } = page(FULL);

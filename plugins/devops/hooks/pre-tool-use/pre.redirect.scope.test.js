@@ -21,6 +21,8 @@ describe("pre.redirect.scope — outsideTargets", () => {
     "npm test &> ../x.log",
     "echo hi > ~/notes.txt",
     "npm ci 1> ../a.log",
+    "f=$(npm ci > ../a.log)",
+    "(npm ci > ../a(1).log)",
   ])("warns: %s", (cmd) => {
     expect(outside(cmd).length).toBe(1);
   });
@@ -38,6 +40,10 @@ describe("pre.redirect.scope — outsideTargets", () => {
     `echo "a > ../b" && echo 'c > ../d'`,
     "cat <<'EOF'\nx > ../y.log\nEOF",
     "node a.js 2>/dev/null | grep x",
+    "f=$(ls x 2>/dev/null)",
+    "(ls x > /dev/null)",
+    "f=$(g=$(ls x 2>/dev/null))",
+    "npm test > ./a(1).log",
   ])("stays quiet: %s", (cmd) => {
     expect(outside(cmd)).toEqual([]);
   });

@@ -1,6 +1,6 @@
 # dotclaude
 
-**Version: 0.355.0**
+**Version: 0.356.0**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
 
@@ -586,7 +586,7 @@ SessionStart  ──>  UserPromptSubmit  ──>  PreToolUse  ──>  PostToolU
 
 - `pre.tokens.guard` — Block Read/Bash/Glob/Grep operations that would consume a significant percentage of t…
 - `pre.tokens.guard` — Block Read/Bash/Glob/Grep operations that would consume a significant percentage of t…
-- `pre.ship.guard` — Block manual PR creation/merging via Bash.
+- `pre.ship.guard` — Block manual PR creation/merging via Bash or PowerShell.
 - `pre.main.guard` — Prevent accidental writes on local main/master.
 - `pre.worktree.split-guard` — WARN (never block) on git-mutating work driven from the main repo root while an agent…
 - `pre.test.fullguard` — While a ship is in progress (the .claude/.ship-in-progress sentinel exists), refuse a…

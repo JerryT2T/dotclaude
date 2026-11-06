@@ -175,6 +175,17 @@ function words(seg) {
   return out;
 }
 
+/** `/dev/null)` of `$(ls 2>/dev/null)` → `/dev/null`; a balanced `a(1).log` or `$(mktemp)` stays. */
+function dropUnmatchedClosers(token) {
+  let open = 0;
+  let end = token.length;
+  for (let i = 0; i < token.length; i++) {
+    if (token[i] === '(') open++;
+    else if (token[i] === ')' && --open < 0) { end = i; break; }
+  }
+  return token.slice(0, end);
+}
+
 /** Redirection targets of one raw segment (`>`, `>>`, `&>`, `N>`; not `>&N`). */
 function redirectTargets(rawSeg) {
   const out = [];
@@ -185,7 +196,7 @@ function redirectTargets(rawSeg) {
     const start = m.index + m[0].length;
     const rest = rawSeg.slice(start).replace(/^\s+/, '');
     const t = /^("(?:[^"\\]|\\.)*"|'[^']*'|[^\s;&|<>]+)/.exec(rest);
-    out.push(t ? t[1] : '');
+    out.push(t ? (/^["']/.test(t[1]) ? t[1] : dropUnmatchedClosers(t[1])) : '');
   }
   return out;
 }

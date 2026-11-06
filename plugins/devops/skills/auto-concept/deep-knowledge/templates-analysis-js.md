@@ -30,8 +30,11 @@ What the code does, in the order of the file:
    stage's `data-comment="{id}-note"` (briefing, topic page and closing get a
    hidden one of their own); max ONE tag (`setTag()`, stored as a leading
    `[tag] `), set by a click on a finding / question / topic page or a closing
-   toggle; `sendNote()`: tagged → the note stays, untagged → the next stage
-   (not on briefing / closing).
+   toggle. `sendNote()` turns the text into a chat message before the stage's
+   Weiter row and stays on the stage; only "Keine passt" also moves on. The
+   store holds the messages joined by a blank line, plus the unsent draft, so
+   nothing is lost on a reload or a submit. The composer never shows a sent
+   message again, unless its pen icon moves it back for editing.
 5. Touched tracking: a stage open ≥ 3 s, or any change in it, writes
    `dm-{id}-touched` = `"1"`. Hesitation: `hesEntry()` … `hesFlush()` count dwell
    only while the stage is visible AND the window focused and write
@@ -583,22 +586,106 @@ What the code does, in the order of the file:
     const st = inst.stages[inst.idx], store = storeOf(inst, st), text = compText(inst.comp.ed);
     inst.comp.ed.dataset.empty = !text && !inst.tag ? '1' : '';
     if (!store || frozen(inst)) return;
-    const val = text ? (inst.tag ? '[' + inst.tag + '] ' : '') + text : '';
+    const msgs = msgsOf(st, store);
+    // A blank line separates messages in the store, so a paragraph break inside a draft holds a no-break space.
+    const draft = text.trim() ? (inst.tag ? '[' + inst.tag + '] ' : '') + text.trim().replace(/\n\s*\n/g, '\n \n') : '';
+    writeMsgs(st, store, draft ? msgs.concat(draft) : msgs);
+  }
+  /** The sent messages of a stage, parsed again whenever the store changed from outside. */
+  function msgsOf(st, store) {
+    if (st.msgSig !== store.value) {
+      st.msgs = String(store.value || '').split(/\n{2,}/).map(s => s.trim()).filter(Boolean);
+      st.msgSig = store.value;
+    }
+    return st.msgs;
+  }
+  function writeMsgs(st, store, list) {
+    const val = list.join('\n\n');
+    st.msgSig = val;
     if (store.value !== val) { store.value = val; fire(store); }
   }
-  /** Loads the open stage's note into the composer (a leading "[tag] " becomes the tag again). */
-  function loadComposer(inst, st) {
-    const store = storeOf(inst, st), ed = inst.comp.ed;
-    if (inst.comp.msg) inst.comp.msg.hidden = true;
-    let v = store ? store.value : '';
-    const m = TAGRE.exec(v);
-    ed.textContent = '';
-    ed.dataset.ph = L('Notiz an devops … (optional)', 'Note to devops … (optional)');   // a question with "Keine passt" re-sets it (syncDecision)
+  function clearComposer(inst) {
+    inst.comp.ed.textContent = '';
     inst.tag = '';
-    if (m) { v = v.slice(m[0].length); }
-    if (v) ed.appendChild(document.createTextNode(v));
-    paintTag(inst, m ? m[1] : '');
-    ed.dataset.empty = !v && !inst.tag ? '1' : '';
+    inst.comp.ed.dataset.empty = '1';
+  }
+  /** The draft is already in the store: parsing it again makes it a sent message. */
+  function commitDraft(st) { st.msgSig = null; }
+  /** The stage's chat messages, right before its Weiter row. */
+  function renderNotes(inst, st) {
+    const store = storeOf(inst, st);
+    if (!store) return;
+    let box = st.notes;
+    if (!box) {
+      box = st.notes = h('div', 'an-notes');
+      const foot = st.el.querySelector('.an-foot');
+      if (foot) foot.parentNode.insertBefore(box, foot); else st.el.appendChild(box);
+    }
+    box.textContent = '';
+    const editable = !frozen(inst);
+    msgsOf(st, store).forEach((m, i) => {
+      const row = h('div', 'an-bub-me an-note-m'), tag = TAGRE.exec(m);
+      if (tag) row.appendChild(h('span', 'an-tagw', tag[1]));
+      row.appendChild(document.createTextNode(tag ? m.slice(tag[0].length) : m));
+      if (editable) {
+        const acts = h('div', 'an-note-acts');
+        acts.append(noteBtn(L('Nachricht bearbeiten', 'Edit message'), NOTE_PEN, () => editNote(inst, st, i)),
+          noteBtn(L('Nachricht löschen', 'Delete message'), NOTE_X, () => deleteNote(inst, st, i)));
+        row.appendChild(acts);
+      }
+      box.appendChild(row);
+    });
+    box.hidden = !box.firstChild;
+  }
+  const NOTE_PEN = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 17.25V21h3.75L17.8 9.94l-3.75-3.75zM20.7 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75z"/></svg>';
+  const NOTE_X = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>';
+  function noteBtn(label, icon, onClick) {
+    const b = btn('an-note-b');
+    b.innerHTML = icon;
+    b.setAttribute('aria-label', label);
+    tip(b, label);
+    b.addEventListener('click', e => { e.stopPropagation(); onClick(); });
+    return b;
+  }
+  /** Pen: the message goes back into the composer. A draft already there is sent first, so it is not overwritten. */
+  function editNote(inst, st, i) {
+    const store = storeOf(inst, st);
+    if (!store || frozen(inst)) return;
+    composeSync(inst);
+    const list = msgsOf(st, store).slice(), m = list[i];
+    if (compText(inst.comp.ed)) { commitDraft(st); clearComposer(inst); }
+    const all = msgsOf(st, store).slice();
+    all.splice(i, 1);
+    st.msgs = all;
+    writeMsgs(st, store, all);
+    const tag = TAGRE.exec(m), text = tag ? m.slice(tag[0].length) : m;
+    inst.comp.ed.textContent = '';
+    if (text) inst.comp.ed.appendChild(document.createTextNode(text));
+    paintTag(inst, tag ? tag[1] : '');
+    composeSync(inst);
+    renderNotes(inst, st);
+    focusComposer(inst);
+  }
+  function deleteNote(inst, st, i) {
+    const store = storeOf(inst, st);
+    if (!store || frozen(inst)) return;
+    const draft = compText(inst.comp.ed), list = msgsOf(st, store).slice();
+    list.splice(i, 1);
+    st.msgs = list;
+    writeMsgs(st, store, list);
+    if (draft) composeSync(inst);
+    renderNotes(inst, st);
+  }
+  /** Opens a stage in the composer: its sent notes stand in the chat, the field is empty. An unsent draft of
+   *  the stage left becomes a message there; a draft of this same stage stays while typing goes on. */
+  function loadComposer(inst, st) {
+    const store = storeOf(inst, st), ed = inst.comp.ed, prev = inst.compSt, draft = compText(ed);
+    const keep = prev === st && draft && store && st.msgSig === store.value;
+    if (prev && prev !== st && draft) { commitDraft(prev); renderNotes(inst, prev); }
+    inst.compSt = st;
+    ed.dataset.ph = L('Notiz an devops … (optional)', 'Note to devops … (optional)');   // a question with "Keine passt" re-sets it (syncDecision)
+    if (!keep) clearComposer(inst);
+    renderNotes(inst, st);
     ed.contentEditable = frozen(inst) ? 'false' : 'true';
     inst.comp.att.hidden = !(st.kind === 'dec' && st.el.querySelector('.attach-btn'));
   }
@@ -609,7 +696,7 @@ What the code does, in the order of the file:
     const sel = window.getSelection && window.getSelection();
     if (sel && document.createRange) { const r = document.createRange(); r.selectNodeContents(ed); r.collapse(false); sel.removeAllRanges(); sel.addRange(r); }
   }
-  /** Send: a note WITH a tag stays on the stage; one WITHOUT advances (not on briefing / closing). */
+  /** Send: the text becomes a chat message on this stage. It moves on only under "Keine passt", where the message IS the answer. */
   function sendNote(inst) {
     composeSync(inst);
     const st = inst.stages[inst.idx], text = compText(inst.comp.ed);
@@ -624,24 +711,14 @@ What the code does, in the order of the file:
     }
     if (st.kind === 'dec' && !storeOf(inst, st)) return false;   // no storage target: never advance and drop the note
     inst.comp.el.classList.remove('an-sent'); void inst.comp.el.offsetWidth; inst.comp.el.classList.add('an-sent');
-    // Only a question advances (an untagged note accepts the current choice / recommendation); briefing, topic intro and closing never do.
-    if (!inst.tag && st.kind === 'dec') { markTouched(st.el); step(inst, 1); }
-    else showSaved(inst, st);
+    commitDraft(st);
+    clearComposer(inst);
+    renderNotes(inst, st);
+    if (st.kind !== 'dec') { glide(inst, st.notes); return true; }
+    markTouched(st.el);
+    if ((ctl1(st.el, 'dm-' + decId(st.el) + '-none') || {}).value === '1') step(inst, 1);
+    else glide(inst, st.el.querySelector(':scope > .an-m-a'));
     return true;
-  }
-  /** A note that does not move the page on still needs an answer: the send must never look like nothing happened. */
-  function showSaved(inst, st) {
-    const c = inst.comp;
-    if (!c.msg) {
-      c.msg = h('div', 'an-comp-msg');
-      c.msg.setAttribute('role', 'status');
-      c.el.appendChild(c.msg);
-    }
-    c.msg.textContent = L('Notiz gespeichert, sie geht mit der nächsten Runde an devops.', 'Note saved, it goes to devops with the next round.')
-      + (st.kind === 'dec' ? ' ' + L('Sie bleibt bei dieser Frage, „Weiter“ geht zur nächsten.', 'It stays on this question, "Next" moves on.') : '');
-    c.msg.hidden = false;
-    clearTimeout(c.msgTimer);
-    c.msgTimer = setTimeout(() => { c.msg.hidden = true; }, 5000);
   }
   /** Empty send / Enter on a question: ONE stage forward, never more. A stage that is still entering simply
    *  shows in full (go() ends the enter sequence); a second send within SEND_GAP ms (the new stage is not
@@ -669,12 +746,14 @@ What the code does, in the order of the file:
     if (frozen(inst) || e.target.closest('button, a, input, label, [role="button"], .an-tabs')) return;
     const sel = window.getSelection && window.getSelection();
     if (sel && String(sel).trim()) return;
-    const st = inst.stages[inst.idx], t = e.target;
+    const t = e.target;
+    // The chat keeps answered questions above: the tag names the question that was clicked, not the open one (#1057).
+    const st = inst.stages.find(s => s.el.contains(t)) || inst.stages[inst.idx];
     let label = '';
     if (st.kind === 'dec') {
       const no = L('Frage ', 'Question ') + stageNo(inst, st);
-      if (t.closest('.an-m-find .an-bub')) label = L('Befund · ', 'Finding · ') + no;
-      else if (t.closest('.an-m-q .an-bub')) label = no;
+      if (t.closest('.an-m-find')) label = L('Befund · ', 'Finding · ') + no;
+      else if (t.closest('.an-m-q')) label = no;
     } else if (st.kind === 'topic' && t.closest('.an-topic')) label = L('Thema ', 'Topic ') + st.group.label;
     if (!label) return;
     setTag(inst, label);

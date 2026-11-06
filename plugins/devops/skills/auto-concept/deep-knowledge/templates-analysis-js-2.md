@@ -458,7 +458,7 @@
     if (d.__none) {
       const on = (ctl1(d, 'dm-' + id + '-none') || {}).value === '1';
       d.__none.setAttribute('aria-pressed', on ? 'true' : 'false');
-      d.__none.textContent = on ? '✓ ' + L('Keine passt — deine Antwort steht im Notizfeld unten', 'None fits — your answer is in the note field below') : NONE_TXT();
+      d.__none.textContent = on ? '✓ ' + L('Keine passt — schreib deine Antwort unten ins Notizfeld', 'None fits — write your answer in the note field below') : NONE_TXT();
       d.classList.toggle('an-is-none', on);
       const i0 = instances.find(i => i.root.contains(d));
       // Only the OPEN question owns the composer's placeholder (refresh() syncs every decision).
@@ -564,8 +564,7 @@
       refresh(inst);
       const st = inst.stages[inst.idx], store = storeOf(inst, st);
       if (!st || !store || !inst.comp) return;
-      const want = store.value || '', have = compText(inst.comp.ed);
-      if (want !== (have ? (inst.tag ? '[' + inst.tag + '] ' : '') + have : '')) loadComposer(inst, st);
+      if (st.msgSig !== store.value) loadComposer(inst, st);
     });
   }
   /** Writes every record now (the collect path calls this before reading dm-{id}-hes). */
@@ -639,6 +638,7 @@
     inst.timers.forEach(clearTimeout);
     inst.timers = [];
     inst.root.querySelectorAll('.an-wait, .an-enter').forEach(n => n.classList.remove('an-wait', 'an-enter'));
+    inst.root.querySelectorAll('.an-typing').forEach(n => n.remove());
     // The chat is a history: the questions already answered stay above (finding + question + the user's answer as
     // their own right-aligned message), so the user can always scroll back; only the open stage is shown in full.
     const k0 = inst.seq.indexOf(st);
@@ -743,11 +743,12 @@
   /** First visit of a question: finding now, then each next message once the one before it can have been read
    *  (dwellMs), the answer block (+ "Als Nächstes") last.
    *  A message that has not entered is display:none, so no empty area waits below; each entry
-   *  glides the chat down just far enough to show it - unless the user scrolled (user scroll wins). */
+   *  glides the chat down just far enough to show it - unless the user scrolled (user scroll wins).
+   *  While one is still held back, typing dots stand below the last one: a pause never reads as the end. */
   // Reading pace, counted in letters so long German words do not skew it. Brysbaert 2019 (J. Memory and Language 109):
   // 238 wpm x 4.6 letters (non-fiction) = 260 wpm x 4.2 letters (fiction) = about 1,095 letters/min = 18.25/s.
-  // +10 %: an average reader who reads a little faster, no speed reader. Figures are from English text; no German value exists.
-  const READ_LPS = 18.25 * 1.1, DWELL_MIN = 1200, DWELL_MAX = 20000;
+  // +25 %: an average reader who reads a good bit faster, no speed reader. Figures are from English text; no German value exists.
+  const READ_LPS = 18.25 * 1.25, DWELL_MIN = 1200, DWELL_MAX = 20000;
   function dwellMs(el) {
     const letters = (el.textContent.match(/[\p{L}\p{N}]/gu) || []).length;
     return clamp(Math.round(letters / READ_LPS * 1000), DWELL_MIN, DWELL_MAX);
@@ -758,6 +759,14 @@
     const tail = [inst.peekDn];
     parts.slice(1).concat(tail).forEach(n => n.classList.add('an-wait'));
     parts[0].classList.add('an-enter');
+    let typing = null;
+    if (parts.length > 1) {
+      typing = h('div', 'an-typing');
+      typing.setAttribute('role', 'status');
+      typing.setAttribute('aria-label', L('Es kommt noch etwas', 'More is coming'));
+      typing.append(h('i'), h('i'), h('i'));
+      parts[0].after(typing);
+    }
     let at = 0;
     parts.slice(1).forEach((n, i) => {
       at += dwellMs(parts[i]);
@@ -765,7 +774,8 @@
         if (inst.stages[inst.idx] !== st) return;
         n.classList.remove('an-wait');
         n.classList.add('an-enter');
-        if (n === parts[parts.length - 1]) tail.forEach(t => t.classList.remove('an-wait'));
+        if (n === parts[parts.length - 1]) { typing.remove(); tail.forEach(t => t.classList.remove('an-wait')); }
+        else n.after(typing);
         glide(inst, n, parts[Math.min(i + 1, 1)]);   // the answer never pushes the question out of view
       }, at));
     });
@@ -1023,7 +1033,7 @@
     const inst = visibleInst(e.target);
     if (!inst) return;
     const t = e.target, tag0 = t.tagName, type = (t.type || '').toLowerCase();
-    const typing = tag0 === 'TEXTAREA' || tag0 === 'SELECT' || (tag0 === 'INPUT' && !/^(radio|checkbox|range|button|submit)$/.test(type)) || t.isContentEditable;
+    const typing = tag0 === 'TEXTAREA' || tag0 === 'SELECT' || (tag0 === 'INPUT' && !/^(radio|checkbox|range|button|submit)$/.test(type)) || t.isContentEditable || !!(t.closest && t.closest('.an-comp-ed'));
     const st = inst.stages[inst.idx], d = st && st.kind === 'dec' ? st.el : null;
     if (typing) {
       if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); e.stopPropagation(); step(inst, e.shiftKey ? -1 : 1); }

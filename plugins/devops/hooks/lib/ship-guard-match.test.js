@@ -110,6 +110,42 @@ describe("isManualShipCommand — no false positives (the #198 bonus defect)", (
   });
 });
 
+describe("isManualShipCommand — the spellings pre.issue.guard catches too", () => {
+  test.each([
+    "gh.exe pr create",
+    "GH.EXE PR MERGE 5",
+    "/usr/bin/gh pr create",
+    "C:\\tools\\gh.exe pr merge 5",
+    "GH_REPO=a/b gh pr create",
+    "env GH_REPO=a/b gh pr create",
+    "sudo gh pr merge 5",
+    "gh -R a/b pr create",
+    "gh --repo=a/b pr merge 5",
+    "gh pr -R a/b create",
+    "gh \\\n  pr create",
+    "gh `\n  pr create",
+    "(gh pr create)",
+    "`gh pr create`",
+    'gh api -X PUT "repos/o/r/pulls/5/merge"',
+    "gh api --method=PUT repos/o/r/pulls/5/merge",
+    "gh -R a/b api repos/o/r/pulls/5/merge -f merge_method=squash",
+  ])("%j matches", (cmd) => {
+    expect(isManualShipCommand(cmd)).toBe(true);
+  });
+
+  test.each([
+    "gh api repos/o/r/pulls/5/merge",
+    "gh api -X GET repos/o/r/pulls/5/merge",
+    "gh api repos/o/r/pulls/5 -X PATCH -f title=x",
+    "gh api repos/o/r/pulls/5/merge-status -X PUT",
+    "ghx pr create",
+    "gh pr view 5 --json merged",
+    "echo 'gh.exe pr create'",
+  ])("%j does not match", (cmd) => {
+    expect(isManualShipCommand(cmd)).toBe(false);
+  });
+});
+
 describe("stripQuoted", () => {
   test("removes double-quoted spans", () => {
     expect(stripQuoted('a "b c" d')).not.toContain('b c');

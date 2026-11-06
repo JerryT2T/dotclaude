@@ -87,7 +87,7 @@ const MACHINE_PATTERNS = [
   // so the session never learned the agent finished — and with the mode off a
   // notice quoting "/do-batch …" drew the activation guard (AUD-051).
   /^\s*<scheduled-task\b/i,
-  /^\s*\[SYSTEM NOTIFICATION|^\s*<cross-session-message\b|<task-notification>|<channel\s+source=/i,
+  /^\s*\[SYSTEM NOTIFICATION|<task-notification>|<channel\s+source=|^\s*<cross-session-message\b/i,
 ];
 
 /**

@@ -63,10 +63,10 @@ function isScheduledTask(prompt) {
   return typeof prompt === 'string' && SCHEDULED_TASK_PATTERN.test(prompt);
 }
 
-/** A machine turn: a background task / agent result, a channel message or a
- *  message from another Claude session (#1049) arrives through UserPromptSubmit too, but nobody typed it. Not silent —
+/** A machine turn: a background task / agent result, a message from another session or a channel message
+ *  arrives through UserPromptSubmit too, but nobody typed it. Not silent —
  *  such a turn may do real work — just not the user's own prompt. */
-const MACHINE_TURN_PATTERN = /^\s*\[SYSTEM NOTIFICATION|^\s*<cross-session-message\b|<task-notification>|<channel\s+source=/i;
+const MACHINE_TURN_PATTERN = /^\s*\[SYSTEM NOTIFICATION|<task-notification>|<channel\s+source=|^\s*<cross-session-message\b/i;
 
 function isMachineTurn(prompt) {
   return typeof prompt === 'string' && MACHINE_TURN_PATTERN.test(prompt);
