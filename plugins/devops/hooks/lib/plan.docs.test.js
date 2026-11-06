@@ -34,26 +34,42 @@ describe("plans.md equals plan.js", () => {
 });
 
 // Copies of plan numbers or of retired names must not reappear in prose.
-// plans.md is the home; CHANGELOG and historical notes are exempt.
+// plans.md is the home; CHANGELOG and dated historical notes are exempt.
+function walk(dir) {
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+    if (e.name === "node_modules") return [];
+    const f = path.join(dir, e.name);
+    return e.isDirectory() ? walk(f) : f.endsWith(".md") ? [f] : [];
+  });
+}
+
 describe("no copied plan facts outside plans.md", () => {
   const files = [
-    ["README.md", path.join(REPO, "README.md")],
-    ...["defer-to-reset.md", "agent-proactivity-details.md", "api-credits.md"].map((f) => [f, path.join(PLUGIN, "deep-knowledge", f)]),
-    ["auto-setup/SKILL.md", path.join(PLUGIN, "skills", "auto-setup", "SKILL.md")],
-    ["auto-agents/SKILL.md", path.join(PLUGIN, "skills", "auto-agents", "SKILL.md")],
-  ];
+    path.join(REPO, "README.md"),
+    ...["deep-knowledge", "skills", "agents"].flatMap((d) => walk(path.join(PLUGIN, d))),
+  ].filter((f) => path.basename(f) !== "plans.md" && !/CHANGELOG/i.test(f))
+    .map((f) => [path.relative(REPO, f).split(path.sep).join("/"), f]);
   const banned = [
     [/Max 5[x×]/, "legacy name Max 5x"],
-    [/\bMax 20[x×]/, "legacy name Max 20x"],
+    [/Max 20[x×]/, "legacy name Max 20x"],
     [/Ultra\s*(?:≥|>=)?\s*9\d\s*%|Max\s*(?:≥|>=)?\s*80\s*%|Pro\s*(?:≥|>=)\s*70\s*%/, "copied threshold"],
     [/~55\s*M|~225\s*M/, "unconfirmed token figure"],
   ];
-  // api-credits.md quotes a dated live test made on a Max 20x account.
-  const allow = { "api-credits.md": [/Max 20x\) *,? *Console|\(Max 20x, Console/] };
+  // Explicit allowlist: (file, line pattern) pairs that quote stored or dated data on purpose.
+  const allow = [
+    // dated live test made on an account that was then called Max 20x
+    ["plugins/devops/deep-knowledge/api-credits.md", /\(Max 20x, Console/],
+    // example of a stored burn state: the calibration key keeps its old name (plan.js CALIBRATION_KEYS)
+    ["plugins/devops/skills/do-run/modes/burn/deep-knowledge/burn-scheduler.md", /"planName": "Max 20x"/],
+  ];
+  test("the scan sees the docs, not just six files", () => {
+    expect(files.length).toBeGreaterThan(40);
+    expect(files.map((f) => f[0])).toEqual(expect.arrayContaining(["README.md", "plugins/devops/skills/auto-agents/SKILL.md", "plugins/devops/deep-knowledge/defer-to-reset.md"]));
+  });
   test.each(files)("%s", (name, file) => {
     const text = read(file);
     for (const [re, what] of banned) {
-      const hit = text.split("\n").filter((l) => re.test(l) && !(allow[name] || []).some((a) => a.test(l)));
+      const hit = text.split(/\r?\n/).filter((l) => re.test(l) && !allow.some(([n, a]) => n === name && a.test(l)));
       expect(hit, `${name}: ${what}`).toEqual([]);
     }
   });

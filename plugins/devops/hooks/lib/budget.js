@@ -89,8 +89,8 @@ const STALE_MS = 3 * 60 * 60 * 1000; // snapshot older than 3 h → flagged (sti
 // refresh is due when the worst-case burn since the reading could have
 // crossed the next threshold: headroom (%) × window fill time. A Pro 5 h
 // window drains under a ceremony (7 agents, 3 opus·high) in about half an
-// hour; Max 5x / 20x have 5× / 20× the budget, so the same 30 min mean a
-// fifth / a twentieth of the drift. Snapshots at sonnet-only have no next
+// hour; Max and Ultra have 5× and 10× the budget (plan.js capacity), so the
+// same 30 min mean a fifth / a tenth of the drift. Snapshots at sonnet-only have no next
 // threshold: only the reset informs (the `expired` path), never age.
 const WINDOW_FILL_MIN = Object.fromEntries(PLAN_IDS.map((id) => [id, PLANS[id].fillMin]));
 const WEEK_TO_WINDOW = 8; // the weekly budget is roughly this many 5 h windows
@@ -176,6 +176,12 @@ function liveWindow(win, ts, nowMs) {
   if (!win || typeof win !== 'object') return { pct: null, resetInMinutes: null, expired: false };
   const reset = minutes(win.resetInMinutes);
   const expired = Number.isFinite(ts) && reset != null && nowMs > ts + reset * 60_000;
+  // A percent above 0 without a reset can never expire on its own: after STALE_MS it
+  // is no reading (the refresh runs on `stale`). Idle 0 % with no reset has nothing to age.
+  const w = pct(win.pct);
+  if (reset == null && w != null && w > 0 && Number.isFinite(ts) && nowMs - ts > STALE_MS) {
+    return { pct: null, resetInMinutes: null, expired: false };
+  }
   return expired
     ? { pct: null, resetInMinutes: null, expired: true }
     : { pct: pct(win.pct), resetInMinutes: reset == null ? null : Math.max(0, Math.round(reset - (nowMs - ts) / 60_000)), expired: false };
@@ -198,6 +204,19 @@ function credentialsTier(home, sessionId) {
     try { fs.writeFileSync(cacheFile, tier === 'unknown' ? 'unknown' : String(rl), 'utf8'); } catch {}
   }
   return { tier, label: tier === 'unknown' ? null : tierLabel(tier, rl) };
+}
+
+/**
+ * The one plan lookup (budget, card, meter, status line): credentials first (fresh),
+ * the snapshot's label second (sticky). `label` is `usage-live.json` `plan`.
+ */
+function resolvePlan(label, { home = os.homedir(), sessionId = null } = {}) {
+  let { tier, label: plan } = credentialsTier(home, sessionId);
+  if (tier === 'unknown' && typeof label === 'string') {
+    const fromLabel = planTier(label);
+    if (fromLabel !== 'unknown') { tier = fromLabel; plan = tierLabel(fromLabel); }
+  }
+  return { tier, label: plan };
 }
 
 /**
@@ -255,12 +274,7 @@ function readBudget({ home = os.homedir(), nowMs = Date.now(), env = process.env
   const failedAt = live._cached ? Date.parse(live._failedAt || '') : NaN;
   const refreshFailed = live._cached && typeof live._failureReason === 'string' ? live._failureReason : null;
 
-  // Plan: credentials first (fresh), snapshot label second (sticky).
-  let { tier, label: plan } = credentialsTier(home, sessionId);
-  if (tier === 'unknown' && typeof live.plan === 'string') {
-    const fromLabel = planTier(live.plan);
-    if (fromLabel !== 'unknown') { tier = fromLabel; plan = tierLabel(fromLabel); }
-  }
+  const { tier, label: plan } = resolvePlan(live.plan, { home, sessionId });
 
   // One rule for every plan (plan.js fiveHourWindow): delivered data is used, a
   // missing window means "idle" or, on Ultra, "no 5 h limit" (no row, week binds).
@@ -431,7 +445,7 @@ function classSuffix(b) {
 }
 
 module.exports = {
-  RULES, CLASSES, planTier, tierLabel, credentialsTier, classify, bindingWindow, refreshDueMinutes, readBudget, maybeRefreshUsage,
+  RULES, CLASSES, planTier, tierLabel, credentialsTier, resolvePlan, classify, bindingWindow, refreshDueMinutes, readBudget, maybeRefreshUsage,
   budgetLine, budgetSummary, nudgeSuffix, unattendedSuffix, deferInfo, DEFER_AT, DEFER_SOON_MIN,
   STALE_MS, REFRESH_COOLDOWN_MS, FAILURE_BACKOFF_MS, REFRESH_MARKER, RESET_IMMINENT_MIN, WINDOW_FILL_MIN, WEEK_TO_WINDOW,
   RECENT_RESET_5H_MIN, RECENT_RESET_WEEK_MIN,

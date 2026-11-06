@@ -282,7 +282,9 @@ describe("prompt.knowledge.dispatch — the positive budget signal after a reset
     expect(send("Erneut versuchen")).toContain("[budget]");
     expect(send("Erneut versuchen bitte")).not.toContain("[budget]");
     fs.writeFileSync(path.join(h, ".claude", "usage-live.json"), JSON.stringify({ ...stale, plan: "Max 5x" }));
-    expect(send("und nochmal bitte")).toContain("[budget] Max 5x");
+    const line = send("und nochmal bitte");
+    expect(line).toContain("[budget] Max");
+    expect(line).not.toContain("Max 5x"); // "Max 5x" is now just "Max"
   });
 
   test("no reset in sight → no line (silence still means free in the steady state)", () => {

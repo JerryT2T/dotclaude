@@ -105,7 +105,7 @@ const CALIBRATION_MIN_SAMPLES = 3;
 const PLAN_CAPACITY = Object.fromEntries(PLAN_IDS.filter((id) => PLANS[id].capacity).map((id) => [PLANS[id].label, PLANS[id].capacity]));
 /** Calibration samples stay under the key they were first measured with (stored files keep working). */
 const calibrationKey = (plan) => { const id = planId(plan); return CALIBRATION_KEYS[id] || plan; };
-/** Planning defaults at Max 20x, standard depth. Scaled for other plans. */
+/** Planning defaults measured on the largest plan (Ultra), standard depth. Scaled for other plans. */
 const DEFAULTS_AT_MAX20 = { laneHourlyPct: 1.5, unitCostPct: 0.2 };
 const SIZE_WEIGHT = { S: 1, M: 2.5, L: 5 };
 const PRIORITY_ORDER = ['P0', 'P1', 'P2', 'P3', 'P4', 'P5'];

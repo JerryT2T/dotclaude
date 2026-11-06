@@ -89,11 +89,10 @@ let PLAN_DEFAULTS;
 try {
   PLAN_DEFAULTS = require('../lib/plan-defaults');
 } catch {
-  PLAN_DEFAULTS = {
-    pro:    { estimatedLimitTokens: 200000, confirmThresholdPct: 0.05 },
-    max_5:  { estimatedLimitTokens: 200000, confirmThresholdPct: 0.08 },
-    max_20: { estimatedLimitTokens: 200000, confirmThresholdPct: 0.10 },
-  };
+  // plan.js (via plan-defaults) is the one source of the numbers. If it cannot load,
+  // only the strictest class remains: the guard asks early rather than failing open.
+  const strict = { estimatedLimitTokens: 200000, confirmThresholdPct: 0.05 };
+  PLAN_DEFAULTS = { pro: strict, max_20: strict };
 }
 // Falls back to the pre-0.9 substring match rather than failing open.
 let bashCost = null;
@@ -132,7 +131,7 @@ function loadConfig() {
     // before plan-awareness existed (migration from v0.1 configs)
     if (cfg.estimatedLimitTokens === 1000000) {
       const plan = cfg.plan || 'max_20';
-      const defaults = PLAN_DEFAULTS[plan] || PLAN_DEFAULTS.max_20;
+      const defaults = PLAN_DEFAULTS[plan] || PLAN_DEFAULTS.max_20 || PLAN_DEFAULTS.pro;
       cfg.estimatedLimitTokens = defaults.estimatedLimitTokens;
       cfg.confirmThresholdPct = defaults.confirmThresholdPct;
     }

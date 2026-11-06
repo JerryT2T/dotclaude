@@ -124,25 +124,37 @@ function classifyBudget(snapshot) {
   }
 }
 
-/** Plan id of a usage snapshot: its label first, the credentials tier when the label is the generic placeholder. */
+/**
+ * Plan id of a usage snapshot: the one lookup (budget.js resolvePlan), credentials
+ * first, the snapshot's label second. Without budget.js only the label is left.
+ */
 function usagePlanId(usageData) {
   try {
-    const { planId } = cjsRequire(join(PLUGIN_ROOT, 'hooks', 'lib', 'plan.js'));
-    const id = planId(usageData && usageData.plan);
-    if (id !== 'unknown') return id;
-    return cjsRequire(join(PLUGIN_ROOT, 'hooks', 'lib', 'budget.js')).credentialsTier(homedir()).tier;
-  } catch { return 'unknown'; }
+    return cjsRequire(join(PLUGIN_ROOT, 'hooks', 'lib', 'budget.js')).resolvePlan(usageData && usageData.plan, { home: homedir() }).tier;
+  } catch {
+    try { return cjsRequire(join(PLUGIN_ROOT, 'hooks', 'lib', 'plan.js')).planId(usageData && usageData.plan); } catch { return 'unknown'; }
+  }
 }
 
 /**
  * The 5 h window of a snapshot as the displays see it (plan.js fiveHourWindow is
  * the one rule): `applies` false means no row anywhere. Without a `session`
- * there is nothing to show on any plan.
+ * there is nothing to show on any plan. Never fatal: if plan.js cannot load, the
+ * row shows as it did before the plan rules existed.
  */
 function fiveHourView(usageData) {
-  const { fiveHourWindow } = cjsRequire(join(PLUGIN_ROOT, 'hooks', 'lib', 'plan.js'));
-  const view = fiveHourWindow(usagePlanId(usageData), usageData && usageData.session);
-  if (!usageData || !usageData.session) return { ...view, applies: false };
+  const session = usageData && usageData.session;
+  let view;
+  try {
+    const { fiveHourWindow } = cjsRequire(join(PLUGIN_ROOT, 'hooks', 'lib', 'plan.js'));
+    view = fiveHourWindow(usagePlanId(usageData), session);
+  } catch (err) {
+    console.error('[dotclaude-mcp] plan rules unavailable:', err?.message || err);
+    const n = Number(session && session.pct);
+    const r = session && session.resetInMinutes != null && Number.isFinite(Number(session.resetInMinutes)) ? Number(session.resetInMinutes) : null;
+    view = { state: 'idle', pct: Number.isFinite(n) ? n : 0, resetInMinutes: r, applies: true };
+  }
+  if (!session) return { ...view, applies: false };
   return view;
 }
 
@@ -259,9 +271,19 @@ function formatDelta(delta) {
 // Compute delta between two usage snapshots, handling cycle resets.
 // If fresh pct < previous pct, a new cycle started — baseline is 0.
 function computeDelta(freshPct, prevPct) {
-  const f = freshPct || 0;
-  const p = prevPct || 0;
+  if (freshPct == null || prevPct == null) return null; // no baseline value, no delta (never "+X%" of a whole window)
+  const f = Number(freshPct);
+  const p = Number(prevPct);
+  if (!Number.isFinite(f) || !Number.isFinite(p)) return null;
   return f < p ? f : f - p;
+}
+
+/** Both deltas of a live snapshot against the stored baseline; a window missing on either side has none. */
+function deltasOf(data, baseline) {
+  return {
+    delta5h: computeDelta(data?.session?.pct, baseline?.session?.pct),
+    deltaWk: computeDelta(data?.weekly?.pct, baseline?.weekly?.pct),
+  };
 }
 
 function formatResetShort(minutes) {
@@ -2412,10 +2434,7 @@ function refreshUsage({ swr = false } = {}) {
     let delta5h = null;
     let deltaWk = null;
     if (isLiveSnapshot(data)) {
-      if (baseline?.session || baseline?.weekly) {
-        delta5h = computeDelta(data.session?.pct, baseline.session?.pct);
-        deltaWk = computeDelta(data.weekly?.pct, baseline.weekly?.pct);
-      }
+      if (baseline?.session || baseline?.weekly) ({ delta5h, deltaWk } = deltasOf(data, baseline));
       writeBaseline(data);
     }
     return { success: true, data, delta5h, deltaWk };
@@ -3344,7 +3363,7 @@ function pendingDismissedReason(p) {
 
 export {
   insideWorkTree, withDetectedRepoMode, pendingDismissTrace,
-  renderBar, renderUsageLine, formatResetShort, renderUsageMeter, renderUsageMeterForCard, classifyBudget,
+  renderBar, renderUsageLine, formatResetShort, renderUsageMeter, renderUsageMeterForCard, classifyBudget, deltasOf, computeDelta, fiveHourView, usagePlanId,
   buildBudgetModel, renderBudgetLineMd, sanitizeSessionId, buildResultLines, buildEvidencePosts, renderPipelineLine, buildChannelLadder, renderChannelLadderMd,
   ctaInput, resolveCardKey, sessionArchiveNote, buildDecisionBlock, buildCardModel, sessionFileCandidates, readSessionFlagRaw,
   openQuestionOf, localShipInstruction, renderExpiredNote, formatLastReading, cardHead, outcomeTitlePrefix, HEADINGS,

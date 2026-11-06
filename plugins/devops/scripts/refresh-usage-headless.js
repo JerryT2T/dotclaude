@@ -48,7 +48,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { planId, planLabel } = require('../hooks/lib/plan');
-const { usageShape, weeklyAllLimit, recordDrift } = require('../hooks/lib/usage-drift');
+const { usageShape, weeklyAllLimit, recordDrift, clearDrift } = require('../hooks/lib/usage-drift');
 
 // Store usage data in ~/.claude — same location regardless of CWD or worktree
 const SCRIPTS_DIR = path.join(os.homedir(), '.claude');
@@ -250,17 +250,28 @@ function mapApiUsage(usage, rateLimits, nowMs) {
     : (weeklyAll ? { pct: pctOf(weeklyAll.percent), resetsAt: weeklyAll.resets_at } : null);
   const weeklyPct = weeklySrc ? weeklySrc.pct : null;
   // #1009: `five_hour: null` means the 5-hour window has not started (no usage
-  // since its reset). With a valid weekly reading that is 0 %, not "no data";
-  // any other missing or garbage session value still writes nothing.
-  const windowIdle = !!usage && usage.five_hour === null && weeklyPct !== null;
-  const sessionPct = windowIdle ? 0 : pctOf(usage && usage.five_hour && usage.five_hour.utilization);
-  // No usable session window: a valid weekly reading is still a reading (weekly-only
-  // snapshot); with neither window there is nothing trustworthy to write.
-  if (sessionPct === null && weeklyPct === null) return null;
+  // since its reset) or, on Ultra, that there is no such limit. With a valid weekly
+  // reading that is 0 %, not "no data". Anything else that is not a usable window
+  // writes NOTHING, so a good snapshot is never overwritten by a guess: a garbage
+  // `five_hour` (Pro at 95 % must not read as 0 % and free), and an absent key on
+  // every plan but Ultra. Only Ultra without the key is weekly-only (session null).
+  const fh = usage ? usage.five_hour : undefined;
+  let session;
+  if (fh === null) {
+    if (weeklyPct === null) return null;
+    session = { pct: 0, resetInMinutes: null };
+  } else if (fh === undefined) {
+    if (weeklyPct === null || planId(rateLimits && rateLimits.rate_limit_tier) !== 'ultra') return null;
+    session = null;
+  } else {
+    const p = pctOf(fh.utilization);
+    if (p === null) return null;
+    session = { pct: p, resetInMinutes: resetMin(fh.resets_at) };
+  }
 
   const snapshot = {
     timestamp: new Date(nowMs).toISOString(),
-    session: sessionPct === null ? null : { pct: sessionPct, resetInMinutes: windowIdle ? null : resetMin(usage.five_hour.resets_at) },
+    session,
     weekly: weeklyPct === null ? null : {
       pct: weeklyPct,
       resetDay: null,  // API carries durations only — no day/time strings
@@ -764,7 +775,7 @@ async function scrapeViaCDP() {
 
     if (evalData.usage != null) {
       const drift = usageShape(evalData.usage);
-      if (drift) recordDrift(drift);
+      if (drift) recordDrift(drift); else clearDrift();
     }
     let parsed = evalData.usage ? mapApiUsage(evalData.usage, evalData.rateLimits, Date.now()) : null;
 

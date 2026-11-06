@@ -52,7 +52,7 @@ const FABLE = { sharePct: 50, scopeName: 'Fable' };
 function planId(raw) {
   if (typeof raw !== 'string') return 'unknown';
   const s = raw.trim();
-  if (PLANS[s.toLowerCase()]) return s.toLowerCase();
+  if (Object.prototype.hasOwnProperty.call(PLANS, s.toLowerCase())) return s.toLowerCase();
   if (/ultra/i.test(s)) return 'ultra';
   const m = s.match(/max[\s_]*(\d+)x?/i);
   if (m) return Number(m[1]) >= 20 ? 'ultra' : 'max';
@@ -65,7 +65,7 @@ function planId(raw) {
 
 /** Display label for an id (null for unknown). */
 function planLabel(id) {
-  return PLANS[id] ? PLANS[id].label : null;
+  return typeof id === 'string' && Object.prototype.hasOwnProperty.call(PLANS, id) ? PLANS[id].label : null;
 }
 
 /**

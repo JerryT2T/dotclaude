@@ -8,9 +8,9 @@ import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const here = path.dirname(fileURLToPath(import.meta.url));
 const { fiveHourWindow } = require("./plan.js");
-const { readBudget, budgetLine, bindingWindow, maybeRefreshUsage } = require("./budget.js");
+const { readBudget, budgetLine, bindingWindow, maybeRefreshUsage, resolvePlan } = require("./budget.js");
 const { buildSnapshot } = require("../../scripts/statusline-usage.js");
-const { usageShape, recordDrift, driftNotice } = require("./usage-drift.js");
+const { usageShape, recordDrift, clearDrift, driftNotice } = require("./usage-drift.js");
 
 const NOW = Date.parse("2026-11-06T12:00:00Z");
 const MIN = 60_000;
@@ -150,8 +150,17 @@ describe("statusline carry (U4)", () => {
     expect(buildSnapshot(onlyWeek, prev("Pro", { pct: 60, resetInMinutes: null }), NOW).session).toBe(null);
     expect(buildSnapshot(onlyWeek, prev("Pro", { pct: 0, resetInMinutes: null }), NOW).session).toEqual({ pct: 0, resetInMinutes: null });
   });
-  test("Ultra: never carried", () => {
-    expect(buildSnapshot(onlyWeek, prev("Ultra", { pct: 60, resetInMinutes: 100 }), NOW).session).toBe(null);
+  test("Ultra: a DELIVERED window (known reset) carries until its own reset, like every plan (R4)", () => {
+    expect(buildSnapshot(onlyWeek, prev("Ultra", { pct: 95, resetInMinutes: 100 }, 30), NOW).session).toEqual({ pct: 95, resetInMinutes: 70 });
+    expect(buildSnapshot(onlyWeek, prev("Ultra", { pct: 95, resetInMinutes: 100 }, 101), NOW).session).toBe(null);
+  });
+  test("Ultra: only the idle placeholder (0 %, no reset) is dropped (R4)", () => {
+    expect(buildSnapshot(onlyWeek, prev("Ultra", { pct: 0, resetInMinutes: null }), NOW).session).toBe(null);
+    expect(buildSnapshot(onlyWeek, prev("Ultra", { pct: 60, resetInMinutes: null }), NOW).session).toBe(null);
+  });
+  test("a carried Ultra window at 95 % is not free for the budget while it lives (R4)", () => {
+    const snap = buildSnapshot(onlyWeek, prev("Ultra", { pct: 95, resetInMinutes: 100 }, 5), NOW);
+    expect(readBudget({ home: HOME, env: {}, nowMs: NOW, snapshot: snap }).fivePct).toBe(95);
   });
   test("unknown plan label behaves like Max; no previous snapshot gives null", () => {
     expect(buildSnapshot(onlyWeek, prev("Max Plan", { pct: 60, resetInMinutes: 100 }), NOW).session).toEqual({ pct: 60, resetInMinutes: 100 });
@@ -190,6 +199,125 @@ describe("usage drift notice (U10)", () => {
     expect(first).toContain("devops learn");
     expect(first).toContain("no-weekly-window keys=a");
     expect(driftNotice({ home, nowMs: NOW + 86_400_000 })).toBe(null);
+    // the drift is still recorded (every bad response records it again): next month speaks again
     expect(driftNotice({ home, nowMs: Date.parse("2026-12-02T08:00:00Z") })).toContain("devops learn");
+  });
+  test("a healthy response clears the record: a one-off odd response never announces again (R3)", () => {
+    const home = tmp();
+    recordDrift("no-weekly-window keys=a", { home, nowMs: NOW });
+    expect(driftNotice({ home, nowMs: NOW })).toContain("devops learn");
+    clearDrift({ home });
+    expect(driftNotice({ home, nowMs: Date.parse("2026-12-02T08:00:00Z") })).toBe(null);
+    expect(driftNotice({ home, nowMs: Date.parse("2027-03-02T08:00:00Z") })).toBe(null);
+    expect(() => clearDrift({ home })).not.toThrow();
+  });
+  test("seven_day: null (key present) is an idle week, not drift; an absent key is (R3)", () => {
+    expect(usageShape({ five_hour: null, seven_day: null })).toBe(null);
+    expect(usageShape({ five_hour: null })).toMatch(/^no-weekly-window/);
+    expect(usageShape({ five_hour: null, seven_day: {} })).toMatch(/^no-weekly-window/);
+    expect(usageShape({ five_hour: null, limits: [{ kind: "weekly_all", percent: 3 }] })).toBe(null);
+  });
+});
+
+describe("carried countdown survives many short renders (R1)", () => {
+  const week = { rate_limits: { seven_day: { used_percentage: 20, resets_at: (NOW + 5000 * MIN) / 1000 } } };
+  const first = { timestamp: new Date(NOW).toISOString(), session: { pct: 60, resetInMinutes: 100 }, weekly: { pct: 10, resetInMinutes: 5000 }, plan: "Max" };
+  const run = (stepMs, totalMs) => {
+    let cur = first;
+    const seen = [];
+    for (let t = stepMs; t <= totalMs; t += stepMs) {
+      const next = buildSnapshot(week, JSON.parse(JSON.stringify(cur)), NOW + t);
+      seen.push([t, next.session]);
+      cur = next;
+    }
+    return seen;
+  };
+  test("renders 2 s apart for 10 minutes: the countdown falls with the clock", () => {
+    const seen = run(2000, 10 * MIN);
+    expect(seen[seen.length - 1][1].resetInMinutes).toBe(90);
+    for (const [t, s] of seen) expect(Math.abs(s.resetInMinutes - (100 - t / MIN))).toBeLessThanOrEqual(0.5);
+  });
+  test("renders 5 s apart: the window expires at its own reset, not later", () => {
+    const seen = run(5000, 105 * MIN);
+    const at = (min) => seen.find(([t]) => t === min * MIN)[1];
+    expect(at(50).resetInMinutes).toBe(50);
+    expect(at(99).pct).toBe(60);
+    expect(at(101)).toBe(null);
+    expect(seen[seen.length - 1][1]).toBe(null);
+  });
+  test("a delivered window replaces the carried one and drops the anchor", () => {
+    const carried = buildSnapshot(week, first, NOW + 10 * MIN);
+    expect(carried.sessionResetAt).toBe(NOW + 100 * MIN);
+    const fresh = { rate_limits: { five_hour: { used_percentage: 5, resets_at: (NOW + 400 * MIN) / 1000 }, seven_day: week.rate_limits.seven_day } };
+    const next = buildSnapshot(fresh, carried, NOW + 11 * MIN);
+    expect(next.session).toEqual({ pct: 5, resetInMinutes: 389 });
+    expect("sessionResetAt" in next).toBe(false);
+  });
+});
+
+describe("one plan lookup: credentials first, snapshot label second (R9)", () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), "plan-lookup-"));
+  fs.mkdirSync(path.join(home, ".claude"));
+  const credFile = path.join(home, ".claude", ".credentials.json");
+  const creds = (tier) => fs.writeFileSync(credFile, JSON.stringify({ claudeAiOauth: { rateLimitTier: tier } }));
+  test("credentials win over a snapshot label", () => {
+    creds("default_claude_max_20x");
+    expect(resolvePlan("Max", { home })).toEqual({ tier: "ultra", label: "Ultra" });
+  });
+  test("the label decides only when credentials are unknown or missing", () => {
+    fs.rmSync(credFile, { force: true });
+    expect(resolvePlan("Pro", { home })).toEqual({ tier: "pro", label: "Pro" });
+    expect(resolvePlan("Max Plan", { home }).tier).toBe("unknown");
+    expect(resolvePlan(undefined, { home }).tier).toBe("unknown");
+  });
+  test("readBudget uses the same lookup: a Max label on an Ultra account has no 5h window", () => {
+    creds("default_claude_max_20x");
+    const b = readBudget({ home, env: {}, nowMs: NOW, snapshot: { timestamp: new Date(NOW - MIN).toISOString(), session: { pct: 0, resetInMinutes: null }, weekly: WEEK, plan: "Max" } });
+    expect(b.tier).toBe("ultra");
+    expect(b.fiveApplies).toBe(false);
+  });
+  test("the status line asks the same lookup: a Max Plan snapshot on Ultra shows no 5h", () => {
+    const { renderStatusLine } = require("../../scripts/statusline-usage.js");
+    const snap = { session: { pct: 0, resetInMinutes: null }, weekly: { pct: 10, resetInMinutes: 5000 }, plan: "Max Plan" };
+    expect(renderStatusLine(snap, null, "ultra")).toBe("Wk 10%");
+    expect(renderStatusLine(snap, null, "max")).toBe("5h 0%  ·  Wk 10%");
+    expect(renderStatusLine(snap, null)).toBe("5h 0%  ·  Wk 10%");
+  });
+});
+
+describe("a percent without a reset does not live forever (R8)", () => {
+  const snapAt = (ageMin, session) => readBudget({ home: HOME, env: {}, nowMs: NOW, snapshot: { timestamp: new Date(NOW - ageMin * MIN).toISOString(), session, weekly: WEEK, plan: "Max" } });
+  test("young: kept as a reading, never expired", () => {
+    const b = snapAt(60, { pct: 70, resetInMinutes: null });
+    expect(b.fivePct).toBe(70);
+    expect(b.expired).toBe(false);
+  });
+  test("older than STALE_MS: no reading, flagged stale so the refresh runs", () => {
+    const b = snapAt(200, { pct: 70, resetInMinutes: null });
+    expect(b.fivePct).toBe(null);
+    expect(b.stale).toBe(true);
+    expect(b.expired).toBe(false);
+  });
+  test("idle 0 % with no reset stays non-expired and starts no scraper", () => {
+    const b = snapAt(1, { pct: 0, resetInMinutes: null });
+    expect(b.fivePct).toBe(0);
+    expect(b.expired).toBe(false);
+    expect(b.announce).toBe(false);
+    expect(maybeRefreshUsage(b, { home: HOME, nowMs: NOW, env: {}, pluginRoot: null })).toBe(false);
+  });
+});
+
+describe("status line without plan.js (R7)", () => {
+  test("a missing plan.js leaves the module loadable and the line printable", async () => {
+    const { execFileSync } = require("node:child_process");
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "half-plugin-"));
+    fs.mkdirSync(path.join(dir, "scripts"));
+    fs.mkdirSync(path.join(dir, "hooks", "lib"), { recursive: true });
+    fs.copyFileSync(path.join(here, "../../scripts/statusline-usage.js"), path.join(dir, "scripts", "statusline-usage.js"));
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), "half-home-"));
+    fs.mkdirSync(path.join(home, ".claude"));
+    const input = JSON.stringify({ model: { display_name: "M" }, rate_limits: { five_hour: { used_percentage: 12, resets_at: Date.now() / 1000 + 3600 }, seven_day: { used_percentage: 30, resets_at: Date.now() / 1000 + 86400 } } });
+    const out = execFileSync(process.execPath, [path.join(dir, "scripts", "statusline-usage.js")], { input, env: { ...process.env, HOME: home, USERPROFILE: home }, encoding: "utf8" });
+    expect(out).toBe("M  ·  5h 12%  ·  Wk 30%");
   });
 });

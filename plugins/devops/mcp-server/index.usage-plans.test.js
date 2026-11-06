@@ -24,9 +24,9 @@ vi.mock("zod", () => {
   return { z };
 });
 
-let renderUsageMeter, renderUsageMeterForCard, buildBudgetModel, renderBudgetLineMd, renderUsageLine;
+let renderUsageMeter, renderUsageMeterForCard, buildBudgetModel, renderBudgetLineMd, renderUsageLine, deltasOf, usagePlanId;
 beforeAll(async () => {
-  ({ renderUsageMeter, renderUsageMeterForCard, buildBudgetModel, renderBudgetLineMd, renderUsageLine } = await import("./index.js"));
+  ({ renderUsageMeter, renderUsageMeterForCard, buildBudgetModel, renderBudgetLineMd, renderUsageLine, deltasOf, usagePlanId } = await import("./index.js"));
 });
 
 const snap = (plan, session, weekly, extra = {}) => ({ timestamp: new Date(Date.now() - 60_000).toISOString(), plan, session, weekly, ...extra });
@@ -145,5 +145,40 @@ describe("Fable bar (U11)", () => {
     for (const plan of ["Pro", "Max", "Team"]) {
       expect(rows(renderUsageMeter(snap(plan, REAL5, WK), 1, 1))).toEqual(["5h", "Wk"]);
     }
+  });
+});
+
+describe("deltas need a baseline value on both sides (R5)", () => {
+  test("a weekly-only baseline gives no 5h delta, however big the window is now", () => {
+    expect(deltasOf({ session: { pct: 62 }, weekly: { pct: 40 } }, { session: null, weekly: { pct: 38 } })).toEqual({ delta5h: null, deltaWk: 2 });
+  });
+  test("a weekly-only snapshot gives no 5h delta, and a missing weekly baseline no weekly delta", () => {
+    expect(deltasOf({ session: null, weekly: { pct: 40 } }, { session: { pct: 30 }, weekly: { pct: 38 } })).toEqual({ delta5h: null, deltaWk: 2 });
+    expect(deltasOf({ session: { pct: 30 }, weekly: { pct: 40 } }, { session: { pct: 20 }, weekly: null })).toEqual({ delta5h: 10, deltaWk: null });
+  });
+  test("known values still give a delta; a reset restarts from 0; 0 % is a value", () => {
+    expect(deltasOf({ session: { pct: 30 }, weekly: { pct: 40 } }, { session: { pct: 20 }, weekly: { pct: 38 } })).toEqual({ delta5h: 10, deltaWk: 2 });
+    expect(deltasOf({ session: { pct: 5 }, weekly: { pct: 40 } }, { session: { pct: 90 }, weekly: { pct: 40 } })).toEqual({ delta5h: 5, deltaWk: 0 });
+    expect(deltasOf({ session: { pct: 12 }, weekly: { pct: 1 } }, { session: { pct: 0 }, weekly: { pct: 0 } })).toEqual({ delta5h: 12, deltaWk: 1 });
+  });
+  test("nothing at all gives null, not NaN", () => {
+    expect(deltasOf(null, null)).toEqual({ delta5h: null, deltaWk: null });
+  });
+});
+
+describe("plan lookup on the card side (R9)", () => {
+  test("credentials first, then the snapshot label", () => {
+    fs.mkdirSync(path.join(FAKE_HOME, ".claude"), { recursive: true });
+    const f = path.join(FAKE_HOME, ".claude", ".credentials.json");
+    fs.writeFileSync(f, JSON.stringify({ claudeAiOauth: { rateLimitTier: "default_claude_max_20x" } }));
+    try {
+      expect(usagePlanId({ plan: "Max" })).toBe("ultra");
+      expect(rows(renderUsageMeter(snap("Max", IDLE5, WK), 1, 1))).toEqual(["Wk"]);
+    } finally {
+      fs.rmSync(f);
+    }
+    expect(usagePlanId({ plan: "Max" })).toBe("max");
+    expect(usagePlanId({ plan: "Max Plan" })).toBe("unknown");
+    expect(usagePlanId(null)).toBe("unknown");
   });
 });

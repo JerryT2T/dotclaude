@@ -14,6 +14,13 @@ describe("planId resolves every form that was ever stored or sent", () => {
     ["Team", "team"], ["Enterprise", "team"], ["default_claude_team", "team"], ["claude_enterprise", "team"],
     ["Max Plan", "unknown"], ["something_new", "unknown"], ["", "unknown"], [null, "unknown"], [undefined, "unknown"], [42, "unknown"],
   ])("%s -> %s", (raw, id) => { expect(planId(raw)).toBe(id); });
+  test.each(["constructor", "__proto__", "toString", "hasOwnProperty", "valueOf", "Constructor"])("inherited object keys are not plans: %s (R12)", (raw) => {
+    expect(planId(raw)).toBe("unknown");
+    expect(planLabel(raw)).toBeNull();
+    expect(planLabel(planId(raw))).toBeNull();
+    expect(classify({ tier: planId(raw), fivePct: 10, weeklyPct: 10 })).toBe(classify({ tier: "max", fivePct: 10, weeklyPct: 10 }));
+    expect(classify({ tier: planId(raw), fivePct: null, weeklyPct: null })).toBe("ask-before-parallel");
+  });
   test("labels", () => {
     expect(PLAN_IDS_LABELS()).toEqual({ free: "Free", pro: "Pro", max: "Max", ultra: "Ultra", team: "Team" });
     expect(planLabel("unknown")).toBeNull();

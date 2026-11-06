@@ -53,7 +53,8 @@ and "window idle" on every other plan.
 
 ## Fable
 
-Fable is a model, not a plan feature: Pro pays it with usage credits; Max may
-spend up to half of the weekly limit on it; Ultra and premium Team seats the
-same half plus a separate weekly Fable limit. The plugin reads such limits
-from the usage data (`limits[]`), not from the plan name.
+Fable is a model, not a plan feature. Pro pays for it with usage credits. The
+pricing page lists 50 % of the weekly limits for Max and Ultra, and 50 % on
+premium Team seats. The Max and Ultra help articles both name a separate weekly
+limit for Fable. The plugin reads such limits from the usage data
+(`limits[]`), not from the plan name.

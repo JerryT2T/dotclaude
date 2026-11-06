@@ -277,4 +277,4 @@ Never write `~/.claude/CLAUDE.md` without explicit confirmation.
 
 ## Usage-format drift notice
 
-The SessionStart line `[ss.usage.drift.notice]` (`hooks/lib/usage-drift.js`, at most once a calendar month per machine) offers "devops learn" when the claude.ai usage response lost its weekly data or changed shape. A missing or null `five_hour` is not drift. Treat it as a plugin issue (branch B): search for the same signature first, then file one issue per topic. The notice never files anything by itself; the user's "devops learn" is the click.
+The SessionStart line `[ss.usage.drift.notice]` (`hooks/lib/usage-drift.js`, at most once a calendar month per machine) offers "devops learn" when the claude.ai usage response lost its weekly data or changed shape. A missing or null `five_hour` is not drift, nor is a null `seven_day`; the next healthy response clears the record. Treat it as a plugin issue (branch B): search for the same signature first, then file one issue per topic. The notice never files anything by itself; the user's "devops learn" is the click.

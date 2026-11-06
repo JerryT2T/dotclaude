@@ -11,7 +11,7 @@
  *   response is not the expected object.
  *
  *   Files (per machine, under ~/.claude/): usage-format-drift.json (last
- *   signature), usage-format-drift-notified (the "YYYY-MM" last announced).
+ *   signature; removed by the next healthy response), usage-format-drift-notified (the "YYYY-MM" last announced).
  */
 
 const fs = require('fs');
@@ -32,7 +32,8 @@ function usageShape(usage) {
   if (!usage || typeof usage !== 'object' || Array.isArray(usage)) return 'not-an-object';
   const seven = usage.seven_day;
   const hasSeven = seven && typeof seven === 'object' && typeof seven.utilization === 'number';
-  if (hasSeven || weeklyAllLimit(usage)) return null;
+  // `seven_day: null` (key present) is an idle week, like `five_hour: null`: not drift.
+  if (hasSeven || seven === null || weeklyAllLimit(usage)) return null;
   const keys = Object.keys(usage).sort().slice(0, 12).join(',');
   return `no-weekly-window keys=${keys}`;
 }
@@ -47,6 +48,14 @@ function recordDrift(signature, { home = os.homedir(), nowMs = Date.now() } = {}
     fs.mkdirSync(path.join(home, '.claude'), { recursive: true });
     fs.writeFileSync(driftFile(home), JSON.stringify({ signature, seenAt: new Date(nowMs).toISOString() }) + '\n');
   } catch { /* a notice is never worth a failure */ }
+}
+
+/**
+ * A healthy response ends the drift: forget the signature, so a one-off odd
+ * response does not announce every month. Never throws.
+ */
+function clearDrift({ home = os.homedir() } = {}) {
+  try { fs.rmSync(driftFile(home), { force: true }); } catch { /* nothing to clear */ }
 }
 
 /**
@@ -65,4 +74,4 @@ function driftNotice({ home = os.homedir(), nowMs = Date.now() } = {}) {
     + 'Say "devops learn" to report it as a plugin issue; nothing is filed unless you do.';
 }
 
-module.exports = { usageShape, weeklyAllLimit, recordDrift, driftNotice };
+module.exports = { usageShape, weeklyAllLimit, recordDrift, clearDrift, driftNotice };

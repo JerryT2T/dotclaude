@@ -45,11 +45,29 @@ describe("mapApiUsage with real responses (U9, U11)", () => {
     const u = { ...usage, limits: [...usage.limits, { kind: "session", percent: 55, resets_at: usage.seven_day.resets_at, scope: null }] };
     expect(mapApiUsage(u, rateLimits, NOW).session).toEqual({ pct: 0, resetInMinutes: null });
   });
-  test("weekly-only: garbage five_hour with a valid week still writes the week (U7)", () => {
-    const snap = mapApiUsage({ five_hour: { weird: true }, seven_day: { utilization: 20, resets_at: "2026-11-08T07:00:00Z" } }, { rate_limit_tier: "default_claude_pro" }, NOW);
+  test("garbage five_hour with a valid week writes NOTHING, on every plan (R2)", () => {
+    for (const tier of ["default_claude_pro", "default_claude_max_5x", "default_claude_max_20x", undefined]) {
+      for (const bad of [{ weird: true }, { utilization: "95%" }, { utilization: null }, "x", 7]) {
+        const u = { five_hour: bad, seven_day: { utilization: 20, resets_at: "2026-11-08T07:00:00Z" } };
+        expect(mapApiUsage(u, tier ? { rate_limit_tier: tier } : null, NOW)).toBe(null);
+      }
+    }
+  });
+  test("absent five_hour key: nothing on Pro/Max/unknown, weekly-only on Ultra (R2)", () => {
+    const u = { seven_day: { utilization: 20, resets_at: "2026-11-08T07:00:00Z" } };
+    for (const tier of ["default_claude_pro", "default_claude_max_5x", "something_new", null]) {
+      expect(mapApiUsage(u, tier ? { rate_limit_tier: tier } : null, NOW)).toBe(null);
+    }
+    const snap = mapApiUsage(u, { rate_limit_tier: "default_claude_max_20x" }, NOW);
     expect(snap.session).toBe(null);
     expect(snap.weekly.pct).toBe(20);
-    expect(snap.plan).toBe("Pro");
+    expect(snap.plan).toBe("Ultra");
+  });
+  test("five_hour: null stays the idle / no-limit case on every plan (R2)", () => {
+    const u = { five_hour: null, seven_day: { utilization: 20, resets_at: "2026-11-08T07:00:00Z" } };
+    for (const tier of ["default_claude_pro", "default_claude_max_5x", "default_claude_max_20x"]) {
+      expect(mapApiUsage(u, { rate_limit_tier: tier }, NOW).session).toEqual({ pct: 0, resetInMinutes: null });
+    }
   });
   test("neither window, or no object: nothing is written", () => {
     expect(mapApiUsage({ five_hour: { weird: true } }, null, NOW)).toBe(null);
