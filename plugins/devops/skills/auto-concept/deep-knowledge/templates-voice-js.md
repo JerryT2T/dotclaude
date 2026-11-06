@@ -354,6 +354,8 @@ function createConceptVoice(env) {
     doc.querySelectorAll('textarea:not([data-attachable]):not([data-engine-store]):not([data-voice-skip]):not([hidden]), input[type="text"]:not([tabindex="-1"]):not([data-voice-skip])').forEach(f => {
       if (f.dataset.voiceMount || f.readOnly || f.closest('[hidden], .an-vh, .an-comp, [data-analysis-store]')) return;
       if (f.classList.contains('map-state')) return;
+      // A field inside a screen is part of the mock, not a concept field (#1051).
+      if (f.closest('[data-screen]') && !f.closest('[data-anno-layer], .upin-editor')) return;
       f.dataset.voiceMount = '1';
       const b = micButton('voice-btn voice-btn-solo');
       f.insertAdjacentElement('afterend', b);
