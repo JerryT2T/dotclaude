@@ -35,6 +35,16 @@ test("selectCases keeps learned cases of touched skills only", () => {
   expect(selectCases(["do-learn"], evalsRoot())).toEqual(["skills/do-learn/a"]);
 });
 
+test("covers: selects a learned case by a changed path outside its skill", () => {
+  const root = evalsRoot();
+  const d = path.join(root, "delegation/x");
+  fs.mkdirSync(d, { recursive: true });
+  fs.writeFileSync(path.join(d, "case.yaml"), "name: x\n");
+  fs.writeFileSync(path.join(d, "prompt.md"), "---\ntags: [learned]\ncovers: [plugins/devops/hooks/]\n---\n\nhi\n");
+  expect(selectCases([], root, ["plugins\\devops\\hooks\\a.js"])).toEqual(["delegation/x"]);
+  expect(selectCases([], root, ["README.md"])).toEqual([]);
+});
+
 test("nothing applies -> exit 0, no run", () => {
   const run = vi.fn();
   vi.spyOn(console, "log").mockImplementation(() => {});

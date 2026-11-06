@@ -41,8 +41,7 @@ Conflicting hints → AskUserQuestion with the candidates plus "current project"
 
 Applies when the target repo is not the session's own (B: the plugin repo from
 a consumer session; D: another project). The session's own repo is never
-asked about — implement there, also in a read-only session when the learning is
-the user's explicit order.
+asked about — implement there, also in a read-only session.
 
 1. `recent-projects.js --within-min 60 --remote <slug>` (or `--match <name>`).
    `lastActivityMs` counts any Claude Code activity there, which includes the

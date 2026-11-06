@@ -95,7 +95,9 @@ answers `gh issue create` with a fixed issue URL, logs every call to
 `node plugins/devops/evals/ship-gate.js [--base origin/main] [--dry-run]` runs,
 before a ship of the plugin source repo, the cases tagged `learned` of every
 skill the diff touches (`plugins/devops/skills/<skill>/**` maps to
-`evals/skills/<skill>/*`). A `/do-learn` that turns a model-behaviour rule into
+`evals/skills/<skill>/*`), plus any `learned` case whose `prompt.md` frontmatter
+has `covers: [path/prefix/, …]` matching a changed file, for a rule that lives in
+a hook or a shared doc. A `/do-learn` that turns a model-behaviour rule into
 an eval case tags it `learned`. Runs go through `ab-run.js --runs 1
 --no-api-credit` (plan login, `deep-knowledge/api-credits.md` § Evals). Exit 0:
 no case applies or every graded check passed (`null`, undecided, never

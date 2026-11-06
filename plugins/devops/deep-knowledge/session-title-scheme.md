@@ -160,3 +160,15 @@ short prompt (`KEYWORD_MAX_CHARS` in `ship-intent.js`): long prose that
 mentions a ship in passing is work, not a ship, and gets the Solo prefix.
 
 **Machine turns keep the title (#1049).** A prompt nobody typed (task notification, channel message, a `<cross-session-message>` from another Claude session) is a machine turn (`isMachineTurn`, mirrored in `batch-state.js` MACHINE_PATTERNS): `prompt.flow.title-work` leaves every known prefix alone, so a peer's status question cannot turn a shipped session back to `⏳ ➜ 🤖 Solo ┃`. Title bugs #956, #959, #964, #1049 share no code, only the shape: each state change is an advisory, model-relayed step, and a bug in its trigger leaves the title stale. Fix the trigger's classifier, and pin it with a test; eval case `evals/skills/session-title/`.
+
+**The title family, analysed together (#956, #959, #964, #1049, #1048).** Same symptom, no shared defect:
+
+| Report | What failed | Layer |
+|---|---|---|
+| #956 title stays 👉 after a waker pickup | `post.concept.title` gated on the waker's first poll, not on `processed_at` | gate timing |
+| #959 title step skipped | merged UserPromptSubmit context over ~10 KB, the instruction was persisted to a file | transport |
+| #964 title stays ⏳ | a dev server counted as open work (`pending-tasks.js`) | work classification |
+| #1049 title lost on a peer message | `<cross-session-message>` was not a machine turn | prompt classification |
+| #1048 | not a failure: earlier ⏳ via `sessionTitle`; it already skips machine turns | speed-up |
+
+What they share is structure: every change but #1048's is an instruction the model relays, and no hook owns the title state. A state owner would be a redesign, so the class stays open; a new report is checked against this table first.

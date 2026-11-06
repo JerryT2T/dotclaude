@@ -45,13 +45,21 @@ function changedSkills(files) {
   return [...out].sort();
 }
 
-/** Ids of `learned` cases under evals/skills/<skill>/ for the given skills. */
-function selectCases(skills, root = EVALS_DIR) {
+/**
+ * Ids of `learned` cases that apply: those under evals/skills/<skill>/ of a
+ * touched skill, and any whose `covers:` lists a path prefix of a changed file
+ * (a rule that lives in a hook or a shared deep-knowledge doc).
+ */
+function selectCases(skills, root = EVALS_DIR, files = []) {
+  const changed = files.map((f) => String(f).replace(/\\/g, "/"));
   const ids = [];
   for (const id of listCaseIds(root)) {
+    const c = loadCase(path.join(root, id));
+    if (!c.tags.includes("learned")) continue;
     const m = id.match(/^skills\/([^/]+)\//);
-    if (!m || !skills.includes(m[1])) continue;
-    if (loadCase(path.join(root, id)).tags.includes("learned")) ids.push(id);
+    const bySkill = m && skills.includes(m[1]);
+    const byPath = c.covers.some((p) => changed.some((f) => f.startsWith(String(p))));
+    if (bySkill || byPath) ids.push(id);
   }
   return ids;
 }
@@ -100,7 +108,7 @@ function changedFiles(base) {
 function main(argv, deps = {}) {
   const opts = parseArgs(argv);
   const files = (deps.changedFiles || changedFiles)(opts.base);
-  const ids = selectCases(changedSkills(files), deps.root || EVALS_DIR);
+  const ids = selectCases(changedSkills(files), deps.root || EVALS_DIR, files);
   if (!ids.length) { console.log("ship-gate: no learned eval case applies to this diff"); return 0; }
   if (opts.dryRun) { console.log(`ship-gate: would run ${ids.length} case(s):\n${ids.map((i) => `  ${i}`).join("\n")}`); return 0; }
   const run = deps.runCases || runCases;

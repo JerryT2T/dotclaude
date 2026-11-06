@@ -108,6 +108,7 @@ function loadCase(dir) {
     denyTools: Array.isArray(meta.deny_tools) ? meta.deny_tools : [],
     maxTurns: meta.max_turns || null,
     tags: Array.isArray(meta.tags) ? meta.tags : [],
+    covers: Array.isArray(meta.covers) ? meta.covers : [],
     env: meta.env && typeof meta.env === "object" ? meta.env : {},
     // Workdir-relative dirs put in front of the run's PATH (e.g. a scaffolded
     // `bin/` holding a stub CLI); resolved per run, after the scaffold.

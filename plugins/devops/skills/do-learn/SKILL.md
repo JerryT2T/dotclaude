@@ -134,12 +134,12 @@ the text, it does not survey the disk. Recipe (uses
 | a project             | either                      | another one        | **D** — that repo: issue, or ask when it was active in the last hour |
 
 **Reach into another repo (B, D) — by activity.** The session's own repo is
-always implemented right here — also in a read-only session when the learning
-is the user's explicit order; a read-only session is no reason to drop a
-rule. Another repo with Claude or user activity in the last hour (check:
+always implemented right here, also in a read-only session; a read-only
+session is no reason to drop a rule. Another repo with Claude or user activity in the last hour (check:
 `node "{PLUGIN_ROOT}/scripts/recent-projects.js" --within-min 60 --match <name>`)
 → AskUserQuestion: **new session there / hand-off prompt** vs **issue**.
 Any other repo → always an issue. Recipe: `deep-knowledge/routing-details.md`.
+
 | Special case — overrides the table above                                                  | Branch                                         |
 |-----------------------------------------------------------------------------------------------|------------------------------------------------|
 | Names a plugin part, **and** you can state why the rule must never become the plugin's default | **C-override** — local extension, this project |

@@ -5,10 +5,19 @@
 const fs = require("fs");
 const path = require("path");
 
+/** The repo root plus its linked worktrees: the model may EnterWorktree first. */
+function checkouts(workdir) {
+  const wt = path.join(workdir, ".claude", "worktrees");
+  const linked = fs.existsSync(wt) ? fs.readdirSync(wt).map((n) => path.join(wt, n)) : [];
+  return [workdir, ...linked];
+}
+
 function mdHits(dir, re, hits = []) {
   if (!fs.existsSync(dir)) return hits;
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
     const p = path.join(dir, e.name);
+    // A linked worktree is a copy of the repo, not a local extension.
+    if (e.isDirectory() && e.name === "worktrees" && path.basename(dir) === ".claude") continue;
     if (e.isDirectory()) mdHits(p, re, hits);
     else if (/\.md$/.test(e.name) && re.test(fs.readFileSync(p, "utf8"))) hits.push(p);
   }
@@ -17,8 +26,8 @@ function mdHits(dir, re, hits = []) {
 
 module.exports = (g) => ({
   "learn-skill": g.skillInvoked("do-learn"),
-  "plugin-file-edited": (ctx) => mdHits(path.join(ctx.workdir, "plugins", "devops"), /root cause/i).length > 0,
-  "no-local-extension": (ctx) => mdHits(path.join(ctx.workdir, ".claude"), /root cause/i).length === 0,
+  "plugin-file-edited": (ctx) => checkouts(ctx.workdir).some((c) => mdHits(path.join(c, "plugins", "devops"), /root cause/i).length > 0),
+  "no-local-extension": (ctx) => checkouts(ctx.workdir).every((c) => mdHits(path.join(c, ".claude"), /root cause/i).length === 0),
   "no-issue": (ctx) => g.skillNotInvoked("auto-issue")(ctx),
   "no-memory-write": (ctx) =>
     g.toolUsed("Write", { inputMatch: /memory|feedback_/i, min: 0, max: 0 })(ctx) &&
