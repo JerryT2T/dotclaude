@@ -1,8 +1,14 @@
 /**
  * @module ship-guard-match
- * @version 0.3.0
+ * @version 0.4.0
  * @description Pure matcher for pre.ship.guard — decides whether a Bash command
  *   is a REAL manual PR create/merge invocation that must go through /do-ship.
+ *
+ *   Holds the gh call matching pre.issue.guard shares (issue-guard-match.js):
+ *   line continuations joined, env prefixes and wrappers, a path to the binary,
+ *   `gh.exe`, any case, gh's global flags before or after the group.
+ *   A `gh api` call to a merge endpoint counts only when it writes: an explicit
+ *   write method or a field. A plain GET reads the merge status.
  *
  *   Split out of pre.ship.guard.js so the logic is unit-testable, and to fix the
  *   #198 bonus defect: the old guard tested its patterns against the entire
@@ -11,7 +17,7 @@
  *   than as an actual invocation.
  *
  *   Two-stage match:
- *     1. stripQuoted() removes quoted spans (single/double quotes, PowerShell
+ *     1. maskQuoted() blanks quoted spans (single/double quotes, PowerShell
  *        here-strings, bash heredoc bodies) so embedded prose can't trip it.
  *     2. The patterns are anchored to a command position (start of command or
  *        right after a shell separator) so only real command tokens match, not
@@ -26,11 +32,67 @@
 // (newline, ; & | ( ) { }). `&&` / `||` are covered by the single & / | chars.
 const BOUNDARY = String.raw`(?:^|[\n;&|(){}])\s*`;
 
-const PATTERNS = [
-  new RegExp(BOUNDARY + String.raw`gh\s+pr\s+create\b`),
-  new RegExp(BOUNDARY + String.raw`gh\s+pr\s+merge\b`),
-  new RegExp(BOUNDARY + String.raw`gh\s+api\s+.*pulls.*\/merge`),
-];
+// A gh call at a command position: also after a backtick, behind env assignments
+// and wrappers, with a path to the binary.
+const GH_CALL = String.raw`(?:^|[\n;&|(){}\x60])[ \t]*`
+  + String.raw`(?:(?:env|command|exec|sudo|time|nohup)[ \t]+|[A-Za-z_][A-Za-z0-9_]*=\S*[ \t]+)*`
+  + String.raw`(?:[^\s;&|()]*[\\/])?gh(?:\.exe)?`;
+
+/** A gh flag, optionally with a value that is not itself one of `keywords`. */
+function ghFlag(keywords) {
+  const stop = keywords.map((k) => k + String.raw`\b`).join('|');
+  return String.raw`[ \t]+-{1,2}[\w-]+(?:=\S*|[ \t]+(?!${stop}|-)[^\s;&|]+)?`;
+}
+
+/** `gh <group> <verb>` with global flags around the group; `m[1]` is the verb. */
+function ghVerbRe(group, verbs) {
+  const flag = ghFlag([group, ...verbs, 'api']);
+  return new RegExp(
+    GH_CALL + `(?:${flag})*` + String.raw`[ \t]+` + group + `(?:${flag})*` + String.raw`[ \t]+(${verbs.join('|')})\b`,
+    'gi'
+  );
+}
+
+/** `gh api` at a command position: the rest of the segment decides. */
+function ghApiRe(keywords) {
+  return new RegExp(GH_CALL + `(?:${ghFlag(keywords)})*` + String.raw`[ \t]+api\b`, 'gi');
+}
+
+const PR_WRITE_RE = ghVerbRe('pr', ['create', 'merge']);
+const PR_API_RE = ghApiRe(['pr', 'create', 'merge', 'api']);
+const API_MERGE_PATH_RE = /(?:^|\s)\S*pulls\/[^\s/?]+\/merge(?:\?\S*)?(?=\s|$)/i;
+const API_METHOD_RE = /(?:^|\s)(?:-X|--method)(?:[ \t]+|=)?([A-Za-z]+)/;
+const API_WRITE_METHODS = new Set(['POST', 'PATCH', 'PUT', 'DELETE']);
+const API_FIELD_RE = /(?:^|\s)(?:-[fF]|--field|--raw-field|--input)/;
+/** Separators that end a command segment (after quote masking). */
+const SEGMENT_END_RE = /[\n;|&]/;
+
+/**
+ * Join line continuations: bash `\` + newline, PowerShell backtick + newline.
+ * @param {string} cmd
+ */
+function joinContinuations(cmd) {
+  return cmd.replace(/\\\r?\n/g, '  ').replace(/\x60\r?\n/g, '  ');
+}
+
+/**
+ * Where the segment starting at `from` ends in the masked command, and the
+ * index of its unquoted `#` comment (or -1).
+ */
+function segmentBounds(masked, from) {
+  const rest = masked.slice(from);
+  const sep = rest.search(SEGMENT_END_RE);
+  const end = sep === -1 ? masked.length : from + sep;
+  const hash = masked.slice(from, end).indexOf('#');
+  return { end, hash: hash === -1 ? -1 : from + hash };
+}
+
+/** Does this `gh api` segment write? An explicit method decides, else a field does. */
+function isApiWrite(args) {
+  const method = API_METHOD_RE.exec(args);
+  if (method) return API_WRITE_METHODS.has(method[1].toUpperCase());
+  return API_FIELD_RE.test(args);
+}
 
 /**
  * Remove quoted / here-doc spans so command words inside prose don't match.
@@ -111,13 +173,21 @@ function replaceQuoted(s, fill) {
 }
 
 /**
- * @param {string} cmd  Raw Bash command string from the tool input.
+ * @param {string} cmd  Raw Bash or PowerShell command from the tool input.
  * @returns {boolean}   true only for a real manual PR create/merge invocation.
  */
 function isManualShipCommand(cmd) {
   if (!cmd || typeof cmd !== 'string') return false;
-  const stripped = stripQuoted(cmd);
-  return PATTERNS.some((re) => re.test(stripped));
+  const joined = joinContinuations(cmd);
+  const masked = maskQuoted(joined);
+  if ([...masked.matchAll(PR_WRITE_RE)].length) return true;
+  for (const m of masked.matchAll(PR_API_RE)) {
+    const from = m.index + m[0].length;
+    const { end, hash } = segmentBounds(masked, from);
+    const args = joined.slice(from, hash === -1 ? end : hash).replace(/["']/g, '');
+    if (API_MERGE_PATH_RE.test(args) && isApiWrite(args)) return true;
+  }
+  return false;
 }
 
 // Options `git push` may carry in a pure remote-branch delete. Anything else
@@ -200,5 +270,6 @@ function remoteDeleteTargets(cmd) {
 
 module.exports = {
   isManualShipCommand, stripQuoted, maskQuoted, maskQuotedToken,
+  ghVerbRe, ghApiRe, joinContinuations, segmentBounds, isApiWrite,
   BOUNDARY, WORD_END, gitCommandRe, matchesGitCommand, remoteDeleteRefs, remoteDeleteTargets,
 };
