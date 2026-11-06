@@ -111,6 +111,11 @@ Rules inside the dispatcher:
   `"dispatch": "fast"`: they share one `dispatch.js <Event> --fast` entry
   with a short budget (default 10 s per module) instead of one node process
   each.
+- **Command filter.** A worker costs about 35 ms of CPU before the hook does
+  anything. A Bash hook that only acts on commands naming a certain word gets
+  `"commandFilter": "<regex>"` in the manifest: no match on
+  `tool_input.command` means no worker. Use it only when the hook does nothing
+  at all without a match, no bookkeeping or markers either.
 - **Lanes.** Worker threads share one pid. A lib that names a temp file by
   the pid alone (`` `${file}.${process.pid}.tmp` ``) forces every hook that
   reaches it into one sequential lane (`dispatch/lanes.js`). Add a random

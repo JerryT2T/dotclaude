@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.354.0] — 2026-11-06
+
+### Added
+- `pre.waitloop.guard` blocks Bash `until`/`while` loops with no bound or no sleep and names `run_in_background`, Monitor or a bounded loop instead. `DEVOPS_ALLOW_UNBOUNDED_LOOP=1` overrides.
+- Manifest field `commandFilter`: a Bash hook starts no worker when the command does not match its regex.
+
 ## [0.353.2] — 2026-11-05
 
 ### Fixed
