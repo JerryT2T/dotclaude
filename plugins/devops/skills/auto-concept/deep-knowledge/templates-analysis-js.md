@@ -587,8 +587,8 @@ What the code does, in the order of the file:
     inst.comp.ed.dataset.empty = !text && !inst.tag ? '1' : '';
     if (!store || frozen(inst)) return;
     const msgs = msgsOf(st, store);
-    // A blank line separates messages in the store, so a draft keeps single line breaks only.
-    const draft = text.trim() ? (inst.tag ? '[' + inst.tag + '] ' : '') + text.trim().replace(/\n{2,}/g, '\n') : '';
+    // A blank line separates messages in the store, so a paragraph break inside a draft holds a no-break space.
+    const draft = text.trim() ? (inst.tag ? '[' + inst.tag + '] ' : '') + text.trim().replace(/\n\s*\n/g, '\n \n') : '';
     writeMsgs(st, store, draft ? msgs.concat(draft) : msgs);
   }
   /** The sent messages of a stage, parsed again whenever the store changed from outside. */
