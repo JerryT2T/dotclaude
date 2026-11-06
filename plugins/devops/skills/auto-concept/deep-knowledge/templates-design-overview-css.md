@@ -119,9 +119,13 @@ body:not([data-overview-active="true"]) .design-ov { display: none; }
 .design-ov-preview:focus-visible { outline: 3px solid var(--accent-color); outline-offset: -3px; }
 /* The scaled clone: laid out at a fixed 1000px virtual width, scaled to the box by
    fitPreviews() (--dz-ov-scale). pointer-events none + inert keep
-   the mock's own controls out of reach — the preview is one still image. */
+   the mock's own controls out of reach — the preview is one still image.
+   The definite height lets a mock root with height: 100% resolve: without it a
+   root holding only absolute children collapsed to zero and the card stayed
+   blank (#1063). fitPreviews() measures the children, so flow layouts and
+   content taller than the canvas are unaffected. */
 .design-ov-scale {
-  position: absolute; top: 0; left: 0; width: 1000px;
+  position: absolute; top: 0; left: 0; width: 1000px; height: 625px;
   transform: translate(var(--dz-ov-x, 0px), var(--dz-ov-y, 0px)) scale(var(--dz-ov-scale, 0.28)); transform-origin: 0 0;
   pointer-events: none; padding: 1.5rem; box-sizing: border-box;
 }

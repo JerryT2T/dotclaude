@@ -701,6 +701,28 @@ describe("☰ overview row, the eye on the overview, draggable pins", () => {
     expect(document.getElementById("d2b-s1").hidden, "d2b has no page 3 → its first page").toBe(false);
   }, BOOT_TIMEOUT);
 
+  test("the preview clone has a definite height, so a percent-height mock root resolves (#1063)", () => {
+    const rule = /\.design-ov-scale\s*\{[^}]*\}/.exec(md);
+    expect(rule, ".design-ov-scale rule").not.toBeNull();
+    expect(rule[0]).toMatch(/\bheight:\s*625px/);
+  });
+
+  test("a preview with content that measures empty warns once (#1063)", async () => {
+    const warnings = [];
+    const { window, document } = await boot(page(2));
+    window.console.warn = (...a) => warnings.push(a.join(" "));
+    const p = document.querySelector(".design-ov-preview");
+    Object.defineProperty(p, "clientWidth", { value: 400, configurable: true });
+    Object.defineProperty(p, "offsetParent", { value: document.body, configurable: true });
+    window.dispatchEvent(new window.Event("resize"));
+    window.showOverview();
+    await new Promise((r) => window.requestAnimationFrame(r));
+    await new Promise((r) => window.requestAnimationFrame(r));
+    window.showOverview();
+    await new Promise((r) => window.requestAnimationFrame(r));
+    expect(warnings.filter((w) => /measures empty/.test(w))).toHaveLength(1);
+  }, BOOT_TIMEOUT);
+
   test("the wanted page survives a shorter variant (#1069)", async () => {
     const html = page(3).replace(/<section id="d2b-s3"[\s\S]*?<\/section>/, "");
     const { window, document, errors } = await boot(html);
