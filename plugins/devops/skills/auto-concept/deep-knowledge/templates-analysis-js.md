@@ -669,12 +669,14 @@ What the code does, in the order of the file:
     if (frozen(inst) || e.target.closest('button, a, input, label, [role="button"], .an-tabs')) return;
     const sel = window.getSelection && window.getSelection();
     if (sel && String(sel).trim()) return;
-    const st = inst.stages[inst.idx], t = e.target;
+    const t = e.target;
+    // The chat keeps answered questions above: the tag names the question that was clicked, not the open one (#1057).
+    const st = inst.stages.find(s => s.el.contains(t)) || inst.stages[inst.idx];
     let label = '';
     if (st.kind === 'dec') {
       const no = L('Frage ', 'Question ') + stageNo(inst, st);
-      if (t.closest('.an-m-find .an-bub')) label = L('Befund · ', 'Finding · ') + no;
-      else if (t.closest('.an-m-q .an-bub')) label = no;
+      if (t.closest('.an-m-find')) label = L('Befund · ', 'Finding · ') + no;
+      else if (t.closest('.an-m-q')) label = no;
     } else if (st.kind === 'topic' && t.closest('.an-topic')) label = L('Thema ', 'Topic ') + st.group.label;
     if (!label) return;
     setTag(inst, label);
