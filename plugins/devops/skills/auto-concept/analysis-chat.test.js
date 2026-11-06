@@ -156,6 +156,17 @@ describe("persistent composer", () => {
     expect(doc.querySelector("#q1 .an-note").value).toBe("second");
     expect(doc.querySelectorAll("#q1 .an-note-m")).toHaveLength(1);
   });
+  test("a paragraph break stays inside its message", () => {
+    const { doc, w, ca } = page(LITE);
+    const inst = ca.instances[0];
+    type(w, inst, "one\n\ntwo");
+    ca.sendNote(inst);
+    type(w, inst, "next");
+    ca.sendNote(inst);
+    const notes = doc.querySelectorAll("#q1 .an-note-m");
+    expect(notes).toHaveLength(2);
+    expect(notes[0].textContent).toMatch(/^one\n\s*\ntwo/);
+  });
   test("Shift+Enter in the composer is a line break, not the page's back key", () => {
     const { w, ca } = page(LITE);
     const inst = ca.instances[0];
