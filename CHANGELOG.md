@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.359.0] — 2026-11-06
+
+### Added
+- Plans: one plan source in the plugin, with Ultra at 10x. Labels, limits and docs read from it.
+- Usage: a Fable bar on the card when a weekly Fable limit exists.
+- Usage: at most one notice a month when the usage API changes shape, offering "devops learn".
+
+### Changed
+- Usage: the 5-hour bar shows only on plans that have that limit. Weekly stays for all.
+- Autonomous runs wait for the weekly reset once the week is exhausted.
+
+### Fixed
+- Usage on Ultra: a missing 5-hour window no longer reads as expired, and no longer restarts the Edge scraper.
+- Concept: verify no longer exits silently after opening Edge.
+- Do-learn: issues handed to /auto-issue keep the proof block.
+- Plugin source repo only: the ship gate runs a plugin copy outside the repo.
+
 ## [0.358.2] — 2026-11-06
 
 ### Fixed
