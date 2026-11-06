@@ -3,9 +3,10 @@ import { createRequire } from "module";
 import fs from "fs";
 import os from "os";
 import path from "path";
+import { spawnSync } from "child_process";
 
 const require = createRequire(import.meta.url);
-const { parseArgs, changedSkills, selectCases, failuresIn, main } = require("./ship-gate.js");
+const { parseArgs, changedSkills, selectCases, failuresIn, changedFiles, main } = require("./ship-gate.js");
 
 const tmps = [];
 afterEach(() => { vi.restoreAllMocks(); for (const d of tmps.splice(0)) fs.rmSync(d, { recursive: true, force: true }); });
@@ -43,6 +44,16 @@ test("covers: selects a learned case by a changed path outside its skill", () =>
   fs.writeFileSync(path.join(d, "prompt.md"), "---\ntags: [learned]\ncovers: [plugins/devops/hooks/]\n---\n\nhi\n");
   expect(selectCases([], root, ["plugins\\devops\\hooks\\a.js"])).toEqual(["delegation/x"]);
   expect(selectCases([], root, ["README.md"])).toEqual([]);
+});
+
+test("changedFiles counts an untracked file", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "gate-git-"));
+  tmps.push(dir);
+  const g = (...a) => spawnSync("git", ["-C", dir, ...a], { encoding: "utf8" });
+  g("init", "-q"); g("config", "user.email", "t@t"); g("config", "user.name", "t");
+  g("commit", "-q", "--allow-empty", "-m", "i");
+  fs.writeFileSync(path.join(dir, "new.md"), "x");
+  expect(changedFiles("HEAD", dir)).toEqual(["new.md"]);
 });
 
 test("nothing applies -> exit 0, no run", () => {

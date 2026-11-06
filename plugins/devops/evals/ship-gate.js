@@ -4,7 +4,7 @@
 //
 // Usage: node plugins/devops/evals/ship-gate.js [--base origin/main] [--dry-run]
 //   --base <ref>   diff base (default origin/main); changed = `git diff --name-only <ref>...HEAD`
-//                  plus uncommitted changes
+//                  plus uncommitted and untracked changes
 //   --dry-run      print the selected cases, run nothing
 //   --out <dir>    results root handed to ab-run.js (default: a temp dir)
 //
@@ -93,13 +93,13 @@ function runCases(ids, out) {
   return failuresIn(out);
 }
 
-function changedFiles(base) {
+function changedFiles(base, cwd) {
   const git = (args) => {
-    const r = spawnSync("git", args, { encoding: "utf8", windowsHide: true });
+    const r = spawnSync("git", args, { cwd, encoding: "utf8", windowsHide: true });
     if (r.status !== 0) throw new Error(`git ${args.join(" ")} failed: ${(r.stderr || "").trim()}`);
     return r.stdout.split(/\r?\n/).filter(Boolean);
   };
-  return [...new Set([...git(["diff", "--name-only", `${base}...HEAD`]), ...git(["diff", "--name-only", "HEAD"])])];
+  return [...new Set([...git(["diff", "--name-only", `${base}...HEAD`]), ...git(["diff", "--name-only", "HEAD"]), ...git(["ls-files", "--others", "--exclude-standard"])])];
 }
 
 /**
@@ -125,4 +125,4 @@ if (require.main === module) {
   catch (err) { console.error(`[ship-gate] ${err.message}`); process.exitCode = 2; }
 }
 
-module.exports = { parseArgs, changedSkills, selectCases, failuresIn, main };
+module.exports = { parseArgs, changedSkills, selectCases, failuresIn, changedFiles, main };
