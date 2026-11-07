@@ -410,8 +410,35 @@ async function restoreAttachments() {
 function attachmentsFor(slotKey) {
   return (_attachments.get(slotKey) || [])
     .filter(r => r.synced && r.id)
-    .map(r => ({ id: r.id, name: r.name, mime: r.mime, size: r.size,
-                 path: '.claude/concepts/{{slug}}/attachments/' + r.id }));
+    .map(r => {
+      const a = { id: r.id, name: r.name, mime: r.mime, size: r.size,
+                  path: '.claude/concepts/{{slug}}/attachments/' + r.id };
+      // Sent with a chat message: name the message it belongs to.
+      const m = r.msg ? _attachmentMessage(slotKey, r.msg) : null;
+      if (m) a.message = m;
+      return a;
+    });
+}
+
+// --- Attachments that belong to a chat message (analysis composer) ---
+// A stored message that carries attachments ends with U+2063 + its id; each of
+// its records carries the same id in rec.msg (persisted with the record, so the
+// link survives a reload). The marker never reaches the payload text.
+const MSG_MARK_ALL = /\u2063[a-z0-9]+/g;
+function stripMsgMarks(s) { return String(s == null ? '' : s).replace(MSG_MARK_ALL, ''); }
+function setAttachmentMsg(rec, msgId) {
+  if (msgId) rec.msg = msgId; else delete rec.msg;
+  attachDBPut(rec).catch(() => { /* private mode: the in-memory link still holds */ });
+}
+// The message a tagged record belongs to, as plain text (the store is the
+// slot's own data-comment field).
+function _attachmentMessage(slotKey, msgId) {
+  const sel = '[data-comment="' + (window.CSS && CSS.escape ? CSS.escape(slotKey) : slotKey) + '"]';
+  const store = document.querySelector(sel);
+  if (!store) return null;
+  const msgs = String(store.value || '').split(/\n{2,}/);
+  const i = msgs.findIndex(m => m.trim().endsWith('\u2063' + msgId));
+  return i < 0 ? null : { index: i + 1, text: stripMsgMarks(msgs[i]).replace(/ /g, ' ').trim() };
 }
 
 function unsyncedAttachmentCount() {

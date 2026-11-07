@@ -347,7 +347,10 @@ The JSON from `#concept-decisions` follows this schema:
 first, it is the note the user left on the round as a whole — and `items`
 lists every itemised field that carries text or an attachment. A design round
 additionally carries `comments.designs` / `comments.screens` / `comments.views`
-(the dock rows keyed by id) next to them. Never look for the general note in
+(the dock rows keyed by id) next to them. An attachment sent with an analysis
+chat message carries `"message": { "index": n, "text": "…" }` — the message
+of that field it belongs to (1-based); read the image together with that
+message, not with the field as a whole. Never look for the general note in
 `items` or in `allFields`: the dock lives outside the iteration section, so
 `comments.general` is its only typed home.
 
