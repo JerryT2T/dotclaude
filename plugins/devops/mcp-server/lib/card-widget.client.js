@@ -104,19 +104,29 @@
     }).join("");
   }
 
-  /** Side-session line: the quoted sidebar title becomes a click (same send path as the open button). */
+  /**
+   * Side-session names become clicks (same send path as the open button): every
+   * occurrence of each named text, in the heading and in the `›` lines. Two
+   * passes — mark every match first, then swap the marks for buttons — so a
+   * text is never matched again inside a button's own data-prompt. `sl` comes
+   * longest text first: a sidebar title wins over the plain title inside it.
+   */
   function sessionLinks(html, sl) {
-    (sl || []).forEach(function (l) {
+    if (!sl || !sl.length) return html;
+    var made = [];
+    sl.forEach(function (l) {
       var at = esc(l.x);
-      // Only the pointer line (`Läuft in: „X“` / `Weiter in …: „X“`) ends with the quoted title; other lines merely name it.
-      var i = html.length - at.length;
-      if (i < 0 || html.slice(i) !== at) return;
+      if (!at || html.indexOf(at) < 0) return;
       var btn = '<span class="card-open">' +
         '<span role="button" tabindex="0" class="card-link" data-prompt="' + esc(l.p) + '" data-tip="' + esc(l.tp) + '" style="color:inherit;text-decoration:underline;text-underline-offset:2px;cursor:pointer">' + at + '<span aria-hidden="true" style="user-select:none"> ↗</span></span>' +
         '<span class="card-act-state" role="status" aria-live="polite" style="font-size:11px;margin-left:4px"></span></span>';
-      html = html.slice(0, i) + btn + html.slice(i + at.length);
+      // A private-use code point as the mark: never in card text, never escaped.
+      // Text only: tags and their attributes (an open button's data-prompt) stay untouched.
+      var mark = "" + made.length + "";
+      html = html.split(/(<[^>]*>)/).map(function (part) { return part.charAt(0) === "<" ? part : part.split(at).join(mark); }).join("");
+      made.push(btn);
     });
-    return html;
+    return html.replace(/(\d+)/g, function (_, i) { return made[+i]; });
   }
 
   function glyphColor(glyph) {
@@ -265,7 +275,7 @@
   function blockBHtml(d) {
     return [
       '<div class="card-box" style="background:var(--bg-accent-muted, rgba(55,138,221,0.10));border-radius:10px;padding:10px 12px;margin-top:10px">',
-      d.h ? '<h3 class="card-heading" style="margin:0 0 4px;font-size:16px;font-weight:500">' + esc(d.h) + "</h3>" : "",
+      d.h ? '<h3 class="card-heading" style="margin:0 0 4px;font-size:16px;font-weight:500">' + sessionLinks(esc(d.h), d.sl) + "</h3>" : "",
       d.cx ? String(d.cx).split("\n").map(function (l) { return glyphLineHtml("card-context", sessionLinks(linkify(l.replace(/^›\s*/, ""), d.tx), d.sl), 13, "0 0 4px"); }).join("") : "",
       Array.isArray(d.pt) && d.pt.length
         ? '<div class="card-points" style="margin:2px 0 8px">' + d.pt.map(function (p) { return glyphLineHtml("card-point", warnMarks(linkify(p, d.tx))); }).join("") + "</div>"

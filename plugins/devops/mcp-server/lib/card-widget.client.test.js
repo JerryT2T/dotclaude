@@ -199,10 +199,21 @@ describe("side-session links (linked cards)", () => {
     expect(btn.getAttribute("data-tip")).toBeTruthy();
   });
 
-  test("only the pointer line links; a line that merely names the session stays text", () => {
+  test("every mention of the session links, never a second time inside a button's own prompt", () => {
     const m = sessionCard("de", "„Login-Fix“", { context: "› „Login-Fix“ läuft weiter und shippt selbst\n› Läuft in: „Login-Fix“" });
     const dom = mountTemplate(m, "");
-    expect(dom.window.document.querySelectorAll("[data-prompt*='local_abc-1']").length).toBe(1);
+    const btns = dom.window.document.querySelectorAll("[data-prompt*='local_abc-1']");
+    expect(btns.length).toBe(2);
+    btns.forEach((b) => expect(b.getAttribute("data-prompt")).toBe("Öffne die Side-Session „Login-Fix“ (local_abc-1) im Split-View."));
+  });
+
+  test("a title that also occurs inside markup only links the visible text", () => {
+    const m = sessionCard("de", "„Login-Fix“", { context: "› „Login-Fix“ siehe http://localhost:8878/x?t=„Login-Fix“" });
+    const dom = mountTemplate(m, "");
+    // the open button's own data-prompt keeps the URL intact: no markup injected into an attribute
+    const open = [...dom.window.document.querySelectorAll("[data-prompt]")].find((b) => b.getAttribute("data-prompt").includes("localhost:8878"));
+    expect(open.getAttribute("data-prompt")).toContain("http://localhost:8878/x?t=„Login-Fix“");
+    expect(open.getAttribute("data-prompt")).not.toContain("<");
   });
 
   test("en prompt, and no link without a local_ id", () => {

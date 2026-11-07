@@ -614,6 +614,19 @@ def _state_write(snapshot):
     _durable_write(_state_path, json.dumps(snapshot, ensure_ascii=False).encode('utf-8'))
 
 
+def _body_text(raw):
+    """A request body as text. UTF-8 first (the page always sends it); a body
+    that is not valid UTF-8 falls back to cp1252. Git Bash's curl on Windows
+    passes `-d '…'` in the ANSI code page, so a German close-out result
+    ("Übergabe") arrived as b'\\xdc…', `.decode()` raised, and /status
+    silently stored phase '' with no result: the page never showed its done
+    state, stayed armed, and a later click there got "keine Antwort mehr"."""
+    try:
+        return raw.decode('utf-8')
+    except UnicodeDecodeError:
+        return raw.decode('cp1252', errors='replace')
+
+
 def _clean_progress(raw):
     """Validate the optional /status `progress` field: {"done": n, "total": m}
     with 0 <= n <= m, m >= 1, both ints. Anything else is dropped (None)."""
@@ -1577,7 +1590,7 @@ class ConceptBridgeHandler(http.server.SimpleHTTPRequestHandler):
             if length > MAX_DECISIONS_BYTES:
                 self.send_error(413, "decisions payload too large")
                 return
-            body = self.rfile.read(length).decode()
+            body = _body_text(self.rfile.read(length))
             # ---- DUPLICATE GATE (#finding-10) --------------------------
             # A submission_id already in the accepted ring means this exact
             # payload was journalled before — most likely the offline
@@ -1685,7 +1698,7 @@ class ConceptBridgeHandler(http.server.SimpleHTTPRequestHandler):
             tab = None
             if length:
                 try:
-                    obj = json.loads(self.rfile.read(length).decode('utf-8') or '{}')
+                    obj = json.loads(_body_text(self.rfile.read(length)) or '{}')
                     if isinstance(obj, dict) and isinstance(obj.get('tab'), str) and _TAB_ID_RE.match(obj['tab']):
                         tab = obj['tab']
                 except Exception:
@@ -1713,7 +1726,7 @@ class ConceptBridgeHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_error(413, "draft payload too large")
                 return
             try:
-                payload = json.loads(self.rfile.read(length).decode())
+                payload = json.loads(_body_text(self.rfile.read(length)))
             except (ValueError, UnicodeDecodeError):
                 self._error_response(400, {"ok": False, "reason": "bad_json"})
                 return
@@ -1762,7 +1775,7 @@ class ConceptBridgeHandler(http.server.SimpleHTTPRequestHandler):
             payload = {}
             if length > 0:
                 try:
-                    raw = self.rfile.read(length).decode()
+                    raw = _body_text(self.rfile.read(length))
                     payload = json.loads(raw) if raw else {}
                 except (ValueError, UnicodeDecodeError):
                     payload = {}
@@ -1818,15 +1831,17 @@ class ConceptBridgeHandler(http.server.SimpleHTTPRequestHandler):
             expected_version = None
             if length > 0:
                 try:
-                    raw = self.rfile.read(length).decode()
+                    raw = _body_text(self.rfile.read(length))
                     payload = json.loads(raw) if raw else {}
                     phase_val = str(payload.get('phase') or '')
                     expected_version = payload.get('version')
                     progress_val = _clean_progress(payload.get('progress'))
                     finished_val = _clean_finished(payload.get('finished'))
                 except Exception:
-                    phase_val = ''
-                    expected_version = None
+                    # Never a silent "ok" with an empty phase: the caller (the
+                    # close-out's done state) must see that nothing was stored.
+                    self._error_response(400, {"ok": False, "reason": "bad_json"})
+                    return
             with _lock:
                 if expected_version is None or expected_version == _version:
                     _phase = phase_val
@@ -1922,7 +1937,7 @@ class ConceptBridgeHandler(http.server.SimpleHTTPRequestHandler):
             no_round = ''
             if length > 0:
                 try:
-                    raw = self.rfile.read(length).decode()
+                    raw = _body_text(self.rfile.read(length))
                     body_obj = json.loads(raw) if raw else {}
                     expected = body_obj.get('version')
                     # Explicit, journalled opt-out for a round that truly
@@ -2275,7 +2290,7 @@ class ConceptBridgeHandler(http.server.SimpleHTTPRequestHandler):
             })
             return
         try:
-            payload = json.loads(self.rfile.read(length).decode())
+            payload = json.loads(_body_text(self.rfile.read(length)))
         except (ValueError, UnicodeDecodeError):
             self._error_response(400, {"ok": False, "reason": "bad_json"})
             return

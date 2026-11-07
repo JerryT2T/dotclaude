@@ -112,13 +112,19 @@ like every other cross-cutting concern on this page (`viewing-frozen`,
 
   // data-anno-target is a CSS selector resolved INSIDE the pin's own screen,
   // so the same selector may repeat on other screens without colliding.
-  // Robust anchoring: the spot comes from the LAYOUT boxes (offsetLeft /
-  // offsetTop up the offsetParent chain), never from getBoundingClientRect —
-  // that one reads transforms, so a note hung on an element whose mock
-  // animates (a scale/translate entrance, a pulsing card) used to jump with
-  // every frame, most visibly while the user was typing into it. Positions
-  // are re-measured on resize, scroll and screen change only, and are frozen
-  // while the note's own input has focus.
+  // Robust anchoring: the spot is where the target is PAINTED
+  // (getBoundingClientRect), because a mock that scales itself to fit the
+  // canvas (`transform: scale(.88)` on its root, a translated header) moves
+  // every element away from its layout box — measured from layout boxes, the
+  // notes of a narrower mock hung at the canvas edge, far right of their
+  // elements (reported: "die Auto-Notizen sind verrutscht"). Painted rects
+  // also read a running animation, though, and a note hung on an element
+  // whose mock animates (a scale/translate entrance, a pulsing card) used to
+  // jump with every frame. So while the target or one of its ancestors is
+  // animating, the note keeps the spot it already has (first measure: the
+  // layout box), and the end of the animation lays it out again. Positions
+  // are re-measured on resize, scroll, screen change and mock reflow, and
+  // are frozen while the note's own input has focus.
   function layoutOrigin(node) {
     let x = 0, y = 0, n = node;
     while (n && n.nodeType === 1) {
@@ -141,6 +147,26 @@ like every other cross-cutting concern on this page (`viewing-frozen`,
       y: ((to.y + target.offsetHeight / 2 - lo.y) / layer.offsetHeight) * 100
     };
   }
+  // A running animation or transition that MOVES the target: on it or an
+  // ancestor, and on a geometry property. An endless glow or colour pulse on
+  // the mock root moves nothing — counting it would freeze every note on its
+  // first spot for good, resize included. Keyframes unreadable: counts.
+  // No Web Animations API (old engines, jsdom): nothing counts as animating.
+  const MOVING = /^(transform|translate|scale|rotate|left|top|right|bottom|width|height|margin|inset|offset)/i;
+  function moves(an) {
+    try {
+      const frames = an.effect.getKeyframes ? an.effect.getKeyframes() : null;
+      if (!frames) return true;
+      return frames.some(f => Object.keys(f).some(k => MOVING.test(k)));
+    } catch (e) { return true; }
+  }
+  function targetAnimating(target) {
+    if (typeof document.getAnimations !== 'function') return false;
+    return document.getAnimations().some(an => {
+      const el = an.playState === 'running' && an.effect && an.effect.target;
+      return !!(el && el.nodeType === 1 && el.contains(target) && moves(an));
+    });
+  }
   function anchorToTarget(anno) {
     const sel = anno.dataset.annoTarget;
     if (!sel) return;                       // authored --anno-x/--anno-y wins
@@ -152,13 +178,18 @@ like every other cross-cutting concern on this page (`viewing-frozen`,
     let target = null;
     try { target = screen.querySelector(sel); } catch (e) { target = null; }
     if (!target) return;                    // stale selector: keep last known spot
-    let spot = layoutSpot(target, layer);
+    let spot = null;
+    if (targetAnimating(target)) {
+      if (anno.dataset.annoAnchored) return;  // mid-animation: keep the spot it has
+      spot = layoutSpot(target, layer);
+    }
     if (!spot) {
       const box = layer.getBoundingClientRect();
       const t = target.getBoundingClientRect();
       if (!box.width || !box.height || !t.width) return;   // not laid out yet
       spot = { x: ((t.right - box.left) / box.width) * 100, y: ((t.top + t.height / 2 - box.top) / box.height) * 100 };
     }
+    anno.dataset.annoAnchored = 'true';
     const x = spot.x, y = spot.y;
     anno.style.setProperty('--anno-x', Math.max(0, Math.min(100, x)).toFixed(2) + '%');
     anno.style.setProperty('--anno-y', Math.max(0, Math.min(100, y)).toFixed(2) + '%');
@@ -585,10 +616,31 @@ like every other cross-cutting concern on this page (`viewing-frozen`,
   document.addEventListener('scroll', scheduleAnnoLayout, true);
   new MutationObserver(scheduleAnnoLayout)
     .observe(document.body, { attributes: true, attributeFilter: ['class'] });
-  // The panel and dock slide in with a transition — measure again once it ends.
-  document.addEventListener('transitionend', e => {
-    if (e.target.matches && e.target.matches(ANNO_CHROME)) scheduleAnnoLayout();
-  });
+  // The panel and dock slide in with a transition — measure again once it
+  // ends. So does a mock that animated under an anchored note: the note
+  // waited (anchorToTarget()) and now takes its settled spot.
+  const annoSettled = e => {
+    const t = e.target;
+    if (!t || !t.closest) return;
+    if (t.matches(ANNO_CHROME) || (t.closest('section[data-screen]') && !t.closest('[data-anno-layer]'))) scheduleAnnoLayout();
+  };
+  document.addEventListener('transitionend', annoSettled);
+  document.addEventListener('animationend', annoSettled);
+  // The mock reflows or rescales without a window resize: content that is
+  // narrower in a later round, a fit-to-canvas script that sets a transform,
+  // late fonts or images. Size changes come through the ResizeObserver,
+  // style/class changes (a new `transform: scale(…)`) through the
+  // MutationObserver; the notes' own layer is ignored, or every placement
+  // would trigger the next one.
+  if (typeof ResizeObserver === 'function') {
+    const annoRO = new ResizeObserver(scheduleAnnoLayout);
+    document.querySelectorAll('section[data-screen]').forEach(s => {
+      [...s.children].forEach(c => { if (!c.hasAttribute('data-anno-layer')) annoRO.observe(c); });
+    });
+  }
+  new MutationObserver(list => {
+    if (list.some(m => m.target.closest && m.target.closest('section[data-screen]') && !m.target.closest('[data-anno-layer]'))) scheduleAnnoLayout();
+  }).observe(document.body, { attributes: true, attributeFilter: ['style', 'class'], subtree: true });
   updateAnnoUI();
 })();
 ```

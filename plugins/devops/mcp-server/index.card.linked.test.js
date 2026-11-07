@@ -21,8 +21,10 @@ function render(payload) {
   const text = readFileSync(out, "utf8");
   return {
     title: (text.match(/set the title to "([^"]*)"/) || [])[1],
-    heading: ((text.match(/class="card-heading"[^>]*>([^<]*)</) || [])[1] || "").replace(/&quot;/g, '"'),
-    context: [...text.matchAll(/class="card-context"[^>]*>([\s\S]*?)<\/div>/g)].map((m) => m[1].replace(/<[^>]+>/g, "").replace(/&quot;/g, '"').trim()),
+    heading: ((text.match(/class="card-heading"[^>]*>([\s\S]*?)<\/h3>/) || [])[1] || "").replace(/<span aria-hidden="true"[^>]*> ↗<\/span>/g, "").replace(/<[^>]+>/g, "").replace(/&quot;/g, '"').trim(),
+    headingLinks: [...((text.match(/class="card-heading"[^>]*>([\s\S]*?)<\/h3>/) || [])[1] || "").matchAll(/data-prompt="([^"]*)"/g)].map((m) => m[1]),
+    promote: /Promote|beta|stable/i.test((text.match(/id="card-act-\d+"[\s\S]*$/) || [""])[0]),
+    context: [...text.matchAll(/class="card-context"[^>]*>([\s\S]*?)<\/div>/g)].map((m) => m[1].replace(/<span aria-hidden="true"[^>]*> ↗<\/span>/g, "").replace(/<[^>]+>/g, "").replace(/&quot;/g, '"').trim()),
     buttons: [...text.matchAll(/id="card-act-\d+"[^>]*>[\s\S]*?<\/i>([^<]*)</g)].map((m) => m[1]),
   };
 }
@@ -67,6 +69,23 @@ describe("side-session cards through the offline renderer", () => {
     expect(r.title).toBe("👉 ➜ ❓ Question ┃ ");
     expect(r.heading).toContain('„C“ ist gescheitert — ohne C integrieren, C neu starten oder abbrechen?');
     expect(r.buttons).toHaveLength(3);
+  }, 30000);
+
+  test("S1.4: the parent passes its own delivery, the side ship is newer -> side Released heading, no own promote buttons", () => {
+    const r = render({
+      variant: "released", linked: [L("Doku", "shipped", "handoff", { version: "0.363.0" })],
+      delivery: { ship: { version: "0.362.0" }, promote: { channels: { alpha: "0.363.0", beta: "0.360.0", stable: "0.350.0" }, current: "alpha" } },
+    });
+    expect(r.heading).toContain("v0.363.0 — in Side-Session „Doku“ geshippt, hier ist nichts offen");
+    expect(r.context.join(" ")).toContain("Eigenes Release v0.362.0");
+    expect(r.promote).toBe(false);
+  }, 30000);
+
+  test("#1b: every named side session is a click, in the heading too, whatever its state", () => {
+    const r = render({ variant: "fallback", linked: [L("Doku", "running")] });
+    expect(r.headingLinks).toEqual(["Öffne die Side-Session „Doku“ (local_Doku) im Split-View."]);
+    const s = render({ variant: "released", linked: [L("Doku", "shipped", "handoff", { version: "0.4.0" })] });
+    expect(s.headingLinks).toEqual(["Öffne die Side-Session „Doku“ (local_Doku) im Split-View."]);
   }, 30000);
 
   test("delivered: 🟩 Delivered, no Ship button, 👉 only with an open point", () => {

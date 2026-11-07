@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.362.1] — 2026-11-08
+
+### Fixed
+- Concept auto notes stay on their element when the mock scales itself to fit or gets narrower over rounds (they hung at the canvas edge).
+- A closed concept page now reliably shows its done state: the bridge reads cp1252 bodies from Windows curl and rejects bad JSON instead of storing an empty phase, so the page no longer re-arms and answers "keine Antwort mehr".
+
+### Changed
+- Every side session named on a completion card opens in split view on click, also in the heading and when it is running or shipped.
+- The variant favourite star is larger, with a bigger click area that does not touch the variant name.
+- Analysis pages reveal the next message 25 % sooner.
+
 ## [0.362.0] — 2026-11-07
 
 ### Added

@@ -752,8 +752,9 @@
    *  While one is still held back, typing dots stand below the last one: a pause never reads as the end. */
   // Reading pace, counted in letters so long German words do not skew it. Brysbaert 2019 (J. Memory and Language 109):
   // 238 wpm x 4.6 letters (non-fiction) = 260 wpm x 4.2 letters (fiction) = about 1,095 letters/min = 18.25/s.
-  // +25 %: an average reader who reads a good bit faster, no speed reader. Figures are from English text; no German value exists.
-  const READ_LPS = 18.25 * 1.25, DWELL_MIN = 1200, DWELL_MAX = 20000;
+  // x 1.25 / 0.75 (~1.67): the +25 % reader, with the wait between messages cut by another 25 % (user feedback: the
+  // reveal felt slow). Figures are from English text; no German value exists.
+  const READ_LPS = 18.25 * 1.25 / 0.75, DWELL_MIN = 1200, DWELL_MAX = 20000;
   function dwellMs(el) {
     const letters = (el.textContent.match(/[\p{L}\p{N}]/gu) || []).length;
     return clamp(Math.round(letters / READ_LPS * 1000), DWELL_MIN, DWELL_MAX);

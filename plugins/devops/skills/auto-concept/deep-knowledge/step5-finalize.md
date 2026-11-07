@@ -233,7 +233,10 @@ asks to close out a concept that is closed a minute later. Details:
      -d '{"phase":"closed","finished":{"state":"shipped","sub":"v0.360.0 auf Alpha, Concept abgeschlossen.","misses":[],"links":[{"label":"PR #1060","href":"https://github.com/o/r/pull/1060"}],"next":["Nach Beta heben"],"left":[]}}' \
      http://localhost:$PORT/status
    ```
-   Then wait for the tab, because a hidden one polls only once a minute: a tab that
+   The `/status` answer must echo `"phase": "closed"`; anything else (a 400, an empty
+   phase) means the page did not get its done state and stays armed — fix the body
+   and post again before the shutdown, or the user's next click there reads "keine
+   Antwort mehr". Then wait for the tab, because a hidden one polls only once a minute: a tab that
    has the result answers `/closed-ack`. No tab open (`browser_tabs` 0 on `/pending`)
    → skip the wait. The user pays at most a minute on the card, and without this
    wait the last thing they see is a frozen spinner:

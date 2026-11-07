@@ -100,7 +100,10 @@ describe("linkedPlan - deliver (S3, S4)", () => {
 
 describe("linkedPlan - independent follow-ups (S5) and helpers", () => {
   test("only one line, no status change", () => {
-    expect(plan([L("Bug Y", "running", "independent")], "ready")).toEqual({ head: null, sentence: "", lines: ['„Bug Y“ läuft als eigene Aufgabe'] });
+    expect(plan([L("Bug Y", "running", "independent")], "ready")).toEqual({
+      head: null, sentence: "", lines: ['„Bug Y“ läuft als eigene Aufgabe'],
+      links: [{ id: "local_Bug Y", title: "Bug Y", text: "„Bug Y“" }],
+    });
   });
 
   test("normalize, unfinished, input contract", () => {
