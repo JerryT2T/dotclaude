@@ -145,7 +145,7 @@ describe("titlePrefixFor", () => {
     expect(titlePrefixFor({ variant: "paused" }, deps)).toBe(SESSION_PREFIX["paused-user"]);
     expect(titlePrefixFor({ variant: "no-such-variant" }, deps)).toBe("");
     expect(Object.keys(VARIANT_TITLE_STATE).sort()).toEqual([
-      "aborted", "analysis", "fallback", "paused", "ready", "ready-files", "released",
+      "aborted", "analysis", "delivered", "fallback", "paused", "ready", "ready-files", "released",
       "ship-blocked", "ship-successful", "test", "test-minimal",
     ]);
   });
