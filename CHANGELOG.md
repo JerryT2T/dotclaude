@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.361.1] — 2026-11-07
+
+### Fixed
+- Concept pages: the ☰ menu stays open after a click on an entry even when the page switch is slow; the 400 ms guard now starts after the switch.
+
+### Tests
+- The hotkey tests fire the 7 s first-visit tip and the ☰ guard by hand, so they hold on a loaded machine.
+
 ## [0.361.0] — 2026-11-07
 
 ### Added
