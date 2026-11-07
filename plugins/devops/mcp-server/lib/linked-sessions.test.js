@@ -10,14 +10,14 @@ describe("linkedPlan - handoff (S1, S2)", () => {
   test("running -> Linked, shippt selbst, no buttons", () => {
     const p = plan([L("Doku", "running")], "fallback");
     expect(p.head).toEqual({ id: "linked", mandatory: false });
-    expect(p.sentence).toBe('läuft in Side-Session „Doku", sie shippt selbst');
+    expect(p.sentence).toBe('läuft in Side-Session „Doku“, sie shippt selbst');
     expect(p.buttonsKey).toBeNull();
   });
 
   test("waiting -> 👉 Linked with the quoted sidebar title, no #local_ link", () => {
     const p = plan([L("Doku", "waiting")], "fallback");
     expect(p.head.id).toBe("linked-waiting");
-    expect(p.sentence).toBe('„Doku" wartet auf dich, dort antworten');
+    expect(p.sentence).toBe('„Doku“ wartet auf dich, dort antworten');
     expect(p.lines[0]).toContain("Doku");
     expect(p.lines[0]).not.toContain("#local_");
   });
@@ -25,24 +25,24 @@ describe("linkedPlan - handoff (S1, S2)", () => {
   test("own diff keeps the normal card plus a note", () => {
     const p = plan([L("Doku", "running")], "ready");
     expect(p.head).toBeNull();
-    expect(p.lines).toEqual(['„Doku" läuft weiter und shippt selbst']);
+    expect(p.lines).toEqual(['„Doku“ läuft weiter und shippt selbst']);
   });
 
   test("own ship with the side session running: Linked with the version, never Released", () => {
     const p = plan([L("Doku", "running")], "ship-successful", { cta: { vNew: "1.2.0" } });
     expect(p.head.id).toBe("linked");
-    expect(p.sentence).toBe('v1.2.0 geshippt, „Doku" läuft noch und shippt selbst');
+    expect(p.sentence).toBe('v1.2.0 geshippt, „Doku“ läuft noch und shippt selbst');
     expect(p.buttonsKey).toBeNull();
   });
 
   test("Released only when ALL are finished, partial stays Linked", () => {
     const done = plan([L("X", "shipped", "handoff", { version: "0.3.0" })], "fallback");
     expect(done.head.id).toBe("released-alpha");
-    expect(done.sentence).toBe('v0.3.0 — in Side-Session „X" geshippt, hier ist nichts offen');
+    expect(done.sentence).toBe('v0.3.0 — in Side-Session „X“ geshippt, hier ist nichts offen');
     expect(done.buttonsKey).toBeNull();
     const part = plan([L("X", "shipped", "handoff", { version: "0.3.0" }), L("Y", "running")], "fallback");
     expect(part.head.id).toBe("linked");
-    expect(part.lines).toEqual(['„X" geshippt v0.3.0', '„Y" läuft noch']);
+    expect(part.lines).toEqual(['„X“ geshippt v0.3.0', '„Y“ läuft noch']);
   });
 
   test("all done with nothing shipped is no Released", () => {
@@ -60,7 +60,7 @@ describe("linkedPlan - deliver (S3, S4)", () => {
   test("one waiting -> 👉 Team plus the count", () => {
     const p = plan([L("A", "done", "deliver"), L("B", "waiting", "deliver")], "fallback");
     expect(p.head.id).toBe("agents-waiting");
-    expect(p.sentence).toBe('„B" wartet auf dich, dort antworten');
+    expect(p.sentence).toBe('„B“ wartet auf dich, dort antworten');
     expect(p.lines[0]).toBe("1 von 2 fertig");
   });
 
@@ -87,7 +87,7 @@ describe("linkedPlan - deliver (S3, S4)", () => {
   test("a failed one asks with three prepared replies", () => {
     const p = plan([L("A", "done", "deliver"), L("C", "failed", "deliver")], "fallback");
     expect(p.head).toEqual({ id: "question", mandatory: true });
-    expect(p.sentence).toBe('„C" ist gescheitert — ohne C integrieren, C neu starten oder abbrechen?');
+    expect(p.sentence).toBe('„C“ ist gescheitert — ohne C integrieren, C neu starten oder abbrechen?');
     expect(p.custom).toHaveLength(3);
     expect(buttonsFor(null, "de", { custom: p.custom }).map((b) => b.label)).toEqual(["Ohne sie integrieren", "Neu starten", "Abbrechen"]);
   });
@@ -100,7 +100,7 @@ describe("linkedPlan - deliver (S3, S4)", () => {
 
 describe("linkedPlan - independent follow-ups (S5) and helpers", () => {
   test("only one line, no status change", () => {
-    expect(plan([L("Bug Y", "running", "independent")], "ready")).toEqual({ head: null, sentence: "", lines: ['„Bug Y" läuft als eigene Aufgabe'] });
+    expect(plan([L("Bug Y", "running", "independent")], "ready")).toEqual({ head: null, sentence: "", lines: ['„Bug Y“ läuft als eigene Aufgabe'] });
   });
 
   test("normalize, unfinished, input contract", () => {

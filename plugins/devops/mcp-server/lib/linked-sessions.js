@@ -35,8 +35,10 @@ const OWN_KEYS = new Set([
   "ready-files", "aborted", "paused",
 ]);
 
-const q = (s) => `„${s}"`;
+const q = (s) => `„${s}“`;
+const qe = (s) => `“${s}”`;
 const names = (list) => list.map((e) => q(e.title)).join(", ");
+const namesE = (list) => list.map((e) => qe(e.title)).join(", ");
 
 const T = {
   de: {
@@ -64,20 +66,20 @@ const T = {
     },
   },
   en: {
-    runHandoff: (l) => (l.length > 1 ? `running in side sessions ${names(l)}, they ship themselves` : `running in side session ${names(l)}, it ships itself`),
-    waitAsk: (l) => (l.length > 1 ? `${names(l)} wait for you, answer there` : `${names(l)} waits for you, answer there`),
-    failedLook: (l) => (l.length > 1 ? `${names(l)} failed, look there` : `${names(l)} failed, look there`),
-    ownRun: (l) => (l.length > 1 ? `${names(l)} keep running and ship themselves` : `${names(l)} keeps running and ships itself`),
-    shippedAfter: (v, l, wait) => `${v ? `v${v} ` : ""}shipped, ${l.length > 1 ? names(l) + (wait ? " wait for you, answer there" : " still run and ship themselves") : q(l[0].title) + (wait ? " waits for you, answer there" : " still runs and ships itself")}`,
-    allShipped: (v, s) => `${v ? `v${v} — ` : ""}shipped in side session ${names(s)}, nothing is open here`,
-    shippedLine: (e) => `${q(e.title)} shipped${e.version ? ` v${e.version}` : ""}`,
-    runLine: (e) => `${q(e.title)} still runs`,
-    independent: (l) => (l.length > 1 ? `${names(l)} run as their own tasks` : `${names(l)} runs as its own task`),
+    runHandoff: (l) => (l.length > 1 ? `running in side sessions ${namesE(l)}, they ship themselves` : `running in side session ${namesE(l)}, it ships itself`),
+    waitAsk: (l) => (l.length > 1 ? `${namesE(l)} wait for you, answer there` : `${namesE(l)} waits for you, answer there`),
+    failedLook: (l) => (l.length > 1 ? `${namesE(l)} failed, look there` : `${namesE(l)} failed, look there`),
+    ownRun: (l) => (l.length > 1 ? `${namesE(l)} keep running and ship themselves` : `${namesE(l)} keeps running and ships itself`),
+    shippedAfter: (v, l, wait) => `${v ? `v${v} ` : ""}shipped, ${l.length > 1 ? namesE(l) + (wait ? " wait for you, answer there" : " still run and ship themselves") : qe(l[0].title) + (wait ? " waits for you, answer there" : " still runs and ships itself")}`,
+    allShipped: (v, s) => `${v ? `v${v} — ` : ""}shipped in side session ${namesE(s)}, nothing is open here`,
+    shippedLine: (e) => `${qe(e.title)} shipped${e.version ? ` v${e.version}` : ""}`,
+    runLine: (e) => `${qe(e.title)} still runs`,
+    independent: (l) => (l.length > 1 ? `${namesE(l)} run as their own tasks` : `${namesE(l)} runs as its own task`),
     moveIn: (side) => `Continue in the side session: ${side}`,
     teamRun: (n, m) => `not done yet — ${n} of ${m} side sessions done`,
     count: (n, m) => `${n} of ${m} done`,
     integrate: (m) => `integrate ${m} partial results and ship?`,
-    teamFailed: (l) => `${names(l)} failed — integrate without ${l.length > 1 ? "them" : l[0].title}, restart ${l.length > 1 ? "them" : l[0].title} or cancel?`,
+    teamFailed: (l) => `${namesE(l)} failed — integrate without ${l.length > 1 ? "them" : l[0].title}, restart ${l.length > 1 ? "them" : l[0].title} or cancel?`,
     ownShipped: (v) => `Own part shipped${v ? ` v${v}` : ""}`,
     archivable: (l) => `${l.map((e) => e.title).join(", ")} can be archived`,
     btn: {
@@ -127,7 +129,7 @@ export function linkedKeepTokens(raw) {
 function sidebarLine(e, L) {
   const id = e.state === "running" ? "agents" : "question";
   const head = e.state === "running" ? TITLE_SCHEME.WORK_PREFIX.trim() : TITLE_SCHEME.head(id).text;
-  return L.moveIn(`„${head} ${e.title}"`);
+  return L.moveIn(L === T.en ? qe(`${head} ${e.title}`) : q(`${head} ${e.title}`));
 }
 
 /**

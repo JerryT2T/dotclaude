@@ -42,7 +42,7 @@ describe("side-session cards through the offline renderer", () => {
   test("S1 step 1: handoff running -> ⏳ Linked title and heading, no buttons", () => {
     const r = render({ variant: "fallback", linked: [L("Doku-Umbau", "running")] });
     expect(r.title).toBe("⏳ ➜ 🔗 Linked ┃ ");
-    expect(r.heading).toBe('⏳ 🔗 Linked — läuft in Side-Session „Doku-Umbau", sie shippt selbst');
+    expect(r.heading).toBe('⏳ 🔗 Linked — läuft in Side-Session „Doku-Umbau“, sie shippt selbst');
     expect(r.buttons).toEqual([]);
   }, 30000);
 
@@ -50,7 +50,7 @@ describe("side-session cards through the offline renderer", () => {
     const r = render({ variant: "ready", linked: [L("Doku-Umbau", "running")] });
     expect(r.title).toBe("👉 ➜ 📦 Ready ┃ ");
     expect(r.heading).toBe("👉 📦 Ready — Shippen?");
-    expect(r.context.join(" ")).toContain('„Doku-Umbau" läuft weiter und shippt selbst');
+    expect(r.context.join(" ")).toContain('„Doku-Umbau“ läuft weiter und shippt selbst');
     expect(r.buttons).toEqual(["Ship"]);
   }, 30000);
 
@@ -64,7 +64,7 @@ describe("side-session cards through the offline renderer", () => {
   test("S4: a failed part -> 👉 Question with three prepared replies", () => {
     const r = render({ variant: "fallback", linked: [L("A", "done", "deliver"), L("C", "failed", "deliver")] });
     expect(r.title).toBe("👉 ➜ ❓ Question ┃ ");
-    expect(r.heading).toContain('„C" ist gescheitert — ohne C integrieren, C neu starten oder abbrechen?');
+    expect(r.heading).toContain('„C“ ist gescheitert — ohne C integrieren, C neu starten oder abbrechen?');
     expect(r.buttons).toHaveLength(3);
   }, 30000);
 
