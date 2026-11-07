@@ -32,9 +32,9 @@ function page(designs, views = 0, mode = "design") {
 // - FIRST_VISIT_MS: the first-visit "?" tip. A boot over 7 s (jsdom on a loaded
 //   machine) let it fire first; it then holds the one nudge slot and uses up
 //   the keys tip, which broke every test that expects a free slot.
-// - NAV_GUARD_MS: the ☰ click guard, armed in the capture phase BEFORE the page
-//   switch runs. A switch over 300 ms let it expire before a wait(100) started
-//   after that click, so the late closePanel() really closed the menu.
+// - NAV_GUARD_MS: the ☰ click guard. It starts after the click's handlers, so a
+//   slow page switch no longer eats it, but a starved process could still let
+//   it run out before the late closePanel() of the test.
 // fire() throws when the timer is not armed: a changed delay fails loudly here
 // instead of quietly bringing the race back.
 const FIRST_VISIT_MS = 7000;
@@ -315,7 +315,9 @@ describe("hotkeys: Space = notes dock, arrows = levels", () => {
     const item = document.querySelector("#screen-nav .screen-nav-view-item");
     mouseClick(window, item);
     expect(document.body.dataset.viewActive).toBe("true");
+    expect(timers.pending(NAV_GUARD_MS), "the 400 ms start after the page switch, not before it").toBe(0);
     await wait(100);
+    expect(timers.pending(NAV_GUARD_MS)).toBe(1);
     window.closePanel();
     expect(document.body.classList.contains("panel-open")).toBe(true);
     timers.fire(NAV_GUARD_MS);
