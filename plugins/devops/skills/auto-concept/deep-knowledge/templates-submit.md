@@ -98,7 +98,8 @@ function collectComments(active) {
     if (seen.has(el)) return;
     seen.add(el);
     const id = el.dataset.comment;
-    const text = (el.value || '').trim();
+    // An analysis chat message that carries attachments ends with an invisible id marker; never in the payload.
+    const text = (el.value || '').replace(/\u2063[a-z0-9]+/g, '').trim();
     if (id === 'general') { if (text) generalTexts.push(text); return; }
     const attachments = attachmentsOf(id);
     // An image with no prose is a complete comment — a screenshot often says

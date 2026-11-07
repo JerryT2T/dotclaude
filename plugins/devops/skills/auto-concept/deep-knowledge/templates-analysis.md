@@ -310,7 +310,7 @@ function collectModeDecision(el) {
   entry.none = text(n + '-none') === '1';
   if (entry.none) { entry.value = mode === 'multi' ? [] : mode === 'points' ? {} : ''; entry.deviates = true; }
   entry.untouched = text(n + '-touched') !== '1';
-  entry.note = ((noteEl && noteEl.value) || '').trim();
+  entry.note = ((noteEl && noteEl.value) || '').replace(/\u2063[a-z0-9]+/g, '').trim();   // drop the message-attachment markers
   entry.appliesTo = el.dataset.appliesTo || '';
   entry.finding = el.dataset.finding || '';
   entry.issue = text(n + '-issue') === '1';

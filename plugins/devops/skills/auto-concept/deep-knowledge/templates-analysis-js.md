@@ -671,8 +671,11 @@ What the code does, in the order of the file:
   }
   /** One chat message of the user with its pen and x; the same bubble on the open stage and on an earlier question. */
   function noteRow(inst, st, m, i, editable) {
-    const row = h('div', 'an-bub-me an-note-m');
-    row.appendChild(document.createTextNode(m));
+    const row = h('div', 'an-bub-me an-note-m'), text = plainMsg(m), id = msgIdOf(m);
+    if (text) row.appendChild(document.createTextNode(text));
+    // The attachments sent with this message stand in its bubble (lightbox; x while the stage is editable).
+    const recs = id ? msgRecs(inst, st, id) : [];
+    if (recs.length) row.appendChild(noteAtts(inst, st, recs, editable));
     if (editable) {
       const acts = h('div', 'an-note-acts');
       acts.append(noteBtn(L('Nachricht bearbeiten', 'Edit message'), NOTE_PEN, () => editNote(inst, st, i)),
@@ -691,23 +694,27 @@ What the code does, in the order of the file:
     b.addEventListener('click', e => { e.stopPropagation(); onClick(); });
     return b;
   }
-  /** Pen: the message goes back into the composer. A draft already there is sent first, so it is not overwritten. */
+  /** Pen: the message goes back into the composer, its attachments back into the strip. A draft already there
+   *  is sent first (with the strip's attachments), so it is not overwritten. */
   function editNote(inst, st, i) {
     const store = storeOf(inst, st);
     if (!store || frozen(inst)) return;
     // A message of an earlier question is edited where it stands: no composer (it belongs to the OPEN stage), no jump.
     if (st !== inst.stages[inst.idx]) { editInline(inst, st, i); return; }
     composeSync(inst);
-    const list = msgsOf(st, store).slice(), m = list[i];
-    if (compText(inst.comp.ed)) { commitDraft(st); clearComposer(inst); }
+    const m = msgsOf(st, store)[i];
+    if (compText(inst.comp.ed) || pendingRecs(inst, st).length) { sealDraft(inst, st, compText(inst.comp.ed)); clearComposer(inst); }
     const all = msgsOf(st, store).slice();
     all.splice(i, 1);
     st.msgs = all;
     writeMsgs(st, store, all);
+    const id = m ? msgIdOf(m) : '';
+    if (id) msgRecs(inst, st, id).forEach(r => { if (typeof setAttachmentMsg === 'function') setAttachmentMsg(r, null); else delete r.msg; });
     inst.comp.ed.textContent = '';
-    if (m) inst.comp.ed.appendChild(document.createTextNode(m));
+    if (m && plainMsg(m)) inst.comp.ed.appendChild(document.createTextNode(plainMsg(m)));
     composeSync(inst);
     renderNotes(inst, st);
+    renderStrip(inst);
     focusComposer(inst);
   }
   function deleteNote(inst, st, i) {
@@ -715,12 +722,96 @@ What the code does, in the order of the file:
     if (!store || frozen(inst)) return;
     const open = st === inst.stages[inst.idx];
     const draft = open ? compText(inst.comp.ed) : '', list = msgsOf(st, store).slice();
+    const id = list[i] ? msgIdOf(list[i]) : '';
     list.splice(i, 1);
     st.msgs = list;
     writeMsgs(st, store, list);
     if (draft) composeSync(inst);
-    if (open) renderNotes(inst, st);
-    else { if (st.notes) renderNotes(inst, st); fillMe(inst, st, true); }
+    // The message's attachments go with it.
+    if (id && typeof removeAttachment === 'function') { const slot = slotOf(inst, st); msgRecs(inst, st, id).forEach(r => removeAttachment(slot, r.key)); }
+    refreshNotes(inst, st);
+  }
+  /* ----- attachments of a sent message: the record carries the message's id (rec.msg), the message ends with
+   *       U+2063 + that id (invisible, stripped wherever the text is shown or submitted) ----- */
+  const MSG_MARK = '\u2063';
+  const MSG_MARK_RE = /\u2063([a-z0-9]+)$/;
+  function plainMsg(m) { return String(m || '').replace(MSG_MARK_RE, ''); }
+  function msgIdOf(m) { const r = MSG_MARK_RE.exec(String(m || '')); return r ? r[1] : ''; }
+  function slotRecs(inst, st) {
+    const s = storeOf(inst, st), slot = s && s.dataset.comment;
+    return (slot && typeof _attachments !== 'undefined' && _attachments.get(slot)) || [];
+  }
+  function msgRecs(inst, st, id) { return slotRecs(inst, st).filter(r => r.msg === id); }
+  /** Attachments in the strip, not yet sent with a message. A record whose message is gone (deleted
+   *  while its record was restored from storage) counts as unsent, so it is never invisible. */
+  function pendingRecs(inst, st) {
+    const store = storeOf(inst, st);
+    const ids = store ? new Set(msgsOf(st, store).map(msgIdOf).filter(Boolean)) : new Set();
+    return slotRecs(inst, st).filter(r => !r.msg || !ids.has(r.msg));
+  }
+  /** The draft (already in the store as its last message) becomes a sent message; the strip's attachments go with it. */
+  function sealDraft(inst, st, text) {
+    const store = storeOf(inst, st), recs = pendingRecs(inst, st);
+    if (!store) return;
+    if (!recs.length) { commitDraft(st); return; }
+    const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    st.msgSig = null;
+    const all = msgsOf(st, store).slice();
+    const draft = text && text.trim() ? all.pop() : '';
+    all.push(plainMsg(draft) + MSG_MARK + id);
+    st.msgs = all;
+    writeMsgs(st, store, all);
+    recs.forEach(r => { if (typeof setAttachmentMsg === 'function') setAttachmentMsg(r, id); else r.msg = id; });
+  }
+  /** Redraws the messages of a stage wherever they stand (never under an inline edit). */
+  function refreshNotes(inst, st) {
+    if (st.editing) return;
+    if (st === inst.stages[inst.idx] || st.notes) renderNotes(inst, st);
+    if (st !== inst.stages[inst.idx] && st.me) fillMe(inst, st, true);
+  }
+  function noteAtts(inst, st, recs, editable) {
+    const box = h('div', 'an-note-att');
+    box.setAttribute('role', 'list');
+    box.setAttribute('aria-label', L('Anhänge', 'Attachments'));
+    recs.forEach(rec => {
+      const it = h('div', 'an-att-i');
+      it.setAttribute('role', 'listitem');
+      it.dataset.error = String(!!rec.error);
+      if (RASTER.test(rec.mime || '')) {
+        const open = btn('an-att-t'), img = h('img');
+        img.src = attUrl(rec); img.alt = rec.name || '';
+        open.appendChild(img);
+        open.setAttribute('aria-label', L('Bild vergrößern: ', 'Enlarge image: ') + (rec.name || ''));
+        tip(open, rec.name || '');
+        open.addEventListener('click', e => { e.stopPropagation(); openLightbox(inst, rec, open); });
+        it.appendChild(open);
+      } else {
+        const fl = h('div', 'an-att-t an-att-file');
+        fl.append(h('span', '', typeof attachFileIcon === 'function' ? attachFileIcon(rec.mime, rec.name) : '📎'), h('span', 'an-att-n', rec.name || ''));
+        tip(fl, rec.name || '');
+        it.appendChild(fl);
+      }
+      if (editable && typeof removeAttachment === 'function') {
+        const x = btn('an-att-x', '×');
+        x.setAttribute('aria-label', L('Anhang entfernen: ', 'Remove attachment: ') + (rec.name || ''));
+        tip(x, L('Anhang entfernen', 'Remove attachment'));
+        x.addEventListener('click', e => { e.stopPropagation(); dropMsgAtt(inst, st, rec); });
+        it.appendChild(x);
+      }
+      box.appendChild(it);
+    });
+    return box;
+  }
+  /** x on a sent attachment: it goes; a message left with neither text nor attachments goes too. */
+  function dropMsgAtt(inst, st, rec) {
+    const store = storeOf(inst, st);
+    if (!store || frozen(inst)) return;
+    const id = rec.msg;
+    Promise.resolve(removeAttachment(slotOf(inst, st), rec.key)).then(() => {
+      const list = msgsOf(st, store), i = list.findIndex(m => msgIdOf(m) === id);
+      if (i >= 0 && !plainMsg(list[i]).trim() && !msgRecs(inst, st, id).length) deleteNote(inst, st, i);
+      else refreshNotes(inst, st);
+    });
   }
   /** A message is stored with a no-break space between its paragraphs (a blank line would split it in two messages). */
   const packText = t => t.trim().replace(/\n\s*\n/g, '\n\u00a0\n');
@@ -749,15 +840,17 @@ What the code does, in the order of the file:
     ed.setAttribute('aria-multiline', 'true');
     ed.setAttribute('aria-label', L('Nachricht bearbeiten', 'Edit message'));
     tip(ed, L('Enter speichert · Esc verwirft', 'Enter saves · Esc cancels'));
-    ed.textContent = m;
+    ed.textContent = plainMsg(m);
     row.appendChild(ed);
+    const mid = msgIdOf(m);   // its attachments stay with it: the saved text keeps the marker
     st.editing = true;
     let done = false;
     const finish = save => {
       if (done) return;
       done = true; st.editing = false;
       if (save && !frozen(inst)) {
-        const list = msgsOf(st, store).slice(), t = compText(ed), next = t.trim() ? packText(t) : '';
+        const list = msgsOf(st, store).slice(), t = compText(ed);
+        const next = t.trim() ? packText(t) + (mid ? MSG_MARK + mid : '') : (mid && msgRecs(inst, st, mid).length ? MSG_MARK + mid : '');
         if (next !== list[i]) {
           if (next) list[i] = next; else list.splice(i, 1);
           st.msgs = list;
@@ -785,7 +878,15 @@ What the code does, in the order of the file:
   function hookAttachments() {
     const f0 = window.renderAttachments;
     if (typeof f0 !== 'function' || f0.__an) return;
-    const f1 = function () { const r = f0.apply(this, arguments); instances.forEach(renderStrip); return r; };
+    // A sent message's thumbnails follow too (a reload restores the records after the chat was drawn).
+    const f1 = function (slot) {
+      const r = f0.apply(this, arguments);
+      instances.forEach(inst => {
+        renderStrip(inst);
+        if ((_attachments.get(slot) || []).some(x => x.msg)) inst.stages.forEach(st => { if (slotOf(inst, st) === slot) refreshNotes(inst, st); });
+      });
+      return r;
+    };
     f1.__an = true;
     window.renderAttachments = f1;
   }
@@ -811,7 +912,8 @@ What the code does, in the order of the file:
   function renderStrip(inst) {
     const c = inst.comp;
     if (!c) return;
-    const slot = slotOf(inst, inst.stages[inst.idx]), recs = slot ? recsOf(slot) : [], locked = frozen(inst);
+    // Only what is not sent yet: a sent attachment stands in its message's bubble.
+    const slot = slotOf(inst, inst.stages[inst.idx]), recs = slot ? pendingRecs(inst, inst.stages[inst.idx]) : [], locked = frozen(inst);
     c.strip.textContent = '';
     recs.forEach(rec => {
       const it = h('div', 'an-att-i'), raster = RASTER.test(rec.mime || '');
@@ -888,7 +990,7 @@ What the code does, in the order of the file:
   function loadComposer(inst, st) {
     const store = storeOf(inst, st), ed = inst.comp.ed, prev = inst.compSt, draft = compText(ed);
     const keep = prev === st && draft && store && st.msgSig === store.value;
-    if (prev && prev !== st && draft) { commitDraft(prev); renderNotes(inst, prev); }
+    if (prev && prev !== st && !frozen(inst) && (draft || pendingRecs(inst, prev).length)) { sealDraft(inst, prev, draft); renderNotes(inst, prev); }
     inst.compSt = st;
     ed.dataset.ph = L('Notiz an devops … (optional)', 'Note to devops … (optional)');   // a question with "Keine passt" re-sets it (syncDecision)
     if (!keep) clearComposer(inst);
@@ -914,15 +1016,18 @@ What the code does, in the order of the file:
     // round from here — that is a grave step; it only points at the button.
     // It advances exactly ONE stage and keeps the selected answer; rapid sends (a held Enter, a
     // double click) never skip a stage unseen - see stepOnce().
-    if (!text) {
+    // Attachments in the strip make a send a message even without text (an image says it better than a sentence).
+    const pending = pendingRecs(inst, st).length;
+    if (!text && !pending) {
       if (st.kind === 'review' || st.kind === 'done') { pointAtNextRound(); return false; }
       return stepOnce(inst, true);
     }
     if (st.kind === 'dec' && !storeOf(inst, st)) return false;   // no storage target: never advance and drop the note
     inst.comp.el.classList.remove('an-sent'); void inst.comp.el.offsetWidth; inst.comp.el.classList.add('an-sent');
-    commitDraft(st);
+    sealDraft(inst, st, text);   // the text and the strip's attachments become ONE message
     clearComposer(inst);
     renderNotes(inst, st);
+    renderStrip(inst);
     if (st.kind !== 'dec') { glide(inst, st.notes); return true; }
     markTouched(st.el);
     if ((ctl1(st.el, 'dm-' + decId(st.el) + '-none') || {}).value === '1') step(inst, 1);

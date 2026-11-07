@@ -579,7 +579,7 @@
   /** The signal of one decision as the page sees it now: the stored record, the closing toggle wins. */
   function hesOf(inst, st) {
     const id = decId(st.el), e = inst.hes[id] || { ms: 0, revisits: 0 }, median = hesMedian(inst);
-    const note = ((st.el.querySelector('.an-note') || {}).value || '');
+    const note = ((st.el.querySelector('.an-note') || {}).value || '').replace(/\u2063[a-z0-9]+/g, '');
     const h0 = { ms: Math.round(e.ms), noteWords: typeof noteWordCount === 'function' ? noteWordCount(note) : 0, revisits: e.revisits || 0 };
     const auto = typeof hesitationFlag === 'function' ? hesitationFlag(h0, median) : false;
     h0.flagged = inst.sharpen.has(id) ? inst.sharpen.get(id) : auto;

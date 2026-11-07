@@ -252,7 +252,9 @@ describe("attachments in the composer", () => {
     const stores = [...inst.root.querySelectorAll("textarea[data-comment]")].map(slot);
     [...w._attachments.keys()].forEach(k => expect(stores).toContain(k));   // every slot is a field the submit collector reads
     ca.go(inst, 0);
-    expect(inst.comp.strip.querySelectorAll(".an-att-i")).toHaveLength(1);
+    // Leaving a stage sends what was left in the composer, its attachments included (#1079): the image stands in the briefing's chat.
+    expect(inst.comp.strip.querySelectorAll(".an-att-i")).toHaveLength(0);
+    expect(inst.stages[0].notes.querySelectorAll(".an-note-att .an-att-i")).toHaveLength(1);
   });
   test("x removes, a click opens the large view with Esc and focus handling, the engine's progress and retry stay", async () => {
     const { w, doc, ca } = page(FULL, { engine: true });
@@ -314,6 +316,114 @@ describe("attachments in the composer", () => {
     expect(CSS).toMatch(/@media \(pointer: coarse\) \{ \.an-att-x/);
     expect(CSS).toMatch(/\.an-lb \{ position: fixed; inset: 0;/);
     expect(CSS).not.toMatch(/\.an-comp-ed img/);
+  });
+});
+
+describe("attachments belong to the message they were sent with (#1079)", () => {
+  const open = (w, ca) => { const inst = ca.instances[0]; ca.go(inst, inst.stages.findIndex(s => s.el.id === "a1")); return inst; };
+  const bubbles = doc => [...doc.querySelectorAll("#a1 .an-notes .an-note-m")];
+  test("send moves the strip's attachment into the bubble; the strip then shows only unsent ones", async () => {
+    const { w, doc, ca } = page(FULL, { engine: true });
+    const inst = open(w, ca);
+    pasteFile(w, inst.comp.ed, "shot.png");
+    await flush();
+    send(w, ca, inst, "see the screenshot");
+    await flush();
+    const rec = w._attachments.get("a1-note")[0];
+    expect(rec.msg).toMatch(/^[a-z0-9]+$/);
+    expect(inst.comp.strip.hidden).toBe(true);
+    const [b] = bubbles(doc);
+    expect(b.textContent).toContain("see the screenshot");
+    expect(b.textContent).not.toContain("\u2063");
+    expect(b.querySelector(".an-note-att .an-att-t img")).not.toBeNull();
+    expect(doc.querySelector("#a1 .an-note").value).toBe("see the screenshot\u2063" + rec.msg);
+    pasteFile(w, inst.comp.ed, "next.png");
+    await flush();
+    expect(inst.comp.strip.querySelectorAll(".an-att-i")).toHaveLength(1);
+  });
+  test("an image alone is a message too, never a silent step forward", async () => {
+    const { w, doc, ca } = page(FULL, { engine: true });
+    const inst = open(w, ca);
+    pasteFile(w, inst.comp.ed);
+    await flush();
+    expect(ca.sendNote(inst)).toBe(true);
+    expect(inst.stages[inst.idx].el.id).toBe("a1");
+    expect(bubbles(doc)).toHaveLength(1);
+    expect(bubbles(doc)[0].querySelector(".an-note-att img")).not.toBeNull();
+  });
+  test("the pen puts text AND attachments back; delete removes both", async () => {
+    const { w, doc, ca } = page(FULL, { engine: true });
+    const inst = open(w, ca);
+    pasteFile(w, inst.comp.ed);
+    await flush();
+    send(w, ca, inst, "first");
+    await flush();
+    bubbles(doc)[0].querySelectorAll(".an-note-b")[0].click();   // pen
+    await flush();
+    expect(inst.comp.ed.textContent).toBe("first");
+    expect(w._attachments.get("a1-note")[0].msg).toBeUndefined();
+    expect(inst.comp.strip.querySelectorAll(".an-att-i")).toHaveLength(1);
+    expect(bubbles(doc)).toHaveLength(0);
+    ca.sendNote(inst);
+    await flush();
+    expect(bubbles(doc)[0].querySelector(".an-note-att")).not.toBeNull();
+    bubbles(doc)[0].querySelectorAll(".an-note-b")[1].click();   // x of the message
+    await flush();
+    expect(bubbles(doc)).toHaveLength(0);
+    expect(w._attachments.get("a1-note")).toHaveLength(0);
+    expect(doc.querySelector("#a1 .an-note").value).toBe("");
+  });
+  test("x on the bubble's thumbnail removes only the attachment; an image-only message goes with its last one", async () => {
+    const { w, doc, ca } = page(FULL, { engine: true });
+    const inst = open(w, ca);
+    pasteFile(w, inst.comp.ed);
+    await flush();
+    send(w, ca, inst, "keep me");
+    await flush();
+    bubbles(doc)[0].querySelector(".an-note-att .an-att-x").click();
+    await flush();
+    expect(bubbles(doc)).toHaveLength(1);
+    expect(bubbles(doc)[0].querySelector(".an-note-att")).toBeNull();
+    pasteFile(w, inst.comp.ed);
+    await flush();
+    ca.sendNote(inst);
+    await flush();
+    expect(bubbles(doc)).toHaveLength(2);
+    bubbles(doc)[1].querySelector(".an-note-att .an-att-x").click();
+    await flush();
+    expect(bubbles(doc)).toHaveLength(1);
+  });
+  test("after a reload the restored record lands in its message's bubble; the payload names the message, its text no marker", async () => {
+    const { w, doc, ca } = page(FULL, { engine: true });
+    const inst = open(w, ca);
+    const store = doc.querySelector("#a1 .an-note");
+    store.value = "hello\n\nwith image\u2063m1";
+    store.dispatchEvent(new w.Event("input", { bubbles: true }));
+    ca.go(inst, 0);
+    ca.go(inst, inst.stages.findIndex(s => s.el.id === "a1"));
+    w._attachments.set("a1-note", [{ key: "k", slot: "a1-note", id: "abc", name: "x.png", mime: "image/png", size: 1, synced: true, msg: "m1" }]);
+    w.renderAttachments("a1-note");                          // what restoreAttachments() calls per slot
+    const bs = bubbles(doc);
+    expect(bs).toHaveLength(2);
+    expect(bs[0].querySelector(".an-note-att")).toBeNull();
+    expect(bs[1].querySelector(".an-note-att img")).not.toBeNull();
+    expect(inst.comp.strip.hidden).toBe(true);
+    const [a] = w.attachmentsFor("a1-note");
+    expect(a.message).toEqual({ index: 2, text: "with image" });
+    expect(w.stripMsgMarks(store.value)).toBe("hello\n\nwith image");
+  });
+  test("a restored record whose message is gone shows in the strip again, never invisible", async () => {
+    const { w, ca } = page(FULL, { engine: true });
+    const inst = open(w, ca);
+    w._attachments.set("a1-note", [{ key: "k", slot: "a1-note", id: "abc", name: "x.png", mime: "image/png", size: 1, synced: true, msg: "gone1" }]);
+    w.renderAttachments("a1-note");
+    expect(inst.comp.strip.querySelectorAll(".an-att-i")).toHaveLength(1);
+  });
+  test("every reader of a note drops the marker (source guards)", () => {
+    const strip = "replace(/" + String.fromCharCode(92) + "u2063[a-z0-9]+/g, '')";
+    expect(dk("templates-submit.md")).toContain("const text = (el.value || '')." + strip + ".trim();");
+    expect(dk("templates-analysis.md")).toContain("entry.note = ((noteEl && noteEl.value) || '')." + strip + ".trim();");
+    expect(CSS).toMatch(/\.an-note-att \{ display: flex;/);
   });
 });
 

@@ -247,6 +247,10 @@ html[data-theme="light"] .an-att-i { box-shadow: 0 6px 18px rgba(31,35,40,.18); 
 .an-att-r { right: 26px; }
 .an-att-x:hover, .an-att-r:hover { background: rgba(0,0,0,.85); }
 @media (pointer: coarse) { .an-att-x, .an-att-r { width: 28px; height: 28px; font-size: 16px; } .an-att-r { right: 34px; } }
+/* attachments sent with a message: in its bubble, under the text */
+.an-note-att { display: flex; flex-wrap: wrap; gap: 8px; white-space: normal; }
+.an-note-m > .an-note-att:not(:first-child) { margin-top: 8px; }
+.an-note-att .an-att-i { box-shadow: none; }
 .an-att-msg { padding: 6px 10px; border-radius: 8px; background: var(--an-s2); border: 1px solid var(--an-bd2); color: var(--an-tx2); font-size: 12.5px; }
 .an-lb { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 24px; background: rgba(1,4,9,.78); }
 .an-lb > img { max-width: min(96vw, 1100px); max-height: 88vh; object-fit: contain; border-radius: 10px; background: var(--an-s1); box-shadow: 0 20px 60px rgba(0,0,0,.6); }
