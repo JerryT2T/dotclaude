@@ -25,7 +25,7 @@ describe("linkedPlan - handoff (S1, S2)", () => {
   test("own diff keeps the normal card plus a note", () => {
     const p = plan([L("Doku", "running")], "ready");
     expect(p.head).toBeNull();
-    expect(p.lines).toEqual(['„Doku“ läuft weiter und shippt selbst']);
+    expect(p.lines).toEqual(['„Doku“ läuft weiter und shippt selbst', 'Läuft in: „Doku“']);
   });
 
   test("own ship with the side session running: Linked with the version, never Released", () => {
@@ -42,7 +42,7 @@ describe("linkedPlan - handoff (S1, S2)", () => {
     expect(done.buttonsKey).toBeNull();
     const part = plan([L("X", "shipped", "handoff", { version: "0.3.0" }), L("Y", "running")], "fallback");
     expect(part.head.id).toBe("linked");
-    expect(part.lines).toEqual(['„X“ geshippt v0.3.0', '„Y“ läuft noch']);
+    expect(part.lines).toEqual(['„X“ geshippt v0.3.0', 'Läuft in: „Y“']);
   });
 
   test("all done with nothing shipped is no Released", () => {
@@ -111,5 +111,44 @@ describe("linkedPlan - independent follow-ups (S5) and helpers", () => {
     expect(CARD_VARIANTS).toContain("delivered");
     expect(validateCardInput({ variant: "delivered", summary: "x", linked: [{ title: "A", mode: "x" }] }).ok).toBe(false);
     expect(validateCardInput({ variant: "delivered", summary: "x", linked: [L("A", "done")] }).ok).toBe(true);
+  });
+});
+
+describe("linkedPlan - clickable links and the newer release (S1.1, S1.4, S2.4)", () => {
+  test("a running handoff session gets the Läuft-in line and a link", () => {
+    const p = plan([L("Doku", "running")], "fallback");
+    expect(p.lines).toEqual(["Läuft in: „Doku“"]);
+    expect(p.links).toEqual([{ id: "local_Doku", title: "Doku", text: "„Doku“" }]);
+  });
+  test("waiting: link text is the quoted sidebar title; no id -> no link", () => {
+    const p = plan([L("Doku", "waiting")], "fallback");
+    expect(p.links[0].text).toBe(p.lines[0].replace("Weiter in der Side-Session: ", ""));
+    expect(plan([{ ...L("Doku", "waiting"), id: "" }], "fallback").links).toBeUndefined();
+  });
+  const own = (v) => ({ delivery: { ship: { version: v } } });
+  test("side ship newer than the parent's own release: side-session heading, own release as line", () => {
+    const p = plan([L("X", "shipped", "handoff", { version: "0.363.0" })], "ship-successful", own("0.362.0"));
+    expect(p.head.id).toBe("released-alpha");
+    expect(p.sentence).toBe("v0.363.0 — in Side-Session „X“ geshippt, hier ist nichts offen");
+    expect(p.lines).toEqual(["Eigenes Release v0.362.0"]);
+    expect(p.buttonsKey).toBeNull();
+  });
+  test("equal versions: side heading, no own-release line (semver, not string, compare)", () => {
+    const p = plan([L("X", "shipped", "handoff", { version: "0.363.0" })], "released", own("0.363.0"));
+    expect(p.head.id).toBe("released-alpha");
+    expect(p.lines).toEqual([]);
+    const q = plan([L("X", "shipped", "handoff", { version: "0.10.0" })], "released", own("0.9.0"));
+    expect(q.head.id).toBe("released-alpha");
+  });
+  test("parent's own ship newer: own release heading stays, side ship only a line", () => {
+    const p = plan([L("X", "shipped", "handoff", { version: "0.362.0" })], "ship-successful", own("0.363.0"));
+    expect(p.head).toBeNull();
+    expect(p.lines).toEqual(["„X“ geshippt v0.362.0"]);
+    const r = plan([L("X", "shipped", "handoff", { version: "0.9.0" })], "released", own("0.10.0"));
+    expect(r.head).toBeNull();
+  });
+  test("no own delivery: side-session heading; a still running sibling blocks it", () => {
+    expect(plan([L("X", "shipped", "handoff", { version: "0.4.0" })], "released").head.id).toBe("released-alpha");
+    expect(plan([L("X", "shipped", "handoff", { version: "0.4.0" }), L("Y", "running")], "released", own("0.3.0")).head.id).toBe("linked");
   });
 });

@@ -21,9 +21,11 @@
  *
  *   `linkedPlan` is pure: the card derives the title state, the heading
  *   sentence, the `›` lines and the buttons from the one result, so title and
- *   CTA cannot drift. The link `[title](#local_...)` is NOT rendered: the
- *   widget client turns only http(s) URLs into anchors, a `#local_` link would
- *   show as literal text. The quoted sidebar title is the way to find the chat.
+ *   CTA cannot drift. `links` names the quoted titles in those lines that carry
+ *   a session id: the widget turns each into a click that sends "open this
+ *   session in split view" (card-widget.js SESSION_OPEN); markdown stays plain.
+ *   Final card: when all marked sessions finished and the newest side ship is
+ *   >= the parent's own delivery version, the side-session Released heading wins.
  */
 
 import { TITLE_SCHEME } from "./mode-state.js";
@@ -52,6 +54,8 @@ const T = {
     runLine: (e) => `${q(e.title)} läuft noch`,
     independent: (l) => (l.length > 1 ? `${names(l)} laufen als eigene Aufgaben` : `${names(l)} läuft als eigene Aufgabe`),
     moveIn: (side) => `Weiter in der Side-Session: ${side}`,
+    runIn: (side) => `Läuft in: ${side}`,
+    ownRelease: (v) => `Eigenes Release v${v}`,
     teamRun: (n, m) => `noch nicht fertig — ${n} von ${m} Side-Sessions fertig`,
     count: (n, m) => `${n} von ${m} fertig`,
     integrate: (m) => `${m} Teilergebnisse integrieren und shippen?`,
@@ -76,6 +80,8 @@ const T = {
     runLine: (e) => `${qe(e.title)} still runs`,
     independent: (l) => (l.length > 1 ? `${namesE(l)} run as their own tasks` : `${namesE(l)} runs as its own task`),
     moveIn: (side) => `Continue in the side session: ${side}`,
+    runIn: (side) => `Running in: ${side}`,
+    ownRelease: (v) => `Own release v${v}`,
     teamRun: (n, m) => `not done yet — ${n} of ${m} side sessions done`,
     count: (n, m) => `${n} of ${m} done`,
     integrate: (m) => `integrate ${m} partial results and ship?`,
@@ -125,11 +131,34 @@ export function linkedKeepTokens(raw) {
     .map((e) => e.branch.toLowerCase());
 }
 
-/** `Sidebar: „👉 ➜ ❓ Question ┃ title"` - the title the user finds in the sidebar. */
+/** Quoted sidebar title of a side session: `„👉 ➜ ❓ Question ┃ title"` (waiting/failed) or `„title"` (running). */
+function sidebarText(e, L) {
+  const quote = L === T.en ? qe : q;
+  if (e.state === "running") return quote(e.title);
+  return quote(`${TITLE_SCHEME.head("question").text} ${e.title}`);
+}
+
+/** The `›` line that points to the chat where the user's next move is. */
 function sidebarLine(e, L) {
-  const id = e.state === "running" ? "agents" : "question";
-  const head = e.state === "running" ? TITLE_SCHEME.WORK_PREFIX.trim() : TITLE_SCHEME.head(id).text;
-  return L.moveIn(L === T.en ? qe(`${head} ${e.title}`) : q(`${head} ${e.title}`));
+  return e.state === "running" ? L.runIn(sidebarText(e, L)) : L.moveIn(sidebarText(e, L));
+}
+
+/** Clickable targets of the lines: the widget turns `text` into a click when `id` is set. */
+function linksOf(list, L) {
+  return list.filter((e) => e.id).map((e) => ({ id: e.id, title: e.title, text: sidebarText(e, L) }));
+}
+
+/** [major, minor, patch] of a version string, null when it is none. */
+function semver(v) {
+  const m = /^v?(\d+)\.(\d+)\.(\d+)/.exec(String(v || "").trim());
+  return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
+}
+/** a >= b by semver; an unparsable side is treated as "not newer". */
+function versionGte(a, b) {
+  const x = semver(a), y = semver(b);
+  if (!x || !y) return false;
+  for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] > y[i];
+  return true;
 }
 
 /**
@@ -141,6 +170,15 @@ function sidebarLine(e, L) {
  *   null = the card has nothing to say about side sessions
  */
 export function linkedPlan(input, key, ctx = {}) {
+  const plan = linkedPlanCore(input, key, ctx);
+  if (!plan) return plan;
+  const L = T[ctx.lang === "en" ? "en" : "de"];
+  const shown = normalizeLinked(input.linked).filter((e) => e.mode !== "independent" && (e.state === "running" || e.state === "waiting" || e.state === "failed"));
+  const links = linksOf(shown, L).filter((l) => plan.lines.some((line) => line.includes(l.text)));
+  return links.length ? { ...plan, links } : plan;
+}
+
+function linkedPlanCore(input, key, ctx) {
   const L = T[ctx.lang === "en" ? "en" : "de"];
   const all = normalizeLinked(input && input.linked);
   if (!all.length) return null;
@@ -159,7 +197,7 @@ export function linkedPlan(input, key, ctx = {}) {
   const shipped = marked.filter((e) => e.state === "shipped");
   const unfinished = [...running, ...waiting];
   const needUser = [...waiting, ...failed];
-  const moveLines = needUser.map((e) => sidebarLine(e, L));
+  const moveLines = [...needUser, ...running.filter((e) => e.mode === "handoff")].map((e) => sidebarLine(e, L));
   const deliver = marked.some((e) => e.mode === "deliver");
 
   // ---- orchestration: the children only deliver, the parent ships once ----
@@ -199,7 +237,19 @@ export function linkedPlan(input, key, ctx = {}) {
   // ---- handoff: the children ship themselves ----
   const linkedId = needUser.length ? "linked-waiting" : "linked";
   const partial = shipped.map(L.shippedLine);
-  const restLines = unfinished.length && shipped.length ? [...partial, ...running.map(L.runLine)] : [];
+  const restLines = unfinished.length && shipped.length ? partial : [];
+  if (!ownStep && !unfinished.length && !failed.length && shipped.length) {
+    // Everything the parent started is shipped. The NEWER release names the card:
+    // a side session's ship at or above the parent's own version -> the side-session
+    // Released heading (own release only a line); otherwise the parent's own release stays.
+    const newest = shipped.map((e) => e.version).filter((v) => semver(v)).sort((a, b) => (versionGte(a, b) ? (versionGte(b, a) ? 0 : -1) : 1))[0] || "";
+    const own = semver(ver) ? ver : "";
+    if (!own || (newest && versionGte(newest, own))) {
+      const ownLine = own && newest && own !== newest ? [L.ownRelease(own)] : [];
+      return { head: { id: "released-alpha", mandatory: false }, sentence: L.allShipped(newest || ver, shipped), lines: [...ownLine, ...indLines], buttonsKey: null };
+    }
+    return { head: null, sentence: "", lines: [...partial, ...indLines] };
+  }
   if (isShip) {
     if (!unfinished.length && !failed.length) return { head: null, sentence: "", lines: [...partial, ...indLines] };
     const open = needUser.length ? needUser : running;
