@@ -22,13 +22,17 @@ turn end. Nothing else strips or sets titles.
 
 | State | Prefix |
 |---|---|
-| work | `⏳ ➜ 🚀 Shipping ┃`, `⏳ ➜ 🧪 Testing ┃`, `⏳ ➜ 🤖 Team ┃` (pending background work), `⏳ ➜ 🧭 Concept ┃` (iterating/implementing), `⏳ ➜ 🤖 Solo ┃` (generic) |
-| user | `👉 ➜ 🧭 Concept ┃` (page waits), `📚 Batch`, `🧪 Test`, `📦 Ready`, `📦 Files`, `❓ Question`, `⚠️ Red tests`, `⚠️ Unverified`, `⚠️ Not deployed`, `🚧 Blocked`, `⚡ Interrupted` (see F5) |
-| done | `🟩 ➜ 🚀 Released Alpha ┃` (merged ship), `🚀 Released Beta` / `🚀 Released Stable` (ship and promote in one run), `🎊 Beta` / `🎊 Stable` (promote only), `📦 Committed`, `✨ Started`, `📊 Analysis`, `🖥️ System` (work outside the repo); never "LIVE" |
+| work | `⏳ ➜ 🚀 Shipping ┃`, `⏳ ➜ 🧪 Testing ┃`, `⏳ ➜ 🤖 Team ┃` (pending background work, side sessions with a count), `⏳ ➜ 🔗 Linked ┃` (marked handoff side session running), `⏳ ➜ 🧭 Concept ┃` (iterating/implementing), `⏳ ➜ 🤖 Solo ┃` (generic) |
+| user | `👉 ➜ 🧭 Concept ┃` (page waits), `👉 ➜ 🔗 Linked ┃` / `👉 ➜ 🤖 Team ┃` (a side session waits on you), `📚 Batch`, `🧪 Test`, `📦 Ready`, `📦 Files`, `❓ Question`, `⚠️ Red tests`, `⚠️ Unverified`, `⚠️ Not deployed`, `🚧 Blocked`, `⚡ Interrupted` (see F5) |
+| done | `🟩 ➜ 🚀 Released Alpha ┃` (merged ship), `🟩 ➜ 📦 Delivered ┃` (side session delivered its part, the parent ships), `🚀 Released Beta` / `🚀 Released Stable` (ship and promote in one run), `🎊 Beta` / `🎊 Stable` (promote only), `📦 Committed`, `✨ Started`, `📊 Analysis`, `🖥️ System` (work outside the repo); never "LIVE" |
 | aborted | `🟥 ➜ 📦 Aborted ┃` (generic), `🚀 Ship`, `🎊 Promote`, `🧪 Test`, `🧭 Concept`, `📚 Batch`, `📊 Analysis`, `🤖 Team` |
 | paused | `🟦 ➜ ✋ Paused ┃`, `🔋 Limit reset`, `🔌 Restart`, `💻 Reboot` |
 
 A named abort keeps its activity (`🟥 ➜ 🚀 Ship ┃ X`).
+
+## Side sessions
+
+Precedence for the parent, first match wins: own mandatory step (own diff, question, red tests) > a linked side session waits on you (`👉 Linked` / `👉 Team`) > linked side sessions still running (`⏳ Linked` / `⏳ Team`) > done. The subordinate state stays visible as a `›` line. Two brief markers: `[devops:handoff]` (child ships itself) and `[devops:deliver]` (child delivers, parent integrates and ships; here the parent's own diff does not win over `⏳ Team`). Unmarked = independent follow-up: no status change, one `›` line. The title is updated on every side-session note, a card only when the user's next move changes. `🟩 Released` only after the last linked session finished, because Released invites archiving the chat.
 
 **How early the ⏳ can appear.** Three paths, fastest first. A session started
 with `start_session` "user_asked" carries the head in the call itself

@@ -19,7 +19,8 @@
  * the variant guard) with a real merge (`state.merged`, and pushed or a local
  * merge in a repo without a remote). Never with an explicit keep
  * (`state.kept`), pending background work, open points, user tests, a
- * requirement waiting on the user or a pending deploy the card still hands
+ * requirement waiting on the user, a marked side session that is not finished
+ * (`linked`: handoff/deliver; independent follow-ups never block) or a pending deploy the card still hands
  * the user (`userFinalTest` does not block — ship parks leftover harden
  * findings there), a concept (or one that only waits for its close-out) or
  * batch mode in play, an orchestrator
@@ -35,6 +36,7 @@
 import { unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
+import { hasUnfinishedLinked } from "./linked-sessions.js";
 
 /** Prefix of the per-session flag post.flow.completion reads (tmpdir). */
 export const ARCHIVE_FLAG_PREFIX = "dotclaude-devops-card-archive";
@@ -60,6 +62,8 @@ export function archiveDecision(params, deps) {
   if (!s.pushed && s.mode !== "git-no-remote") return no("not-pushed");
   if (s.kept) return no("kept");
   if (deps.hasPending(params.pending)) return no("pending");
+  // A marked side session still running / waiting / failed: the chat is its hub (unmarked follow-ups never block).
+  if (hasUnfinishedLinked(params.linked)) return no("linked");
   if (hasItems(params.open)) return no("open");
   if (hasItems(params.userTest)) return no("user-test");
   // A deploy the user still has to run or gate-check is their step too.

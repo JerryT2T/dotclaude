@@ -318,6 +318,16 @@ alpha **v0.179.0** › beta v0.176.0 (−3) › stable v0.170.0 (−9 · 12 d)
 | batch override | `👉 📚 Batch — sammelt — {n} Einträge` | how to collect · fire (`<marker> <text>` / `/do-batch go`) · stop (`/do-batch off`, auto-end bounds) | — | context line = what happens to the next prompt; the card is the whole activation confirmation, no text block beside it |
 | V&V unverified | `👉 ⚠️ Unverified — Ungeprüft shippen?` | "npm test lief nicht — …" | Tests laufen lassen · Trotzdem shippen | `⚠ ungeprüft` first evidence post |
 | V&V running | `⏳ 🧪 Testing — Test läuft noch — Ergebnis abwarten?` | "Ein Testlauf läuft noch im Hintergrund — …" | Jetzt shippen | `◐ Test läuft noch im Hintergrund` first evidence post; waiting needs no button — the run's notification brings the result; the pending override still wins when `pending` names the run |
+| linked, handoff running | `⏳ 🔗 Linked — „{X}" läuft weiter und shippt selbst` | `› „{X}" läuft noch` (+ `› Weiter in: [title](#local_…) · Sidebar: „…"` where the user's move is there) | — | `linked` input; parent has no own open work. No Ship / Promote for side-session work. Never Released while any linked session runs |
+| linked, waiting | `👉 🔗 Linked — „{X}" wartet auf dich — dort antworten` | the open point | — | title `👉 ➜ 🔗 Linked ┃` |
+| linked, partial | `⏳ 🔗 Linked — …` | `› „A" geshippt v…, „B" läuft noch` | — | title stays ⏳ |
+| linked, all finished | `🟩 🚀 Released …` | `› „A" geshippt v…` | no promote (promotion happens in the side session) | only when ALL linked sessions shipped or finished with nothing to ship (Released invites archiving) |
+| `delivered` (child of `[devops:deliver]`) | `🟩 📦 Delivered — Teil fertig — der Haupt-Chat integriert und shippt.` | — | no Ship; 👉 only with a real open point | never `[LOCAL SHIP]` / ready-ship redirect |
+| Team with side sessions | `⏳ 🤖 Team — {n} von {m} Side-Sessions fertig` | the running ones | secondary `Eigenen Teil jetzt shippen` when the parent has its own unshipped diff | own diff does not win over Team (combined ship at the end) |
+| Team, one waits | `👉 🤖 Team — „{Y}" wartet auf dich — dort antworten` | — | — | title `👉 ➜ 🤖 Team ┃` |
+| Team, all delivered | `👉 📦 Ready — {m} Teilergebnisse integrieren und shippen?` | — | Ship | after the combined ship `🟩 🚀 Released` + `› A, B, C können archiviert werden` |
+| Team, one failed | `👉 ❓ Question — „{C}" ist gescheitert — ohne C integrieren, C neu starten oder abbrechen?` | — | prepared replies | |
+| side-session note turn | title always updated; a new card only when the user's next move changed (all done, one waits, one failed, shipped there), otherwise the turn ends silently | | | unmarked follow-up: one line `› „{Bug Y}" läuft als eigene Aufgabe`, no status change |
 
 Every heading starts with the same status icon, activity icon and English keyword as the session title the card leaves (`session-title-scheme.md`, "Title = CTA"), then ` — ` and the localized sentence; both come from one table (`hooks/lib/title-scheme.js`, `cardHead` in `mcp-server/index.js`).
 
@@ -620,7 +630,7 @@ Yellow/red on the budget marker follow § 2.4, independent of the above.
 
 The title scheme — status and activity icons, keywords, the 👉/🟩 rule,
 title = CTA, Interrupted, legacy prefixes and the process-prefix rules —
-lives in [`session-title-scheme.md`](session-title-scheme.md).
+lives in [`session-title-scheme.md`](session-title-scheme.md). Side-session prefixes (`🔗 Linked`, `📦 Delivered`, `🤖 Team` with sessions) and their precedence rule: § Side sessions there.
 
 ## 8. Text rules (both languages)
 

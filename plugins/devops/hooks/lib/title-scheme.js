@@ -1,6 +1,6 @@
 /**
  * @module title-scheme
- * @version 2.5.0
+ * @version 2.6.0
  * @description The ONE table behind the session title and the completion
  *   card's CTA heading (concept 2026-10-21 "title-iconography").
  *
@@ -67,8 +67,13 @@ const STATES = Object.freeze({
   shipping: ['work', 'Shipping', '🚀'],
   testing: ['work', 'Testing', '🧪'],
   agents: ['work', 'Team', '🤖'],
+  // A marked side session runs ([devops:handoff]: it ships itself).
+  linked: ['work', 'Linked', '🔗'],
   'concept-working': ['work', 'Concept', '🧭'],
   // 👉 the user's move.
+  // A side session waits on the user: Linked (handoff) / Team (deliver).
+  'linked-waiting': ['user', 'Linked', '🔗'],
+  'agents-waiting': ['user', 'Team', '🤖'],
   'concept-waiting': ['user', 'Concept', '🧭'],
   batch: ['user', 'Batch', '📚'],
   test: ['user', 'Test', '🧪'],
@@ -91,6 +96,8 @@ const STATES = Object.freeze({
   committed: ['done', 'Committed', '📦'],
   started: ['done', 'Started', '✨'],
   analysis: ['done', 'Analysis', '📊'],
+  // A side session delivered its part; the main chat integrates and ships.
+  delivered: ['done', 'Delivered', '📦'],
   system: ['done', 'System', '🖥' + FE0F],
   // 🟥 aborted — generic; a named abort keeps its activity (ABORT_ACTIVITY).
   aborted: ['aborted', 'Aborted', '📦'],

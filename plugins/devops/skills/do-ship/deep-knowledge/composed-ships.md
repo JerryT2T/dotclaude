@@ -16,7 +16,7 @@ run flags.
 
 - Work that arrives after a combined ship joins a follow-up ship without asking. Only the "run a follow-up ship?" question drops; safety gates (ambiguous merge, security finding, major bump) still stop the ship.
 - Each follow-up ship re-arms `.claude/.ship-queue`, so an active mandate does not go stale. It ends when no linked session is left to land.
-- A session started for a combined ship gets the no-ship rule in its brief. A later message cannot stop it: a message queues until that session's turn ends, and it may merge first.
+- A session started for a combined ship gets the no-ship rule in its brief, plus the marker `[devops:deliver]` (the child ends with the `delivered` card and never ships; the parent integrates and ships). A child that ships itself gets `[devops:handoff]` instead. A later message cannot stop it: a message queues until that session's turn ends, and it may merge first.
 
 ## Run flags
 

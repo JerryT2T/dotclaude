@@ -42,8 +42,12 @@
  */
 export const CARD_VARIANTS = [
   "ship-successful", "ready", "released", "ship-blocked", "test",
-  "test-minimal", "analysis", "aborted", "fallback", "ready-files", "paused",
+  "test-minimal", "analysis", "aborted", "fallback", "ready-files", "paused", "delivered",
 ];
+
+/** `linked[].mode` / `linked[].state` — the side sessions the parent card reports. */
+export const LINKED_MODES = ["handoff", "deliver", "independent"];
+export const LINKED_STATES = ["running", "waiting", "done", "shipped", "failed"];
 
 /**
  * Top-level keys the tool schema knows. Anything else is silently stripped by
@@ -54,7 +58,7 @@ export const CARD_VARIANTS = [
 export const CARD_KNOWN_KEYS = [
   "variant", "summary", "answer", "lang", "cwd", "buildId", "session_id", "changes", "tests", "nextStep", "readOnly",
   "state", "cta", "userTest", "userFinalTest", "open", "pending", "concept",
-  "deployGate", "validation", "verification", "delivery", "promotion", "pause", "preview",
+  "deployGate", "validation", "verification", "delivery", "promotion", "pause", "preview", "linked",
 ];
 
 /** Top-level keys of `params` the schema does not know, in payload order. */
@@ -220,6 +224,16 @@ export function validateCardInput(params) {
     : !isStr(p.name) ? "name must be a string"
     : p.kind !== undefined && !PENDING_KINDS.includes(p.kind) ? `kind must be one of ${PENDING_KINDS.join("|")}`
     : p.doing !== undefined && !isStr(p.doing) ? "doing must be a string"
+    : null);
+
+  eachEntry(issues, "linked", params.linked, (l) =>
+    !isObj(l) ? "must be { id, title, mode, state, version?, branch? }"
+    : !isStr(l.title) || !l.title.trim() ? "title must be a non-empty string"
+    : l.id !== undefined && !isStr(l.id) ? "id must be a string (local_…)"
+    : l.mode !== undefined && !LINKED_MODES.includes(l.mode) ? `mode must be one of ${LINKED_MODES.join("|")}`
+    : l.state !== undefined && !LINKED_STATES.includes(l.state) ? `state must be one of ${LINKED_STATES.join("|")}`
+    : l.version !== undefined && !isStr(l.version) ? "version must be a string"
+    : l.branch !== undefined && !isStr(l.branch) ? "branch must be a string"
     : null);
 
   eachEntry(issues, "deployGate", params.deployGate, (d) =>

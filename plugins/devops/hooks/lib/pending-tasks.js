@@ -791,7 +791,12 @@ function taskEnds(transcriptContent) {
   return ends;
 }
 
+const { scanLinkedSessions, scanLinkedSessionsInFile } = require('./side-sessions');
+
 module.exports = {
+  // Marked side sessions (lib/side-sessions.js): their own class, never in scanOpenTasks.
+  scanLinkedSessions,
+  scanLinkedSessionsInFile,
   AGENT_LAUNCH_MARKER,
   BASH_LAUNCH_MARKER,
   BASH_AUTO_BG_MARKER,
