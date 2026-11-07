@@ -182,3 +182,29 @@ describe("card-widget.client — template + data", () => {
     }
   });
 });
+
+describe("side-session links (linked cards)", () => {
+  const sessionCard = (lang, text, extra = {}) => ({
+    ...base, lang, context: `› Weiter: ${text}`, sessionLinks: [{ id: "local_abc-1", title: "Login-Fix", text }], ...extra,
+  });
+
+  test("de: the quoted title is a data-tip button whose prompt opens the session in split view", () => {
+    const d = cardWidgetData(sessionCard("de", "„👉 ➜ ❓ Question ┃ Login-Fix“"), "");
+    expect(d.sl).toEqual([{ x: "„👉 ➜ ❓ Question ┃ Login-Fix“", p: "Öffne die Side-Session „Login-Fix“ (local_abc-1) im Split-View.", tp: expect.stringContaining("Side-Session") }]);
+    const dom = mountTemplate(sessionCard("de", "„👉 ➜ ❓ Question ┃ Login-Fix“"), "");
+    const btn = dom.window.document.querySelector(".card-context [role=button][data-prompt], [role=button][data-prompt*='local_abc-1']");
+    expect(btn.getAttribute("data-prompt")).toBe("Öffne die Side-Session „Login-Fix“ (local_abc-1) im Split-View.");
+    expect(btn.textContent).toContain("„👉 ➜ ❓ Question ┃ Login-Fix“");
+    expect(btn.hasAttribute("title")).toBe(false);
+    expect(btn.getAttribute("data-tip")).toBeTruthy();
+  });
+
+  test("en prompt, and no link without a local_ id", () => {
+    const d = cardWidgetData(sessionCard("en", "“Login-Fix”"), "");
+    expect(d.sl[0].p).toBe("Open the side session “Login-Fix” (local_abc-1) in split view.");
+    const none = cardWidgetData({ ...sessionCard("en", "“Login-Fix”"), sessionLinks: [{ id: "", title: "Login-Fix", text: "“Login-Fix”" }] }, "");
+    expect(none.sl).toBeUndefined();
+    const bad = cardWidgetData({ ...sessionCard("en", "“Login-Fix”"), sessionLinks: [{ id: "x\"><b>", title: "t", text: "“t”" }] }, "");
+    expect(bad.sl).toBeUndefined();
+  });
+});

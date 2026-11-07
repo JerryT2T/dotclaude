@@ -104,6 +104,20 @@
     }).join("");
   }
 
+  /** Side-session line: the quoted sidebar title becomes a click (same send path as the open button). */
+  function sessionLinks(html, sl) {
+    (sl || []).forEach(function (l) {
+      var at = esc(l.x);
+      var i = html.indexOf(at);
+      if (i < 0) return;
+      var btn = '<span class="card-open">' +
+        '<span role="button" tabindex="0" class="card-link" data-prompt="' + esc(l.p) + '" data-tip="' + esc(l.tp) + '" style="color:inherit;text-decoration:underline;text-underline-offset:2px;cursor:pointer">' + at + '<span aria-hidden="true" style="user-select:none"> ↗</span></span>' +
+        '<span class="card-act-state" role="status" aria-live="polite" style="font-size:11px;margin-left:4px"></span></span>';
+      html = html.slice(0, i) + btn + html.slice(i + at.length);
+    });
+    return html;
+  }
+
   function glyphColor(glyph) {
     if (glyph === "✗" || glyph === "⛔" || glyph === "⚠") return COLOR.red;
     if (glyph === "◐") return COLOR.yellow;
@@ -251,7 +265,7 @@
     return [
       '<div class="card-box" style="background:var(--bg-accent-muted, rgba(55,138,221,0.10));border-radius:10px;padding:10px 12px;margin-top:10px">',
       d.h ? '<h3 class="card-heading" style="margin:0 0 4px;font-size:16px;font-weight:500">' + esc(d.h) + "</h3>" : "",
-      d.cx ? String(d.cx).split("\n").map(function (l) { return glyphLineHtml("card-context", linkify(l.replace(/^›\s*/, ""), d.tx), 13, "0 0 4px"); }).join("") : "",
+      d.cx ? String(d.cx).split("\n").map(function (l) { return glyphLineHtml("card-context", sessionLinks(linkify(l.replace(/^›\s*/, ""), d.tx), d.sl), 13, "0 0 4px"); }).join("") : "",
       Array.isArray(d.pt) && d.pt.length
         ? '<div class="card-points" style="margin:2px 0 8px">' + d.pt.map(function (p) { return glyphLineHtml("card-point", warnMarks(linkify(p, d.tx))); }).join("") + "</div>"
         : "",

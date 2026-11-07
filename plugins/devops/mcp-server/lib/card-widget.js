@@ -358,6 +358,12 @@ const OPEN_TEXT = {
   },
 };
 
+/** The side-session link: prompt, tooltip. The prompt names title and id; Claude opens it via open_session_in. */
+const SESSION_OPEN = {
+  de: { prompt: (t, id) => `Öffne die Side-Session „${t}“ (${id}) im Split-View.`, tooltip: "Öffnet die Side-Session neben diesem Chat: Der Klick legt den Befehl ins Eingabefeld." },
+  en: { prompt: (t, id) => `Open the side session “${t}” (${id}) in split view.`, tooltip: "Opens the side session next to this chat: the click puts the command in the input box." },
+};
+
 /** Per-language status texts the button script shows after a click. */
 const SEND_TEXT = {
   de: { sent: "Im Eingabefeld, Enter sendet", failed: "Nicht übernommen, Eingabefeld leeren und erneut klicken" },
@@ -446,7 +452,10 @@ export function cardWidgetData(model, repoUrl = "") {
     const o = OPEN_TEXT[lang] || OPEN_TEXT.de;
     tx.open = { pre: OPEN_URL_PREFIX[lang] || OPEN_URL_PREFIX.de, tip: o.tooltip, sent: o.sent };
   }
-  if (buttons.length || tx.open) Object.assign(tx, SEND_TEXT[lang] || SEND_TEXT.de);
+  const links = arr(model.sessionLinks).filter((l) => l && /^local_[\w-]+$/.test(String(l.id)) && l.text && l.title);
+  const sessionText = SESSION_OPEN[lang];
+  const sl = links.length ? links.map((l) => ({ x: l.text, p: sessionText.prompt(l.title, l.id), tp: sessionText.tooltip })) : undefined;
+  if (buttons.length || tx.open || sl) Object.assign(tx, SEND_TEXT[lang] || SEND_TEXT.de);
   return {
     v: CLIENT.SCHEMA,
     l: lang,
@@ -467,6 +476,7 @@ export function cardWidgetData(model, repoUrl = "") {
     cx: nz(model.context),
     pt: list(model.points),
     bt: list(buttons.map((a) => ({ l: a.label, i: a.icon, p: a.prompt, tp: nz(a.tooltip), pr: a.primary ? 1 : undefined }))),
+    sl,
     tx,
   };
 }

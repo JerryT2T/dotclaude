@@ -2070,7 +2070,7 @@ function pendingPoints(pending) {
 
 function buildDecisionBlock(input, lang, key, delivery, state) {
   const plan = linkedPlanFor(input, key, lang);
-  const withLines = (b) => (plan && plan.lines.length ? { ...b, context: [b.context, ...plan.lines.map(l => '› ' + l)].filter(Boolean).join('\n') } : b);
+  const withLines = (b) => (plan && plan.lines.length ? { ...b, sessionLinks: plan.links || null, context: [b.context, ...plan.lines.map(l => '› ' + l)].filter(Boolean).join('\n') } : b);
   if (plan && plan.head && !hasConcept(input.concept)) {
     const ctx = decisionContext(input, key, delivery, state, lang);
     const base = {
@@ -2079,6 +2079,7 @@ function buildDecisionBlock(input, lang, key, delivery, state) {
       buttonsKey: plan.buttonsKey === undefined ? key : plan.buttonsKey,
       version: ctx.version || null, replies: plan.replies || [], noShip: false, guideHandoff: detectGuideHandoff(input), appStart: false, nextStep: '',
       customButtons: plan.custom || null, extraButtons: plan.secondary || null,
+      sessionLinks: plan.links || null,
     };
     // All parts delivered: the normal ready card, Ship included, with the integrate sentence.
     if (plan.head.id === 'ready') {
@@ -2319,6 +2320,7 @@ function buildCardModel(input, lang, key, buildId, usageData, delta5h, deltaWk, 
     appStart: !!decision.appStart,
     nextStep: decision.nextStep || '',
     customButtons: decision.customButtons || null,
+    sessionLinks: decision.sessionLinks || null,
     extraButtons: decision.extraButtons || null,
     readOnly: input.readOnly === true,
     // #757: the answer to the user's question, drawn above the card body.
@@ -3197,7 +3199,7 @@ server.registerTool(
       "VALIDATION (V&V gate): for any code change populate `validation` (requirement -> how met, how confirmed); a code-change card without it is blocked once. " +
       "PENDING: background agents/workflows/tasks you started that still run -> `pending` [{ name, kind: agent|task|workflow, doing }] (replaces the CTA with the 'not finished yet' line; list only work really running; an ended or foreign task -> `pendingDismissed: \"<why>\"`). " +
       "CONCEPT (outranks pending): while an /auto-concept page is open pass `concept: { phase: \"waiting\"|\"iterating\"|\"implementing\" }`; bridge server, pulser and waker are infrastructure, never `pending`; after a merged ship whose page shows its final report, omit it — the ship card wins. " +
-      "SIDE SESSIONS: start_session with a brief marker `[devops:handoff]` (child ships itself) or `[devops:deliver]` (child only delivers, you integrate and ship once) -> pass `linked` on every card while they exist; no marker = independent follow-up (mode independent, never orchestration). A child started with `[devops:deliver]` ends with variant `delivered` (never ships). On a side-session note: title always, new card only if the user's next move changed. Final card after the last side session shipped: variant released, no `delivery` (its version goes in `linked[].version`)." +
+      "SIDE SESSIONS: start_session with a brief marker `[devops:handoff]` (child ships itself) or `[devops:deliver]` (child only delivers, you integrate and ship once) -> pass `linked` on every card while they exist; no marker = independent follow-up (mode independent, never orchestration). A child started with `[devops:deliver]` ends with variant `delivered` (never ships). On a side-session note: title always, new card only if the user's next move changed. Final card after the last side session shipped: variant released; the side session's release is the heading when its `linked[].version` is >= your own `delivery` version (your own release then only a `›` line), a newer own release keeps its heading. A click on a side-session line in the widget sends a prompt `Öffne die Side-Session „X“ (local_…) im Split-View.` / `Open the side session “X” (local_…) in split view.`: answer it with `mcp__ccd_window__open_session_in` for that id (load via ToolSearch if deferred), nothing else." +
       "`cta` is an object of placeholders (e.g. { reason }), never a sentence. `delivery` (PR -> Ship -> Promote track) whenever the work reached a pipeline stage (a PR exists, it was shipped, a channel was promoted): fill the stages that happened, omit it when none apply. " +
       "Offline fallback if the MCP server never connected: node <plugin>/mcp-server/index.js --render-card <payload.json> (same JSON args, relay stdout verbatim).",
     inputSchema: z.object({
