@@ -195,7 +195,7 @@ now); the discreet "Als Issue anlegen (ggf. mit Epic)" link sets
 
 Common to every decision:
 
-- ONE note: `<textarea data-comment="{id}-note">` is the storage target of the persistent composer at the bottom of the stage (the engine hides the textarea; briefing, topic page and closing get a hidden note of their own). A note sent WITH a tag (`[tag] text`, max one) stays on the stage, one WITHOUT advances (not on briefing / closing).
+- ONE note: `<textarea data-comment="{id}-note">` is the storage target of the persistent composer at the bottom of the stage (the engine hides the textarea; briefing, topic page and closing get a hidden note of their own). The composer carries no tag or label: a sent note becomes a chat message of the open stage and stays there (only "Keine passt" also moves on), so it is tied to its question and finding by where it sits.
 - "Keine passt? Schreib deine Antwort unten ins Notizfeld." (every mode but `slider` / `order` / `points`): a text link under the answer block; sets `dm-{id}-none` = `"1"`, clears the pick and focuses the composer. Payload `none: true`, `value` empty, `deviates: true` — the note carries the answer.
 - `dm-{id}-touched` (hidden): `""` until the stage was open ≥ 3 s or the user changed something, then `"1"`. A decision whose value is `""` stays **untouched**: the payload says so and the review lists it last.
 - The recommendation is the preselection: the markup ships the `data-rec` option checked / the slider at the value / the order as recommended. A user who only presses "Weiter" after ≥ 3 s has decided "keep the recommendation".
@@ -224,7 +224,7 @@ as "not looked at", not as "agreed".
 
 **Hesitation.** `hesitation.ms` is the dwell on the decision, counted only while
 the stage is visible AND the window focused (timestamps, back-and-forth
-summed); `noteWords` the words of the note (a leading `[tag] ` excluded);
+summed); `noteWords` the words of the note;
 `revisits` the returns to the stage plus every change of the answer after the
 first. `flagged` is true when at least TWO of: dwell > 2× the median of this
 analysis and ≥ 20 s · note > 12 words · ≥ 2 revisits/changes
@@ -324,9 +324,9 @@ function collectModeDecision(el) {
   return entry;
 }
 
-/** Words of a note, a leading "[tag] " excluded. */
+/** Words of a note. */
 function noteWordCount(note) {
-  return String(note || '').replace(/^\s*\[[^\]\n]{1,80}\]\s?/, '').split(/\s+/).filter(Boolean).length;
+  return String(note || '').split(/\s+/).filter(Boolean).length;
 }
 
 /** Hesitation flag: at least TWO of — dwell over 2x the analysis median and >= 20 s, a note over 12 words, >= 2 revisits / changes. */

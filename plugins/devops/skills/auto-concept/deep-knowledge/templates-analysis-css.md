@@ -255,11 +255,6 @@ html[data-theme="light"] .an-att-i { box-shadow: 0 6px 18px rgba(31,35,40,.18); 
 .an-comp-ed { min-height: 22px; max-height: 66px; overflow-y: auto; font-size: 14px; line-height: 22px; color: var(--an-tx); white-space: pre-wrap; overflow-wrap: anywhere; outline: none; caret-color: var(--an-tx); }
 .an-comp-ed[data-empty="1"]::before { content: attr(data-ph); float: left; width: 100%; margin-right: -100%; color: var(--an-mu2); pointer-events: none; }
 .an-comp-ed[contenteditable="false"] { cursor: default; }
-.an-tagw { display: inline-block; height: 18px; padding: 0 4px 0 7px; margin-right: 6px; border-radius: 5px; font-size: 12.5px; font-weight: 600; line-height: 18px; vertical-align: 1px; white-space: nowrap; user-select: none; background: rgba(121,192,255,.14); color: var(--an-b3); }
-html[data-theme="light"] .an-tagw { color: var(--an-ac); }
-.an-tagw > button { appearance: none; border: 0; background: none; font: inherit; line-height: inherit; margin-left: 5px; padding: 0 3px; border-radius: 3px; color: var(--an-mu); cursor: pointer; }
-.an-tagw > button:hover, .an-tagw > button:focus-visible { background: rgba(255,255,255,.1); color: var(--an-tx); }
-.an-tagw > button:focus-visible { outline: 2px solid var(--an-ac); outline-offset: 1px; }
 .an-comp-b { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--an-s3); color: var(--an-tx2); font-size: 16px; }
 .an-comp-b:disabled { opacity: .4; cursor: default; }
 .an-comp-b[hidden] { display: none; }
@@ -271,7 +266,6 @@ html[data-theme="light"] .an-tagw { color: var(--an-ac); }
 .an-notes { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; margin-top: 14px; }
 .an-notes[hidden] { display: none; }
 .an-note-m { position: relative; white-space: pre-wrap; overflow-wrap: anywhere; }
-.an-note-m .an-tagw { height: auto; padding: 0 7px; }
 .an-note-acts { position: absolute; top: 50%; right: 6px; display: flex; gap: 12px; opacity: 0; pointer-events: none; transform: translateY(-50%); transition: opacity .12s ease; }
 .an-note-m:hover .an-note-acts, .an-note-m:focus-within .an-note-acts { opacity: 1; pointer-events: auto; }
 .an-note-b { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 1px solid var(--an-bd2); border-radius: 50%; background: var(--an-s2); color: var(--an-tx); cursor: pointer; }

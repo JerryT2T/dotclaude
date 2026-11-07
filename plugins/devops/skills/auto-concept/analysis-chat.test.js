@@ -5,7 +5,7 @@ import fixture from "../../scripts/build-concept-fixture.js";
 import cb from "../../scripts/concept-build.js";
 
 // Analysis redesign, phase 1: hesitation signal in the payload, the persistent
-// composer (tag stays / untagged advances) and none / hesitation through bake.
+// composer (a sent note stays on its stage, no tag) and none / hesitation through bake.
 
 const md = readTemplates();
 const blocks = fixture.scanBlocks(md);
@@ -53,7 +53,7 @@ describe("hesitation signal", () => {
     expect(flag(15000, 0, 2, 4000)).toBe(false);           // 15 s is under the 20 s floor
     expect(flag(25000, 0, 2, 20000)).toBe(false);          // not over twice the median
     expect(flag(25000, 12, 1, 10000)).toBe(false);         // exactly 12 words / 1 revisit do not count
-    expect(w.noteWordCount("[Befund · Frage 1] one two three")).toBe(3);
+    expect(w.noteWordCount("one two three")).toBe(3);
   });
   test("dwell counts only while the window is focused; the payload carries ms, noteWords, revisits, flagged", () => {
     const { w, doc, ca, env } = page(LITE);
@@ -223,16 +223,15 @@ describe("persistent composer", () => {
     expect(inst.idx).toBe(ri);
     expect(btn.classList.contains("an-point")).toBe(true);
   });
-  test("a tagged send stays on the stage and empties the composer", () => {
+  test("a send stays on the stage, stores the plain text and empties the composer", () => {
     const { ca } = page(FULL);
     const inst = ca.instances[0];
     const di = inst.stages.findIndex(s => s.kind === "dec");
     ca.go(inst, di);
-    ca.setTag(inst, "Question 1");
     inst.comp.ed.appendChild(inst.comp.ed.ownerDocument.createTextNode("long note"));
     expect(ca.sendNote(inst)).toBe(true);
     expect(inst.idx).toBe(di);
-    expect(inst.stages[di].el.querySelector('[data-comment$="-note"]').value).toBe("[Question 1] long note");
+    expect(inst.stages[di].el.querySelector('[data-comment$="-note"]').value).toBe("long note");
     expect(inst.comp.ed.textContent).toBe("");
     expect(inst.stages[di].el.querySelector(".an-notes").textContent).toContain("long note");
   });
@@ -322,53 +321,48 @@ describe("persistent composer", () => {
     expect(t).not.toMatch(/did not visibly hesitate on any/);
     expect(t).toMatch(/not look at any/);
   });
-  test("a click in the chat history tags the clicked question, not the open one (#1057)", () => {
+  test("no tag: a click in the chat history labels nothing, the note lands on the open question", () => {
     const { doc, w, ca } = page(LITE);
     const inst = ca.instances[0];
     const i = inst.stages.findIndex(s => s.el.id === "q2");
     ca.go(inst, i);
-    expect(inst.stages[inst.idx].el.id).toBe("q2");
     const click = n => n.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
     click(doc.querySelector("#q1 .an-m-q .an-bub"));
-    expect(inst.tag).toBe("Question 1");
     click(doc.querySelector("#q2 .an-m-find .an-av"));
-    expect(inst.tag).toBe("Finding · Question 2");
-  });
-
-  test("tagged: the note stays on the stage, one tag at most, the tag shows on the message", () => {
-    const { doc, w, ca } = page(LITE);
-    const inst = ca.instances[0];
-    ca.setTag(inst, "Question 1");
-    ca.setTag(inst, "Finding · Question 1");
-    expect(inst.comp.ed.querySelectorAll(".an-tagw")).toHaveLength(1);
+    expect(inst.comp.ed.children).toHaveLength(0);
+    expect(inst.comp.ed.dataset.empty).toBe("1");
+    expect("tag" in inst).toBe(false);
+    expect(ca.setTag).toBeUndefined();
+    expect(ca.tagFromClick).toBeUndefined();
     type(w, inst, "a thought");
     ca.sendNote(inst);
-    expect(inst.stages[inst.idx].el.id).toBe("q1");
-    expect(doc.querySelector("#q1 .an-note").value).toBe("[Finding · Question 1] a thought");
-    ca.go(inst, 1); ca.go(inst, 0);
-    expect(inst.comp.ed.querySelector(".an-tagw")).toBeNull();
-    expect(doc.querySelector("#q1 .an-note-m .an-tagw").textContent).toBe("Finding · Question 1");
-    expect(doc.querySelector("#q1 .an-note-m").textContent).toContain("a thought");
+    expect(inst.stages[inst.idx].el.id).toBe("q2");
+    expect(doc.querySelector("#q2 .an-note").value).toBe("a thought");
+    expect(doc.querySelector("#q1 .an-note").value).toBe("");
+    expect(doc.querySelector("#q2 .an-note-m").textContent).toContain("a thought");
   });
-  test("a click on the finding or the question sets the tag; the briefing never advances on send", () => {
+  test("a [bracketed] start is plain text, never a label", () => {
+    const { doc, w, ca } = page(LITE);
+    const inst = ca.instances[0];
+    type(w, inst, "[x] stays text");
+    ca.sendNote(inst);
+    expect(doc.querySelector("#q1 .an-note").value).toBe("[x] stays text");
+    expect(doc.querySelector("#q1 .an-note-m").firstChild.textContent).toBe("[x] stays text");
+  });
+  test("the briefing never advances on send", () => {
     const { doc, w, ca } = page(FULL);
     const inst = ca.instances[0];
     type(w, inst, "on the briefing");
     ca.sendNote(inst);
     expect(inst.stages[inst.idx].kind).toBe("brief");
     expect(doc.querySelector('[data-comment="briefing-note"]').value).toBe("on the briefing");
-    ca.go(inst, inst.stages.findIndex(s => s.el.id === "a1"));
-    doc.querySelector("#a1 .an-m-q .an-bub").dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
-    expect(inst.tag).toBe("Question 1");
-    doc.querySelector("#a1 .an-m-find .an-bub").dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
-    expect(inst.tag).toBe("Finding · Question 1");
   });
-  test("the send control is a solid paper plane; the tag is an inline label; the editor has a normal line height", () => {
+  test("the send control is a solid paper plane; no tag label; the editor has a normal line height", () => {
     const css = blocks.find(b => b.info === "css" && b.code.includes("--an-bg")).code;
     const { ca } = page(LITE);
     expect(ca.instances[0].comp.send.querySelector("path").getAttribute("d")).toBe("M2.01 21 23 12 2.01 3 2 10l15 2-15 2z");
     expect(css).toMatch(/\.an-send svg \{[^}]*fill: currentColor/);
-    expect(css).toMatch(/\.an-tagw \{ display: inline-block;[^}]*white-space: nowrap/);
+    expect(css).not.toMatch(/\.an-tagw/);
     expect(css).toMatch(/\.an-comp-ed \{[^}]*font-size: 14px; line-height: 22px/);
   });
   test("a frozen round is read-only", () => {

@@ -446,7 +446,7 @@ describe("chat flow Full round", () => {
     expect(tg.getAttribute("aria-pressed")).toBe("false");
     tg.click();
     expect(inst.stages[inst.idx].el.querySelector(".an-tg").getAttribute("aria-pressed")).toBe("true");
-    expect(inst.comp.ed.querySelector(".an-tagw").textContent).toContain("L-a1");
+    expect(inst.comp.ed.children).toHaveLength(0);   // no label: the toggle itself is the record
     expect(JSON.parse(inst.root.querySelector('[name="dm-a1-hes"]').value).sharpen).toBe(true);
     // The toggle updates in place (no re-render, no flicker).
     expect(inst.stages[inst.idx].el.querySelectorAll(".an-sigrow")[0]).toBe(rows[0]);

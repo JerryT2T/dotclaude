@@ -147,9 +147,10 @@ describe("R3 / R4 / R5 frozen rounds and baking", () => {
     review(ca, inst);
     const tgs = [...doc.querySelectorAll(".an-tg")];
     expect(tgs.every(t => t.disabled)).toBe(true);
+    const pressed = tgs[0].getAttribute("aria-pressed");
     tgs[0].click();
-    ca.setTag(inst, "forced");
-    expect(inst.tag).toBe("");
+    expect(tgs[0].getAttribute("aria-pressed")).toBe(pressed);
+    expect(inst.comp.ed.textContent).toBe("");
     expect(w).toBeTruthy();
   });
 });
@@ -227,15 +228,14 @@ describe("R9 / R10 / R11 the composer's note", () => {
     type(w, inst, " more");
     expect(doc.querySelector('[data-comment="q1-note"]').value).toBe("restored text\n\nmore");
   });
-  test("R11: toggling another row keeps the tag of the text already typed", () => {
+  test("R11: toggling rows leaves the typed text alone and adds no label", () => {
     const { w, ca, doc, inst } = page(full("p"));
     review(ca, inst);
     doc.querySelectorAll(".an-tg")[0].click();
-    const first = inst.tag;
-    expect(first).toContain("L-pa1");
     type(w, inst, "words for the first row");
     doc.querySelectorAll(".an-tg")[1].click();
-    expect(inst.tag).toBe(first);
+    expect(inst.comp.ed.textContent).toBe("words for the first row");
+    expect(inst.comp.ed.children).toHaveLength(0);
   });
 });
 
@@ -259,18 +259,6 @@ describe("R13 / R14 / R15 badges, points, tag, docs", () => {
   test("R14: a points decision shows the recommended points per item", () => {
     const { doc } = page(lite("l", points("pts"), decision("q2")));
     expect([...doc.querySelectorAll("#pts .an-badge")].map(b => b.textContent)).toEqual(["★ 5", "★ 3", "★ 2"]);
-  });
-  test("R15: the tag's x is a keyboard-reachable button", () => {
-    const { w, ca, doc, inst } = page(lite("l", decision("q1"), decision("q2")));
-    ca.setTag(inst, "Frage 1");
-    const x = doc.querySelector(".an-tagw > button");
-    expect(x.tagName).toBe("BUTTON");
-    expect(x.tabIndex).toBeGreaterThanOrEqual(0);
-    const e = key(w, x, "Enter");
-    expect(e.defaultPrevented).toBe(false);
-    expect(inst.idx).toBe(0);
-    x.click();
-    expect(inst.tag).toBe("");
   });
   test("R15: the docs say which modes get Keine passt", () => {
     expect(md).toContain("every mode but `slider` / `order` / `points`");

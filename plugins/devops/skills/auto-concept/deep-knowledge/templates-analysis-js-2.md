@@ -894,10 +894,6 @@
         if (frozen(inst)) return;
         const on = tg.getAttribute('aria-pressed') !== 'true';
         inst.sharpen.set(id, on);
-        const tagText = L('Nachschärfen · ', 'Sharpen · ') + (x.s.el.dataset.label || id);
-        // One shared note: once text exists under another tag, that tag stays (the text is not re-labelled).
-        if (on) { if (!inst.tag || !compText(inst.comp.ed)) setTag(inst, tagText); } else if (inst.tag === tagText) setTag(inst, '');
-        composeSync(inst);
         if (on) { inst.comp.el.classList.remove('an-glow'); void inst.comp.el.offsetWidth; inst.comp.el.classList.add('an-glow'); }
         hesFlush(inst);
         // In place: re-rendering the closing on every toggle made it flicker and lose its scroll.
@@ -1103,7 +1099,7 @@
     // The first restoreState() ran before the engine created its hidden state: once more, now that it exists.
     if (typeof restoreState === 'function' && instances.length) restoreState();
   }
-  window.conceptAnalysis = { init, setup, go, step, refresh, restored, flush: flushAll, markTouched, renderViz, instances, TOUCH_MS, hesFlush, setTag, sendNote, tagFromClick };
+  window.conceptAnalysis = { init, setup, go, step, refresh, restored, flush: flushAll, markTouched, renderViz, instances, TOUCH_MS, hesFlush, sendNote };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => { init(); setTimeout(() => instances.forEach(refresh), 500); });
   else { init(); setTimeout(() => instances.forEach(refresh), 500); }
 })();
