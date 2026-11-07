@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.362.0] — 2026-11-07
+
+### Added
+- Completion cards for Claude Code Desktop side sessions: a parent after a handoff (`[devops:handoff]` in the start_session brief) shows `⏳/👉 ➜ 🔗 Linked` and turns Released only once every linked side session is finished; orchestration (`[devops:deliver]`) shows `⏳ ➜ 🤖 Team` counting side sessions, 👉 when one waits on you, "integrieren und shippen?" when all delivered, and an "Eigenen Teil jetzt shippen" button
+- Variant `delivered` (`🟩 ➜ 📦 Delivered`) for a side session whose part the parent integrates and ships
+- The card's side-session line is clickable and opens that session in split view
+- Two session-title eval cases (handoff, orchestration)
+
+### Fixed
+- Side-session notes are machine turns: they no longer reset the parent's title to `⏳ ➜ 🤖 Solo`, and a card-less note turn keeps a ⏳ Linked/Team title instead of `⚡ Interrupted`
+- Marked side sessions count as open work; the parent no longer archives itself while they run
+- An open point naming a linked, unlanded side session's branch is no longer dropped from the card (#759)
+
 ## [0.361.3] — 2026-11-07
 
 ### Fixed
