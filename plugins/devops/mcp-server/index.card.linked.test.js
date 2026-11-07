@@ -17,7 +17,7 @@ function render(payload) {
   const out = join(dir, "out.txt");
   writeFileSync(file, JSON.stringify({ summary: "Doku", lang: "de", cwd: repo, ...payload }));
   // stdout goes through a file: the CLI exits right after writing and a pipe can truncate.
-  try { execSync(`node "${SERVER}" --render-card "${file}" > "${out}" 2>&1`, { env: { ...process.env, DEVOPS_COMPLETION_NO_USAGE: "1", DEVOPS_CARD_PREGATE: "0" } }); } catch { /* exit code read from the output */ }
+  try { execSync(`node "${SERVER}" --render-card "${file}" > "${out}" 2>&1`, { env: { ...process.env, CLAUDE_CODE_ENTRYPOINT: "claude-desktop", DEVOPS_COMPLETION_NO_USAGE: "1", DEVOPS_CARD_PREGATE: "0" } }); } catch { /* exit code read from the output */ }
   const text = readFileSync(out, "utf8");
   return {
     title: (text.match(/set the title to "([^"]*)"/) || [])[1],
