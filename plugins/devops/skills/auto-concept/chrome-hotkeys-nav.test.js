@@ -27,7 +27,43 @@ function page(designs, views = 0, mode = "design") {
   return html;
 }
 
+// Two page timers run on the wall clock and race a starved test process, so
+// the tests fire them by hand. Everything else keeps its real timer.
+// - FIRST_VISIT_MS: the first-visit "?" tip. A boot over 7 s (jsdom on a loaded
+//   machine) let it fire first; it then holds the one nudge slot and uses up
+//   the keys tip, which broke every test that expects a free slot.
+// - NAV_GUARD_MS: the ☰ click guard. It starts after the click's handlers, so a
+//   slow page switch no longer eats it, but a starved process could still let
+//   it run out before the late closePanel() of the test.
+// fire() throws when the timer is not armed: a changed delay fails loudly here
+// instead of quietly bringing the race back.
+const FIRST_VISIT_MS = 7000;
+const NAV_GUARD_MS = 400;
+function holdTimers(window, delays) {
+  const realSet = window.setTimeout;
+  const realClear = window.clearTimeout;
+  const held = new Map();
+  let nextId = -1;
+  window.setTimeout = (fn, ms, ...args) => {
+    if (!delays.includes(ms)) return realSet.call(window, fn, ms, ...args);
+    held.set(nextId, { ms, fn: () => fn(...args) });
+    return nextId--;
+  };
+  window.clearTimeout = (id) => {
+    if (!held.delete(id)) realClear.call(window, id);
+  };
+  return {
+    pending: (ms) => [...held.values()].filter((h) => h.ms === ms).length,
+    fire(ms) {
+      const due = [...held].filter(([, h]) => h.ms === ms);
+      if (!due.length) throw new Error("no held " + ms + " ms timer");
+      for (const [id, h] of due) { held.delete(id); h.fn(); }
+    },
+  };
+}
+
 async function boot(html, seed = null) {
+  let timers;
   const errors = [];
   const vc = new VirtualConsole();
   vc.on("jsdomError", (e) => {
@@ -39,6 +75,7 @@ async function boot(html, seed = null) {
     url: "http://localhost/",
     virtualConsole: vc,
     beforeParse(window) {
+      timers = holdTimers(window, [FIRST_VISIT_MS, NAV_GUARD_MS]);
       window.CSS = { escape: (s) => String(s).replace(/[^a-zA-Z0-9_-]/g, (c) => "\\" + c) };
       window.fetch = () => Promise.reject(new Error("no network in jsdom"));
       if (seed) window.localStorage.setItem(seed.key, seed.blob);
@@ -51,7 +88,7 @@ async function boot(html, seed = null) {
   });
   await tick();
   await tick();
-  return { window, document: window.document, errors };
+  return { window, document: window.document, errors, timers };
 }
 
 const live = (d) => d.querySelector("section[data-iteration][data-active]");
@@ -272,16 +309,18 @@ describe("hotkeys: Space = notes dock, arrows = levels", () => {
   // A question entry in the ☰ menu leaves the menu open like every other
   // entry — also when the page switch calls closePanel() after its slide.
   test("a question entry in the ☰ menu leaves it open, even with a late closePanel()", async () => {
-    const { window, document } = await boot(page(2, 2));
+    const { window, document, timers } = await boot(page(2, 2));
     window.showDesign("d2");
     window.openPanel();
     const item = document.querySelector("#screen-nav .screen-nav-view-item");
     mouseClick(window, item);
     expect(document.body.dataset.viewActive).toBe("true");
+    expect(timers.pending(NAV_GUARD_MS), "the 400 ms start after the page switch, not before it").toBe(0);
     await wait(100);
+    expect(timers.pending(NAV_GUARD_MS)).toBe(1);
     window.closePanel();
     expect(document.body.classList.contains("panel-open")).toBe(true);
-    await wait(450);
+    timers.fire(NAV_GUARD_MS);
     window.closePanel();
     expect(document.body.classList.contains("panel-open")).toBe(false);
   }, BOOT_TIMEOUT);
@@ -333,6 +372,17 @@ describe("overview chrome", () => {
 });
 
 describe("nudges", () => {
+  test("first visit: the ? tip waits 7 s, then shows once and uses up the slot", async () => {
+    const { window, document, timers } = await boot(page(2));
+    expect(document.getElementById("hk-nudge")).toBeNull();
+    expect(timers.pending(FIRST_VISIT_MS), "armed once at boot").toBe(1);
+    timers.fire(FIRST_VISIT_MS);
+    const tip = document.getElementById("hk-nudge");
+    expect(tip.dataset.nudge).toBe("keys");
+    expect(tip.textContent).toContain("?");
+    expect(window.conceptNudge("pages", ["←"], "x"), "one nudge at a time").toBe(false);
+  }, BOOT_TIMEOUT);
+
   test("two mouse switches show the tip; ✕ silences it for 30 days (localStorage, expiring)", async () => {
     const { window, document } = await boot(page(2));
     const seg = () => document.querySelectorAll("#design-quick .design-quick-seg")[1];

@@ -86,14 +86,19 @@
   // ignores calls made while it is marked. The mark lasts 400 ms, not one
   // tick: a page switch can finish (and call closePanel) after its slide
   // transition, and a question entry must leave the menu open like any
-  // other. Closing stays: ✕, Esc, a click outside (backdrop) and the ☰ FAB.
+  // other. The 400 ms start once the click's own handlers are done (the 0 ms
+  // timer): this listener runs in the capture phase, before the page switch,
+  // and a slow switch must not eat the window.
+  // Closing stays: ✕, Esc, a click outside (backdrop) and the ☰ FAB.
   let navClickTick = false;
   let navClickTimer = 0;
   panel?.addEventListener('click', e => {
     if (panelCloseBtn && panelCloseBtn.contains(e.target)) return;
     navClickTick = true;
     clearTimeout(navClickTimer);
-    navClickTimer = setTimeout(() => { navClickTick = false; }, 400);
+    navClickTimer = setTimeout(() => {
+      navClickTimer = setTimeout(() => { navClickTick = false; }, 400);
+    }, 0);
   }, true);
   const closeForReal = window.closePanel;
   window.closePanel = () => { if (!navClickTick) closeForReal(); };
