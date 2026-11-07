@@ -21,6 +21,7 @@ const os   = require('os');
 const path = require('path');
 const { projectClaudeDir } = require('./project-root');
 const { parseOpenUrlPrompt } = require('./open-url');
+const { SIDE_SESSION_TURN_PATTERN } = require('./side-sessions');
 
 /**
  * First characters the harness claims before a prompt exists.
@@ -82,6 +83,8 @@ const MACHINE_PATTERNS = [
   // notice quoting "/do-batch …" drew the activation guard (AUD-051).
   /^\s*<scheduled-task\b/i,
   /^\s*\[SYSTEM NOTIFICATION|<task-notification>|<channel\s+source=|^\s*<cross-session-message\b/i,
+  // A prompt made only of side-session notes (lib/side-sessions.js) — shared, no drift.
+  SIDE_SESSION_TURN_PATTERN,
 ];
 
 /**

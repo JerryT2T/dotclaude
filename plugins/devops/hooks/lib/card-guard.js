@@ -114,6 +114,7 @@ function isSubstantialAnswer(transcriptContent, threshold = SUBSTANTIAL_CHARS) {
 /** A user-role entry that opens a new turn — shared with the other transcript
  *  walkers in lib/skill-invocations.js. */
 const { isPromptEntry } = require('./skill-invocations');
+const { isSideSessionTurn } = require('./side-sessions');
 const { classify } = require('./validation-gaps');
 
 /** The Desktop widget tool — loaded as `mcp__visualize__show_widget`, or under
@@ -481,14 +482,25 @@ function isDuplicateNotificationCard(prevSignature, currSignature) {
 
 /**
  * True when the turn's last USER-role transcript entry is a background-task
- * completion notification (`<task-notification>`, the same marker
- * lib/pending-tasks.js scans for) rather than something the user typed —
+ * completion notification (`<task-notification>`) or a side-session note
+ * (lib/side-sessions.js; a prompt of notes only — typed text keeps it a user turn) rather than something the user typed —
  * design § 5.5's "background-task notification" case. Scans backward so a
  * notification followed later by the user's own message is not mistaken for
  * the trigger of THIS turn.
  */
 function lastUserEntryIsNotification(transcriptContent) {
-  if (!transcriptContent) return false;
+  const text = lastUserEntryText(transcriptContent);
+  return text.includes('<task-notification>') || isSideSessionTurn(text);
+}
+
+/** True when the turn's last user-role entry is a side-session note turn (notes only). */
+function lastUserEntryIsSideSession(transcriptContent) {
+  return isSideSessionTurn(lastUserEntryText(transcriptContent));
+}
+
+/** The text of the last user-role transcript entry ('' when none). */
+function lastUserEntryText(transcriptContent) {
+  if (!transcriptContent) return '';
   const lines = transcriptContent.split('\n');
   for (let i = lines.length - 1; i >= 0; i--) {
     const raw = lines[i].trim();
@@ -506,9 +518,9 @@ function lastUserEntryIsNotification(transcriptContent) {
         .map(b => b.text)
         .join('');
     }
-    return text.includes('<task-notification>');
+    return text;
   }
-  return false;
+  return '';
 }
 
 /**
@@ -539,6 +551,7 @@ function lastUserEntryIsNotification(transcriptContent) {
  * @param {boolean} [s.shipped]       — ship_release merged something this turn
  * @param {boolean} [s.completionMcpDown] — the completion MCP heartbeat is dead, so the
  *                                     offline renderer is the FIRST instruction, not the third
+ * @param {boolean} [s.sideSessionTurn] — the notification turn is a side-session note (implies notificationTurn); card-less end allowed when nothing was edited
  * @param {boolean} [s.notificationTurn] — this turn started from a background-task
  *                                     notification, a wake-up or a cron tick, with no
  *                                     user prompt (design § 5.5)
@@ -572,7 +585,7 @@ function decideAction({
   workHappened, cardRendered, stopHookActive, substantial, silent,
   validationPending, validationAttested, validationOpen, openTasksKnown, openTaskNames, pendingAttested, textAfterCard: trailingText, pluginRoot,
   scheduledTask, treeClean, turnEdits, shipped, completionMcpDown,
-  notificationTurn, cardText, prevCardSignature, desktopClient, cardRelayed,
+  notificationTurn, sideSessionTurn, cardText, prevCardSignature, desktopClient, cardRelayed,
   widgetFile, widgetCalled, guideActive, guideLoopLive, foreignWidgetTitle: foreignTitle,
 }) {
   if (silent) {
@@ -603,6 +616,13 @@ function decideAction({
   // carries no card obligation at all when nothing changed.
   if (notificationTurn && !cardRendered && treeClean === true && !shipped) {
     return { action: 'pass', resetFlags: true, exempt: 'notification-no-change' };
+  }
+  // Side-session note turn (marked handoff/deliver sessions): the title is updated
+  // always, a card only when the user's next move changed — a card-less end that
+  // edited nothing is the normal case, never a card obligation. Open linked
+  // sessions need no `pending` entry either (they surface through card `linked`).
+  if (notificationTurn && sideSessionTurn && !cardRendered && !shipped && turnEdits === 0) {
+    return { action: 'pass', resetFlags: true, exempt: 'side-session-note' };
   }
   // Intermediate notification of a multi-agent run: one agent stopped, others
   // are still open, and this turn edited nothing. The tree is dirty by design
@@ -798,7 +818,7 @@ const CARD_FIELD_REFERENCE =
  * mcp-server/lib/card-input.js; card-input.test.js pins the two equal.
  */
 const CARD_VARIANT_REFERENCE =
-  'Variants: ship-successful|ready|released|ship-blocked|test|test-minimal|analysis|aborted|fallback|ready-files|paused · ' +
+  'Variants: ship-successful|ready|released|ship-blocked|test|test-minimal|analysis|aborted|fallback|ready-files|paused|delivered · ' +
   'a shipped PR is "ship-successful" (never "ship") and requires ' +
   'state: { pushed: true, merged: "main", pr: { number, title }, commit }, cta: { vOld, vNew, bump }, ' +
   'delivery: { pr, ship: { version, base } }.';
@@ -1196,6 +1216,7 @@ module.exports = {
   cardSignature,
   isDuplicateNotificationCard,
   lastUserEntryIsNotification,
+  lastUserEntryIsSideSession,
   buildTitleStatusWordReason,
   buildResultLinesReason,
   buildPointsReason,

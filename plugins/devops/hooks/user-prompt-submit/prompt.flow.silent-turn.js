@@ -31,6 +31,7 @@ require('../lib/plugin-guard');
 
 const fs = require('fs');
 const { sessionFile, writeSessionFile } = require('../lib/session-id');
+const { SIDE_SESSION_TURN_PATTERN } = require('../lib/side-sessions');
 
 const SILENT_PATTERNS = [
   // Colon-form: 'Silent: POST /heartbeat …' (seen in active concept-bridge
@@ -69,7 +70,9 @@ function isScheduledTask(prompt) {
 const MACHINE_TURN_PATTERN = /^\s*\[SYSTEM NOTIFICATION|<task-notification>|<channel\s+source=|^\s*<cross-session-message\b/i;
 
 function isMachineTurn(prompt) {
-  return typeof prompt === 'string' && MACHINE_TURN_PATTERN.test(prompt);
+  // SIDE_SESSION_TURN_PATTERN: a prompt made only of side-session notes (a typed
+  // prompt with an attached note stays a user turn).
+  return typeof prompt === 'string' && (MACHINE_TURN_PATTERN.test(prompt) || SIDE_SESSION_TURN_PATTERN.test(prompt));
 }
 
 // Guarded so prompt.flow.title-work can require the detectors without a
@@ -114,4 +117,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { isSilent, isScheduledTask, isMachineTurn, SILENT_PATTERNS, SCHEDULED_TASK_PATTERN, MACHINE_TURN_PATTERN };
+module.exports = { isSilent, isScheduledTask, isMachineTurn, SILENT_PATTERNS, SCHEDULED_TASK_PATTERN, MACHINE_TURN_PATTERN, SIDE_SESSION_TURN_PATTERN };

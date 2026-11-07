@@ -92,13 +92,14 @@ const {
   deliveredCardText,
   textAfterCard,
   lastUserEntryIsNotification,
+  lastUserEntryIsSideSession,
   safeReadTranscript,
   showWidgetCalledThisTurn,
   editsThisTurn,
   foreignWidgetTitle,
   PENDING_TAIL_BYTES,
 } = require('../lib/card-guard');
-const { scanOpenTasksInFile, openTaskNames } = require('../lib/pending-tasks');
+const { scanOpenTasksInFile, openTaskNames, scanLinkedSessionsInFile } = require('../lib/pending-tasks');
 const { isMcpServerAliveForSession } = require('../lib/mcp-heartbeat');
 const { releaseOnce } = require('../lib/run-once');
 const { isGuideActive, isGuideLoopLive } = require('../../scripts/guide-active-state');
@@ -219,6 +220,13 @@ process.stdin.on('end', () => {
   const substantial = isSubstantialAnswer(transcript);
   const openTasks = silent ? [] : openTaskNames(scanOpenTasksInFile(hook.transcript_path, PENDING_TAIL_BYTES));
   const notificationTurn = !silent && lastUserEntryIsNotification(transcript);
+  // A side-session note turn (marked handoff/deliver sessions report back): title
+  // updated always, card only when the user's move changed — card-less end allowed.
+  const sideSessionTurn = notificationTurn && lastUserEntryIsSideSession(transcript);
+  // Open linked side sessions count as open work for the F5 hourglass logic (a
+  // ⏳ Linked / ⏳ Team title must stay) but never demand a `pending` entry:
+  // they surface through the card's `linked` field.
+  const openLinked = silent ? [] : scanLinkedSessionsInFile(hook.transcript_path, PENDING_TAIL_BYTES);
   // A card shown after the last render proves it was RELAYED, not just
   // rendered (#449). It also backs up a failed flag write: a shown card alone
   // still counts as rendered. An unreadable transcript leaves it undefined so
@@ -272,6 +280,7 @@ process.stdin.on('end', () => {
     shipped,
     completionMcpDown,
     notificationTurn,
+    sideSessionTurn,
     cardText,
     prevCardSignature,
     cardRelayed,
@@ -349,7 +358,7 @@ process.stdin.on('end', () => {
     const asked = turnState.get(sessionId, INTERRUPT_FLAG) !== null;
     if (asked) {
       try { turnState.del(sessionId, INTERRUPT_FLAG); } catch { /* marker already gone — nothing to clear */ }
-    } else if (!cardRendered && openTasks.length === 0) {
+    } else if (!cardRendered && openTasks.length === 0 && openLinked.length === 0) {
       // Background work of this session still runs → the work is not
       // interrupted, whatever the title says (a concept round answering one
       // agent's notification while another one still builds).
