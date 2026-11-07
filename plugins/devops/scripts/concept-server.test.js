@@ -589,6 +589,15 @@ describe.skipIf(!PY)("concept-server close-out result for the Fertig-Seite", () 
       await post("/status", { phase: "closed", finished: { state: "closed", sub: "x".repeat(9000) } });
       expect((await decisions())._finished ?? null).toBeNull();
 
+      // A Windows curl sends `-d '…'` in cp1252: "Übergabe" must still land, not a silent phase "".
+      const cp1252 = Buffer.concat([Buffer.from('{"phase":"closed","finished":{"state":"shipped","left":["Echte '), Buffer.from([0xdc]), Buffer.from('bergabe"]}}')]);
+      const r = await fetch(url("/status"), { method: "POST", headers: { "Content-Type": "application/json" }, body: cp1252 });
+      expect(await r.json()).toMatchObject({ ok: true, phase: "closed" });
+      expect((await decisions())._finished).toEqual({ state: "shipped", left: ["Echte Übergabe"] });
+      // Broken JSON is a 400, never an "ok" that stored nothing.
+      const bad = await fetch(url("/status"), { method: "POST", headers: { "Content-Type": "application/json" }, body: "{nope" });
+      expect(bad.status).toBe(400);
+
       // The page answers without a body: the wait loop in step5-finalize.md § D ends on it.
       expect((await post("/closed-ack")).ok).toBe(true);
       expect(await (await fetch(url("/closed-ack"))).json()).toEqual({ ack: true });

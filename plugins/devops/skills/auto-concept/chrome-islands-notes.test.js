@@ -355,7 +355,7 @@ describe("D · pins", () => {
 });
 
 describe("D · robust anchoring", () => {
-  test("a note hangs on the element's LAYOUT box: transforms do not move it, typing freezes it", async () => {
+  test("a note hangs where the element is PAINTED (a scaled mock), holds still mid-animation, typing freezes it", async () => {
     const { window, document } = await boot(page(2));
     window.showDesign("d2");
     const screen = screenOf(document);
@@ -364,21 +364,42 @@ describe("D · robust anchoring", () => {
     const def = (n, o) => Object.entries(o).forEach(([k, v]) => Object.defineProperty(n, k, { configurable: true, get: () => v }));
     def(layer, { offsetWidth: 400, offsetHeight: 200, offsetLeft: 0, offsetTop: 0, offsetParent: null, clientLeft: 0, clientTop: 0 });
     def(tgt, { offsetWidth: 50, offsetHeight: 20, offsetLeft: 100, offsetTop: 40, offsetParent: null, clientLeft: 0, clientTop: 0 });
-    // the painted rect says something completely different (a transform mid-animation)
-    tgt.getBoundingClientRect = () => ({ left: 900, top: 700, right: 950, bottom: 720, width: 50, height: 20 });
     layer.getBoundingClientRect = () => ({ left: 0, top: 0, right: 400, bottom: 200, width: 400, height: 200 });
+    // An animation runs on the target: the first measure takes the layout box, not the moving paint.
+    let running = true;
+    document.getAnimations = () => (running ? [{ playState: "running", effect: { target: tgt } }] : []);
+    tgt.getBoundingClientRect = () => ({ left: 300, top: 150, right: 350, bottom: 170, width: 50, height: 20 });
     window.updateAnnoUI();
     const anno = document.querySelector('[data-anno="n1"]');
-    expect(anno.style.getPropertyValue("--anno-x")).toBe("37.50%");   // (100 + 50) / 400
-    expect(anno.style.getPropertyValue("--anno-y")).toBe("25.00%");   // (40 + 10) / 200
+    expect(anno.style.getPropertyValue("--anno-x")).toBe("37.50%");   // layout: (100 + 50) / 400
+    expect(anno.style.getPropertyValue("--anno-y")).toBe("25.00%");   // layout: (40 + 10) / 200
+    // still animating: the note keeps the spot it has, however the paint moves
+    tgt.getBoundingClientRect = () => ({ left: 200, top: 50, right: 250, bottom: 70, width: 50, height: 20 });
+    window.updateAnnoUI();
+    expect(anno.style.getPropertyValue("--anno-x")).toBe("37.50%");
+    // settled: a mock scaled to fit paints the element away from its layout box — the paint wins
+    running = false;
+    tgt.getBoundingClientRect = () => ({ left: 50, top: 40, right: 100, bottom: 60, width: 50, height: 20 });
+    window.updateAnnoUI();
+    expect(anno.style.getPropertyValue("--anno-x")).toBe("25.00%");   // paint: 100 / 400
+    expect(anno.style.getPropertyValue("--anno-y")).toBe("25.00%");   // paint: (40 + 10) / 200
+    // an endless glow on the mock moves nothing: it never freezes the note
+    document.getAnimations = () => [{ playState: "running", effect: { target: tgt.parentElement, getKeyframes: () => [{ boxShadow: "0 0 4px red" }, { boxShadow: "none" }] } }];
+    tgt.getBoundingClientRect = () => ({ left: 100, top: 40, right: 150, bottom: 60, width: 50, height: 20 });
+    window.updateAnnoUI();
+    expect(anno.style.getPropertyValue("--anno-x")).toBe("37.50%");   // paint: 150 / 400
+    running = false;
+    document.getAnimations = () => [];
+    tgt.getBoundingClientRect = () => ({ left: 50, top: 40, right: 100, bottom: 60, width: 50, height: 20 });
+    window.updateAnnoUI();
     // typing in the note: the position is frozen even if the layout moved on
     const ta = anno.querySelector("textarea");
     anno.querySelector("[data-anno-summary]").click();                 // a collapsed bubble cannot take focus (jsdom 30, as in browsers)
     ta.focus();
     expect(anno.contains(document.activeElement)).toBe(true);
-    def(tgt, { offsetWidth: 50, offsetHeight: 20, offsetLeft: 300, offsetTop: 100, offsetParent: null, clientLeft: 0, clientTop: 0 });
+    tgt.getBoundingClientRect = () => ({ left: 300, top: 90, right: 350, bottom: 110, width: 50, height: 20 });
     window.updateAnnoUI();
-    expect(anno.style.getPropertyValue("--anno-x")).toBe("37.50%");
+    expect(anno.style.getPropertyValue("--anno-x")).toBe("25.00%");
     ta.blur();
     window.updateAnnoUI();
     expect(anno.style.getPropertyValue("--anno-x")).toBe("87.50%");

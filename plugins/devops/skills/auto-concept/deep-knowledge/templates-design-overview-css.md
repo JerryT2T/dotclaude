@@ -266,7 +266,12 @@ body:not([data-overview-active="true"]) .design-ov { display: none; }
 .design-quick-seg[data-icon-only="true"] :is(.design-quick-name, .design-quick-n) { display: none; }
 .design-quick-n { font-size: 0.72rem; opacity: 0.7; font-variant-numeric: tabular-nums; margin-right: -0.15rem; }
 .design-quick-seg[data-icon-only="true"] .dz-new-dot { position: absolute; top: 1px; right: 1px; margin: 0; }
-.design-quick-star { color: var(--warning-color, #d29922); cursor: pointer; line-height: 1; }
+/* The ☆/★ is as tall as the chip's tallest letter (the segment text is 0.8rem),
+   with a negative block margin so the chip keeps its height. Its invisible hit
+   area (::before, part of the star for event targeting) reaches into the
+   segment's right padding and half the gap to the name — never over the name. */
+.design-quick-star { position: relative; color: var(--warning-color, #d29922); cursor: pointer; font-size: 1.1rem; line-height: 1; margin-block: -0.15rem; }
+.design-quick-star::before { content: ''; position: absolute; inset: -0.4rem -0.55rem -0.4rem -0.2rem; }
 /* The empty ☆ shows on the active / centred chip only; ★ always. */
 .design-quick-star[data-state="off"] { display: none; }
 .design-quick-seg[data-active="true"] .design-quick-star[data-state="off"],

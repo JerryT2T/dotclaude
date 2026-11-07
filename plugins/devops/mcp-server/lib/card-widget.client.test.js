@@ -199,10 +199,12 @@ describe("side-session links (linked cards)", () => {
     expect(btn.getAttribute("data-tip")).toBeTruthy();
   });
 
-  test("only the pointer line links; a line that merely names the session stays text", () => {
+  test("every mention of the session links, never a second time inside a button's own prompt", () => {
     const m = sessionCard("de", "„Login-Fix“", { context: "› „Login-Fix“ läuft weiter und shippt selbst\n› Läuft in: „Login-Fix“" });
     const dom = mountTemplate(m, "");
-    expect(dom.window.document.querySelectorAll("[data-prompt*='local_abc-1']").length).toBe(1);
+    const btns = dom.window.document.querySelectorAll("[data-prompt*='local_abc-1']");
+    expect(btns.length).toBe(2);
+    btns.forEach((b) => expect(b.getAttribute("data-prompt")).toBe("Öffne die Side-Session „Login-Fix“ (local_abc-1) im Split-View."));
   });
 
   test("en prompt, and no link without a local_ id", () => {

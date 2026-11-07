@@ -152,7 +152,7 @@ describe("first visit animates, later visits are instant", () => {
     // Something is still held back: typing dots below the last visible message, gone with the last one.
     expect(part(".an-m-find").nextElementSibling.classList.contains("an-typing")).toBe(true);
     const letters = n => (n.textContent.match(/[\p{L}\p{N}]/gu) || []).length;
-    const dwell = n => Math.min(20000, Math.max(1200, Math.round(letters(n) / (18.25 * 1.25) * 1000)));
+    const dwell = n => Math.min(20000, Math.max(1200, Math.round(letters(n) / (18.25 * 1.25 / 0.75) * 1000)));
     const atQ = dwell(part(".an-m-find")), atA = atQ + dwell(part(".an-m-q"));
     timers.filter(t => t.ms === atQ).pop().f();
     expect(part(".an-m-q").classList.contains("an-wait")).toBe(false);

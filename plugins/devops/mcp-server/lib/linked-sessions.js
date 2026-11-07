@@ -143,9 +143,19 @@ function sidebarLine(e, L) {
   return e.state === "running" ? L.runIn(sidebarText(e, L)) : L.moveIn(sidebarText(e, L));
 }
 
-/** Clickable targets of the lines: the widget turns `text` into a click when `id` is set. */
+/**
+ * Clickable targets: every way a session with an id is named on the card —
+ * its quoted sidebar title (`„👉 ➜ ❓ Question ┃ X“`) and its plain quoted title
+ * (`„X“`) — whatever its state. The widget turns each `text` into a click;
+ * longest first, so a sidebar title is matched before the plain title inside it.
+ */
 function linksOf(list, L) {
-  return list.filter((e) => e.id).map((e) => ({ id: e.id, title: e.title, text: sidebarText(e, L) }));
+  const quote = L === T.en ? qe : q;
+  const out = [];
+  list.filter((e) => e.id).forEach((e) => {
+    [...new Set([sidebarText(e, L), quote(e.title)])].forEach((text) => out.push({ id: e.id, title: e.title, text }));
+  });
+  return out.sort((a, b) => b.text.length - a.text.length);
 }
 
 /** [major, minor, patch] of a version string, null when it is none. */
@@ -173,8 +183,10 @@ export function linkedPlan(input, key, ctx = {}) {
   const plan = linkedPlanCore(input, key, ctx);
   if (!plan) return plan;
   const L = T[ctx.lang === "en" ? "en" : "de"];
-  const shown = normalizeLinked(input.linked).filter((e) => e.mode !== "independent" && (e.state === "running" || e.state === "waiting" || e.state === "failed"));
-  const links = linksOf(shown, L).filter((l) => plan.lines.some((line) => line.includes(l.text)));
+  // Every named session is a click, not only a waiting or failed one (#1082 close-out
+  // finding "Session-Link nicht klickbar"): heading sentence and `›` lines alike.
+  const said = [plan.sentence || "", ...plan.lines];
+  const links = linksOf(normalizeLinked(input.linked), L).filter((l) => said.some((line) => line.includes(l.text)));
   return links.length ? { ...plan, links } : plan;
 }
 
