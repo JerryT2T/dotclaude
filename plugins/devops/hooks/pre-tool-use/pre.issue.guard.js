@@ -185,4 +185,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { decide, denyTextFor, callerTranscriptPath, DENY_TEXT, SUBAGENT_DENY_TEXT };
+module.exports = { decide, denyTextFor, callerTranscriptPath, setupIssueInvokedThisTurn, DENY_TEXT, SUBAGENT_DENY_TEXT };
