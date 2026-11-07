@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.361.3] — 2026-11-07
+
+### Fixed
+- Concept analysis chat: attachments sent with a note now stand in that message's bubble, move back into the composer with the pen, go with a deleted message and survive a reload; the payload names the message each one belongs to (#1079)
+- Plugin scope routing: a fix session started from a consumer project for the plugin itself is refused once until the upstream issue is filed via auto-issue (#1076)
+
 ## [0.361.2] — 2026-11-07
 
 ### Changed
