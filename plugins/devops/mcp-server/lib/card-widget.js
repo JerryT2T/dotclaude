@@ -265,6 +265,8 @@ export function buttonsFor(buttonsKey, lang = "de", opts = {}) {
   const conclude = CONCLUDE[lang] || CONCLUDE.de;
   const concludeButton = { label: conclude.label, icon: conclude.icon, prompt: conclusion, tooltip: conclude.tooltip };
   let buttons = [];
+  // Side-session cards (linked-sessions.js) bring their own prepared buttons.
+  if (opts && Array.isArray(opts.custom) && opts.custom.length) return opts.custom.map(({ label, icon, prompt, tooltip, primary }) => ({ label, icon, prompt, tooltip, ...(primary ? { primary: true } : {}) }));
   if (Array.isArray(list)) {
     buttons = list
       .filter((a) => !(a.onlyOpen && !conclusion))
@@ -296,6 +298,7 @@ export function buttonsFor(buttonsKey, lang = "de", opts = {}) {
       ? buttons.map((a, i) => (i === 0 ? { ...a, prompt: step, tooltip: step.length > 140 ? step.slice(0, 139) + "…" : step } : a))
       : buttons.slice(1);
   }
+  if (opts && Array.isArray(opts.extra)) for (const x of opts.extra) buttons.push({ label: x.label, icon: x.icon, prompt: x.prompt, tooltip: x.tooltip });
   if (opts && opts.appStart) buttons.push(appStartButton(lang));
   const handoff = opts && opts.guideHandoff;
   if (handoff && handoff.service) buttons.push(guideHandoffButton(handoff.service, lang));
@@ -420,7 +423,7 @@ export function cardWidgetData(model, repoUrl = "") {
   const nz = (v) => (v ? v : undefined);
   const arr = (a) => (Array.isArray(a) ? a : []);
   const list = (a) => (arr(a).length ? a : undefined);
-  const buttons = buttonsFor(model.buttonsKey, lang, { version: model.promoteVersion, replies: model.replies, noShip: model.noShip, guideHandoff: model.guideHandoff, appStart: model.appStart, nextStep: model.nextStep, readOnly: model.readOnly });
+  const buttons = buttonsFor(model.buttonsKey, lang, { custom: model.customButtons, extra: model.extraButtons, version: model.promoteVersion, replies: model.replies, noShip: model.noShip, guideHandoff: model.guideHandoff, appStart: model.appStart, nextStep: model.nextStep, readOnly: model.readOnly });
   const prNum = model.pipelinePr && model.pipelinePr.number;
   const b = model.budget;
   let bu;

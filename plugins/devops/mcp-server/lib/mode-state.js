@@ -78,6 +78,7 @@ export const VARIANT_TITLE_STATE = Object.freeze({
   analysis: "analysis",
   fallback: "system",
   paused: "paused-user",
+  delivered: "delivered",
 });
 
 const CHANNELS = Object.freeze(["Alpha", "Beta", "Stable"]);
@@ -143,6 +144,7 @@ export function titleStateForKey(key, ctx = {}) {
     case "aborted": return S.abortedState(ctx.activity);
     case "paused": return S.pausedState(ctx.pauseReason);
     case "pending": return "agents";
+    case "delivered": return "delivered";
     case "concept-waiting": return "concept-waiting";
     case "concept-working": return "concept-working";
     case "batch": return "batch";

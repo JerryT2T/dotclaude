@@ -251,8 +251,7 @@
     return [
       '<div class="card-box" style="background:var(--bg-accent-muted, rgba(55,138,221,0.10));border-radius:10px;padding:10px 12px;margin-top:10px">',
       d.h ? '<h3 class="card-heading" style="margin:0 0 4px;font-size:16px;font-weight:500">' + esc(d.h) + "</h3>" : "",
-      d.cx ? String(d.cx).split("
-").map(function (l) { return glyphLineHtml("card-context", linkify(l.replace(/^›\s*/, ""), d.tx), 13, "0 0 4px"); }).join("") : "",
+      d.cx ? String(d.cx).split("\n").map(function (l) { return glyphLineHtml("card-context", linkify(l.replace(/^›\s*/, ""), d.tx), 13, "0 0 4px"); }).join("") : "",
       Array.isArray(d.pt) && d.pt.length
         ? '<div class="card-points" style="margin:2px 0 8px">' + d.pt.map(function (p) { return glyphLineHtml("card-point", warnMarks(linkify(p, d.tx))); }).join("") + "</div>"
         : "",

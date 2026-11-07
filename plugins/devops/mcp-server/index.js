@@ -72,6 +72,7 @@ import { batchGuide, conceptCloseoutOnly, conceptUrl, readBatch, readRunContract
 import { staleServerLine } from "./lib/server-version.js";
 import { cardWidgetInstruction, isDesktopSession, safeSessionId, warmCardClient, writeCardWidgetFile } from "./lib/card-widget.js";
 import { detectLaunchPath } from "./lib/launch-path.js";
+import { linkedPlan, linkedKeepTokens } from "./lib/linked-sessions.js";
 import { archiveDecision, archiveInstruction, writeArchiveFlag } from "./lib/session-archive.js";
 import { readToolCallCount, resolveSessionFile } from "./lib/tool-call-count.js";
 import { answerHtml, normalizeAnswer } from "./lib/answer-markdown.js";
@@ -1489,6 +1490,7 @@ const HEADINGS = {
     batch: (c) => `sammelt — ${c.n} ${c.n === 1 ? 'Eintrag' : 'Einträge'}`,
     'vv-unverified': () => 'Ungeprüft shippen?',
     'vv-running': () => 'Test läuft noch — Ergebnis abwarten?',
+    delivered: () => 'Teil fertig — der Haupt-Chat integriert und shippt.',
   },
   en: {
     ready: () => 'Ship?',
@@ -1529,6 +1531,7 @@ const HEADINGS = {
     batch: (c) => `collecting — ${c.n} ${c.n === 1 ? 'entry' : 'entries'}`,
     'vv-unverified': () => 'Ship unverified?',
     'vv-running': () => 'Test still running — wait for its result?',
+    delivered: () => 'Part done — the main chat integrates and ships.',
   },
 };
 
@@ -1540,6 +1543,8 @@ const HEADINGS = {
  * title and CTA cannot drift.
  */
 function cardHead(input, key, delivery, state) {
+  const plan = linkedPlanFor(input, key, 'de');
+  if (plan && plan.head) return { id: plan.head.id, mandatory: plan.head.mandatory, hkey: 'linked', plan };
   if (QUESTION_KEYS.has(key) && !keptTestPoints(input, key, 'de') && openQuestionOf(input)) return { id: 'question', mandatory: true, hkey: 'question' };
   const noShip = (state.mode === 'git-no-remote' || state.mode === 'file-only') && (key === 'ready' || key === 'test');
   const hkey = noShip ? key + '-local' : key;
@@ -1555,6 +1560,18 @@ function cardHead(input, key, delivery, state) {
   // #693: the close-out waits on the user's page — never "done".
   const mandatory = key === 'ship-successful-closeout' || hasMandatoryStep(input);
   return { id, mandatory, hkey };
+}
+
+/**
+ * The side-session plan of a card (lib/linked-sessions.js): title state,
+ * heading sentence, `›` lines and buttons from one place. Null without `linked`.
+ */
+function linkedPlanFor(input, key, lang) {
+  if (!Array.isArray(input.linked) || !input.linked.length) return null;
+  const ownQuestion = QUESTION_KEYS.has(key) && !keptTestPoints(input, key, 'de') && !!openQuestionOf(input);
+  const mode = (input.state || {}).mode;
+  const noShipKey = mode === 'git-no-remote' || mode === 'file-only';
+  return linkedPlan(input, key, { lang, ownQuestion, noShipKey, pendingWhat: hasPending(input.pending) ? pendingWhat(input.pending, lang) : '' });
 }
 
 /** The session-title prefix the card's outcome leaves — `cardHead`'s state. */
@@ -1752,6 +1769,9 @@ function basePointsForKey(input, key, lang) {
     // replies on the conclude button next to Umsetzen / Frage.
     case 'analysis':
       return [...open];
+    // A delivered part names only what the main chat or the user must still settle.
+    case 'delivered':
+      return [...open, ...finalTest.map(testTag)];
     case 'vv-unverified':
       // A deliberate skip names itself (pointsForKey) — the generic line only
       // stands in when the card carries no reason.
@@ -1846,6 +1866,7 @@ function resolveCardKey(input) {
   if (variant === 'analysis') return 'analysis';
   if (variant === 'aborted') return 'aborted';
   if (variant === 'paused') return 'paused';
+  if (variant === 'delivered') return 'delivered';
   return 'fallback';
 }
 
@@ -1995,7 +2016,7 @@ const NO_BUTTON_KEYS = new Set(['ready-files', 'test-minimal', 'released-stable'
 const APP_START_KEYS = new Set(['test', 'ship-successful', 'ship-successful-kept', 'ship-successful-closeout', 'ship-successful-deploy']);
 
 /** Decision keys whose widget offers "Nachbessern" with the prepared answer to the card's open points. */
-const CONCLUDE_KEYS = new Set(['ready', 'test', 'ship-successful', 'ship-successful-closeout', 'analysis']);
+const CONCLUDE_KEYS = new Set(['ready', 'test', 'ship-successful', 'ship-successful-closeout', 'analysis', 'delivered']);
 
 /**
  * The whole decision block: heading (already carrying any "+N weitere" tail),
@@ -2048,6 +2069,30 @@ function pendingPoints(pending) {
 }
 
 function buildDecisionBlock(input, lang, key, delivery, state) {
+  const plan = linkedPlanFor(input, key, lang);
+  const withLines = (b) => (plan && plan.lines.length ? { ...b, context: [b.context, ...plan.lines.map(l => '› ' + l)].filter(Boolean).join('\n') } : b);
+  if (plan && plan.head && !hasConcept(input.concept)) {
+    const ctx = decisionContext(input, key, delivery, state, lang);
+    const base = {
+      heading: TITLE_SCHEME.headingOf(plan.head.id, plan.sentence, { mandatory: plan.head.mandatory }),
+      context: plan.lines.map(l => '› ' + l).join('\n'), points: [],
+      buttonsKey: plan.buttonsKey === undefined ? key : plan.buttonsKey,
+      version: ctx.version || null, replies: plan.replies || [], noShip: false, guideHandoff: detectGuideHandoff(input), appStart: false, nextStep: '',
+      customButtons: plan.custom || null, extraButtons: plan.secondary || null,
+    };
+    // All parts delivered: the normal ready card, Ship included, with the integrate sentence.
+    if (plan.head.id === 'ready') {
+      const capped = capPoints(pointsForKey(input, key, lang), lang);
+      base.points = iconizePoints(capped.shown, input);
+      base.replies = openReplies(input, lang);
+    }
+    return base;
+  }
+  const block = baseDecisionBlock(input, lang, key, delivery, state);
+  return withLines(plan && plan.secondary ? { ...block, extraButtons: plan.secondary } : block);
+}
+
+function baseDecisionBlock(input, lang, key, delivery, state) {
   const T = HEADINGS[lang] || HEADINGS.de;
   const batch = hasConcept(input.concept) ? null : readBatch(input.cwd);
   // A manual web step in the card payload keeps its guide button on the
@@ -2139,6 +2184,8 @@ function buildDecisionBlock(input, lang, key, delivery, state) {
   // Nothing to promote, but open points: Nachbessern alone.
   if (promoteKey === 'ship-successful' && !buttonsKey && replies.length) buttonsKey = 'ship-successful-plain';
   if (NO_BUTTON_KEYS.has(key)) buttonsKey = null;
+  // A delivered part never ships; only its open points keep Nachbessern.
+  if (key === 'delivered') buttonsKey = replies.length ? 'ship-successful-plain' : null;
 
   // "App starten" (#680): test and ship-successful (plain, kept, deploy — also when
   // nothing is promotable and buttonsKey is null) offer to start the app when
@@ -2271,6 +2318,8 @@ function buildCardModel(input, lang, key, buildId, usageData, delta5h, deltaWk, 
     guideHandoff: decision.guideHandoff || null,
     appStart: !!decision.appStart,
     nextStep: decision.nextStep || '',
+    customButtons: decision.customButtons || null,
+    extraButtons: decision.extraButtons || null,
     readOnly: input.readOnly === true,
     // #757: the answer to the user's question, drawn above the card body.
     answerHtml: answerHtml(input.answer),
@@ -2558,7 +2607,10 @@ function openRefuseNote(params) {
  *  tail, so the block names the exact value (no get_session round trip). */
 function sessionTitleNote(params) {
   const current = currentSessionTitle(params.session_id, params.cwd);
-  const prefix = titlePrefixFor(params, { hasPending, hasConcept, outcome: outcomeTitlePrefix, current });
+  // A side-session head (Linked / Team) owns the title even when real agents run too.
+  const linkedPlanNow = linkedPlanFor(params, resolveCardKey(params), 'de');
+  const linkedHead = !!(linkedPlanNow && linkedPlanNow.head);
+  const prefix = titlePrefixFor(params, { hasPending: (p) => !linkedHead && hasPending(p), hasConcept, outcome: outcomeTitlePrefix, current });
   if (prefix === null) return '';
   return titleInstruction(prefix, current);
 }
@@ -2712,7 +2764,9 @@ function buildCompletionCard(params) {
   //     which ships it itself — an open point about it is a false alarm while
   //     the user ships that very branch in parallel (lib/foreign-branches.js).
   if (Array.isArray(params.open) && params.open.length) {
-    const foreign = dropForeignOpenItems(params.open, foreignTokensFor(params.cwd));
+    // A marked side session of this card that is not landed yet is the user's to land (#759): keep the item.
+    const keep = linkedKeepTokens(params.linked);
+    const foreign = dropForeignOpenItems(params.open, foreignTokensFor(params.cwd).filter((t) => !keep.some((k) => t === k || t.includes(k) || k.includes(t))));
     if (foreign.dropped) {
       console.error(`[dotclaude-mcp] dropped ${foreign.dropped} open point(s) naming another worktree's branch`);
       params.open = foreign.open;
@@ -3143,6 +3197,7 @@ server.registerTool(
       "VALIDATION (V&V gate): for any code change populate `validation` (requirement -> how met, how confirmed); a code-change card without it is blocked once. " +
       "PENDING: background agents/workflows/tasks you started that still run -> `pending` [{ name, kind: agent|task|workflow, doing }] (replaces the CTA with the 'not finished yet' line; list only work really running; an ended or foreign task -> `pendingDismissed: \"<why>\"`). " +
       "CONCEPT (outranks pending): while an /auto-concept page is open pass `concept: { phase: \"waiting\"|\"iterating\"|\"implementing\" }`; bridge server, pulser and waker are infrastructure, never `pending`; after a merged ship whose page shows its final report, omit it — the ship card wins. " +
+      "SIDE SESSIONS: start_session with a brief marker `[devops:handoff]` (child ships itself) or `[devops:deliver]` (child only delivers, you integrate and ship once) -> pass `linked` on every card while they exist; no marker = independent follow-up (mode independent, never orchestration). A child started with `[devops:deliver]` ends with variant `delivered` (never ships). On a side-session note: title always, new card only if the user's next move changed. " +
       "`cta` is an object of placeholders (e.g. { reason }), never a sentence. `delivery` (PR -> Ship -> Promote track) whenever the work reached a pipeline stage (a PR exists, it was shipped, a channel was promoted): fill the stages that happened, omit it when none apply. " +
       "Offline fallback if the MCP server never connected: node <plugin>/mcp-server/index.js --render-card <payload.json> (same JSON args, relay stdout verbatim).",
     inputSchema: z.object({
@@ -3239,6 +3294,17 @@ server.registerTool(
           }),
         ])).optional(),
       ).describe("Background work STILL RUNNING at turn end (run_in_background subagents, backgrounded Bash tasks, Workflow runs). MANDATORY when in flight (overrides every variant's heading; stop.flow.guard blocks the turn if missing). Only work really running that you started - NEVER invent an entry (use pendingDismissed otherwise)."),
+      linked: z.preprocess(
+        v => typeof v === 'string' ? tryParse(v) : v,
+        z.array(z.object({
+          id: z.string().optional().describe("Session id 'local_…' from the start_session result."),
+          title: z.string().describe("The side session's title as started (no status head)."),
+          mode: z.enum(["handoff", "deliver", "independent"]).optional().describe("Marker of its brief: handoff = [devops:handoff] (it ships itself, default) · deliver = [devops:deliver] (it only delivers, you integrate and ship) · independent = no marker."),
+          state: z.enum(["running", "waiting", "done", "shipped", "failed"]).optional().describe("running (default) | waiting = needs the user's answer there | done = finished, nothing to ship | shipped | failed."),
+          version: z.string().optional().describe("Version it shipped (state shipped)."),
+          branch: z.string().optional().describe("Its branch / worktree folder."),
+        })).optional(),
+      ).describe("Side sessions you started with start_session: one entry each. Marked briefs ([devops:handoff] / [devops:deliver]) set the card (⏳/👉 Linked or Team, Released only when ALL are finished, no Ship for their work); unmarked follow-ups are mode independent: one › line, no status change. Pass the state you know from their finished notes."),
       pendingDismissed: z.string().optional().describe("Answer to the pending gate when the listed work is NOT live work of yours: one sentence why (hook-spawned, not mine / already finished, output checked). Only after checking the task output; accepted once. NEVER to hide running work."),
       concept: z.preprocess(
         v => typeof v === 'string' ? tryParse(v) : v,
