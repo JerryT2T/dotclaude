@@ -51,6 +51,7 @@ describe("side-session cards through the offline renderer", () => {
     expect(r.title).toBe("👉 ➜ 📦 Ready ┃ ");
     expect(r.heading).toBe("👉 📦 Ready — Shippen?");
     expect(r.context.join(" ")).toContain('„Doku-Umbau“ läuft weiter und shippt selbst');
+    expect(r.context.join(" ")).toContain('Läuft in: „Doku-Umbau“');
     expect(r.buttons).toEqual(["Ship"]);
   }, 30000);
 

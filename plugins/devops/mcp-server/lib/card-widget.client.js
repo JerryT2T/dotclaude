@@ -108,8 +108,9 @@
   function sessionLinks(html, sl) {
     (sl || []).forEach(function (l) {
       var at = esc(l.x);
-      var i = html.indexOf(at);
-      if (i < 0) return;
+      // Only the pointer line (`Läuft in: „X“` / `Weiter in …: „X“`) ends with the quoted title; other lines merely name it.
+      var i = html.length - at.length;
+      if (i < 0 || html.slice(i) !== at) return;
       var btn = '<span class="card-open">' +
         '<span role="button" tabindex="0" class="card-link" data-prompt="' + esc(l.p) + '" data-tip="' + esc(l.tp) + '" style="color:inherit;text-decoration:underline;text-underline-offset:2px;cursor:pointer">' + at + '<span aria-hidden="true" style="user-select:none"> ↗</span></span>' +
         '<span class="card-act-state" role="status" aria-live="polite" style="font-size:11px;margin-left:4px"></span></span>';
