@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.361.0] — 2026-11-07
+
+### Added
+- `/auto-fix` states the root cause in one sentence before its first edit (#1071).
+- Concept gate warning V9: the designs of an `alternatives` round have different pages (#1069).
+
+### Fixed
+- Concept pages: switching design variants keeps the page, by label first and position second, also across a shorter variant, from the ☰ panel and out of the overview (#1069).
+- Concept overview: mocks with a `height: 100%` root and absolute children show their content instead of a blank card (#1063).
+
+### Tests
+- The concept server's kept `/reset` stamp across a new submission is pinned; the title bug itself was fixed in #1066 (#1068).
+
 ## [0.360.0] — 2026-11-06
 
 ### Added
