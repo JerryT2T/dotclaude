@@ -120,6 +120,7 @@
       },
       {
         "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.plugin.session.js\"", "timeout": 10, "dispatch": "fast" },
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.ask.title.js\"", "timeout": 5, "dispatch": "fast" }
         ],
         "matcher": "mcp__ccd_session__start_session"

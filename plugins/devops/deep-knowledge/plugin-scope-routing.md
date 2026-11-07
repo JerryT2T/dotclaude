@@ -63,6 +63,13 @@ Do not re-implement it.
 Report the issue URL to the user in the same turn. "I filed it upstream" without
 a link is not a completed handoff.
 
+**A fix session started right away does not replace the issue (#1076).** When
+the change is built at once in a session in the plugin source repo
+(`start_session` with that `cwd`, or a brief about the plugin), file the issue
+first and put its URL into the brief. `pre.plugin.session` refuses such a
+start once when auto-issue did not run in the turn; the same call sent again
+passes (for a brief that only mentions the plugin).
+
 ## Never hand-edit an installed plugin copy
 
 `~/.claude/plugins/cache/**`, `~/.claude/plugins/marketplaces/**`, and
