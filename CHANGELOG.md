@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.361.2] — 2026-11-07
+
+### Changed
+- Concept analysis input: no more tag chip ("Frage 2 ×") in the field. A note is sent inline into the open question's chat and stays there, so it is already tied to its question and finding; a click on a finding or question and the closing's Sharpen toggle no longer put a label into the field. The `{id}-note` payload is unchanged.
+
 ## [0.361.1] — 2026-11-07
 
 ### Fixed

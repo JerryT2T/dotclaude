@@ -28,9 +28,9 @@ What the code does, in the order of the file:
    moves into the briefing.
 4. The composer is THE note field: `storeOf()` maps it onto the open
    stage's `data-comment="{id}-note"` (briefing, topic page and closing get a
-   hidden one of their own); max ONE tag (`setTag()`, stored as a leading
-   `[tag] `), set by a click on a finding / question / topic page or a closing
-   toggle. `sendNote()` turns the text into a chat message before the stage's
+   hidden one of their own). No tag or label: a note is sent inline into the
+   open stage's chat, so it already sits with its question and finding.
+   `sendNote()` turns the text into a chat message before the stage's
    Weiter row and stays on the stage; only "Keine passt" also moves on. The
    store holds the messages joined by a blank line, plus the unsent draft, so
    nothing is lost on a reload or a submit. The composer never shows a sent
@@ -329,7 +329,7 @@ What the code does, in the order of the file:
   function setup(root) {
     if (root.__an) return root.__an;
     const lite = root.getAttribute('data-analysis') === 'lite';
-    const inst = { root, lite, stages: [], groups: [], idx: 0, timers: [], visited: new Set(), seen: new Set(), decs: [], maxIdx: 0, touchTimer: 0, hes: {}, sharpen: new Map(), tag: '', key: root.id || (root.closest('[data-view]') || root).getAttribute('data-view') || ('analysis' + (instances.length + 1)) };
+    const inst = { root, lite, stages: [], groups: [], idx: 0, timers: [], visited: new Set(), seen: new Set(), decs: [], maxIdx: 0, touchTimer: 0, hes: {}, sharpen: new Map(), key: root.id || (root.closest('[data-view]') || root).getAttribute('data-view') || ('analysis' + (instances.length + 1)) };
     root.__an = inst;
     instances.push(inst);
     // A lite round is a question view of the page: it counts as answered once EVERY decision is
@@ -387,8 +387,7 @@ What the code does, in the order of the file:
     root.addEventListener('change', e => onEdit(inst, e));
     root.addEventListener('click', e => {
       const t = e.target.closest && e.target.closest('[data-go]');
-      if (t) { go(inst, Number(t.dataset.go)); return; }
-      tagFromClick(inst, e);
+      if (t) go(inst, Number(t.dataset.go));
     });
     root.addEventListener('pointerdown', () => { if (!root.contains(document.activeElement)) { const st = inst.stages[inst.idx]; if (st && st.el.tabIndex === -1) st.el.focus({ preventScroll: true }); } });
     go(inst, 0, { initial: true });
@@ -539,7 +538,6 @@ What the code does, in the order of the file:
   }
 
   /* ----- persistent composer: THE note field of the open stage ----- */
-  const TAGRE = /^\[([^\]\n]{1,80})\]\s?/;
   /** Storage target: the open decision's own data-comment note; every other stage gets a hidden one. */
   function storeOf(inst, st) {
     if (!st) return null;
@@ -557,7 +555,6 @@ What the code does, in the order of the file:
   }
   function compText(ed) {
     const c = ed.cloneNode(true);
-    c.querySelectorAll('.an-tagw').forEach(n => n.remove());
     // Pasted or typed lines arrive as one <div> per line: each is a line break, and its own trailing <br> is none.
     c.querySelectorAll('div > br:last-child').forEach(b => { if (!b.nextSibling) b.remove(); });
     c.querySelectorAll('br').forEach(b => b.replaceWith('\n'));
@@ -623,44 +620,19 @@ What the code does, in the order of the file:
     });
     hookAttachments();
     ed.addEventListener('keydown', e => {
-      if (e.target.closest && e.target.closest('.an-tagw')) return;   // the tag's x is a real button: Enter / Space activate it
       if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.isComposing) { e.preventDefault(); e.stopPropagation(); if (!e.repeat) sendNote(inst); }
-      else if (e.key === 'Backspace' && !compText(ed) && inst.tag) { e.preventDefault(); setTag(inst, ''); }
     });
     if (frozen(inst)) { send.disabled = true; att.disabled = true; }
     inst.root.insertBefore(el, inst.stores);
   }
-  /** Max ONE tag, default none: a small inline label (with ×) before the first word. */
-  function setTag(inst, label) {
-    if (frozen(inst)) return;
-    paintTag(inst, label);
-  }
-  /** Draws the tag (also on a frozen round, where it only shows the baked one). */
-  function paintTag(inst, label) {
-    const ed = inst.comp.ed;
-    let t = ed.querySelector('.an-tagw');
-    inst.tag = label || '';
-    if (!label) { if (t) t.remove(); } else {
-      if (!t) { t = h('span', 'an-tagw'); t.contentEditable = 'false'; ed.insertBefore(t, ed.firstChild); }
-      t.textContent = '';
-      const x = btn('', '×');
-      x.setAttribute('aria-label', L('Tag entfernen', 'Remove tag'));
-      tip(x, L('Tag entfernen', 'Remove tag'));
-      x.disabled = frozen(inst);
-      x.addEventListener('mousedown', ev => ev.preventDefault());   // keeps the caret in the note
-      x.addEventListener('click', () => { setTag(inst, ''); composeSync(inst); focusComposer(inst); });
-      t.append(document.createTextNode(label), x);
-    }
-    ed.dataset.empty = !compText(ed) && !inst.tag ? '1' : '';
-  }
-  /** Writes the composer into the open stage's note: "[tag] text" when tagged. */
+  /** Writes the composer into the open stage's note. */
   function composeSync(inst) {
     const st = inst.stages[inst.idx], store = storeOf(inst, st), text = compText(inst.comp.ed);
-    inst.comp.ed.dataset.empty = !text && !inst.tag ? '1' : '';
+    inst.comp.ed.dataset.empty = !text ? '1' : '';
     if (!store || frozen(inst)) return;
     const msgs = msgsOf(st, store);
     // A blank line separates messages in the store, so a paragraph break inside a draft holds a no-break space.
-    const draft = text.trim() ? (inst.tag ? '[' + inst.tag + '] ' : '') + text.trim().replace(/\n\s*\n/g, '\n \n') : '';
+    const draft = text.trim() ? text.trim().replace(/\n\s*\n/g, '\n \n') : '';
     writeMsgs(st, store, draft ? msgs.concat(draft) : msgs);
   }
   /** The sent messages of a stage, parsed again whenever the store changed from outside. */
@@ -678,7 +650,6 @@ What the code does, in the order of the file:
   }
   function clearComposer(inst) {
     inst.comp.ed.textContent = '';
-    inst.tag = '';
     inst.comp.ed.dataset.empty = '1';
   }
   /** The draft is already in the store: parsing it again makes it a sent message. */
@@ -700,9 +671,8 @@ What the code does, in the order of the file:
   }
   /** One chat message of the user with its pen and x; the same bubble on the open stage and on an earlier question. */
   function noteRow(inst, st, m, i, editable) {
-    const row = h('div', 'an-bub-me an-note-m'), tag = TAGRE.exec(m);
-    if (tag) row.appendChild(h('span', 'an-tagw', tag[1]));
-    row.appendChild(document.createTextNode(tag ? m.slice(tag[0].length) : m));
+    const row = h('div', 'an-bub-me an-note-m');
+    row.appendChild(document.createTextNode(m));
     if (editable) {
       const acts = h('div', 'an-note-acts');
       acts.append(noteBtn(L('Nachricht bearbeiten', 'Edit message'), NOTE_PEN, () => editNote(inst, st, i)),
@@ -734,10 +704,8 @@ What the code does, in the order of the file:
     all.splice(i, 1);
     st.msgs = all;
     writeMsgs(st, store, all);
-    const tag = TAGRE.exec(m), text = tag ? m.slice(tag[0].length) : m;
     inst.comp.ed.textContent = '';
-    if (text) inst.comp.ed.appendChild(document.createTextNode(text));
-    paintTag(inst, tag ? tag[1] : '');
+    if (m) inst.comp.ed.appendChild(document.createTextNode(m));
     composeSync(inst);
     renderNotes(inst, st);
     focusComposer(inst);
@@ -773,16 +741,15 @@ What the code does, in the order of the file:
     if (!store || frozen(inst) || !st.me) return;
     const row = st.me.querySelectorAll('.an-note-m')[i], m = msgsOf(st, store)[i];
     if (!row || m == null || row.querySelector('.an-ied')) return;
-    const tag = TAGRE.exec(m), ed = h('div', 'an-ied');
+    const ed = h('div', 'an-ied');
     row.classList.add('an-ied-on');
     row.textContent = '';
-    if (tag) row.appendChild(h('span', 'an-tagw', tag[1]));
     ed.contentEditable = 'true';
     ed.setAttribute('role', 'textbox');
     ed.setAttribute('aria-multiline', 'true');
     ed.setAttribute('aria-label', L('Nachricht bearbeiten', 'Edit message'));
     tip(ed, L('Enter speichert · Esc verwirft', 'Enter saves · Esc cancels'));
-    ed.textContent = tag ? m.slice(tag[0].length) : m;
+    ed.textContent = m;
     row.appendChild(ed);
     st.editing = true;
     let done = false;
@@ -790,7 +757,7 @@ What the code does, in the order of the file:
       if (done) return;
       done = true; st.editing = false;
       if (save && !frozen(inst)) {
-        const list = msgsOf(st, store).slice(), t = compText(ed), next = t.trim() ? (tag ? '[' + tag[1] + '] ' : '') + packText(t) : '';
+        const list = msgsOf(st, store).slice(), t = compText(ed), next = t.trim() ? packText(t) : '';
         if (next !== list[i]) {
           if (next) list[i] = next; else list.splice(i, 1);
           st.msgs = list;
@@ -982,25 +949,6 @@ What the code does, in the order of the file:
     if (!t) return;
     t.classList.remove('an-point'); void t.offsetWidth; t.classList.add('an-point');
     setTimeout(() => t.classList.remove('an-point'), 2400);
-  }
-  /** A click on a finding / question / topic sets the tag (selecting text does not). */
-  function tagFromClick(inst, e) {
-    if (frozen(inst) || e.target.closest('button, a, input, label, [role="button"], .an-tabs')) return;
-    const sel = window.getSelection && window.getSelection();
-    if (sel && String(sel).trim()) return;
-    const t = e.target;
-    // The chat keeps answered questions above: the tag names the question that was clicked, not the open one (#1057).
-    const st = inst.stages.find(s => s.el.contains(t)) || inst.stages[inst.idx];
-    let label = '';
-    if (st.kind === 'dec') {
-      const no = L('Frage ', 'Question ') + stageNo(inst, st);
-      if (t.closest('.an-m-find')) label = L('Befund · ', 'Finding · ') + no;
-      else if (t.closest('.an-m-q')) label = no;
-    } else if (st.kind === 'topic' && t.closest('.an-topic')) label = L('Thema ', 'Topic ') + st.group.label;
-    if (!label) return;
-    setTag(inst, label);
-    composeSync(inst);
-    focusComposer(inst);
   }
 ```
 

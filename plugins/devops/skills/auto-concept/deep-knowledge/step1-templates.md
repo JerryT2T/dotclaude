@@ -474,8 +474,8 @@ the user through a note.
 
 **Notes and "Keine passt".** Every decision ships its
 `<textarea data-comment="{id}-note">`; the engine turns it into the storage
-target of the persistent composer (one line, grows to 3, max one tag; a tagged
-note stays on the stage, an untagged one advances). Every mode except slider / order / points
+target of the persistent composer (one line, grows to 3, no tag; a sent note
+stays on the stage as a chat message of that question). Every mode except slider / order / points
 (single, multi, yesnoalt, verify, wording, picture, compare, chain, place) also gets the "Keine passt? Schreib deine Antwort unten ins
 Notizfeld." link (sets `dm-{id}-none`, payload `none: true`, the note is then
 the answer) — Claude reads such an entry as "own answer in `note`", never as
