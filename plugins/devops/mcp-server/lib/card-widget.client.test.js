@@ -207,6 +207,15 @@ describe("side-session links (linked cards)", () => {
     btns.forEach((b) => expect(b.getAttribute("data-prompt")).toBe("Öffne die Side-Session „Login-Fix“ (local_abc-1) im Split-View."));
   });
 
+  test("a title that also occurs inside markup only links the visible text", () => {
+    const m = sessionCard("de", "„Login-Fix“", { context: "› „Login-Fix“ siehe http://localhost:8878/x?t=„Login-Fix“" });
+    const dom = mountTemplate(m, "");
+    // the open button's own data-prompt keeps the URL intact: no markup injected into an attribute
+    const open = [...dom.window.document.querySelectorAll("[data-prompt]")].find((b) => b.getAttribute("data-prompt").includes("localhost:8878"));
+    expect(open.getAttribute("data-prompt")).toContain("http://localhost:8878/x?t=„Login-Fix“");
+    expect(open.getAttribute("data-prompt")).not.toContain("<");
+  });
+
   test("en prompt, and no link without a local_ id", () => {
     const d = cardWidgetData(sessionCard("en", "“Login-Fix”"), "");
     expect(d.sl[0].p).toBe("Open the side session “Login-Fix” (local_abc-1) in split view.");

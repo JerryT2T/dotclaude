@@ -121,7 +121,9 @@
         '<span role="button" tabindex="0" class="card-link" data-prompt="' + esc(l.p) + '" data-tip="' + esc(l.tp) + '" style="color:inherit;text-decoration:underline;text-underline-offset:2px;cursor:pointer">' + at + '<span aria-hidden="true" style="user-select:none"> ↗</span></span>' +
         '<span class="card-act-state" role="status" aria-live="polite" style="font-size:11px;margin-left:4px"></span></span>';
       // A private-use code point as the mark: never in card text, never escaped.
-      html = html.split(at).join("" + made.length + "");
+      // Text only: tags and their attributes (an open button's data-prompt) stay untouched.
+      var mark = "" + made.length + "";
+      html = html.split(/(<[^>]*>)/).map(function (part) { return part.charAt(0) === "<" ? part : part.split(at).join(mark); }).join("");
       made.push(btn);
     });
     return html.replace(/(\d+)/g, function (_, i) { return made[+i]; });
