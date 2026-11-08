@@ -82,7 +82,18 @@ returns — the single-design page is untouched.
 - **Demo.** `data-ov-demo="<selector>"` (optional, on the design section):
   the slide zooms onto that element and loops `ov-demo-play` on it every few
   seconds instead of the full still (see views.md attribute table).
-- **Chip click.** The ACTIVE variant's quick-nav chip turns to the next
+- **Two preview modes, both showing what differs.** (a) Full-app screen
+  (`data-screen-fit="full"`): cover, edge to edge - and the engine pans to
+  the DIFF BOX (elements whose tag + class + text another variant's first
+  screen lacks, `diffBox()`) or the `data-ov-demo` element, clear of the
+  bottom-left info card; never a top crop onto an empty hero / search bar.
+  (b) Component / element: contained, scaled up to 4x so it fills >= 2/3 of
+  the card. Console warnings: variants' previews identical, `data-ov-demo`
+  matching nothing or the whole screen (then ignored), difference that
+  cannot clear the info card. Authoring: the variants' difference belongs
+  ABOVE THE FOLD of the first screen, away from the bottom-left corner.
+- **Chip click / same digit.** The ACTIVE variant's quick-nav chip - and
+  its own digit hotkey - turn to the next
   page of that design (last → first; a single-page design: back to the
   overview); the ▾ caret lists the pages; other chips switch the design.
 - **Preview fit** is measured through no ancestor transform (`fitPreviews()`
@@ -926,6 +937,17 @@ returns — the single-design page is untouched.
     wantedPage = !sec && idx > 0 && screens[0] ? { idx, label, landed: screens[0].id } : null;
     return sec || screens[0];
   }
+  // The ACTIVE variant's chip and its own digit hotkey do the same: turn to
+  // the next page of that design (last → first); a single-page design goes
+  // back to the overview.
+  function stepActiveDesign(it, cur) {
+    const pages = [...cur.querySelectorAll('section[data-screen][id]')];
+    if (pages.length > 1) {
+      const at = pages.indexOf(activeScreenOf(cur));
+      window.showScreen(pages[(at + 1) % pages.length].id);
+    } else if (overviewOf(it)) window.showOverview();
+  }
+  window.stepActiveDesign = stepActiveDesign;
   function showDesignAligned(id) {
     const it = visibleIteration();
     const target = designsOf(it).find(d => d.dataset.design === id);
@@ -1086,14 +1108,7 @@ returns — the single-design page is untouched.
       if (typeof closePanel === 'function') closePanel();
       const it = visibleIteration();
       const cur = mode() === 'design' ? activeDesignOf(it) : null;
-      if (cur && cur.dataset.design === m.id) {
-        const pages = [...cur.querySelectorAll('section[data-screen][id]')];
-        if (pages.length > 1) {
-          const at = pages.indexOf(activeScreenOf(cur));
-          window.showScreen(pages[(at + 1) % pages.length].id);
-        } else if (overviewOf(it)) window.showOverview();
-        return;
-      }
+      if (cur && cur.dataset.design === m.id) { stepActiveDesign(it, cur); return; }
       showDesignAligned(m.id);
     });
     if (u) setDot(seg, u.design(m.id));
@@ -1628,30 +1643,126 @@ returns — the single-design page is untouched.
       // the content does not reach. The info card sits bottom-left on top.
       const full = content >= 700;
       p.dataset.fit = full ? 'cover' : 'contain';
-      let scale = Math.min(2.5, tall ? (full ? Math.max(w / content, h / tall) : Math.min(w / content, h / tall)) : w / content);
+      // Contain (component / element): the whole mock, as large as the card
+      // allows - cap 4x, so a small widget still fills >= 2/3 of the card
+      // instead of sitting small in a sea of empty tile. Cover (full app)
+      // stays capped at 2.5x.
+      let scale = Math.min(full ? 2.5 : 4, tall ? (full ? Math.max(w / content, h / tall) : Math.min(w / content, h / tall)) : w / content);
       let cx = from, cy = fromY, cw = content, ch = tall || h / Math.max(scale, 0.01);
       let topAnchor = full && tall * scale > h + 0.5;
       // `data-ov-demo`: zoom onto the differing element instead — fitted
       // (contain, up to 4×) to its own box, centred.
       const demo = p.dataset.demo && demoTarget(wrap, p.dataset.demo);
+      let focus = null; // content-space box that MUST stay visible and clear of the info card
+      if (p.dataset.demo && !demo && p.offsetParent && !p.dataset.demoWarned) {
+        p.dataset.demoWarned = 'true';
+        console.warn('[concept] data-ov-demo selector matches nothing in the preview clone (ids are namespaced there - use a class / attribute selector):', p.dataset.demo, (ovPreviews.get(p) || {}).design || '');
+      }
       if (demo) {
         const r = demo.getBoundingClientRect();
         if (r.width > 0 && r.height > 0) {
           const dl = (r.left - origin) / k, dt = (r.top - originTop) / k, dw = r.width / k, dh = r.height / k;
-          const DP = 32;
-          scale = Math.max(0.05, Math.min(4, w / (dw + 2 * DP), h / (dh + 2 * DP)));
-          cx = dl; cy = dt; cw = dw; ch = dh;
-          topAnchor = false;
-          p.dataset.fit = 'demo';
+          // A demo target that is (nearly) the whole screen shows nothing the
+          // plain fit does not: fall back to the normal fit + diff focus.
+          const huge = dw >= 0.9 * (wrap.offsetWidth || 1000) && dh >= 0.8 * (tall || dh);
+          if (huge) {
+            if (!p.dataset.demoWarned) {
+              p.dataset.demoWarned = 'true';
+              console.warn('[concept] data-ov-demo target is the whole screen - ignored; name the element that differs:', p.dataset.demo);
+            }
+          } else {
+            const DP = 32;
+            scale = Math.max(0.05, Math.min(4, w / (dw + 2 * DP), h / (dh + 2 * DP)));
+            cx = dl; cy = dt; cw = dw; ch = dh;
+            topAnchor = false;
+            p.dataset.fit = 'demo';
+            focus = { l: dl, t: dt, r: dl + dw, b: dt + dh };
+          }
         }
       }
+      if (!focus) focus = diffBox(p, wrap, origin, originTop, k);
       wrap.style.removeProperty('--dz-ov-scale');
       wrap.style.removeProperty('--dz-ov-x');
       wrap.style.removeProperty('--dz-ov-y');
+      let offX = (w - cw * scale) / 2 - cx * scale;
+      let offY = topAnchor ? -cy * scale : (h - ch * scale) / 2 - cy * scale;
+      // The part that differs between the variants must be on screen and NOT
+      // under the bottom-left info card (a cover crop from the top showed an
+      // empty hero; the card then hid the one difference).
+      if (focus) {
+        const pr = p.getBoundingClientRect();
+        const k2 = p.clientWidth && pr.width ? pr.width / p.clientWidth : 1;
+        const ovEl = p.parentElement && p.parentElement.querySelector('.design-ov-overlay');
+        const orr = ovEl ? ovEl.getBoundingClientRect() : null;
+        const ovr = orr && orr.width > 0 ? { l: (orr.left - pr.left) / k2, r: (orr.right - pr.left) / k2, t: (orr.top - pr.top) / k2, b: (orr.bottom - pr.top) / k2 } : null;
+        const cover = p.dataset.fit === 'cover';
+        const fw = (focus.r - focus.l) * scale, fh = (focus.b - focus.t) * scale;
+        if (cover && content * scale > w + 1) {
+          offX = Math.min(-from * scale, Math.max(w - (from + content) * scale, w / 2 - (focus.l + focus.r) / 2 * scale));
+        }
+        const hit = () => ovr && offX + focus.l * scale < ovr.r && offX + focus.r * scale > ovr.l;
+        const availB = hit() ? Math.max(0, ovr.t - 8) : h - 8;
+        if (cover) {
+          const want = fh <= availB - 8 ? (availB - fh) / 2 - focus.t * scale : 8 - focus.t * scale;
+          offY = Math.min(-fromY * scale, Math.max(h - (fromY + tall) * scale, want));
+        } else if (hit() && offY + focus.b * scale > ovr.t - 8) {
+          offY = Math.max(8 - focus.t * scale, offY - (offY + focus.b * scale - (ovr.t - 8)));
+        }
+        const bottom = offY + focus.b * scale, top = offY + focus.t * scale;
+        if ((hit() && bottom > ovr.t) || top < -1 || bottom > h + 1 || fw > w + 1) {
+          if (p.offsetParent && !p.dataset.focusWarned) {
+            p.dataset.focusWarned = 'true';
+            console.warn('[concept] overview preview: the differing part does not fit beside the info card - move the difference up / out of the bottom-left or name it with data-ov-demo', (ovPreviews.get(p) || {}).design || '');
+          }
+        }
+      }
       p.style.setProperty('--dz-ov-scale', String(scale));
-      p.style.setProperty('--dz-ov-x', ((w - cw * scale) / 2 - cx * scale).toFixed(1) + 'px');
-      p.style.setProperty('--dz-ov-y', (topAnchor ? -cy * scale : (h - ch * scale) / 2 - cy * scale).toFixed(1) + 'px');
+      p.style.setProperty('--dz-ov-x', offX.toFixed(1) + 'px');
+      p.style.setProperty('--dz-ov-y', offY.toFixed(1) + 'px');
     });
+  }
+  // What differs between the variants, as one content-space box (union of the
+  // elements of THIS preview whose tag + class + own text is missing from at
+  // least one sibling variant's preview; full-width containers skipped).
+  // null when there is no sibling or nothing differs - then a console.warn
+  // says the overview cannot show a difference (templates-design.md, Mock
+  // authoring: variants must differ above the fold, in the first screen).
+  const ovSigCache = new WeakMap();
+  function ovSigs(wrap) {
+    let c = ovSigCache.get(wrap);
+    if (c) return c;
+    const nodes = [...wrap.querySelectorAll('*')];
+    const own = n => [...n.childNodes].filter(x => x.nodeType === 3).map(x => x.textContent.trim()).join(' ');
+    const set = new Set();
+    const per = new Map();
+    nodes.forEach(n => { const g = n.tagName + '|' + (n.getAttribute('class') || '') + '|' + own(n); per.set(n, g); set.add(g); });
+    c = { set, per, nodes };
+    ovSigCache.set(wrap, c);
+    return c;
+  }
+  function diffBox(p, wrap, origin, originTop, k) {
+    const sibs = [...document.querySelectorAll('.design-ov-preview')].filter(q => q !== p && q.closest('.design-ov') === p.closest('.design-ov') && q.querySelector('.design-ov-scale'));
+    if (!sibs.length) return null;
+    const me = ovSigs(wrap);
+    const others = sibs.map(q => ovSigs(q.querySelector('.design-ov-scale')).set);
+    const uniq = new Set(me.nodes.filter(n => others.some(o => !o.has(me.per.get(n)))));
+    if (!uniq.size) {
+      if (p.offsetParent && !p.dataset.sameWarned) {
+        p.dataset.sameWarned = 'true';
+        console.warn('[concept] overview previews of the variants are visually identical - the differing part is not in the first screen', (ovPreviews.get(p) || {}).design || '');
+      }
+      return null;
+    }
+    const W = wrap.offsetWidth || 1000;
+    let u = null;
+    uniq.forEach(n => {
+      if (uniq.size < 400 && [...n.children].some(c => uniq.has(c))) return;
+      const r = n.getBoundingClientRect();
+      if (!r.width || !r.height || r.width / k >= 0.9 * W) return;
+      const b = { l: (r.left - origin) / k, r: (r.right - origin) / k, t: (r.top - originTop) / k, b: (r.bottom - originTop) / k };
+      u = u ? { l: Math.min(u.l, b.l), r: Math.max(u.r, b.r), t: Math.min(u.t, b.t), b: Math.max(u.b, b.b) } : b;
+    });
+    return u;
   }
   // The element a `data-ov-demo` selector names, inside a preview clone.
   // Ids are namespaced in a clone: author with a class / attribute selector.
@@ -2316,7 +2427,13 @@ returns — the single-design page is untouched.
     }
     if (n) {
       const d = designsOf(it)[n - 1];
-      if (d) { e.preventDefault(); showDesignAligned(d.dataset.design); }
+      if (d) {
+        e.preventDefault();
+        const cur = mode() === 'design' ? activeDesignOf(it) : null;
+        // Same digit as the variant already open: step through its pages.
+        if (cur && cur === d) stepActiveDesign(it, cur);
+        else showDesignAligned(d.dataset.design);
+      }
       return;
     }
     if (e.key === '?') { e.preventDefault(); toggleSheet(); return; }
