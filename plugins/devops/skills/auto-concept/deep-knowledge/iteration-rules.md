@@ -333,6 +333,11 @@ When appending a new iteration section (Step 5c of `SKILL.md`), verify
       omit it: the fallback is the concept's base template, so an omission
       does not fail loudly — it just renders the round in a layout you did
       not choose.
+0a. ☐ Question sweep: every decision / question is checked against the
+      prompt, all earlier rounds, the design variants shown in the concept
+      and the auto-notes (pins, notes). Settled → context ("Fest steht: …"),
+      not a question; a real gap → ask only the open remainder
+      (`decision-modes.md` § Rules, "Settled stays settled").
 1. ☐ All new form elements live inside the new
       `<section data-iteration="N">`.
 2. ☐ Each form element has either a `name`, `id`, or `data-*` attribute

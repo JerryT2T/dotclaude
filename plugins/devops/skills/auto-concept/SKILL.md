@@ -139,6 +139,8 @@ See `deep-knowledge/step1-templates.md` § 1b · Analysis results and decisions 
 
 See `deep-knowledge/decision-modes.md`. The seven modes and when each fits, the mandatory fields of every decision, label rules, preselection = recommendation, timing is never a decision.
 
+Never ask what the prompt, an earlier round, a shown design variant or an auto-note already settles: show it as "Fest steht: …" and ask only the narrowed open gap (decision-modes.md § Rules).
+
 See `deep-knowledge/analysis-palette.md`. The 35 display types by content shape, slot budgets, the one text type, style rules and profiles for custom displays.
 
 ### 1c. If the iteration carries a mapping: author the spec
