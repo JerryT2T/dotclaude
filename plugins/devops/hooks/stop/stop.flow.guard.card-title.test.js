@@ -98,13 +98,30 @@ describe("stop.flow.guard — the card's demanded title must be applied (#1090)"
     }
   });
 
-  test("no demanded title, or a stop_hook_active retry → no title block", async () => {
+  test("no demanded title → no title block", async () => {
     const dir = project();
     try {
       renderedCard(dir, null);
       expect((await stop(dir, cardTranscript(dir, WAITING))).trim()).toBe("");
+    } finally {
+      cleanup(dir);
+    }
+  });
+
+  test("another gate blocks first → the flag survives and the retry still enforces the title", async () => {
+    const dir = project();
+    try {
       renderedCard(dir, WORKING);
-      expect((await stop(dir, cardTranscript(dir, WAITING), { stop_hook_active: true })).trim()).toBe("");
+      // A status word in the card title trips the title gate before this check.
+      const t = cardTranscript(dir, WAITING);
+      fs.writeFileSync(t, fs.readFileSync(t, "utf8").replace("Abschluss gebaut", "Abschluss läuft"));
+      const first = await stop(dir, t);
+      expect(JSON.parse(first).reason).toContain("status word");
+      expect(fs.existsSync(flagPath(dir, "card-title"))).toBe(true);
+      // The re-rendered card fixes the word; the retry (stop_hook_active) now asks for the title.
+      const retry = await stop(dir, cardTranscript(dir, WAITING), { stop_hook_active: true });
+      expect(JSON.parse(retry).reason).toContain(JSON.stringify(WORKING));
+      expect(fs.existsSync(flagPath(dir, "card-title"))).toBe(false);
     } finally {
       cleanup(dir);
     }

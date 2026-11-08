@@ -408,13 +408,14 @@ process.stdin.on('end', () => {
   // `--render-card` output filtered down to its widget kept `👉 ➜ 🧭 Concept`
   // through a whole implementation. The renderer leaves the exact title it
   // demanded (mcp-server sessionTitleNote); a card turn whose session title
-  // never got there is blocked once with that set call. The flag is consumed
-  // either way, so the follow-up stop passes — never a loop. Title known only
+  // never got there is blocked once with that set call. While another gate
+  // blocks, the flag stays for the retry; otherwise it is consumed — also by
+  // this block — so the follow-up stop passes, never a loop. Title known only
   // from the transcript (Desktop); the terminal has none, so nothing happens.
-  const titleFlag = readSessionFile(CARD_TITLE_FLAG, sessionId, EXACT);
+  const titleFlag = decision.action === 'block' ? null : readSessionFile(CARD_TITLE_FLAG, sessionId, EXACT);
   if (titleFlag) {
     try { fs.unlinkSync(titleFlag.filePath); } catch { /* already gone */ }
-    if (decision.action !== 'block' && cardRendered && !silent && !stopHookActive) {
+    if (cardRendered && !silent) {
       const reason = titleMismatchReason(String(titleFlag.content || ''), readCurrentTitle(hook.transcript_path));
       if (reason) {
         decision.action = 'block';
