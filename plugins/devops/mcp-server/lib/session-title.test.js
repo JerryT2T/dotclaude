@@ -14,6 +14,7 @@ import {
   titleStateForKey,
   hasMandatoryStep,
   titleInstruction,
+  demandedTitle,
   conceptUrl,
   conceptCloseoutOnly,
   currentSessionTitle,
@@ -535,5 +536,19 @@ describe("titlePrefixFor — a running ship outranks a waiting concept", () => {
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }
+  });
+});
+
+// #1090: the one exact title a card demands — what stop.flow.guard checks the
+// session title against after the turn.
+describe("demandedTitle", () => {
+  test("the exact target for a known title and a plain prefix", () => {
+    expect(demandedTitle("⏳ ➜ 🧭 Concept ┃ ", "👉 ➜ 🧭 Concept ┃ Core Refine")).toBe("⏳ ➜ 🧭 Concept ┃ Core Refine");
+  });
+  test("null when nothing single is demanded", () => {
+    expect(demandedTitle(null, "👉 ➜ 🧭 Concept ┃ X")).toBeNull();
+    expect(demandedTitle("⏳ ➜ 🧭 Concept ┃ ", null)).toBeNull();
+    expect(demandedTitle({ owned: "⏳ ➜ 🧭 Concept ┃ ", other: null }, "👉 ➜ 🧭 Concept ┃ X")).toBeNull();
+    expect(demandedTitle("⏳ ➜ 🧭 Concept ┃ ", "⏳ ➜ 🧭 Concept ┃ X")).toBeNull();
   });
 });

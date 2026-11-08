@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook stop.flow.guard
- * @version 0.12.1
+ * @version 0.13.0
  * @event Stop
  * @plugin devops
  * @description Per-turn completion card + validation enforcement (the validation
@@ -124,6 +124,28 @@ function interruptReason(title) {
     `Desktop app only, once: ${set} {session_id:"self", title:${JSON.stringify(title)}} — exact title, no get_session.`,
     `Only deferred → ToolSearch "select:${set}" first. Truly unavailable or failing: skip silently.`,
     'Output nothing else — no text, no card — then end the turn. Do not mention this to the user.',
+  ].join('\n');
+}
+/** Flag the card renderer leaves (#1090): the exact title its title block demanded. */
+const CARD_TITLE_FLAG = 'dotclaude-devops-card-title';
+
+/**
+ * The block reason for a card turn whose session title is not the one the
+ * card demanded (#1090), or null — nothing demanded, the title unknown, or
+ * already right.
+ *
+ * @param {string} demanded the card's exact title
+ * @param {string|null} current the title now (transcript tail)
+ * @returns {string|null}
+ */
+function titleMismatchReason(demanded, current) {
+  if (!demanded || typeof current !== 'string' || current === demanded) return null;
+  const set = 'mcp__ccd_session_mgmt__set_session_title';
+  return [
+    `[stop.flow.guard] The completion card demanded the session title ${JSON.stringify(demanded)}, but it is still ${JSON.stringify(current)} — the card's [SESSION TITLE] block was not applied.`,
+    `Desktop app only, once: ${set} {session_id:"self", title:${JSON.stringify(demanded)}} — exact title, no get_session.`,
+    `Only deferred → ToolSearch "select:${set}" first. Truly unavailable or failing: skip silently.`,
+    'Output nothing else — no text, no card repeat — then end the turn. Do not mention this to the user.',
   ].join('\n');
 }
 const { readCardData, renderFromFileInstruction } = require('../lib/ship-carddata');
@@ -377,6 +399,26 @@ process.stdin.on('end', () => {
       if (marked) {
         decision.action = 'block';
         decision.reason = interruptReason(next);
+        interruptBlock = true;
+      }
+    }
+  }
+
+  // #1090: the card's title block can be lost on the way — an offline
+  // `--render-card` output filtered down to its widget kept `👉 ➜ 🧭 Concept`
+  // through a whole implementation. The renderer leaves the exact title it
+  // demanded (mcp-server sessionTitleNote); a card turn whose session title
+  // never got there is blocked once with that set call. The flag is consumed
+  // either way, so the follow-up stop passes — never a loop. Title known only
+  // from the transcript (Desktop); the terminal has none, so nothing happens.
+  const titleFlag = readSessionFile(CARD_TITLE_FLAG, sessionId, EXACT);
+  if (titleFlag) {
+    try { fs.unlinkSync(titleFlag.filePath); } catch { /* already gone */ }
+    if (decision.action !== 'block' && cardRendered && !silent && !stopHookActive) {
+      const reason = titleMismatchReason(String(titleFlag.content || ''), readCurrentTitle(hook.transcript_path));
+      if (reason) {
+        decision.action = 'block';
+        decision.reason = reason;
         interruptBlock = true;
       }
     }
