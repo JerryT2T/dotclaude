@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook post.flow.title-mode
- * @version 0.1.1
+ * @version 0.2.0
  * @event PostToolUse
  * @plugin devops
  * @matcher Skill|Bash|PowerShell
@@ -65,11 +65,16 @@ const FALLBACK = {
   'batch-off': 'do-batch deep-knowledge/merge.md § Retire',
 };
 
+/** The session's locale (de default) — the batch fallback topic follows it. */
+function sessionLang(hook, deps) {
+  try { return (deps.getLocale || require('../lib/locale').getLocale)(hook.session_id); } catch { return 'de'; }
+}
+
 /** `current` → the title `mode` leaves, or null for "leave it". */
-function targetFor(mode, current) {
+function targetFor(mode, current, ctx = {}) {
   if (mode === 'ship') return nextTitle(current, { prefix: SHIPPING_PREFIX });
-  if (mode === 'batch-on') return batchTitle(current);
-  return unbatchTitle(current);
+  if (mode === 'batch-on') return batchTitle(current, ctx);
+  return unbatchTitle(current, ctx);
 }
 
 /**
@@ -105,7 +110,7 @@ function main(hook, deps = {}) {
   if (!mode) return null;
   const current = (deps.readTitle || readCurrentTitle)(hook.transcript_path);
   if (current === null) return { context: unknownInstruction(mode) };
-  const next = targetFor(mode, current);
+  const next = targetFor(mode, current, { lang: sessionLang(hook, deps), cwd: hook.cwd });
   return next === null ? null : { context: setInstruction(next, mode) };
 }
 

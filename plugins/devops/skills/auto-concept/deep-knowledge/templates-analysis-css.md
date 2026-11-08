@@ -293,6 +293,8 @@ html[data-theme="light"] .an-att-i { box-shadow: 0 6px 18px rgba(31,35,40,.18); 
 [data-analysis] [data-briefing-what], .an-claim { order: 3; max-width: 600px; margin: 8px auto 0; font-size: 17px; font-weight: 400; letter-spacing: 0; line-height: 1.5; color: var(--an-tx2); }
 [data-analysis] [data-briefing-why] { order: 4; max-width: 560px; margin: 8px auto 0; font-size: 14px; color: var(--an-mu); }
 .an-chips { order: 5; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; width: 100%; margin-top: 28px; text-align: left; }
+/* a note sent on the briefing sits after the topic cards (every other child carries an order; an unordered box would jump to the top, above the eyebrow) */
+.an-brief > .an-notes { order: 6; align-self: stretch; margin-top: 28px; }
 [data-analysis] [data-briefing-topic] { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-radius: 14px; background: var(--an-s1); border-top: 3px solid var(--bc, var(--an-b2)); font-size: 18px; font-weight: 700; color: var(--an-tx); cursor: pointer; text-decoration: none; transition: background .15s; }
 [data-analysis] [data-briefing-topic]:hover { background: var(--an-s2); }
 [data-analysis] [data-briefing-topic] em { font-style: normal; font-size: 13px; font-weight: 500; color: var(--an-tx2); }

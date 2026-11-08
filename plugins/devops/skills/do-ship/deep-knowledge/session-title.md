@@ -29,3 +29,13 @@ retry, no note to the user, no fallback. The rename is a courtesy, never a
 gate. The completion card's `[SESSION TITLE]` block replaces the prefix with
 the outcome (`🟩 ➜ 🚀 Released Alpha ┃ ` / `👉 ➜ 🚧 Blocked ┃ `, see Step 6; scheme: `{PLUGIN_ROOT}/deep-knowledge/session-title-scheme.md`); never restore a
 remembered title by re-typing it.
+
+## Width budget (all session titles)
+
+The topic of every `<STATUS> ➜ <ICON> <Word> ┃ <topic>` title is clamped so that `<Word> ┃ <topic>` is at most **42 characters** (code points), the `…` included: topic max = 42 − `<Word>` length − 3. Cut at a word boundary when that loses at most 8 characters. The one implementation is `hooks/lib/title-budget.js` (`clampTopic`, `clampTitle`); every builder (`session-title.js`, `ask-title.js`, `mode-state.js`, the title-work first-prompt title) calls it, so a word switch re-clamps and a topic already ending in `…` is un-ellipsed first — `……` never stacks. When you set a title by hand, keep the topic short enough for the same rule.
+
+Why 42: the Desktop sidebar (default ~440 px) shows only 43–46 characters of `<Word> | <topic>` after the status icons (measured from the user's screenshot, 2026-11-08). The sidebar width cannot be read from a hook, so a dynamic budget is not possible — the fixed rule is the agreed alternative. Re-measure if the app's sidebar font or default width changes.
+
+## Batch topic fallback
+
+A batch title whose topic is only a trigger word (`batch`, `/do-batch`, `do-batch on`, `devops batch`, `sammelmodus`, `collect mode`, `erstmal sammeln`) reads `Feedback zu <Projekt>` (de, default) / `Feedback on <project>` (en, session locale) instead of repeating "batch" (`hooks/lib/batch-topic.js`). `<Projekt>` is the main repo folder, not the worktree folder. The same fallback applies when the batch prefix is stripped after the merge fires.

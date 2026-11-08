@@ -25,6 +25,7 @@
  */
 
 const S = require('./title-scheme');
+const { clampTitle } = require('./title-budget');
 const { WORK_PREFIX, stripPrefixes, classify, leadingPrefix, approvalRestoredTitle } = S;
 
 const MARKER = '[ask-title]';
@@ -62,7 +63,7 @@ function questionTitle(current) {
   if (typeof current !== 'string' || !current.trim()) return null;
   if (isQuestionTitle(current) || classify(current) === 'batch') return null;
   const rest = stripPrefixes(current);
-  return rest.trim() ? QUESTION_PREFIX + rest : null;
+  return rest.trim() ? clampTitle(QUESTION_PREFIX + rest) : null;
 }
 
 /**
@@ -84,7 +85,7 @@ function restoredTitle(current, previous) {
   // A background agent's approval wait before the question: back to its ⏳ head.
   const waited = kind === 'approval' ? approvalRestoredTitle(previous) : null;
   if (waited) head = leadingPrefix(waited).prefix;
-  return head + rest;
+  return clampTitle(head + rest);
 }
 
 /** The session handle the app would derive from the title, without the head. */
@@ -109,7 +110,7 @@ function startSessionInput(input) {
   const title = typeof input.title === 'string' ? input.title.trim() : '';
   if (!title || classify(title) !== 'plain') return null;
   const name = input.name || nameFromTitle(title);
-  return { ...input, title: WORK_PREFIX + title, ...(name ? { name } : {}) };
+  return { ...input, title: clampTitle(WORK_PREFIX + title), ...(name ? { name } : {}) };
 }
 
 function parse(line) {

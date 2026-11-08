@@ -57,7 +57,7 @@ const localeKeys = (src) => src.replace(/\{\{([a-z_.]+)\}\}/g, "$1");
  * A page whose live round is a final report, written the way
  * step5-update-page.md tells Claude to write it.
  * funde    = [{ id, title, label?, route?, reason?, origin?, body?, routed? }]
- * tests    = [{ id, text, crit?, guide?, mode? }]   → [data-tests] li
+ * tests    = [{ id, text, crit?, guide?, mode?, modeDefault? }]   → [data-tests] li
  * handoffs = same                                   → [data-handoffs] li
  */
 function page({ funde = [], tests = [], handoffs = [], closed = false } = {}) {
@@ -112,6 +112,7 @@ function page({ funde = [], tests = [], handoffs = [], closed = false } = {}) {
       li.dataset.todoId = t.id;
       if (t.crit) li.dataset.crit = t.crit;
       if (t.guide != null) li.dataset.guide = t.guide;
+      if (t.modeDefault) li.dataset.modeDefault = t.modeDefault;
       if (t.mode) li.dataset.mode = t.mode;
       li.textContent = t.text;
       ul.appendChild(li);
@@ -344,7 +345,7 @@ describe("🧭 three rows in view, the rest behind +N weitere", () => {
 describe("Bleibt für dich — criticality, then guidability", () => {
   const TESTS = [
     { id: "t-low", text: "Read the English copy", crit: "low", guide: "web" },
-    { id: "t-web", text: "Try the login on a phone", crit: "mid", guide: "web" },
+    { id: "t-web", text: "Create the OAuth app in the provider console", crit: "mid", guide: "web" },
     { id: "t-game", text: "Watch the camera pan", crit: "mid", guide: "" },
   ];
   const HANDOFFS = [{ id: "h-secret", text: "Store the token secret", crit: "high", guide: "desktop" }];
@@ -353,7 +354,7 @@ describe("Bleibt für dich — criticality, then guidability", () => {
     const p = page({ tests: TESTS, handoffs: HANDOFFS });
     expect(p.window.collectTodos("tests")).toEqual([
       { id: "t-low", text: "Read the English copy", mode: "skip", guide: null },
-      { id: "t-web", text: "Try the login on a phone", mode: "guide", guide: "web" },
+      { id: "t-web", text: "Create the OAuth app in the provider console", mode: "guide", guide: "web" },
       { id: "t-game", text: "Watch the camera pan", mode: "self", guide: null },
     ]);
     expect(p.window.collectTodos("handoffs")).toEqual([
@@ -365,6 +366,21 @@ describe("Bleibt für dich — criticality, then guidability", () => {
     // A struck row hides its switch and offers ↩.
     expect(p.guide("tests:t-low").hidden).toBe(true);
     expect(p.drop("tests:t-low").textContent).toBe("↩");
+  });
+
+  test("a manual check of the user's own app or site starts off; explicit data-mode-default still wins", () => {
+    const p = page({
+      tests: [
+        { id: "t-mobile", text: "Look at the plan on the phone", crit: "mid", guide: "" },
+        { id: "t-forced", text: "Look at the shortcut", crit: "mid", guide: "", modeDefault: "guide" },
+      ],
+    });
+    expect(p.window.collectTodos("tests")).toEqual([
+      { id: "t-mobile", text: "Look at the plan on the phone", mode: "self", guide: null },
+      { id: "t-forced", text: "Look at the shortcut", mode: "guide", guide: "inline" },
+    ]);
+    expect(p.guide("tests:t-mobile").getAttribute("aria-checked")).toBe("false");
+    expect(md).not.toMatch(/data-guide="web">Login auf dem Handy/);
   });
 
   test("🧪 and 👉 are one list, kind glyph on each row, one count", () => {

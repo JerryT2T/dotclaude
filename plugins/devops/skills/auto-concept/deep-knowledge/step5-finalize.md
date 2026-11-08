@@ -301,9 +301,11 @@ Claude sets the defaults when it writes the Funde, 🧪 and 👉 rows (authoring
   workaround, and the alternative would merely be another way. Every Fund carries a
   one-word reason, shown in the report ("riskant", "braucht Concept").
 - **🧪 / 👉 mode.** Criticality decides between struck (`skip`, muted) and needed. If
-  needed and guidable (a web task → web guide via `auto-guide`; a PC task → desktop
-  script / takeover help) "Führ mich" starts on (`guide`); otherwise it starts off
-  (`self`, the completion card). Never print "nicht führbar" — a non-guidable item
+  needed and a guided action is required (a step on a third-party site such as API
+  key / OAuth app / account / hosting secret → web guide via `auto-guide`; a system
+  setting on the PC → desktop script / takeover help) "Führ mich" starts on
+  (`guide`); otherwise — including every manual try / check of the user's own app
+  or site — it starts off (`self`, the completion card). Never print "nicht führbar" — a non-guidable item
   with "Führ mich" on simply gets written steps (`inline`).
 
 ## Nachbessern

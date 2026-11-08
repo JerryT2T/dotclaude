@@ -128,9 +128,11 @@ describe("prompt.flow.title-work — first prompt", () => {
     test("already marked → no output at all; a long first line is cut", () => {
       const { dir, tp } = session(null);
       expect(tw.hookReply({ transcript_path: tp, session_title: "⏳ ➜ 🤖 Solo ┃ X" }, "fix", dir)).toBe("");
-      const topic = tw.promptTopic("x".repeat(100));
-      expect([...topic].length).toBe(61);
-      expect(topic.endsWith("…")).toBe(true);
+      // The topic is clamped by the word of the prefix it goes under (title-budget.js).
+      const title = tw.earlyTitle({ transcript_path: tp }, "x".repeat(100), dir);
+      const shown = title.slice("⏳ ➜ 🤖 ".length);
+      expect([...shown].length).toBe(42);
+      expect(shown.endsWith("…")).toBe(true);
       fs.rmSync(dir, { recursive: true, force: true });
     });
   });

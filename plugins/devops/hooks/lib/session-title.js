@@ -29,6 +29,8 @@ const {
   WORK_PREFIX, SHIPPING_PREFIX, BATCH_PREFIX, CONCEPT_PREFIX, CONCEPT_WORKING_PREFIX,
   INTERRUPTED_PREFIX, LEGACY_PREFIXES, LEGACY, stripPrefixes, classify, leadingPrefix,
 } = require('./title-scheme');
+const { clampTitle, clampTopic, wordOf } = require('./title-budget');
+const { batchTopic } = require('./batch-topic');
 
 /** Legacy worded hourglass — rewritten to the bare form wherever found. */
 const LEGACY_PENDING_PREFIX = LEGACY.working;
@@ -84,6 +86,7 @@ function nextTitle(current, { prefix = WORK_PREFIX, machine = false } = {}) {
   } else {
     next = prefix + r;
   }
+  next = clampTitle(next);
   return next !== current ? next : null;
 }
 
@@ -92,14 +95,20 @@ function nextTitle(current, { prefix = WORK_PREFIX, machine = false } = {}) {
  * `👉 ➜ 📚 Batch ┃ ` in front, every known prefix stripped first so prefixes
  * never stack. `null` when unknown, already marked, or nothing is left.
  *
+ * A topic that is only a trigger word ("batch", "/do-batch", "sammelmodus" …)
+ * becomes `Feedback zu <Projekt>` / `Feedback on <project>` (batch-topic.js);
+ * the topic is clamped to the title budget (title-budget.js).
+ *
  * @param {string|null} current
+ * @param {{ lang?: string, cwd?: string }} [ctx] locale (default de) and project dir
  * @returns {string|null}
  */
-function batchTitle(current) {
+function batchTitle(current, ctx = {}) {
   if (typeof current !== 'string' || !current.trim()) return null;
-  if (current.startsWith(BATCH_PREFIX)) return null;
   const r = rest(current);
-  return r ? BATCH_PREFIX + r : null;
+  if (!r) return null;
+  const next = BATCH_PREFIX + clampTopic(wordOf(BATCH_PREFIX), batchTopic(r.trim(), ctx));
+  return next !== current ? next : null;
 }
 
 /**
@@ -108,13 +117,17 @@ function batchTitle(current) {
  * `📥 Batch – `). `null` when the title does not carry it — a title the
  * user renamed meanwhile wins — or nothing would be left.
  *
+ * A remaining topic that is only a trigger word ("batch") becomes the
+ * `Feedback zu <Projekt>` fallback instead (batch-topic.js).
+ *
  * @param {string|null} current
+ * @param {{ lang?: string, cwd?: string }} [ctx]
  * @returns {string|null}
  */
-function unbatchTitle(current) {
+function unbatchTitle(current, ctx = {}) {
   if (typeof current !== 'string' || classify(current) !== 'batch') return null;
   const r = current.slice(leadingPrefix(current).length);
-  return r.trim() ? r : null;
+  return r.trim() ? batchTopic(r.trim(), ctx) : null;
 }
 
 /**
@@ -129,7 +142,7 @@ function unbatchTitle(current) {
 function interruptedTitle(current) {
   if (typeof current !== 'string' || classify(current) !== 'work') return null;
   const r = rest(current);
-  return r ? INTERRUPTED_PREFIX + r : null;
+  return r ? clampTitle(INTERRUPTED_PREFIX + r) : null;
 }
 
 /**
@@ -151,7 +164,7 @@ function staleWorkTitle(current, terminalPrefix = null) {
   if (kind !== 'work' && kind !== 'shipping' && kind !== 'process' && kind !== 'approval') return null;
   if (current.startsWith(CONCEPT_WORKING_PREFIX)) return null;
   const r = rest(current);
-  return r ? (terminalPrefix || INTERRUPTED_PREFIX) + r : null;
+  return r ? clampTitle((terminalPrefix || INTERRUPTED_PREFIX) + r) : null;
 }
 
 /**
