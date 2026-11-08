@@ -95,6 +95,27 @@ function pseudoCommit(mtimeMs) {
   return createHash("sha1").update("mtime-" + ts).digest("hex").slice(0, 7)
 }
 
+/**
+ * Skill names (e.g. 'auto-frustrated') that a channel feature in
+ * `<pluginDir>/features.json` registers, whatever the channel: those never get
+ * a curated README row (docs/dev/feature-flags.md). Unreadable registry → none.
+ * @param {string} pluginDir
+ * @returns {Set<string>}
+ */
+export function featureGatedSkills(pluginDir) {
+  const out = new Set();
+  try {
+    const reg = JSON.parse(readFileSync(join(pluginDir, "features.json"), "utf8"));
+    for (const f of Object.values((reg && reg.features) || {})) {
+      for (const p of (f && Array.isArray(f.skills) ? f.skills : [])) {
+        const name = String(p).replace(/\\/g, "/").replace(/^skills\//, "").replace(/\/+$/, "");
+        if (name) out.add(name);
+      }
+    }
+  } catch { /* no registry: nothing is gated */ }
+  return out;
+}
+
 // Doc-sync check (plugin source repo only). Two guarantees:
 //   1. Auto-marker counts/roster in README.md + architecture.html are current.
 //   2. Every skill/agent on disk has a (manually curated) row in the README
@@ -134,7 +155,10 @@ function docSyncChecks(cwd, branchFiles = []) {
       .filter((f) => f.endsWith(".md"))
       .map((f) => f.replace(/\.md$/, ""));
 
-    const missingSkills = skills.filter((s) => !readme.includes(`/${s}`));
+    // A feature-flagged skill never gets a README row, on any channel
+    // (docs/dev/feature-flags.md): it is not missing, it is gated.
+    const gated = featureGatedSkills(pluginDir);
+    const missingSkills = skills.filter((s) => !gated.has(s) && !readme.includes(`/${s}`));
     const missingAgents = agents.filter((a) => !readme.includes(`**${a}**`));
 
     if (missingSkills.length || missingAgents.length) {

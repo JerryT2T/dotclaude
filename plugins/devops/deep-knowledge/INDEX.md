@@ -21,6 +21,8 @@ Quick-reference for all deep-knowledge topics. Read this FIRST to find the right
 | [codex-integration.md](codex-integration.md) | Codex Integration | Cross-cutting reference for all points where Codex is integrated into devops |
 | [commit-conventions.md](commit-conventions.md) | Commit Conventions | How commits are written in projects using this plugin. Referenced by `/do-ship`, |
 | [completion-card-design.md](completion-card-design.md) | Completion Card — Design Specification (v2, "one page, three lines, one decision") | Single source of truth for how a completion card looks and reads, on every |
+| [completion-card-schema-notes.md](completion-card-schema-notes.md) | Completion Card — Tool-Schema Field Rationale | Why the `render_completion_card` fields say what they say. Split out of `comp... |
+| [completion-card-widget.md](completion-card-widget.md) | Completion Card — Desktop Widget vs. Terminal | How the card reaches the user: the Desktop `show_widget` card body, its butto... |
 | [content-conventions.md](content-conventions.md) | Content Conventions — Sizing & Self-Reference | How to size and structure project-persistent content (CLAUDE.md, skills, |
 | [decision-format.md](decision-format.md) | Decision Format | When presenting multiple options (via AskUserQuestion or inline), use this |
 | [defer-to-reset.md](defer-to-reset.md) | Defer to the Reset — Resume Timer for a Nearly Full Window | When the 5 h window is almost full, larger work can wait for the reset: a one... |
