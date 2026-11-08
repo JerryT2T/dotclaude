@@ -35,8 +35,7 @@ function isTriggerTopic(topic) {
 function projectName(cwd) {
   if (!cwd || typeof cwd !== 'string') return '';
   const norm = cwd.replace(/\\/g, '/').replace(/\/+$/, '');
-  const m = /^(.*?)\/\.claude\/worktrees(?:\/|$)/.exec(norm);
-  if (m && m[1]) return path.posix.basename(m[1]);
+  // git's common dir is authoritative; the path shape is only the fallback when git cannot answer.
   try {
     if (fs.existsSync(cwd)) {
       const out = execFileSync('git', ['rev-parse', '--git-common-dir'], {
@@ -49,6 +48,8 @@ function projectName(cwd) {
       }
     }
   } catch { /* not a repo: fall through */ }
+  const m = /^(.*?)\/\.claude\/worktrees(?:\/|$)/.exec(norm);
+  if (m && m[1]) return path.posix.basename(m[1]);
   return path.posix.basename(norm);
 }
 

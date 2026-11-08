@@ -36,6 +36,16 @@ describe("batch-topic", () => {
     } finally { fs.rmSync(base, { recursive: true, force: true }); }
   });
 
+  test("a standalone repo nested under a .claude/worktrees path keeps its own name (git wins over the path shape)", () => {
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), "bt-"));
+    try {
+      const nested = path.join(base, "outer", ".claude", "worktrees", "inner-repo");
+      fs.mkdirSync(nested, { recursive: true });
+      execFileSync("git", ["init", "-q"], { cwd: nested, stdio: "ignore" });
+      expect(T.projectName(nested)).toBe("inner-repo");
+    } finally { fs.rmSync(base, { recursive: true, force: true }); }
+  });
+
   test("fallback topic by locale, default de", () => {
     const cwd = "/x/dotclaude/.claude/worktrees/w1";
     expect(T.fallbackTopic("de", cwd)).toBe("Feedback zu dotclaude");
