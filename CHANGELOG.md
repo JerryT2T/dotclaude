@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.362.2] — 2026-11-08
+
+### Fixed
+- Session titles fit the Desktop sidebar: `<Word> ┃ <topic>` is clamped to 42 characters at a word boundary, for every title the plugin sets
+- A batch session that only said "batch" is titled "Feedback zu <Projekt>" instead of "Batch ┃ batch"
+- Concept analysis: a comment sent on the briefing appears below the briefing, above "Los geht's"
+- Close-out sheet: "Führ mich" starts off for manual checks of your own app or site; it starts on only for third-party setup such as API keys or OAuth apps
+
 ## [0.362.1] — 2026-11-08
 
 ### Fixed

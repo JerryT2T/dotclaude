@@ -519,7 +519,7 @@ function collectImplementItems() { return collectFollowUps('implement'); }
 // --- 🧪 / 👉 to-dos ---
 // 🧪 = what Claude could not verify ([data-tests]), 👉 = what the user does by
 // hand afterwards ([data-handoffs]). One <li> each, non-interactive, with
-// data-crit (low | mid | high) and data-guide (web | desktop | empty).
+// data-crit (low | mid | high) and data-guide (web | desktop only for a third-party / system action | empty = default).
 const CLOSEOUT_TODO_BLOCK = { tests: '[data-tests]', handoffs: '[data-handoffs]' };
 function todoItems(kind) {
   const section = finalReportSection();
@@ -531,9 +531,10 @@ function todoId(kind, el, i) {
 }
 function todoKey(kind, el, i) { return kind + ':' + todoId(kind, el, i); }
 // Criticality decides first: low → struck (skip, muted, ↩ brings it back).
-// Needed and guidable (a web task → auto-guide, a PC task → desktop scripts /
-// takeover help) → "Führ mich" on (guide); needed and not guidable → on the
-// completion card (self). An explicit data-mode-default wins. "Not guidable" is
+// Needed and a guided action on a third-party site (API key, OAuth app,
+// account, hosting secret → auto-guide) or a system setting (desktop scripts /
+// takeover help) → "Führ mich" on (guide); everything else, incl. manual
+// checks of the user's own app or site → off, on the completion card (self). An explicit data-mode-default wins. "Not guidable" is
 // never shown — "Führ mich" there simply means written steps (guide: "inline").
 function todoDefaultMode(el) {
   const explicit = el.dataset.modeDefault;

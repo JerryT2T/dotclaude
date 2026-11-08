@@ -47,7 +47,7 @@ the click that confirms it is also the ship answer.
 | Group | Source in the report body | Row | Default |
 |---|---|---|---|
 | 🧭 **Du entscheidest** | the Funde: elements with `data-issue-title` inside `[data-open-questions]` (not `data-routed`) | ONE line: name · route pill | `data-route-default` (`now` / `issue` / `ignore`); missing → 📌 Issue (writes no code) |
-| **Bleibt für dich** | `[data-tests] li` (🧪, what Claude could not verify) and `[data-handoffs] li` (👉, manual hand-offs), one list | kind glyph · text · "hoch" when `data-crit="high"`, then "Führ mich" switch · ✕ | `data-crit="low"` → struck (`skip`); else `data-guide="web"`/`"desktop"` → Führ mich on (`guide`); else on the card (`self`). `data-mode-default` overrides |
+| **Bleibt für dich** | `[data-tests] li` (🧪, what Claude could not verify) and `[data-handoffs] li` (👉, manual hand-offs), one list | kind glyph · text · "hoch" when `data-crit="high"`, then "Führ mich" switch · ✕ | `data-crit="low"` → struck (`skip`); else `data-guide="web"`/`"desktop"` (ONLY a guided action on a third-party site or system setting, never a manual check of the user's own app) → Führ mich on (`guide`); else on the card (`self`, the default). `data-mode-default` overrides |
 
 - **A tap on the pill moves to the next route** (⚡ Jetzt → 📌 Issue → Weglassen →
   ⚡, `cycleRoute()`); focus stays on the pill, the plan line follows. The pill's
@@ -364,16 +364,18 @@ became of each Fund (issue link / "umgesetzt").
 
   <!-- 🧪 what Claude could not verify, 👉 what the user does by hand after
        the merge. Data for the FAB only (hidden): at most three each, one short
-       line, data-crit = low | mid | high, data-guide = web | desktop | "" (not
-       guidable). Omit a list that would be empty. -->
+       line, data-crit = low | mid | high, data-guide = web | desktop only for a
+       guided action on a THIRD-PARTY site or system setting (API key, OAuth
+       app, account, hosting secret, terms, OS setting); trying / testing /
+       viewing the user's own app or site is always "" (default, off). Omit a list that would be empty. -->
   <section data-tests hidden aria-label="{{final.group_tests}}">
     <ul>
-      <li data-todo-id="t-mobile" data-crit="mid" data-guide="web">Login auf dem Handy ansehen</li>
+      <li data-todo-id="t-mobile" data-crit="mid" data-guide="">Login auf dem Handy ansehen</li>
     </ul>
   </section>
   <section data-handoffs hidden aria-label="{{final.group_handoffs}}">
     <ul>
-      <li data-todo-id="h-secret" data-crit="high" data-guide="desktop">Neues Token-Secret im Hosting hinterlegen</li>
+      <li data-todo-id="h-secret" data-crit="high" data-guide="web">Neues Token-Secret im Hosting-Dashboard hinterlegen</li>
     </ul>
   </section>
 </section>
@@ -394,7 +396,7 @@ became of each Fund (issue link / "umgesetzt").
 | `data-routed` | set by Claude | Added with the issue link / "umgesetzt" note once the Fund is routed; drops it from the 🧭 group |
 
 **🧪 / 👉 item attributes:** `data-todo-id` (stable id), `data-crit`
-(`low` / `mid` / `high`), `data-guide` (`web` / `desktop` / empty),
+(`low` / `mid` / `high`), `data-guide` (`web` / `desktop` only for a third-party / system action, otherwise empty — the default),
 optional `data-mode-default` (`skip` / `guide` / `self`); Claude stamps
 `data-mode` with the user's choice when it processes the finalize. Plain text
 inside (or a `.todo-text` span when the `<li>` carries more markup).

@@ -1,6 +1,6 @@
 /**
  * @module mode-state
- * @version 1.5.0
+ * @version 1.6.0
  *
  * Mode state the card reads off the project — not off the caller.
  *
@@ -44,6 +44,8 @@ export function hookRequire(...parts) {
  *  `<STATUS> ➜ <ACTIVITY> <Word> ┃ <title>`, `⏳ ➜ 🤖 Solo ┃ ` for generic work. */
 export const TITLE_SCHEME = hookRequire("lib", "title-scheme.js");
 const S = TITLE_SCHEME;
+/** The shared width rule for every title built here (hooks/lib/title-budget.js). */
+export const TITLE_BUDGET = hookRequire("lib", "title-budget.js");
 
 /** Session-title prefixes — every named state of the scheme, keyed by its
  *  state id (`ready` → `👉 ➜ 📦 Ready ┃ `), plus `work`, the Solo prefix
@@ -287,7 +289,7 @@ function targetTitle(prefix, current) {
   if (prefix === null) return null;
   const stripped = stripTitlePrefix(current);
   if (!stripped.trim()) return null;
-  const next = prefix + stripped;
+  const next = TITLE_BUDGET.clampTitle(prefix + stripped);
   return next === current ? null : next;
 }
 

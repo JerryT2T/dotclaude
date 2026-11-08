@@ -99,7 +99,7 @@ function main(hook, deps = {}) {
   if (current === null || !current.startsWith(CONCEPT_PREFIX)) return null;
 
   try { fs.writeFileSync(marker, JSON.stringify({ version, at: new Date().toISOString() })); } catch { return null; }
-  const title = CONCEPT_WORKING_PREFIX + stripPrefixes(current);
+  const title = require('../lib/title-budget').clampTitle(CONCEPT_WORKING_PREFIX + stripPrefixes(current));
   return {
     context: [
       `${TAG} The user submitted concept decisions (v${version}); the sidebar still says it is their move. ` +

@@ -299,11 +299,17 @@ stays visible.
 1. **Criticality** (`data-crit` = `low` / `mid` / `high`): a low item that survived the
    rule above is shown muted and struck (`skip`); ↩ brings it back. `mid` / `high` →
    it is needed, go on.
-2. **Guidable?** (`data-guide`): a web task → `web` (Web-Guide via `auto-guide`); a
-   task on the PC → `desktop` (desktop scripts / takeover help) → "Führ mich" starts
-   on. Otherwise leave `data-guide=""` → it starts off and goes on the completion
-   card. When the user switches "Führ mich" on for such an item, they get written
-   steps (`guide: "inline"`).
+2. **Guided action needed?** (`data-guide`): set it ONLY when the step is an action
+   on a THIRD-PARTY site (`web`: create an API key, OAuth app or account, put a
+   secret into the hosting dashboard, accept terms → Web-Guide via `auto-guide`) or
+   a system / desktop setting the user must change (`desktop`: OS setting, desktop
+   scripts / takeover help) → "Führ mich" starts on. Trying, testing, looking at
+   or using the user's OWN app or site (also on the phone, also "check it with
+   real data") is a plain manual check the consumer manages without guidance:
+   ALWAYS `data-guide=""` → switch starts off, item goes on the completion card.
+   Default is off; no reason for guidance, no `web` / `desktop`. When the user
+   switches "Führ mich" on for such an item, they get written steps
+   (`guide: "inline"`).
 3. **Never write or show "nicht führbar"** — Claude can always explain what
    to do. The gate rejects the phrase on a final report (pattern 37b).
 

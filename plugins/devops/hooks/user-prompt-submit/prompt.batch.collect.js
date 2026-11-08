@@ -295,6 +295,11 @@ function noteIndexLine(note, i) {
  *   the merge fires off the surviving notes; sync = result of the main-sync
  *   the hook ran before injecting (see `syncMain`)
  */
+/** The session locale for the title fallback topic — de when unknown. */
+function sessionLocale(sessionId) {
+  try { return require('../lib/locale').getLocale(sessionId); } catch { return 'de'; }
+}
+
 /**
  * The session-title lines of the merge context (merge.md § Retire). `title`
  * is the current title off the transcript tail: known → the exact stripped
@@ -305,9 +310,9 @@ function noteIndexLine(note, i) {
  * @param {string|null|undefined} title
  * @returns {string[]}
  */
-function retireTitleLines(title) {
+function retireTitleLines(title, ctx = {}) {
   if (typeof title === 'string') {
-    const next = unbatchTitle(title);
+    const next = unbatchTitle(title, ctx);
     if (next === null) return [];
     return [
       '',
@@ -410,7 +415,7 @@ function buildMergeContext(notes, rest, notesFile, opts = {}) {
     // The skill's own Step 4.8 says the same, but this path never loads the
     // skill — the marker prompt is the whole trigger. Without this line the
     // sidebar keeps promising a collection that ended with this prompt.
-    ...retireTitleLines(opts.title),
+    ...retireTitleLines(opts.title, opts.titleCtx),
   );
   if (rest) {
     head.push(
@@ -800,7 +805,7 @@ function fireMerge({ cwd, text, marker, modeActive, sessionId, transcriptPath, r
   // The title off the transcript tail, so the context names the exact value
   // (no get_session round trip); null → the get_session fallback.
   const title = readCurrentTitle(transcriptPath || undefined);
-  write(`${build(notes, rest, B.notesPath(cwd), { stale: !modeActive, sync, title })}\n`);
+  write(`${build(notes, rest, B.notesPath(cwd), { stale: !modeActive, sync, title, titleCtx: { lang: sessionLocale(sessionId), cwd } })}\n`);
   // The hand-off is enforced, not hoped for: pre.run.contract refuses edits and
   // commits until do-run / auto-concept is invoked (run-contract spec E).
   // H-B15: written only AFTER the context went out — a merge context that

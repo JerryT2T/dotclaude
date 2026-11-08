@@ -105,9 +105,8 @@ function resumesShip(prompt, cwd) {
 }
 
 const { ownWords } = require('../lib/prompt-text');
+const { clampTitle } = require('../lib/title-budget');
 
-/** A stand-in topic stays short: the app's summary replaces it within seconds. */
-const TOPIC_MAX_CHARS = 60;
 /** How the app opens the first prompt of a session another session started. */
 const SUB_SESSION_BRIEF = /^(Background|Task) \(from the session\b/;
 
@@ -162,12 +161,12 @@ function currentTitle(hook) {
   return readKnownTitle(hook && hook.transcript_path);
 }
 
-/** The first line of the user's own words as a stand-in topic, or null. */
+/** The first line of the user's own words as a stand-in topic, or null. The
+ *  caller clamps it by the word of the prefix it goes under (title-budget.js). */
 function promptTopic(prompt) {
   const line = ownWords(prompt).split('\n').map(l => l.trim()).find(Boolean);
   if (!line || /^[<[]/.test(line) || SUB_SESSION_BRIEF.test(line)) return null;
-  const chars = [...line];
-  return chars.length > TOPIC_MAX_CHARS ? chars.slice(0, TOPIC_MAX_CHARS).join('').trimEnd() + '…' : line;
+  return line;
 }
 
 /**
@@ -189,7 +188,7 @@ function earlyTitle(hook, prompt, cwd) {
   const current = currentTitle(hook);
   if (current !== null) return nextTitle(current, { prefix });
   const topic = promptTopic(prompt);
-  return topic ? prefix + topic : null;
+  return topic ? clampTitle(prefix + topic) : null;
 }
 
 /** The hook's stdout: plain context, or JSON when it sets the title itself too. */
