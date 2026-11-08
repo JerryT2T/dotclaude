@@ -631,6 +631,33 @@ describe("Fertig-Seite", () => {
     expect(fin(p).dataset.fin).toBe("shipped");
   });
 
+  test("a stalled finalize (safety net zeroed the submit state) still ends on the final screen when the bridge is gone", () => {
+    const p = page({ funde: FUNDE });
+    p.window.submitFinalize(true);
+    p.window.markCloseoutStalled();
+    p.window.eval("_submittedAt = 0; _submittedAction = null;");
+    p.document.getElementById("connection-status").dataset.state = "disconnected";
+    for (let i = 0; i < 3; i++) p.window.watchFinalizeLost();
+    expect(fin(p)).toBeNull();
+    p.window.watchFinalizeLost();
+    expect(fin(p).dataset.fin).toBe("lost");
+  });
+
+  test("the lost watch is wall-clock based: one throttled tick after a minute is enough", () => {
+    const p = page({ funde: FUNDE });
+    p.window.submitFinalize(true);
+    p.document.getElementById("connection-status").dataset.state = "disconnected";
+    const W = p.window.Date; const real = W.now;
+    let t = real.call(W);
+    W.now = () => t;
+    try {
+      p.window.watchFinalizeLost();
+      t += 61000;
+      p.window.watchFinalizeLost();
+    } finally { W.now = real; }
+    expect(fin(p).dataset.fin).toBe("lost");
+  });
+
   test("the tab confirms it has the result, so the bridge may stop", () => {
     const p = closed({ state: "closed" });
     expect(p.posted.some((x) => x.url === "/closed-ack")).toBe(true);
