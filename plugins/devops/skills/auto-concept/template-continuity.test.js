@@ -126,7 +126,7 @@ describe("a concept keeps its template across rounds", () => {
     const i = skill.indexOf("Template continuity");
     expect(i, "continuity rule").toBeGreaterThan(0);
     const rule = skill.slice(i, i + 2000);
-    expect(rule).toMatch(/data-view-kind="decision"/);
+    expect(rule).toMatch(/data-view-kind="analysis"/);
     expect(rule).toMatch(/mixed mode/i);
     expect(rule).toMatch(/final report[\s\S]*always `free`/i);
     expect(rule).toMatch(/MANDATORY|mandatory|required/);
@@ -144,7 +144,7 @@ describe("a concept keeps its template across rounds", () => {
     expect(i).toBeGreaterThan(0);
     const block = realityDoc.slice(i, i + 2500);
     expect(block).toMatch(/Template\s+continuity/);
-    expect(block).toContain('data-view-kind="decision"');
+    expect(block).toContain('data-view-kind="analysis"');
   });
 });
 
