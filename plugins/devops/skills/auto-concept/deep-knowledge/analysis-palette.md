@@ -214,7 +214,7 @@ colour IS the state, always doubled by a glyph and a word.
 | Zitat-Karte | custom `quote` | eine Nutzer-Aussage, ein Log oder eine Doku-Stelle der Beleg ist. | sie nur Deko ohne Quelle wäre. | lang · mit Text |
 | Annotierte Grafik | custom `annotated` (a core type + 1–3 notes) | eine Grafik erst mit ein bis drei Hinweisen im Bild verständlich wird. | mehr als drei Hinweise nötig wären. | lang · mit Text |
 | Diff-Ausschnitt | custom `diff` | die Entscheidung an einer konkreten Text- oder Codeänderung hängt. | der Ausschnitt über ~12 Zeilen wird. | lang · mit Text |
-| **Formatierter Text** | core `text` | es keine Zahl und keine Struktur gibt — Wortwahl, Begründung, Abwägung; Claude formatiert frei (Absatz, Liste, Fettung, Gegenüberstellung). | eine Grafik dieselbe Aussage schneller trägt. | kurz · lang · **die einzige reine Textform** |
+| **Formatierter Text** | core `text` | es keine Zahl und keine Struktur gibt — Wortwahl, Begründung, Abwägung; Claude formatiert frei (Absatz, Liste, Fettung, Gegenüberstellung). Syntax im `text`-Feld: Zeilenumbruch = Absatz, `- ` / `•` = Listenpunkt, `**fett**` = Fettung (auch in Listenpunkten; ein einzelnes `**` bleibt wörtlich). | eine Grafik dieselbe Aussage schneller trägt. | kurz · lang · **die einzige reine Textform** |
 
 ```text
 kpi       {"value":"21 s","label":"Der Autosave allein ist mehr als die Hälfte der Wartezeit."}
