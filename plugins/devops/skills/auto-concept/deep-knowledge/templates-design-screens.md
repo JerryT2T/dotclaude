@@ -97,6 +97,10 @@ with `data-screen`:
   `closeout-sheet`, `device-frame`, `panel-here`, `panel-status`,
   `concept-layout`, `concept-content` — the engine's own head stylesheet
   owns those. `post.concept.gate` blocks both shapes (validation-gate.md P32).
+  An element reset (`.d1 :where(button, a) { background: none; padding: 0 }`)
+  also reaches the engine's note pins and bubbles inside the mock root; the
+  engine guards them (#1080), but keep such resets on the mock's own classes
+  (`.d1-btn`) where you can.
 
 ### Annotated screen (optional annotation layer)
 
