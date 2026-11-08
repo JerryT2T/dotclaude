@@ -112,10 +112,7 @@ A third, independent thing a `design` iteration may hold: fullscreen,
 one component of it — that still belong in the SAME round as the artefact
 they sit next to — `section[data-view]`, a top-level sibling of `section[data-design]`,
 switched exactly like a design (its own switcher segment, its own second
-`#screen-nav` group). Two kinds: `data-view-kind="decision"` (2..n named
-alternatives, bi-state per alternative) and `data-view-kind="comparison"`
-(2..n concrete candidates side by side, verdict per option, optional
-criteria matrix — mandatory skeleton, free interior). See § Step 1a above
+`#screen-nav` group). One kind for new rounds: ONE `data-view-kind="analysis"` view (`data-analysis="full"`) per round, its questions grouped as topics. The old `decision` / `comparison` view kinds are abolished for authoring (gate rule A11; legacy pages still render). See § Step 1a above
 for when to use a view instead of a separate `decision` iteration, and
 `deep-knowledge/templates-design-views.md` § Views (optional) for the full HTML/CSS/JS
 reference and the payload shape (`decisions[].view`, `comments.views`).

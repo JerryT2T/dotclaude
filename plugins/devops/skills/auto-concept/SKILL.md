@@ -63,8 +63,8 @@ concept the user wants. Three modes exist:
 | Mode | What the page is | Templates in scope |
 |---|---|---|
 | **decision** | Pure decision concept — non-visual alternatives to weigh (architecture, strategy, library, approach, …) | `decision` (plus `free` for surrounding analysis) — no mockups |
-| **design** | Pure design concept — visual directions / mockups / click-dummies | `design` only — no decision views, no `decision` iteration |
-| **mixed** | Both — the visual call AND the non-visual calls belong to the same concept | `design` iteration(s) carrying decision views where the question is *about the mock*, and/or a separate `decision` iteration where it stands on its own (entangled-questions rule in 1a) |
+| **design** | Pure design concept — visual directions / mockups / click-dummies | `design` only — no analysis view, no `decision` iteration |
+| **mixed** | Both — the visual call AND the non-visual calls belong to the same concept | `design` iteration(s) carrying one analysis view where the questions are *about the mock*, and/or a separate `decision` iteration where it stands on its own (entangled-questions rule in 1a) |
 
 See `deep-knowledge/step1-templates.md` § Step 0.5 · Asking, the do-batch start, count preferences. Ask exactly ONE `AskUserQuestion` (mixed first, "(Recommended)") unless the prompt names or unambiguously implies the mode or a caller pins the template — then skip it; lean to mixed when the prompt allows two readings; no "Erstmal in Ruhe durchlesen" prefix; a typed "Other" is a real answer; a `--from=do-batch` start derives the mode from its open decisions and never drops a coverage line; the mode is decided once per concept and feedback widens it silently; plus the count preferences (7 alternatives, 3 designs, top 3–7 annotations — the user's count wins).
 
@@ -113,8 +113,8 @@ See `deep-knowledge/step1-templates.md` § 1a · Entangled questions and layout 
 
 **Template continuity — decide once, per concept.** Once a concept has
 rendered a `design` round, every later round stays `design` unless the user
-asked otherwise — a later non-visual question goes into a
-`data-view-kind="decision"` view inside a design round. Exactly two
+asked otherwise — a later non-visual question goes into the round's one
+`data-view-kind="analysis"` view (topics) inside a design round. Exactly two
 exceptions: the **mixed mode** of Step 0.5, and the **final report**, which is
 always `free` (a document with a TOC).
 

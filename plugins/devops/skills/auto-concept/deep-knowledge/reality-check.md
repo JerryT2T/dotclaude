@@ -151,7 +151,7 @@ What differs:
 
 - It keeps the concept's template (`SKILL.md` § Step 1a · Template
   continuity). In a `design` concept the collision cards go into a
-  `section[data-view] data-view-kind="decision"` next to the design the round
+  round's one `section[data-view][data-view-kind="analysis"]` (a topic of its own) next to the design the round
   is about — never into a `decision` round, which would hide the 💬 dock and
   move every note field into the cards halfway through a session. The
   attribute is written explicitly on the section either way.

@@ -13,7 +13,7 @@ a normal iteration, including the append checklist and the `/reset` ordering.
 
 **It also keeps the concept's template** (§ Step 1a · Template continuity): in
 a `design` concept the collision cards go into a
-`section[data-view] data-view-kind="decision"` alongside the design the round
+round's one `section[data-view][data-view-kind="analysis"][data-analysis="full"]` (a topic of its own) alongside the design the round
 is about, NOT into a `decision` round — a gate that swaps the reviewer's
 feedback surface mid-session reads as the page breaking.
 **Read the file back and confirm both attributes landed before `/reload`** — the
