@@ -364,6 +364,20 @@ const SESSION_OPEN = {
   en: { prompt: (t, id) => `Open the side session “${t}” (${id}) in split view.`, tooltip: "Opens the side session next to this chat: the click puts the command in the input box." },
 };
 
+/**
+ * #1085: the "Session öffnen" button of a hand-off card — the same prompt as
+ * the side-session link, so Claude answers it with open_session_in.
+ * @param {string} title target session's title
+ * @param {string} id its `local_…` id
+ * @param {'de'|'en'} lang
+ * @param {boolean} [primary]
+ */
+export function sessionOpenButton(title, id, lang, primary = false) {
+  const s = SESSION_OPEN[lang] || SESSION_OPEN.de;
+  const label = lang === "en" ? "Open session" : "Session öffnen";
+  return { label, icon: "arrow-right", prompt: s.prompt(title, id), tooltip: s.tooltip, ...(primary ? { primary: true } : {}) };
+}
+
 /** Per-language status texts the button script shows after a click. */
 const SEND_TEXT = {
   de: { sent: "Im Eingabefeld, Enter sendet", failed: "Nicht übernommen, Eingabefeld leeren und erneut klicken" },

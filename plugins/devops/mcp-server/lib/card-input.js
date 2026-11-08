@@ -58,7 +58,7 @@ export const LINKED_STATES = ["running", "waiting", "done", "shipped", "failed"]
 export const CARD_KNOWN_KEYS = [
   "variant", "summary", "answer", "lang", "cwd", "buildId", "session_id", "changes", "tests", "nextStep", "readOnly",
   "state", "cta", "userTest", "userFinalTest", "open", "pending", "concept",
-  "deployGate", "validation", "verification", "delivery", "promotion", "pause", "preview", "linked",
+  "deployGate", "validation", "verification", "delivery", "promotion", "pause", "preview", "linked", "handoff",
 ];
 
 /** Top-level keys of `params` the schema does not know, in payload order. */
@@ -209,7 +209,19 @@ export function validateCardInput(params) {
     : !isObj(o) ? "must be a string or { text, reply? }"
     : !isStr(o.text) ? "text must be a string"
     : o.reply !== undefined && !isStr(o.reply) ? "reply must be a string"
+    : o.guide !== undefined && o.guide !== "web" ? 'guide must be "web"'
+    : o.service !== undefined && !isStr(o.service) ? "service must be a string"
     : null);
+
+  if (params.handoff !== undefined && params.handoff !== null) {
+    const h = params.handoff;
+    const why = !isObj(h) ? "must be { session, title, ship? }"
+      : !isStr(h.session) || !/^local_[\w-]+$/.test(h.session.trim()) ? "session must be a local_… id"
+      : !isStr(h.title) || !h.title.trim() ? "title must be a non-empty string"
+      : h.ship !== undefined && typeof h.ship !== "boolean" ? "ship must be a boolean"
+      : null;
+    if (why) issues.push(`handoff: ${why}`);
+  }
 
   eachEntry(issues, "userFinalTest", params.userFinalTest, (u) =>
     isStr(u) ? null

@@ -70,7 +70,7 @@ import { summarizeShip, shipDurationTest } from "./ship/lib/ship-timings.js";
 import { CARD_VARIANTS, coerceCardInput, validateCardInput, formatIssues, unknownCardKeys } from "./lib/card-input.js";
 import { batchGuide, conceptCloseoutOnly, conceptUrl, readBatch, readRunContractLine, sameProjectRoot, titlePrefixFor, titleInstruction, currentSessionTitle, titleStateForKey, hasMandatoryStep, TITLE_SCHEME } from "./lib/mode-state.js";
 import { staleServerLine } from "./lib/server-version.js";
-import { cardWidgetInstruction, isDesktopSession, safeSessionId, warmCardClient, writeCardWidgetFile } from "./lib/card-widget.js";
+import { cardWidgetInstruction, isDesktopSession, safeSessionId, sessionOpenButton, warmCardClient, writeCardWidgetFile } from "./lib/card-widget.js";
 import { detectLaunchPath } from "./lib/launch-path.js";
 import { linkedPlan, linkedKeepTokens } from "./lib/linked-sessions.js";
 import { archiveDecision, archiveInstruction, writeArchiveFlag } from "./lib/session-archive.js";
@@ -1449,6 +1449,8 @@ const HEADINGS = {
     // #714: ship is offered only when nothing is open — an `open` point or a
     // requirement waiting on the user turns the card into the `question` key.
     ready: () => 'Shippen?',
+    // #1085: the turn's result went to another session (`handoff`).
+    handoff: (c) => c.ship ? `an Session „${c.title}“ übergeben — Shippen?` : `an Session „${c.title}“ übergeben`,
     // No remote (#500): nothing to ship to — the work ends at the local commit.
     'ready-local': () => 'Lokal committet — noch etwas?',
     question: (c) => c.question
@@ -1494,6 +1496,7 @@ const HEADINGS = {
   },
   en: {
     ready: () => 'Ship?',
+    handoff: (c) => c.ship ? `handed to session “${c.title}” — ship?` : `handed to session “${c.title}”`,
     'ready-local': () => 'Committed locally — anything else?',
     question: (c) => c.question
       ? c.question
@@ -2090,7 +2093,36 @@ function buildDecisionBlock(input, lang, key, delivery, state) {
     return base;
   }
   const block = baseDecisionBlock(input, lang, key, delivery, state);
-  return withLines(plan && plan.secondary ? { ...block, extraButtons: plan.secondary } : block);
+  return withHandoff(input, lang, key, delivery, state, withLines(plan && plan.secondary ? { ...block, extraButtons: plan.secondary } : block));
+}
+
+/**
+ * #1085: the card's own `handoff` — the turn handed its result to another,
+ * existing session (send_message). A ready card then names the hand-off and
+ * offers "Session öffnen"; Ship stays only when the caller declares own
+ * shippable work (`handoff.ship`).
+ */
+function handoffOf(input) {
+  const h = input && input.handoff;
+  if (!h || typeof h !== 'object' || Array.isArray(h)) return null;
+  const session = typeof h.session === 'string' ? h.session.trim() : '';
+  const title = typeof h.title === 'string' ? h.title.trim() : '';
+  if (!/^local_[\w-]+$/.test(session) || !title) return null;
+  return { session, title, ship: h.ship === true };
+}
+
+function withHandoff(input, lang, key, delivery, state, block) {
+  const h = handoffOf(input);
+  if (!h || key !== 'ready' || hasConcept(input.concept) || block.customButtons) return block;
+  const head = cardHead(input, key, delivery, state);
+  if (head.hkey !== 'ready') return block;
+  const T = HEADINGS[lang] || HEADINGS.de;
+  const heading = TITLE_SCHEME.headingOf(head.id, T.handoff({ title: h.title, ship: h.ship }), { mandatory: head.mandatory });
+  const links = [...(block.sessionLinks || []), { id: h.session, title: h.title, text: h.title }];
+  if (h.ship) {
+    return { ...block, heading, sessionLinks: links, extraButtons: [...(block.extraButtons || []), sessionOpenButton(h.title, h.session, lang)] };
+  }
+  return { ...block, heading, sessionLinks: links, noShip: true, customButtons: [sessionOpenButton(h.title, h.session, lang, true)] };
 }
 
 function baseDecisionBlock(input, lang, key, delivery, state) {
@@ -3309,6 +3341,14 @@ server.registerTool(
           branch: z.string().optional().describe("Its branch / worktree folder."),
         })).optional(),
       ).describe("Side sessions you started with start_session: one entry each. Marked briefs ([devops:handoff] / [devops:deliver]) set the card (⏳/👉 Linked or Team, Released only when ALL are finished, no Ship for their work); unmarked follow-ups are mode independent: one › line, no status change. Pass the state you know from their finished notes."),
+      handoff: z.preprocess(
+        v => typeof v === 'string' ? tryParse(v) : v,
+        z.object({
+          session: z.string().describe("The target session's id 'local_…' you sent the result to (send_message)."),
+          title: z.string().describe("Its title (no status head)."),
+          ship: z.boolean().optional().describe("true = this turn ALSO has own shippable work: Ship stays beside 'Session öffnen'. Default false: only 'Session öffnen'."),
+        }).optional(),
+      ).describe("The turn's outcome was handed to an EXISTING session via send_message (not a start_session child — that is `linked`). On a ready card: heading names the hand-off and the button opens that session."),
       pendingDismissed: z.string().optional().describe("Answer to the pending gate when the listed work is NOT live work of yours: one sentence why (hook-spawned, not mine / already finished, output checked). Only after checking the task output; accepted once. NEVER to hide running work."),
       concept: z.preprocess(
         v => typeof v === 'string' ? tryParse(v) : v,
