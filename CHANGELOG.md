@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.363.0] — 2026-11-08
+
+### Added
+- Completion card: `handoff: {session, title, ship?}` for a result sent to another session — "Ready — an Session „X“ übergeben" with a "Session öffnen" button; Ship stays only with `ship: true` (#1085)
+- Completion card: `open[].guide: "web"` (optional `service`) declares a website step and always renders "Web-Guide starten" (#1084)
+
+### Fixed
+- Completion card: an explicit concept link on the bridge root (or another path on the bridge port) now opens the active concept page instead of a 404 (#1086)
+- Web-guide detection: prepared replies opening with "Ja,"/"Yes," and a bare "führ mich durch …" naming a known web service are recognised; Discord-Portal / Developer-Portal / Entwicklerportal spellings match (#1084)
+- Concept pages: own-note pins, auto pins and bubble summaries keep their disc, glow and padding under mock button resets; a saved note shows its full text on hover and focus (#1080)
+
 ## [0.362.2] — 2026-11-08
 
 ### Fixed
