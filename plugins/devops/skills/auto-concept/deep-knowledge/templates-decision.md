@@ -40,16 +40,19 @@ layout, and for the markup + CSS + JS every page carries.
 
 ## Bi-State Variant Evaluation
 
-**Legacy control.** New decisions are authored in one of the seven decision
-modes (`decision-modes.md`; markup in `templates-analysis.md` § Decision
-modes) — a `[data-decision]` with `data-decision-mode`. A `[data-decision]`
-WITHOUT a mode is this bi-state: old and frozen rounds keep it and its
-`evaluation` payload unchanged, and a new round may still use it for its one
-fitting job — independent items, each taken or left — though `multi` is
-preferred there. Mutually exclusive alternatives are always `single`, never
-the emulation below (gate A7).
+**Abolished for authoring — render-only.** New rounds never author this
+control: a standalone `decision` round is a **Full** analysis
+(`data-analysis="full"`: briefing, topics, one decision per stage; Lite only
+for ≤ 5 questions inside a `decision` / `free` round —
+`step1-templates.md` § 1b), and every question is a `[data-decision]` with a
+`data-decision-mode` (`decision-modes.md`; markup in `templates-analysis.md`
+§ Decision modes). Independent items, each taken or left, are `multi`;
+mutually exclusive alternatives are `single` (gate A7). A `[data-decision]`
+WITHOUT a mode is this bi-state: it is documented below ONLY so old and frozen
+pages keep rendering and submitting their `evaluation` payload unchanged —
+do not copy it into a new round.
 
-In a legacy-style decision page, every variant includes a **bi-state**
+On such a legacy page, every variant carries a **bi-state**
 selector with exactly two options.
 
 | State | Label | Behavior |
@@ -333,7 +336,7 @@ The decision template has six content sub-variants. They describe the shape
 of the variant cards — not a different page layout. Every question on them is
 a decision in one of the seven modes (`decision-modes.md`, markup in
 `templates-analysis.md` § Decision modes); the include / discard bi-state
-above is the legacy control and there is no tri-state, no "Nur diese" and no
+above is the abolished legacy control and there is no tri-state, no "Nur diese" and no
 priority selector.
 
 ### Variant: analysis

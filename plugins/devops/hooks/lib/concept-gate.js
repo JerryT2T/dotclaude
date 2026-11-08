@@ -880,6 +880,50 @@ function findViewOverlap(html) {
   return issues;
 }
 
+/**
+ * Authoring ban on the old decision-view style (bundle B3): in a LIVE design
+ * round (iteration open tag carries `data-active`) a view must not be
+ * `data-view-kind="decision"` / `"comparison"` (the Verwerfen / Miteinbeziehen
+ * bi-state cards), and the round carries at most ONE analysis view
+ * (`data-view-kind="analysis"`) — several questions are topics of that one
+ * Full analysis. Frozen rounds (no `data-active`) are legacy pages and keep
+ * rendering untouched.
+ *
+ * @returns {Array<{kind:string, why:string, at:number}>}
+ */
+function findLegacyDecisionViews(html) {
+  const body = String(html || '').replace(/<!--[\s\S]*?-->/g, m => ' '.repeat(m.length));
+  const issues = [];
+  const re = /<section\b[^>]*\s(data-iteration|data-view)=("|')([^"']*)\2[^>]*>/gi;
+  let live = false, iterN = '?', m;
+  const analysis = [];
+  const flush = () => {
+    if (live && analysis.length > 1) {
+      issues.push({ kind: 'multiple-analysis-views', at: analysis[1].at,
+        why: `iteration ${iterN} has ${analysis.length} analysis views ("${analysis.map(a => a.id).join('", "')}") — a design round has at most ONE analysis view; carry the questions as several topics of that one Full analysis (templates-analysis.md § Full inside a design round)` });
+    }
+    analysis.length = 0;
+  };
+  while ((m = re.exec(body)) !== null) {
+    if (m[1].toLowerCase() === 'data-iteration') {
+      flush();
+      live = /\sdata-active(?=[\s=>])/i.test(m[0]);
+      iterN = m[3];
+      continue;
+    }
+    if (!live) continue;
+    const kind = (attrOf(m[0], 'data-view-kind') || '').toLowerCase();
+    if (kind === 'decision' || kind === 'comparison') {
+      issues.push({ kind: 'legacy-decision-view', at: m.index,
+        why: `view "${m[3]}" is data-view-kind="${kind}" — the old Verwerfen / Miteinbeziehen decision-view style is abolished; ask it as a topic of the round's Full analysis (data-view-kind="analysis" data-analysis="full": briefing, topics, one decision per stage; templates-analysis.md § Full inside a design round)` });
+    } else if (kind === 'analysis') {
+      analysis.push({ id: m[3], at: m.index });
+    }
+  }
+  flush();
+  return issues;
+}
+
 // --- Variant overview authoring (validation-gate.md § Variant overview) -----
 
 /**
@@ -1196,9 +1240,10 @@ function evaluate(filePath, html) {
   const collisions = findChromeCollisions(html);
   const finalReport = findFinalReportIssues(html);
   const a = findAnalysisIssues(html);
+  const legacyViews = findLegacyDecisionViews(html);
   return {
     applicable: true,
-    ok: missing.length === 0 && forbidden.length === 0 && structural.length === 0 && mapping.length === 0 && overlap.length === 0 && stale.length === 0 && collisions.length === 0 && finalReport.length === 0 && a.errors.length === 0,
+    ok: missing.length === 0 && forbidden.length === 0 && structural.length === 0 && mapping.length === 0 && overlap.length === 0 && stale.length === 0 && collisions.length === 0 && finalReport.length === 0 && a.errors.length === 0 && legacyViews.length === 0,
     missing,
     forbidden,
     structural,
@@ -1207,7 +1252,7 @@ function evaluate(filePath, html) {
     stale,
     collisions,
     finalReport,
-    analysis: a.errors,
+    analysis: [...a.errors, ...legacyViews],
     // Advisory, never part of `ok`.
     warnings: [...findDesignAuthoringWarnings(html), ...findIdenticalFirstScreens(html), ...findDifferingAlternativePages(html), ...findFinalReportPlaceholders(html), ...a.warnings, ...st.warnings],
   };
@@ -1406,6 +1451,7 @@ module.exports = {
   findStructural,
   findMappingIssues,
   findViewOverlap,
+  findLegacyDecisionViews,
   findChromeCollisions,
   findFinalReportIssues,
   finalReportRegion,
