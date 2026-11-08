@@ -417,7 +417,10 @@ export function conceptCloseoutOnly(cwd) {
 
 /**
  * The URL the open concept page lives at, or '' when it cannot be resolved.
- * An explicit `concept.url` wins; otherwise `{cwd}/.claude/concept-active.json`
+ * An explicit `concept.url` wins — except a url on the bridge's own port that
+ * names another path than `html_path`, or a bare localhost root: those 404, so
+ * the state URL (or '' without a live state) replaces them (#1086). Otherwise
+ * `{cwd}/.claude/concept-active.json`
  * (`port` + `html_path`, written by /auto-concept Step 3) yields the bridge URL the
  * page was opened with.
  *
@@ -426,15 +429,29 @@ export function conceptCloseoutOnly(cwd) {
  * @returns {string}
  */
 export function conceptUrl(cwd, concept) {
-  const explicit = concept && typeof concept === "object" ? concept.url : "";
-  if (typeof explicit === "string" && /^https?:\/\//.test(explicit.trim())) return explicit.trim();
+  const raw = concept && typeof concept === "object" ? concept.url : "";
+  const explicit = typeof raw === "string" && /^https?:\/\//.test(raw.trim()) ? raw.trim() : "";
   // A `concept` field is the caller asserting the page is open: resolve the
   // link whatever the age of the open (#563). Only the fallback without one
   // has to tell a live concept from a corpse.
   const state = readConceptState(cwd, { skipStale: Boolean(concept) });
-  if (!state) return "";
-  const htmlPath = String(state.html_path).replace(/\\/g, "/").replace(/^\.?\//, "");
-  return `http://localhost:${state.port}/${htmlPath}`;
+  const stateUrl = state
+    ? `http://localhost:${state.port}/${String(state.html_path).replace(/\\/g, "/").replace(/^\.?\//, "")}`
+    : "";
+  if (!explicit) return stateUrl;
+  // The bridge serves the page only at `/<html_path>`: an explicit url on the
+  // bridge itself that names another path (its bare root above all) is a 404
+  // at the moment the user is asked to decide (#1086). Other hosts stay an
+  // explicit override.
+  let u;
+  try { u = new URL(explicit); } catch { return explicit; }
+  const local = /^(localhost|127\.0\.0\.1|\[::1\])$/i.test(u.hostname);
+  const bareRoot = (u.pathname === "/" || u.pathname === "") && !u.search && !u.hash;
+  if (state && local && Number(u.port) === state.port) {
+    return u.pathname.replace(/^\/+/, "") === new URL(stateUrl).pathname.replace(/^\/+/, "") ? explicit : stateUrl;
+  }
+  if (local && bareRoot) return stateUrl;
+  return explicit;
 }
 
 /**

@@ -3314,7 +3314,7 @@ server.registerTool(
           z.enum(["waiting", "iterating", "implementing"]),
           z.object({
             phase: z.enum(["waiting", "iterating", "implementing"]).optional().describe("'waiting' (default) = page open, next step is the user's submission; 'iterating' = next iteration being produced; 'implementing' = an implement submission is executing."),
-            url: z.string().optional().describe("Override for the page URL (shown only while 'waiting'). Normally not needed: with `cwd` the card reads it from .claude/concept-active.json."),
+            url: z.string().optional().describe("Override for the page URL (shown only while 'waiting'). Normally not needed: with `cwd` the card reads it from .claude/concept-active.json. A bridge-root or other-path url on the bridge's port is replaced by the active page's url."),
           }),
         ]).optional(),
       ).describe("A /auto-concept page is OPEN at turn end. Replaces every variant's CTA and outranks `pending`. Real background work still goes into `pending`; bridge server, pulser and waker are infrastructure - NEVER in `pending`. Pass `cwd` too."),

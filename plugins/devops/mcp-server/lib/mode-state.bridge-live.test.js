@@ -111,6 +111,22 @@ describe("conceptUrl / readConceptState / conceptCloseoutOnly against a dead bri
     expect(conceptCloseoutOnly(cwd)).toBe(false);
   });
 
+  test("explicit bridge-root or foreign-path url is replaced by the active page (#1086)", () => {
+    writeFileSync(join(reg, "8811.json"), JSON.stringify({ port: 8811, pid: process.pid }));
+    const page = "http://localhost:8811/docs/concepts/x.html";
+    expect(conceptUrl(cwd, { phase: "waiting", url: "http://localhost:8811/" })).toBe(page);
+    expect(conceptUrl(cwd, { phase: "waiting", url: "http://localhost:8811" })).toBe(page);
+    expect(conceptUrl(cwd, { phase: "waiting", url: "http://127.0.0.1:8811/docs/concepts/old.html" })).toBe(page);
+    expect(conceptUrl(cwd, { phase: "waiting", url: page })).toBe(page);
+    expect(conceptUrl(cwd, { phase: "waiting", url: "https://example.com/" })).toBe("https://example.com/");
+  });
+
+  test("explicit bare root without a live state: no link instead of a 404 (#1086)", () => {
+    rmSync(join(cwd, ".claude", "concept-active.json"));
+    expect(conceptUrl(cwd, { phase: "waiting", url: "http://localhost:8960/" })).toBe("");
+    expect(conceptUrl(cwd, { phase: "waiting", url: "http://localhost:8960/docs/concepts/y.html" })).toBe("http://localhost:8960/docs/concepts/y.html");
+  });
+
   test("deleted page (discard): no link, no close-out", () => {
     rmSync(join(cwd, "docs", "concepts", "x.html"));
     expect(conceptUrl(cwd, undefined)).toBe("");
