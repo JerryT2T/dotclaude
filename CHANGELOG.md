@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.363.3] — 2026-11-08
+
+### Fixed
+- Concept title: the "your move" 👉 title flips to ⏳ after a submission also when the concept page runs in another checkout than the session's cwd; `stop.flow.guard` blocks a card turn once when the title the card demanded was never applied (e.g. an offline `--render-card` whose title block was dropped) (#1090)
+
 ## [0.363.2] — 2026-11-08
 
 ### Fixed
