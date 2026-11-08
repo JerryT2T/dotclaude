@@ -3282,6 +3282,8 @@ server.registerTool(
             text: z.string().describe("The open point as the card shows it."),
             finding: z.enum(["in-scope", "out-of-scope"]).optional().describe("Set on a review/QA finding. 'in-scope' = a defect in this diff's own topic: refused on ship-successful (fix it or block the ship). 'out-of-scope' = outside the diff's topic or requirement: may be an open point."),
             reply: z.string().optional().describe("The user's answer if they want this point tackled, written as the user ('Ja, die Änderung bitte auch in X machen.'). For either-or name your recommendation."),
+            guide: z.enum(["web"]).optional().describe("'web' = this point is a manual step on a website the user wants walked through (log in, upload, API key, portal setting): the card shows 'Web-Guide starten' for it, whatever the wording."),
+            service: z.string().optional().describe("With guide: the site or service the guide opens (e.g. 'Discord Developer Portal'). Optional; read from text/reply otherwise."),
           }),
         ])).optional(),
       ).describe("Follow-ups that are NOT tests: a decision the user must take, a cleanup, an open question about THIS work. Never another branch, worktree or session (dropped). Never a spawn_task topic (the chip IS the offer). Only what the user deferred or found outside scope - never the obvious next step (ship, push, release, bump, promote — promotion has its own buttons, as an open point its reply would ride on Nachbessern), a generic nudge, or a shortfall of this task (that goes in changes/validation). Default: omit. Manual tests stay in userFinalTest."),
