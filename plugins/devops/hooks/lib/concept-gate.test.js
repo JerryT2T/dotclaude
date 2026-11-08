@@ -19,6 +19,7 @@ import {
   buildBlockReason,
   findMappingIssues,
   findViewOverlap,
+  findLegacyDecisionViews,
   findChromeCollisions,
   ENGINE_CLASSES,
   findIdenticalFirstScreens,
