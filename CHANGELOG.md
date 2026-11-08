@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.363.1] — 2026-11-08
+
+### Fixed
+- Ship preflight: feature-flagged skills (e.g. auto-frustrated) are no longer reported as missing from the README skill tables — they never get a row
+
+### Changed
+- Docs: the completion-card design spec is split by topic — Desktop widget vs. terminal and the tool-schema field rationale now live in their own deep-knowledge files
+
 ## [0.363.0] — 2026-11-08
 
 ### Added
