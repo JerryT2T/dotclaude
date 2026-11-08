@@ -98,3 +98,33 @@ describe("side-session cards through the offline renderer", () => {
     expect(open.buttons).not.toContain("Ship");
   }, 30000);
 });
+
+describe("hand-off to an existing session (#1085)", () => {
+  const H = { session: "local_abc-123", title: "Nachschub HQ" };
+
+  test("docs-only hand-off: heading names it, only 'Session öffnen'", () => {
+    const r = render({ variant: "ready", handoff: H });
+    expect(r.title).toBe("👉 ➜ 📦 Ready ┃ ");
+    expect(r.heading).toBe("👉 📦 Ready — an Session „Nachschub HQ“ übergeben");
+    expect(r.buttons).toEqual(["Session öffnen"]);
+    expect(r.headingLinks.join(" ")).toContain("local_abc-123");
+  }, 30000);
+
+  test("with own shippable work: Ship and 'Session öffnen'", () => {
+    const r = render({ variant: "ready", handoff: { ...H, ship: true } });
+    expect(r.heading).toBe("👉 📦 Ready — an Session „Nachschub HQ“ übergeben — Shippen?");
+    expect(r.buttons).toEqual(["Ship", "Session öffnen"]);
+  }, 30000);
+
+  test("english card", () => {
+    const r = render({ variant: "ready", lang: "en", handoff: H });
+    expect(r.heading).toBe("👉 📦 Ready — handed to session “Nachschub HQ”");
+    expect(r.buttons).toEqual(["Open session"]);
+  }, 30000);
+
+  test("an invalid session id never renders a hand-off", () => {
+    const r = render({ variant: "ready", handoff: { session: "abc", title: "X" } });
+    expect(r.heading).not.toContain("übergeben");
+    expect(r.buttons).not.toContain("Session öffnen");
+  }, 30000);
+});
