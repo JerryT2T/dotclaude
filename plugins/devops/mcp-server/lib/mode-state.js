@@ -293,6 +293,23 @@ function targetTitle(prefix, current) {
   return next === current ? null : next;
 }
 
+/**
+ * The one exact title a card's title block demands, or `null` when it demands
+ * none or no single one: no prefix, an unknown current title (the
+ * get_session fallback), the conditional `{ owned, other }` concept form, or
+ * the title already right. stop.flow.guard compares the session title with
+ * it after the turn (#1090) — a title block dropped on the way (the offline
+ * `--render-card` output filtered down to its widget) is caught there.
+ *
+ * @param {string|null|{ owned: string, other: string|null }} prefix from `titlePrefixFor`
+ * @param {string|null} current the title now
+ * @returns {string|null}
+ */
+export function demandedTitle(prefix, current) {
+  if (typeof prefix !== "string" || typeof current !== "string" || !current.trim()) return null;
+  return targetTitle(prefix, current);
+}
+
 /** The set call for `title`, exact and JSON-escaped. */
 function setCall(title) {
   return `${SET_TOOL} {session_id:"self", title:${JSON.stringify(title)}}`;

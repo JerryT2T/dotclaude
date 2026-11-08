@@ -89,6 +89,44 @@ describe("post.concept.title", () => {
     expect(run(`${CONCEPT_PREFIX}Header`)).not.toBeNull();
   });
 
+  // #1090: the session's cwd is one checkout, the concept page runs in another
+  // (`--state "<other>/.claude/concept-active.json"` on the watcher launch).
+  // The flip has to find that store, also when the wake lands mid-turn.
+  test("finds a concept outside the cwd through the session's own watcher launch", () => {
+    const sessionCwd = fs.mkdtempSync(path.join(os.tmpdir(), "concept-title-cwd-"));
+    const pointer = path.join(sessionCwd, "pointer");
+    try {
+      activate();
+      writeState({ version: 4 });
+      const statePath = path.join(cwd, ".claude", "concept-active.json").replace(/\\/g, "/");
+      const call = (tool_name, tool_input = {}) => main(
+        { tool_name, tool_input, cwd: sessionCwd, session_id: "s1" },
+        { pointer, readTitle: () => `${CONCEPT_PREFIX}Companion Core Refine` },
+      );
+      // Before any launch is seen the hook has no way to the store.
+      expect(call("Bash", { command: "git status" })).toBeNull();
+      // The watcher launch is itself a Bash call — the flip fires on it already.
+      const launch = `node "C:/plugin/scripts/concept-watch.js" --mode waker --port 8812 --state "${statePath}" --owner fd124798`;
+      const out = call("Bash", { command: launch });
+      expect(out.context).toContain(JSON.stringify(`${CONCEPT_WORKING_PREFIX}Companion Core Refine`));
+      // A newer submission is found on any later tool call (e.g. the Agent spawn).
+      writeState({ version: 5 });
+      expect(call("Agent", { prompt: "x" })).not.toBeNull();
+    } finally {
+      fs.rmSync(sessionCwd, { recursive: true, force: true });
+    }
+  });
+
+  test("launchedStatePath reads only a concept watcher's --state", () => {
+    const { launchedStatePath } = require("./post.concept.title.js");
+    const bash = (command) => ({ tool_name: "Bash", tool_input: { command } });
+    expect(launchedStatePath(bash('node x/concept-watch.js --mode watch --state "P:/A/.claude/concept-active.json"'))).toBe("P:/A/.claude/concept-active.json");
+    expect(launchedStatePath(bash("node x/concept-tick.js --state P:/A/.claude/concept-active.json --port 1"))).toBe("P:/A/.claude/concept-active.json");
+    expect(launchedStatePath(bash('node x/other.js --state "P:/A/.claude/concept-active.json"'))).toBeNull();
+    expect(launchedStatePath(bash('node x/concept-watch.js --state "P:/A/state.json"'))).toBeNull();
+    expect(launchedStatePath({ tool_name: "Read", tool_input: { file_path: "x" } })).toBeNull();
+  });
+
   test("never fires on the session tools themselves", () => {
     activate();
     writeState();

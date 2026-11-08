@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook post.concept.title
- * @version 0.1.0
+ * @version 0.2.0
  * @event PostToolUse
  * @plugin devops
  * @matcher ^(?!(?:Read|Glob|Grep)$|mcp__ccd_)
@@ -27,6 +27,14 @@
  *   call: an idle session still relies on the pickup waker. The `👉` prefix
  *   itself comes back only with the card after `/reset` of the next round.
  *   Cost on a tool call without an open concept: one failed stat.
+ *
+ *   The concept need not live in the session's cwd (#1090): a session can run
+ *   a concept page in another checkout (`--state "<other root>/.claude/
+ *   concept-active.json"`). The hook remembers the state path from the
+ *   session's own concept-watch / concept-tick launch command (a per-session
+ *   pointer in the temp dir) and falls back to it when the cwd has no active
+ *   concept — before, the flip never fired there and the title kept `👉`
+ *   through a whole finalize implement.
  */
 
 require('../lib/plugin-guard');
@@ -34,10 +42,14 @@ require('../lib/plugin-guard');
 const fs = require('fs');
 const path = require('path');
 const { runHook } = require('../lib/hook-input');
+const { sessionFile, writeSessionFile } = require('../lib/session-id');
 const { readCurrentTitle, stripPrefixes, CONCEPT_PREFIX, CONCEPT_WORKING_PREFIX } = require('../lib/session-title');
 
 const TAG = '[post.concept.title]';
 const NOTIFIED = '.title-notified';
+const POINTER = 'dotclaude-devops-concept-state';
+// The waker / pulser / tick launch: `concept-watch.js … --state "<path>"`.
+const STATE_ARG = /concept-(?:watch|tick)\.js\b[^\n]*?--state\s+(?:"([^"]+)"|'([^']+)'|(\S+))/;
 
 function readJson(file) {
   try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; }
@@ -55,6 +67,35 @@ function activeStore(cwd) {
   const base = path.basename(active.html_path).replace(/\.html$/i, '');
   if (!base) return null;
   return path.join(cwd, '.claude', 'concepts', base);
+}
+
+/**
+ * The concept state path (`<root>/.claude/concept-active.json`) a Bash
+ * command launches a concept watcher for, or null.
+ *
+ * @param {object} hook PostToolUse payload
+ * @returns {string|null}
+ */
+function launchedStatePath(hook) {
+  if (!hook || (hook.tool_name !== 'Bash' && hook.tool_name !== 'PowerShell')) return null;
+  if (!hook.tool_input || typeof hook.tool_input.command !== 'string') return null;
+  const m = STATE_ARG.exec(hook.tool_input.command);
+  const p = m && (m[1] || m[2] || m[3]);
+  return p && /concept-active\.json$/i.test(p) ? p : null;
+}
+
+/**
+ * The project root of the concept this session runs outside its cwd, from
+ * the pointer its launch command left, or null.
+ *
+ * @param {string} pointer pointer file
+ * @returns {string|null}
+ */
+function pointedRoot(pointer) {
+  let state;
+  try { state = fs.readFileSync(pointer, 'utf8').trim(); } catch { return null; }
+  if (!state) return null;
+  return path.dirname(path.dirname(state));
 }
 
 /**
@@ -86,7 +127,14 @@ function waitingVersion(state) {
 function main(hook, deps = {}) {
   if (hook && typeof hook.tool_name === 'string' && hook.tool_name.startsWith('mcp__ccd_')) return null;
   const cwd = deps.cwd || (hook && hook.cwd) || process.cwd();
-  const store = activeStore(cwd);
+  const pointer = deps.pointer || sessionFile(POINTER, hook && hook.session_id);
+  const launched = launchedStatePath(hook);
+  if (launched) try { writeSessionFile(pointer, launched); } catch { /* advisory */ }
+  let store = activeStore(cwd);
+  if (!store) {
+    const root = pointedRoot(pointer);
+    if (root && path.resolve(root) !== path.resolve(cwd)) store = activeStore(root);
+  }
   if (!store) return null;
   const version = waitingVersion(readJson(path.join(store, 'state.json')));
   if (version === null) return null;
@@ -114,4 +162,4 @@ function main(hook, deps = {}) {
 
 if (require.main === module) runHook(main, { event: 'PostToolUse' });
 
-module.exports = { main, activeStore, waitingVersion };
+module.exports = { main, activeStore, waitingVersion, launchedStatePath };

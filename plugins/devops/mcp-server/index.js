@@ -68,7 +68,7 @@ import { hasPending, pendingWhat, renderPendingLine, hasConcept, normalizePendin
 import { clampText, clampEllipsis } from "./lib/soft-limits.js";
 import { summarizeShip, shipDurationTest } from "./ship/lib/ship-timings.js";
 import { CARD_VARIANTS, coerceCardInput, validateCardInput, formatIssues, unknownCardKeys } from "./lib/card-input.js";
-import { batchGuide, conceptCloseoutOnly, conceptUrl, readBatch, readRunContractLine, sameProjectRoot, titlePrefixFor, titleInstruction, currentSessionTitle, titleStateForKey, hasMandatoryStep, TITLE_SCHEME } from "./lib/mode-state.js";
+import { batchGuide, conceptCloseoutOnly, conceptUrl, readBatch, readRunContractLine, sameProjectRoot, titlePrefixFor, titleInstruction, demandedTitle, currentSessionTitle, titleStateForKey, hasMandatoryStep, TITLE_SCHEME } from "./lib/mode-state.js";
 import { staleServerLine } from "./lib/server-version.js";
 import { cardWidgetInstruction, isDesktopSession, safeSessionId, sessionOpenButton, warmCardClient, writeCardWidgetFile } from "./lib/card-widget.js";
 import { detectLaunchPath } from "./lib/launch-path.js";
@@ -2645,8 +2645,27 @@ function sessionTitleNote(params) {
   const linkedPlanNow = linkedPlanFor(params, resolveCardKey(params), 'de');
   const linkedHead = !!(linkedPlanNow && linkedPlanNow.head);
   const prefix = titlePrefixFor(params, { hasPending: (p) => !linkedHead && hasPending(p), hasConcept, outcome: outcomeTitlePrefix, current });
+  recordDemandedTitle(params.session_id, prefix === null ? null : demandedTitle(prefix, current));
   if (prefix === null) return '';
   return titleInstruction(prefix, current);
+}
+
+/** Flag file stop.flow.guard reads (#1090): the exact title the last card demanded. */
+const CARD_TITLE_FLAG = 'dotclaude-devops-card-title';
+
+/**
+ * Leaves the exact title this card's title block demands for stop.flow.guard,
+ * which blocks the turn end once when the session title never got there —
+ * the title block can be lost on the way (an offline `--render-card` output
+ * filtered down to its widget). `null` removes an older card's demand.
+ * Advisory: a failed write only skips that check.
+ */
+function recordDemandedTitle(sessionId, title) {
+  const file = join(tmpdir(), CARD_TITLE_FLAG + '-' + (sessionId || 'unknown'));
+  try {
+    if (title) writeFileSync(file, title);
+    else unlinkSync(file);
+  } catch { /* none written / unwritable — the check is skipped */ }
 }
 
 /** Orchestrator holds and the devops switch, read through the hooks' own libs
