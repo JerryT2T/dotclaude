@@ -14,7 +14,9 @@
  *   2. OPEN WORK. A start_session whose brief carries `[devops:handoff]` or
  *      `[devops:deliver]` and whose result says `Started session "…" (session_id: local_…`
  *      is OPEN linked work until a later note for that id reports a finished turn
- *      that is done. Unmarked sessions are independent follow-ups: never work.
+ *      that is done. An unmarked session started with `initiation: "user_asked"`
+ *      counts as `handoff` (the user ordered it as part of the request); other
+ *      unmarked sessions are independent follow-ups: never work.
  *      Linked work is its own class (kind 'session'), NOT part of scanOpenTasks —
  *      the card surfaces it through its `linked` field, never through `pending`.
  *
@@ -43,14 +45,35 @@ const SIDE_SESSION_TURN_PATTERN = new RegExp(
 /** A report that clearly waits for / asks the user. */
 const WAITING_RE = /\?\s*["”]?\s*$|\b(?:waiting (?:for|on) (?:you|your|the user)|waits? (?:for|on) (?:you|your|the user)|let me know|please (?:confirm|choose|decide|answer)|do you want|should i|which (?:option|one)|wartet auf (?:dich|dein|den nutzer)|warte auf (?:dich|deine?n?)|bitte (?:bestätige|entscheide|antworte)|soll ich|möchtest du|willst du)\b/i;
 
+/**
+ * A report whose own work is still in flight ("Volle Suite läuft noch", "PR #12 ist
+ * noch offen, noch nichts gemergt", "still running") — a turn ended, the task did not.
+ * Checked after WAITING_RE: a report that also asks the user is 'waiting'.
+ */
+const RUNNING_RE = /\b(?:läuft (?:noch|jetzt|gerade|weiter)|laufen noch|noch (?:nicht fertig|nichts gemergt|offen|im hintergrund)|ist noch offen|kommt erst|erst danach|warte auf (?:sein|ihr|das|den) ergebnis|still (?:running|in progress|open)|not (?:finished|done|merged) yet|nothing merged yet|in progress|runs? in the background|waiting (?:for|on) (?:its|the) (?:result|run|build|ci))\b/i;
+
+/**
+ * The linked mode of a start_session input: its brief marker, else `handoff` for a
+ * session the user asked for (`initiation: "user_asked"`) — that work is part of the
+ * user's request, so the parent's status must track it. Unmarked offers and
+ * own-initiative proposals stay independent follow-ups (null).
+ */
+function launchMode(input) {
+  const m = MARKER_RE.exec(String((input && input.prompt) || ''));
+  if (m) return m[1] === 'deliver' ? 'deliver' : 'handoff';
+  return input && input.initiation === 'user_asked' ? 'handoff' : null;
+}
+
 function isSideSessionTurn(text) {
   return typeof text === 'string' && SIDE_SESSION_TURN_PATTERN.test(text);
 }
 
-/** done | waiting — from the quoted report of a finished-turn note. */
+/** done | waiting | running — from the quoted report of a finished-turn note. */
 function reportState(report) {
   const r = String(report || '').trim();
-  return r && WAITING_RE.test(r) ? 'waiting' : 'done';
+  if (!r) return 'done';
+  if (WAITING_RE.test(r)) return 'waiting';
+  return RUNNING_RE.test(r) ? 'running' : 'done';
 }
 
 /**
@@ -112,8 +135,8 @@ function scanLinkedSessions(transcriptContent) {
     if (entry.type === 'assistant' && Array.isArray(content)) {
       for (const b of content) {
         if (b && b.type === 'tool_use' && b.name === START_TOOL && b.input) {
-          const m = MARKER_RE.exec(String(b.input.prompt || ''));
-          if (m) launchers.set(b.id, { mode: m[1] === 'deliver' ? 'deliver' : 'handoff', title: String(b.input.title || '') });
+          const mode = launchMode(b.input);
+          if (mode) launchers.set(b.id, { mode, title: String(b.input.title || '') });
         }
       }
       continue;
@@ -134,7 +157,7 @@ function scanLinkedSessions(transcriptContent) {
         const known = sessions.get(n.id);
         if (!known) continue; // unmarked or unseen session: never work
         if (n.state === 'done') sessions.delete(n.id);
-        else known.state = 'waiting';
+        else known.state = n.state;
       }
     }
   }

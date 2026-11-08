@@ -555,7 +555,7 @@ automation couldn't cover.
 ## Side sessions (`start_session`)
 
 A brief for a side session carries one marker so the parent's title and card know the mode:
-`[devops:handoff]` when the child ships itself, `[devops:deliver]` when the parent integrates and ships. A child whose first prompt carries `[devops:deliver]` ends with the `delivered` card and never ships. No marker means an independent follow-up: the parent's status does not change. Card and title rules: `completion-card-design.md` § 3, `session-title-scheme.md` § Side sessions.
+`[devops:handoff]` when the child ships itself, `[devops:deliver]` when the parent integrates and ships. A child whose first prompt carries `[devops:deliver]` ends with the `delivered` card and never ships. No marker means an independent follow-up: the parent's status does not change — except a session the user asked for (`initiation: "user_asked"`), which counts as `handoff`; mark it anyway. Card and title rules: `completion-card-design.md` § 3, `session-title-scheme.md` § Side sessions.
 
 ## Branch Strategy
 

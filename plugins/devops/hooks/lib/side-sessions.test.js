@@ -85,6 +85,32 @@ describe("scanLinkedSessions", () => {
     expect(P.scanLinkedSessions(jl(...start("[devops:handoff]", [mine])))).toEqual([]);
   });
 
+  test("an unmarked session the user asked for (user_asked) is linked as handoff; offers and own-initiative stay independent", () => {
+    const run = (initiation) => P.scanLinkedSessions(jl(
+      userText("go inkl. einem devops backlog lauf"),
+      use("t1", { title: "Backlog", prompt: "devops backlog — run do-run backlog", initiation }),
+      res("t1", started("Backlog", ID)),
+    ));
+    expect(run("user_asked")).toEqual([{ id: ID, kind: "session", title: "Backlog", mode: "handoff", state: "running" }]);
+    expect(run("own_initiative")).toEqual([]);
+    expect(run("offer")).toEqual([]);
+  });
+
+  test("a turn note whose work is still in flight keeps the session running; only a done report closes it", () => {
+    const mid = [
+      "Alle 4 Issues sind umgesetzt. Volle Suite + Lint laufen noch im Hintergrund; danach folgt /do-ship.",
+      "Der Release läuft noch (PR #1088 ist offen, noch nichts gemergt).",
+      "Der Ship-Lauf für PR #1088 ist noch nicht fertig, deshalb kommt die Abschlusskarte erst danach; ich warte auf sein Ergebnis.",
+      "CI still running, nothing merged yet.",
+    ];
+    for (const r of mid) {
+      expect(S.reportState(r), r).toBe("running");
+      expect(P.scanLinkedSessions(jl(...start("[devops:handoff]", [userText(note("Doku", ID, r))])))).toMatchObject([{ id: ID, state: "running" }]);
+    }
+    const done = userText(note("Doku", ID, "v0.363.0 ist auf alpha geshippt (PR #1088), der Backlog ist leer."));
+    expect(P.scanLinkedSessions(jl(...start("[devops:handoff]", [userText(note("Doku", ID, mid[1])), done])))).toEqual([]);
+  });
+
   test("never part of scanOpenTasks (no fake pending entry)", () => {
     expect(P.scanOpenTasks(jl(...start("[devops:handoff]")))).toEqual([]);
   });
