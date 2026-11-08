@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.363.2] — 2026-11-08
+
+### Fixed
+- A side session you asked for keeps the parent session's title on Linked until it shipped, instead of being ignored as an independent follow-up
+- A side-session report saying its work still runs ("läuft noch", "noch nichts gemergt") no longer closes the session as done
+
 ## [0.363.1] — 2026-11-08
 
 ### Fixed

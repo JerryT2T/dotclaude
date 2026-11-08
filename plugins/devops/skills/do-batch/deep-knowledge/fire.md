@@ -67,7 +67,9 @@ skill trigger or alias, even clipped or led by "und …" ("und devops backlog",
 "auch noch harden"), is an order to run that skill, never a Frage. It is
 not part of the merged plan: start it as its own session when it is
 independent of the plan (`do-run backlog` beside a polish plan), else as a
-plan step. Asking back what "und devops backlog" meant cost the user a
+plan step. That session is part of the user's order: start it `user_asked`
+with `[devops:handoff]` in its brief, so this session's title and card track
+it (`⏳ Linked`) until it shipped — never as an unmarked follow-up. Asking back what "und devops backlog" meant cost the user a
 round trip (#11 of a 15-note batch).
 
 Count the lines against the note count in the injected context before you go on.
