@@ -18,6 +18,30 @@ describe("own note layer against mock CSS", () => {
     expect(rule).toMatch(/z-index: 30 !important/);
   });
 
+  // #1080: a mock reset `:is([data-design], …) .bz :where(button,a)
+  // { background:none; padding:0; box-shadow:none }` (0,2,0) stripped the pin
+  // disc and the bubble summary's padding. Verified in a browser: without the
+  // guard computed background/box-shadow = none, padding = 0; with it the
+  // disc, glow and padding stay. `:not(#_)` adds id weight, no !important.
+  test("pins and bubble summaries keep their look under a mock button reset", () => {
+    const pin = src.match(/^\.upin-pin:not\(#_\) \{[^}]*\}/m)?.[0] ?? "";
+    expect(pin).toMatch(/background: linear-gradient\(160deg, #ecd9ff, var\(--upin-color\)\)/);
+    expect(pin).toMatch(/box-shadow: 0 0 0 4px/);
+    expect(pin).toMatch(/padding: 0/);
+    expect(pin).not.toMatch(/!important/);
+    const anno = src.match(/^\.anno-pin:not\(#_\) \{[^}]*\}/m)?.[0] ?? "";
+    expect(anno).toMatch(/background: linear-gradient/);
+    expect(anno).toMatch(/font-size: 0/);
+    expect(src).toMatch(/^\.anno-bubble-summary:not\(#_\) \{ padding: 0\.45rem 0\.7rem;/m);
+    // The guard repeats the base look: base and guard must not drift apart.
+    const base = src.match(/^\.upin-pin \{[^}]*\}/m)?.[0] ?? "";
+    expect(base).toContain("background: linear-gradient(160deg, #ecd9ff, var(--upin-color))");
+  });
+
+  test("a saved own note shows its full text on hover and focus", () => {
+    expect(src).toMatch(/\.upin-bubble:is\(:hover, :focus-within\) \.anno-bubble-question \{ white-space: normal;/);
+  });
+
   test("the open editor still rises above the annotation layer", () => {
     expect(src).toMatch(/\.upin-layer:has\(\.upin\[data-editing="true"\]\) \{ z-index: 45 !important; \}/);
   });

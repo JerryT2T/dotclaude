@@ -101,6 +101,30 @@ body.upin-armed section[data-screen][data-screen-active="true"] * { cursor: cros
    steps aside while the editor is open. */
 .upin-editor:not([hidden]) ~ .upin-bubble { display: none; }
 .upin-bubble .anno-bubble-summary { appearance: none; -webkit-appearance: none; }
+/* #1080: pins and bubble summaries are <button>s inside the mock's own root,
+   so a mock reset such as `:is([data-design], …) .bz :where(button,a)
+   { background:none; border:0; padding:0; box-shadow:none }` (0,2,0) beat the
+   single-class engine rules: the pin lost its disc (a bare ✓ was left) and
+   the summary its padding (a thin outlined pill). `:not(#_)` lifts only the
+   properties such resets touch above any class-based mock rule, without
+   !important (the pins' glow animation and the dim/drag states still apply). */
+.upin-pin:not(#_) {
+  padding: 0; margin: 0; border: 0; min-width: 0; border-radius: 50% 50% 50% 4px;
+  background: linear-gradient(160deg, #ecd9ff, var(--upin-color));
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--upin-color) 22%, transparent), 0 0 24px color-mix(in srgb, var(--upin-color) 65%, transparent), 0 6px 14px rgba(0, 0, 0, 0.4);
+  color: #fff;
+}
+.anno-pin:not(#_) {
+  padding: 0; margin: 0; border: 0; min-width: 0; border-radius: 50% 50% 50% 4px;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--anno-accent, var(--accent-color, #58a6ff)) 30%, #fff), var(--anno-accent, var(--accent-color, #58a6ff)));
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--anno-accent, var(--accent-color, #58a6ff)) 22%, transparent), 0 0 24px color-mix(in srgb, var(--anno-accent, var(--accent-color, #58a6ff)) 65%, transparent), 0 6px 14px rgba(0,0,0,0.4);
+  color: #fff; font-size: 0;
+}
+.anno-bubble-summary:not(#_) { padding: 0.45rem 0.7rem; margin: 0; color: var(--text-color, #c9d1d9); }
+/* A saved own note shows its full text on hover or keyboard focus, never only
+   the cut-off first line. */
+.upin-bubble:is(:hover, :focus-within) .anno-bubble-question { white-space: normal; overflow: visible; }
+.upin-bubble:is(:hover, :focus-within) { max-width: min(360px, 80vw); z-index: 2; }
 .upin[data-flip-x="true"] .upin-editor { left: auto; right: 32px; }
 .upin[data-flip-y="true"] .upin-editor { top: auto; bottom: 30px; }
 .upin-editor[hidden] { display: none; }
