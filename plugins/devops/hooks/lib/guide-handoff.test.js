@@ -542,6 +542,42 @@ describe("detectCardHandoff — open-item replies and hand-off verbs (#742)", ()
   });
 });
 
+describe("detectCardHandoff — natural replies, explicit flag, Discord spellings (#1084)", () => {
+  const discord = { text: "Soll ich dich durch den Logo-Upload im Discord-Portal führen?", reply: "Ja, führ mich durch den Discord-Logo-Upload." };
+
+  test("the verbatim issue payload yields the Discord hand-off", () => {
+    expect(detectCardHandoff({ open: [discord] })).toEqual({ service: "Discord Developer Portal" });
+  });
+
+  test("an explicit guide flag wins over any wording", () => {
+    expect(detectCardHandoff({ open: [{ text: "Logo hochladen?", guide: "web", service: "Discord Developer Portal" }] }))
+      .toEqual({ service: "Discord Developer Portal" });
+    expect(detectCardHandoff({ open: [{ text: "Soll ich dich durch den Upload im Discord-Portal führen?", guide: "web" }] }))
+      .toEqual({ service: "Discord Developer Portal" });
+    expect(detectCardHandoff({ open: [{ text: "Acme-Dashboard: Webhook anlegen?", guide: "web" }] }))
+      .toEqual({ service: "Acme-Dashboard: Webhook anlegen?".replace(/[?]$/, "") });
+    expect(detectCardHandoff({ open: [{ text: "Soll ich dich durch den Upload führen?" }] })).toBeNull();
+  });
+
+  test("leading assent and the explicit form", () => {
+    expect(replyHandoff({ reply: "Ja, führ mich per Web-Guide durch Stripe." })).toEqual({ service: "Stripe" });
+    expect(replyHandoff({ reply: "Yes, guide me through Stripe" })).toEqual({ service: "Stripe" });
+  });
+
+  test("the bare form needs a known web service", () => {
+    expect(replyHandoff({ text: "Supabase-Secret setzen?", reply: "Führe mich durch das Secret." })).toEqual({ service: "Supabase" });
+    expect(replyHandoff({ text: "Code erklären?", reply: "Ja, führ mich durch den Code." })).toBeNull();
+    expect(detectCardHandoff({ open: [{ text: "Nachbessern", reply: "Ja, bitte die Tests anpassen." }] })).toBeNull();
+  });
+
+  test("Discord spellings match, a bare 'Discord' does not", () => {
+    for (const t of ["im Discord-Portal", "im Discord Developer-Portal", "im Discord-Entwicklerportal", "Discord Developer Portal", "den Discord-Bot"]) {
+      expect(matchService(t)).toEqual({ name: "Discord Developer Portal", named: true });
+    }
+    expect(matchService("Send a Discord message")).toBeNull();
+  });
+});
+
 describe("detectCardHandoff — arrows and service in the same item (#900)", () => {
   const path1 = "Data Uploader 0.62.0 (Alpha) laufen lassen → Codex → Carrack / Hammerhead → Abschnitt Deckplan prüfen (Deck-Reiter, Räume, Raumliste)";
   const verify = "Live-Version auf sc-companion.vercel.app = v0.165.0 prüfen (Watcher läuft)";

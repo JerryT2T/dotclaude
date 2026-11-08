@@ -239,7 +239,11 @@ alpha **v0.179.0** › beta v0.176.0 (−3) › stable v0.170.0 (−9 · 12 d)
   next real prompt. Writing such a point without checking this first is the
   bug the button exists to catch. An `open` item whose own `reply` starts
   with "Führ mich per Web-Guide durch …" / "Guide me through …" is a
-  declared hand-off and gets the button without the text heuristics (#742).
+  declared hand-off and gets the button without the text heuristics (#742);
+  so does a reply opening with "Ja, …"/"Yes, …", and a bare "Führ mich durch
+  …" when the item names a known web service. The explicit form is
+  `open[].guide: "web"` (optional `service`): it renders "Web-Guide starten"
+  whatever the wording — use it for every offer question (#1084).
   Heuristics read each item alone (#900; numbered lists span items); a setup
   verb with a URL, UI path or „label“ counts for unknown web UIs (#905). Still
   declare every manual website step as an `open` item with that `reply`.

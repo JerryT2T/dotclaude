@@ -67,7 +67,9 @@ const SERVICE_PATTERNS = [
   { name: 'Stripe', re: /\bstripe\b/i },
   { name: 'Firebase', re: /\bfirebase\b/i },
   { name: 'Netlify', re: /\bnetlify\b/i },
-  { name: 'Discord Developer Portal', re: /\bdiscord\s+(?:developer\s+portal|bot)\b/i },
+  // #1084: hyphenated and German spellings ("Discord-Portal", "Discord
+  // Developer-Portal", "Discord-Entwicklerportal") — never bare "discord".
+  { name: 'Discord Developer Portal', re: /\bdiscord[-\s]?(?:developer[-\s]?portal|entwickler[-\s]?portal|portal|bot)\b/i },
   { name: 'GitHub Settings', re: /\bgithub\s+settings\b/i },
   { name: 'Google Cloud', re: /\bgoogle\s+cloud\b/i },
   { name: 'AWS Console', re: /\baws\s+console\b/i },
@@ -380,36 +382,85 @@ function userWaitingValidation(validation) {
     .filter(Boolean);
 }
 
+/** Leading assent before a prepared reply's trigger ("Ja, …", "Yes, …"). */
+const REPLY_ASSENT = String.raw`(?:(?:ja|jo|yes|yeah|ok(?:ay)?|gerne?|bitte|please)[,!.]?\s+)*`;
+
 /** Auto-guide trigger phrase at the start of a prepared reply (de+en). */
 const REPLY_TRIGGER_RE = new RegExp(
   // First line only: a multi-line reply must not turn its whole tail into the
   // service name.
-  String.raw`^\s*(?:f(?:ü|ue|u)hr(?:e)?\s+mich\s+(?:per|mit|via)\s+(?:web|auto)[-\s]?guide\s+durch|guide\s+me\s+through)\s+([^\n]+)`,
+  String.raw`^\s*` + REPLY_ASSENT +
+    String.raw`(?:f(?:ü|ue|u)hr(?:e)?\s+mich\s+(?:per|mit|via)\s+(?:web|auto)[-\s]?guide\s+durch|guide\s+me\s+(?:via\s+web[-\s]?guide\s+)?through)\s+([^\n]+)`,
+  'iu'
+);
+
+/**
+ * #1084: the bare form ("Ja, führ mich durch den Discord-Logo-Upload") — no
+ * "Web-Guide" in it, so it only counts when the item names a known web
+ * service ("führ mich durch den Code" is a code walkthrough, not a guide).
+ */
+const REPLY_BARE_TRIGGER_RE = new RegExp(
+  String.raw`^\s*` + REPLY_ASSENT + String.raw`(?:f(?:ü|ue|u)hr(?:e)?\s+mich\s+durch|walk\s+me\s+through)\s+([^\n]+)`,
   'iu'
 );
 
 /** Longest free-form service name taken from a reply. */
 const REPLY_SERVICE_MAX = 80;
 
-/**
- * #742: `{ service }` when an item's `reply` starts with the guide trigger
- * phrase; the service is the reply's object (a known service name wins).
- * @param {unknown} item
- * @returns {{service:string}|null}
- */
-function replyHandoff(item) {
-  if (!item || typeof item !== 'object' || Array.isArray(item) || typeof item.reply !== 'string') return null;
-  const m = item.reply.match(REPLY_TRIGGER_RE);
-  if (!m) return null;
-  const object = m[1]
+/** The object of a trigger phrase, articles and closing punctuation dropped. */
+function replyObject(captured) {
+  return captured
     .replace(/[\s.!?…]+$/u, '')
     .replace(/^(?:die|den|das|der|dem|the|a|an)(?:\s+|$)/i, '')
     .trim()
     .slice(0, REPLY_SERVICE_MAX)
     .trim();
-  if (!object) return null;
-  const known = matchService(object);
-  return { service: known && known.named ? known.name : object };
+}
+
+/** A known service in the reply's object, else in the item's own text. */
+function namedService(object, item) {
+  for (const text of [object, itemText(item)]) {
+    const known = matchService(text);
+    if (known && known.named) return known.name;
+  }
+  return null;
+}
+
+/**
+ * #742: `{ service }` when an item's `reply` starts with the guide trigger
+ * phrase; the service is the reply's object (a known service name wins).
+ * #1084: an explicit `guide: "web"` flag on the item is the author's own
+ * declaration and wins over every wording; a bare "führ mich durch …" reply
+ * counts when the item names a known web service.
+ * @param {unknown} item
+ * @returns {{service:string}|null}
+ */
+function replyHandoff(item) {
+  if (!item || typeof item !== 'object' || Array.isArray(item)) return null;
+  const reply = typeof item.reply === 'string' ? item.reply : '';
+  if (item.guide === 'web') {
+    const declared = typeof item.service === 'string' ? item.service.trim().slice(0, REPLY_SERVICE_MAX).trim() : '';
+    if (declared) return { service: declared };
+    const m = reply.match(REPLY_TRIGGER_RE) || reply.match(REPLY_BARE_TRIGGER_RE);
+    const object = m ? replyObject(m[1]) : '';
+    const named = namedService(object, item);
+    if (named) return { service: named };
+    const fallback = object || replyObject(itemText(item).split('\n')[0] || '');
+    return fallback ? { service: fallback } : null;
+  }
+  if (!reply) return null;
+  const m = reply.match(REPLY_TRIGGER_RE);
+  if (m) {
+    const object = replyObject(m[1]);
+    if (!object) return null;
+    const known = matchService(object);
+    if (known && known.named) return { service: known.name };
+    return { service: namedService('', item) || object };
+  }
+  const bare = reply.match(REPLY_BARE_TRIGGER_RE);
+  if (!bare) return null;
+  const named = namedService(replyObject(bare[1]), item);
+  return named ? { service: named } : null;
 }
 
 /**
