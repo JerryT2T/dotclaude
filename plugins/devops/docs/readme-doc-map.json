@@ -14,7 +14,7 @@
     { "section": "What you get", "sources": ["plugins/devops/skills/*/SKILL.md", "plugins/devops/deep-knowledge/agent-proactivity.md"] },
     { "section": "Everyday use + All skills (strict mode)", "sources": ["plugins/devops/skills/**", "plugins/devops/deep-knowledge/strict.md", "plugins/devops/hooks/user-prompt-submit/prompt.strict.enforce.js"] },
     { "section": "Customize — Agents and delegation", "sources": ["plugins/devops/agents/*.md", "plugins/devops/deep-knowledge/agent-proactivity.md", "plugins/devops/deep-knowledge/agent-orchestration.md"] },
-    { "section": "Completion card (prose around the generated examples)", "sources": ["plugins/devops/deep-knowledge/completion-card-design.md", "plugins/devops/mcp-server/lib/card-widget.js", "plugins/devops/hooks/lib/title-scheme.js"] },
+    { "section": "Completion card (prose around the generated examples)", "sources": ["plugins/devops/deep-knowledge/completion-card-design.md", "plugins/devops/deep-knowledge/completion-card-widget.md", "plugins/devops/deep-knowledge/completion-card-schema-notes.md", "plugins/devops/mcp-server/lib/card-widget.js", "plugins/devops/hooks/lib/title-scheme.js"] },
     { "section": "Reference — Project structure", "sources": ["plugins/devops/*", "plugins/*/.claude-plugin/plugin.json"] }
   ]
 }

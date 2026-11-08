@@ -9,7 +9,7 @@ vi.mock("zod", () => {
   return { z: { object: () => node, string: () => node, boolean: () => node, array: () => node, enum: () => node, number: () => node, preprocess: () => node } };
 });
 
-const { readmeSectionsToCheck } = await import("./preflight.js");
+const { readmeSectionsToCheck, featureGatedSkills } = await import("./preflight.js");
 
 const REAL_MAP = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "docs", "readme-doc-map.json");
 
@@ -52,5 +52,21 @@ describe("readmeSectionsToCheck — README sections whose sources changed", () =
   test("the shipped map catches the card design doc", () => {
     expect(readmeSectionsToCheck(REAL_MAP, ["plugins/devops/deep-knowledge/completion-card-design.md"]))
       .toEqual(["Completion card (prose around the generated examples)"]);
+  });
+});
+
+describe("featureGatedSkills — gated skills need no README row", () => {
+  const PLUGIN = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+
+  test("the real registry gates auto-frustrated", () => {
+    expect(featureGatedSkills(PLUGIN).has("auto-frustrated")).toBe(true);
+  });
+
+  test("reads every feature's skills, whatever the channel; no registry gates nothing", () => {
+    const dir = mkdtempSync(join(tmpdir(), "features-"));
+    writeFileSync(join(dir, "features.json"), JSON.stringify({ features: { a: { minChannel: "beta", skills: ["skills/x"] }, b: { minChannel: "alpha", skills: ["skills/y/"] }, c: {} } }));
+    expect([...featureGatedSkills(dir)].sort()).toEqual(["x", "y"]);
+    expect(featureGatedSkills(join(dir, "missing")).size).toBe(0);
+    rmSync(dir, { recursive: true, force: true });
   });
 });
