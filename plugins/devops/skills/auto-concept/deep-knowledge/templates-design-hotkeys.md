@@ -38,7 +38,9 @@ the same hotkeys and tips as a design round. Three jobs:
   (`hint-nudge-shown:<id>`, the `?` tip once); and never again once the
   user has used that hotkey (`hint-hotkey-used:<id>`, recorded on the
   first real use — Space, ?, 1–9, arrows or WASD, F, V, Esc,
-  Ctrl + click on the design). Every nudge is one line (`nowrap` +
+  Ctrl + click on the design). The digit of the variant that is already
+  open turns to its next page (last → first), like a click on its active
+  chip; another variant's digit jumps to the same page there. Every nudge is one line (`nowrap` +
   ellipsis) in the calm `--tip-color`, never the amber of open questions.
   `window.conceptHotkeyUsed(id)` reads the used state for the dock tips.
   **Contract for the toast:** the tab's bottom edge is

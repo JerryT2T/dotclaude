@@ -79,14 +79,22 @@ What the code does, in the order of the file:
   const VIZ = (window.CONCEPT_VIZ = window.CONCEPT_VIZ || {});
   const SEG = ['#79c0ff', '#58a6ff', '#a5d6ff', '#388bfd', '#b6e3ff', '#8cb4ff'];
   const list = (a) => (Array.isArray(a) ? a : []);
+  // `**fett**` -> <strong>; text nodes only, an unmatched `**` stays literal.
+  function rich(el, text) {
+    String(text).split(/(\*\*[^*]+?\*\*)/).forEach(part => {
+      if (/^\*\*[^*]+?\*\*$/.test(part)) el.appendChild(h('strong', '', part.slice(2, -2)));
+      else if (part) el.appendChild(document.createTextNode(part));
+    });
+    return el;
+  }
   VIZ.text = (el, s) => {
     el.textContent = '';
     el.classList.add('an-vz-text');
     let ul = null;
     String(s.text == null ? '' : s.text).split(/\n+/).filter(l => l.trim()).forEach(line => {
       const m = /^\s*[-•]\s+(.*)$/.exec(line);
-      if (m) { if (!ul) { ul = h('ul'); el.appendChild(ul); } ul.appendChild(h('li', '', m[1])); }
-      else { ul = null; el.appendChild(h('p', '', line.trim())); }
+      if (m) { if (!ul) { ul = h('ul'); el.appendChild(ul); } rich(ul.appendChild(h('li')), m[1]); }
+      else { ul = null; rich(el.appendChild(h('p')), line.trim()); }
     });
   };
   VIZ.kpi = (el, s) => {

@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.364.0] — 2026-11-08
+
+### Added
+- auto-concept: the variant overview pans to what differs between the variants (diff box or `data-ov-demo`), clear of the info card; component previews fill ≥ 2/3 of the card; console warnings for identical previews and dead demo selectors.
+- auto-concept: pressing the digit of the open variant cycles through its sub-pages.
+- auto-concept: `**bold**` renders in `data-viz="text"` analysis text.
+
+### Changed
+- auto-concept: the old decision / comparison view style is abolished for authoring — one Full analysis view with topics per round; concept-gate rejects the old style and a second analysis view in live rounds (A11/P35).
+- auto-concept: analysis questions never re-ask what the prompt, earlier rounds, design variants or auto-notes already settle; a question only for a real gap, narrowed to it.
+
+### Fixed
+- auto-concept: close-out + ship no longer leaves the page stuck on "Abschluss 2/2" — the bridge holds for the tab's ack when the ship's cleanup removes the page, and the page's lost-watch survives the stuck-round safety net.
+
 ## [0.363.3] — 2026-11-08
 
 ### Fixed

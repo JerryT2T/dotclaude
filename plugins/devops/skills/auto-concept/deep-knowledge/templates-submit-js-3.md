@@ -328,13 +328,32 @@ function showFinished(raw) {
 // A finalize whose bridge went away without a result: never green, never a
 // spinner forever. Connection down for a minute → the neutral "look in the
 // chat" state; a result that still arrives replaces it.
+// Four 15 s ticks OR 60 s of wall clock, whichever comes first: a hidden tab
+// throttles setInterval to once a minute, so ticks alone stretched "a minute"
+// into four. The finalize is read off the SHEET (frozen running / stalled
+// state), not off _submittedAt: the stuck-round safety net
+// (restorePanelToReady -> markCloseoutStalled) zeroes _submittedAt and
+// _submittedAction, which used to switch this watch off exactly in the
+// long-ship case it exists for - the page then hung on "Abschluss 2/2".
+const FIN_LOST_MS = 60000;
 let _finLostTicks = 0;
+let _finLostSince = 0;
+function finalizeInFlight() {
+  if (_submittedAction === 'finalize' && !!_submittedAt) return true;
+  const sheet = document.getElementById('closeout-sheet');
+  const st = sheet && sheet.dataset.finalizeState;
+  return (st === 'running' || st === 'stalled') && sheet.dataset.go !== 'fix';
+}
 function watchFinalizeLost() {
   const conn = document.getElementById('connection-status');
-  const running = _submittedAction === 'finalize' && !!_submittedAt;
-  _finLostTicks = running && conn && conn.dataset.state === 'disconnected' ? _finLostTicks + 1 : 0;
-  if (_finLostTicks >= 4) showFinished({ state: 'lost' });
+  const down = !!conn && conn.dataset.state === 'disconnected';
+  if (!(down && finalizeInFlight())) { _finLostTicks = 0; _finLostSince = 0; return; }
+  const now = Date.now();
+  if (!_finLostSince) _finLostSince = now;
+  _finLostTicks += 1;
+  if (_finLostTicks >= 4 || now - _finLostSince >= FIN_LOST_MS) showFinished({ state: 'lost' });
 }
+document.addEventListener('visibilitychange', () => { if (!document.hidden) watchFinalizeLost(); });
 
 // No "Runden ansehen" link on the sheet: earlier rounds are one click away
 // through the panel head's 🕘 rounds chip.

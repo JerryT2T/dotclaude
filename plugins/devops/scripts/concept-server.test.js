@@ -606,3 +606,38 @@ describe.skipIf(!PY)("concept-server close-out result for the Fertig-Seite", () 
     }
   }, 30000);
 });
+
+describe.skipIf(!PY)("concept-server html-gone hold - the page file vanishing mid close-out (B5)", () => {
+  const run = (body) => {
+    const code = [
+      "import importlib.util,json,sys",
+      `spec=importlib.util.spec_from_file_location('cs', ${JSON.stringify(SERVER)})`,
+      "m=importlib.util.module_from_spec(spec); spec.loader.exec_module(m)",
+      body,
+    ].join("\n");
+    const r = spawnSync(PY, ["-c", code], { encoding: "utf8", timeout: 15000 });
+    expect(r.status, r.stderr).toBe(0);
+    return JSON.parse(r.stdout.trim().split("\n").pop());
+  };
+
+  test("a finalize in flight publishes the neutral closed state and holds the bridge until the tab acks", () => {
+    const out = run(`
+m._decisions=json.dumps({'submitted':True,'action':'finalize'})
+a=m._html_gone_hold(0)
+st=[m._phase, m._finished]
+b=m._html_gone_hold(m.HTML_GONE_ACK_WAIT_S*1000+1)
+m._closed_ack=True
+c=m._html_gone_hold(0)
+print(json.dumps([a,st,b,c]))`);
+    expect(out).toEqual([true, ["closed", { state: "closed" }], false, false]);
+  });
+
+  test("no finalize in flight - the old shutdown stands; a posted done phase is held too", () => {
+    const out = run(`
+a=m._html_gone_hold(0)
+m._phase='closed'
+b=m._html_gone_hold(0)
+print(json.dumps([a,b,m._finished]))`);
+    expect(out).toEqual([false, true, null]);
+  });
+});

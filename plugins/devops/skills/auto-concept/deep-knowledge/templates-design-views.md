@@ -5,7 +5,9 @@
 A third, independent thing a `design` iteration may hold: non-visual
 questions that belong **inside** the same round as the artefact they are
 about, instead of being deferred to a separate `decision` iteration one
-round later. A `section[data-view]` is a **top-level sibling of
+round later — authored as **one** Full analysis view whose topics carry the
+questions (§ View kind `analysis`), never as several decision / comparison
+pages. A `section[data-view]` is a **top-level sibling of
 `section[data-design]`** — switched exactly like a design, fullscreen, with
 its own entry in the switcher and the panel TOC.
 
@@ -16,11 +18,8 @@ its own entry in the switcher and the panel TOC.
     <section id="d1-s2" data-screen data-nav-label="Detail" hidden>…</section>
   </section>
 
-  <section data-view="nav-model" data-view-kind="decision"
-           data-nav-label="Navigation model" hidden>…</section>
-
-  <section data-view="card-density" data-view-kind="comparison"
-           data-nav-label="Card density A/B" hidden>…</section>
+  <section data-view="analysis" data-view-kind="analysis" data-analysis="full"
+           data-nav-label="Analyse" hidden>…</section>
 </section>
 ```
 
@@ -60,14 +59,14 @@ its own entry in the switcher and the panel TOC.
   box scrolls internally (`overflow-y: auto`), never the page. See § Layout CSS.
 - **When to use a view instead of a separate `decision` iteration** (also
   stated in `SKILL.md` § Step 1a): the question is *about the artefact in
-  front of you* right now → a view inside this `design` iteration. The
+  front of you* right now → a topic of this round's one analysis view. The
   question stands on its own, independent of any one mockup → its own
   `decision` iteration. When in doubt, ask whether the user would need to
   flip back to a screen to answer sensibly — if yes, it is a view.
 - **A view never re-asks the design choice** (`SKILL.md` § Step 1a
   → Orthogonality). The verdict *between* the designs comes from the dock's
   per-design / per-screen textareas — that is what `comments.designs` is
-  for. A `decision` / `comparison` view asks a question whose answer holds
+  for. An analysis topic asks a question whose answer holds
   whichever design wins; its `[data-decision]` groups are never the
   designs themselves, never the traits that tell them apart, and its prose
   never argues for or against a design. An alternative whose `data-label`
@@ -133,219 +132,24 @@ its own entry in the switcher and the panel TOC.
   Iterations for the exact exemption list and how a frozen view's submitted
   values (bi-state selections, notes) are restored.
 
-### View kind `decision`
+### Decision and comparison views are abolished
 
-Reuses the decision template's proven bi-state mechanics wholesale — no new
-markup vocabulary. A `data-view-kind="decision"` view is a fullscreen frame
-(heading + free prose authored above/between the alternatives) around one
-or more `[data-decision]` groups, each with the same bi-state
-(`Miteinbeziehen` / `Verwerfen`; pre-selection per § Bi-State Variant
-Evaluation — exclusive alternatives: only the recommended one included,
-independent topics: included) and the same mandatory
-adjacent `textarea[data-comment="{decisionId}-note"]` as § Bi-State Variant
-Evaluation. `ensureCommentSlots()` (§ Comment Slot Injection) already runs
-page-wide on `DOMContentLoaded` and reaches every `[data-decision]` group
-regardless of which template or view it lives in — nothing view-specific
-needs wiring there. What changes is only the frame: fullscreen, no sidebar,
-no 340px card constraint, so alternatives can carry as much authored context
-as the question needs.
+There is **no** `data-view-kind="decision"` or `"comparison"` view to author
+any more: the Verwerfen / Miteinbeziehen bi-state cards and the side-by-side
+option grids/tables were the old analysis style, and the gate rejects them in
+a live design round (`legacy-decision-view`). Every question a design round
+asks — which tone, which density, which navigation model — is a **topic of the
+round's one Full analysis** (§ View kind `analysis` below): briefing, topics,
+one decision per stage, the right rail. A round has **at most one** analysis
+view (`multiple-analysis-views`); several questions are several topics of it,
+never several hidden analysis pages. Options that differ along shared criteria
+become a Scorecard / Vergleichstabelle block inside a topic
+(`analysis-palette.md`).
 
-```html
-<section data-view="nav-model" data-view-kind="decision" data-nav-label="Navigation model" hidden>
-  <div class="view-frame">
-    <h2>Navigation model</h2>
-    <p>Tabs or a drawer for the second level? Both are wired in the mockup —
-       flip back to Dispatch board to try either one before deciding.</p>
-
-    <div class="variant-evaluation" data-decision="nav-tabs" data-label="Tabs">
-      <h3>Tabs</h3>
-      <p>Always-visible, one click, costs permanent header height.</p>
-      <div class="eval-group">
-        <label class="eval-option">
-          <input type="radio" name="eval-nav-tabs" value="discard">
-          <span class="eval-label">Verwerfen</span>
-        </label>
-        <label class="eval-option">
-          <input type="radio" name="eval-nav-tabs" value="include" checked>
-          <span class="eval-label">Miteinbeziehen</span>
-        </label>
-      </div>
-      <div class="field-row decision-comment-row">
-        <label for="nav-tabs-note">{{decision.comment_label}}</label>
-        <textarea id="nav-tabs-note" data-comment="nav-tabs-note" data-attachable
-                  placeholder="{{decision.comment_placeholder}}" rows="2"></textarea>
-      </div>
-    </div>
-
-    <div class="variant-evaluation" data-decision="nav-drawer" data-label="Drawer">
-      <h3>Drawer</h3>
-      <p>Hidden by default, saves header height, one extra click per visit.</p>
-      <div class="eval-group">
-        <label class="eval-option">
-          <input type="radio" name="eval-nav-drawer" value="discard">
-          <span class="eval-label">Verwerfen</span>
-        </label>
-        <label class="eval-option">
-          <input type="radio" name="eval-nav-drawer" value="include" checked>
-          <span class="eval-label">Miteinbeziehen</span>
-        </label>
-      </div>
-      <div class="field-row decision-comment-row">
-        <label for="nav-drawer-note">{{decision.comment_label}}</label>
-        <textarea id="nav-drawer-note" data-comment="nav-drawer-note" data-attachable
-                  placeholder="{{decision.comment_placeholder}}" rows="2"></textarea>
-      </div>
-    </div>
-  </div>
-</section>
-```
-
-**Rules:**
-- Mandatory: ≥2 named alternatives (`[data-decision]` groups), each with the
-  bi-state selector and its adjacent note textarea.
-- `.view-frame` is a plain wrapper (no positioning of its own) — the view's
-  own `overflow-y: auto` scroll box does the layout work, see § Layout CSS.
-- `collectDesignDecisions()` (§ collectDecisions (design branch)) scans every
-  `[data-decision]` group inside every view of the active iteration — not
-  just the one on screen — and tags each entry with `view: "{viewId}"`. See
-  § Decision schema.
-
-### View kind `comparison` — mandatory skeleton, free interior
-
-Deliberately loose, the same way the design template's mockups are loose:
-Claude is free to author whatever the comparison needs, as long as the
-mandatory skeleton below is present. **Freedom here is a requirement, not an
-afterthought** — do not pad every comparison view with every optional block
-just because it is documented below.
-
-**Mandatory:**
-- a heading stating the question,
-- **≥2** `article[data-compare-option="{id}"]`, each with a title and a free
-  body (Claude may put anything inside — bullet points, a small mock,
-  metrics, prose),
-- a verdict control per option — the same bi-state (`Miteinbeziehen` /
-  `Verwerfen`) as § Bi-State Variant Evaluation, keyed
-  `data-decision="{optionId}"` so it reuses `ensureCommentSlots()` and
-  `collectDesignDecisions()` unchanged; an additional "favourite" radio group
-  (`name="compare-favourite-{viewId}"`) is allowed but never replaces the
-  per-option bi-state,
-- one note `textarea[data-attachable]` per option **and** one for the view as
-  a whole — all wired the same way as every other comment slot (§ State
-  Persistence picks them up via `data-comment`; `data-attachable` is the
-  hook § Attachments wires, appending a bar since these notes have no
-  dedicated `.attach-slot` mount).
-
-**Two layouts, both first-class — pick per comparison via
-`data-compare-layout`:**
-
-| Value | Shape | Use when |
-|---|---|---|
-| `grid` | Option cards side by side in a `repeat(auto-fit, minmax(280px, 1fr))` grid | The options differ in SHAPE — each needs its own preview, mockup fragment or prose |
-| `table` | One `table.cmp-table`: criteria as rows, options as columns, the evaluation controls in a final row | The options differ in VALUES along shared criteria — the reader wants to scan one row and compare like with like |
-
-Reach for `table` whenever the same handful of criteria applies to every
-option. A grid of cards then forces the reader to hop between columns to
-compare a single criterion, which is precisely the work a comparison view
-exists to remove. `.cmp-table` keeps its own horizontal scroll container so a
-five-option comparison never widens the page.
-
-**Optional, freely combinable — use only what the comparison needs:**
-- a criteria matrix (`table.cmp-matrix`, criteria as rows, options as
-  columns, an optional per-cell rating `<select>`) — this is the `grid`
-  layout's companion; with `data-compare-layout="table"` the matrix IS the
-  view and a second one is redundant,
-- per-criterion weight sliders,
-- pros/cons lists per option,
-- meta chips (effort, risk, cost — whatever is relevant),
-- live mockup fragments reusing `.device-frame` from § Screen-pattern markup,
-- a "no preference" escape checkbox/radio.
-
-```html
-<section data-view="card-density" data-view-kind="comparison" data-nav-label="Card density A/B" hidden>
-  <div class="view-frame view-compare" data-compare-layout="grid">
-    <h2>Which card density for the dispatch board?</h2>
-    <p>Both are wired into the Dispatch board mockup — switch back and try
-       scrolling a full shift's worth of calls in each before deciding.</p>
-
-    <div class="cmp-options">
-      <article class="cmp-option" data-compare-option="compact">
-        <h3>Compact</h3>
-        <p>More calls per screen, denser typography, icon-only actions.</p>
-        <!-- optional: pros/cons, meta chips, a .device-frame fragment -->
-        <div class="eval-group" data-decision="compact" data-label="Compact">
-          <label class="eval-option">
-            <input type="radio" name="eval-compact" value="discard">
-            <span class="eval-label">Verwerfen</span>
-          </label>
-          <label class="eval-option">
-            <input type="radio" name="eval-compact" value="include" checked>
-            <span class="eval-label">Miteinbeziehen</span>
-          </label>
-        </div>
-        <div class="field-row decision-comment-row">
-          <label for="compact-note">{{decision.comment_label}}</label>
-          <textarea id="compact-note" data-comment="compact-note" data-attachable
-                    placeholder="{{decision.comment_placeholder}}" rows="2"></textarea>
-        </div>
-      </article>
-
-      <article class="cmp-option" data-compare-option="comfortable">
-        <h3>Comfortable</h3>
-        <p>Fewer calls per screen, larger tap targets, labelled actions.</p>
-        <div class="eval-group" data-decision="comfortable" data-label="Comfortable">
-          <label class="eval-option">
-            <input type="radio" name="eval-comfortable" value="discard">
-            <span class="eval-label">Verwerfen</span>
-          </label>
-          <label class="eval-option">
-            <input type="radio" name="eval-comfortable" value="include" checked>
-            <span class="eval-label">Miteinbeziehen</span>
-          </label>
-        </div>
-        <div class="field-row decision-comment-row">
-          <label for="comfortable-note">{{decision.comment_label}}</label>
-          <textarea id="comfortable-note" data-comment="comfortable-note" data-attachable
-                    placeholder="{{decision.comment_placeholder}}" rows="2"></textarea>
-        </div>
-      </article>
-    </div>
-
-    <!-- Optional favourite pick, additive to the per-option bi-state above. -->
-    <fieldset class="cmp-favourite">
-      <legend>{{view.compare_favourite}}</legend>
-      <label><input type="radio" name="compare-favourite-card-density" value="compact"> Compact</label>
-      <label><input type="radio" name="compare-favourite-card-density" value="comfortable"> Comfortable</label>
-      <label><input type="radio" name="compare-favourite-card-density" value=""> {{view.compare_no_preference}}</label>
-    </fieldset>
-
-    <div class="field-row decision-comment-row">
-      <label for="card-density-view-note">{{decision.comment_label}}</label>
-      <textarea id="card-density-view-note" data-comment="card-density-view-note" data-attachable
-                placeholder="{{decision.comment_placeholder}}" rows="3"></textarea>
-    </div>
-  </div>
-</section>
-```
-
-**Layout:** `.cmp-options` is a CSS grid, `repeat(auto-fit, minmax(280px, 1fr))`
-— 2–4 candidates sit side by side and **wrap to a new row instead of
-shrinking** below a readable width. `data-compare-layout` on `.view-compare`
-is a layout hint Claude may set (`"grid"` default, `"stacked"` when the
-options genuinely need full width each) — purely presentational, no JS reads
-it today.
-
-**Rules:**
-- Mandatory skeleton only: ≥2 `[data-compare-option]`, a per-option
-  bi-state, one note per option + one for the view. Everything else is
-  optional and freely combinable — do not treat the optional list as a
-  checklist to fulfil.
-- Each `[data-compare-option]`'s bi-state reuses `data-decision="{optionId}"`
-  verbatim, so it is collected exactly like any other decision (tagged with
-  `view: "{viewId}"`, § Decision schema) — do not invent a parallel
-  "verdict" schema.
-- The "favourite" radio group, when present, carries no `data-decision` and
-  is picked up by the generic form catch-all (`el.name`/`el.id` key) like any
-  other named input — it augments, never replaces, the per-option verdicts.
+Legacy: a frozen round of an already-published page may still carry decision /
+comparison views — the engine keeps rendering and restoring them (bi-state
+values, notes, `collectDesignDecisions()`), and the gate leaves frozen rounds
+alone. Do not copy that markup into a new round.
 
 ### View kind `mapping`
 

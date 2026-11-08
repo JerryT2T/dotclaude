@@ -255,8 +255,20 @@ All checkable while writing; several are gate warnings.
   Open ≥ 3 s (or changed) = decided "keep the preselection". The review lists
   deviations first, then issues, then the untouched ones, with "Zum ersten
   Unberührten".
-- **Settled stays settled.** A decision taken in an earlier round is never
-  re-asked as a toggle ("R3 bleibt"); show it as context.
+- **Settled stays settled — in every round, round 1 included.** Whatever the
+  user's prompt, an earlier round, a design variant already shown in the
+  concept, or an auto-note (a pin or note the page itself recorded) settles is
+  never asked — not as a toggle, not as a question, not as an option. Show it
+  as context ("Fest steht: …", with where it came from) above the decision.
+  A question is for a genuine gap only, and it is narrowed to exactly that gap:
+  name what is settled, ask only the open remainder ("Fest steht: Vorjahr nur
+  bei vollständigen Daten — offen: was passiert bei einem Konto ohne
+  Historie?"), never the whole choice again. Unclear what the user meant →
+  ask that specific point, not the broad topic. Questions at the start of an
+  analysis are the costliest: the user reads them first, so a re-asked answer
+  there wastes the opening of the round. Check each question against prompt,
+  rounds, variants and notes at authoring time (also § Iteration append
+  checklist, item 0a in `iteration-rules.md`).
 - **An exclusive choice is never N bi-states.** Three cards that each say
   "Miteinbeziehen" for alternatives of one question can be submitted as "all
   three" — use `single` (gate A7).

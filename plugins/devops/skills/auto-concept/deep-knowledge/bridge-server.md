@@ -143,6 +143,18 @@ AND provides HTTP endpoints for heartbeat and decision exchange.
    case (session closed without /shutdown, cron prompt loop dropped). Both
    conditions independently guarantee the server cannot become a ghost.
 
+   **A vanishing page file never strands the tab (B5).** The ship's cleanup
+   (worktree removal) or a `discard` deletes the page file while a close-out is
+   in flight. If a `finalize` submission is pending (or the `closed` phase is
+   posted but not yet acked), the watchdog does not reap the bridge on the
+   10 s rule: it publishes the neutral `closed` phase (`finished: {state:
+   "closed"}`, never a claimed success) and stays up until the tab answers
+   `/closed-ack`, for at most 150 s more. Belt and braces on the page: if the
+   bridge is gone anyway, `watchFinalizeLost()` (60 s wall clock, also after
+   the stuck-round safety net zeroed the submit state) swaps the report for the
+   neutral "look in the chat" final screen. Still write `closed` + `finished`
+   BEFORE any ship cleanup (`step5-finalize.md` § D) - the fallbacks are the net.
+
    A tighter watchdog can pass a lower value explicitly (e.g.
    `--heartbeat-timeout-ms 300000` for 5 min).
 

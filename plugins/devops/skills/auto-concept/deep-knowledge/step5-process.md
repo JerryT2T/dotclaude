@@ -197,7 +197,8 @@ never re-run a completed step. The checkpoint records what the previous run
 
 3. **If the submitted section carries `data-reality-check`, advance the
    baseline** before appending — the user has just answered that drift, and a
-   decision they made is never asked again:
+   decision they made is never asked again (nor is anything the prompt,
+   a variant or a note already settled; `decision-modes.md` § Rules):
    ```bash
    node "{plugin-root}/scripts/concept-drift.js" --capture \
         --state "{session-cwd}/.claude/concept-active.json" --owner {owner} --sha <section's data-reality-head>

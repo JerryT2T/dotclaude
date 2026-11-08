@@ -113,6 +113,8 @@ A background **watchdog daemon** terminates the process when:
   (10 s grace covers the brief window during which Claude rewrites the
   file in-place for the next iteration). This catches "concept HTML was
   manually deleted / moved / never persisted" without needing the cron.
+  Exception (B5): with a finalize in flight the bridge first publishes the
+  neutral `closed` phase and waits up to 150 s for /closed-ack.
 - `_claude_ts` is older than `--heartbeat-timeout-ms` (default 30 min)
   AND non-zero. A claude_ts of 0 means Claude has never pinged — that
   is the bootstrap window before the first cron tick lands, NOT a dead
@@ -2624,6 +2626,42 @@ def _server_self_pulse(interval_s: int = 30):
         time.sleep(interval_s)
 
 
+HTML_GONE_ACK_WAIT_S = 150
+
+
+def _finalize_submitted(raw):
+    try:
+        obj = json.loads(raw)
+        return bool(isinstance(obj, dict) and obj.get('submitted') is True
+                    and obj.get('action') == 'finalize')
+    except (ValueError, TypeError):
+        return False
+
+
+def _html_gone_hold(over_grace_ms):
+    """True while a gone page file must NOT yet stop the bridge.
+
+    The ship's cleanup (worktree removal, a `discard` disposition) deletes the
+    page file while a close-out is in flight; the old watchdog then reaped the
+    bridge ~40 s later - before the page ever fetched its final state, which
+    left the tab on the report ("Abschluss 2/2") forever. If a finalize is in
+    flight (or the done phase is posted) the bridge now publishes the neutral
+    closed state itself - never a claimed success - and stays up until the tab
+    answers /closed-ack, for at most HTML_GONE_ACK_WAIT_S more (a hidden tab
+    polls once a minute). A bridge without any finalize dies as before.
+    """
+    global _phase, _finished, _closed_ack
+    with _lock:
+        if _closed_ack:
+            return False
+        if _phase != 'closed':
+            if not _finalize_submitted(_decisions):
+                return False
+            _phase = 'closed'
+            _finished = {'state': 'closed'}
+        return over_grace_ms <= HTML_GONE_ACK_WAIT_S * 1000
+
+
 def _watchdog(html_path, heartbeat_timeout_ms, interval_s=30, html_grace_s=10):
     """Self-terminate when the concept state has obviously gone away.
 
@@ -2658,6 +2696,8 @@ def _watchdog(html_path, heartbeat_timeout_ms, interval_s=30, html_grace_s=10):
                 if html_missing_since is None:
                     html_missing_since = now_ms
                 elif (now_ms - html_missing_since) > html_grace_s * 1000:
+                    if _html_gone_hold(now_ms - html_missing_since - html_grace_s * 1000):
+                        continue
                     sys.stderr.write(
                         f"[watchdog] html_path gone for > {html_grace_s}s: "
                         f"{html_path} — shutting down\n"

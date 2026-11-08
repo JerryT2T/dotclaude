@@ -228,7 +228,7 @@ Variant/section evaluation uses a **bi-state selector** (not tri-state):
 | Template | Evaluation behavior |
 |---|---|
 | **decision** | **Mandatory per variant card.** Every variant MUST carry the bi-state selector. |
-| **design** | **No evaluation on screens.** Feedback on the mockups themselves is collected via the feedback dock (general + per-design + per-screen textareas). **Bi-state inside optional question views** — a `data-view-kind="decision"` or `"comparison"` view (§ Views (optional)) carries the same mandatory `[data-decision]` bi-state as the decision template; screens stay evaluation-free either way. |
+| **design** | **No evaluation on screens.** Feedback on the mockups themselves is collected via the feedback dock (general + per-design + per-screen textareas). **Questions go into the one analysis view** — a `data-view-kind="analysis"` view (`data-analysis="full"`, topics); the old `decision` / `comparison` views are abolished for authoring (gate rule A11). Screens stay evaluation-free either way. |
 | **free** | **Opt-in per section.** Claude decides per section whether user evaluation is useful; sections with an `eval-{id}` radio group get evaluated, plain sections just show content. |
 
 **The two states:**

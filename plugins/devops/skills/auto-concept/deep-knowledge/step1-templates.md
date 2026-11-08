@@ -44,7 +44,7 @@ These keep the page scannable for the user. They are Claude's defaults,
 not user instructions: an explicit count from the user always wins, and
 Claude may deviate when the content genuinely demands it.
 
-- **Decision concepts and decision/comparison views: prefer 7 alternatives**
+- **Decision concepts and analysis topics: prefer 7 alternatives**
   set against each other. Fewer when the problem honestly has fewer
   distinct answers — never pad with near-duplicates to reach seven. More
   than seven gets unreadable; fold minor variants into one card instead.
@@ -216,16 +216,16 @@ with an overview table carrying a recommendation column and jump links
    MAY also hold `section[data-view]` — fullscreen, non-visual questions
    with their own TOC entry, switched exactly like a design (see
    `deep-knowledge/templates-design-views.md` § Views (optional)).
-   Three kinds ship as templates: `decision` (2..n named alternatives, bi-state per alternative),
-   `comparison` (2..n concrete candidates side by side, verdict per
-   option, optional criteria matrix) and `mapping` (many items assigned to
+   Two kinds ship as templates: `analysis` — the **one** Full analysis of the
+   round (briefing, topics, right rail — never Lite inside a design round;
+   § 1b · Analysis results and decisions — Full vs Lite), carrying every
+   question of the round as a topic — and `mapping` (many items assigned to
    the schematic UI elements of a design or to matrix targets — an
    assignment, not a choice; § Views (optional) → View kind `mapping`, rules
-   in § 1c below); count preference 7 per `decision` / `comparison` view
-   (Step 0.5). A fourth kind, `analysis`, is the **Full** analysis as a view
-   (briefing, topics, right rail — never Lite inside a design round;
-   § 1b · Analysis results and decisions — Full vs Lite); prefer it over a
-   bi-state `decision` view whenever a question rests on a finding. Any view, whatever its kind, MAY name the design it belongs
+   in § 1c below). The old `decision` / `comparison` views (Verwerfen /
+   Miteinbeziehen bi-state cards) are abolished; the gate rejects them in a
+   live round, and a round holds at most ONE analysis view — several
+   questions are several topics, never several hidden pages. Any view, whatever its kind, MAY name the design it belongs
    to with `data-view-for="{designId}"` — the ☰ nav then nests it under that
    design instead of the flat views group. In **design** mode (Step 0.5) views are out of scope — the
    non-visual questions belong to a later `decision` iteration only when
@@ -257,7 +257,7 @@ with an overview table carrying a recommendation column and jump links
    **Orthogonality — a view never re-asks the design choice.** The call
    *between* the designs is made in the 💬 dock (per-design and per-screen
    textareas); that is the whole point of showing them side by side. A
-   `decision` / `comparison` view therefore asks something that stays the
+   analysis topic therefore asks something that stays the
    same whichever design wins — a data model, a sync strategy, a library, a
    naming scheme. It never lists the designs, or the traits that
    distinguish them ("sidebar as in A" vs "tabs as in B"), as its
@@ -357,8 +357,8 @@ those does once the screen is cloned into a frame.
 
 The decision template has six content sub-variants that shape the variant
 cards. Every question on any of them is authored in a decision mode
-(`deep-knowledge/decision-modes.md`); the include / discard bi-state is legacy
-(`templates-decision.md` § Bi-State Variant Evaluation).
+(`deep-knowledge/decision-modes.md`); the include / discard bi-state is abolished for
+authoring (legacy pages only render it).
 
 | Variant | When to use | Interactive elements |
 |---------|------------|---------------------|

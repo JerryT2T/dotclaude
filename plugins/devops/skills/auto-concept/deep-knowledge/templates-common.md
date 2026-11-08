@@ -321,7 +321,7 @@ must see their own language. The locale hint is authoritative.
 | `design.questions_submit_hint_one` | 1 question still open —     | 1 Frage noch offen — |
 | `design.pages_of`              | Pages of {label}                | Seiten von {label} |
 | `design.keys_title`            | Keyboard shortcuts              | Tastenkürzel |
-| `design.keys_design`           | Design 1–9                      | Design 1–9 |
+| `design.keys_design`           | Design 1–9 (again: next page)   | Design 1–9 (nochmal: nächste Seite) |
 | `design.keys_view`             | Question 1–9                    | Frage 1–9 |
 | `design.keys_next`             | Next page of this design        | Nächste Seite dieses Designs |
 | `design.keys_round` | Round tab 1–9 | Runden-Tab 1–9 |
