@@ -81,6 +81,16 @@ describe("concept SKILL.md — session title prefix", () => {
     expect(cleanup).not.toContain("Working – ");
   });
 
+  // #1095: a close-out without a ship used to set the bare title and rely on
+  // the 6b card; a turn that went on with new work first left the sidebar
+  // with no state at all.
+  test("Step 6a restores the work prefix, never the bare title, when no ship card closes the turn", () => {
+    const cleanup = section("### 6a. Clean up the active-concept state", "**Apply disposition on the concept files.**");
+    expect(cleanup).toContain('"' + SESSION_PREFIX.work + '" + {stripped title}');
+    expect(cleanup).toMatch(/never the bare title/);
+    expect(cleanup).not.toMatch(/Otherwise set the stripped title/);
+  });
+
   test("the open-concept card passes cwd so the page URL is resolved from the state file", () => {
     const cards = section("### Completion cards while the concept is open", "## Step 4 — Monitor via HTTP Bridge");
     expect(cards).toMatch(/`cwd` set to the session cwd/);   // #417: the state file lives in the session cwd

@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.364.1] — 2026-11-09
+
+### Fixed
+- do-run: on a plan without a 5h window (verified Ultra) the "PC danach" question shows two options (PC anlassen / PC ausmachen) and the burn-resume question is skipped (#1096)
+- auto-concept: a close-out without a ship keeps the work prefix on the session title until the card sets the outcome (#1095)
+- Session title: a user message that arrives after a task-notification turn still gets the work prefix (#1094)
+- auto-concept analysis: hovering or clicking any part of the "you are here" tag opens the table of contents rail
+
 ## [0.364.0] — 2026-11-08
 
 ### Added

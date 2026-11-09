@@ -156,7 +156,8 @@ router's follow-up F5 (Desktop); Q3 and Q4 are folded into its F6
 ("PC danach"), whose options never pair shutdown with resume, so the HARD
 GATE below holds by construction. Both are gated: a question the router did
 not ask carries its default (`Desktop frei lassen` → background;
-`🟢 PC anlassen · ➖ Resume` → `$SHUTDOWN=no`, `$AUTO_RESUME=no`). Also take `$SHIP` (`auto` / `manual`),
+`🟢 PC anlassen · ➖ Resume` → `$SHUTDOWN=no`, `$AUTO_RESUME=no`; without a 5h
+window F6's plain `🟢 PC anlassen` maps the same, and Q4 below never applies). Also take `$SHIP` (`auto` / `manual`),
 `$PASSES` and `$STRICT` from the router. The question texts below stay as
 the definition of what each variable means.
 

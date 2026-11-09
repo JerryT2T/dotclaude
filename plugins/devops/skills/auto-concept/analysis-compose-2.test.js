@@ -67,6 +67,18 @@ describe("you are here on the rail", () => {
     expect(CSS).toMatch(/\.an-rail, \.an-here-tag \{ display: none; \}/);   // narrow: the rail is gone, the tag with it
     expect(CSS).toMatch(/\.an-dot\.an-cur \{/);                                // the quick variant's dots are styled, the open one stands out
   });
+  // The tag sticks out left of the 28 px rail: hovering or clicking any part of it opens the rail, not only its right end.
+  test("the tag is part of the rail's hit area: hover expands the rail, a click focuses the open row", () => {
+    expect(CSS).not.toMatch(/\.an-here-tag \{[^}]*pointer-events: none/);
+    expect(CSS).toMatch(/\.an-here-tag \{[^}]*cursor: pointer/);
+    expect(CSS).toMatch(/\[data-analysis\]:has\(> \.an-here-tag:hover\) > \.an-rail \{ width: 260px; \}/);
+    const { doc, ca } = page(FULL);
+    const inst = ca.instances[0];
+    ca.go(inst, inst.stages.findIndex(s => s.el.id === "a2"));
+    inst.hereEl.click();
+    expect(doc.activeElement).toBe(inst.hereRow);
+    expect(inst.stepEl.contains(doc.activeElement)).toBe(true);
+  });
   test("the tag names the open stage and sits level with its row, clamped to the rail's ends", () => {
     const { w, doc, ca } = page(FULL);
     const inst = ca.instances[0];

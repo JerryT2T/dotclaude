@@ -450,6 +450,8 @@ What the code does, in the order of the file:
     tag.hidden = true;
     tag.appendChild(h('span'));
     inst.hereEl = tag;
+    // A click (or tap) on the tag opens the rail at the open row: focus-within expands it like hover does.
+    tag.addEventListener('click', () => { if (inst.hereRow) inst.hereRow.focus(); });
     inst.root.append(tag, nav);
     nav.addEventListener('scroll', () => placeHere(inst), { passive: true });
   }
