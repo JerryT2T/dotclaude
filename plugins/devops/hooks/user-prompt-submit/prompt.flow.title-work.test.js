@@ -160,6 +160,35 @@ describe("prompt.flow.title-work", () => {
     test("a silent tick gets nothing", () => {
       expect(run("Silently service the concept bridge on port 8851")).toBe("");
     });
+
+    // #1094: a machine turn that changes nothing used to take the once-token,
+    // so a real user message later in the same turn found it gone.
+    test("a user message after a no-op machine turn in the same turn still gets the work title", () => {
+      const sid = "title-work-1094-" + process.pid + "-" + Math.random().toString(36).slice(2);
+      const call = (input) => execFileSync(process.execPath, [HOOK], {
+        input: JSON.stringify({ session_id: sid, ...input }),
+        env: { ...process.env, CLAUDE_PLUGIN_ROOT: PLUGIN_ROOT },
+        encoding: "utf8",
+      });
+      releaseTitleWork(sid);
+      try {
+        const machine = call({
+          prompt: "<task-notification>\n<task-id>b1</task-id>\n<status>completed</status>\n<summary>Agent finished</summary>\n</task-notification>",
+          session_title: CONCEPT_PREFIX + "Wir haben ja jetzt Star…",
+        });
+        expect(machine).toBe("");
+        const user = call({
+          prompt: "Erledige diese Aufgabe hier: „#1498 Kampf-Analyse-Kern aus Statikdaten bauen“",
+          session_title: "Wir haben ja jetzt Star…",
+        });
+        expect(user).toContain("set_session_title");
+        expect(user).toContain(WORK_PREFIX + "Wir haben ja jetzt Star…");
+        // That real prompt took the token: a second one in the turn stays quiet.
+        expect(call({ prompt: "noch was", session_title: "Wir haben ja jetzt Star…" })).toBe("");
+      } finally {
+        releaseTitleWork(sid);
+      }
+    });
   });
 
   test("marks a real user prompt, not a silent tick, a scheduled task, or an empty prompt", () => {
