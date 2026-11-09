@@ -274,6 +274,30 @@ describe("label rules (base call and follow-up)", () => {
     expect(followUpQuestions).toMatch(/Gated out → `🟢 PC anlassen · ➖ Resume`/);
   });
 
+  test("without a 5h window F6 drops the resume split and F7 is never asked (#1096)", () => {
+    const followUpQuestions = section(questions, "## Follow-up questions");
+    const block = followUpQuestions.match(/```\n([\s\S]*?)```/)[1];
+    expect(block).toMatch(/\[no 5h window: options 1 and 2 become one, "🟢 PC anlassen \(Recommended\)"/u);
+    expect(block).toMatch(/F7 {2}header: "Burn-Resume".*never without a 5h window/u);
+    const gate = section(followUpQuestions, "- **No 5h window (F6, F7).**", "- **Bedtime");
+    expect(gate).toMatch(/`week N%` segment and no `window` segment/);
+    expect(gate).toMatch(/`🟢 PC anlassen \(Recommended\)`[\s\S]*`🔴 PC ausmachen`/u);
+    expect(gate).toMatch(/`\$AUTO_RESUME=no`; no resume cron is armed and F7 is not asked/);
+    expect(gate).toMatch(/unverified Ultra account included — or unknown usage → the three\s+options/);
+    expect(followUpQuestions).toMatch(/Gated out → `🟢 PC anlassen · ➖ Resume`\s+\(no 5h window: `🟢 PC anlassen`\)/u);
+    expect(mode("backlog")).toMatch(/every `🟢 PC anlassen` option → `no`/u);
+    expect(mode("autonomous")).toMatch(/without a 5h\s+window F6's plain `🟢 PC anlassen` maps the same/u);
+    expect(read("..", "..", "deep-knowledge", "plans.md")).toMatch(/only `week N%`[\s\S]*§ No 5h window/);
+  });
+
+  test("the [budget] line drops the window segment exactly when no 5h limit applies", async () => {
+    const { budgetLine } = await import("../../hooks/lib/budget.js");
+    const base = { plan: "Ultra", weeklyPct: 30, cls: "free" };
+    expect(budgetLine({ ...base, fiveApplies: false, fivePct: null })).toMatch(/· week 30% → free/);
+    expect(budgetLine({ ...base, fiveApplies: false, fivePct: null })).not.toMatch(/window/);
+    expect(budgetLine({ ...base, fiveApplies: true, fivePct: 56, resetInMinutes: 51 })).toMatch(/window 56% \(reset 51 min\) · week 30%/);
+  });
+
   test("F5 is asked only when a desktop takeover adds real value", () => {
     const followUpQuestions = section(questions, "## Follow-up questions");
     expect(followUpQuestions).toMatch(/\*\*Desktop gate \(F5\)\.\*\* Ask only when a mouse\/keyboard takeover adds real\s+value/);

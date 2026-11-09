@@ -178,7 +178,7 @@ four questions). No follow-up when nothing is open.
 | Q2 Autonom (not Backlog), or Budget verbrennen | F5 Desktop **only when a desktop takeover adds real value**, F6 PC danach **only when a resume is foreseeable** — a gated-out question is not asked and takes its default; both gates: `deep-knowledge/questions.md` § Follow-up questions. |
 | Q2 Autonom with Backlog | F6 PC danach under the same gate (backlog never asks Desktop) |
 | Budget verbrennen (not Backlog) | additionally F7 Burn-Resume + F8 Zusatz-Tasks — at most four questions, the tool maximum |
-| Budget verbrennen with Backlog | additionally F6 (if not already asked) + F7; no F8 — the backlog is the queue |
+| Budget verbrennen with Backlog | additionally F6 (if not already asked) + F7; no F8 — the backlog is the queue (no 5h window: F6 two options, no F7) |
 
 The follow-up questions F1–F8, and what each answer feeds:
 `deep-knowledge/questions.md` § Follow-up questions.

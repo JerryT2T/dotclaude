@@ -51,6 +51,12 @@ the plugin trusts the delivered data. `plan.js` `fiveHourState(id, value)`
 decides: a delivered value is always used; `null` means "no limit" on Ultra
 and "window idle" on every other plan.
 
+At question time the injected `[budget]` line tells the two apart: with no
+5h limit it shows only `week N%` (`budgetLine()` in `hooks/lib/budget.js`),
+with one it shows `window N% · week N%`. do-run reads it to drop the resume
+choice from its "PC danach" question (`skills/do-run/deep-knowledge/questions.md`
+§ No 5h window).
+
 ## Fable
 
 Fable is a model, not a plan feature. Pro pays for it with usage credits. The
