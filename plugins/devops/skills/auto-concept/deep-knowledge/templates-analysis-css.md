@@ -214,7 +214,10 @@ html[data-theme="light"] .an-kind { color: var(--an-ac); }
 .an-rail:hover .an-ri.an-here, .an-rail:focus-within .an-ri.an-here { padding-left: 12px; border-radius: 12px 0 0 12px; background: color-mix(in srgb, var(--dc) 24%, transparent); box-shadow: inset -3px 0 0 var(--dc); color: var(--an-tx); font-size: 13px; font-weight: 750; }
 /* collapsed: "you are here" as a tag in the row's colour with its short name, pointing at the dot. A fixed element beside the
    rail (the rail clips and masks its own content), placed by JS level with the open row; the expanded rail names the row itself. */
-.an-here-tag { position: fixed; right: 40px; z-index: 5; display: flex; align-items: center; max-width: clamp(72px, calc((100vw - 780px) / 2 - 44px), 168px); height: 24px; padding: 0 9px; transform: translateY(-50%); border-radius: 7px; background: var(--dc, var(--an-b2)); color: #0d1117; font-size: 11.5px; font-weight: 750; line-height: 24px; white-space: nowrap; pointer-events: none; box-shadow: 0 2px 10px rgba(0,0,0,.3); transition: opacity .15s ease; }
+.an-here-tag { position: fixed; right: 40px; z-index: 5; display: flex; align-items: center; max-width: clamp(72px, calc((100vw - 780px) / 2 - 44px), 168px); height: 24px; padding: 0 9px; transform: translateY(-50%); border-radius: 7px; background: var(--dc, var(--an-b2)); color: #0d1117; font-size: 11.5px; font-weight: 750; line-height: 24px; white-space: nowrap; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,.3); transition: opacity .15s ease; }
+/* The tag is part of the rail's hit area: it sticks out left of the 28 px rail, so hovering any part of it opens the rail
+   (the expanded rail then covers the tag and keeps itself open); a click focuses the open row (JS), for touch too. */
+[data-analysis]:has(> .an-here-tag:hover) > .an-rail { width: 260px; }
 .an-here-tag[hidden] { display: none; }
 .an-here-tag > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .an-here-tag::after { content: ""; position: absolute; left: 100%; top: 50%; margin-top: -6px; border-style: solid; border-width: 6px 0 6px 7px; border-color: transparent transparent transparent var(--dc, var(--an-b2)); }
