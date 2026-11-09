@@ -116,14 +116,15 @@ Attribute reference:
 | `data-topic` | `section[id][data-nav-label]` | a Themenfeld; 1–7 per Full, 3–7 questions each, title ≤ 5 words (gate warns outside) |
 | `data-alevel="1\|2\|3"` + `data-title` | block | analysis level: 1 briefing/overall, 2 topic, 3 this decision. `data-title` equals the rail / topic-page name exactly. Lite has L1 + L3 only. The stage shows ONE level as its first message (brief → L1, topic → L2, decision → L3, falling back to L2, then L1) |
 | `data-slot="short\|long"` | child of a level | short = 1 sentence + KPI or mini graphic (formatted text only when there is no number); long = one palette display + 2-4 sentences, never scrolls |
-| `data-example` | inside a level (next to / inside the long slot) | the "Beispiel" tab of the finding message: a concrete case from the real application |
+| `data-example` | inside a level (next to / inside the long slot) | the "Beispiel" tab of the finding message: a concrete case from the real application; required at L3 whenever something visible exists (gate A12) |
+| `data-no-example="<why>"` | decision | opt-out of the L3 example when nothing visible exists (pure strategy, budget); the reason is the value |
 | `data-opt-preview` | inside an option | optional "So sähe das aus" line of that option |
 | `data-viz="<type>"` + `data-viz-spec='<json>'` | any element in a slot | palette display (below) |
 | `data-decision="<id>"` + `data-decision-mode` | the decision element | id (`[a-z0-9_-]+`) and mode (below). It is also `section[id][data-nav-label]` in Full so the TOC lists it |
 | `data-label` | decision | the rail tooltip / closing name |
 | `data-rec` | decision | recommended option, ALWAYS preselected (value shapes below) |
 | `data-rec-why` | decision | the reason, shown in the ★ tooltip |
-| `data-applies-to` | decision | "Gilt für" text; the visible quiet line carries `data-applies` |
+| `data-applies-to` | decision | "Gilt für" text; the visible quiet line carries `data-applies` — the engine shows it above the question, not in the finding |
 | `data-finding="<id>"` | decision | the finding it rests on (the L3 block inside) |
 | `data-finding-quant="true\|false"` | decision | overrides the gate's guess whether the finding is quantitative |
 | `data-situation` | inside a decision | Ausgangslage: 1–2 sentences above the question, what the analysis found for it (gate A9 warns when missing) |

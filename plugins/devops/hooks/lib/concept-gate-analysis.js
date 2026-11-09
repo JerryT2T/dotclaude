@@ -44,6 +44,16 @@ const QUESTION_MAX = 100;
 const STAKES_MAX = 90;
 
 const TIMING_RE = /\b(welle|wellen|wann\s+(?:\w+\s+){0,2}umsetz\w*|wann\s+einbauen|when\s+to\s+(?:implement|ship|build|do)|which\s+wave|in\s+which\s+(?:wave|release)|rollout\s+wave)\b/i;
+// A12 — finding text budget (research: NN/g scan studies, Cowan 2001 working memory)
+const FINDING_MAX_WORDS = 40;
+const FINDING_MAX_SENTENCES = 3;
+const FINDING_MAX_CODE = 1;
+// Code names: fn(), lower-case file names (not "Node.js"), --css-vars, camelCase (not "iPhone", "eBay", "macOS"), snake_case.
+const CODE_NAME_RE = /\b[A-Za-z_$][\w$]*\(\)|\b[a-z_][\w-]*\.(?:js|mjs|cjs|ts|tsx|jsx|md|json|py|css|html|ya?ml)\b|(?<![\w-])--[a-z][\w-]*|\b[a-z]{2,}[A-Z][a-z][A-Za-z0-9]*\b|\b[a-z]+_[a-z0-9_]+\b/g;
+const FINDING_STATE_OPEN_RE = /^\s*(?:\*\*)?(?:heute|aktuell|derzeit|bisher|today|currently|du willst|du möchtest|du fandest|you want|you found|ich habe|ich hab|i built|i have built|we built|wir haben)\b/i;
+const FINDING_ANSWER_RE = /\b(?:vorschlag|ausweg|empfehlung|empfohlen|empfehle|recommend(?:ed|ation)?|proposal|suggestion|the fix)\s*:|\b(?:die recherche spricht für|ich empfehle|wir empfehlen|i recommend|we recommend)\b/i;
+// Abbreviations whose dot ends no sentence (z. B., d. h., ca., bzw., e.g., i.e., …)
+const ABBREV_RE = /\b(?:z\.\s?B|d\.\s?h|u\.\s?a|o\.\s?ä|v\.\s?a|s\.\s?o|s\.\s?u|ca|bzw|ggf|evtl|inkl|vgl|Nr|Abb|e\.\s?g|i\.\s?e|etc|vs|approx)\./g;
 const QUANT_RE = /\d[\d.,]*\s*(?:%|×|x\b|k\b|m\b|ms\b|s\b|sek|min|h\b|tokens?|mb|gb|kb|€|\$|mal\b|fach)/i;
 
 function blank(html) {
@@ -276,6 +286,39 @@ function findAnalysisIssues(html) {
     const s = doc.nodes.find(n => has(n, 'data-stakes') && inside(d, n));
     const sLen = s ? decode(textOf(doc, s).trim()).length : 0;
     if (sLen > STAKES_MAX) warn('stakes-length', `decision "${attr(d, 'data-decision')}": data-stakes has ${sLen} characters (max ${STAKES_MAX}, one line)`, d.start);
+  }
+
+  // A12 — the finding is read, not decoded (step1-templates.md § The finding message):
+  // consequence first, ≤ FINDING_MAX_WORDS words in ≤ FINDING_MAX_SENTENCES sentences,
+  // ≤ 1 code name in the text (displays may carry up to 3), never the answer, and a
+  // concrete example whenever something visible exists. Warnings, but the author fixes
+  // every finding-* warning before the page opens (validation-gate.md § A12).
+  for (const d of decisions) {
+    const id = attr(d, 'data-decision');
+    const l3 = doc.nodes.find(n => attr(n, 'data-alevel') === '3' && inside(d, n));
+    const long = l3 && doc.nodes.find(n => attr(n, 'data-slot') === 'long' && inside(l3, n));
+    const sit = doc.nodes.find(n => has(n, 'data-situation') && inside(d, n));
+    if (!sit && !long) continue;
+    const skip = doc.nodes.filter(n => (has(n, 'data-viz') || has(n, 'data-example') || has(n, 'data-evidence')) && (!long || inside(long, n)));
+    const prose0 = long ? doc.nodes.filter(n => /^(p|li)$/.test(n.tag) && inside(long, n) && !skip.some(s => inside(s, n))) : [];
+    const prose = prose0.filter(n => !prose0.some(o => inside(o, n)));   // a nested li counts once, with its parent
+    const parts = [sit, ...prose].filter(Boolean);
+    const text = decode(parts.map(n => textOf(doc, n)).join(' ')).trim();
+    if (!text) continue;
+    const words = text.split(/\s+/).filter(w => /[\p{L}\p{N}]/u.test(w)).length;
+    const plain = text.replace(ABBREV_RE, m => m.replace(/\./g, '․'));   // one-dot leader: not a sentence end
+    const sentences = (plain.match(/[.!?…](?=\s|$)/g) || []).length || 1;
+    if (words > FINDING_MAX_WORDS || sentences > FINDING_MAX_SENTENCES) warn('finding-length', `decision "${id}": the finding text has ${words} words in ${sentences} sentences (max ${FINDING_MAX_WORDS} / ${FINDING_MAX_SENTENCES}, display and example not counted) — keep consequence + evidence, move detail into the example`, d.start);
+    const codes = parts.reduce((k, p) => k + doc.nodes.filter(n => n.tag === 'code' && (n === p || inside(p, n))).length, 0);
+    const ids = new Set((text.replace(/<[^>]*>/g, ' ').match(CODE_NAME_RE) || []).map(s => s.toLowerCase()));
+    const nCodes = Math.max(codes, ids.size);
+    if (nCodes > FINDING_MAX_CODE) warn('finding-code', `decision "${id}": the finding text names ${nCodes} code identifiers (max ${FINDING_MAX_CODE}) — say what it does for the user; file, function and flag names go into the example (a display may label up to 3)`, d.start);
+    const first = plain.split(/(?<=[.!?…])\s+/)[0];
+    if (FINDING_STATE_OPEN_RE.test(first)) warn('finding-first', `decision "${id}": the finding opens with a state, a wish or own work ("${first.slice(0, 40)}…") — open with what it costs or changes for the user, the state follows`, d.start);
+    const opts = doc.nodes.filter(n => has(n, 'data-opt-label') && inside(d, n)).map(n => decode(textOf(doc, n)).toLowerCase().trim()).filter(s => s.length >= 12);
+    const low = text.toLowerCase();
+    if (FINDING_ANSWER_RE.test(text) || opts.some(o => low.includes(o))) warn('finding-answer', `decision "${id}": the finding names the answer (a recommendation word or an option label) — the finding shows the problem, the options and ★ carry the answer`, d.start);
+    if (l3 && !has(d, 'data-no-example') && !doc.nodes.some(n => has(n, 'data-example') && inside(l3, n))) warn('finding-example', `decision "${id}": no [data-example] — show the concrete case (before / after: screen excerpt, text, code, output); only when nothing visible exists set data-no-example="<why>" on the decision`, d.start);
   }
 
   // A8 — timing is never a decision

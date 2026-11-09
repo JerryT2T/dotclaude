@@ -49,6 +49,9 @@ bridge protocol and every message to the user.
    `node "{PLUGIN_ROOT}/scripts/concept-build.js" build "docs/concepts/{name}"`.
    On `BLOCKED`, fix the fragment and build again, **at most three builds in
    total**. Never satisfy the gate by deleting content the brief asked for.
+   A passing build with `finding-*` warnings (gate A12) is not done: rewrite
+   those findings (consequence first, ≤ 40 words, ≤ 1 code name, no answer,
+   an example) and build again within the same three builds.
    If it still fails, stop and report `BLOCKED` with the problems. Never edit
    the built page, the engine reference or another round.
 

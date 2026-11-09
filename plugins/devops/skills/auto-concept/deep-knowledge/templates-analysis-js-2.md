@@ -200,6 +200,8 @@
     // Messages: finding (variable height), question (min height, grows), answer block (capped).
     const fm = buildFinding(inst, st);
     const qm = msg('an-m-q'), qb = h('div', 'an-bub an-qb');
+    const applies = d.querySelector('[data-applies]');
+    if (applies) qb.appendChild(applies);   // "Gilt für" scopes the decision: quiet line above the question
     if (q) qb.appendChild(q);
     if (stakes) qb.appendChild(stakes);
     qm.appendChild(qb);
@@ -773,18 +775,32 @@
       typing.append(h('i'), h('i'), h('i'));
       parts[0].after(typing);
     }
-    let at = 0;
-    parts.slice(1).forEach((n, i) => {
-      at += dwellMs(parts[i]);
-      inst.timers.push(setTimeout(() => {
-        if (inst.stages[inst.idx] !== st) return;
-        n.classList.remove('an-wait');
-        n.classList.add('an-enter');
-        if (n === parts[parts.length - 1]) { typing.remove(); tail.forEach(t => t.classList.remove('an-wait')); }
-        else n.after(typing);
-        glide(inst, n, parts[Math.min(i + 1, 1)]);   // the answer never pushes the question out of view
-      }, at));
-    });
+    let next = 1, gen = 0, pending = [];
+    const show = () => {
+      if (inst.stages[inst.idx] !== st || next >= parts.length) return;
+      const n = parts[next], i = next - 1;
+      next++;
+      n.classList.remove('an-wait');
+      n.classList.add('an-enter');
+      if (n === parts[parts.length - 1]) { typing.remove(); tail.forEach(t => t.classList.remove('an-wait')); }
+      else n.after(typing);
+      glide(inst, n, parts[Math.min(i + 1, 1)]);   // the answer never pushes the question out of view
+    };
+    // (Re)plan the rest from now; a stale plan (generation changed) does nothing.
+    const plan = () => {
+      const g = ++gen;
+      pending.forEach(t => clearTimeout(t));
+      pending = [];
+      let at = 0;
+      for (let k = next; k < parts.length; k++) {
+        at += dwellMs(parts[k - 1]);
+        const t = setTimeout(() => { if (g === gen) show(); }, at);
+        pending.push(t); inst.timers.push(t);
+      }
+    };
+    // Hidden shortcut: a click on the typing dots brings the next message at once; the rest keeps its pace from there.
+    if (typing) typing.addEventListener('click', () => { show(); plan(); });
+    plan();
     if (parts.length === 1) tail.forEach(t => t.classList.remove('an-wait'));
     inst.timers.push(setTimeout(() => { if (inst.stages[inst.idx] === st) pulse(st.el); }, 1650));
   }

@@ -273,14 +273,13 @@ What the code does, in the order of the file:
     const list = st.group ? st.group.decs : inst.decs;
     return (st.group ? st.group.label + ' · ' : '') + L('Frage ', 'Question ') + stageNo(inst, st) + L(' von ', ' of ') + list.length;
   }
-  /** Finding message: meta line, tabs Befund / Beispiel (Beispiel only with a [data-example] slot), situation + visual. */
+  /** Finding message: meta line, tabs Befund / Beispiel (Beispiel only with a [data-example] slot), situation + visual.
+   *  "Gilt für" is not part of it: it scopes the decision, so it stands above the question (buildDecision). */
   function buildFinding(inst, st) {
     const d = st.el, src = findingSrc(inst, st);
     const m = msg('an-m-find'), bub = h('div', 'an-bub an-edge');
     m.appendChild(bub);
     bub.appendChild(h('div', 'an-meta', metaText(inst, st)));
-    const applies = d.querySelector('[data-applies]');
-    if (applies) bub.appendChild(applies);
     const pane = h('div', 'an-pane an-p-find'), sit = d.querySelector('[data-situation]');
     if (sit) pane.appendChild(sit);
     const slot = src && [...src.children].find(c => c.getAttribute('data-slot') === 'long');
