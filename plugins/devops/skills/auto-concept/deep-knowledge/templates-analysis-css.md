@@ -172,7 +172,7 @@ html[data-theme="light"] .an-kind { color: var(--an-ac); }
    and the chat glides down only as far as the message that just entered (glide). */
 .an-wait { display: none !important; }
 /* a message is still held back: dots at the bubbles' left edge, kept in view while the message above is long */
-.an-typing { position: sticky; bottom: 6px; display: flex; gap: 5px; width: max-content; margin: 16px 0 0 42px; padding: 10px 14px; border-radius: 4px 14px 14px 14px; background: var(--an-s1); }
+.an-typing { position: sticky; bottom: 6px; display: flex; gap: 5px; width: max-content; margin: 16px 0 0 42px; padding: 10px 14px; border-radius: 4px 14px 14px 14px; background: var(--an-s1); cursor: pointer; }
 .an-typing > i { width: 7px; height: 7px; border-radius: 50%; background: var(--an-b2); animation: an-typing 1.2s ease-in-out infinite; }
 .an-typing > i:nth-child(2) { animation-delay: .16s; }
 .an-typing > i:nth-child(3) { animation-delay: .32s; }

@@ -170,6 +170,24 @@ describe("first visit animates, later visits are instant", () => {
     expect(CSS).toMatch(/\.an-enter \{ animation: an-in 1\.35s/);
     expect(CSS).toMatch(/prefers-reduced-motion: reduce\)[\s\S]*animation: none !important/);
   });
+  test("hidden shortcut: a click on the typing dots brings the next message at once, the rest re-paced from there", () => {
+    const { ca, timers } = page(FULL);
+    const inst = ca.instances[0];
+    const i = inst.stages.findIndex(s => s.el.id === "a1");
+    ca.go(inst, i);
+    const el = inst.stages[i].el, part = c => el.querySelector(":scope > " + c);
+    const stale = timers.slice();
+    el.querySelector(".an-typing").click();
+    expect(part(".an-m-q").classList.contains("an-enter")).toBe(true);
+    expect(part(".an-m-a").classList.contains("an-wait")).toBe(true);
+    // The old plan is dead: firing its timers changes nothing.
+    stale.forEach(t => t.f());
+    expect(part(".an-m-a").classList.contains("an-wait")).toBe(true);
+    el.querySelector(".an-typing").click();
+    expect(part(".an-m-a").classList.contains("an-enter")).toBe(true);
+    expect(el.querySelector(".an-typing")).toBeNull();
+    expect(inst.peekDn.classList.contains("an-wait")).toBe(false);
+  });
   test("user scroll wins: a wheel / touch in the chat stops the auto-scroll until the next stage", () => {
     const { w, ca } = page(FULL);
     const inst = ca.instances[0];
