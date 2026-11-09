@@ -126,8 +126,9 @@ F6  header: "PC danach"     multiSelect: false   [only behind the resume gate be
     1. "🟢 PC anlassen · ➕ Resume (Recommended)" — PC bleibt an; nach dem 5h-Reset werden hängende Worktrees mit »weiter« angestoßen.
     2. "🟢 PC anlassen · ➖ Resume"          — PC bleibt an; kein automatischer Anstoß.
     3. "🔴 PC ausmachen"                     — PC fährt nach Abschluss herunter; wartet auf andere laufende Sessions und fährt auch dann herunter, wenn das Nutzungslimit den Run abbricht.
+    [no 5h window: options 1 and 2 become one, "🟢 PC anlassen (Recommended)" — PC bleibt an. — see "No 5h window" below]
 
-F7  header: "Burn-Resume"   multiSelect: false   [only with Budget verbrennen]
+F7  header: "Burn-Resume"   multiSelect: false   [only with Budget verbrennen, never without a 5h window]
     question: "Stoppt das Limit den Burn und der Auto-Resume stößt nach dem Reset an: weiterbrennen? (Gilt nur mit »🟢 PC anlassen · ➕ Resume«.)"
     1. "Burn fortsetzen (Recommended)"     — Nach dem Reset läuft der Burn mit neu berechnetem Plan weiter.
     2. "Burn abschalten"                   — Nach dem Reset nur noch die offenen Hauptaufgaben, Standard-Tiefe; Füll-Tasks entfallen.
@@ -158,7 +159,20 @@ one line only when it matters ("Desktop bleibt frei · PC bleibt an").
   ask when that reaches the window's remaining headroom from the newest
   `[budget]` line (or parallel sessions draw on it). Budget verbrennen
   and the `sleep` preset always pass the gate — a user away overnight
-  makes a limit stop foreseeable. Gated out → `🟢 PC anlassen · ➖ Resume`.
+  makes a limit stop foreseeable. Gated out → `🟢 PC anlassen · ➖ Resume`
+  (no 5h window: `🟢 PC anlassen`).
+- **No 5h window (F6, F7).** The newest `[budget]` line carries a
+  `week N%` segment and no `window` segment — `budgetLine()` in
+  `hooks/lib/budget.js` drops it exactly when the plan has no 5h limit
+  (a verified Ultra account, `{PLUGIN_ROOT}/deep-knowledge/plans.md` § The 5-hour
+  limit). Nothing resets after 5 h, so a resume has nothing to wait for:
+  F6 offers two options, `🟢 PC anlassen (Recommended)` — PC bleibt an —
+  and `🔴 PC ausmachen` as above. `🟢 PC anlassen` → `$SHUTDOWN=no`,
+  `$AUTO_RESUME=no`; no resume cron is armed and F7 is not asked (a limit
+  stop of the burn is asked on the manual nudge, `prompt.burn.resume`).
+  A resume phrase preset lands on `🟢 PC anlassen`. A `window` segment —
+  an unverified Ultra account included — or unknown usage → the three
+  options.
 - **Bedtime (`sleep` preset, a skill trigger — no hook).** A first-person
   "ich gehe ins Bett", "geh schlafen", "gute Nacht", "going to bed" — not
   a message ABOUT bedtime or this trigger — → the user answers once and
@@ -168,7 +182,7 @@ one line only when it matters ("Desktop bleibt frei · PC bleibt an").
   wir morgen") → ask F6 alone: `🔴` → `modes/autonomous.md` Step 8a + 8b
   (wait for other sessions, then shut down); `➕ Resume` → arm the
   `autonomous-resume-schedule.js` cron (`modes/autonomous.md` Step 4);
-  `➖ Resume` → nothing.
+  `➖ Resume` or `🟢 PC anlassen` (no 5h window) → nothing.
   The rest of the bedtime prompt (tasks, constraints, content
   instructions, a named skill such as /do-ship or /do-learn) is the task:
   written verbatim to `.claude/run-task.md` before the base call (SKILL.md
@@ -187,13 +201,15 @@ one line only when it matters ("Desktop bleibt frei · PC bleibt an").
   the resume cron.
 - **Phrase presets (Step 1).** "PC danach aus", "fahr den PC runter",
   "shutdown" → F6 = `🔴 PC ausmachen`; "resume nach dem Limit",
-  "weitermachen nach dem Reset" → F6 = `🟢 PC anlassen · ➕ Resume`;
+  "weitermachen nach dem Reset" → F6 = `🟢 PC anlassen · ➕ Resume`
+  (no 5h window: `🟢 PC anlassen`);
   "übernimm den Desktop", "teste mit Maus/Tastatur" → F5 = `Desktop
   übernehmen`. A preset answers the question whether or not its gate
   passed — shutdown stays reachable without asking everyone.
 
 F6's first option — the recommendation — is `➕ Resume`; the order never
-changes.
+changes. Without a 5h window it is `🟢 PC anlassen`, `🔴 PC ausmachen`
+stays last.
 
 F7 is the auto-resume answer for the burn: whatever the user types after a
 limit is asked again by `prompt.burn.resume` (manual nudge, "Burn
