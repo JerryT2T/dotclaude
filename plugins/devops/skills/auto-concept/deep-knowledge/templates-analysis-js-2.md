@@ -200,6 +200,8 @@
     // Messages: finding (variable height), question (min height, grows), answer block (capped).
     const fm = buildFinding(inst, st);
     const qm = msg('an-m-q'), qb = h('div', 'an-bub an-qb');
+    const applies = d.querySelector('[data-applies]');
+    if (applies) qb.appendChild(applies);   // "Gilt für" scopes the decision: quiet line above the question
     if (q) qb.appendChild(q);
     if (stakes) qb.appendChild(stakes);
     qm.appendChild(qb);

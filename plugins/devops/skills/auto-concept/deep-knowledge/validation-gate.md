@@ -468,6 +468,7 @@ ignored.
 | A10 | warn | a `[data-question]` over 100 characters (two lines) or a `[data-stakes]` over 90 (one line): the question message grows instead of clipping, so a longer text makes it taller than the chat budget — move the background into `data-situation` / `data-context` |
 | A11 | **fail** | the old decision-view style in a live design round (`findLegacyDecisionViews`, = P35 in validation-gate-phase2.md): a `data-view-kind="decision"` / `"comparison"` view (`legacy-decision-view`), or more than one `data-view-kind="analysis"` view (`multiple-analysis-views`) — one round, one Full analysis, several topics. Frozen rounds are exempt |
 
+| A12 | warn → fix | the finding text (`data-situation` + the L3 long slot's prose, display and example not counted, `step1-templates.md` § The finding message): over 40 words or 3 sentences (`finding-length`), more than 1 code name (`finding-code`), an opening with state / wish / own work (`finding-first`), a recommendation word or an option label (`finding-answer`), no `[data-example]` without `data-no-example="<why>"` on the decision (`finding-example`). **The author fixes every `finding-*` warning before the page opens or reloads** — the build passes, the page does not go out with them |
 Warnings surface in the `concept-build.js` build report; they never block.
 
 > Phase 2 (template-specific patterns) and Failure handling continue in [validation-gate-phase2.md](validation-gate-phase2.md).

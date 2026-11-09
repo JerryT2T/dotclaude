@@ -228,8 +228,8 @@ describe("gate rules A1-A8", () => {
     const l3 = inner => MODES.s.replace("</h3>", `</h3><div data-alevel="3" data-title="x"><div data-slot="long">${inner}</div></div>`);
     expect(kinds(findAnalysisIssues(l3("<p>Saves 31 M tokens, 80 % of hits.</p>")), "warnings")).toContain("finding-visual");
     expect(kinds(findAnalysisIssues(l3('<div data-viz="text"></div><p>Saves 31 M tokens.</p>')), "warnings")).toContain("finding-visual");
-    expect(findAnalysisIssues(l3('<div data-viz="bar" data-viz-spec="{}"></div><p>Saves 31 M tokens.</p>')).warnings).toEqual([]);
-    expect(findAnalysisIssues(l3("<p>Hooks run before the tool.</p>")).warnings).toEqual([]);
+    expect(kinds(findAnalysisIssues(l3('<div data-viz="bar" data-viz-spec="{}"></div><p>Saves 31 M tokens.</p>')), "warnings")).not.toContain("finding-visual");
+    expect(kinds(findAnalysisIssues(l3("<p>Hooks run before the tool.</p>")), "warnings")).not.toContain("finding-visual");
   });
   test("A7 three bi-states in one section on an analysis page warn", () => {
     const bi = k => `<div data-decision="b${k}" data-label="B${k}"><input type="radio" name="eval-b${k}" value="include" checked></div>`;
@@ -277,6 +277,45 @@ describe("gate A10 question length", () => {
     const kinds = findAnalysisIssues(MODES.s).warnings.map(w => w.kind);
     expect(kinds).not.toContain("question-length");
     expect(kinds).not.toContain("stakes-length");
+  });
+});
+
+describe("gate A12 finding text", () => {
+  const withFinding = (sit, prose, extra = "") => MODES.s.replace(/<p data-situation>[^<]*<\/p>/, `<p data-situation>${sit}</p>`)
+    .replace("</h3>", `</h3><div data-alevel="3" data-title="x"><div data-slot="long"><div data-viz="bar" data-viz-spec="{}">sceneStep() modeA() fooBar()</div><p>${prose}</p></div>${extra}</div>`);
+  const ex = '<div data-example><pre>before / after</pre></div>';
+  const k = html => findAnalysisIssues(html).warnings.map(w => w.kind);
+  test("a short consequence-first finding with an example passes every A12 check", () => {
+    const got = k(withFinding("A click on a sub page throws you out of the scene.", "It cuts hard and dims the sky.", ex));
+    expect(got.filter(x => x.startsWith("finding-"))).toEqual([]);
+  });
+  test("over 40 words or 3 sentences warns; the display and the example are not counted", () => {
+    expect(k(withFinding("Word ".repeat(30) + ".", "Word ".repeat(15) + ".", ex))).toContain("finding-length");
+    expect(k(withFinding("One. Two.", "Three. Four.", ex))).toContain("finding-length");
+  });
+  test("more than one code name in the text warns; up to three in a display do not", () => {
+    expect(k(withFinding("The scene stops on sub pages.", "sceneStep() in scene.model.ts returns still.", ex))).toContain("finding-code");
+    expect(k(withFinding("The scene stops on sub pages.", "sceneStep() returns still.", ex))).not.toContain("finding-code");
+  });
+  test("product names, abbreviations and nested items do not trip the counts", () => {
+    expect(k(withFinding("The iPhone and eBay app on macOS stop.", "Node.js and Vue.js load it.", ex))).not.toContain("finding-code");
+    expect(k(withFinding("Ein Klick dauert z. B. ca. 3 s länger.", "Das kostet d. h. Zeit.", ex))).not.toContain("finding-length");
+    expect(k(withFinding("Du hast 3 s verloren.", "Die Lösung: fehlt.", ex)).filter(x => x === "finding-first" || x === "finding-answer")).toEqual([]);
+  });
+  test("a state, wish or own-work opening warns", () => {
+    expect(k(withFinding("Heute schneidet ein Klick hart.", "Das reißt dich raus.", ex))).toContain("finding-first");
+    expect(k(withFinding("Du willst pro Frage messen.", "Das fehlt.", ex))).toContain("finding-first");
+    expect(k(withFinding("Ich habe einen Umbau gebaut.", "Er fehlt.", ex))).toContain("finding-first");
+  });
+  test("a recommendation word or an option label in the finding warns", () => {
+    expect(k(withFinding("The scene stops on sub pages.", "Vorschlag: eine Pose je Bereich.", ex))).toContain("finding-answer");
+    const labelled = withFinding("The scene stops on sub pages.", "Show it borderless now.", ex).replace('value="a">', 'value="a"><span data-opt-label>show it borderless</span>');
+    expect(k(labelled)).toContain("finding-answer");
+  });
+  test("a finding without an example warns unless the decision says why there is none", () => {
+    expect(k(withFinding("The scene stops on sub pages.", "It cuts hard."))).toContain("finding-example");
+    const optOut = withFinding("The scene stops on sub pages.", "It cuts hard.").replace('data-decision-mode="single"', 'data-decision-mode="single" data-no-example="pure strategy"');
+    expect(k(optOut)).not.toContain("finding-example");
   });
 });
 

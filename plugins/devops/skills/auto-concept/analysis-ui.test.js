@@ -170,6 +170,15 @@ describe("first visit animates, later visits are instant", () => {
     expect(CSS).toMatch(/\.an-enter \{ animation: an-in 1\.35s/);
     expect(CSS).toMatch(/prefers-reduced-motion: reduce\)[\s\S]*animation: none !important/);
   });
+  test("\"Gilt für\" stands above the question, never inside the finding", () => {
+    const { ca } = page(FULL.replace('<h3 data-question>', '<p data-applies>Gilt für: alle Seiten</p><h3 data-question>'));
+    const inst = ca.instances[0];
+    const st = inst.stages.find(s => s.el.id === "a1");
+    const applies = st.el.querySelector("[data-applies]");
+    expect(applies).not.toBeNull();
+    expect(applies.closest(".an-m-q")).not.toBeNull();
+    expect(st.el.querySelector(".an-m-find [data-applies]")).toBeNull();
+  });
   test("hidden shortcut: a click on the typing dots brings the next message at once, the rest re-paced from there", () => {
     const { ca, timers } = page(FULL);
     const inst = ca.instances[0];

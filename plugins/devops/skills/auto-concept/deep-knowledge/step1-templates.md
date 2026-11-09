@@ -453,13 +453,39 @@ consequence text follows the value.
 **Fragestellung — never a bare question.** The reader must grasp the problem
 without the analysis open:
 
-- `data-situation` (REQUIRED, gate A9 warns) — 1–2 sentences of Ausgangslage
-  above the question: what the analysis found *for this question*, with the
-  number. "Today 80 % of cache hits fall within 10 min, yet entries live 24 h."
+- `data-situation` (REQUIRED, gate A9 warns) — the first sentence of the
+  finding: what the found problem costs or changes **for the user**, with the
+  number. "Every cached answer lives 24 h, though 80 % of hits come within 10 min."
+  — not "Today 80 % of cache hits …" (state first, the reader has to work out why it matters).
 - `data-question` — the real question.
 - `data-context` — optional, one sentence about answering (e.g. "Klick auf die Skizze oder die Liste"); shown as a hint at the top of the answer block.
 - The finding (`data-situation`, the L3 slots, `data-example`) is only the finding: it never refers to the answer block, its options or how to answer — that belongs in `data-context`.
 - `data-stakes` — optional, "Davon hängt ab": what changes downstream.
+
+**The finding message — what goes in, what stays out (gate A12).** The user
+reads the opening of a finding and skims the rest (NN/g eyetracking: 20–28 %
+of a page's words are read, the start most); a finding that opens with the
+state, runs long or repeats the answer gets skipped. Analysis of 10 real
+findings (2026-11): 7 opened with state or the user's own wish, 8 repeated an
+option, none had an example, 54–76 words each.
+
+| In the finding | Never in the finding |
+|---|---|
+| Sentence 1: the consequence for the user — what breaks, costs or annoys, with the number | Openers with the state ("Heute …", "Aktuell …"), the user's wish ("Du willst …") or own work ("Ich habe … gebaut") |
+| Sentence 2 (optional): the evidence — the measurement, the cause, one fact | The answer: an option label, "Vorschlag:", "Ausweg:", "Empfehlung", "die Recherche spricht für …" — that is the options' and ★'s job |
+| Sentence 3 (optional): why it matters now, or "Nach deiner Antwort zu … bleibt …" | How to answer (`data-context`), the scope (`data-applies`, shown above the question) |
+| The display: the measured part, the item marked; up to 3 code names as labels | More than 1 code name in the text (file, function, flag, CSS var): say what it does; names go into the example |
+| The example tab: the concrete case, before / after | Background the question does not need; the method of the analysis |
+
+Budget: **≤ 40 words in ≤ 3 sentences** across `data-situation` and the long
+slot's prose (display and example not counted). **Example required whenever
+something visible exists** (UI, text, code, output, transcript): a
+`[data-example]` with before / after; only a decision with nothing visible
+(pure strategy, budget) sets `data-no-example="<why>"`. Gate A12 warns on each
+rule (`finding-length`, `finding-code`, `finding-first`, `finding-answer`,
+`finding-example`); the author fixes every `finding-*` warning before the page
+opens or reloads (`validation-gate.md` § A12) — the build passes, the page
+does not go out with them.
 
 **The finding is the first chat message.** One level only — the stage's own:
 briefing → L1, topic page → L2, decision → its L3 (no L3: the topic's L2, else
@@ -489,7 +515,7 @@ the short slot is the one-sentence summary for places that need it.
 |---|---|---|---|
 | L1 · Briefing / overall | the briefing's rail name | the potential as KPI or mini graphic + 1 sentence | the overall display (e.g. Wirkungsmatrix, Rangbalken per topic) + 2–4 sentences |
 | L2 · Themenfeld (Full only) | the topic's name, ≤ 5 words | always the topic's **result**, never its progress | the display that shows what the topic's problem is made of (e.g. Wasserfall) + 2–4 sentences |
-| L3 · this decision | the decision's rail name | the answer in a sentence | the finding: one palette display + 2–4 sentences, plus the optional `[data-example]` |
+| L3 · this decision | the decision's rail name | the finding in a sentence (never the answer) | the finding: one palette display + 1–2 sentences (with `data-situation` ≤ 40 words / 3 sentences), plus the `[data-example]` (required when something visible exists) |
 
 Short = one sentence (≤ 140 characters) + KPI or mini graphic, strongly
 preferring the mini graphic whenever there is a number; no number →
