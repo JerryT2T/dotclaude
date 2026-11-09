@@ -324,6 +324,10 @@ if (require.main === module) {
     const prompt = hook.prompt || hook.user_message || hook.message || '';
     const out = hookReply(hook, prompt, hook.cwd || process.cwd());
     if (out) process.stdout.write(out + '\n');
+    // A machine turn that left the title alone must not hold the token: a
+    // real user message later in the same turn (a "Do it here" click, a card
+    // button) would otherwise find it taken and never mark the title (#1094).
+    else if (isMachineTurn(prompt)) releaseOnce(ONCE_KEY, hook.session_id);
     process.exit(0);
   });
 }
