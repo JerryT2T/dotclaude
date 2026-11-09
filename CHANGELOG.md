@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.365.0] — 2026-11-09
+
+### Added
+- Analysis pages: a click on the typing dots shows the next chat message at once.
+- Gate A12 for analysis findings: warns when a finding runs over 40 words / 3 sentences, names more than one code identifier in its text, opens with a state instead of the consequence, names the answer, or has no concrete example.
+
+### Changed
+- Finding authoring rules: an explicit "in the finding / never in the finding" table; the example tab is required whenever something visible exists (`data-no-example` opt-out).
+- "Gilt für" now stands above the question instead of inside the finding bubble.
+
 ## [0.364.1] — 2026-11-09
 
 ### Fixed
