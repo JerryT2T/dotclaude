@@ -372,6 +372,9 @@
       "hooks/lib/git-sync-bg.js",
       "hooks/lib/knowledge-anchor.js"
     ],
+    "pre.merge.guard": [
+      "hooks/lib/knowledge-anchor.js"
+    ],
     "stop.git.sync": [
       "hooks/lib/git-sync-bg.js",
       "hooks/lib/knowledge-anchor.js"
