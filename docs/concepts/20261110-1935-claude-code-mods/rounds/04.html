@@ -1,0 +1,87 @@
+<section data-iteration="4" data-iteration-template="free" data-final-report>
+  <p class="fr-sentence">devops hat jetzt ein eigenes Mod-Modul, nur im Alpha-Kanal: es zeigt Agenten, Budget, Ship-Stand und Branches an und ändert dabei keinen Hook.</p>
+
+  <div class="fr-main">
+    <div class="fr-results">
+      <p class="fr-label">{{final.results}}</p>
+      <ul class="fr-wins">
+        <li><span class="fr-win-icon" aria-hidden="true">🧭</span><span><b>Agenten, Budget und Ship-Stand</b> neben dem Chat sichtbar.</span></li>
+        <li><span class="fr-win-icon" aria-hidden="true">🌿</span><span>Offene Branches in der Statuszeile, <b>Aufräumen per Knopf</b>.</span></li>
+        <li><span class="fr-win-icon" aria-hidden="true">🧪</span><span><b>Messbefehl für den Cache-Ping</b> als Grundlage fürs Warmhalten.</span></li>
+      </ul>
+    </div>
+    <ol class="fr-flow">
+      <li>Doku mit Stufenplan, Rechnung und Red-Team-Antworten</li>
+      <li>Anzeige-Mods im devops-Plugin, nur Alpha</li>
+      <li>Spike 1: <code>/mods-spike-fork</code> misst den Cache-Treffer</li>
+      <li>Spikes 2–5 und Stufe 3 als Issues im Meilenstein „Claude Mods“</li>
+    </ol>
+  </div>
+
+  <div class="fr-holds">
+    <p class="fr-label">{{final.holds}}<small>{{final.holds_hint}}</small></p>
+    <div class="fr-meters">
+      <div class="fr-meter" data-grade="full" style="--fr-fill: 100%" data-tip="Kein Hook-, Guard- oder Skill-Skript geändert; Mod-Hooks reichen bei Fehlern durch (geschätzt: Anforderung = 0 Verhaltensänderungen).">
+        <span class="fr-meter-name">🧱 Stabilität</span>
+        <div class="fr-meter-bar" aria-hidden="true"></div>
+        <b class="fr-meter-value">0 Hooks geändert</b>
+      </div>
+      <div class="fr-meter" data-grade="part" style="--fr-fill: 60%" data-tip="Geprüft mit der CLI 2.1.302; das Laden in der Desktop-App 2.1.321 ist Spike 2 (geschätzt).">
+        <span class="fr-meter-name">🔌 Kompatibilität</span>
+        <div class="fr-meter-bar" aria-hidden="true"></div>
+        <b class="fr-meter-value">CLI ✓ · Desktop offen</b>
+      </div>
+      <div class="fr-meter" data-grade="full" style="--fr-fill: 100%" data-tip="7 Engine-Tests, eigener npm-Befehl, in CI; hooks.json kommt aus dem Generator (geschätzt).">
+        <span class="fr-meter-name">🛠 Wartbarkeit</span>
+        <div class="fr-meter-bar" aria-hidden="true"></div>
+        <b class="fr-meter-value">7 / 7 Tests</b>
+      </div>
+    </div>
+  </div>
+
+  <div class="fr-depth" tabindex="0" data-tip="3 / 7 · ✓ {{final.level_code}} · ✓ {{final.level_dry}} · ✓ {{final.level_interplay}} · ○ {{final.level_local}} · ◌ {{final.level_prod}} · ◌ {{final.level_live}} · ◌ {{final.level_accept}}">
+    <span class="fr-depth-done">✓ {{final.depth_done}}: <b>{{final.level_interplay}}</b></span>
+    <span class="fr-depth-next">○ {{final.depth_next}}: <b>{{final.level_local}}</b></span>
+  </div>
+
+  <div class="fr-folds">
+  <details class="fr-fold" data-open-questions>
+    <summary>🔍 1 {{final.funde_fold}}</summary>
+    <ul class="fr-funde">
+      <li data-oq-id="oq-bash-toast"
+          data-issue-title="[FEATURE] Toast when a long background Bash run finishes"
+          data-issue-type="feature"
+          data-issue-body="Approved in the concept (C6, round 1 d-new 'ping'): a toast when a long background run finishes. Built for subagents only (classic.SubagentStop, runs of 120 s or more). The mod API of Claude Code 2.1.302/2.1.321 raises no event when a background Bash task ends, so there is nothing to hook. Re-check when the engine adds such an event; until then the toast covers subagents and waiting permission requests. Module: plugins/devops/hooks/mods/index.tsx. Milestone: Claude Mods."
+          data-issue-milestone="[New] Claude Mods — display panes, cache keep-alive, titles, concept timers"
+          data-oq-origin="shortfall"
+          data-route-default="issue"
+          data-route-reason="außerhalb Repo">
+        <span class="oq-label">Toast bei Bash-Ende fehlt</span>
+        <dl class="fr-fkv">
+          <dt>{{final.fund_what}}</dt><dd>Nicht umgesetzt, weil Claude Code kein Ereignis meldet, wenn ein Hintergrund-Bash endet; Subagenten sind abgedeckt.</dd>
+          <dt>{{final.fund_where}}</dt><dd>Toast-Hinweise des Mods</dd>
+          <dt>{{final.fund_why}}</dt><dd>📌 Issue — hängt an einem Ereignis, das nur Anthropic liefern kann.</dd>
+        </dl>
+      </li>
+    </ul>
+  </details>
+
+  <details class="fr-fold">
+    <summary>🛠 {{final.dev_fold}}</summary>
+    <ul class="fr-dev">
+      <li>Commits <code>1f3617d1</code>…<code>77fe7829</code> auf <code>claude/claude-code-desktop-mods-a120b4</code>, nicht gepusht</li>
+      <li><code>plugins/devops/hooks/mods/index.tsx</code>, <code>hooks/dispatch/build-hooks-json.js</code>, <code>docs/dev/mods.md</code></li>
+      <li>Tests: <code>claude plugin test</code> 7/7 · validate ✓ (alle Gating-Hooks mit <code>.catch</code>) · lint ✓ · volle <code>npm test</code>: siehe Karte</li>
+      <li>qax unabhängig: C1–C5, C7, C9–C11 erfüllt; C6 ohne Ton (kein Asset), C8-Knopf live = Spike 5 (#1104)</li>
+      <li>Issues #1100–#1106, Meilenstein 1; Sound bewusst weggelassen</li>
+    </ul>
+  </details>
+  </div>
+
+  <section data-tests hidden aria-label="{{final.group_tests}}">
+    <ul>
+      <li data-todo-id="t-desktop-load" data-crit="high" data-guide="">Mods in der Desktop-App laden lassen</li>
+      <li data-todo-id="t-spike1" data-crit="mid" data-guide="">/mods-spike-fork nach 50 min Pause</li>
+    </ul>
+  </section>
+</section>
