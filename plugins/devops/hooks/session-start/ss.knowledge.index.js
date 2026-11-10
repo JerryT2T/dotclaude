@@ -71,11 +71,19 @@ function buildContext(pluginRoot, sessionId = null, cwd = process.cwd()) {
   // limit shows only its head): the literal plugin root, the kill-switch
   // state and the budget class — the policy's inputs — then the policy.
   const head = [pluginRootLine(pluginRoot), delegationLine(delegation)];
+  let tier = null;
   try {
     const budget = readBudget({ sessionId });
+    tier = budget.tier;
     budget.refreshing = maybeRefreshUsage(budget, { pluginRoot });
     head.push(budgetLine(budget));
   } catch { /* never let the budget probe break the index injection */ }
+  try {
+    // Advisor (experimental): subagents inherit it, so name it once (lib/advisor.js).
+    const advisor = require('../lib/advisor');
+    const line = advisor.advisorLine(advisor.advisorModel({ cwd }), tier);
+    if (line) head.push(line);
+  } catch { /* never let the advisor probe break the index injection */ }
   try {
     // Opt-in API-credit route (deep-knowledge/api-credits.md): one line, only when switched on.
     const apiLine = require('../../scripts/claude-api-safe').sessionLine({ cwd });

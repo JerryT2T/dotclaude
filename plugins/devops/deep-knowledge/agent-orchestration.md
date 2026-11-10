@@ -88,7 +88,9 @@ do-run mode is not, with the ceiling on analysis roles only
   `model: haiku` in every class.
 - **Always name the model**, also when it equals the session's — a spawn that
   would inherit it (Explore, general-purpose, `model: inherit`) is refused once
-  by `pre.agent.model`; the identical retry is the deliberate exception.
+  by `pre.agent.model`; the identical retry is the deliberate exception —
+  except on a Fable session, where an inherited spawn would run on Fable: there
+  the model must always be named.
 - **Effort is chosen by agent**: the cheap tier is a small model at `medium`,
   not a big one at `low` — haiku·medium for locating beats opus·anything;
   reasoning roles keep medium/high.
@@ -108,7 +110,7 @@ do-run mode is not, with the ceiling on analysis roles only
   `skills/do-run/modes/burn/deep-knowledge/burn-scheduler.md` § Depth profiles.
 - **Implementers stay on sonnet** (`core`, `frontend`, `aix`, `designer`,
   `qax` — their frontmatter): a well-specified bundle (contract given, files
-  named, tests known) is never upgraded. `opus` / `fable` only for
+  named, tests known) is never upgraded. `opus` (`fable` see § Fable below) only for
   design-heavy, architecture or ambiguous work (no contract yet, an open
   trade-off, a cross-cutting refactor) — and only in budget class `free`.
   In every other class (Pro always lands there) an implementer is never
@@ -119,6 +121,24 @@ do-run mode is not, with the ceiling on analysis roles only
   upgrades on purpose via `burn-plan.js gate`. Sonnet at `high` is the step before
   an upgrade (§ Effort at spawn). Measured: 86 implementer
   spawns on opus cost ≈ $1,500 per 50 sessions; on sonnet ≈ $300.
+- **Fable** (`fable`, Fable 5.2 since 2026-11-09) is never a default and never
+  replaces an opus role's frontmatter. An upgrade to `fable` only for
+  `rethinker` or architecture work with no contract yet — open-ended work,
+  where its lead is large — and only when all hold: class `free`, the
+  `[budget]` line carries no `· Fable N% →` gate (FABLE.blockAt in
+  `hooks/lib/plan.js`), and the plan includes Fable (Max/Ultra/premium seats;
+  on Pro it bills usage credits — never upgrade there). Never `feature` or an
+  implementer: on coding Opus leads. `/do-run burn` stays on opus too (its
+  cost model and reserve are calibrated on opus; an implementer eval on 3
+  real past fixes of this repo, 2026-11-10: Opus·medium and Fable·high both
+  passed 3/3, Fable at 4.6× the API cost). Evidence, 2026-11-10:
+  Artificial Analysis index Fable·medium 56 vs Opus·high 52 at about the same
+  API $/task; a real-repo A/B at medium (52 runs each) Opus 85 % vs Fable 77 %
+  at 1.6× cost for Fable; our own 3-task eval of the analysis roles
+  (Opus·high vs Fable·medium via API credit, blind judge): Fable won 1
+  (material, open-ended budget analysis), 2 ties, at 1.5–2.0× $ per task
+  while using 25–60 % fewer tokens (fewer turns) — under the switch bar
+  (≥ 2 of 3 wins at ≤ 1.3×), so research / redteam / pox stay opus · high.
 
 ### Complexity Tiers
 

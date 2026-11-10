@@ -54,7 +54,11 @@ Call `get_usage` and tell the user in one or two sentences which plan was
 detected and how full the meters are (no plan found → say so, skip Step 3).
 Explain: the plugin reads this to pace itself (budget hints, burn) and to
 decide whether Step 3 is relevant. Nothing is changed, no key is read. Gilt
-immer / Applies always, no setting involved.
+immer / Applies always, no setting involved. Add one sentence on Fable for
+the detected plan (`deep-knowledge/plans.md` § Fable): Max / Ultra / premium
+Team — up to half the weekly limit, drawn from the same week, the plugin's
+agents stay on Opus/Sonnet; Pro / standard Team — Fable bills usage credits,
+the plugin never upgrades to it.
 
 ## Step 3 — API credit (only Max, Ultra or Team)
 

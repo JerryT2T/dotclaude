@@ -84,6 +84,28 @@ describe("readBudget", () => {
     expect(nudgeSuffix(b)).toBe("");
   });
 
+  test("a known plan with no usage reading asks; a snapshot past its reset stays free", () => {
+    expect(classify({ tier: "ultra", fivePct: null, weeklyPct: null })).toBe("ask-before-parallel");
+    expect(classify({ tier: "max", fivePct: null, weeklyPct: null, expired: true })).toBe("free");
+    expect(classify({ tier: "ultra", fivePct: null, weeklyPct: 10 })).toBe("free");
+    const b = read(home({ "usage-live.json": { timestamp: iso(NOW - 60_000), plan: "Ultra" } }));
+    expect(b).toMatchObject({ tier: "ultra", fivePct: null, weeklyPct: null, cls: "ask-before-parallel" });
+  });
+
+  test("the Fable share gates Fable only from FABLE.blockAt on, never the class", () => {
+    const snap = (pct) => home({
+      "usage-live.json": { timestamp: iso(NOW - 60_000), weekly: { pct: 47, resetInMinutes: 6500 }, plan: "Ultra", scoped: [{ name: "Fable", pct, resetInMinutes: 6500 }] },
+    });
+    const below = read(snap(84));
+    expect(below).toMatchObject({ fablePct: 84, cls: "free" });
+    expect(budgetLine(below)).not.toMatch(/Fable/);
+    const at = read(snap(85));
+    expect(at).toMatchObject({ fablePct: 85, cls: "free" });
+    expect(budgetLine(at)).toContain("· Fable 85% → no fable upgrades, agents on opus; on a Fable session suggest /model opus once");
+    const none = read(home({ "usage-live.json": { timestamp: iso(NOW - 60_000), weekly: { pct: 47, resetInMinutes: 6500 }, plan: "Ultra" } }));
+    expect(none.fablePct).toBe(null);
+  });
+
   test("the $200 tier reads as Ultra, from credentials and from an old snapshot label", () => {
     expect(tierLabel("ultra")).toBe("Ultra");
     expect(planTier("Ultra")).toBe("ultra");

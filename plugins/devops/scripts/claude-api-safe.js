@@ -80,6 +80,8 @@ const PRICES = {
   'claude-sonnet-5-5': [2, 10, 2.5, 0.1],
   'claude-haiku-5-5': [0.1, 0.5, 0.125, 0.01],
   'claude-fable-5-1': [10, 50, 12.5, 0.25],
+  // Fable 5.2 (2026-11-09 migration guide): input/output/cache read; cache write = 1.25x input like every model.
+  'claude-fable-5-2': [8, 40, 10, 0.2],
 };
 // Haiku 5.5 prices a request whose prompt (input + cache read + cache write) exceeds 100k tokens higher.
 const LARGE_PROMPT_TOKENS = 100000;

@@ -49,6 +49,11 @@ const EFFORT_BY_TAG = { redteam: 'high' };
 // that already-cleared prefix byte-for-byte: one rewrite, then cheap cache
 // reads. Server-side editing stays off — it would resend every cleared result.
 const CONTEXT_CAP_TOKENS = 100000; // prompt size (input + cache read + cache write) that triggers the one clear
+// Models that bind each thinking block to the exact preceding content: rewriting an
+// earlier tool result makes the next request fail with "Invalid `signature` in
+// `thinking` block … bound to a different conversation" (seen on Fable 5.2,
+// 2026-11-10). They get no freeze; Fable has a 1M context anyway.
+const PREFIX_BOUND_THINKING = /^claude-fable-/;
 const CONTEXT_KEEP_TOOL_USES = 3; // newest tool rounds whose results stay intact
 const CONTEXT_MIN_FREED_TOKENS = 30000; // a clear freeing less is not worth the rewrite — wait
 const CLEARED_NOTE = '[tool result cleared to save context]';
@@ -309,7 +314,7 @@ async function run(argv, {
 
   const tag = o.tag || (o.locate ? 'locate' : (o.web ? 'research' : 'scout'));
   const model = o.model || env.CLAUDE_API_AGENT_MODEL || MODEL_BY_TAG[tag] || DEFAULT_MODEL;
-  const ctxWanted = switches.contextEditing !== false && env.DEVOPS_API_CONTEXT_EDITING !== '0';
+  const ctxWanted = switches.contextEditing !== false && env.DEVOPS_API_CONTEXT_EDITING !== '0' && !PREFIX_BOUND_THINKING.test(model);
   let frozen = false;
   const maxTurns = Number.isInteger(o.maxTurns) && o.maxTurns > 0 ? o.maxTurns : DEFAULT_MAX_TURNS;
   const maxUsd = o.maxUsd > 0 ? o.maxUsd : DEFAULT_MAX_USD;
@@ -440,7 +445,7 @@ async function run(argv, {
   }
 }
 
-module.exports = { SECRET_FILE, walk, MODEL_BY_TAG, CONTEXT_CAP_TOKENS, CONTEXT_KEEP_TOOL_USES, CLEARED_NOTE, RC, CLIENT_TOOLS, PRICES, webTools, costOf, runTool, parseArgs, run };
+module.exports = { SECRET_FILE, walk, MODEL_BY_TAG, CONTEXT_CAP_TOKENS, PREFIX_BOUND_THINKING, CONTEXT_KEEP_TOOL_USES, CLEARED_NOTE, RC, CLIENT_TOOLS, PRICES, webTools, costOf, runTool, parseArgs, run };
 
 if (require.main === module) {
   run(process.argv.slice(2)).then((rc) => { process.exitCode = rc; });
