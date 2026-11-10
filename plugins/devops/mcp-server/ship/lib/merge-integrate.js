@@ -158,7 +158,10 @@ export function survivalGate({ cwd, base, branch = null, resolved = [] } = {}) {
   try {
     const sv = survival().checkBranch({ cwd, base, branch });
     if (!sv.ok) return { ok: true, skipped: sv.reason, open: [], lost: [], survivedCount: 0, resolvedCount: 0, anchor: null };
-    const ids = new Set((resolved || []).map((r) => r && r.hunk).filter(Boolean));
+    // Only a DECISION may clear a hunk that is still missing. A "restored" claim
+    // proves itself: the fresh check above finds the content (move-tolerant) and
+    // the hunk is no longer lost — a claim without the content stays open.
+    const ids = new Set((resolved || []).filter((r) => r && r.action === "decided").map((r) => r.hunk).filter(Boolean));
     const { open: notInLedger } = ledger().applyDecisions(ledger().readLedger(cwd), sv.lost);
     const open = notInLedger.filter((h) => !ids.has(h.id));
     return {

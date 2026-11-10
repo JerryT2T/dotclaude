@@ -365,7 +365,8 @@ branch current while the user works:
   pushed) is created and the merge runs, instead of skipping.
 - After each sync merge the survival check runs; open decisions go to
   `.claude/merge-queue.json` (runtime, ignored) and are shown by
-  `prompt.git.sync` as turn context. The ship gate reads the same queue.
+  `prompt.git.sync` as turn context. The ship gate recomputes from git and
+  the ledger; an answer given mid-session counts once it is in the ledger.
   Answering can wait until ship; decisions stay answerable until then.
 
 ### Guards on every branch

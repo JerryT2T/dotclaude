@@ -63,8 +63,10 @@ position, logic branch) is always a decision.
    undoes the ship.
 
 The sync hook may already have queued open decisions in
-`.claude/merge-queue.json`; the gate reads the same queue, so a question
-answered mid-session is not asked again.
+`.claude/merge-queue.json` — that queue only surfaces them early. The gate
+recomputes from git: a question answered mid-session is not asked again
+because its answer went into the ledger (`.claude/merge-decisions.json`),
+which the gate applies. Record every mid-session answer there.
 
 ## Surfacing — what the user sees
 

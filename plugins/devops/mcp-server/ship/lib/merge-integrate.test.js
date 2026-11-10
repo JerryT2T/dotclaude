@@ -91,6 +91,8 @@ describe("survivalGate + recordDecisions", () => {
     const d = gateDetail(gate, "preflight");
     expect(d.lost[0]).toMatchObject({ file: "ui.css", verdict: "same-aspect-candidate", upstreamPr: 12, missing: ["color: red;"] });
     const id = d.lost[0].id;
+    // A "restored" claim without the content back in the tree never clears the hunk.
+    expect(survivalGate({ cwd: repo, base: "main", branch: "feat", resolved: [{ hunk: id, action: "restored" }] }).ok).toBe(false);
     expect(survivalGate({ cwd: repo, base: "main", branch: "feat", resolved: [{ hunk: id, action: "decided" }] }).ok).toBe(true);
 
     const rec = recordDecisions(repo, [{ hunk: id, action: "decided", aspect: "ui.css›.b›color", value: "color: yellow", chain: [{ ship: "#12", by: "alice", value: "color: red" }] }], { by: "bob", ship: "feat" });
