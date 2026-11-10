@@ -152,7 +152,7 @@ export const register: Register = on => {
       for (const text of verbatimNotices(result && result.additionalContext)) $.ui.toast(text, { timeoutMs: 8000 })
     }
     return result
-  })
+  }).catch(($, e, next) => next(e)) // display only: a failure never changes the engine's answer
 
   // C6: a permission request waits. Additive: perm.approval.watch.js runs as before.
   on('classic.Notification', async ($, e, next) => {
@@ -161,7 +161,7 @@ export const register: Register = on => {
       $.ui.toast(`Permission request waiting${e.message ? `: ${e.message}` : ''}`.slice(0, 200), { timeoutMs: 8000 })
     }
     return result
-  })
+  }).catch(($, e, next) => next(e)) // display only: a failure never changes the engine's answer
 
   // C4: record each subagent as it starts (the event's answer is passed on unchanged).
   on('agent.spawn', async ($, e, next) => {
@@ -178,7 +178,7 @@ export const register: Register = on => {
       await update($, agents, list => [...list.filter(a => a.id !== row.id), row].slice(-50))
     }
     return spawned
-  })
+  }).catch(($, e, next) => next(e)) // display only: a failure never changes the engine's answer
 
   // C4 + C6: a subagent ends; a long one gets a toast.
   on('classic.SubagentStop', async ($, e, next) => {
@@ -198,7 +198,7 @@ export const register: Register = on => {
       }
     }
     return result
-  })
+  }).catch(($, e, next) => next(e)) // display only: a failure never changes the stop answer
 
   // C5: the live budget, one source (session.measure); nothing is written.
   on('session.measure', async ($, e, next) => {
