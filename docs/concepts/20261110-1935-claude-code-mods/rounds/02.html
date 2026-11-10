@@ -1,0 +1,573 @@
+<section data-iteration="2" data-iteration-template="decision" data-analysis="full" data-baked>
+  <script type="application/json" data-frozen-feedback>{"general":{"text":"","attachments":[]}}</script>
+  <div class="iteration-intro">
+    <h2>Runde 2: Red Team und Stabilität – bauen oder festhalten?</h2>
+    <p>Fest steht aus Runde 1: Hooks bleiben Fallback, Titel, Hinweise, Budget, Karte und Konzept-Watcher wandern, der Cache wird adaptiv mit 8 h, Leitplanken und Beleg je Ping warm gehalten, lange Prompts bleiben wörtlich und werden nur geprüft, große Einfügungen werden ausgelagert, und neu kommen Agenten-Pane, Budget-Band, Ton-Hinweis, Ship-Pane, Ausgaben-Umleitung, Rückblick und Branch-Hygiene.</p>
+  </div>
+
+  <section id="r2-briefing" data-analysis-briefing data-nav-label="Briefing">
+    <p data-briefing-what>Nur 6 von 16 Mod-Bausteinen lassen Qualität und Determinismus sicher unberührt; 6 brauchen erst einen Spike, 4 streicht das Red Team.</p>
+    <p data-briefing-why>Mods sind 6 Wochen alt, die Freigabe im Desktop Code-Tab hat einen offenen Bug, und ein fehlerhafter Mod fällt still aus.</p>
+    <div data-briefing-potential data-viz="kpi"
+         data-viz-spec='{"value":"6 / 16","unit":"Bausteine","label":"sind sofort sicher machbar (nur Anzeige)"}'>6 / 16 Bausteine</div>
+    <a data-briefing-topic="t2-go" data-share="45">Bauen oder festhalten</a>
+    <a data-briefing-topic="t2-cache" data-share="30">Cache: vorsichtig starten</a>
+    <a data-briefing-topic="t2-new" data-share="25">Branch-Hygiene &amp; Rückblick</a>
+    <p data-briefing-duration>≈ 6 min</p>
+    <div data-alevel="1" data-title="Briefing">
+      <div data-slot="short"><div data-viz="kpi" data-viz-spec='{"value":"6 / 16","unit":"sicher"}'></div></div>
+      <div data-slot="long">
+        <div data-viz="donut" data-viz-spec='{"parts":[{"label":"sofort sicher (nur Anzeige)","value":6},{"label":"erst Spike","value":6},{"label":"gestrichen","value":4}],"text":"Urteil des Red Teams über 16 Bausteine aus Runde 1."}'></div>
+        <p>Grundlage: ein Red-Team-Durchgang über den Plan aus Runde 1 mit Fundstellen im Repo, eine Stabilitätsrecherche zur Mod-API und ein eigener Spike mit Plugin-Prüfung und Mod-Tests.</p>
+        <p>Was nur anzeigt, kann still ausfallen, ohne Schaden; was Hooks ersetzt oder Text umschreibt, braucht erst Belege.</p>
+        <div data-evidence hidden><ul><li>Mods seit 2.1.287 (2026-10-01); claude.dev-Tutorial: „The API can change between releases“; Versionsgrenzen .289/.290/.292/.293/.296/.299/.300/.318, bisher nur Ergänzungen</li><li>Issue #105936 (2026-10-29): Desktop Code-Tab „Turn them on“ → Mod lädt nie; #102330: Freigabe-Schleife unter Windows</li><li>Fehlerhafter Mod wird still übersprungen (nur Debug-Log), Anthropic kann Mods fernabschalten, Hook-Zeitlimit 10 s</li><li>Spike (Scratchpad): <code>claude plugin validate</code> mit Hooks + Modul grün, <code>claude plugin test</code> 2 Tests grün</li></ul></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== Thema 1 ===================== -->
+  <section id="t2-go" data-topic data-nav-label="Bauen oder festhalten">
+    <div data-alevel="2" data-title="Bauen oder festhalten">
+      <div data-slot="short">6 Bausteine sind sicher, 6 erst nach Spike, 4 fallen weg.<div data-viz="kpi" data-viz-spec='{"value":"4","unit":"kritische Funde"}'></div></div>
+      <div data-slot="long">
+        <div data-viz="bars" data-viz-spec='{"items":[{"label":"kritisch","value":4},{"label":"hoch","value":5},{"label":"mittel","value":4}],"unit":"Red-Team-Funde","hl":"kritisch"}'></div>
+        <p>Die kritischen Funde treffen genau die Stellen, an denen ein Mod Text umschreibt oder Hooks verstummen lässt. Reine Anzeigen fand das Red Team unbedenklich.</p>
+      </div>
+    </div>
+
+    <section id="d2-go" data-nav-label="Bauen oder festhalten" data-decision="d2-go" data-decision-mode="single"
+             data-label="Was mit dem Konzept passiert" data-rec="display"
+             data-rec-why="Anzeige-Mods ändern nichts an Hooks und Guards: fällt ein Mod still aus, fehlt nur eine Anzeige, nie ein Schutz."
+             data-applies-to="devops-Plugin und dieses Konzept" data-finding="f2-go">
+      <p data-applies>Gilt für: devops-Plugin und dieses Konzept</p>
+      <p data-situation>Fällt ein Mod aus, merkst du es nicht: er wird still übersprungen, und die Mod-API ist erst 6 Wochen alt.</p>
+      <h3 data-question>Was passiert mit dem Konzept nach Red Team und Stabilitätsprüfung?</h3>
+      <p data-stakes>Ob devops jetzt Mod-Code bekommt und welches Risiko er trägt.</p>
+      <div data-options>
+        <label data-opt="display" data-recommended>
+          <input type="radio" name="dm-d2-go" value="display" checked>
+          <span data-opt-label>Konzept in docs festhalten, nur reine Anzeige-Mods als Opt-in bauen</span>
+          <span data-opt-consequence>Hooks bleiben unverändert, Determinismus unberührt; die Mods laufen hinter einem Alpha-Flag.</span>
+        </label>
+        <label data-opt="docs">
+          <input type="radio" name="dm-d2-go" value="docs">
+          <span data-opt-label>Nur als Konzept in docs festhalten</span>
+          <span data-opt-consequence>Nichts wird gebaut, bis Mods reifer sind; kein Risiko, aber auch kein Gewinn.</span>
+        </label>
+        <label data-opt="all">
+          <input type="radio" name="dm-d2-go" value="all">
+          <span data-opt-label>Wie in Runde 1 beschlossen bauen</span>
+          <span data-opt-consequence>Alles kommt, die Red-Team-Risiken für Karte, Guards und Einfügungen bleiben.</span>
+        </label>
+      </div>
+      <textarea data-comment="d2-go-note" placeholder="Notiz (optional)"></textarea>
+      <input type="hidden" name="dm-d2-go-none" value="">
+      <input type="hidden" name="dm-d2-go-hes" value="{&quot;ms&quot;:63720,&quot;revisits&quot;:1,&quot;median&quot;:40194}">
+      <input type="hidden" name="dm-d2-go-touched" value="1">
+      <input type="hidden" name="dm-d2-go-issue" value="">
+      <input type="hidden" name="dm-d2-go-epic" value="">
+      <div data-alevel="3" data-title="Bauen oder festhalten">
+        <div data-slot="short">Ein kaputter Mod fällt still aus.<div data-viz="kpi" data-viz-spec='{"value":"6","unit":"Wochen alt"}'></div></div>
+        <div data-slot="long">
+          <div data-viz="flow" data-viz-spec='{"steps":[{"label":"Freigabe im Desktop","value":"offener Bug #105936"},{"label":"Mod wirft Fehler","value":"still übersprungen"},{"label":"Anthropic","value":"kann Mods fernabschalten"},{"label":"Folge","value":"nur sicher, wenn der Ausfall nichts kostet"}],"text":"Wo ein Mod heute ausfallen kann."}'></div>
+          <p>Im Desktop Code-Tab lädt ein freigegebener Mod laut offenem Issue gar nicht.</p>
+          <div data-evidence hidden><ul><li>Mods seit 2.1.287 (2026-10-01), API-Ergänzungen etwa alle 1–3 Releases, bisher kein dokumentierter Bruch (Changelog nicht vollständig gelesen)</li><li>#105936: Desktop „Turn them on“ → Mod lädt nie, im Terminal mit --plugin-dir schon; #102330: Freigabe-Schleife unter Windows; keine Absturzberichte</li><li>Oberflächen: CLI und Desktop Code-Tab voll, WSL keine, <code>claude -p</code> nur Hooks, Cloud nur Hooks</li></ul></div>
+        </div>
+        <div data-example><pre>Red-Team-Urteil über 16 Bausteine
+
+SOFORT SICHER (nur Anzeige, Hooks unverändert)   6
+  Ton + Toast · Agenten-Pane · Ship-/CI-Pane · Budget- und Kontext-Band
+  (gleiche Quelle) · Branch-Hygiene-Anzeige · Hinweis-Toasts zusätzlich
+ERST SPIKE                                       6
+  Titel · Cache-Warmhalten · Konzept-Timer · Rückblick (Fork)
+  Aufräum-Knopf (Side-Session) · Tool-Ausgaben umleiten (deterministisch)
+GESTRICHEN                                       4
+  Haiku-Umschreiben von Einfügungen · Haiku-Auszüge von Tool-Ausgaben
+  Guard-Schnellpfad · jedes Abschalten von Stop-Guard oder Guards</pre></div>
+      </div>
+    </section>
+
+    <section id="d2-pkg" data-nav-label="Paket der Mods" data-decision="d2-pkg" data-decision-mode="single"
+             data-label="Paket der Mods" data-rec="inline"
+             data-rec-why="Ein Paket heißt eine Version: Mod und Hooks können nie auseinanderlaufen, und Doku und Plugin-Prüfung erlauben beides in einer Datei."
+             data-applies-to="devops-Plugin, Marketplace dotclaude" data-finding="f2-pkg">
+      <p data-applies>Gilt für: devops-Plugin, Marketplace dotclaude</p>
+      <p data-situation>Ein eigenes Mod-Plugin kann nach einem Marketplace-Update auf einem anderen Stand sein als die Hooks, die es stummschaltet.</p>
+      <h3 data-question>Fest steht: Hooks bleiben Fallback. Offen: eigenes Paket oder Modul im devops-Plugin?</h3>
+      <p data-stakes>Ob Mod und Hooks immer denselben Stand haben.</p>
+      <div data-options>
+        <label data-opt="inline" data-recommended>
+          <input type="radio" name="dm-d2-pkg" value="inline" checked>
+          <span data-opt-label>Modul im devops-Plugin</span>
+          <span data-opt-consequence>Eine Version für Hooks und Mod, kein Versatz; die Doku erlaubt beides in einer Datei.</span>
+        </label>
+        <label data-opt="companion">
+          <input type="radio" name="dm-d2-pkg" value="companion">
+          <span data-opt-label>Eigenes Plugin devops-mods</span>
+          <span data-opt-consequence>Wahl aus Runde 1; nach einem Update können Mod und Hooks verschiedene Stände haben.</span>
+        </label>
+      </div>
+      <textarea data-comment="d2-pkg-note" placeholder="Notiz (optional)"></textarea>
+      <input type="hidden" name="dm-d2-pkg-none" value="">
+      <input type="hidden" name="dm-d2-pkg-hes" value="{&quot;ms&quot;:174253,&quot;revisits&quot;:0,&quot;median&quot;:40194}">
+      <input type="hidden" name="dm-d2-pkg-touched" value="1">
+      <input type="hidden" name="dm-d2-pkg-issue" value="">
+      <input type="hidden" name="dm-d2-pkg-epic" value="">
+      <div data-alevel="3" data-title="Paket der Mods">
+        <div data-slot="short">Zwei Plugins heißt zwei Versionsstände.<div data-viz="kpi" data-viz-spec='{"value":"2 → 1","unit":"Versionen"}'></div></div>
+        <div data-slot="long">
+          <div data-viz="compare" data-viz-spec='{"before":{"label":"zwei Plugins","value":2},"after":{"label":"ein Plugin","value":1},"unit":"Versionsstände, die zueinander passen müssen"}'></div>
+          <p>Die Doku erlaubt klassische Hooks und Module in derselben Datei; die Plugin-Prüfung bestand das im Spike.</p>
+          <div data-evidence hidden><ul><li>Doku-Referenz und Admin-Seite: klassische Hooks sind nicht abgekündigt, ein Plugin darf <code>hooks</code> und <code>modules</code> in hooks/hooks.json führen</li><li>Spike: <code>claude plugin validate</code> auf Plugin mit Hooks + Modul → bestanden</li><li>Versatz schon auf diesem Rechner: Desktop-Engine 2.1.321, <code>claude</code> im PATH 2.1.302</li></ul></div>
+        </div>
+        <div data-example><pre>plugins/devops/hooks/hooks.json
+{
+  "hooks": {
+    "PreToolUse":  [ … bestehende Befehls-Hooks, unverändert … ],
+    "Stop":        [ … stop.flow.guard bleibt … ]
+  },
+  "modules": ["./mods/register.tsx"]   ← neu, gleiche Plugin-Version
+}</pre></div>
+      </div>
+    </section>
+
+    <section id="d2-fixes" data-nav-label="Red-Team-Korrekturen" data-decision="d2-fixes" data-decision-mode="multi"
+             data-label="Red-Team-Korrekturen" data-rec="paste tool guard card notice budget marker citest"
+             data-rec-why="Jede dieser Korrekturen hält Qualität und Determinismus bei den Hooks; der Mod zeigt nur an oder kürzt nach festen Regeln."
+             data-applies-to="alle Bausteine aus Runde 1" data-finding="f2-fixes">
+      <p data-applies>Gilt für: alle Bausteine aus Runde 1</p>
+      <p data-situation>Ein Haiku-Auszug fällt bei gleicher Einfügung jedes Mal anders aus und würde bei /do-run den echten Auftrag ersetzen; das Red Team fand 3 solche kritischen Stellen im Plan.</p>
+      <h3 data-question>Welche Red-Team-Korrekturen übernimmst du in den Plan?</h3>
+      <p data-stakes>Ob Mods Qualität und Determinismus der Hooks unberührt lassen.</p>
+      <div data-options>
+        <label data-opt="paste" data-recommended>
+          <input type="checkbox" name="dm-d2-fixes.paste" checked>
+          <span data-opt-label>Einfügungen: fester Kopf und Ende plus Pfad, nie bei /do-run</span>
+          <span data-opt-consequence>Gleiche Eingabe, gleicher Auszug; Run-Aufträge und Befehle bleiben wörtlich.</span>
+        </label>
+        <label data-opt="tool" data-recommended>
+          <input type="checkbox" name="dm-d2-fixes.tool" checked>
+          <span data-opt-label>Tool-Ausgaben nur deterministisch kürzen, Test/Git/CI ausgenommen</span>
+          <span data-opt-consequence>Ein fehlschlagender Test bleibt immer vollständig sichtbar.</span>
+        </label>
+        <label data-opt="guard" data-recommended>
+          <input type="checkbox" name="dm-d2-fixes.guard" checked>
+          <span data-opt-label>Guard-Schnellpfad streichen</span>
+          <span data-opt-consequence>Revidiert Runde 1: der Gewinn waren Millisekunden, die Buchführung des Dispatchers bleibt intakt.</span>
+        </label>
+        <label data-opt="card" data-recommended>
+          <input type="checkbox" name="dm-d2-fixes.card" checked>
+          <span data-opt-label>Stop-Guard bleibt alleinige Instanz, Mod zeichnet nur akzeptierte Karten</span>
+          <span data-opt-consequence>Offene Prüfpflicht, Hintergrundarbeit und falsche Behauptungen prüft weiter der Hook.</span>
+        </label>
+        <label data-opt="notice" data-recommended>
+          <input type="checkbox" name="dm-d2-fixes.notice" checked>
+          <span data-opt-label>Hinweise: Hook-Text bleibt, Toast zusätzlich</span>
+          <span data-opt-consequence>Das Modell sieht den Neustart-Hinweis weiter, du siehst ihn zusätzlich als Toast.</span>
+        </label>
+        <label data-opt="budget" data-recommended>
+          <input type="checkbox" name="dm-d2-fixes.budget" checked>
+          <span data-opt-label>Eine Budget-Quelle: Mod schreibt in usage-live.json</span>
+          <span data-opt-consequence>Statuszeile, Band und Hooks zeigen dieselben Zahlen.</span>
+        </label>
+        <label data-opt="marker" data-recommended>
+          <input type="checkbox" name="dm-d2-fixes.marker" checked>
+          <span data-opt-label>Stand-down-Marker pro Session mit Heartbeat</span>
+          <span data-opt-consequence>Ohne frischen Herzschlag laufen die Hooks; ein veralteter Marker legt nichts lahm.</span>
+        </label>
+        <label data-opt="citest" data-recommended>
+          <input type="checkbox" name="dm-d2-fixes.citest" checked>
+          <span data-opt-label>Mod-Tests per claude plugin test in CI</span>
+          <span data-opt-consequence>Die bestehende Testsuite findet Mod-Tests nicht; so laufen sie bei jedem PR.</span>
+        </label>
+        <label data-opt="haiku">
+          <input type="checkbox" name="dm-d2-fixes.haiku">
+          <span data-opt-label>Haiku-Auszug für Einfügungen trotzdem behalten</span>
+          <span data-opt-consequence>Runde 1 bleibt; derselbe Text kann jedes Mal einen anderen Auszug ergeben.</span>
+        </label>
+      </div>
+      <textarea data-comment="d2-fixes-note" placeholder="Notiz (optional)"></textarea>
+      <input type="hidden" name="dm-d2-fixes-none" value="">
+      <input type="hidden" name="dm-d2-fixes-hes" value="{&quot;ms&quot;:29859,&quot;revisits&quot;:1,&quot;median&quot;:40194}">
+      <input type="hidden" name="dm-d2-fixes-touched" value="1">
+      <input type="hidden" name="dm-d2-fixes-issue" value="">
+      <input type="hidden" name="dm-d2-fixes-epic" value="">
+      <div data-alevel="3" data-title="Red-Team-Korrekturen">
+        <div data-slot="short">8 Korrekturen, 3 davon zu kritischen Funden.<div data-viz="kpi" data-viz-spec='{"value":"8","unit":"Korrekturen"}'></div></div>
+        <div data-slot="long">
+          <div data-viz="bars" data-viz-spec='{"items":[{"label":"kritisch","value":3},{"label":"hoch","value":3},{"label":"mittel","value":2}],"unit":"Korrekturen je Schwere","hl":"kritisch"}'></div>
+          <p>Ein still ausgefallener Stop-Guard ließe Karten ohne Prüfung durch.</p>
+          <div data-evidence hidden><ul><li>Kritisch: Einfügung (<code>ss.run.task.js:7-16</code>, <code>prompt.run.contract.js:7-18</code>), Karte (<code>stop.flow.guard.js:11-31</code>), Stand-down-Marker (Rennen an SessionStart, Shell-Hooks lesen <code>$.store</code> nicht)</li><li>Hoch: Tool-Ausgaben, Guard-Schnellpfad (<code>dispatch.js:18-25</code>), zwei Budget-Quellen (<code>budget.js:20-50</code>)</li><li>Mittel: Hinweis-Text (<code>ss.plugin.update.js:98</code>), CI (<code>vitest.config.mjs:24</code> nimmt nur *.test.js)</li><li>Der kritische Cache-Fund steht in Thema 2</li></ul></div>
+        </div>
+        <div data-example><pre>Eingefügt: build.log, 30 214 Tokens
+
+Haiku-Auszug (Runde 1), zweimal dieselbe Einfügung:
+  1. Lauf: „3 Fehler, erster ECONNRESET in deploy.js:88 …“
+  2. Lauf: „Netzwerkfehler beim Deploy, viele npm-Warnungen …“
+
+Deterministisch (Korrektur):
+  [Einfügung ausgelagert → .claude/pastes/20261110-1931-build.log · 30k Tokens · 2 840 Zeilen]
+  Kopf: Zeilen 1–40 · Ende: Zeilen 2 801–2 840   ← bei jeder Wiederholung identisch
+  /do-run, AUTOSTART, &lt;command-name&gt;: nie ausgelagert</pre></div>
+      </div>
+    </section>
+
+    <section id="d2-spikes" data-nav-label="Reihenfolge der Spikes" data-decision="d2-spikes" data-decision-mode="order"
+             data-label="Reihenfolge der Spikes" data-rec="fork-cache,desktop-load,title-writer,concept-wake,branch-button"
+             data-rec-why="Der Fork-Cache entscheidet über zwei Bausteine samt Plan-Verbrauch, das Desktop-Laden über alle Mods in deiner Hauptoberfläche."
+             data-applies-to="Bausteine mit Urteil „erst Spike“" data-finding="f2-spikes" data-no-example="Reine Reihenfolge, nichts Sichtbares">
+      <p data-applies>Gilt für: Bausteine mit Urteil „erst Spike“</p>
+      <p data-situation>Sechs Bausteine hängen an ungeprüften Annahmen; scheitert eine, ist die Arbeit daran umsonst.</p>
+      <h3 data-question>Welche Spikes kommen zuerst?</h3>
+      <p data-stakes>Welche Annahme bewiesen ist, bevor Mod-Code entsteht.</p>
+      <div data-options>
+        <div data-opt="fork-cache">
+          <span data-opt-label>Fork-Cache: liest der erste Ping mindestens 95 % aus dem Cache?</span>
+          <span data-opt-consequence>Entscheidet, ob Warmhalten und Rückblick überhaupt sparen.</span>
+        </div>
+        <div data-opt="desktop-load">
+          <span data-opt-label>Desktop-Laden: lädt der Mod im Code-Tab trotz Bug #105936?</span>
+          <span data-opt-consequence>Ohne das läuft kein Mod in deiner Hauptoberfläche.</span>
+        </div>
+        <div data-opt="title-writer">
+          <span data-opt-label>Titel-Schreiber: legt ein Mod-Rename den Titel-Eintrag im Transcript an?</span>
+          <span data-opt-consequence>Sonst lesen Titel- und Freigabe-Hooks einen veralteten Titel.</span>
+        </div>
+        <div data-opt="concept-wake">
+          <span data-opt-label>Konzept-Wecker: weckt ein Mod-Auftrag die Session wie der Waker?</span>
+          <span data-opt-consequence>Erst dann können Timer die Konzept-Watcher ersetzen.</span>
+        </div>
+        <div data-opt="branch-button">
+          <span data-opt-label>Aufräum-Knopf: startet Claude aus einem festen Auftrag eine Side-Session?</span>
+          <span data-opt-consequence>Prüft den Weg aus Thema 3, bevor der Knopf gebaut wird.</span>
+        </div>
+      </div>
+      <input type="hidden" name="dm-d2-spikes" value="fork-cache,desktop-load,title-writer,concept-wake,branch-button">
+      <textarea data-comment="d2-spikes-note" placeholder="Notiz (optional)"></textarea>
+      <input type="hidden" name="dm-d2-spikes-hes" value="{&quot;ms&quot;:21370,&quot;revisits&quot;:1,&quot;median&quot;:40194}">
+      <input type="hidden" name="dm-d2-spikes-touched" value="1">
+      <input type="hidden" name="dm-d2-spikes-issue" value="">
+      <input type="hidden" name="dm-d2-spikes-epic" value="">
+      <div data-alevel="3" data-title="Reihenfolge der Spikes">
+        <div data-slot="short">Ein Spike entscheidet über alle Desktop-Mods.<div data-viz="kpi" data-viz-spec='{"value":"5","unit":"Spikes"}'></div></div>
+        <div data-slot="long">
+          <div data-viz="bars" data-viz-spec='{"items":[{"label":"Desktop-Laden","value":12},{"label":"Fork-Cache","value":2},{"label":"Titel-Schreiber","value":1},{"label":"Konzept-Wecker","value":1},{"label":"Aufräum-Knopf","value":1}],"unit":"Bausteine, die davon abhängen","hl":"Desktop-Laden"}'></div>
+          <p>Ein Spike ist ein kurzer Versuch mit einem Wegwerf-Mod, der genau eine Annahme prüft.</p>
+          <div data-evidence hidden><ul><li>Desktop-Laden: #105936; betrifft alle 12 sicheren und Spike-Bausteine im Code-Tab</li><li>Titel: Leser parsen custom-title-Einträge (<code>session-title.js:12-22</code>, <code>perm.approval.watch.js:46-52</code>)</li><li>Konzept-Wecker: Watcher wecken Claude durch Beenden (<code>concept-watch.js:17-20</code>)</li><li>Spike-Werkzeug: <code>claude plugin test</code> prüft Event-Formen streng und deterministisch</li></ul></div>
+        </div>
+      </div>
+    </section>
+  </section>
+
+  <!-- ===================== Thema 2 ===================== -->
+  <section id="t2-cache" data-topic data-nav-label="Cache: vorsichtig starten">
+    <div data-alevel="2" data-title="Cache: vorsichtig starten">
+      <div data-slot="short">Eine vergessene 8-h-Pause kostet 20 % eines Kaltstarts, je Session.<div data-viz="kpi" data-viz-spec='{"value":"2,5 %","unit":"je Stunde"}'></div></div>
+      <div data-slot="long">
+        <div data-viz="bars" data-viz-spec='{"items":[{"label":"1 h","value":2.5},{"label":"2 h","value":5},{"label":"8 h","value":20}],"unit":"% eines Kaltstarts je vergessener Pause und Session","hl":"8 h"}'></div>
+        <p>Jede offene Desktop-Session pingt für sich, also vervielfacht sich der schlimmste Fall mit der Zahl der Fenster. Ob ein Ping überhaupt den Cache trifft, ist noch unbewiesen.</p>
+      </div>
+    </div>
+
+    <section id="d2-cache-start" data-nav-label="Vorsichtiger Start" data-decision="d2-cache-start" data-decision-mode="single"
+             data-label="Vorsichtiger Start des Warmhaltens" data-rec="ramp"
+             data-rec-why="Konservativ wie gewünscht: der schlimmste Fall bleibt bei 10 % eines Kaltstarts, und der Check entscheidet mit echten Zahlen über 8 h."
+             data-applies-to="Warmhalte-Mod, erste Ausbaustufe" data-finding="f2-cache-start">
+      <p data-applies>Gilt für: Warmhalte-Mod, erste Ausbaustufe</p>
+      <p data-situation>Fünf offene Desktop-Sessions, je 8 h warm gehalten, kosten im schlimmsten Fall einen ganzen Kaltstart, ohne dass du zurückkommst.</p>
+      <h3 data-question>Fest steht: adaptiv, Leitplanken, Beleg je Ping. Offen: wie vorsichtig startet er?</h3>
+      <p data-stakes>Was eine vergessene Pause schlimmstenfalls vom Plan kostet.</p>
+      <div data-options>
+        <label data-opt="ramp" data-recommended>
+          <input type="radio" name="dm-d2-cache-start" value="ramp" checked>
+          <span data-opt-label>Start mit 2 h und höchstens 2 Sessions gleichzeitig, 8 h erst nach bestandenem Check</span>
+          <span data-opt-consequence>Öffnet nie ein neues 5-h-Fenster, bricht bei jeder Eingabe ab; schlimmstenfalls 10 %.</span>
+        </label>
+        <label data-opt="eight">
+          <input type="radio" name="dm-d2-cache-start" value="eight">
+          <span data-opt-label>Direkt mit 8 h wie in Runde 1</span>
+          <span data-opt-consequence>Deckt die Nacht sofort ab; fünf vergessene Sessions kosten einen ganzen Kaltstart.</span>
+        </label>
+        <label data-opt="one">
+          <input type="radio" name="dm-d2-cache-start" value="one">
+          <span data-opt-label>Start mit 1 h, eine Session</span>
+          <span data-opt-consequence>Fast kein Risiko, aber Mittagspausen und Abende starten kalt.</span>
+        </label>
+      </div>
+      <textarea data-comment="d2-cache-start-note" placeholder="Notiz (optional)"></textarea>
+      <input type="hidden" name="dm-d2-cache-start-none" value="">
+      <input type="hidden" name="dm-d2-cache-start-hes" value="{&quot;ms&quot;:28846,&quot;revisits&quot;:0,&quot;median&quot;:40194}">
+      <input type="hidden" name="dm-d2-cache-start-touched" value="1">
+      <input type="hidden" name="dm-d2-cache-start-issue" value="">
+      <input type="hidden" name="dm-d2-cache-start-epic" value="">
+      <div data-alevel="3" data-title="Vorsichtiger Start des Warmhaltens">
+        <div data-slot="short">Schlimmster Fall wächst mit Dauer mal Sessions.<div data-viz="kpi" data-viz-spec='{"value":"100 %","unit":"8 h × 5 Sessions"}'></div></div>
+        <div data-slot="long">
+          <div data-viz="bars" data-viz-spec='{"items":[{"label":"1 h, 1 Session","value":2.5},{"label":"2 h, 2 Sessions","value":10},{"label":"8 h, 5 offene Sessions","value":100}],"unit":"% eines Kaltstarts, schlimmster Fall","hl":"8 h, 5 offene Sessions"}'></div>
+          <p>Nachtpings öffnen zudem ein frisches 5-h-Fenster und zählen aufs Wochenlimit.</p>
+          <div data-evidence hidden><ul><li>Rechnung: Kaltstart = 2× Kontext (1-h-Schreiben), Ping ≈ 0,05× Kontext je Stunde → 2,5 % eines Kaltstarts je Stunde und Session</li><li>Red Team (hoch): Nachtpings öffnen ein 5-h-Fenster, zählen aufs Wochenlimit, jede offene Desktop-Session pingt selbst → rechnerweite Grenze, kein neues 5-h-Fenster, Abbruch bei Eingabe</li><li>Notiz Runde 1: „bitte limits und eher konservativ erstmal rangehen!“</li></ul></div>
+        </div>
+        <div data-example><pre>┌──────────────────────────────────────────────────────────────────┐
+│ ☕ Cache warm · Stufe 1: bis 2 h · Session 2 von 2 · Ping 19:52  [Stopp] │
+└──────────────────────────────────────────────────────────────────┘
+Dritte Session geht in Pause → kein Ping, Toast: „Warmhalten belegt (2 von 2)“
+Kein 5-h-Fenster offen → kein Ping
+Du tippst → Timer gelöscht</pre></div>
+      </div>
+    </section>
+
+    <section id="d2-cache-check" data-nav-label="Geplanter Nutzen-Check" data-decision="d2-cache-check" data-decision-mode="single"
+             data-label="Geplanter Nutzen-Check" data-rec="pauses"
+             data-rec-why="30 Pausen reichen für eine belastbare Rückkehrquote; die 14-Tage-Grenze sorgt dafür, dass das Urteil auch bei wenig Nutzung kommt."
+             data-applies-to="Warmhalte-Mod, geplante Aufgabe für dich als Plugin-Entwickler" data-finding="f2-cache-check">
+      <p data-applies>Gilt für: Warmhalte-Mod, geplante Aufgabe für dich als Plugin-Entwickler</p>
+      <p data-situation>Ohne Prüftermin kann der Warmhalter wochenlang Plan verbrauchen, obwohl er bei 2 h erst ab 5 % Rückkehr spart.</p>
+      <h3 data-question>Wann urteilt der geplante Check, ob sich Warmhalten lohnt?</h3>
+      <p data-stakes>Wann aus 2 h eine Nacht wird oder der Mod abgeschaltet wird.</p>
+      <div data-options>
+        <label data-opt="pauses" data-recommended>
+          <input type="radio" name="dm-d2-cache-check" value="pauses" checked>
+          <span data-opt-label>Nach 30 gemessenen Pausen, spätestens nach 14 Tagen</span>
+          <span data-opt-consequence>Urteilt, sobald die Zahlen tragen; bei wenig Nutzung spätestens nach zwei Wochen.</span>
+        </label>
+        <label data-opt="week">
+          <input type="radio" name="dm-d2-cache-check" value="week">
+          <span data-opt-label>Fest nach 7 Tagen</span>
+          <span data-opt-consequence>Schnelles Urteil, bei wenigen Pausen aber auf dünner Basis.</span>
+        </label>
+        <label data-opt="month">
+          <input type="radio" name="dm-d2-cache-check" value="month">
+          <span data-opt-label>Fest nach 30 Tagen</span>
+          <span data-opt-consequence>Sichere Basis, aber ein Monat Plan-Verbrauch vor dem ersten Urteil.</span>
+        </label>
+      </div>
+      <textarea data-comment="d2-cache-check-note" placeholder="Notiz (optional)"></textarea>
+      <input type="hidden" name="dm-d2-cache-check-none" value="">
+      <input type="hidden" name="dm-d2-cache-check-hes" value="{&quot;ms&quot;:53124,&quot;revisits&quot;:0,&quot;median&quot;:40194}">
+      <input type="hidden" name="dm-d2-cache-check-touched" value="1">
+      <input type="hidden" name="dm-d2-cache-check-issue" value="">
+      <input type="hidden" name="dm-d2-cache-check-epic" value="">
+      <div data-alevel="3" data-title="Geplanter Nutzen-Check">
+        <div data-slot="short">Break-even: 5 % Rückkehr bei 2 h, 21 % bei 8 h.<div data-viz="kpi" data-viz-spec='{"value":"5 %","unit":"Rückkehr nötig"}'></div></div>
+        <div data-slot="long">
+          <div data-viz="flow" data-viz-spec='{"steps":[{"label":"Ping-Log","value":"jede Pause, jeder Ping"},{"label":"Trefferquote","value":"Cache gelesen / Kontext"},{"label":"Bilanz","value":"Plan je Ping gegen gesparte Kaltstarts"},{"label":"Urteil","value":"weiter · ausbauen auf 8 h · abschalten"}],"text":"Was der geplante Check rechnet."}'></div>
+          <p>Eine devops-Aufgabe liest das Ping-Log, urteilt und meldet es dir als Bericht und als Issue im dotclaude-Repo.</p>
+          <div data-evidence hidden><ul><li>Break-even je Pause: p &gt; H / 39 (Runde 1) → 2 h: 5 %, 8 h: 21 %</li><li>Das Issue entsteht nur auf dem Rechner des Plugin-Entwicklers, Nutzer bekommen nur den lokalen Bericht</li><li>Notiz Runde 1: „bitte mit geplant für den plugin entwickler mich einen check nach x zeit, ob das wirklich was gebracht hat!“</li></ul></div>
+        </div>
+        <div data-example><pre>devops · Warmhalte-Check · 2026-11-24 (Pause 30 von 30, Tag 14)
+
+Pings          142    Treffer 139 (98 %)    Fehltreffer 3
+Plan je Ping   5 h +0,02 %    Woche +0,00 %
+Rückkehr warm  19 von 30 Pausen (63 %)  → 19 Kaltstarts gespart
+Bilanz         Kosten 142 × 7,5k = 1,07 M   Ersparnis 19 × 292,5k = 5,56 M
+
+Urteil: ausbauen auf 8 h  ✓
+→ .claude/reports/cache-warm-check.md
+→ Issue im dotclaude-Repo: „Warmhalte-Check: ausbauen auf 8 h (Rückkehr 63 %)“</pre></div>
+      </div>
+    </section>
+
+    <section id="d2-cache-first" data-nav-label="Not-Aus beim ersten Ping" data-decision="d2-cache-first" data-decision-mode="yesnoalt"
+             data-label="Not-Aus beim ersten Ping" data-rec="yes"
+             data-rec-why="Ob der Ping den Cache trifft, ist unbewiesen; der erste Ping ist der billigste Beweis, jeder weitere Fehltreffer kostet wieder das 40-Fache."
+             data-applies-to="jeder Warmhalte-Lauf" data-finding="f2-cache-first">
+      <p data-applies>Gilt für: jeder Warmhalte-Lauf</p>
+      <p data-situation>Ein Ping, der den Cache verfehlt, kostet bei 150k Kontext 300k statt 7,5k, also das 40-Fache.</p>
+      <h3 data-question>Schaltet sich der Mod schon nach dem ersten Ping ab, wenn unter 95 % aus dem Cache kamen?</h3>
+      <p data-stakes>Wie viel eine falsche Cache-Annahme schlimmstenfalls kostet.</p>
+      <div data-options>
+        <label data-opt="yes" data-recommended>
+          <input type="radio" name="dm-d2-cache-first" value="yes" checked>
+          <span data-opt-label>Ja, beim ersten Fehltreffer abschalten</span>
+          <span data-opt-consequence>Ein Fehltreffer kostet einmal, nie zweimal; ein Toast sagt dir warum.</span>
+        </label>
+        <label data-opt="no">
+          <input type="radio" name="dm-d2-cache-first" value="no">
+          <span data-opt-label>Nein, erst nach mehreren Fehltreffern</span>
+          <span data-opt-consequence>Ein Ausreißer schaltet nicht ab, eine kaputte Annahme kostet aber mehrfach.</span>
+        </label>
+        <label data-opt="alt">
+          <input type="radio" name="dm-d2-cache-first" value="alt">
+          <span data-opt-label>Anders …</span>
+          <span data-opt-consequence>Du sagst in einem Satz, was stattdessen gelten soll.</span>
+        </label>
+      </div>
+      <input type="text" name="dm-d2-cache-first-alt" placeholder="Was stattdessen?" value="">
+      <textarea data-comment="d2-cache-first-note" placeholder="Notiz (optional)"></textarea>
+      <input type="hidden" name="dm-d2-cache-first-none" value="">
+      <input type="hidden" name="dm-d2-cache-first-hes" value="{&quot;ms&quot;:50528,&quot;revisits&quot;:0,&quot;median&quot;:40194}">
+      <input type="hidden" name="dm-d2-cache-first-touched" value="1">
+      <input type="hidden" name="dm-d2-cache-first-issue" value="">
+      <input type="hidden" name="dm-d2-cache-first-epic" value="">
+      <div data-alevel="3" data-title="Not-Aus beim ersten Ping">
+        <div data-slot="short">Ein Fehltreffer kostet 40 warme Pings.<div data-viz="kpi" data-viz-spec='{"value":"40×","unit":"teurer"}'></div></div>
+        <div data-slot="long">
+          <div data-viz="compare" data-viz-spec='{"before":{"label":"Fehltreffer (alles neu schreiben, 2×)","value":300},"after":{"label":"Treffer (Präfix lesen, 0,05×)","value":7.5},"unit":"k Token-Äquivalent bei 150k Kontext"}'></div>
+          <p>Ein offenes Issue zeigt so einen Fall: ein Fork las bei 30k Kontext nur 10k und schrieb 19k neu.</p>
+          <div data-evidence hidden><ul><li>Issue #100083: Fork-Cache-Fehltreffer (30k Kontext: 10k gelesen, 19k geschrieben) unter einer bestimmten Bedingung</li><li><code>$.model.fork</code>-Typen: sendet „the main thread's last request (its model, system prompt, tools, messages)“ erneut → gleicher Präfix; ein anderer Effort kann ein volles Neuschreiben erzwingen → Ping setzt nie Effort</li><li>Red Team (kritisch #4): bei cache_read unter ≈ 95 % des Kontexts abschalten</li></ul></div>
+        </div>
+        <div data-example><pre>cache-warm.log
+19:57  ping #1  read 148 210 / 150 004 (98,8 %)  write 112     ✓ Treffer → weiter
+--- anderer Tag ---
+18:55  ping #1  read  49 800 / 150 004 (33,2 %)  write 99 940  ✗ unter 95 %
+       → Warmhalten aus für diese Session · Toast: „Cache verfehlt, Warmhalten pausiert“</pre></div>
+      </div>
+    </section>
+  </section>
+
+  <!-- ===================== Thema 3 ===================== -->
+  <section id="t2-new" data-topic data-nav-label="Branch-Hygiene &amp; Rückblick">
+    <div data-alevel="2" data-title="Branch-Hygiene &amp; Rückblick">
+      <div data-slot="short">Kein Mod kann eine Session starten; Knopf und Rückblick brauchen einen Umweg.<div data-viz="kpi" data-viz-spec='{"value":"0","unit":"APIs für neue Sessions"}'></div></div>
+      <div data-slot="long">
+        <div data-viz="bars" data-viz-spec='{"items":[{"label":"Turn in dieser Session starten","value":1},{"label":"Eingabefeld füllen","value":1},{"label":"Modell und Effort je Anfrage","value":1},{"label":"neue Session starten","value":0}],"unit":"Mod-API vorhanden (1 = ja)","hl":"neue Session starten"}'></div>
+        <p>Ein Mod erreicht nur die Session, in der er läuft. Claude selbst kann dagegen Side-Sessions starten, und devops räumt Branches heute schon mit Manifest auf.</p>
+      </div>
+    </div>
+
+    <section id="d2-branch" data-nav-label="Aufräum-Knopf" data-decision="d2-branch" data-decision-mode="single"
+             data-label="Wie der Aufräum-Knopf startet" data-rec="submit"
+             data-rec-why="Ein fester Auftragstext ist deterministisch, und die Side-Session räumt mit eigenem Modell auf, ohne deine laufende Arbeit zu belegen."
+             data-applies-to="Branch-Hygiene in der Statuszeile" data-finding="f2-branch">
+      <p data-applies>Gilt für: Branch-Hygiene in der Statuszeile</p>
+      <p data-situation>Ein Knopf in der Statuszeile öffnet selbst keine neue Session: die Mod-API bietet dafür 0 Wege, nur Turn, Eingabefeld und Modellwahl hier.</p>
+      <h3 data-question>Wie startet der Empfehlungsknopf das Aufräumen?</h3>
+      <p data-stakes>Ob das Aufräumen deine laufende Session belegt oder neben dir läuft.</p>
+      <div data-options>
+        <label data-opt="submit" data-recommended>
+          <input type="radio" name="dm-d2-branch" value="submit" checked>
+          <span data-opt-label>Knopf schickt einen festen Auftrag an diese Session, Claude startet daraus eine Side-Session</span>
+          <span data-opt-consequence>Fester Text, gleiche Wirkung bei jedem Klick; das Aufräumen läuft neben dir.</span>
+        </label>
+        <label data-opt="fill">
+          <input type="radio" name="dm-d2-branch" value="fill">
+          <span data-opt-label>Knopf füllt nur das Eingabefeld, du schickst selbst ab</span>
+          <span data-opt-consequence>Du liest und änderst den Auftrag vor dem Absenden; ein Schritt mehr.</span>
+        </label>
+        <label data-opt="here">
+          <input type="radio" name="dm-d2-branch" value="here">
+          <span data-opt-label>Knopf räumt direkt in dieser Session auf</span>
+          <span data-opt-consequence>Kein Umweg, aber das Aufräumen belegt Kontext und Modell deiner Arbeit.</span>
+        </label>
+      </div>
+      <textarea data-comment="d2-branch-note" placeholder="Notiz (optional)"></textarea>
+      <input type="hidden" name="dm-d2-branch-none" value="">
+      <input type="hidden" name="dm-d2-branch-hes" value="{&quot;ms&quot;:293985,&quot;revisits&quot;:0,&quot;median&quot;:40194}">
+      <input type="hidden" name="dm-d2-branch-touched" value="1">
+      <input type="hidden" name="dm-d2-branch-issue" value="">
+      <input type="hidden" name="dm-d2-branch-epic" value="">
+      <div data-alevel="3" data-title="Wie der Aufräum-Knopf startet">
+        <div data-slot="short">Die Mod-API startet keine Session.<div data-viz="kpi" data-viz-spec='{"value":"0","unit":"Wege"}'></div></div>
+        <div data-slot="long">
+          <div data-viz="bars" data-viz-spec='{"items":[{"label":"Turn hier starten","value":1},{"label":"Eingabefeld füllen","value":1},{"label":"Modell/Effort setzen","value":1},{"label":"neue Session","value":0}],"unit":"Mod-API vorhanden (1 = ja)","hl":"neue Session"}'></div>
+          <p>Ein Kommandozeilen-Lauf aus dem Desktop würde als gekauftes Guthaben abgerechnet.</p>
+          <div data-evidence hidden><ul><li>Mod-API: keine Funktion startet eine Session; <code>$.prompt.submit</code> startet einen Turn hier, <code>$.prompt.fill</code> füllt das Eingabefeld, <code>turn.step</code> setzt Modell/Effort je Anfrage</li><li><code>claude -p</code> aus dem Desktop: als gekauftes Guthaben abgerechnet (gemessen 2026-10-19, deep-knowledge/api-credits.md) → nicht angeboten</li><li>Notiz Runde 1: „brnach hygiene aber gleich mit empefhlungsbutton, der das direkt in eneuer subsession oder wenns geht session startet mit korrekten mdoel und effort sinnvoll!“</li></ul></div>
+        </div>
+        <div data-example><pre>Statuszeile:
+  🌿 18 offen in 5 Repos  [Aufräumen ▸]
+
+Klick → fester Auftrag an diese Session (jedes Mal derselbe Text):
+  „Starte eine Side-Session für /devops-auto-cleanup über alle 5 Repos,
+   Modell Sonnet, Effort mittel. Zeige vor jedem Löschen das Manifest.“
+
+→ Claude: start_session(…) · Side-Session „Branch-Hygiene“ läuft neben dir</pre></div>
+      </div>
+    </section>
+
+    <section id="d2-branch-model" data-nav-label="Modell fürs Aufräumen" data-decision="d2-branch-model" data-decision-mode="single"
+             data-label="Modell und Effort fürs Aufräumen" data-rec="sonnet-med"
+             data-rec-why="Branch-Hygiene ist regelgeleitet, und vor jedem Löschen zeigt devops ein Manifest; mehr Modell kauft hier kaum Sicherheit."
+             data-applies-to="Aufräum-Session aus dem Branch-Knopf" data-finding="f2-branch-model">
+      <p data-applies>Gilt für: Aufräum-Session aus dem Branch-Knopf</p>
+      <p data-situation>Ein falsch eingeordneter Branch mit ungemergter Arbeit wäre nach dem Löschen weg; vor jedem Löschen kommt deshalb 1 Manifest zur Bestätigung.</p>
+      <h3 data-question>Mit welchem Modell und Effort läuft die Aufräum-Session?</h3>
+      <p data-stakes>Wie sicher ungemergte Arbeit erkannt wird und was ein Lauf kostet.</p>
+      <div data-options>
+        <label data-opt="sonnet-med" data-recommended>
+          <input type="radio" name="dm-d2-branch-model" value="sonnet-med">
+          <span data-opt-label>Mit Sonnet, Effort mittel</span>
+          <span data-opt-consequence>Ordnet regelgeleitet zuverlässig ein, moderater Verbrauch; das Manifest fängt Restfehler.</span>
+        </label>
+        <label data-opt="haiku-low">
+          <input type="radio" name="dm-d2-branch-model" value="haiku-low">
+          <span data-opt-label>Mit Haiku, Effort niedrig</span>
+          <span data-opt-consequence>Billigster Lauf, ordnet ungemergte Branches aber eher falsch ein.</span>
+        </label>
+        <label data-opt="opus-high">
+          <input type="radio" name="dm-d2-branch-model" value="opus-high">
+          <span data-opt-label>Mit Opus, Effort hoch</span>
+          <span data-opt-consequence>Gründlichster Lauf, aber teuer für eine Routineaufgabe.</span>
+        </label>
+      </div>
+      <textarea data-comment="d2-branch-model-note" placeholder="Notiz (optional)">opus mittel!</textarea>
+      <input type="hidden" name="dm-d2-branch-model-none" value="1">
+      <input type="hidden" name="dm-d2-branch-model-hes" value="{&quot;ms&quot;:14939,&quot;revisits&quot;:0,&quot;median&quot;:40194}">
+      <input type="hidden" name="dm-d2-branch-model-touched" value="1">
+      <input type="hidden" name="dm-d2-branch-model-issue" value="">
+      <input type="hidden" name="dm-d2-branch-model-epic" value="">
+      <div data-alevel="3" data-title="Modell und Effort fürs Aufräumen">
+        <div data-slot="short">Vor jedem Löschen steht ein Manifest.<div data-viz="kpi" data-viz-spec='{"value":"1","unit":"Bestätigung je Lauf"}'></div></div>
+        <div data-slot="long">
+          <div data-viz="flow" data-viz-spec='{"steps":[{"label":"Branches lesen","value":"alle Repos"},{"label":"Einordnen","value":"gemergt · offen mit Commits · verwaist"},{"label":"Manifest","value":"du siehst jede Löschung"},{"label":"Bestätigen","value":"erst dann löschen"}],"text":"Ablauf der Branch-Hygiene; das Modell arbeitet im Schritt Einordnen."}'></div>
+          <p>Das Modell arbeitet nur im Schritt Einordnen, alles andere folgt festen Regeln.</p>
+          <div data-evidence hidden><ul><li>devops auto-cleanup: Apply-Manifest vor jedem Löschen (Skill <code>/devops-auto-cleanup</code>)</li><li>Effort und Modell setzt Claude beim Start der Side-Session; der Mod setzt sie nicht</li></ul></div>
+        </div>
+        <div data-example><pre>Aufräum-Manifest · 5 Repos · 18 Branches
+
+  löschen   12  gemergt in main, kein eigener Commit
+  behalten   4  ungemergte Commits (z. B. feat/cache-ping: 3 Commits)
+  fragen     2  verwaist, Worktree existiert noch
+
+[Anwenden]  [Einzeln prüfen]  [Abbrechen]</pre></div>
+      </div>
+    </section>
+
+    <section id="d2-recap" data-nav-label="Rückblick bei kaltem Cache" data-decision="d2-recap" data-decision-mode="single"
+             data-label="Rückblick bei kaltem Cache" data-rec="hybrid"
+             data-rec-why="So kommt der Rückblick immer: warm billig per Fork, kalt ohne Modellaufruf und bei gleicher Karte immer gleich."
+             data-applies-to="„Wo war ich?“-Rückblick beim Wiederkommen" data-finding="f2-recap">
+      <p data-applies>Gilt für: „Wo war ich?“-Rückblick beim Wiederkommen</p>
+      <p data-situation>Ein Rückblick über einen kalten Cache kostet bei 150k Kontext 300k statt 7,5k, also das 40-Fache eines warmen.</p>
+      <h3 data-question>Fest steht: Rückblick beim Wiederkommen. Offen: was, wenn der Cache kalt ist?</h3>
+      <p data-stakes>Was ein Wiederkommen nach langer Pause kostet und wie verlässlich der Rückblick ist.</p>
+      <div data-options>
+        <label data-opt="hybrid" data-recommended>
+          <input type="radio" name="dm-d2-recap" value="hybrid" checked>
+          <span data-opt-label>Warm per Fork, kalt aus der letzten Completion Card</span>
+          <span data-opt-consequence>Immer ein Rückblick; kalt ohne Modellaufruf und bei gleicher Karte immer gleich.</span>
+        </label>
+        <label data-opt="warm-only">
+          <input type="radio" name="dm-d2-recap" value="warm-only">
+          <span data-opt-label>Nur bei warmem Cache, sonst entfällt er</span>
+          <span data-opt-consequence>Am billigsten, aber nach langen Pausen, wenn du ihn brauchst, fehlt er.</span>
+        </label>
+        <label data-opt="always">
+          <input type="radio" name="dm-d2-recap" value="always">
+          <span data-opt-label>Immer per Modell, auch kalt</span>
+          <span data-opt-consequence>Frischester Rückblick, kalt aber 40-mal so teuer wie warm.</span>
+        </label>
+      </div>
+      <textarea data-comment="d2-recap-note" placeholder="Notiz (optional)"></textarea>
+      <input type="hidden" name="dm-d2-recap-none" value="">
+      <input type="hidden" name="dm-d2-recap-hes" value="{&quot;ms&quot;:14347,&quot;revisits&quot;:0,&quot;median&quot;:40194}">
+      <input type="hidden" name="dm-d2-recap-touched" value="1">
+      <input type="hidden" name="dm-d2-recap-issue" value="">
+      <input type="hidden" name="dm-d2-recap-epic" value="">
+      <div data-alevel="3" data-title="Rückblick bei kaltem Cache">
+        <div data-slot="short">Kalt kostet der Rückblick das 40-Fache.<div data-viz="kpi" data-viz-spec='{"value":"40×","unit":"kalt teurer"}'></div></div>
+        <div data-slot="long">
+          <div data-viz="compare" data-viz-spec='{"before":{"label":"Rückblick kalt (Fork, alles neu)","value":300},"after":{"label":"Rückblick warm (Fork liest Präfix)","value":7.5},"unit":"k Token-Äquivalent bei 150k Kontext"}'></div>
+          <p>Die letzte Karte hält den Stand am Turn-Ende schon fest, ohne Modellaufruf.</p>
+          <div data-evidence hidden><ul><li>Rückblick ist ein Fork wie der Ping: gleicher Präfix, gleiche Kosten (Thema 2)</li><li>Completion Card: wird vom Stop-Guard am Turn-Ende akzeptiert und liegt im Transcript</li></ul></div>
+        </div>
+        <div data-example><pre>Wiederkommen nach 40 min (Cache warm):
+  🔁 Wo war ich? (Fork, 7,5k)
+  „Du hast d2-fixes beantwortet, offen sind die Spikes; zuletzt lief der Build grün.“
+
+Wiederkommen am Morgen (Cache kalt):
+  🔁 Wo war ich? (aus der letzten Karte, kein Modellaufruf)
+  🟨 Runde 2 gebaut · OK 2 rounds · nächster Schritt: Antworten abschicken</pre></div>
+      </div>
+    </section>
+  </section>
+</section>

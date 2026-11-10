@@ -1,0 +1,586 @@
+<section data-iteration="1" data-iteration-template="decision" data-analysis="full" data-baked>
+  <script type="application/json" data-frozen-feedback>{"general":{"text":"Super kritisch schaue, dass wir die qualität und dterminismus nicht mindern! Kritisch alles nochmal betrachen mit red team und co. \nAuch wie gut die mods laufen aktuell ob so welche schon möglich sind und lclaude code stabil genug dafür ist! Ansonsten nur in docs als concept festhaltene","attachments":[]}}</script>
+  <div class="iteration-intro">
+    <h2>Mods für Claude Code: was devops daraus macht</h2>
+    <p>Drei Blickwinkel: was aus dem Plugin in einen Mod wandert, was das Cache-Warmhalten wirklich bringt, und welche neuen Mods das Plugin ergänzen.</p>
+  </div>
+
+  <section id="briefing" data-analysis-briefing data-nav-label="Briefing">
+    <p data-briefing-what>15 Plugin-Funktionen sind heute Umwege, weil Hooks nur Text ans Modell geben können; Mods erreichen Titel, Statuszeile, Panes und Usage direkt.</p>
+    <p data-briefing-why>Cache-Warmhalten rechnet sich mit Opus 5.5 klar, Prompt-Kürzen kaum, und für Ship, CI und Branch-Hygiene gibt es noch keinen einzigen Mod.</p>
+    <div data-briefing-potential data-viz="kpi"
+         data-viz-spec='{"value":"15","unit":"Workarounds","label":"werden zu direkten Mod-Aufrufen"}'>15 Workarounds</div>
+    <a data-briefing-topic="t-move" data-share="40">Plugin → Mod</a>
+    <a data-briefing-topic="t-cache" data-share="35">Cache warm halten</a>
+    <a data-briefing-topic="t-new" data-share="25">Prompt &amp; neue Mods</a>
+    <p data-briefing-duration>≈ 8 min</p>
+    <div data-alevel="1" data-title="Briefing">
+      <div data-slot="short"><div data-viz="kpi" data-viz-spec='{"value":"15","unit":"Workarounds"}'></div></div>
+      <div data-slot="long">
+        <div data-viz="donut" data-viz-spec='{"parts":[{"label":"Plugin → Mod","value":40},{"label":"Cache warm halten","value":35},{"label":"Prompt &amp; neue Mods","value":25}],"text":"Anteil am Gesamtnutzen (Schätzung)."}'></div>
+        <p>Grundlage: ein Durchgang durch Hooks, Skripte und MCP-Server des Plugins, die Mod-API dieses Builds (2.1.321) und eine Web-Recherche über 293 gelistete Mods. Die Zahlen zu Abo-Limits sind die schwächste Stelle: Anthropic veröffentlicht dazu nichts.</p>
+        <div data-evidence hidden><ul><li>Mod-API: <code>plugin-authoring/types/claude-code.d.ts</code> — <code>$.model.fork</code>, <code>session.measure</code>, <code>tool.call</code>-Ergebnis umschreibbar</li><li>Preise: platform.claude.com/docs/en/about-claude/pricing (Opus 5.5 Lesen 0,05×)</li><li>Verzeichnis: claude-mods.com (293 Mods), karanb192/awesome-claude-code-mods</li></ul></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== Thema 1 ===================== -->
+  <section id="t-move" data-topic data-nav-label="Plugin → Mod">
+    <div data-alevel="2" data-title="Plugin → Mod">
+      <div data-slot="short">Vier Arten von Umwegen, die ein Mod direkt löst.<div data-viz="kpi" data-viz-spec='{"value":"15","unit":"Umwege"}'></div></div>
+      <div data-slot="long">
+        <div data-viz="bars" data-viz-spec='{"items":[{"label":"Modell als UI-Bote","value":6},{"label":"Text-Injektion","value":3},{"label":"Blocken + Wiederholen","value":3},{"label":"Polling / Watcher","value":3}],"unit":"Funktionen"}'></div>
+        <p>Sechs Funktionen lassen das Modell Zeilen „wörtlich zeigen“ oder Titel setzen, drei blockieren und lassen wiederholen, drei pollen. Jeder dieser Umwege kostet Tokens oder eine zusätzliche Runde.</p>
+      </div>
+    </div>
+
+    <section id="d-arch" data-nav-label="Auslieferung der Mods" data-decision="d-arch" data-decision-mode="single"
+             data-label="Auslieferung der Mods" data-rec="companion"
+             data-rec-why="Hooks bleiben der Fallback für Cloud, ältere Clients und Sessions ohne Mod-Freigabe; der Mod übernimmt nur, wo er läuft."
+             data-applies-to="devops-Plugin, Marketplace dotclaude" data-finding="f-arch">
+      <p data-applies>Gilt für: devops-Plugin, Marketplace dotclaude</p>
+      <p data-situation>Ein reiner Mod-Umbau ließe Cloud-Sessions und Clients vor 2.1.287 ganz ohne Titel, Karte und Guards.</p>
+      <h3 data-question>Wie liefert devops seine Mod-Teile aus?</h3>
+      <p data-context>Ob ein Plugin Befehls-Hooks und Mod-Module in einer hooks.json mischen darf, prüft ein kurzer Spike.</p>
+      <p data-stakes>Wie viel doppelt gepflegt wird und was in Cloud-Sessions weiterläuft.</p>
+      <div data-options>
+        <label data-opt="companion" data-recommended>
+          <input type="radio" name="dm-d-arch" value="companion" checked>
+          <span data-opt-label>Begleit-Plugin devops-mods im selben Marketplace</span>
+          <span data-opt-consequence>Hooks erkennen den Mod und schweigen; ohne Mod läuft alles wie heute.</span>
+        </label>
+        <label data-opt="inline">
+          <input type="radio" name="dm-d-arch" value="inline">
+          <span data-opt-label>Mod-Modul direkt im devops-Plugin</span>
+          <span data-opt-consequence>Ein Paket, aber nur machbar, wenn hooks.json beides erlaubt.</span>
+        </label>
+        <label data-opt="full">
+          <input type="radio" name="dm-d-arch" value="full">
+          <span data-opt-label>Komplett auf Mods umstellen</span>
+          <span data-opt-consequence>Weniger Code, aber Cloud und ältere Clients verlieren die Funktionen.</span>
+        </label>
+        <label data-opt="other">
+          <input type="radio" name="dm-d-arch" value="other">
+          <span data-opt-label>Keine davon / anders …</span>
+          <span data-opt-consequence>Die Notiz sagt, was stattdessen gelten soll (Pflicht).</span>
+        </label>
+      </div>
+      <textarea data-comment="d-arch-note" placeholder="Notiz (optional)"></textarea>
+      <input type="hidden" name="dm-d-arch-none" value="">
+      <input type="hidden" name="dm-d-arch-hes" value="{&quot;ms&quot;:39702,&quot;revisits&quot;:0,&quot;median&quot;:47399}">
+      <input type="hidden" name="dm-d-arch-touched" value="">
+      <input type="hidden" name="dm-d-arch-issue" value="">
+      <input type="hidden" name="dm-d-arch-epic" value="">
+      <div data-alevel="3" data-title="Auslieferung der Mods">
+        <div data-slot="short">Mods laufen nur in neuen Clients mit Freigabe.<div data-viz="kpi" data-viz-spec='{"value":"≥ 2.1.287","unit":"nötig"}'></div></div>
+        <div data-slot="long">
+          <div data-viz="flow" data-viz-spec='{"steps":[{"label":"Session startet","value":"Hooks laden"},{"label":"Mod aktiv?","value":"Marker gesetzt"},{"label":"Ja","value":"Mod zeichnet, Hooks schweigen"},{"label":"Nein","value":"Hooks wie heute"}],"text":"Fallback-Kette mit Begleit-Plugin."}'></div>
+          <p>Mods laden pro Session erst nach Zustimmung.</p>
+          <div data-evidence hidden><ul><li>claude-mods.com: Mods ab Claude Code 2.1.287</li><li>plugin-authoring: Freigabe „Turn on the mods …“ pro Session, Oberflächen terminal / desktop / vscode / mobile</li><li>Cloud-Sessions: nicht dokumentiert</li></ul></div>
+        </div>
+        <div data-example><pre>plugins/
+  devops/            ← bleibt: Skills, Agents, Hooks (Fallback), MCP-Ship-Tools
+  devops-mods/       ← neu
+    .claude-plugin/plugin.json   { "name": "devops-mods", "dependencies": ["devops"] }
+    hooks/hooks.json             { "modules": ["./register.tsx"] }
+    hooks/register.tsx           on("session.start") → $.store.set("devops.mod", true)
+
+# devops-Hook, z. B. prompt.flow.title-work.js
+if (modActive()) return;   // Mod setzt den Titel selbst</pre></div>
+      </div>
+    </section>
+
+    <section id="d-move" data-nav-label="Was zuerst wandert" data-decision="d-move" data-decision-mode="multi"
+             data-label="Was zuerst in den Mod wandert" data-rec="title notice budget card"
+             data-rec-why="Diese vier kosten heute Tokens in jeder Session oder Extra-Runden und brauchen nur UI-Zugriff, keine Schutzlogik."
+             data-applies-to="devops-mods, erste Ausbaustufe" data-finding="f-move">
+      <p data-applies>Gilt für: devops-mods, erste Ausbaustufe</p>
+      <p data-situation>Jede Session zahlt Tokens dafür, dass das Modell Hinweise abschreibt, Titel setzt und Karten nachreicht.</p>
+      <h3 data-question>Welche Plugin-Funktionen übernimmt der Mod in seiner ersten Version?</h3>
+      <p data-stakes>Wie viel Kontext pro Session frei wird und wie viele Zwangsrunden entfallen.</p>
+      <div data-options>
+        <label data-opt="title" data-recommended>
+          <input type="checkbox" name="dm-d-move.title" checked>
+          <span data-opt-label>Session-Titel direkt setzen</span>
+          <span data-opt-consequence>Kein Tool-Aufruf pro Turn, kein 1-s-Polling nach Freigaben.</span>
+        </label>
+        <label data-opt="notice" data-recommended>
+          <input type="checkbox" name="dm-d-move.notice" checked>
+          <span data-opt-label>Versions- und Aufräum-Hinweise als Toast</span>
+          <span data-opt-consequence>Erscheinen garantiert, ohne dass das Modell sie abschreibt.</span>
+        </label>
+        <label data-opt="budget" data-recommended>
+          <input type="checkbox" name="dm-d-move.budget" checked>
+          <span data-opt-label>Budget-Klasse aus echten Limit-Werten</span>
+          <span data-opt-consequence>Der Edge-Scraper und der statusLine-Eintrag in settings.json fallen weg.</span>
+        </label>
+        <label data-opt="card" data-recommended>
+          <input type="checkbox" name="dm-d-move.card" checked>
+          <span data-opt-label>Completion Card aus Engine-Zustand zeichnen</span>
+          <span data-opt-consequence>Der Stop-Hook muss nicht mehr blocken; Markdown bleibt für CLI ohne Mod.</span>
+        </label>
+        <label data-opt="concept">
+          <input type="checkbox" name="dm-d-move.concept" checked>
+          <span data-opt-label>Konzeptseiten-Watcher durch Timer ersetzen</span>
+          <span data-opt-consequence>Keine verwaisten Watcher mehr, aber großer Umbau am Bridge-Protokoll.</span>
+        </label>
+        <label data-opt="policy">
+          <input type="checkbox" name="dm-d-move.policy">
+          <span data-opt-label>Always-on-Regeln als System-Prompt-Abschnitt</span>
+          <span data-opt-consequence>Spart Injektion, bricht aber den Cache, sobald sich ein Byte ändert.</span>
+        </label>
+      </div>
+      <textarea data-comment="d-move-note" placeholder="Notiz (optional)"></textarea>
+      <input type="hidden" name="dm-d-move-none" value="">
+      <input type="hidden" name="dm-d-move-hes" value="{&quot;ms&quot;:168499,&quot;revisits&quot;:0,&quot;median&quot;:47399}">
+      <input type="hidden" name="dm-d-move-touched" value="1">
+      <input type="hidden" name="dm-d-move-issue" value="">
+      <input type="hidden" name="dm-d-move-epic" value="">
+      <div data-alevel="3" data-title="Was zuerst in den Mod wandert">
+        <div data-slot="short">Vier Funktionen brauchen nur UI-Zugriff.<div data-viz="kpi" data-viz-spec='{"value":"4","unit":"Kandidaten"}'></div></div>
+        <div data-slot="long">
+          <div data-viz="bars" data-viz-spec='{"items":[{"label":"Completion Card","value":5},{"label":"Session-Titel","value":4},{"label":"Budget-Klasse","value":4},{"label":"Hinweise","value":3},{"label":"Konzept-Watcher","value":3},{"label":"System-Prompt-Regeln","value":2}],"unit":"Nutzen 1–5 (Schätzung)","hl":"Completion Card"}'></div>
+          <p>Das alte Titel-Ritual kostete laut Hook-Kommentar 3,6 % aller Tokens.</p>
+          <div data-evidence hidden><ul><li><code>prompt.flow.title-work.js:7-60</code>, <code>perm.approval.watch.js:22</code> (1-s-Polling)</li><li><code>stop.flow.guard.js:7-50</code> (Karten-Pflicht)</li><li><code>ss.plugin.update.js:95-98</code>, <code>ss.orphan.nudge.js:20-24</code></li><li><code>lib/budget.js:20-50</code>, <code>scripts/statusline-usage.js</code></li></ul></div>
+        </div>
+        <div data-example><pre>Vorher (Hook-Text, diese Session):
+  [ss.version.notice] Show the user this line verbatim in your first reply …
+  → das Modell schreibt die Zeile ab, jede Session, jedes Mal
+
+Nachher (Mod):
+  on("session.start", async ($, e, next) => {
+    $.ui.toast("devops 0.365.0 · Cloud 0.353.0 updaten")
+    return next(e)
+  })</pre></div>
+      </div>
+    </section>
+
+    <section id="d-guards" data-nav-label="Ort der Guards" data-decision="d-guards" data-decision-mode="single"
+             data-label="Ort der Guards" data-rec="fastpath"
+             data-rec-why="Schutz darf nicht davon abhängen, ob jemand die Mod-Freigabe geklickt hat; der Mod beschleunigt nur."
+             data-applies-to="Token-, Main- und Ship-Guard" data-finding="f-guards">
+      <p data-applies>Gilt für: Token-, Main- und Ship-Guard</p>
+      <p data-situation>Jeder Tool-Aufruf startet heute zwei Node-Prozesse für die Guards, unter Windows spürbar.</p>
+      <h3 data-question>Wo leben Token-, Main- und Ship-Guard, wenn ein Mod läuft?</h3>
+      <p data-stakes>Ob Schutz in jeder Session greift und wie schnell Tool-Aufrufe sind.</p>
+      <div data-options>
+        <label data-opt="fastpath" data-recommended>
+          <input type="radio" name="dm-d-guards" value="fastpath" checked>
+          <span data-opt-label>Hooks bleiben Quelle, Mod prüft vorab im Prozess</span>
+          <span data-opt-consequence>Schneller ohne Schutzlücke; braucht Node-freie Kernlogik in hooks/lib.</span>
+        </label>
+        <label data-opt="move">
+          <input type="radio" name="dm-d-guards" value="move">
+          <span data-opt-label>Guards ganz in den Mod verschieben</span>
+          <span data-opt-consequence>Schnellster Weg, aber ohne Mod-Freigabe ist main ungeschützt.</span>
+        </label>
+        <label data-opt="keep">
+          <input type="radio" name="dm-d-guards" value="keep">
+          <span data-opt-label>Guards bleiben unverändert Hooks</span>
+          <span data-opt-consequence>Kein Aufwand, die zwei Node-Starts pro Aufruf bleiben.</span>
+        </label>
+        <label data-opt="other">
+          <input type="radio" name="dm-d-guards" value="other">
+          <span data-opt-label>Keine davon / anders …</span>
+          <span data-opt-consequence>Die Notiz sagt, was stattdessen gelten soll (Pflicht).</span>
+        </label>
+      </div>
+      <textarea data-comment="d-guards-note" placeholder="Notiz (optional)"></textarea>
+      <input type="hidden" name="dm-d-guards-none" value="">
+      <input type="hidden" name="dm-d-guards-hes" value="{&quot;ms&quot;:58238,&quot;revisits&quot;:0,&quot;median&quot;:47399}">
+      <input type="hidden" name="dm-d-guards-touched" value="1">
+      <input type="hidden" name="dm-d-guards-issue" value="">
+      <input type="hidden" name="dm-d-guards-epic" value="">
+      <div data-alevel="3" data-title="Ort der Guards">
+        <div data-slot="short">Zwei Node-Starts pro Tool-Aufruf.<div data-viz="kpi" data-viz-spec='{"value":"2","unit":"Starts / Aufruf"}'></div></div>
+        <div data-slot="long">
+          <div data-viz="compare" data-viz-spec='{"before":{"label":"Hooks","value":2},"after":{"label":"Mod im Prozess","value":0},"unit":"Node-Starts pro Tool-Aufruf"}'></div>
+          <p>Ein Mod kann den Aufruf sogar umschreiben statt ihn abzulehnen.</p>
+          <div data-evidence hidden><ul><li><code>hooks/dispatch/dispatch.js:6-14</code> (Pre + Post je ein Node-Start)</li><li><code>pre.tokens.guard.js:48-53</code>: 21 von 64 Blocks unverändert wiederholt</li><li>Mod-API: <code>ToolCallResult</code> — ein Hook darf das Ergebnis selbst liefern</li></ul></div>
+        </div>
+        <div data-example><pre>Vorher: Read 82 KB → ⚠️ HIGH TOKEN COST — OPERATION BLOCKED → Modell wiederholt
+Nachher: on("tool.call", { tool: "Read" }, ($, e, next) =>
+           tooBig(e) ? next({ ...e, input: { ...e.input, limit: 400 } }) : next(e))
+         + $.ui.toast("Read gekürzt auf 400 Zeilen")</pre></div>
+      </div>
+    </section>
+  </section>
+
+  <!-- ===================== Thema 2 ===================== -->
+  <section id="t-cache" data-topic data-nav-label="Cache warm halten">
+    <div data-alevel="2" data-title="Cache warm halten">
+      <div data-slot="short">Warm wiederkommen kostet 1/40 eines Kaltstarts.<div data-viz="kpi" data-viz-spec='{"value":"40×","unit":"teurer kalt"}'></div></div>
+      <div data-slot="long">
+        <div data-viz="compare" data-viz-spec='{"before":{"label":"kalt (1-h-Eintrag neu schreiben, 2×)","value":300},"after":{"label":"warm (Präfix lesen, 0,05×)","value":7.5},"unit":"k Token-Äquivalent bei 150k Kontext"}'></div>
+        <p>Opus 5.5 rechnet Cache-Lesen mit 0,05× statt 0,1×, damit verschiebt sich die Rechnung stark zugunsten des Warmhaltens. Ein Ping über <code>$.model.fork</code> liest genau den Präfix des Haupt-Threads und verlängert die Lebensdauer ohne Aufpreis.</p>
+      </div>
+    </div>
+
+    <section id="d-cache-mode" data-nav-label="Strategie Warmhalten" data-decision="d-cache-mode" data-decision-mode="single"
+             data-label="Strategie Warmhalten" data-rec="adaptive"
+             data-rec-why="Eine Stunde Warmhalten kostet 2,5 % eines Kaltstarts; ob es sich lohnt, hängt nur an der Rückkehrwahrscheinlichkeit, und die lässt sich aus deinem Pausenmuster lernen."
+             data-applies-to="Haupt-Thread jeder Desktop- und CLI-Session" data-finding="f-cache-mode">
+      <p data-applies>Gilt für: Haupt-Thread jeder Desktop- und CLI-Session</p>
+      <p data-situation>Nach mehr als 1 h Pause kostet die erste Nachricht einer 150k-Session das 40-Fache eines warmen Starts.</p>
+      <h3 data-question>Wie entscheidet der Mod, ob er den Cache in einer Pause warm hält?</h3>
+      <p data-stakes>Plan-Verbrauch und Wartezeit bei jeder Rückkehr nach einer Pause.</p>
+      <div data-options>
+        <label data-opt="adaptive" data-recommended>
+          <input type="radio" name="dm-d-cache-mode" value="adaptive" checked>
+          <span data-opt-label>Adaptiv nach Regeln und gelernter Rückkehrquote</span>
+          <span data-opt-consequence>Pingt nur, wo die Rückkehr wahrscheinlich genug ist; lernt dein Pausenmuster.</span>
+        </label>
+        <label data-opt="fixed3">
+          <input type="radio" name="dm-d-cache-mode" value="fixed3">
+          <span data-opt-label>Fest alle 55 min, höchstens 3 h</span>
+          <span data-opt-consequence>Einfach und billig, verpasst aber Abende und Nächte.</span>
+        </label>
+        <label data-opt="fixed12">
+          <input type="radio" name="dm-d-cache-mode" value="fixed12">
+          <span data-opt-label>Fest bis 12 h für jede Session</span>
+          <span data-opt-consequence>Deckt die Nacht ab, zahlt aber auch für Sessions, die nie wieder aufgehen.</span>
+        </label>
+        <label data-opt="compact">
+          <input type="radio" name="dm-d-cache-mode" value="compact">
+          <span data-opt-label>Nie pingen, vor der Pause kompaktieren</span>
+          <span data-opt-consequence>Billigster Neustart, aber Details des Verlaufs gehen verloren.</span>
+        </label>
+      </div>
+      <textarea data-comment="d-cache-mode-note" placeholder="Notiz (optional)">genau, und bitte limits und eher konservativ erstmal rangehen! und bitte mit geplant für den plugin entwickler mich einen check nach x zeit, ob das wirklich dwas gebracht hat!</textarea>
+      <input type="hidden" name="dm-d-cache-mode-none" value="">
+      <input type="hidden" name="dm-d-cache-mode-hes" value="{&quot;ms&quot;:370318,&quot;revisits&quot;:0,&quot;median&quot;:47399}">
+      <input type="hidden" name="dm-d-cache-mode-touched" value="1">
+      <input type="hidden" name="dm-d-cache-mode-issue" value="">
+      <input type="hidden" name="dm-d-cache-mode-epic" value="">
+      <div data-alevel="3" data-title="Strategie Warmhalten">
+        <div data-slot="short">Kaltstart 300k, Ping 7,5k (150k Kontext).<div data-viz="kpi" data-viz-spec='{"value":"40×","unit":"Unterschied"}'></div></div>
+        <div data-slot="long">
+          <div data-viz="compare" data-viz-spec='{"before":{"label":"Kaltstart","value":300},"after":{"label":"ein Ping","value":7.5},"unit":"k Token-Äquivalent"}'></div>
+          <p>Jeder Cache-Treffer startet die Stunde neu, laut Anthropic ohne Aufpreis.</p>
+          <div data-evidence hidden><ul><li>Opus 5.5: Eingabe $4, 1-h-Schreiben $8 (2×), Lesen $0,20 (0,05×) — platform.claude.com/docs/en/about-claude/pricing</li><li>„refreshed at no additional cost“ — prompt-caching-Doku</li><li>STRML/cc-cache-warmer: gemessener Ping 70 471 gelesen, 133 geschrieben, 4 Ausgabe-Tokens</li></ul></div>
+        </div>
+        <div data-example><pre>18:02  letzte Nachricht            Kontext 150k, Cache bis 19:02
+18:57  Ping 1  (fork „ok“)         liest 150k × 0,05 = 7,5k  → Cache bis 19:57
+19:52  Ping 2                       7,5k                     → Cache bis 20:52
+20:31  du schreibst wieder          warm: 7,5k statt 300k kalt
+
+Summe Pause: 15k statt 300k  (−95 %)</pre></div>
+      </div>
+    </section>
+
+    <section id="d-cache-max" data-nav-label="Höchstdauer" data-decision="d-cache-max" data-decision-mode="slider"
+             data-label="Höchstdauer Warmhalten" data-rec="8" data-unit="h"
+             data-stops='[{"at":1,"text":"Nur kurze Pausen, fast nie umsonst"},{"at":3,"text":"Mittagspause, lohnt ab 8 % Rückkehr"},{"at":8,"text":"Über Nacht, lohnt ab 21 % Rückkehr"},{"at":11,"text":"Lange Nächte, lohnt erst ab 30 % Rückkehr"}]'
+             data-rec-why="8 h deckt die Nacht ab; sicher wiederkommen lohnt rechnerisch sogar bis 39 h, die Grenze schützt vor vergessenen Sessions."
+             data-applies-to="adaptives Warmhalten, Obergrenze pro Pause" data-finding="f-cache-max" data-no-example="Reine Schwelle, nichts Sichtbares">
+      <p data-applies>Gilt für: adaptives Warmhalten, Obergrenze pro Pause</p>
+      <p data-situation>Jede Stunde Warmhalten kostet 2,5 % eines Kaltstarts; bei 8 h lohnt es ab 21 % Rückkehrwahrscheinlichkeit.</p>
+      <h3 data-question>Wie lange darf eine Pause höchstens warm gehalten werden?</h3>
+      <p data-stakes>Wie viel ein vergessenes Fenster schlimmstenfalls kostet.</p>
+      <div data-options>
+        <input type="range" name="dm-d-cache-max" min="1" max="12" step="1" value="8">
+      </div>
+      <textarea data-comment="d-cache-max-note" placeholder="Notiz (optional)"></textarea>
+      <input type="hidden" name="dm-d-cache-max-hes" value="{&quot;ms&quot;:13943,&quot;revisits&quot;:0,&quot;median&quot;:47399}">
+      <input type="hidden" name="dm-d-cache-max-touched" value="1">
+      <input type="hidden" name="dm-d-cache-max-issue" value="">
+      <input type="hidden" name="dm-d-cache-max-epic" value="">
+      <div data-alevel="3" data-title="Höchstdauer Warmhalten">
+        <div data-slot="short">Break-even = Stunden ÷ 39.<div data-viz="kpi" data-viz-spec='{"value":"H / 39","unit":"Rückkehrquote"}'></div></div>
+        <div data-slot="long">
+          <div data-viz="bars" data-viz-spec='{"items":[{"label":"1 h","value":3},{"label":"3 h","value":8},{"label":"8 h","value":21},{"label":"12 h","value":31}],"unit":"% Rückkehr nötig","hl":"8 h"}'></div>
+          <p>Ein vergessenes 8-h-Fenster kostet höchstens 40 % eines Kaltstarts.</p>
+          <div data-evidence hidden><ul><li>Rechnung: Ping je ~55 min ≈ 0,05 P pro Stunde; Ersparnis bei Rückkehr (2 − 0,05) P = 1,95 P → lohnt, wenn p > H × 0,05 / 1,95 = H / 39</li><li>Ohne Opus-5.5-Rabatt (0,1×) wäre es H / 19 — so rechnete die PO-Analyse</li></ul></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="d-cache-rules" data-nav-label="Leitplanken Warmhalten" data-decision="d-cache-rules" data-decision-mode="multi"
+             data-label="Leitplanken Warmhalten" data-rec="size ttl open quota band"
+             data-rec-why="Kleine, fertige oder 5-min-Sessions sind die Fälle, in denen Pings nur kosten; das Band hält es sichtbar und abschaltbar."
+             data-applies-to="adaptives Warmhalten" data-finding="f-cache-rules">
+      <p data-applies>Gilt für: adaptives Warmhalten</p>
+      <p data-situation>Im 5-min-Modus nach Plan-Überschreitung bräuchte Warmhalten 13 Pings pro Stunde und kostet mehr als jeder Kaltstart.</p>
+      <h3 data-question>Welche Leitplanken muss eine Session für einen Ping erfüllen?</h3>
+      <p data-stakes>Ob der Mod je für eine Session zahlt, die du nie wieder öffnest.</p>
+      <div data-options>
+        <label data-opt="size" data-recommended>
+          <input type="checkbox" name="dm-d-cache-rules.size" checked>
+          <span data-opt-label>Kontext mindestens 80k Tokens</span>
+          <span data-opt-consequence>Kleine Sessions starten ohnehin schnell und billig neu.</span>
+        </label>
+        <label data-opt="ttl" data-recommended>
+          <input type="checkbox" name="dm-d-cache-rules.ttl" checked>
+          <span data-opt-label>Nur mit 1-h-Cache, nie im 5-min-Modus</span>
+          <span data-opt-consequence>Der Mod hört auf, sobald die Session in die Plan-Überschreitung rutscht.</span>
+        </label>
+        <label data-opt="open" data-recommended>
+          <input type="checkbox" name="dm-d-cache-rules.open" checked>
+          <span data-opt-label>Session ist offen: kein Ship, kein Archiv, kein 🟩</span>
+          <span data-opt-consequence>Abgeschlossene Arbeit wird nie warm gehalten.</span>
+        </label>
+        <label data-opt="quota" data-recommended>
+          <input type="checkbox" name="dm-d-cache-rules.quota" checked>
+          <span data-opt-label>Gelernte Rückkehrquote liegt über dem Break-even</span>
+          <span data-opt-consequence>Der Mod merkt sich deine Pausenlängen und rechnet pro Pause neu.</span>
+        </label>
+        <label data-opt="band" data-recommended>
+          <input type="checkbox" name="dm-d-cache-rules.band" checked>
+          <span data-opt-label>Band über dem Prompt mit Countdown und Stopp</span>
+          <span data-opt-consequence>Du siehst jeden Ping und kannst ihn mit einem Klick beenden.</span>
+        </label>
+        <label data-opt="tight">
+          <input type="checkbox" name="dm-d-cache-rules.tight">
+          <span data-opt-label>Nur wenn das Wochenbudget knapp wird</span>
+          <span data-opt-consequence>Spart Pings in freien Wochen, verzichtet dann aber auf die schnellere Rückkehr.</span>
+        </label>
+      </div>
+      <textarea data-comment="d-cache-rules-note" placeholder="Notiz (optional)"></textarea>
+      <input type="hidden" name="dm-d-cache-rules-none" value="">
+      <input type="hidden" name="dm-d-cache-rules-hes" value="{&quot;ms&quot;:51454,&quot;revisits&quot;:0,&quot;median&quot;:47399}">
+      <input type="hidden" name="dm-d-cache-rules-touched" value="">
+      <input type="hidden" name="dm-d-cache-rules-issue" value="">
+      <input type="hidden" name="dm-d-cache-rules-epic" value="">
+      <div data-alevel="3" data-title="Leitplanken Warmhalten">
+        <div data-slot="short">5-min-Cache: 13 Pings pro Stunde.<div data-viz="kpi" data-viz-spec='{"value":"13×","unit":"mehr Pings"}'></div></div>
+        <div data-slot="long">
+          <div data-viz="bars" data-viz-spec='{"items":[{"label":"1-h-Cache","value":1},{"label":"5-min-Cache","value":13}],"unit":"Pings pro Stunde","hl":"5-min-Cache"}'></div>
+          <p>Mehrere Warmhalter berichten, dass Claude Code nach Plan-Überschreitung auf 5 min fällt.</p>
+          <div data-evidence hidden><ul><li>federbenjamin/cache-keepalive (README, unbestätigt)</li><li>Harness dieser Session: „If the session enters usage overage, later requests drop to the 5-minute TTL“</li><li>claudemods.dev cache-warmer: überspringt Sessions unter 100k</li></ul></div>
+        </div>
+        <div data-example><pre>┌──────────────────────────────────────────────────────────┐
+│ ☕ Cache warm · 150k · nächster Ping 19:52 · 2 von 8 h  [Stopp] │
+└──────────────────────────────────────────────────────────┘</pre></div>
+      </div>
+    </section>
+
+    <section id="d-cache-proof" data-nav-label="Beleg je Ping" data-decision="d-cache-proof" data-decision-mode="yesnoalt"
+             data-label="Beleg und Not-Aus je Ping" data-rec="yes"
+             data-rec-why="Ob Cache-Lesen das Abo kaum oder voll belastet, ist unbekannt; der Mod sieht nach jeder Antwort die Limit-Prozente und kann es selbst messen."
+             data-applies-to="jeder Ping des Warmhalte-Mods" data-finding="f-cache-proof">
+      <p data-applies>Gilt für: jeder Ping des Warmhalte-Mods</p>
+      <p data-situation>Ohne Messung kann ein Ping heimlich das 5-h-Limit belasten; eine Messung sagt 1/67 eines neuen Tokens, ein Bugreport viel mehr.</p>
+      <h3 data-question>Soll jeder Ping Cache-Treffer und Plan-Verbrauch belegen und bei Fehltreffern abschalten?</h3>
+      <p data-stakes>Ob du der Rechnung oben vertrauen kannst.</p>
+      <div data-options>
+        <label data-opt="yes" data-recommended>
+          <input type="radio" name="dm-d-cache-proof" value="yes" checked>
+          <span data-opt-label>Ja, belegen und bei Fehltreffern abschalten</span>
+          <span data-opt-consequence>Unter 80 % Treffern oder spürbarem Limit-Anstieg pausiert der Mod sich selbst.</span>
+        </label>
+        <label data-opt="no">
+          <input type="radio" name="dm-d-cache-proof" value="no">
+          <span data-opt-label>Nein, ohne Messung pingen</span>
+          <span data-opt-consequence>Einfacher, aber eine kaputte Annahme fällt niemandem auf.</span>
+        </label>
+        <label data-opt="alt">
+          <input type="radio" name="dm-d-cache-proof" value="alt">
+          <span data-opt-label>Anders …</span>
+          <span data-opt-consequence>Du sagst in einem Satz, was stattdessen gelten soll.</span>
+        </label>
+      </div>
+      <input type="text" name="dm-d-cache-proof-alt" placeholder="Was stattdessen?" value="">
+      <textarea data-comment="d-cache-proof-note" placeholder="Notiz (optional)"></textarea>
+      <input type="hidden" name="dm-d-cache-proof-none" value="">
+      <input type="hidden" name="dm-d-cache-proof-hes" value="{&quot;ms&quot;:43343,&quot;revisits&quot;:0,&quot;median&quot;:47399}">
+      <input type="hidden" name="dm-d-cache-proof-touched" value="1">
+      <input type="hidden" name="dm-d-cache-proof-issue" value="">
+      <input type="hidden" name="dm-d-cache-proof-epic" value="">
+      <div data-alevel="3" data-title="Beleg und Not-Aus je Ping">
+        <div data-slot="short">Gewicht von Cache-Lesen im Abo: unbekannt.<div data-viz="kpi" data-viz-spec='{"value":"1/67","unit":"?","label":"1 Konto, unbestätigt"}'></div></div>
+        <div data-slot="long">
+          <div data-viz="kpi" data-viz-spec='{"value":"1/67","unit":"Gewicht","label":"Cache-Lesen gegenüber neuem Token (61 Messungen, 1 Konto)"}'></div>
+          <p>Anthropic veröffentlicht keine Gewichtung.</p>
+          <div data-evidence hidden><ul><li>dev.to/samstull9007: ≈ 166k neue Tokens vs. ≈ 11,2M Cache-Tokens je 1 % des 5-h-Limits</li><li>anthropics/claude-code#75290: Behauptung, 70M Cache-Lesungen hätten das Max-5x-Limit belastet (unbestätigt)</li><li>Mod-API <code>session.measure</code>: <code>rateLimits[].percentUsed</code> nach jeder Antwort</li></ul></div>
+        </div>
+        <div data-example><pre>cache-warm.log
+19:57  ping  read 148 210  write 112  out 3   5h +0,02 %  week +0,00 %  ✓ Treffer
+20:52  ping  read 0        write 150 004       5h +0,9 %                 ✗ Fehltreffer → Mod pausiert, Toast</pre></div>
+      </div>
+    </section>
+  </section>
+
+  <!-- ===================== Thema 3 ===================== -->
+  <section id="t-new" data-topic data-nav-label="Prompt &amp; neue Mods">
+    <div data-alevel="2" data-title="Prompt &amp; neue Mods">
+      <div data-slot="short">Einfügungen auslagern spart 15× mehr als Prompts kürzen.<div data-viz="kpi" data-viz-spec='{"value":"15×","unit":"mehr Ersparnis"}'></div></div>
+      <div data-slot="long">
+        <div data-viz="bars" data-viz-spec='{"items":[{"label":"30k-Log auslagern","value":345},{"label":"3k-Prompt auf 1k kürzen","value":24}],"unit":"k Token-Äquivalent je 200-Schritte-Session"}'></div>
+        <p>Der Prompt selbst ist klein gegenüber dem, was mit ihm eingefügt wird. Gewinn liegt bei großen Einfügungen und bei Mods, die es für devops' Kernthemen noch gar nicht gibt.</p>
+      </div>
+    </div>
+
+    <section id="d-prompt" data-nav-label="Lange Prompts" data-decision="d-prompt" data-decision-mode="single"
+             data-label="Umgang mit langen Prompts" data-rec="lint"
+             data-rec-why="Kürzen spart etwa 1,6 % einer Session und riskiert Abwägungen und Verneinungen; eine Rückfrage vor autonomen Läufen verhindert die teuren Fehlinterpretationen."
+             data-applies-to="Prompts ab ~1 500 Tokens im Haupt-Thread" data-finding="f-prompt">
+      <p data-applies>Gilt für: Prompts ab ~1 500 Tokens im Haupt-Thread</p>
+      <p data-situation>Einen 3k-Prompt auf ein Drittel zu kürzen spart über eine lange Session nur 1,6 % und kann Abwägungen verschlucken.</p>
+      <h3 data-question>Was passiert mit einem langen Prompt, bevor die Session ihn liest?</h3>
+      <p data-stakes>Ob Nuancen ankommen und wie oft eine Runde in die falsche Richtung läuft.</p>
+      <div data-options>
+        <label data-opt="lint" data-recommended>
+          <input type="radio" name="dm-d-prompt" value="lint" checked>
+          <span data-opt-label>Original bleibt wörtlich, Haiku prüft nur auf Lücken</span>
+          <span data-opt-consequence>Bei Widersprüchen oder vor autonomen Läufen kommen 1–3 Rückfragen vorab.</span>
+        </label>
+        <label data-opt="summary">
+          <input type="radio" name="dm-d-prompt" value="summary">
+          <span data-opt-label>Haiku-Zusammenfassung ersetzt den Prompt</span>
+          <span data-opt-consequence>Etwa 1,6 % weniger, dafür 2–5 s Wartezeit und Nuancenverlust.</span>
+        </label>
+        <label data-opt="digest">
+          <input type="radio" name="dm-d-prompt" value="digest">
+          <span data-opt-label>Original plus Haiku-Gliederung anhängen</span>
+          <span data-opt-consequence>Hilft der Struktur, kostet aber mehr Tokens, als es spart.</span>
+        </label>
+        <label data-opt="none">
+          <input type="radio" name="dm-d-prompt" value="none">
+          <span data-opt-label>Lange Prompts unverändert durchreichen</span>
+          <span data-opt-consequence>Kein Aufwand, keine Rückfragen.</span>
+        </label>
+      </div>
+      <textarea data-comment="d-prompt-note" placeholder="Notiz (optional)"></textarea>
+      <input type="hidden" name="dm-d-prompt-none" value="">
+      <input type="hidden" name="dm-d-prompt-hes" value="{&quot;ms&quot;:10838,&quot;revisits&quot;:0,&quot;median&quot;:47399}">
+      <input type="hidden" name="dm-d-prompt-touched" value="1">
+      <input type="hidden" name="dm-d-prompt-issue" value="">
+      <input type="hidden" name="dm-d-prompt-epic" value="">
+      <div data-alevel="3" data-title="Umgang mit langen Prompts">
+        <div data-slot="short">36k → 12k von ≈ 1,5 M einer Session.<div data-viz="kpi" data-viz-spec='{"value":"1,6 %","unit":"Ersparnis"}'></div></div>
+        <div data-slot="long">
+          <div data-viz="compare" data-viz-spec='{"before":{"label":"3k-Prompt","value":36},"after":{"label":"auf 1k gekürzt","value":12},"unit":"k Token-Äquivalent über 200 Schritte"}'></div>
+          <p>Er wird einmal geschrieben und danach nur noch für 0,05× mitgelesen.</p>
+          <div data-evidence hidden><ul><li>Rechnung: 2 × 3k + 200 × 0,05 × 3k = 36k; gekürzt 12k; Session ≈ 150k × 200 × 0,05 ≈ 1,5M</li><li>proompt, prompt-preflight: keine veröffentlichte Qualitätsmessung gefunden</li></ul></div>
+        </div>
+        <div data-example><pre>Dein Prompt (Auszug):
+  „… Mods, die den Cache verlängern … (da muss man stark abwägen, ob es sich
+   bei einem großen Kontext eher lohnt oder nicht und ob man es szenarienweise
+   anders entscheiden sollte) …“
+
+Haiku-Zusammenfassung (typisch):
+  „Baue einen Cache-Keepalive-Mod für bis zu 12 h.“
+
+→ „stark abwägen“ und „szenarienweise“ sind weg; genau daran hängt Thema 2.</pre></div>
+      </div>
+    </section>
+
+    <section id="d-paste" data-nav-label="Große Einfügungen" data-decision="d-paste" data-decision-mode="yesnoalt"
+             data-label="Große Einfügungen auslagern" data-rec="yes"
+             data-rec-why="Verlustfrei, weil das Original als Datei lesbar bleibt, und rund 15-mal wirksamer als Prompt-Kürzen."
+             data-applies-to="eingefügte Blöcke ab 8k Tokens (Logs, Stacktraces, Dumps)" data-finding="f-paste">
+      <p data-applies>Gilt für: eingefügte Blöcke ab 8k Tokens (Logs, Stacktraces, Dumps)</p>
+      <p data-situation>Ein eingefügtes 30k-Log wird bei jedem folgenden Schritt mitgelesen und kostet über 200 Schritte so viel wie 360k Tokens.</p>
+      <h3 data-question>Sollen große Einfügungen als Datei abgelegt und durch Auszug plus Pfad ersetzt werden?</h3>
+      <p data-stakes>Kontextgröße langer Debug-Sessions.</p>
+      <div data-options>
+        <label data-opt="yes" data-recommended>
+          <input type="radio" name="dm-d-paste" value="yes" checked>
+          <span data-opt-label>Ja, ab 8k Tokens auslagern</span>
+          <span data-opt-consequence>Die Session sieht einen Haiku-Auszug und liest das Original nur bei Bedarf.</span>
+        </label>
+        <label data-opt="no">
+          <input type="radio" name="dm-d-paste" value="no">
+          <span data-opt-label>Nein, Einfügungen bleiben im Prompt</span>
+          <span data-opt-consequence>Alles sofort im Blick, der Kontext wächst entsprechend.</span>
+        </label>
+        <label data-opt="alt">
+          <input type="radio" name="dm-d-paste" value="alt">
+          <span data-opt-label>Anders …</span>
+          <span data-opt-consequence>Du sagst in einem Satz, was stattdessen gelten soll.</span>
+        </label>
+      </div>
+      <input type="text" name="dm-d-paste-alt" placeholder="Was stattdessen?" value="">
+      <textarea data-comment="d-paste-note" placeholder="Notiz (optional)"></textarea>
+      <input type="hidden" name="dm-d-paste-none" value="">
+      <input type="hidden" name="dm-d-paste-hes" value="{&quot;ms&quot;:15229,&quot;revisits&quot;:0,&quot;median&quot;:47399}">
+      <input type="hidden" name="dm-d-paste-touched" value="1">
+      <input type="hidden" name="dm-d-paste-issue" value="">
+      <input type="hidden" name="dm-d-paste-epic" value="">
+      <div data-alevel="3" data-title="Große Einfügungen auslagern">
+        <div data-slot="short">360k → ≈ 15k je langer Session.<div data-viz="kpi" data-viz-spec='{"value":"−96 %","unit":"Kontextkosten"}'></div></div>
+        <div data-slot="long">
+          <div data-viz="compare" data-viz-spec='{"before":{"label":"30k-Log im Prompt","value":360},"after":{"label":"Auszug + Pfad","value":15},"unit":"k Token-Äquivalent über 200 Schritte"}'></div>
+          <p>Als Datei bleibt es vollständig lesbar, wenn das Modell es braucht.</p>
+          <div data-evidence hidden><ul><li>Rechnung: 2 × 30k + 200 × 0,05 × 30k = 360k; Auszug 1k ≈ 12k plus ein gezieltes Nachlesen</li><li>Mod-API: <code>prompt.submit</code> darf den Text umschreiben, <code>$.fs</code> schreibt die Datei</li></ul></div>
+        </div>
+        <div data-example><pre>Vorher:  &lt;pasted 30 214 Tokens: build.log&gt;
+
+Nachher: [Einfügung ausgelagert → .claude/pastes/20261110-1931-build.log, 30k Tokens]
+         Auszug (Haiku): 3 Fehler · erster: ECONNRESET in deploy.js:88 ·
+         letzter Erfolg 19:12 · 2 840 Zeilen Warnungen (npm deprecate)</pre></div>
+      </div>
+    </section>
+
+    <section id="d-new" data-nav-label="Neue Mods" data-decision="d-new" data-decision-mode="multi"
+             data-label="Neue devops-Mods" data-rec="fleet meter ping ship diet"
+             data-rec-why="Agenten, Budget und Ship sind devops' Kern; für Ship und CI fand die Recherche keinen Mod, und Ton bei wartender Freigabe ist ein Problem, das das Plugin heute mit Polling löst."
+             data-applies-to="devops-mods, über die Verlagerung hinaus" data-finding="f-new">
+      <p data-applies>Gilt für: devops-mods, über die Verlagerung hinaus</p>
+      <p data-situation>Für CI-Status, Branch-Hygiene und Ton-Hinweise gibt es unter 293 gelisteten Mods keinen einzigen.</p>
+      <h3 data-question>Welche neuen Mods baut devops über die Verlagerung hinaus?</h3>
+      <p data-stakes>Wofür devops-mods steht und was du beim Arbeiten neben dem Chat siehst.</p>
+      <div data-options>
+        <label data-opt="fleet" data-recommended>
+          <input type="checkbox" name="dm-d-new.fleet" checked>
+          <span data-opt-label>Agenten-Pane: Modell, Laufzeit, Tokens, Status</span>
+          <span data-opt-consequence>Autonome Läufe sind live sichtbar statt nur über Karten.</span>
+        </label>
+        <label data-opt="meter" data-recommended>
+          <input type="checkbox" name="dm-d-new.meter" checked>
+          <span data-opt-label>Budget- und Kontext-Band mit Kompaktier-Tipp</span>
+          <span data-opt-consequence>5-h-, Wochen- und Kontextfüllung auf einen Blick, Warnung vor dem Limit.</span>
+        </label>
+        <label data-opt="ping" data-recommended>
+          <input type="checkbox" name="dm-d-new.ping" checked>
+          <span data-opt-label>Ton und Toast bei wartender Freigabe oder fertigem Lauf</span>
+          <span data-opt-consequence>Ersetzt das 1-s-Polling; du verpasst keine Rückfrage mehr.</span>
+        </label>
+        <label data-opt="ship" data-recommended>
+          <input type="checkbox" name="dm-d-new.ship" checked>
+          <span data-opt-label>Ship- und CI-Pane mit Pipeline-Schritten und PR-Checks</span>
+          <span data-opt-consequence>Zeigt, wo ein Release gerade steht und was rot ist.</span>
+        </label>
+        <label data-opt="diet" data-recommended>
+          <input type="checkbox" name="dm-d-new.diet" checked>
+          <span data-opt-label>Große Tool-Ausgaben in Datei plus Auszug umleiten</span>
+          <span data-opt-consequence>Riesige Bash- und Read-Ergebnisse blähen den Kontext nicht mehr auf.</span>
+        </label>
+        <label data-opt="recap">
+          <input type="checkbox" name="dm-d-new.recap" checked>
+          <span data-opt-label>„Wo war ich?“-Rückblick beim Wiederkommen</span>
+          <span data-opt-consequence>Billig, solange der Cache warm ist; kalt kostet er einen Neuaufbau.</span>
+        </label>
+        <label data-opt="branch">
+          <input type="checkbox" name="dm-d-new.branch" checked>
+          <span data-opt-label>Branch-Hygiene in der Statuszeile</span>
+          <span data-opt-consequence>Offene Branches und Worktrees immer sichtbar statt als Start-Hinweis.</span>
+        </label>
+        <label data-opt="reminder">
+          <input type="checkbox" name="dm-d-new.reminder">
+          <span data-opt-label>Wiederholte System-Erinnerungen ausfiltern</span>
+          <span data-opt-consequence>Spart Tokens je Turn, kann aber nützliche Hinweise verschlucken.</span>
+        </label>
+      </div>
+      <textarea data-comment="d-new-note" placeholder="Notiz (optional)">brnach hygiene aber gleich mit empefhlungsbutton, der das direkt in eneuer subsession oder wenns geht session startet mit korrekten mdoel und effort sinnvoll!</textarea>
+      <input type="hidden" name="dm-d-new-none" value="">
+      <input type="hidden" name="dm-d-new-hes" value="{&quot;ms&quot;:76402,&quot;revisits&quot;:1,&quot;median&quot;:47399}">
+      <input type="hidden" name="dm-d-new-touched" value="1">
+      <input type="hidden" name="dm-d-new-issue" value="">
+      <input type="hidden" name="dm-d-new-epic" value="">
+      <div data-alevel="3" data-title="Neue devops-Mods">
+        <div data-slot="short">Agenten- und Kontext-Ansichten führen, Ship/CI fehlt.<div data-viz="kpi" data-viz-spec='{"value":"0","unit":"Ship-/CI-Mods"}'></div></div>
+        <div data-slot="long">
+          <div data-viz="bars" data-viz-spec='{"items":[{"label":"Agenten-Büro (Habblaud)","value":1200},{"label":"Kontext-Balken","value":462},{"label":"Usage-Meter (antiburn)","value":217},{"label":"Ship-/CI-Pane","value":0}],"unit":"GitHub-Sterne","hl":"Ship-/CI-Pane"}'></div>
+          <p>Agenten- und Usage-Ansichten sind gefragt, Ship-Ansichten fehlen ganz.</p>
+          <div data-evidence hidden><ul><li>claude-mods.com (Sterne Stand 23.10.2026), karanb192/awesome-claude-code-mods</li><li>Keine Treffer für CI-Band, Branch-Hygiene, Session-Titel, Ton (Recherche, unbestätigt)</li></ul></div>
+        </div>
+        <div data-example><pre>┌ Agenten ─────────────────────────────────────┐
+│ 🎯 pox       opus    1:29  26k   ✓ fertig      │
+│ 🔍 research  sonnet  4:10  41k   ● läuft       │
+│ 🧪 qax       sonnet  —     —     ⏸ wartet      │
+└──────────────────────────────────────────────┘</pre></div>
+      </div>
+    </section>
+  </section>
+</section>
