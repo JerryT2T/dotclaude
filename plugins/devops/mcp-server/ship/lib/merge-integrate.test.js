@@ -16,6 +16,9 @@ beforeEach(() => {
   repo = fs.mkdtempSync(path.join(os.tmpdir(), "merge-int-"));
   g("init", "-q", "-b", "main");
   g("config", "user.name", "t"); g("config", "user.email", "t@t");
+  // Repo-level, so mergeOnto's own git calls agree with g(): Git for Windows
+  // ships core.autocrlf=true system-wide, which would re-check-out CRLF files.
+  g("config", "core.autocrlf", "false");
   write({ "package.json": pkg("1.0.0"), "CHANGELOG.md": "# Changelog\n\n## [1.0.0] — 2026-11-01\n\n- first\n", "a.js": "a();\n", "ui.css": ".b {\n  color: blue;\n}\n" });
   g("add", "-A"); g("commit", "-qm", "base");
   g("branch", "feat");
