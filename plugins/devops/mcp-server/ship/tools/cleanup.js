@@ -5,6 +5,7 @@
  */
 
 import { z } from "zod";
+import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
 import { git, gitArgs, gitTry, isWorktree, getWorktreeBranches, detectDefaultBranch, NETWORK_TIMEOUT } from "../lib/git.js";
 import { dirtySessionWorktrees } from "../lib/worktree.js";
@@ -12,6 +13,25 @@ import { clearSentinel } from "../lib/sentinel.js";
 import { clearLockoutMarker } from "../lib/lockout-marker.js";
 import { releaseLandingLockFor } from "../lib/landing-lock.js";
 import { detectRepoMode, refusesGitWrites, probeTimeoutError } from "../lib/repo-mode.js";
+
+const require = createRequire(import.meta.url);
+
+/**
+ * A completed ship moves the session's knowledge anchor to the new base tip:
+ * the user now knows everything on origin/<base> (hooks/lib/knowledge-anchor.js).
+ * Only a keep-mode exit whose remote branch is gone counts as completed (a
+ * ship-blocked exit never pushed, or still has its remote branch). Never blocks
+ * cleanup; a failed write only means the older (earlier, safer) anchor stays.
+ */
+export function recordShipAnchor(cwd, base, branchSync) {
+  try {
+    const done = branchSync && (branchSync.synced || ["tree-differs", "already-on-base"].includes(branchSync.reason));
+    if (!done) return null;
+    return require("../../../hooks/lib/knowledge-anchor.js").afterShip(cwd, { base });
+  } catch {
+    return null;
+  }
+}
 
 export const schema = z.object({
   branch: z.string().describe("Feature branch to delete"),
@@ -161,6 +181,7 @@ export async function handler(params) {
     if (!intermediate) {
       try { branchSync = syncKeptBranch(cwd, branch, base); } catch (e) { branchSync = { synced: false, reason: String(e && e.message) }; }
     }
+    if (recordShipAnchor(cwd, base, branchSync)) shipState.push(`anchor-reset:${base}`);
     if (branchSync.synced) {
       shipState.push(`branch-synced:${base}`);
       keepWarnings.push(`Keep-mode: '${branch}' moved to origin/${base} (merged, same tree) — no unpushed commits left`);

@@ -42,6 +42,12 @@ function git(cmd) {
   }
 }
 
+// Early warning (token-free, 30-min floor, detached): another branch already on
+// the remote touching the same region as this one. Own slot, own gates.
+if (require.main === module) {
+  try { require('../lib/early-warning').maybeStart(cwd); } catch { /* advisory */ }
+}
+
 // Inside the throttle window nothing below matters: the common case ends here.
 if (!claimSyncSlot(cwd, { peek: true, throttleMs: FLOOR_MS })) process.exit(0);
 

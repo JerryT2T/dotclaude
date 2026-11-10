@@ -102,5 +102,8 @@ process.stdin.on('data', (d) => { raw += d; });
 process.stdin.on('end', () => {
   cwd = payloadCwd(raw) || cwd;
   try { maybeSync(); } catch { /* a background sync must never break turn end */ }
+  // Early warning (token-free, 30-min floor, detached): another branch already
+  // on the remote touching the same region. Independent of the sync's gates.
+  try { require('../lib/early-warning').maybeStart(cwd); } catch { /* advisory */ }
   process.exit(0);
 });

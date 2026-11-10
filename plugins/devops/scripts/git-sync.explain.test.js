@@ -3,7 +3,6 @@ import fs from "fs";
 import path from "path";
 import {
   git,
-  runSync,
   runSyncExplain,
   write,
   makeWorld,
@@ -45,17 +44,16 @@ describe("--explain names every no-merge exit", () => {
     expect(fs.existsSync(path.join(wt, "from-main.txt"))).toBe(false);
   });
 
-  test("dirty overlap → skipped naming the file; background stays silent", async () => {
-    const { root, wt, other } = await makeWorld();
+  test("dirty overlap → parked in a wip(sync) commit, then merged and reported (no skip)", async () => {
+    const { wt, other } = await makeWorld();
     await advanceOrigin(other, "base.txt", "main edit\n", "main edits base.txt");
     write(wt, "base.txt", "work in progress\n");
 
     const out = await runSyncExplain(wt);
-    expect(out).toContain("– origin/main → feature: skipped: uncommitted changes overlap");
+    expect(out).not.toContain("skipped: uncommitted changes overlap");
+    // Both sides rewrote the same line: a genuine conflict, reported once.
+    expect(out).toContain("⚠ origin/main → feature");
     expect(out).toContain("base.txt");
-
-    const resultFile = path.join(root, "result");
-    expect(await runSync(wt, resultFile)).toBe("");
   });
 
   test("a real merge still reports ✓", async () => {

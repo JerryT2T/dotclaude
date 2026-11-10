@@ -76,7 +76,8 @@ describe("uncommitted work", () => {
     const { root, wt, other } = await makeWorld();
     const lines = (first, last) => [first, ...Array.from({ length: 18 }, (_, i) => `l${i + 2}`), last].join("\n") + "\n";
     await advanceOrigin(other, "lines.txt", lines("l1", "l20"), "main adds lines.txt");
-    expect(await runSync(wt, path.join(root, "result0"))).toContain("✓ origin/main → feature");
+    await git(wt, ["fetch", "--quiet", "origin"]);
+    await git(wt, ["merge", "--no-edit", "--quiet", "origin/main"]);
     await advanceOrigin(other, "lines.txt", lines("ONE", "l20"), "main edits the first line");
 
     write(wt, "lines.txt", lines("l1", "TWENTY, edited in the worktree"));
@@ -91,6 +92,20 @@ describe("uncommitted work", () => {
     expect(await git(wt, ["status", "--porcelain"])).toBe("");
     expect(await git(wt, ["log", "--format=%s", "-5"])).toContain("wip(sync): park work before merging origin/main");
     expect(await git(wt, ["ls-remote", "--heads", "origin", "feature"])).toBe("");
+    // The own tip was snapshotted before the integration (survival check input),
+    // and a merge that lost nothing leaves no merge-queue behind.
+    expect(await git(wt, ["rev-parse", "--verify", "refs/devops/intent/feature"])).toMatch(/^[0-9a-f]{40}$/);
+    expect(fs.existsSync(path.join(wt, ".claude", "merge-queue.json"))).toBe(false);
+  });
+
+  test("records the synced remote signature only after a run that skipped nothing", async () => {
+    const { root, wt, other } = await makeWorld();
+    await advanceOrigin(other, "elsewhere.txt", "elsewhere\n", "main moves");
+    const tipFile = path.join(root, "tip");
+
+    await runSync(wt, path.join(root, "result"), { DEVOPS_GIT_SYNC_TIP_FILE: tipFile, DEVOPS_GIT_SYNC_TIP: "abc refs/heads/main" });
+
+    expect(fs.readFileSync(tipFile, "utf8")).toBe("abc refs/heads/main");
   });
 
   test("a conflicting overlap is reported (⚠) and the user's work stays safe in the wip commit", async () => {

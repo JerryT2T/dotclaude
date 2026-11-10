@@ -821,7 +821,10 @@ function recordSurvival(results) {
       survivedCount: a.survivedCount + b.survivedCount, resolvedCount: a.resolvedCount + b.resolvedCount,
       truncated: a.truncated || b.truncated,
     }));
-    queueLib.writeQueue(cwd, q);
+    // Replace per run: nothing lost = no file (and an earlier queue is dropped),
+    // so a clean sync never leaves an untracked .claude/ behind.
+    if (q.open.length || q.restore.length) queueLib.writeQueue(cwd, q);
+    else queueLib.clearQueue(cwd);
   } catch { /* the survival check is advisory here; the ship gate runs it again */ }
 }
 recordSurvival(mergedResults);

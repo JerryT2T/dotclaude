@@ -59,7 +59,15 @@ try {
 } catch { /* batch state unreadable — deliver as usual */ }
 
 const result = takeResult(cwd);
-if (!result) process.exit(0);
+
+// Early warning from branches already on the remote (hooks/lib/early-warning.js):
+// delivered on its own, whether or not a sync result is pending.
+let warning = null;
+try { warning = require('../lib/early-warning').takeWarning(cwd); } catch { /* advisory */ }
+if (!result) {
+  if (warning) process.stdout.write(warning);
+  process.exit(0);
+}
 
 // Desktop reuses worktrees across sessions with a new branch each time: a
 // result left by the previous branch's sync is about a tree that is gone.
@@ -67,7 +75,10 @@ if (!result) process.exit(0);
 const target = resultBranch(result);
 if (target) {
   const branch = currentBranch();
-  if (branch && branch !== target) process.exit(0);
+  if (branch && branch !== target) {
+    if (warning) process.stdout.write(warning);
+    process.exit(0);
+  }
 }
 
 const lines = renderContext(result);
@@ -83,6 +94,8 @@ if (result.kind === 'synced') {
     if (line) lines.push('', line);
   } catch { /* the queue is advisory context */ }
 }
+
+if (warning) lines.push('', warning);
 
 process.stdout.write(lines.join('\n'));
 process.exit(0);

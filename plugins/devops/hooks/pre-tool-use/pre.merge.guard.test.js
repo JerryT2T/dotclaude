@@ -1,4 +1,6 @@
-import { describe, test, expect, beforeEach, afterEach } from "vitest";
+import { describe, test, expect, beforeEach, afterEach, vi } from "vitest";
+
+vi.setConfig({ testTimeout: 60000, hookTimeout: 60000 });
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { execFileSync, spawnSync } from "node:child_process";

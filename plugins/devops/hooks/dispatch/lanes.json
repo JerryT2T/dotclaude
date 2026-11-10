@@ -329,6 +329,7 @@
         "prompt.knowledge.dispatch"
       ],
       [
+        "prompt.knowledge.anchor",
         "prompt.git.sync"
       ],
       [
@@ -368,13 +369,19 @@
   },
   "writers": {
     "ss.git.sync": [
-      "hooks/lib/git-sync-bg.js"
+      "hooks/lib/git-sync-bg.js",
+      "hooks/lib/knowledge-anchor.js"
     ],
     "stop.git.sync": [
-      "hooks/lib/git-sync-bg.js"
+      "hooks/lib/git-sync-bg.js",
+      "hooks/lib/knowledge-anchor.js"
+    ],
+    "prompt.knowledge.anchor": [
+      "hooks/lib/knowledge-anchor.js"
     ],
     "prompt.git.sync": [
       "hooks/lib/git-sync-bg.js",
+      "hooks/lib/knowledge-anchor.js",
       "hooks/lib/merge-queue.js"
     ]
   }
