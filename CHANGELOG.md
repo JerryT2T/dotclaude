@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.366.0] — 2026-11-10
+
+### Added
+- Fable 5.2 awareness: on a Fable session every Agent spawn must name its model, and the delegated ship subagent runs on opus.
+- `[budget]` line gates Fable from 85 % of the scoped Fable share (no fable upgrades, a Fable session is pointed to opus); the budget class is unchanged.
+- SessionStart names a configured Claude Code advisor once — subagents inherit it.
+- `claude-fable-5-2` API price row; agent-orchestration § Fable with eval evidence (analysis roles and `/do-run burn` stay on opus).
+
+### Fixed
+- A known plan with no usage reading no longer counts as budget class `free` — it asks once before parallel work.
+- `claude-api-agent` runs on Fable models no longer fail with an invalid thinking signature (no context freeze there).
+
 ## [0.365.0] — 2026-11-09
 
 ### Added

@@ -43,6 +43,18 @@ describe("agent-model-gate", () => {
     expect(gate.wouldRefuse({ ...explore, description: "Other sweep" }, null, t, "t2")).toBe(true);
   });
 
+  test("on a Fable session the identical retry is refused too, and the reason says so", () => {
+    const turn = (model) => ({ type: "assistant", message: { role: "assistant", model, content: [{ type: "text", text: "ok" }] } });
+    const fable = jsonl(prompt(), turn("claude-fable-5-2"), spawnUse("t0", explore), refusal("t0"), spawnUse("t1", explore));
+    expect(gate.fableSession(fable)).toBe(true);
+    expect(gate.wouldRefuse(explore, null, fable, "t1")).toBe(true);
+    expect(gate.wouldRefuse({ ...explore, model: "fable" }, null, fable, "t1")).toBe(false);
+    expect(gate.refusalText(explore, fable)).toContain("runs on Fable");
+    const opus = jsonl(prompt(), turn("claude-opus-5-5"), spawnUse("t0", explore), refusal("t0"), spawnUse("t1", explore));
+    expect(gate.wouldRefuse(explore, null, opus, "t1")).toBe(false);
+    expect(gate.refusalText(explore, opus)).not.toContain("runs on Fable");
+  });
+
   test("a refusal of an earlier turn does not carry over", () => {
     const t = jsonl(prompt(), spawnUse("t0", explore), refusal("t0"), prompt("next"), spawnUse("t1", explore));
     expect(gate.wouldRefuse(explore, null, t, "t1")).toBe(true);

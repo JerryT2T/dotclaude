@@ -200,7 +200,7 @@ function unrelayedLaunches(transcriptText) {
 /**
  * Models that return text between tool calls as progress-update `thinking`
  * blocks when Claude Code asks for `display: "updates"` (Claude API docs:
- * Opus 5.5, Sonnet 5.5, Fable 5 / 5.1, Mythos 5 / 5.1).
+ * Opus 5.5, Sonnet 5.5, Fable 5.x, Mythos 5.x).
  */
 const PROGRESS_UPDATE_MODELS = /claude-(?:opus-5-5|sonnet-5-5|fable-5|mythos-5)/;
 

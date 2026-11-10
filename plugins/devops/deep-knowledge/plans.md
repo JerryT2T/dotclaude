@@ -59,8 +59,25 @@ choice from its "PC danach" question (`skills/do-run/deep-knowledge/questions.md
 
 ## Fable
 
-Fable is a model, not a plan feature. Pro pays for it with usage credits. The
-pricing page lists 50 % of the weekly limits for Max and Ultra, and 50 % on
-premium Team seats. The Max and Ultra help articles both name a separate weekly
-limit for Fable. The plugin reads such limits from the usage data
-(`limits[]`), not from the plan name.
+Fable is a model, not a plan feature. Pro and standard Team seats pay for it
+with usage credits. Max, Ultra and premium Team seats may spend up to 50 % of
+the weekly limit on Fable: the help articles call it a separate weekly limit,
+but it is a share INSIDE the weekly pool, not extra quota — Fable use raises
+both the Fable bar and the weekly bar, and drains the week faster than other
+models. The plugin reads the share from the usage data (`limits[]` → the
+card's `Fb` bar), not from the plan name, and never lowers the budget class
+for it (the week already counts it). From `FABLE.blockAt` (85 %, `plan.js`)
+the `[budget]` line adds `· Fable N% →`: no `fable` upgrades, a Fable
+session is pointed to opus once (`budget.js` `fableSuffix`).
+
+Fable 5.2 (2026-11-09): $8 / $40 per MTok (Opus 5.5: $4 / $20), 1M context,
+thinking always on, Claude Code default effort medium. Anthropic positions
+Opus 5.5 as the coding daily driver and Fable for open-ended work and as an
+orchestrator / advisor over smaller models. Model routing: `agent-orchestration.md`
+§ Fable. As of 2026-11-10 Max/Ultra hold one-time "Fable resets" from the
+launch (they restore only the Fable share, used by hand in Claude); the plugin
+does not track them.
+
+Advisor (experimental, `advisorModel` setting): every subagent inherits the
+session's advisor. SessionStart names a configured advisor once
+(`hooks/lib/advisor.js`); nothing gates on it.

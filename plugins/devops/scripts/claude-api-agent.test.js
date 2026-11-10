@@ -319,6 +319,15 @@ describe("context freeze (client-side)", () => {
     await runAgent(["t"], { env: { DEVOPS_API_CONTEXT_EDITING: "0" }, fetchImpl: capture(script(8), seen) });
     expect(seen.every((q) => resultsOf(q.body).every((b) => b.content !== agent.CLEARED_NOTE))).toBe(true);
   });
+
+  test("a Fable model never freezes: its thinking blocks are bound to the exact prefix", async () => {
+    enable();
+    for (let i = 0; i < 400; i++) fs.writeFileSync(path.join(proj, "src", "f".repeat(150) + i + ".js"), "");
+    const seen = [];
+    await runAgent(["--model", "claude-fable-5-2", "t"], { fetchImpl: capture(script(10), seen) });
+    expect(seen.length).toBe(11);
+    expect(seen.every((q) => resultsOf(q.body).every((b) => b.content !== agent.CLEARED_NOTE))).toBe(true);
+  });
 });
 
 describe("a run nearing a limit answers with what it has", () => {
