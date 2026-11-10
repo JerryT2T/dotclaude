@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook prompt.git.sync
- * @version 1.1.0
+ * @version 1.2.0
  * @event UserPromptSubmit
  * @plugin devops
  * @description Delivers the result of a background git sync — nothing else.
@@ -70,5 +70,19 @@ if (target) {
   if (branch && branch !== target) process.exit(0);
 }
 
-process.stdout.write(renderContext(result).join('\n'));
+const lines = renderContext(result);
+
+// One extra line when the sync's survival check found upstream work that is
+// missing from this branch (hooks/lib/merge-queue.js). Only alongside a merge
+// result: the queue is rewritten by exactly those runs.
+if (result.kind === 'synced') {
+  try {
+    const mq = require('../lib/merge-queue');
+    const queue = mq.readQueue(cwd);
+    const line = queue && (!queue.branch || queue.branch === currentBranch()) ? mq.renderQueueLine(queue) : null;
+    if (line) lines.push('', line);
+  } catch { /* the queue is advisory context */ }
+}
+
+process.stdout.write(lines.join('\n'));
 process.exit(0);

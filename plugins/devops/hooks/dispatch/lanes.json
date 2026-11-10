@@ -104,6 +104,9 @@
         "pre.test.fullguard"
       ],
       [
+        "pre.merge.guard"
+      ],
+      [
         "pre.issue.guard"
       ],
       [
@@ -371,7 +374,8 @@
       "hooks/lib/git-sync-bg.js"
     ],
     "prompt.git.sync": [
-      "hooks/lib/git-sync-bg.js"
+      "hooks/lib/git-sync-bg.js",
+      "hooks/lib/merge-queue.js"
     ]
   }
 }

@@ -59,6 +59,12 @@
       },
       {
         "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.merge.guard.js\"", "timeout": 10, "commandFilter": "\\b[Gg][Ii][Tt]\\b" }
+        ],
+        "matcher": "Bash|PowerShell|Write"
+      },
+      {
+        "hooks": [
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.issue.guard.js\"", "commandFilter": "\\b[Gg][Hh]\\b" }
         ],
         "matcher": "Bash|PowerShell|mcp__.*github.*__(issue_write|create_issue|update_issue)"

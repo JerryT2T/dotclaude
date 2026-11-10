@@ -30,8 +30,16 @@ const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
 
-/** Default gap between two background syncs for the same worktree. */
-const THROTTLE_MS = 30 * 60 * 1000;
+/**
+ * Floor between two remote checks / syncs for the same worktree. It is no
+ * longer the sync cadence (that was a fixed 30 min and starved a session whose
+ * teammate shipped 5 minutes ago): the cadence is "the remote moved"
+ * (remoteMoved below); the floor only keeps a burst of turn ends from running
+ * `git ls-remote` on every one of them.
+ */
+const FLOOR_MS = 2 * 60 * 1000;
+/** @deprecated name kept for callers/tests; equals FLOOR_MS. */
+const THROTTLE_MS = FLOOR_MS;
 
 const PREFIX = 'dotclaude-devops-git-sync';
 
@@ -48,6 +56,11 @@ function keyFor(cwd) {
 
 function throttleFile(cwd, tmpdir = os.tmpdir()) {
   return path.join(tmpdir, `${PREFIX}-throttle-${keyFor(cwd)}`);
+}
+
+/** Remote signature the last completed sync was based on (written by git-sync.js). */
+function tipFile(cwd, tmpdir = os.tmpdir()) {
+  return path.join(tmpdir, `${PREFIX}-tip-${keyFor(cwd)}`);
 }
 
 function resultFile(cwd, tmpdir = os.tmpdir()) {
@@ -107,6 +120,57 @@ function claimSyncSlot(cwd, opts = {}) {
     return false; // cannot claim, or another session just did -> do not spawn
   }
   return true;
+}
+
+/** Remote heads a sync of `branch` follows: the default branch candidates plus every path-segment parent. */
+function watchedRefs(branch) {
+  const refs = ['main', 'master'];
+  const parts = String(branch || '').split('/');
+  for (let i = 1; i < parts.length; i++) refs.push(parts.slice(0, i).join('/'));
+  return [...new Set(refs)].map(r => `refs/heads/${r}`);
+}
+
+/**
+ * Model-free fingerprint of the remote state a sync of `branch` would merge:
+ * the sorted `<sha> <ref>` lines of one `git ls-remote`. Null when it cannot be
+ * read (no remote, offline, timeout) — "unknown" never triggers a sync.
+ *
+ * @param {string} cwd
+ * @param {string} branch
+ * @param {{timeoutMs?: number, run?: Function}} [opts]
+ */
+function remoteSignature(cwd, branch, opts = {}) {
+  const run = opts.run || ((args) => require('child_process').execFileSync('git', args, {
+    cwd, encoding: 'utf8', timeout: opts.timeoutMs || 10000, windowsHide: true,
+    stdio: ['ignore', 'pipe', 'ignore'],
+    env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+  }));
+  try {
+    const remotes = String(run(['remote'])).split('\n').map(s => s.trim()).filter(Boolean);
+    if (!remotes.length) return null;
+    const remote = remotes.includes('origin') ? 'origin' : remotes[0];
+    const out = String(run(['ls-remote', '--heads', remote, ...watchedRefs(branch)]));
+    const lines = out.split('\n').map(l => l.trim().replace(/\s+/g, ' ')).filter(Boolean).sort();
+    return lines.length ? lines.join('\n') : null;
+  } catch {
+    return null;
+  }
+}
+
+function readSyncedSignature(cwd, tmpdir = os.tmpdir()) {
+  try { return fs.readFileSync(tipFile(cwd, tmpdir), 'utf8').trim() || null; } catch { return null; }
+}
+
+/**
+ * Has the remote moved since the last completed sync of this worktree?
+ * `moved` is true when there is no record yet (first sync of the worktree).
+ *
+ * @returns {{moved: boolean, signature: string|null}}
+ */
+function remoteMoved(cwd, branch, opts = {}) {
+  const signature = remoteSignature(cwd, branch, opts);
+  if (!signature) return { moved: false, signature: null };
+  return { moved: signature !== readSyncedSignature(cwd, opts.tmpdir), signature };
 }
 
 /**
@@ -205,6 +269,7 @@ function takeResult(cwd, opts = {}) {
  * @param {{tmpdir?: string, spawn?: Function, scriptPath?: string}} [opts]
  */
 function spawnSync_(cwd, opts = {}) {
+  const tip = tipFile(cwd, opts.tmpdir);
   const spawn = opts.spawn || require('child_process').spawn;
   const script = opts.scriptPath || path.resolve(__dirname, '../../scripts/git-sync.js');
   const out = resultFile(cwd, opts.tmpdir);
@@ -218,7 +283,15 @@ function spawnSync_(cwd, opts = {}) {
       detached: true,
       stdio: 'ignore',
       windowsHide: true,
-      env: { ...process.env, DEVOPS_GIT_SYNC_RESULT_FILE: out },
+      env: {
+        ...process.env,
+        DEVOPS_GIT_SYNC_RESULT_FILE: out,
+        // The child records the signature it was started for (opts.signature) in
+        // this file once it ran to completion — never earlier, so a skipped or
+        // killed sync is retried at the next floor window.
+        DEVOPS_GIT_SYNC_TIP_FILE: tip,
+        ...(opts.signature ? { DEVOPS_GIT_SYNC_TIP: opts.signature } : {}),
+      },
     });
     child.unref();
     return true;
@@ -229,6 +302,12 @@ function spawnSync_(cwd, opts = {}) {
 
 module.exports = {
   THROTTLE_MS,
+  FLOOR_MS,
+  tipFile,
+  watchedRefs,
+  remoteSignature,
+  readSyncedSignature,
+  remoteMoved,
   CONFLICT_PROCEDURE,
   keyFor,
   throttleFile,
