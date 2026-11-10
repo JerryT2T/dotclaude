@@ -147,7 +147,8 @@ describe("features — the real registry", () => {
       for (const d of f.docs) expect(d, name).toMatch(/^deep-knowledge\/[\w.-]+\.md$/);
       // hooks and hook libs of a gated feature register as scripts too (the
       // README generator skips registered hooks; each one checks the flag)
-      for (const s of f.scripts) expect(s, name).toMatch(/^(?:scripts|hooks)\/[\w./-]+\.js$/);
+      // .ts/.tsx: the function-hook module of `claude-mods` (hooks/mods)
+      for (const s of f.scripts) expect(s, name).toMatch(/^(?:scripts|hooks)\/[\w./-]+\.(?:js|ts|tsx)$/);
     }
   });
 

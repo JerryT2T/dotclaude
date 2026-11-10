@@ -142,6 +142,7 @@ pin → `stable`. A missing `features.json` means nothing is registered.
 | `batch` | alpha | 0.304.0 | Message Batches API for unattended read-only jobs on the API credit |
 | `token-log` | alpha | unreleased | Local log of the characters each hook hands the model and the API usage per turn (`~/.claude/devops-token-log.jsonl`, 0 model tokens); the plugin audit reads and prunes it |
 | `frustrated-mode` | alpha | unreleased | Detects a stuck session, offers a read-only analysis and a plan, hands off only after approval (opt-out `frustratedMode.suggest`, never ships) |
+| `claude-mods` | alpha | unreleased | Display-only Claude Code mods (function-hook module `hooks/mods/index.tsx`, listed under `modules` in the generated hooks.json): agent pane, budget/context band, ship/CI pane, branch-hygiene status + cleanup button, notice toasts, `/mods-spike-fork`. The module checks the flag itself in every hook (`hooks/mods/gate.ts`) and registers its slash commands only when allowed. See `docs/dev/mods.md` |
 
 Keep this table in sync with `features.json`.
 
