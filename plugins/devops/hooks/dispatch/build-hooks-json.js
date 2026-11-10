@@ -9,8 +9,9 @@
  *   the union of the event's module matchers (omitted when any module matches
  *   everything), its timeout the event budget (largest module timeout) plus
  *   the dispatcher's headroom. Modules with `"dispatch": false` keep their own
- *   entry, exactly as in the manifest. It also writes dispatch/lanes.json
- *   (dispatch/lanes.js: which modules may run in parallel).
+ *   entry, exactly as in the manifest. The manifest's `modules` (function-hook
+ *   modules, the engine's mod API) are copied as they stand. It also writes
+ *   dispatch/lanes.json (dispatch/lanes.js: which modules may run in parallel).
  *
  *   CLI: node build-hooks-json.js          write hooks.json + lanes.json
  *        node build-hooks-json.js --check  exit 1 when either is stale
@@ -75,7 +76,9 @@ function build(manifest) {
     entries.push(...separate);
     if (entries.length) hooks[event] = entries;
   }
-  return { description: manifest.description, hooks };
+  const out = { description: manifest.description, hooks };
+  if (Array.isArray(manifest.modules) && manifest.modules.length) out.modules = manifest.modules.slice();
+  return out;
 }
 
 /** hooks.json text: one hook object per line, like the hand-written file was. */
@@ -95,7 +98,11 @@ function serialize(obj) {
     });
     lines.push(`    ]${ei < events.length - 1 ? ',' : ''}`);
   });
-  lines.push('  }', '}', '');
+  if (Array.isArray(obj.modules) && obj.modules.length) {
+    lines.push('  },', `  "modules": [${obj.modules.map((m) => JSON.stringify(m)).join(', ')}]`, '}', '');
+  } else {
+    lines.push('  }', '}', '');
+  }
   return lines.join('\n');
 }
 

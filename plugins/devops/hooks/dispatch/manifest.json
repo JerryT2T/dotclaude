@@ -378,5 +378,6 @@
         ]
       }
     ]
-  }
+  },
+  "modules": ["./mods/index.tsx"]
 }
