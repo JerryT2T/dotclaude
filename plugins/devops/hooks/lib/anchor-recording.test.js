@@ -63,6 +63,22 @@ describe("ensureAnchor", () => {
     expect(anchors.readAnchor(main).sha).toBe(first.anchor.sha);
   });
 
+  test("a reused worktree: a new session re-anchors only when nothing of the old one is unshipped", () => {
+    g(main, "checkout", "-q", "-b", "feat");
+    const old = rec.ensureAnchor(main, { session: "s1" }).anchor;
+    // Main moves on; the old session's work is shipped (nothing ahead of origin/main).
+    commit(main, "a.txt", "2\n", "two");
+    g(main, "update-ref", "refs/remotes/origin/main", "HEAD");
+    const fresh = rec.ensureAnchor(main, { session: "s2" });
+    expect(fresh.action).toBe("recorded");
+    expect(fresh.anchor.sha).not.toBe(old.sha);
+    expect(fresh.anchor.session).toBe("s2");
+    // Unshipped own work of s2 keeps its (earlier) anchor for the next session.
+    commit(main, "b.txt", "own\n", "own work");
+    expect(rec.ensureAnchor(main, { session: "s3" }).action).toBe("exists");
+    expect(anchors.readAnchor(main).session).toBe("s2");
+  });
+
   test("a fresh worktree inherits the anchor of the worktree it descends from, not its own start", () => {
     g(main, "checkout", "-q", "-b", "parent");
     const early = g(main, "rev-parse", "HEAD");

@@ -98,8 +98,17 @@ function parentWorktree(cwd) {
 function ensureAnchor(cwd, { session, now } = {}) {
   try {
     const existing = anchorLib.readAnchor(cwd);
-    if (existing) return { action: 'exists', anchor: existing };
     const base = baseFor(cwd);
+    if (existing) {
+      // A worktree the Desktop app reuses for a NEW session: the user's knowledge
+      // starts at this session's first prompt — unless the branch still carries
+      // unshipped commits of an earlier session, whose intent predates this one
+      // (earliest anchor stays, the conservative side).
+      const stale = session && existing.session && existing.session !== session && base
+        && git(['rev-list', '--count', `refs/remotes/origin/${base}..HEAD`], cwd) === '0';
+      if (!stale) return { action: 'exists', anchor: existing };
+      try { require('fs').unlinkSync(anchorLib.anchorPath(cwd)); } catch { return { action: 'exists', anchor: existing }; }
+    }
     if (!base) return { action: 'none', anchor: null };
     const parent = parentWorktree(cwd);
     if (parent) {
