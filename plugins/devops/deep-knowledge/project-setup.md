@@ -69,6 +69,7 @@ ignored.**
 `.claude/hooks/`, `.claude/agents/`, `.claude/agents.json`,
 `.claude/deep-knowledge/`, `.claude/project-map.md`,
 `.claude/launch.example.json`, `.claude/project-map.hints.json`,
+`.claude/merge-decisions.json` (the merge-decision ledger ships with the PR),
 `docs/concepts/`.
 
 **LOCAL (the managed block):** `.claude/settings.local.json`,

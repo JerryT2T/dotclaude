@@ -80,6 +80,15 @@ function prepare(opts, deps = {}) {
   let baseline;
   try { baseline = JSON.parse(String(cap.stdout || '')); } catch { baseline = undefined; }
 
+  // A concept page pins the knowledge anchor at the state BEFORE the concept
+  // (hooks/lib/knowledge-anchor.js pinEarlier: moves back only, never forward).
+  // Never blocks: no repo / no remote just means no pin.
+  try {
+    const { baseFor } = require('../hooks/lib/anchor-recording');
+    const base = baseFor(cwd);
+    if (base) require('../hooks/lib/knowledge-anchor').pinEarlier(cwd, { base, reason: 'concept-open' });
+  } catch { /* the anchor is advisory */ }
+
   return {
     port, owner, state, url: `http://localhost:${port}/${html}`,
     launch: buildLaunch({ port, cwd, html, state, owner }),

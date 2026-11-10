@@ -516,6 +516,24 @@ function undoFailedMerge({ source, count, merge, lock, preHead }) {
   return fail(`merge refused, no conflicted files${why ? ` — ${why}` : ''}`);
 }
 
+/**
+ * Park uncommitted work in a LOCAL commit so a merge can run over it. Never
+ * pushed (nothing here pushes), hooks disabled like the sync's other writes.
+ * Returns { ok, reason? }.
+ */
+function parkWork(source) {
+  const add = gitWrite(['add', '-A']);
+  if (!add.ok) return { ok: false, reason: `could not stage the work in progress: ${firstErrorLine(add.err) || 'git error'}` };
+  const commit = gitWrite([...NO_HOOKS, 'commit', '--no-verify', '--no-gpg-sign', '-m', `wip(sync): park work before merging ${source}`, '--quiet']);
+  if (!commit.ok) return { ok: false, reason: `could not park the work in progress: ${firstErrorLine(commit.err) || 'git error'}` };
+  return { ok: true };
+}
+
+/** survival.writeIntent for the current branch; a failure must never stop the sync. */
+function writeIntentSnapshot() {
+  try { require('../hooks/lib/survival.js').writeIntent(cwd, branch); } catch { /* verdicts lean to "decision" without it — safe */ }
+}
+
 // Try merging source into HEAD. Resolve trivial conflicts automatically,
 // warn only for genuinely ambiguous conflicts that need semantic resolution.
 // See deep-knowledge/merge-safety.md for the full resolution protocol.
@@ -527,9 +545,19 @@ function tryMerge(source, { ffOnly = false } = {}) {
   if (!Number.isFinite(count)) return { source, skipped: `behind-count probe unreadable (${JSON.stringify(probe.out.trim().slice(0, 40))})` };
   if (count === 0) return null; // already up to date
 
-  // Work in progress on a file the merge would rewrite → not now, and silently.
+  // Work in progress on a file the merge would rewrite. Skipping starved long
+  // sessions (the dirty tree never gets clean while the user works), so the
+  // work is PARKED in a local WIP commit and the merge runs. On the default
+  // branch (fast-forward only) a WIP commit would make main diverge: skip there.
+  let parked = null;
   const overlap = dirtyOverlap(source);
-  if (overlap.length > 0) return { source, skipped: `uncommitted changes overlap the incoming merge: ${overlap.join(', ')}` };
+  if (overlap.length > 0) {
+    const unreadable = overlap.some(p => p.startsWith('<'));
+    if (ffOnly || unreadable) return { source, skipped: `uncommitted changes overlap the incoming merge: ${overlap.join(', ')}` };
+    if (repoBusy()) return { source, skipped: 'another git operation started meanwhile' };
+    parked = parkWork(source);
+    if (!parked.ok) return { source, skipped: `uncommitted changes overlap the incoming merge: ${overlap.join(', ')} (${parked.reason})` };
+  }
 
   // The gates at the top of this file ran before a fetch per parent, and a
   // fetch takes seconds. A /do-ship or a rebase started in that window would be
@@ -552,9 +580,12 @@ function tryMerge(source, { ffOnly = false } = {}) {
   // sync into a ✗ repeating for as long as main stays ahead. Hook policy
   // belongs to the commits the user makes, not to a background fast-forward of
   // their own default branch.
+  // Snapshot the own tip BEFORE the integration: the survival check compares
+  // the lost upstream hunks with what this branch itself changed (survival.js).
+  if (!ffOnly) writeIntentSnapshot();
   const merge = gitWrite([...NO_HOOKS, 'merge', ...(ffOnly ? ['--ff-only'] : []), source, '--no-edit', '--quiet']);
   if (merge.ok) {
-    return { source, commits: count };
+    return { source, commits: count, ...(parked ? { parked: true } : {}) };
   }
   // A child killed by the timeout could not remove its index.lock (Windows),
   // and every step below needs the index.
@@ -625,7 +656,7 @@ function tryMerge(source, { ffOnly = false } = {}) {
         : 'conflicts resolved but the merge commit failed — the merge was rolled back',
     };
   }
-  return { source, commits: count, autoResolved: files.length };
+  return { source, commits: count, autoResolved: files.length, ...(parked ? { parked: true } : {}) };
 }
 
 /**
@@ -716,6 +747,9 @@ if (!ON_MAIN) gitRunner({ cwd, timeoutMs: Math.min(FETCH_TIMEOUT_MS, 5000), env:
 
 // Merge each parent into current branch (root → closest parent)
 const messages = EXPLAIN ? [...fetchSkips] : [];
+/** Parents whose merge landed (commits came in) — input of the survival check. */
+const mergedResults = [];
+let anySkipped = fetchSkips.length > 0;
 for (const parent of sources) {
   const result = ON_MAIN ? tryFastForward(parent) : tryMerge(parent);
   const stale = staleFetch.get(parent);
@@ -731,7 +765,9 @@ for (const parent of sources) {
   if (stale && EXPLAIN && !result.skipped) {
     messages.push(`– ${parent} → ${branch}: skipped: ${staleNote} — merged what the old ref had, more may be pending`);
   }
+  if (!result.skipped && !result.failed && !result.conflict) mergedResults.push({ parent, merged: true });
   if (result.skipped) {
+    anySkipped = true;
     // Background mode stays silent: the next window finds the same commits.
     if (EXPLAIN) messages.push(`– ${parent} → ${branch}: skipped: ${result.skipped}`);
     continue;
@@ -754,8 +790,49 @@ for (const parent of sources) {
       `${result.autoResolved} conflict(s) auto-resolved`
     );
   } else {
-    messages.push(`✓ ${parent} → ${branch}: ${result.commits} commit(s)`);
+    messages.push(`✓ ${parent} → ${branch}: ${result.commits} commit(s)${result.parked ? ' (uncommitted work parked in a local wip(sync) commit)' : ''}`);
   }
+}
+
+/**
+ * Survival check after each merged parent: hunks other people landed on the
+ * parent that the merged tree no longer contains go to .claude/merge-queue.json
+ * (replaced per run, ledger-decided hunks dropped). Never blocks, never throws.
+ */
+function recordSurvival(results) {
+  try {
+    if (ON_MAIN) return;
+    const merged = results.filter(r => r.merged);
+    if (!merged.length) return;
+    const survival = require('../hooks/lib/survival.js');
+    const queueLib = require('../hooks/lib/merge-queue.js');
+    const decisions = require('../hooks/lib/merge-decisions.js');
+    const ledger = decisions.readLedger(cwd);
+    const queues = [];
+    for (const r of merged) {
+      const base = r.parent.slice(origin.length + 1);
+      const check = survival.checkBranch({ cwd, base, branch });
+      const q = queueLib.buildQueue({ branch, base, check, ledger });
+      if (q) queues.push(q);
+    }
+    if (!queues.length) return;
+    const q = queues.reduce((a, b) => ({
+      ...a, restore: [...a.restore, ...b.restore], open: [...a.open, ...b.open],
+      survivedCount: a.survivedCount + b.survivedCount, resolvedCount: a.resolvedCount + b.resolvedCount,
+      truncated: a.truncated || b.truncated,
+    }));
+    // Replace per run: nothing lost = no file (and an earlier queue is dropped),
+    // so a clean sync never leaves an untracked .claude/ behind.
+    if (q.open.length || q.restore.length) queueLib.writeQueue(cwd, q);
+    else queueLib.clearQueue(cwd);
+  } catch { /* the survival check is advisory here; the ship gate runs it again */ }
+}
+recordSurvival(mergedResults);
+
+// Record the remote state this run was started for — only when it ran through
+// (a skipped parent is retried at the next floor window, see git-sync-bg).
+if (!anySkipped && process.env.DEVOPS_GIT_SYNC_TIP_FILE && process.env.DEVOPS_GIT_SYNC_TIP) {
+  try { writeFileSync(process.env.DEVOPS_GIT_SYNC_TIP_FILE, process.env.DEVOPS_GIT_SYNC_TIP, 'utf8'); } catch { /* retried next window */ }
 }
 
 if (messages.length) {

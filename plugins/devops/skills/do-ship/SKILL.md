@@ -21,7 +21,7 @@ allowed-tools: Bash(git *), Bash(gh *), Bash(npm *), Bash(node *), Bash(bash *),
 
 # Ship
 
-A ship is ONE `ship_run` call. The order (preflight → rebase → build → bump → release → cleanup → hygiene) lives in code and runs the same way every time; you make the decisions before the call and at the points where it returns `needs`.
+A ship is ONE `ship_run` call. The order (preflight → merge base in → build → bump → release → cleanup → hygiene) lives in code and runs the same way every time; you make the decisions before the call and at the points where it returns `needs`.
 
 > **`cwd` is required on every MCP tool call.** Every `ship_*` tool call MUST include `cwd`
 > set to this session's working directory (or the `--cwd` target), or it operates on the wrong repository.
@@ -90,8 +90,9 @@ Handle the need, then call `ship_run` again with the same params (plus what `res
 |---|---|
 | `preflight-failed` | report `detail.errors`; dirty tree from untracked files → settle per `deep-knowledge/preflight-rebase.md` § Dirty tree from untracked files, then re-call; else BLOCK |
 | `uncommitted-work` | the ship's content is still uncommitted (`detail.files`, tracked only): commit it as the work commit, then re-call — `deep-knowledge/preflight-rebase.md` § Uncommitted tracked work |
-| `conflict` | the rebase hit a code conflict and was aborted: resolve per `deep-knowledge/preflight-rebase.md` § Rebase conflict resolution (then `git push --force-with-lease` and re-call). Truly ambiguous → ask (lockout: BLOCK "unresolvable merge conflict — needs human decision"). Re-run the **Step 1d full check** after any rebase |
-| `rebase-required` | base kept moving: rebase as above, re-call |
+| `conflict` | the merge of `origin/<base>` hit a code conflict and was aborted: resolve per `deep-knowledge/preflight-rebase.md` § Merge conflict resolution (then plain `git push` and re-call). A same-element + same-property clash is a user decision, not yours (`deep-knowledge/merge-decisions.md`; lockout: BLOCK "unresolvable merge conflict — needs human decision"). Re-run the **Step 1d full check** after any merge |
+| `rebase-required` | base kept moving: merge `origin/<base>` in again as above, re-call |
+| `merge-decisions` | upstream changes from other shippers are missing from the candidate tree (`detail.lost`, `survivedCount`, `anchor`): restore `unseen-lost` / `moved` hunks into the new structure, classify the overlaps, record decisions in `.claude/merge-decisions.json`, surface what only the user can decide — visual → ALWAYS an auto-concept page (Basis \| other shipper \| you \| proposal); text questions only for non-visual logic/structure, ≤ 3. Lockout: park this branch with the prepared decisions, the run continues. After the merge: one `gh pr comment` on each overruled earlier PR. Re-call with `mergeDecisions: { resolved }` — `deep-knowledge/merge-decisions.md` |
 | `validation-gaps` | close the listed gaps, re-call with updated `validation`; `acceptGaps: true` only when the user said to ship as-is |
 | `build-red` | `ship-blocked` card with the failing steps; `timeoutHit` → re-call with a higher `build.stepTimeoutSec` |
 | `codex-judgment` | the Codex gate above |
@@ -135,6 +136,7 @@ Paths relative to `{PLUGIN_ROOT}/skills/do-ship/`. A *spec* describes what a too
 | `deep-knowledge/offline-cli.md` | Step 0.5 — the ship server failed to connect |
 | `deep-knowledge/manual-ship.md` | Step 0.5 — the ship tools are absent |
 | `deep-knowledge/preflight-rebase.md` | `preflight-failed` (dirty tree, markers) and `conflict` |
+| `deep-knowledge/merge-decisions.md` | `merge-decisions` — the decision flow, concept-page layout, lockout park |
 | `deep-knowledge/pre-flight.md` | *spec* of the `ship_preflight` checks |
 | `deep-knowledge/repo-modes.md` | `mode: "file-only"` or `"git-no-remote"` |
 | `deep-knowledge/purpose-alignment.md` | Step 1d, and the full check after a rebase |

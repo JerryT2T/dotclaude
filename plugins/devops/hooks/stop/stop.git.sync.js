@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 /**
  * @hook stop.git.sync
- * @version 0.4.0
+ * @version 0.5.0
  * @event Stop
  * @plugin devops
- * @description Throttled background git sync at turn end. Replaces the former
+ * @description Background git sync at turn end, triggered when the remote moved
+ *   (model-free `git ls-remote`, 2-minute floor — no fixed 30-minute throttle). Replaces the former
  *   ten-minute git-sync cron as the in-session recurrence mechanism.
  *
  *   Stop is the better moment: the turn is over, so the merge does not land in
@@ -25,7 +26,7 @@ require('../lib/plugin-guard');
 
 const { execSync } = require('child_process');
 const fs = require('fs');
-const { claimSyncSlot, startBackgroundSync } = require('../lib/git-sync-bg');
+const { claimSyncSlot, startBackgroundSync, remoteMoved, FLOOR_MS } = require('../lib/git-sync-bg');
 const { parseHookInput } = require('../lib/hook-input');
 
 // The session's directory from the payload, not the hook process's: Desktop
@@ -59,7 +60,7 @@ function maybeSync() {
   // Cheap gate first: this hook fires on EVERY turn end, and the throttle is a
   // single statSync — the git probes below cost ~100ms each on Windows and are
   // pure waste while the window is closed.
-  if (!claimSyncSlot(cwd, { peek: true })) return;
+  if (!claimSyncSlot(cwd, { peek: true, throttleMs: FLOOR_MS })) return;
 
   // A ship spans several turns (approval questions, CI wait), so Stop fires
   // INSIDE the pipeline. A merge commit landing between ship's rebase and its
@@ -79,10 +80,17 @@ function maybeSync() {
   const branch = git('symbolic-ref --quiet --short HEAD');
   if (!branch) return;
 
-  // Claim only now that a sync will actually happen.
-  if (!claimSyncSlot(cwd)) return;
+  // Claim the floor slot only now that the repo is known to be syncable: at most
+  // one `git ls-remote` per floor window, however many turns end in it.
+  if (!claimSyncSlot(cwd, { throttleMs: FLOOR_MS })) return;
 
-  startBackgroundSync(cwd);
+  // Remote-moved trigger (replaces the fixed 30-minute cadence): one model-free
+  // ls-remote; spawn only when the followed heads differ from the last
+  // completed sync. Unreadable remote = unknown = no spawn.
+  const { moved, signature } = remoteMoved(cwd, branch);
+  if (!moved) return;
+
+  startBackgroundSync(cwd, { signature });
 }
 
 // Drain stdin before working, like every other Stop hook here: Claude Code
@@ -94,5 +102,8 @@ process.stdin.on('data', (d) => { raw += d; });
 process.stdin.on('end', () => {
   cwd = payloadCwd(raw) || cwd;
   try { maybeSync(); } catch { /* a background sync must never break turn end */ }
+  // Early warning (token-free, 30-min floor, detached): another branch already
+  // on the remote touching the same region. Independent of the sync's gates.
+  try { require('../lib/early-warning').maybeStart(cwd); } catch { /* advisory */ }
   process.exit(0);
 });

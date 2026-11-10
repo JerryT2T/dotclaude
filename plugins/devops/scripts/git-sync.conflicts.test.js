@@ -117,35 +117,41 @@ describe("conflict reporting", () => {
     expect(read(wt, "scratch.log")).toBe("debug output\n");
   });
 
-  test("stays silent when the merge would overwrite an untracked file", async () => {
+  test("an untracked file the merge would overwrite is parked, then reported as an add/add conflict (⚠), never lost", async () => {
     const { root, wt, other } = await makeWorld();
     await advanceOrigin(other, "generated.txt", "from main\n", "main adds generated.txt");
 
-    // Same path exists locally, untracked — git refuses the merge without
-    // producing a single conflicted file. That is the `files.length === 0`
-    // path, and it must not turn into a ✗ repeating every sync window.
+    // Same path exists locally, untracked — git alone refuses such a merge
+    // without a single conflicted file (a ✗ repeating every window). The sync
+    // parks the file in a local wip(sync) commit first, so the merge becomes a
+    // regular add/add conflict that is reported once and loses neither side.
     write(wt, "generated.txt", "built locally\n");
 
     const resultFile = path.join(root, "result");
-    expect(await runSync(wt, resultFile)).toBe("");
-    expect(fs.existsSync(resultFile)).toBe(false);
+    const report = await runSync(wt, resultFile);
+    expect(report).toContain("⚠ origin/main → feature");
+    expect(report).toContain("generated.txt");
+    expect(report).not.toContain("✗");
     expect(read(wt, "generated.txt")).toBe("built locally\n");
   });
 
-  test("detects an overlap when main renamed a file the worktree is editing", async () => {
+  test("main renamed a file the worktree is editing: the edit is parked and follows the rename", async () => {
     const { root, wt, other } = await makeWorld();
     await git(other, ["mv", "base.txt", "renamed.txt"]);
     await commitAll(other, "main renames base.txt");
     await git(other, ["push", "--quiet", "origin", "main"]);
 
-    // Dirty on the OLD path — visible only because the incoming diff is asked
-    // for with --no-renames.
+    // Dirty on the OLD path — seen as an overlap only because the incoming diff
+    // is asked for with --no-renames. Parked in a wip(sync) commit, the merge
+    // carries the edit over to the renamed file (or reports ⚠) — never loses it.
     write(wt, "base.txt", "work in progress\n");
 
     const resultFile = path.join(root, "result");
-    expect(await runSync(wt, resultFile)).toBe("");
-    expect(fs.existsSync(resultFile)).toBe(false);
-    expect(read(wt, "base.txt")).toBe("work in progress\n");
+    const report = await runSync(wt, resultFile);
+    expect(report).toMatch(/[✓⚠] origin\/main → feature/);
+    expect(await git(wt, ["log", "--format=%s", "-5"])).toContain("wip(sync): park work before merging origin/main");
+    const kept = fs.existsSync(path.join(wt, "renamed.txt")) ? read(wt, "renamed.txt") : read(wt, "base.txt");
+    expect(kept).toBe("work in progress\n");
   });
 });
 

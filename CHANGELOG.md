@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.367.0] — 2026-11-11
+
+### Added
+- Ship survival gate: changes others landed on main since your knowledge anchor must survive the merge; missing ones are restored or put to you as decisions (`needs: "merge-decisions"`).
+- Knowledge anchor, decision ledger (`.claude/merge-decisions.json`) with a chain rule for 3+ shippers, merge queue and early warning from already-pushed branches.
+- Push from the default branch runs the same survival check.
+
+### Changed
+- Ship integrates the base by merge instead of rebase.
+- Session sync triggers when the remote moved (model-free check) instead of every 30 min, and parks open work in a local WIP commit instead of skipping.
+- `--ours`/`--theirs`/`-X`/`-s ours` and a Write over a conflicted file are blocked on every branch.
+
 ## [0.366.0] — 2026-11-10
 
 ### Added

@@ -81,6 +81,14 @@ const MODULES = [
     miss: ["echo hi", "cat digit.txt", "node legit.js"],
   },
   {
+    name: "pre.merge.guard",
+    event: "PreToolUse",
+    acts: gitActs("(?:checkout|restore|merge|pull|rebase)"),
+    hit: ["git checkout --theirs x", "git merge -X ours dev", "git -C d restore --ours f"],
+    filterOnly: ["GIT merge -s ours dev"],
+    miss: ["echo hi", "cat digit.txt"],
+  },
+  {
     name: "pre.worktree.split-guard",
     event: "PreToolUse",
     acts: gitActs("(?:commit|merge)"),
