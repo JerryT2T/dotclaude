@@ -4,6 +4,7 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:mods": "node .github/scripts/run-mod-tests.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },
