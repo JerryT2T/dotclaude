@@ -13,9 +13,17 @@ decided, the merge never happens:
 
 ```
 { ok: false, needs: "merge-decisions",
-  detail: { lost: [{ file, hunk, upstreamPr, author, verdict }], survivedCount, anchor },
+  detail: { where, lost: [{ id, file, hunk, upstreamPr, author, verdict, missing, resurrected }],
+            survivedCount, resolvedCount, anchor, prLeftOpen? },
   resume: { mergeDecisions: { resolved: [...] } } }
 ```
+
+`where` names the check that fired (`preflight` | `after-integration` |
+`resume` | `pre-merge`); at `pre-merge` the PR stays open (`prLeftOpen`).
+A `resolved` item is `{ hunk: <lost id>, action: "restored" | "decided",
+aspect?, value?, by?, ship?, chain? }` — `aspect` / `value` / `by` / `ship` only
+for `decided`. When the check cannot run (no `origin/<base>`, no anchor, git
+error) the ship continues with `survival.skipped` and a warning.
 
 `verdict` is computed by code; the classification beyond it is yours:
 
