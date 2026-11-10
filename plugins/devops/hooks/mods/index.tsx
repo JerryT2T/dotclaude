@@ -79,9 +79,9 @@ async function usageNow($: EngineInterface): Promise<Budget | null> {
 
 async function refreshHygiene($: EngineInterface, cwd: string): Promise<void> {
   const home = await homeDir($)
-  const h = home ? hygieneFrom(await readJson($, `${home}/.claude/orphan-report.json`), cwd, await $.clock.now()) : null
-  await update($, hygiene, () => h)
-  $.ui.status(hygieneLine(h) ?? undefined)
+  const found = home ? hygieneFrom(await readJson($, `${home}/.claude/orphan-report.json`), cwd, await $.clock.now()) : null
+  await update($, hygiene, () => found)
+  $.ui.status(hygieneLine(found) ?? undefined)
 }
 
 async function refreshShip($: EngineInterface): Promise<void> {
@@ -323,8 +323,8 @@ export const register: Register = on => {
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     if (e.props.hasSurvey || !(await open($))) return next(e)
     const line = budgetLine(await read($, budget))
-    const h = await read($, hygiene)
-    const hl = hygieneLine(h)
+    const hyg = await read($, hygiene)
+    const hl = hygieneLine(hyg)
     if (!line && !hl) return next(e)
     const { Box, Button, Text } = $.ui.resolve(e)
     return (
