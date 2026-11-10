@@ -61,7 +61,9 @@ describe("behaviour of every plan, with real, idle and missing data", () => {
     for (const [five, week] of Object.values(usages)) {
       const r = legacy[id];
       const f = five == null ? 0 : five, w = week == null ? 0 : week;
-      const want = f >= r.sonnetAt[0] || w >= r.sonnetAt[1] ? "sonnet-only" : f >= r.askAt[0] || w >= r.askAt[1] ? "ask-before-parallel" : "free";
+      // No reading at all is "unknown", not 0 % — it asks once (budget.js classify).
+      const want = five == null && week == null ? "ask-before-parallel"
+        : f >= r.sonnetAt[0] || w >= r.sonnetAt[1] ? "sonnet-only" : f >= r.askAt[0] || w >= r.askAt[1] ? "ask-before-parallel" : "free";
       expect(classify({ tier: id, fivePct: five, weeklyPct: week })).toBe(want);
     }
   });
@@ -101,7 +103,7 @@ describe("5 h semantics for Wave 2", () => {
     expect(fiveHourState("ultra", undefined)).toBe("none");
   });
   test("Fable facts and the stored keys", () => {
-    expect(FABLE).toEqual({ sharePct: 50, scopeName: "Fable" });
+    expect(FABLE).toEqual({ sharePct: 50, scopeName: "Fable", blockAt: 85 });
     expect(CALIBRATION_KEYS.ultra).toBe("Max 20x");
   });
 });

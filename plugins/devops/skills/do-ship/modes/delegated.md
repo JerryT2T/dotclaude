@@ -53,7 +53,7 @@ inline that way, the largest at 951 k.
    open tasks, "danach", "Phase 2", "ship but keep going"). Add `--no-watch`
    when the user asked for no deploy watcher.
 4. **Spawn.** Call `Agent({ subagent_type: "general-purpose", model: "<this
-   session's model family>", run_in_background: false, description: "Ship im
+   session's model family; a Fable session uses opus>", run_in_background: false, description: "Ship im
    Subagenten", prompt })`. Name the model even though it equals the
    session's: `pre.agent.model` refuses an inheriting spawn once. The `prompt` starts
    with `Use Skill("devops:do-ship") with args "--delegated[ <flags>][ <channel

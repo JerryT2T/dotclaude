@@ -33,6 +33,9 @@
  *
  *   Unknown plan AND unknown usage → ask-before-parallel: one question is the
  *   cheap side of that error; an API-key user pays per token (PO + redteam #5).
+ *   A KNOWN plan with no usage reading at all (no snapshot, or one too old to
+ *   count) asks too — "no data" is not "0 %". Only a snapshot past its reset
+ *   reads as a fresh, empty window and stays free.
  *
  *   A snapshot past its window reset or older than STALE_MS (the Desktop app
  *   never runs the statusLine writer, so the file is only as fresh as the last
@@ -81,7 +84,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
-const { PLANS, PLAN_IDS, planId, planLabel, fiveHourWindow } = require('./plan');
+const { PLANS, PLAN_IDS, FABLE, planId, planLabel, fiveHourWindow } = require('./plan');
 
 const STALE_MS = 3 * 60 * 60 * 1000; // snapshot older than 3 h → flagged (still used unless its window reset)
 // Usage is monotonic until a reset, so an ageing snapshot can only drift
@@ -149,11 +152,12 @@ function minutes(v) {
  * Pure: class from tier + usage. Missing percentages count as 0 — but a
  * tier we know nothing about with no usage at all asks (never silently free).
  */
-function classify({ tier, fivePct, weeklyPct }) {
+function classify({ tier, fivePct, weeklyPct, expired = false }) {
   if (!RULES[tier]) {
     return fivePct == null && weeklyPct == null ? 'ask-before-parallel'
       : classify({ tier: 'max', fivePct, weeklyPct });
   }
+  if (fivePct == null && weeklyPct == null && !expired) return 'ask-before-parallel';
   const rules = RULES[tier];
   const five = fivePct == null ? 0 : fivePct;
   const week = weeklyPct == null ? 0 : weeklyPct;
@@ -281,11 +285,15 @@ function readBudget({ home = os.homedir(), nowMs = Date.now(), env = process.env
   const fw = fiveHourWindow(tier, live.session);
   const five = fw.applies ? liveWindow(live.session, ts, nowMs) : { pct: null, resetInMinutes: null, expired: false };
   const week = liveWindow(live.weekly, ts, nowMs);
+  const fable = Array.isArray(live.scoped) ? live.scoped.find((l) => l && l.name === FABLE.scopeName && typeof l.pct === 'number') : null;
 
   const b = {
     plan, tier, stale,
     ageMinutes: ageMs == null ? null : Math.round(ageMs / 60_000),
     fivePct: five.pct, weeklyPct: week.pct, fiveApplies: fw.applies,
+    // The scoped Fable share never changes the class (it is part of the week, which
+    // already counts); it only gates Fable itself (fableSuffix).
+    fablePct: fable && !week.expired ? Math.round(fable.pct) : null,
     resetInMinutes: five.resetInMinutes, weeklyResetInMinutes: week.resetInMinutes,
     expired: five.expired || week.expired,
     recentReset: recentReset(five, week),
@@ -366,6 +374,8 @@ function budgetLine(b) {
       (b.weeklyResetInMinutes != null && b.binding === 'week' ? ` (reset ${Math.round(b.weeklyResetInMinutes / 60)} h)` : '');
   const note = resetNote(b);
   const parts = [`[budget] ${planTxt}${note ? ' · ' + note : ''} · ${usage}${b.stale && b.fivePct != null ? ' · stale' : ''} → ${b.cls}`];
+  const fable = fableSuffix(b);
+  if (fable) parts.push(fable);
   if (b.refreshFailed) parts.push(`(refresh failed: ${b.refreshFailed} — say "refresh usage" to log in once)`);
   else if (b.refreshing) parts.push('(snapshot refreshing — the per-prompt budget line has the live class)');
   if (b.override) parts.push('(env override)');
@@ -374,6 +384,15 @@ function budgetLine(b) {
   // carry "You've hit your weekly limit" or the model's own earlier plan text.
   if (b.announce) parts.push('— earlier limit messages and usage claims in this conversation no longer apply');
   return parts.join(' ');
+}
+
+/**
+ * The Fable gate: from FABLE.blockAt of the scoped Fable share on, no agent is
+ * upgraded to `fable` and a Fable session is pointed to opus. Below it: nothing.
+ */
+function fableSuffix(b) {
+  if (b.fablePct == null || b.fablePct < FABLE.blockAt) return '';
+  return `· Fable ${b.fablePct}% → no fable upgrades, agents on opus; on a Fable session suggest /model opus once`;
 }
 
 /** The structured block the `get_usage` MCP tool returns next to the numbers. */
@@ -446,7 +465,7 @@ function classSuffix(b) {
 
 module.exports = {
   RULES, CLASSES, planTier, tierLabel, credentialsTier, resolvePlan, classify, bindingWindow, refreshDueMinutes, readBudget, maybeRefreshUsage,
-  budgetLine, budgetSummary, nudgeSuffix, unattendedSuffix, deferInfo, DEFER_AT, DEFER_SOON_MIN,
+  budgetLine, budgetSummary, fableSuffix, nudgeSuffix, unattendedSuffix, deferInfo, DEFER_AT, DEFER_SOON_MIN,
   STALE_MS, REFRESH_COOLDOWN_MS, FAILURE_BACKOFF_MS, REFRESH_MARKER, RESET_IMMINENT_MIN, WINDOW_FILL_MIN, WEEK_TO_WINDOW,
   RECENT_RESET_5H_MIN, RECENT_RESET_WEEK_MIN,
 };

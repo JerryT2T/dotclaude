@@ -8,7 +8,8 @@
  * @description Refuses an Agent spawn once when it would silently inherit the
  *   session model — no `model` passed and the agent has none of its own
  *   (Explore, general-purpose, other plugins' agents, `model: inherit`).
- *   The identical spawn repeated goes through (the deliberate exception).
+ *   The identical spawn repeated goes through (the deliberate exception),
+ *   except on a Fable session, where the model must always be named.
  *   An Explore spawn that passes gets a one-line hint toward devops:scout.
  *   Decision and reason: lib/agent-model-gate.js. Silent inside a subagent
  *   and for a spawn pre.strict.agent-gate refuses anyway. Fail-open.
@@ -39,7 +40,7 @@ function main(hook) {
   const file = announce.findAgentFile(input.subagent_type || 'general-purpose', cwd);
   const fm = (file && announce.readFrontmatter(file)) || {};
   const text = require('../lib/agent-card-relay').readTail(hook.transcript_path);
-  if (gate.wouldRefuse(input, fm.model || null, text, hook.tool_use_id)) return { block: gate.refusalText(input) };
+  if (gate.wouldRefuse(input, fm.model || null, text, hook.tool_use_id)) return { block: gate.refusalText(input, text) };
   const hint = gate.locateHint(input);
   return hint ? { context: hint } : null;
 }

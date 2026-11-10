@@ -5,7 +5,7 @@
  * @event SessionStart
  * @plugin devops
  * @description Keeps chat text verbatim on progress-update models. Claude Code
- *   asks Opus 5.5 / Sonnet 5.5 / Fable 5 / Mythos 5 for `display: "updates"`,
+ *   asks Opus 5.5 / Sonnet 5.5 / Fable 5.x / Mythos 5.x for `display: "updates"`,
  *   which turns every text written before a further tool call into a
  *   rephrased progress summary — the answer before a completion card and any
  *   "show the user … verbatim" relay reach the user only as a paraphrase.
