@@ -16,7 +16,7 @@ The map of one run; each step's full rules are further down. Special cases live 
 |---|---|---|---|
 | Pre-Steps 0, R, A–C | delegate, resume, lockout, session activity, sidebar title | `autonomous-lockout.js check --ship` | activity pending (ask; BLOCK under lockout) |
 | 0 / 0.5 | extensions, Codex detection, ship tool schemas | `ToolSearch select:…` | server skipped → same steps via `mcp-server/ship/cli.js`; tools absent → `deep-knowledge/manual-ship.md` |
-| 1 | preflight + rebase loop, purpose alignment, harden/polish passes | `ship_preflight` | `ready: false`; ambiguous conflict |
+| 1 | preflight + merge loop ("Rebase Loop" is the historical step name), purpose alignment, harden/polish passes | `ship_preflight` | `ready: false`; user-decision conflict (`merge-decisions`) |
 | 2 | build + Codex gate | `ship_build`, `codex-safe.sh` | build red; Codex judgment (ask; BLOCK under lockout) |
 | 2.5 / 2.6 | deploy-parity build (background), docs-sync | `deploy-parity.js` | parity `failed` |
 | 3 | CHANGELOG + bump (final ship to main only) | `ship_version_bump` | `success: false`; major (ask; BLOCK under lockout) |
@@ -88,7 +88,7 @@ Parse the JSON. If `active: true`, set `$SHIP_LOCKOUT=true` for this whole run. 
 | Interactive gate | Normal behavior | `$SHIP_LOCKOUT` behavior |
 |---|---|---|
 | Pre-Step B — session activity still in progress | ask Warten/Trotzdem/Abbrechen | in-scope activity pending → **BLOCK** ("session activity active"); otherwise proceed |
-| Step 1b(e) — truly ambiguous rebase conflict | abort + ask which side wins | `git rebase --abort` → **BLOCK** ("unresolvable merge conflict — needs human decision") |
+| Step 1b(e) — same-element + same-property clash, or a lost upstream change needing a decision (`merge-decisions.md`) | concept page (visual) / ≤ 3 text questions (logic) | `git rebase --abort` → **BLOCK** (older rebase state; `git merge --abort` for the merge; "merge decisions needed" / "unresolvable merge conflict — needs human decision"), prepared decisions listed |
 | Step 1d — high-impact purpose-alignment conflict | ask (batched) | apply mechanical fixes as usual; high-impact items → **RECORD & CONTINUE** |
 | Step 1e — ship-pass finding (`/auto-harden` + `/auto-polish --invoked-by=ship`) | mechanical → fix; else `userFinalTest` (never asks) | same: mechanical → fix; else **RECORD & CONTINUE** — never BLOCK |
 | Step 5d — promotion (beta/stable named) | promote on the user's channel word | never promote — `open` item "Promotion auf <channel> ausgesetzt — unbeaufsichtigter Lauf" |
@@ -157,7 +157,7 @@ Check the result:
 
 **Dirty tree from untracked files: fix the source, never park and restore.** Settle each untracked file where it belongs, inside this ship — read `{PLUGIN_ROOT}/skills/do-ship/deep-knowledge/preflight-rebase.md` § Dirty tree from untracked files and follow it (plugin configuration → commit it; plugin runtime state → `hooks/lib/runtime-ignores.js` or delete it). Never park and restore. A harness-created worktree must end Step 5c with an empty `git status --porcelain`.
 
-A conflict marker in the files **this ship would land** is a hard error; one elsewhere is a warning — on a marker finding read `{PLUGIN_ROOT}/skills/do-ship/deep-knowledge/preflight-rebase.md` § Marker check scopes. Merge-safety issues (`base-ahead`, `file-overlap`, `config-conflictstyle`) are **warnings, not errors** — they are resolved autonomously below.
+A conflict marker in the files **this ship would land** is a hard error; one elsewhere is a warning — on a marker finding read `{PLUGIN_ROOT}/skills/do-ship/deep-knowledge/preflight-rebase.md` § Marker check scopes. Merge-safety issues (`base-ahead`, `file-overlap`, `config-conflictstyle`) are **warnings, not errors** — they are handled in 1b (automatic classes by you, same-aspect clashes by the user).
 
 ### 1a-ii. Read `mode` — the repo-mode fork
 
@@ -175,15 +175,15 @@ A conflict marker in the files **this ship would land** is a hard error; one els
 
 **Only runs when `needsRebase: true`.** Otherwise skip to Step 2.
 
-Read `{PLUGIN_ROOT}/skills/do-ship/deep-knowledge/preflight-rebase.md` § Rebase loop and follow its steps 1–6: diff3, `git fetch origin <base>` + `git rebase origin/<base>`, conflicts resolved autonomously (do NOT ask user) per § Rebase conflict resolution, then `git push --force-with-lease` and the full test suite. Only a **truly ambiguous** conflict (contradictory changes to the same logic, not decidable from code context) is aborted (`git rebase --abort`) and asked via AskUserQuestion.
+Read `{PLUGIN_ROOT}/skills/do-ship/deep-knowledge/preflight-rebase.md` § Merge loop and follow its steps 1–6: diff3, snapshot the own tip, `git merge origin/<base>`, then the survival check. Conflicts are sorted by class there: complementary / technical / `unseen-lost` / `moved` hunks you resolve per § Merge conflict resolution; a **same-aspect** clash (same element + same property) or a `rule-vs-exception` is the user's decision — follow `deep-knowledge/merge-decisions.md` (visual → auto-concept page, logic/structure → text question ≤ 3). Never `--ours`/`--theirs`.
 
-**If `$SHIP_LOCKOUT` (Pre-Step A):** do not ask. After `git rebase --abort`, **BLOCK** (`ship-blocked`, "unresolvable merge conflict — needs human decision"); the caller parks the issue and the queue continues.
+**If `$SHIP_LOCKOUT` (Pre-Step A):** do not ask. Restore what is automatic, then `git rebase --abort`, **BLOCK** (or `git merge --abort` for the merge; `ship-blocked`, "merge decisions needed" / "unresolvable merge conflict — needs human decision") with the prepared decisions listed; the caller parks the branch and the queue continues. Push after the merge is a plain `git push`; `git push --force-with-lease` only after a history rewrite.
 
 ### 1c. Re-run preflight
 
-After rebase + push + tests pass, **re-run `ship_preflight`** with the same parameters.
+After merge + push, **re-run `ship_preflight`** with the same parameters.
 - `needsRebase: false` and `ready: true` → proceed to Step 2.
-- `needsRebase: true` → someone pushed to base during our rebase. Go back to 1b.
+- `needsRebase: true` → someone pushed to base during our merge. Go back to 1b.
 - `ready: false` (hard errors) → report errors and **STOP**.
 
 ### 1d. Purpose Alignment Gate
@@ -285,8 +285,8 @@ Call `ship_release` MCP tool. Use the `base` from Step 1 (auto-detected or expli
 - **Pre-merge CI gate** (default ON): after PR create, `ship_release` runs `gh pr checks --watch` (default 600s timeout). If checks fail or timeout → `success: false`, `checksBlocked: true`, PR stays open, branch not deleted. Render `ship-blocked` card with the failing check names + run URLs.
   - **`checks.status: "account-limited"`** or **`"quota-decision-needed"`** (a GitHub account limit, not the code — never a `ship-blocked`): read `release-results.md` § Account-limited CI and follow its *In the ship* rules before the next call — local gate with tests first; the quota question is the user's to answer.
   - Hot-fix bypass (`skipChecks`), timeout tuning and the full state matrix: `release-results.md` § Pre-merge CI gate options.
-- **If `rebaseRequired: true`**: the branch is not rebased onto base. Go back to Step 1b and rebase before retrying. This also fires as `baseAdvancedDuringChecks: true` when a **parallel ship landed on base while we waited for CI** — the PR is left open and unmerged (no silent overwrite). Same action: rebase + retry, then re-run the **Step 1d full check** before the retry: a parallel ship just landed, and its purpose may impose obligations on this branch (see `deep-knowledge/purpose-alignment.md`). See `{PLUGIN_ROOT}/deep-knowledge/merge-safety.md → How ship_release Prevents Overwrites`.
-- **`autoRebased` set** (with `rebaseRequired` + `retestRequired`): only version files collided and the tool already rebased — skip the manual rebase; read `release-results.md` § autoRebased and follow it.
+- **If `rebaseRequired: true`**: the branch does not contain base. Go back to Step 1b and merge base in before retrying. This also fires as `baseAdvancedDuringChecks: true` when a **parallel ship landed on base while we waited for CI** — the PR is left open and unmerged (no silent overwrite). Same action: merge + survival check + retry, then re-run the **Step 1d full check** before the retry: a parallel ship just landed, and its purpose may impose obligations on this branch (see `deep-knowledge/purpose-alignment.md`). See `{PLUGIN_ROOT}/deep-knowledge/merge-safety.md → How ship_release Prevents Overwrites`.
+- **`autoRebased` set** (with `rebaseRequired` + `retestRequired`): only version files collided and the tool already rebased — skip the manual merge; read `release-results.md` § autoRebased and follow it.
 - **If `postMergeTreeMatch: false`** (merge succeeded but `postMergeWarning` is set): **verify before surfacing** — read `release-results.md` § Post-merge tree verification and follow it. Trees equal → false alarm, NO `userFinalTest` item; trees differ → a `userFinalTest` item, never a ship failure (the merge landed).
 
 If `success: false` → do NOT proceed to cleanup. Report error and render completion card with variant `ship-blocked`.
@@ -442,7 +442,7 @@ Every file under `deep-knowledge/` and `modes/` (paths relative to `{PLUGIN_ROOT
 | `deep-knowledge/extensions.md` | Step 0 — legacy extension folders, and the fields to capture from `reference.md` |
 | `deep-knowledge/offline-cli.md` | Step 0.5 — the ship server failed to connect, or its connect was skipped |
 | `deep-knowledge/manual-ship.md` | Step 0.5 — the ship tools are absent |
-| `deep-knowledge/preflight-rebase.md` | Steps 1a/1b — base detection, carried-forward fields, dirty tree, marker scopes, rebase conflicts |
+| `deep-knowledge/preflight-rebase.md` | Steps 1a/1b — base detection, carried-forward fields, dirty tree, marker scopes, merge loop, conflict classes |
 | `deep-knowledge/pre-flight.md` | *spec* of the `ship_preflight` checks |
 | `deep-knowledge/repo-modes.md` | Step 1a-ii — `mode: "file-only"` or `"git-no-remote"` |
 | `deep-knowledge/purpose-alignment.md` | Step 1d, and the Step 4 re-check after `baseAdvancedDuringChecks` |

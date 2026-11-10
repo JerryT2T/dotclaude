@@ -36,55 +36,76 @@ after a working session, with nothing committed yet. Those edits ARE the ship:
 
 Untracked files never land here; they keep § Dirty tree from untracked files.
 
-## Rebase loop
+## Merge loop
 
-Step 1b, only when `needsRebase: true`:
+Step 1b, only when `needsRebase: true` (the flag keeps its name; the ship
+integrates by **merge**, not rebase — one conflict round on the final tree, and
+`isRebasedOnto` stays true afterwards). `ship_run` normally does this itself and
+returns `needs: "conflict"` / `"merge-decisions"` only when you must act.
 
 1. **Set diff3** (if `config-conflictstyle` warning): `git config merge.conflictstyle diff3`
 
-2. **Rebase onto base**:
+2. **Snapshot the own tip, then merge base in**:
    ```bash
    git fetch origin <base>
-   git rebase origin/<base>
+   git update-ref refs/devops/intent/<branch> HEAD
+   git merge origin/<base> --no-edit
    ```
+   The snapshot is what the survival check compares the upstream changes
+   against (what *this* side intended).
 
-3. **If rebase succeeds** (no conflicts): push and re-check (go to 1c).
+3. **Clean merge**: run the survival check (see `merge-decisions.md`) — a
+   textual merge can still drop an upstream hunk silently, so upstream changes
+   that did not survive are listed even without a conflict. Then push and
+   re-check (go to 1c).
 
-4. **If rebase has conflicts** — resolve them autonomously (do NOT ask user):
-   follow § Rebase conflict resolution below, steps a–d (resolve both intents
-   semantically, remove **all four** marker lines incl. `|||||||`, `git add`,
-   `git rebase --continue`, repeat).
-   e. **Truly ambiguous conflicts** (both sides change the same logic in contradictory ways and the correct resolution is not determinable from code context): abort the rebase (`git rebase --abort`) and ask the user via AskUserQuestion with a clear, developer-readable explanation:
-      - Show the conflicting snippet (both sides + base)
-      - Explain what each side intended
-      - Ask which intent should win, or whether both need manual reconciliation
+4. **Conflicts** — sort every hunk by class (table below), then follow
+   § Merge conflict resolution for the automatic ones. Never take a side
+   wholesale: no `--ours` / `--theirs`, no `-X`, no `-s ours`, no
+   `git checkout --ours|--theirs`, no whole-file Write over a conflicted file.
 
-      Under `$SHIP_LOCKOUT` the skill's Step 1b BLOCK applies instead of the question.
+   | Class | What happened | Who resolves |
+   |---|---|---|
+   | complementary / redundant / superseding | different elements or properties, or the same change | you, keep both intents |
+   | technical exclusive | different implementation, no user-facing difference | you pick the better one |
+   | `unseen-lost` / `moved` | upstream change the branch never saw, or inside a container the branch restructured | you restore it into the new structure |
+   | `same-aspect` | same element AND same property / logic branch (colour, shape, position, branch) changed on both sides | **the user** |
+   | `rule-vs-exception` | own cross-cutting rule covers an element the other side set explicitly | **the user** |
+   | delete vs. modify, unclear intent | | **the user** |
 
-5. **Push**: `git push --force-with-lease` to update the remote branch.
+   User decisions go through `merge-decisions.md` (visual → concept page, text
+   question only for logic/structure; lockout: BLOCK). When a resolution
+   cannot be settled from code context, `git merge --abort` and treat the
+   hunk as a user decision — never guess a winner.
 
-6. **No suite run here.** Do not run the full test suite after the rebase:
-   `ship_build` (Step 2) runs it on exactly the rebased tree and is the gate, and
+5. **Push**: plain `git push` (a merge does not rewrite history; use
+   `--force-with-lease` only if the remote branch was rewritten earlier).
+
+6. **No suite run here.** Do not run the full test suite after the merge:
+   `ship_build` (Step 2) runs it on exactly the merged tree and is the gate, and
    the pre-flight sentinel makes the `pre.test.fullguard` hook refuse a hand-run
    full suite during a ship anyway. A second run on the same tree costs ~3 min
    and proves nothing new. A filtered run (`npx vitest run <files>`) of the files
    a conflict touched is fine for diagnosing a resolution. If `ship_build` goes
    red, diagnose and fix then.
 
-## Rebase conflict resolution
+## Merge conflict resolution
 
    a. `git diff --name-only --diff-filter=U` to list conflicting files.
    b. For each conflicting file:
       - Read the file (contains `<<<<<<<`/`|||||||`/`=======`/`>>>>>>>` markers with diff3 base section)
       - Analyze **both sides semantically**: what did our branch change vs. what did base change?
       - Check **chronological context**: which change is newer? Do they contradict or complement each other?
-      - Produce a merged version that preserves **both** intents
+      - Classify the hunk (table above). Only the automatic classes are resolved
+        here; produce a merged version that preserves **both** intents
       - Write the resolved file, then `git add <file>` — with **all four** marker
         lines removed, `|||||||` included. Deleting the familiar three and
         leaving the diff3 base marker is the failure `no-conflict-markers` exists
         for; it blocks the ship at Step 4 rather than landing on main.
-   c. `git rebase --continue`
-   d. If more conflicts appear (multi-commit rebase), repeat (b)–(c)
+   c. `git commit --no-edit` once every file is staged.
+   d. A rebase still in progress (older branch state): `git rebase --continue`
+      and repeat (b)–(c) per commit, with "ours"/"theirs" polarity swapped
+      (`merge-safety.md` § Scope).
 
 ## Base auto-detection
 
@@ -107,4 +128,4 @@ Step 6's `delivery.ship.components` — carry them forward.
 
 ## Marker check scopes
 
-The marker check has two scopes. A marker in the files **this ship would land** is a hard error — `ship_release` re-scans immediately before committing, so one left behind by the rebase in 1b is caught there too. A marker anywhere else in the repo is a **warning**: it predates this branch, so report it and open a separate fix rather than holding an unrelated release hostage.
+The marker check has two scopes. A marker in the files **this ship would land** is a hard error — `ship_release` re-scans immediately before committing, so one left behind by the merge in 1b is caught there too. A marker anywhere else in the repo is a **warning**: it predates this branch, so report it and open a separate fix rather than holding an unrelated release hostage.

@@ -9,7 +9,7 @@ but their **purposes**: the goals and conventions each branch established.
 Two branches developed in parallel:
 
 - **Branch A** — "Add hotkeys to all interactive elements." Ships first.
-- **Branch B** — "Add a new export button." Ships second; the rebase onto main
+- **Branch B** — "Add a new export button." Ships second; the merge of main
   succeeds without a single textual conflict.
 
 Every merge-safety check passes — no overlapping files, tests green. Yet the
@@ -28,7 +28,7 @@ convention does not expire when its PR leaves the git log's first page).
 | Situation | Intensity |
 |---|---|
 | Every ship (direct or intermediate) once preflight reports `ready: true` | **Light** — purpose gathering + propagation audit (P1–P3, P5–P6) |
-| A rebase/merge happened in Step 1b, or `ship_release` bounced with `baseAdvancedDuringChecks` | **Full** — light + regression audit (adds P4) |
+| A merge happened in Step 1b, or `ship_release` bounced with `baseAdvancedDuringChecks` | **Full** — light + regression audit (adds P4) |
 | `mode: "file-only"`, zero purpose sources, or every purpose clearly out of scope for the diff | **Skip** silently |
 
 Intermediate ships (sub-branch → feature branch) use the sibling sub-branches
@@ -139,7 +139,7 @@ THIS branch obligates the elements the repo already has, not only future ones.
 
 *Does the merged result still deliver ALL purposes — theirs and ours?*
 
-Runs only when a rebase/merge actually happened during this ship.
+Runs only when a merge actually happened during this ship.
 
 For each purpose record (local purposes included):
 
@@ -154,8 +154,9 @@ For each purpose record (local purposes included):
      the feature's mechanism is still wired (merge-safety.md Step 5 semantic
      patterns: signatures, config keys, imports, render paths).
    - **Symmetric direction:** check OUR feature still works where THEIR
-     merged code touched our surfaces — a rebase replays our commits on top
-     of theirs, so our side can silently lose too.
+     merged code touched our surfaces — a merge can silently lose our side too
+     (`merge-decisions.md` covers hunk-level survival of THEIR changes;
+     this audit covers the purposes).
 4. Broken → treat as a **merge defect**: fix as part of the ship. This is not
    scope creep — the ship caused the breakage.
 
@@ -164,7 +165,7 @@ For each purpose record (local purposes included):
 | Finding | Action |
 |---|---|
 | Violation with a mechanical, clearly-implied fix (add the missing hotkey, wrap the call, register the handler) | Fix autonomously, commit on the current branch, re-run affected tests |
-| Regression caused by the merge/rebase | Fix autonomously (merge defect) |
+| Regression caused by the merge | Fix autonomously (merge defect) |
 | Retro-application of a convention THIS branch introduces (existing sites on `<base>`, see P3 reverse propagation) | Apply autonomously when mechanical — ships with this PR. If it dwarfs the branch's own diff or needs per-site design decisions → **AskUserQuestion** (batched, with recommendation) |
 | Two gathered purposes contradict each other as applied to this diff | **AskUserQuestion** |
 | Compliance needs a design decision (where the hotkey goes, which UX pattern) and no reference implementation exists to copy | **AskUserQuestion** |
@@ -233,7 +234,7 @@ window.
   added on THIS branch, even though the hotkey task never belonged to it; and
   (b) a convention THIS branch introduces is retro-applied to the existing
   artifacts on `<base>` as part of this ship (reverse propagation).
-- **Full check (a rebase/merge happened in 1b, or re-entry after
+- **Full check (a merge happened in 1b, or re-entry after
   `baseAdvancedDuringChecks`):** additionally verify the merged content still
   delivers its purposes in **both directions** — their features intact under
   our changes, our features intact under theirs.
