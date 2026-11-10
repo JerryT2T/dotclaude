@@ -113,6 +113,7 @@ Prices ($/MTok, platform pricing page 2026-10-25):
 | Model | Input | Output | 5m cache write | Cache read |
 |---|---|---|---|---|
 | Opus 5.5 | 4 | 20 | 5 | 0.20 |
+| Fable 5.2 | 8 | 40 | 10 | 0.20 |
 | Sonnet 5.5 | 2 | 10 | 2.5 | 0.10 |
 | Haiku 5.5 (prompt <= 100k) | 0.10 | 0.50 | 0.125 | 0.01 |
 | Haiku 5.5 (prompt > 100k) | 0.50 | 2.50 | 0.625 | 0.05 |
@@ -136,6 +137,10 @@ Server-side editing must stay off after the clear — it would resend every
 cleared result. Top-level `cache_control` stays. Switch:
 `apiCredit.contextEditing` (default `true`) or env `DEVOPS_API_CONTEXT_EDITING=0`.
 Each run logs `ctxClears` (0 or 1) and `ctxClearedTokens` (estimate, 4 chars per token).
+Fable models never freeze (`PREFIX_BOUND_THINKING`): they bind each thinking
+block to the exact earlier content, so a rewritten tool result fails the next
+request ("Invalid `signature` in `thinking` block", seen on Fable 5.2,
+2026-11-10); their 1M context makes the freeze unnecessary there.
 
 ## One-shot calls — `scripts/claude-api-safe.js`
 

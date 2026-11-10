@@ -40,8 +40,12 @@ const PLANS = {
 
 const PLAN_IDS = Object.keys(PLANS);
 
-/** The Fable facts: Fable is a model, limits come from the data (`limits[]`), never from the plan name. */
-const FABLE = { sharePct: 50, scopeName: 'Fable' };
+/**
+ * The Fable facts: Fable is a model, limits come from the data (`limits[]`), never from the plan name.
+ * The Fable bar is a scoped limit INSIDE the weekly pool (Fable use raises both bars).
+ * blockAt: from this Fable share on, no agent is upgraded to `fable` and a Fable session is pointed to opus.
+ */
+const FABLE = { sharePct: 50, scopeName: 'Fable', blockAt: 85 };
 
 /**
  * Any stored or delivered plan string → plan id, or 'unknown'.

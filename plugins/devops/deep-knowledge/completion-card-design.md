@@ -385,7 +385,7 @@ Moved to [completion-card-widget.md](completion-card-widget.md): the Desktop car
    no text, is blocked once by `stop.flow.guard` to re-emit the answer as
    plain text (`hooks/lib/card-guard-answer.js`); never for a turn with a card.
    Background: Claude Code asks Opus 5.5,
-   Sonnet 5.5, Fable 5 and Mythos 5 for `thinking.display: "updates"`: text
+   Sonnet 5.5, Fable 5.x and Mythos 5.x for `thinking.display: "updates"`: text
    followed by another tool call (the answer before the card widget, a
    "show the user … verbatim" relay) comes back as a rephrased progress
    summary, not a text block. `ss.thinking.display` sets

@@ -15,7 +15,7 @@
  *   no dependency and without reading the image data.
  *
  *   The estimate follows the vision limits of the high-resolution models
- *   (Opus 4.7+, Sonnet 5, Opus 5 / 5.5, Fable 5 / 5.1): the long edge scaled
+ *   (Opus 4.7+, Sonnet 5, Opus 5 / 5.5, Fable 5.x): the long edge scaled
  *   down to 2576 px, at most 3.75 MP, about width × height / 750 tokens and
  *   ~4784 per image at the limit. Older models cap at 1568 px and ~1600
  *   tokens, so this is the upper bound for every current model. An image

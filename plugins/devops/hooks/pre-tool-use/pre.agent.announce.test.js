@@ -169,9 +169,9 @@ describe("pre.agent.announce (hook)", () => {
     const dir = project();
     const res = runHook(dir, {
       input: { subagent_type: "claude-security:explore", prompt: "x" },
-      extra: { transcript_path: transcript(dir, "claude-fable-5-1", { subagent_type: "claude-security:explore" }) },
+      extra: { transcript_path: transcript(dir, "claude-opus-5-5", { subagent_type: "claude-security:explore" }) },
     });
-    expect(line(res)).toBe("claude-security:explore · fable 5.1 (session) · session effort · background");
+    expect(line(res)).toBe("claude-security:explore · opus 5.5 (session) · session effort · background");
   });
 
   test("a first inheriting spawn is not announced — pre.agent.model refuses it", () => {

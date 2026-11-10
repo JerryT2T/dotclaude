@@ -11,6 +11,9 @@
  *   `model: inherit`) and that passes no `model` is refused once with the
  *   reason; repeating the identical spawn goes through — the deliberate
  *   exception. A cheap locator with a fixed effort is `devops:scout`.
+ *   On a Fable session there is no such exception: an inherited spawn would
+ *   run at twice the Opus price and draw the capped Fable share, so it is
+ *   refused until a model is named (`fable` too, when it is really meant).
  *
  *   Stateless on purpose: pre.agent.announce runs in parallel with the gate
  *   and must know whether the spawn goes through (a refused spawn gets no
@@ -68,6 +71,17 @@ function refusedBefore(transcriptText, input, toolUseId) {
   return false;
 }
 
+/** The session's model id: the last `"model"` in the transcript tail, or null. */
+function sessionModelOf(transcriptText) {
+  const hits = String(transcriptText || '').match(/"model":"(claude-[^"]+)"/g);
+  return hits ? hits[hits.length - 1].slice('"model":"'.length, -1) : null;
+}
+
+/** Does this session run on a Fable model (an inheriting spawn would too)? */
+function fableSession(transcriptText) {
+  return /^claude-fable-/.test(sessionModelOf(transcriptText) || '');
+}
+
 /**
  * @param {object} input Agent tool input
  * @param {string|null} frontmatterModel the agent file's `model`, null when none
@@ -81,11 +95,19 @@ function wouldRefuse(input, frontmatterModel, transcriptText, toolUseId) {
   if (base !== 'inherit') return false;
   // No transcript → the retry could never be recognised: fail open.
   if (!String(transcriptText || '').trim()) return false;
+  if (fableSession(transcriptText)) return true;
   return !refusedBefore(transcriptText, input, toolUseId);
 }
 
-function refusalText(input) {
+function refusalText(input, transcriptText) {
   const type = input.subagent_type || 'general-purpose';
+  if (fableSession(transcriptText)) {
+    return (
+      `${MARKER} Spawn refused: \`${type}\` has no model of its own and this session runs on Fable — an inherited ` +
+      'spawn would cost twice the Opus price and draw the capped Fable share. Repeat the Agent call with ' +
+      '`model: "sonnet"` (`"opus"` for design-heavy work, `"haiku"` only for scout); name `"fable"` only if this agent really needs it.'
+    );
+  }
   const locate = /^(Explore|general-purpose)$/.test(type)
     ? ' Locating or a sweep → `devops:scout` (haiku · medium) instead of Explore.'
     : '';
@@ -108,4 +130,4 @@ function locateHint(input) {
     'default (delegation policy). Keep Explore when you need its thoroughness levels.';
 }
 
-module.exports = { MARKER, isPromptEntry, resultText, refusedBefore, wouldRefuse, refusalText, locateHint };
+module.exports = { MARKER, isPromptEntry, resultText, refusedBefore, sessionModelOf, fableSession, wouldRefuse, refusalText, locateHint };
