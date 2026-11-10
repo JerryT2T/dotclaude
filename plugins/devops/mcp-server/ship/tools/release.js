@@ -22,7 +22,8 @@ import { clampText } from "../../lib/soft-limits.js";
 import { readVersion } from "../lib/version.js";
 import { versionFilesSchema } from "./version-bump.js";
 import { localMerge, localTag, LocalMergeError } from "../lib/local-merge.js";
-import { versionOnlyOverlap, rebaseVersionFiles } from "../lib/version-rebase.js";
+import { versionOnlyOverlap } from "../lib/version-rebase.js";
+import { mergeVersionFiles, survivalGate, gateDetail } from "../lib/merge-integrate.js";
 import { createRequire } from "node:module";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
@@ -110,6 +111,8 @@ export const schema = z.object({
   landingLockWaitSec: z.number().int().min(0).max(1800).default(600).describe("Max seconds to wait for another ship of this repo to finish landing before proceeding without the lock."),
   fullSuiteVia: z.enum(["ci", "local"]).optional().describe("What ship_build reported as fullSuiteVia. \"ci\" → the merge needs the PR's `suite` check to have run and passed; absent/skipped/neutral (or a quota bypass) → only a green FULL local suite on exactly HEAD's tree lets it through, else reason \"full-suite-required\". Omitted → read from this ship's checkpoint."),
   acceptGaps: z.boolean().default(false).describe("Ship despite open own gaps. Only when the USER explicitly asked to ship as-is — never on your own judgement."),
+  mergeDecisions: z.array(z.object({ hunk: z.string(), action: z.enum(["restored", "decided"]) })).nullable().default(null)
+    .describe("Lost upstream hunks already restored or decided (ids from mergeDecisionsRequired.lost[].id). The survival gate right before the merge refuses while any other upstream change since the knowledge anchor is missing in HEAD."),
 });
 
 /**
@@ -134,16 +137,17 @@ export function shipValidationGaps(validation) {
 
 /**
  * The base moved ahead and only version files collide (both sides bumped and
- * added a CHANGELOG entry): rebase and bump again here instead of sending the
- * caller through a manual conflict round (lib/version-rebase.js). The rebased
- * tree holds the base's new commits, so it is NOT merged now — the result
- * keeps `rebaseRequired: true` (the skill's existing path: push, test,
- * retry) and adds `autoRebased` + `retestRequired`. Returns true when it
- * rebased; false leaves the caller's ordinary rebaseRequired answer.
+ * added a CHANGELOG entry): merge origin/<base> in and bump again here instead
+ * of sending the caller through a manual conflict round (lib/merge-integrate.js;
+ * integration is by merge, never rebase). The merged tree holds the base's new
+ * commits, so it is NOT merged into base now — the result keeps
+ * `rebaseRequired: true` (the caller's existing path: test, retry) and adds
+ * `autoRebased` (field name kept for callers; method "merge") + `retestRequired`.
+ * Returns true when it integrated; false leaves the ordinary rebaseRequired answer.
  */
 function autoRebase(result, base, overlap, cwd) {
   if (!versionOnlyOverlap(overlap.overlap)) return false;
-  const auto = rebaseVersionFiles({ upstream: `origin/${base}`, cwd });
+  const auto = mergeVersionFiles({ upstream: `origin/${base}`, cwd });
   if (!auto.ok) {
     result.autoRebaseRefused = auto.files ? `${auto.reason}: ${auto.files.join(", ")}` : auto.reason;
     return false;
@@ -154,7 +158,7 @@ function autoRebase(result, base, overlap, cwd) {
   result.autoRebased = auto;
   result.overlapFiles = overlap.overlap;
   result.error =
-    `Rebased onto origin/${base} automatically — only version files collided` +
+    `Merged origin/${base} in automatically — only version files collided` +
     (auto.bump !== "none" ? `; bumped again to v${auto.to} (${auto.bump})` : "") +
     `. Nothing was pushed or merged. The branch now contains ${base}'s new commits: ` +
     `run ship_build (tests) on it, then call ship_release again.`;
@@ -508,10 +512,10 @@ export async function handler(params) {
       result.overlapFiles = overlap.overlap;
       result.error =
         `Branch is not rebased onto origin/${base} (${base} has commits HEAD doesn't include). ` +
-        `Run: git rebase origin/${base} — then retry ship_release. ` +
+        `Run: git merge origin/${base} (resolve hunk by hunk, keep both intents) — then retry ship_release. ` +
         (overlap.overlap.length > 0
           ? `${overlap.overlap.length} overlapping file(s): ${overlap.overlap.slice(0, 10).join(", ")}`
-          : "No file overlap detected — rebase should be clean.");
+          : "No file overlap detected — the merge should be clean.");
       return result;
     }
     result.rebased = true;
@@ -805,10 +809,28 @@ export async function handler(params) {
       result.error =
         `origin/${base} advanced while the ship was in progress (likely a parallel ship) — ` +
         `branch is no longer up to date. PR #${pr.number} left OPEN, NOT merged. ` +
-        `Rebase onto origin/${base} and retry ship_release. ` +
+        `Merge origin/${base} in and retry ship_release. ` +
         (overlap.overlap.length > 0
           ? `${overlap.overlap.length} overlapping file(s): ${overlap.overlap.slice(0, 10).join(", ")}`
-          : "No file overlap detected — rebase should be clean.");
+          : "No file overlap detected — the merge should be clean.");
+      return result;
+    }
+
+    // Content gate right before the merge: ancestry (above) proves HEAD contains
+    // origin/<base>'s commits, not their content — a merge resolved to the own
+    // side passes it and silently drops an earlier shipper's changes. Every
+    // change on <base> since the knowledge anchor must still be in HEAD's tree,
+    // unless restored/decided (params.mergeDecisions) or settled in the ledger.
+    // Fails open (warning) when the check cannot run.
+    const gate = survivalGate({ cwd, base, branch, resolved: params.mergeDecisions || [] });
+    result.survival = { survivedCount: gate.survivedCount, resolvedCount: gate.resolvedCount, open: gate.open.length, ...(gate.skipped ? { skipped: gate.skipped } : {}) };
+    if (!gate.ok) {
+      result.success = false;
+      result.mergeDecisionsRequired = gateDetail(gate, "pre-merge");
+      result.prLeftOpen = { number: pr.number, url: pr.url || null };
+      result.error =
+        `PR #${pr.number} left OPEN, NOT merged: ${gate.open.length} change(s) from origin/${base} since the knowledge anchor are missing in this branch ` +
+        `(${[...new Set(gate.open.map((h) => h.file))].slice(0, 5).join(", ")}). Restore or decide each (mergeDecisionsRequired.lost), then call ship_release again with mergeDecisions.`;
       return result;
     }
 
