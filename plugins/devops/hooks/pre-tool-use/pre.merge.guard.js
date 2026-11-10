@@ -18,6 +18,10 @@
  *     - a Write tool call that replaces a file whose index entry is currently
  *       unmerged (`git ls-files -u -- <path>` non-empty). Edit stays allowed:
  *       it changes one hunk and keeps the rest.
+ *     - a `git push` from the default branch while changes other people
+ *       landed on origin/<default> since the knowledge anchor are missing in
+ *       HEAD and undecided in the ledger (direct work on main never passes
+ *       the ship's survival gate). Bypass: inline DEVOPS_ALLOW_UPSTREAM_LOSS=1.
  *   Supersedes the --ours/--theirs ban that pre.main.guard applied on main only.
  *
  *   Bypass (only when the user explicitly asks for a whole-side pick):
@@ -76,6 +80,38 @@ function isUnmerged(file, cwd) {
 }
 
 /**
+ * Two people committing directly on the default branch never pass a ship, so
+ * the ship's survival gate never sees them. A `git push` from the default
+ * branch runs the same check: every change other people landed on
+ * origin/<default> since the knowledge anchor must still be in HEAD (moved is
+ * fine), unless the ledger decided it. Returns the block message or null.
+ * Fails open: no default branch, no anchor, any git error → null.
+ */
+function pushLosesUpstream(cmd, cwd) {
+  try {
+    const { matchesGitCommand, gitCommandRe } = require('../lib/ship-guard-match');
+    if (!matchesGitCommand(cmd, [gitCommandRe(String.raw`push\b`)])) return null;
+    if (/(?:^|[\s;&|])DEVOPS_ALLOW_UPSTREAM_LOSS=1\b/.test(cmd) || process.env.DEVOPS_ALLOW_UPSTREAM_LOSS === '1') return null;
+    const { gitOut } = require('../lib/git-timeout');
+    const branch = String(gitOut(cwd, ['symbolic-ref', '--quiet', '--short', 'HEAD']) || '').trim();
+    const base = require('../lib/anchor-recording').defaultBranch(cwd);
+    if (!branch || !base || branch !== base) return null;
+    const check = require('../lib/survival').checkBranch({ cwd, base, branch });
+    if (!check || check.ok !== true || !check.lost.length) return null;
+    const decisions = require('../lib/merge-decisions');
+    const { open } = decisions.applyDecisions(decisions.readLedger(cwd), check.lost);
+    if (!open.length) return null;
+    const files = [...new Set(open.map((h) => h.file))].slice(0, 5).join(', ');
+    return `push refused: ${open.length} change(s) other people landed on origin/${base} since your knowledge anchor are missing in HEAD (${files}). `
+      + 'Restore each one hunk-wise (unseen-lost / moved), or decide it with the user and record it in .claude/merge-decisions.json '
+      + '(visual -> concept page, logic -> text question; skills/do-ship/deep-knowledge/merge-decisions.md). '
+      + 'Only when the user explicitly accepts the loss: inline DEVOPS_ALLOW_UPSTREAM_LOSS=1.';
+  } catch {
+    return null;
+  }
+}
+
+/**
  * @param {object} hook parsed payload
  * @returns {{block: string}|null}
  */
@@ -90,7 +126,10 @@ function main(hook) {
   }
   if (tool !== 'Bash' && tool !== 'PowerShell') return null;
   const cmd = typeof input.command === 'string' ? input.command : '';
-  if (!cmd || !/\b(?:ours|theirs|union)\b|-X|-s\b/.test(cmd)) return null;
+  if (!cmd) return null;
+  const lost = pushLosesUpstream(cmd, hook.cwd || process.cwd());
+  if (lost) return { block: `[pre.merge.guard] ${lost}` };
+  if (!/\b(?:ours|theirs|union)\b|-X|-s\b/.test(cmd)) return null;
   if (process.env.DEVOPS_ALLOW_SIDE_PICK === '1' || /(?:^|[\s;&|])DEVOPS_ALLOW_SIDE_PICK=1\b/.test(cmd)) return null;
   return takesWholeSide(cmd) ? { block: `[pre.merge.guard] ${MESSAGE_CMD}` } : null;
 }
@@ -103,4 +142,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { main, takesWholeSide, isUnmerged };
+module.exports = { main, takesWholeSide, isUnmerged, pushLosesUpstream };

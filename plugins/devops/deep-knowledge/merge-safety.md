@@ -377,6 +377,14 @@ branches and worktrees. A Write that replaces a whole file that is currently
 conflicted (unmerged index entry) is blocked: resolve hunk by hunk, keep both
 intents.
 
+**Direct work on the default branch** never passes a ship, so `pre.merge.guard`
+runs the survival check on every `git push` from the default branch: a change
+other people landed on `origin/<default>` since the knowledge anchor that is
+missing in HEAD and undecided in the ledger refuses the push. Restore it, or
+decide it with the user and record it in the ledger — same rules as the ship
+gate. Bypass only when the user accepts the loss: inline
+`DEVOPS_ALLOW_UPSTREAM_LOSS=1`.
+
 ### Early warning
 
 No extra pushes and no tokens spent. A throttled hook (SessionStart / turn
