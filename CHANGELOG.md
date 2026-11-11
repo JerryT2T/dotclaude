@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.368.0] — 2026-11-11
+
+### Added
+- Claude Code mods (alpha, feature `claude-mods`): agent pane, budget and context band, toasts for waiting permissions and long runs, ship/CI pane, branch-hygiene status with a cleanup button — display only, every hook unchanged
+- `/mods-spike-fork` measures whether a keep-alive ping is served from the prompt cache
+- Developer guide `docs/dev/mods.md` with the staged mods plan
+
 ## [0.367.0] — 2026-11-11
 
 ### Added
