@@ -13,7 +13,7 @@
         "hooks": [
           { "type": "command", "command": "command -v node >/dev/null 2>&1 || { echo '{\"systemMessage\":\"devops inactive: node/git missing\"}'; exit 0; }; node \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch/dispatch.js\" PreToolUse", "timeout": 65 }
         ],
-        "matcher": "Bash|Bash|PowerShell|Bash|PowerShell|mcp__.*github.*__(issue_write|create_issue|update_issue)|Edit|Write|NotebookEdit|Edit|Write|NotebookEdit|MultiEdit|Bash|PowerShell|Workflow|mcp__.*(ship|github|issue).*|Write|Edit|mcp__plugin_devops_.*|AskUserQuestion|ExitPlanMode|Agent|Skill|Agent|^(?!(?:Read|Glob|Grep)$|mcp__ccd_)|Edit|Write|NotebookEdit|Bash|PowerShell|Skill|mcp__plugin_devops_dotclaude__ship_release|mcp__plugin_devops_dotclaude__ship_run|mcp__plugin_devops_dotclaude__render_completion_card|mcp__.*__merge_pull_request|Bash|PowerShell|Write|Edit|MultiEdit"
+        "matcher": "Bash|Bash|PowerShell|Bash|PowerShell|Write|Bash|PowerShell|mcp__.*github.*__(issue_write|create_issue|update_issue)|Edit|Write|NotebookEdit|Edit|Write|NotebookEdit|MultiEdit|Bash|PowerShell|Workflow|mcp__.*(ship|github|issue).*|Write|Edit|mcp__plugin_devops_.*|AskUserQuestion|ExitPlanMode|Agent|Skill|Agent|^(?!(?:Read|Glob|Grep)$|mcp__ccd_)|Edit|Write|NotebookEdit|Bash|PowerShell|Skill|mcp__plugin_devops_dotclaude__ship_release|mcp__plugin_devops_dotclaude__ship_run|mcp__plugin_devops_dotclaude__render_completion_card|mcp__.*__merge_pull_request|Bash|PowerShell|Write|Edit|MultiEdit"
       },
       {
         "hooks": [

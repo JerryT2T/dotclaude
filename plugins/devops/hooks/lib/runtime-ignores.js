@@ -93,6 +93,14 @@ const PLUGIN_STATE = Object.freeze([
   '.claude/run-contract.prev.json',
   '.claude/run-contract.pending',
   '.claude/run-task.md',
+  // Parallel ship without losses: the session's knowledge anchor
+  // (hooks/lib/knowledge-anchor.js) and the sync's queue of lost upstream hunks
+  // (hooks/lib/merge-queue.js). `.claude/merge-decisions.json` is NOT here: the
+  // decision ledger is tracked on purpose (VERSIONED below).
+  '.claude/knowledge-anchor.json',
+  '.claude/knowledge-anchor.json.*',
+  '.claude/merge-queue.json',
+  '.claude/merge-queue.json.*',
   '.claude/runs/',
   '.claude/batch-handoff.json',
   '.claude/.ship-in-progress',
@@ -125,6 +133,8 @@ const VERSIONED = Object.freeze([
   '.claude/deep-knowledge/',
   '.claude/project-map.md',
   '.claude/launch.example.json',
+  // The merge-decision ledger ships with the PR (hooks/lib/merge-decisions.js).
+  '.claude/merge-decisions.json',
   'docs/concepts/',
 ]);
 

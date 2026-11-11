@@ -119,15 +119,17 @@ vi.mock("../lib/local-merge.js", async (importOriginal) => {
   };
 });
 
-// The version-file rebase has its own real-git suite (lib/version-rebase.test.js).
-// Default: it refuses, so every older test keeps the plain rebaseRequired path.
-vi.mock("../lib/version-rebase.js", async (importOriginal) => ({
+// The version-file merge has its own real-git suite (lib/merge-integrate.test.js).
+// Default: it refuses, so every older test keeps the plain rebaseRequired path;
+// the survival gate passes unless a test says otherwise.
+vi.mock("../lib/merge-integrate.js", async (importOriginal) => ({
   ...(await importOriginal()),
-  rebaseVersionFiles: vi.fn(() => ({ ok: false, reason: "no-version-file" })),
+  mergeVersionFiles: vi.fn(() => ({ ok: false, reason: "no-version-file" })),
+  survivalGate: vi.fn(() => ({ ok: true, open: [], lost: [], survivedCount: 0, resolvedCount: 0, anchor: null })),
 }));
 
 import { handler, PR_TITLE_MAX } from "./release.js";
-import { rebaseVersionFiles } from "../lib/version-rebase.js";
+import { mergeVersionFiles as rebaseVersionFiles, survivalGate } from "../lib/merge-integrate.js";
 import * as localMergeLib from "../lib/local-merge.js";
 import { readVersion } from "../lib/version.js";
 import { execFileSync } from "node:child_process";
@@ -1361,12 +1363,12 @@ describe("ship_release — names never reach a shell (AUD-C014)", () => {
   });
 });
 
-describe("ship_release — automatic version-file rebase", () => {
+describe("ship_release — automatic version-file merge", () => {
   beforeEach(() => {
     rebaseVersionFiles.mockReturnValue({ ok: false, reason: "no-version-file" });
   });
 
-  test("only version files collide: rebased and bumped again, nothing pushed, retest owed", async () => {
+  test("only version files collide: merged in and bumped again, nothing pushed, retest owed", async () => {
     gitLib.isRebasedOnto.mockReturnValue(false);
     gitLib.fileOverlap.mockReturnValue({ mergeBase: "b", branchFiles: [], baseFiles: [], overlap: ["CHANGELOG.md", ".claude-plugin/marketplace.json"] });
     rebaseVersionFiles.mockReturnValue({ ok: true, from: "0.2.0", to: "0.3.0", bump: "minor", resolved: ["CHANGELOG.md"], commit: "f00" });
@@ -1413,6 +1415,35 @@ describe("ship_release — automatic version-file rebase", () => {
     expect(res.commitSkipped).toBe("clean tree");
     expect(res.success).toBe(true);
     expect(execFileSync.mock.calls.some((c) => c[1] && c[1][0] === "commit")).toBe(false);
+  });
+});
+
+describe("ship_release — survival gate right before the merge", () => {
+  const lostHunk = { id: "abc123def456", file: "ui.css", header: "@@ -6,1 +6,1 @@", verdict: "same-aspect-candidate", author: "alice", upstreamPr: 12, missing: ["color: red;"], resurrected: [], candidatePath: "ui.css" };
+
+  test("an upstream change missing in HEAD: PR left open, not merged, detail lists the hunk", async () => {
+    survivalGate.mockReturnValueOnce({ ok: false, open: [lostHunk], lost: [lostHunk], survivedCount: 4, resolvedCount: 0, anchor: "a1" });
+    const res = await handler(params());
+    expect(res.success).toBe(false);
+    expect(ghLib.mergePR).not.toHaveBeenCalled();
+    expect(res.prLeftOpen).toMatchObject({ number: 42 });
+    expect(res.mergeDecisionsRequired).toMatchObject({ where: "pre-merge", survivedCount: 4, anchor: "a1" });
+    expect(res.mergeDecisionsRequired.lost[0]).toMatchObject({ id: "abc123def456", file: "ui.css", upstreamPr: 12, author: "alice", verdict: "same-aspect-candidate" });
+    expect(res.error).toMatch(/^PR #42 left OPEN, NOT merged: 1 change/);
+  });
+
+  test("resolved hunks are passed through and a clean gate merges", async () => {
+    const res = await handler(params({ mergeDecisions: [{ hunk: "abc123def456", action: "decided" }] }));
+    expect(survivalGate).toHaveBeenCalledWith(expect.objectContaining({ base: "main", branch: "feature-x", resolved: [{ hunk: "abc123def456", action: "decided" }] }));
+    expect(ghLib.mergePR).toHaveBeenCalled();
+    expect(res.survival).toMatchObject({ open: 0 });
+  });
+
+  test("a check that cannot run fails open with a note", async () => {
+    survivalGate.mockReturnValueOnce({ ok: true, skipped: "no-anchor", open: [], lost: [], survivedCount: 0, resolvedCount: 0, anchor: null });
+    const res = await handler(params());
+    expect(ghLib.mergePR).toHaveBeenCalled();
+    expect(res.survival.skipped).toBe("no-anchor");
   });
 });
 

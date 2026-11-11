@@ -2,10 +2,18 @@
  * ship_run — the whole ship pipeline in code, in one call (M7).
  *
  * Drives the existing tool handlers in a fixed order, in-process:
- *   preflight (earlyPush) → conflict-free rebase loop → early CI-quota probe →
+ *   preflight (earlyPush) → conflict-free merge loop (origin/<base> merged in,
+ *   never rebased) → survival gate → early CI-quota probe →
  *   build (→ early-push re-probe, full-suite switch) → [Codex gate return] →
- *   CHANGELOG entry + version bump → release (rebase/full-suite retries) →
- *   cleanup → deferred hygiene.
+ *   CHANGELOG entry + version bump → release (merge/full-suite retries; the
+ *   survival gate runs again right before the PR merge) → cleanup → deferred hygiene.
+ *
+ * Survival gate (lib/merge-integrate.js → hooks/lib/survival.js): every change
+ * on <base> since the knowledge anchor must still be in the branch. Lost hunks
+ * that are neither restored nor decided return needs "merge-decisions"; the
+ * re-call carries `mergeDecisions.resolved` (persisted in the checkpoint, so a
+ * later resume keeps them). `decided` items with an aspect are written to the
+ * tracked ledger .claude/merge-decisions.json and committed.
  *
  * Every sub-call goes through the same path ship/cli.js uses: zod parse,
  * handler, recordTiming (M0 telemetry), recordShipStep (checkpoint). ship_run's
@@ -23,14 +31,14 @@ import { z } from "zod";
 import { createRequire } from "node:module";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { gitTry, NETWORK_TIMEOUT } from "../lib/git.js";
-import { rebaseVersionFiles } from "../lib/version-rebase.js";
+import { gitTry } from "../lib/git.js";
 import { readVersion, bumpVersion, verifyVersionFiles, updateVersionFiles } from "../lib/version.js";
 import { versionFilesSchema } from "./version-bump.js";
 import { recordTiming, summarizeShip, shipDurationTest } from "../lib/ship-timings.js";
 import { probeCiQuota } from "../lib/ci-quota-probe.js";
 import { readPRForLand, landEligibility, mergePR, deleteRemoteBranch } from "../lib/github.js";
 import { detectRepoMode, refusesGitWrites } from "../lib/repo-mode.js";
+import { mergeOnto, survivalGate, gateDetail, recordDecisions } from "../lib/merge-integrate.js";
 
 const validationItems = z.preprocess(
   (v) => { if (typeof v !== "string") return v; try { return JSON.parse(v); } catch { return v; } },
@@ -45,7 +53,20 @@ const validationItems = z.preprocess(
 export const NEEDS = [
   "preflight-failed", "uncommitted-work", "conflict", "rebase-required", "validation-gaps", "build-red", "codex-judgment",
   "bump-required", "major-bump", "bump-mismatch", "full-suite-required", "checks-failed", "release-failed", "tool-error", "land-refused",
+  "merge-decisions",
 ];
+
+/** One restored or decided lost hunk (needs "merge-decisions" → re-call). */
+export const resolvedHunkSchema = z.object({
+  hunk: z.string().describe("The lost hunk's id (needs.detail.lost[].id)."),
+  action: z.enum(["restored", "decided"]).describe("restored = the upstream change is back in the branch (committed); decided = the last shipper chose a value for an overlapping aspect."),
+  aspect: z.string().optional().describe("decided only: ledger aspect id `<file>›<element/selector or symbol>›<property>` — recorded in .claude/merge-decisions.json."),
+  value: z.string().optional().describe("decided only: the chosen value, short (e.g. `color: yellow`)."),
+  by: z.string().optional().describe("Who decided (the shipper). Default: git user.name."),
+  ship: z.string().optional().describe("This ship's PR/branch label for the ledger chain. Default: the branch."),
+  chain: z.array(z.object({ ship: z.string().optional(), by: z.string().optional(), value: z.string().optional() })).optional()
+    .describe("decided only: the earlier values shown to the user (other shipper(s)), appended to the ledger chain."),
+});
 
 export const schema = z.object({
   cwd: z.string().describe("Working directory of the target repo (required — must be passed by the caller)"),
@@ -81,28 +102,23 @@ export const schema = z.object({
   keep: z.boolean().optional().describe("Keep-mode cleanup (sentinel only). Default: true inside a worktree (harness worktree, #442), else false."),
   queued: z.boolean().default(false).describe("--queued ship: no hygiene."),
   lang: z.enum(["de", "en"]).default("de"),
+  mergeDecisions: z.object({
+    resolved: z.array(resolvedHunkSchema).default([]),
+  }).nullable().default(null).describe("Answer to needs \"merge-decisions\": the lost upstream hunks you restored (and committed) or the user decided. Accumulates in the checkpoint across re-calls; a hunk listed here no longer blocks the ship."),
 });
 
 const MAX_REBASE_ROUNDS = 3;
 
-/** Conflict-free rebase onto origin/<base>; version-file-only conflicts via rebaseVersionFiles. Never leaves a rebase open. */
-export function rebaseOnto(base, cwd) {
-  const opts = { cwd };
-  gitTry(["fetch", "origin", base], { cwd, timeout: NETWORK_TIMEOUT });
-  const upstream = `origin/${base}`;
-  let versionRebase = null;
-  const ok = gitTry(["-c", "merge.conflictstyle=diff3", "-c", "core.editor=true", "rebase", upstream], { cwd, timeout: 120_000 }) !== null;
-  if (!ok) {
-    const files = (gitTry(["diff", "--name-only", "--diff-filter=U"], opts) || "").split("\n").filter(Boolean);
-    gitTry(["rebase", "--abort"], opts);
-    const vr = rebaseVersionFiles({ upstream, cwd });
-    if (!vr.ok) return { ok: false, reason: vr.reason, files: vr.files || files };
-    versionRebase = { from: vr.from, to: vr.to, resolved: vr.resolved };
-  }
-  const hasUpstream = gitTry(["rev-parse", "--abbrev-ref", "@{u}"], opts) !== null;
-  const pushed = hasUpstream ? gitTry(["push", "--force-with-lease"], { cwd, timeout: NETWORK_TIMEOUT }) !== null : false;
-  return { ok: true, pushed, ...(versionRebase ? { versionRebase } : {}) };
+/** Union of resolved hunks (checkpoint + this call); a later entry wins per hunk id. */
+export function mergeResolved(...lists) {
+  const byId = new Map();
+  for (const list of lists) for (const r of list || []) if (r && r.hunk) byId.set(r.hunk, { ...(byId.get(r.hunk) || {}), ...r });
+  return [...byId.values()];
 }
+
+const RESOLVE_HINT = "per lost hunk: verdict unseen-lost/moved → restore the upstream change into the branch (commit); " +
+  "same-aspect-candidate/overlap-candidate → classify (merge-safety.md): orthogonal → restore; same element + same property, or rule-vs-exception → " +
+  "the user decides (visual → concept page, logic → question; BLOCK/park under lockout). Then call ship_run again with mergeDecisions.resolved.";
 
 /** Today as YYYY-MM-DD (local). */
 function today(now) {
@@ -164,7 +180,9 @@ function defaultDeps() {
   const cp = require("../../../hooks/lib/ship-checkpoint.js");
   return {
     tools: null,
-    rebase: rebaseOnto,
+    rebase: mergeOnto,
+    survival: survivalGate,
+    recordDecisions,
     probe: probeCiQuota,
     treeHash: async (cwd) => {
       try { return (await import("../lib/test-results.js")).treeKey(cwd)?.treeHash || null; } catch { return null; }
@@ -257,6 +275,20 @@ export async function handler(params, injected = {}) {
   const needs = (need, detail, resume = {}) => ({
     ok: false, stage, needs: need, detail, resume, partial: out,
   });
+  const resolvedAll = () => mergeResolved(run.mergeDecisions && run.mergeDecisions.resolved, params.mergeDecisions && params.mergeDecisions.resolved);
+  const decisionsResume = { mergeDecisions: { resolved: [{ hunk: "<lost[].id>", action: "restored|decided", aspect: "<file›element›property> (decided)", value: "<chosen value> (decided)", by: "<shipper>" }] }, hint: RESOLVE_HINT };
+  /** The content gate: null when nothing upstream is lost (or the check could not run — fail open, warned). */
+  const contentGate = (where, base, branch, extra = {}) => {
+    const resolved = resolvedAll();
+    const g = deps.survival({ cwd, base, branch, resolved });
+    out.survival = { where, survivedCount: g.survivedCount, resolvedCount: g.resolvedCount, open: g.open.length, ...(g.skipped ? { skipped: g.skipped } : {}) };
+    if (g.skipped) out.warnings.push(`survival check skipped (${where}): ${g.skipped}`);
+    if (resolved.length) saveRun({ mergeDecisions: { resolved } });
+    if (!g.ok) return needs("merge-decisions", { ...gateDetail(g, where), ...extra }, decisionsResume);
+    const rec = deps.recordDecisions(cwd, resolved, { by: gitTry(["config", "user.name"], { cwd }) || null, ship: branch || null });
+    if (rec && rec.count) out.mergeDecisions = { recorded: rec.count, committed: !!rec.committed };
+    return null;
+  };
 
   try {
     let cp = deps.checkpoint.open(cwd) || {};
@@ -303,14 +335,18 @@ export async function handler(params, injected = {}) {
           if (round >= MAX_REBASE_ROUNDS) return needs("rebase-required", { reason: "base kept moving during the rebase loop" });
           const rb = deps.rebase(r.base, cwd);
           if (!rb.ok) {
-            return needs("conflict", { base: r.base, files: rb.files || [], reason: rb.reason },
-              { hint: "resolve per preflight-rebase.md § Rebase conflict resolution (or ask), push --force-with-lease, then call ship_run again" });
+            return needs("conflict", { base: r.base, files: rb.files || [], reason: rb.reason, method: "merge" },
+              { hint: `git merge origin/${r.base}, resolve hunk by hunk keeping both intents (merge-safety.md; never --ours/--theirs), commit, push, then call ship_run again` });
           }
           out.rebased = { rounds: round + 1, ...rb };
           continue;
         }
         if (r.validationGaps && r.validationGaps.length && !params.acceptGaps) {
           return needs("validation-gaps", { gaps: r.validationGaps }, { hint: "close the gaps, call ship_run again with the updated validation" });
+        }
+        if (r.mode === "git") {
+          const blocked = contentGate("preflight", r.base, r.branch);
+          if (blocked) return blocked;
         }
         pre = {
           base: r.base, branch: r.branch, mode: r.mode, intermediate: !!r.intermediate, inWorktree: !!r.inWorktree,
@@ -397,6 +433,17 @@ export async function handler(params, injected = {}) {
     // ── release ──────────────────────────────────────────────────────────────
     stage = "release";
     let rel = null;
+    // A re-call answering merge-decisions after the bump: the branch changed since the build
+    // (restored hunks, ledger commit) — gate + record, then retest before the release pushes it.
+    if (!merged && bumped && params.mergeDecisions && params.mergeDecisions.resolved && params.mergeDecisions.resolved.length && pre.mode === "git") {
+      const blocked = contentGate("resume", pre.base, pre.branch);
+      if (blocked) return blocked;
+      if ((await deps.treeHash(cwd)) !== run.buildTree) {
+        const b = await call("ship_build", buildParams);
+        if (!b.success) return needs("build-red", { steps: (b.steps || []).filter((s) => s && !s.success), afterMergeDecisions: true });
+        saveRun({ buildTree: await deps.treeHash(cwd), build: { ...(run.build || {}), steps: b.steps || [], testScope: b.testScope || null, fullSuiteVia: b.fullSuiteVia || null } });
+      }
+    }
     if (merged) {
       out.stagesSkipped.push("ship_release");
       rel = { ...steps.release, success: true, resumed: true };
@@ -417,6 +464,7 @@ export async function handler(params, injected = {}) {
           ...(params.validation ? { validation: params.validation } : {}),
           acceptGaps: params.acceptGaps,
           ...(run.build && run.build.fullSuiteVia ? { fullSuiteVia: run.build.fullSuiteVia } : {}),
+          mergeDecisions: resolvedAll().map((r) => ({ hunk: r.hunk, action: r.action })),
         });
         if (rel.merged) break; // landed — never retried, whatever came after
         if (rel.reason === "git-probe-timeout" && attempt === 0) continue;
@@ -430,11 +478,18 @@ export async function handler(params, injected = {}) {
           rebuilt = true;
           continue;
         }
+        if (rel.mergeDecisionsRequired) {
+          return needs("merge-decisions", { ...rel.mergeDecisionsRequired, prLeftOpen: rel.prLeftOpen || null }, decisionsResume);
+        }
         if (rel.rebaseRequired) {
           if (!rel.autoRebased) {
             const rb = deps.rebase(pre.base, cwd);
-            if (!rb.ok) return needs("conflict", { base: pre.base, files: rb.files || [], reason: rb.reason, prLeftOpen: rel.prLeftOpen || null });
+            if (!rb.ok) return needs("conflict", { base: pre.base, files: rb.files || [], reason: rb.reason, method: "merge", prLeftOpen: rel.prLeftOpen || null });
             out.rebased = { ...(out.rebased || {}), afterRelease: rb };
+          }
+          if (pre.mode === "git") {
+            const blocked = contentGate("after-integration", pre.base, pre.branch, { prLeftOpen: rel.prLeftOpen || null });
+            if (blocked) return blocked;
           }
           const b = await call("ship_build", buildParams); // retest the rebased tree
           if (!b.success) return needs("build-red", { steps: (b.steps || []).filter((s) => s && !s.success), afterRebase: true });

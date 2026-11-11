@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook ss.git.sync
- * @version 1.3.0
+ * @version 1.4.0
  * @event SessionStart
  * @plugin devops
  * @description Starts ONE detached background git sync for this worktree.
@@ -21,7 +21,7 @@
 require('../lib/plugin-guard');
 
 const { execSync } = require('child_process');
-const { claimSyncSlot, startBackgroundSync } = require('../lib/git-sync-bg');
+const { claimSyncSlot, startBackgroundSync, remoteMoved, FLOOR_MS } = require('../lib/git-sync-bg');
 const gitFs = require('../lib/git-fs');
 
 // The session's directory, not the hook process's: Desktop starts hooks of a
@@ -42,8 +42,14 @@ function git(cmd) {
   }
 }
 
+// Early warning (token-free, 30-min floor, detached): another branch already on
+// the remote touching the same region as this one. Own slot, own gates.
+if (require.main === module) {
+  try { require('../lib/early-warning').maybeStart(cwd); } catch { /* advisory */ }
+}
+
 // Inside the throttle window nothing below matters: the common case ends here.
-if (!claimSyncSlot(cwd, { peek: true })) process.exit(0);
+if (!claimSyncSlot(cwd, { peek: true, throttleMs: FLOOR_MS })) process.exit(0);
 
 // Only sync in a git repo on a branch with a remote. The default branch syncs
 // too (#802): git-sync fast-forwards it and detects the default branch itself.
@@ -69,7 +75,13 @@ try {
 
 // Throttle is worktree-scoped, so reopening Claude five times in ten minutes
 // (or running two sessions on the same worktree) still yields one sync.
-if (!claimSyncSlot(cwd)) process.exit(0);
+if (!claimSyncSlot(cwd, { throttleMs: FLOOR_MS })) process.exit(0);
 
-startBackgroundSync(cwd);
+// Remote-moved trigger, same as stop.git.sync: sync only when the followed
+// remote heads differ from the last completed sync (none recorded = first sync).
+const branchName = tree.branch || git('symbolic-ref --quiet --short HEAD');
+const { moved, signature } = remoteMoved(cwd, branchName);
+if (!moved) process.exit(0);
+
+startBackgroundSync(cwd, { signature });
 process.exit(0);

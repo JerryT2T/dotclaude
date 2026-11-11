@@ -48,6 +48,8 @@ function harness(over = {}, initial = null) {
   const deps = {
     tools, checkpoint,
     rebase: vi.fn(() => ({ ok: true, pushed: true })),
+    survival: vi.fn(() => ({ ok: true, open: [], lost: [], survivedCount: 3, resolvedCount: 0, anchor: "a1" })),
+    recordDecisions: vi.fn(() => ({ written: false, count: 0, committed: false })),
     probe: vi.fn(() => ({ status: "healthy" })),
     treeHash: async () => "T1",
     recordTiming: (e) => timings.push(e.tool),
@@ -311,5 +313,78 @@ describe("ship_run — landPr (#955)", () => {
     const r = await warn.run();
     expect(r.ok).toBe(true);
     expect(r.warnings[0]).toMatch(/not deleted/);
+  });
+});
+
+describe("ship_run — survival gate (needs merge-decisions)", () => {
+  const lost = { id: "h1", file: "ui.css", header: "@@ -6,1 +6,1 @@", verdict: "same-aspect-candidate", author: "alice", upstreamPr: 12, missing: ["color: red;"], resurrected: [], candidatePath: "ui.css" };
+  const blocked = { ok: false, open: [lost], lost: [lost], survivedCount: 3, resolvedCount: 0, anchor: "a1" };
+
+  test("runs after preflight; a lost hunk stops before the build with the detail", async () => {
+    const h = harness();
+    h.deps.survival.mockReturnValueOnce(blocked);
+    const res = await handler(P(), h.deps);
+    expect(res).toMatchObject({ ok: false, stage: "preflight", needs: "merge-decisions" });
+    expect(res.detail).toMatchObject({ where: "preflight", survivedCount: 3, anchor: "a1" });
+    expect(res.detail.lost[0]).toMatchObject({ id: "h1", file: "ui.css", upstreamPr: 12, author: "alice", verdict: "same-aspect-candidate" });
+    expect(res.resume.mergeDecisions.resolved[0]).toHaveProperty("hunk");
+    expect(h.names()).toEqual(["ship_preflight"]);
+    expect(h.deps.survival).toHaveBeenCalledWith(expect.objectContaining({ cwd: "/repo", base: "main", branch: "feat/x", resolved: [] }));
+  });
+
+  test("the re-call passes resolved hunks to the gate, records decisions, and hands them to the release", async () => {
+    const h = harness();
+    const resolved = [{ hunk: "h1", action: "decided", aspect: "ui.css›.button›color", value: "color: yellow" }];
+    h.deps.recordDecisions.mockReturnValueOnce({ written: true, count: 1, committed: true });
+    const res = await handler(P({ mergeDecisions: { resolved } }), h.deps);
+    expect(res.ok).toBe(true);
+    expect(h.deps.survival).toHaveBeenCalledWith(expect.objectContaining({ resolved }));
+    expect(h.deps.recordDecisions).toHaveBeenCalledWith("/repo", resolved, expect.any(Object));
+    expect(res.mergeDecisions).toEqual({ recorded: 1, committed: true });
+    const rel = h.calls.find((c) => c[0] === "ship_release")[1];
+    expect(rel.mergeDecisions).toEqual([{ hunk: "h1", action: "decided" }]);
+  });
+
+  test("resolved hunks persist in the checkpoint across re-calls", async () => {
+    const h = harness();
+    h.deps.survival.mockReturnValueOnce({ ...blocked, open: [{ ...lost, id: "h2" }] });
+    const first = await handler(P({ mergeDecisions: { resolved: [{ hunk: "h1", action: "restored" }] } }), h.deps);
+    expect(first.needs).toBe("merge-decisions");
+    expect(h.cp().run.mergeDecisions.resolved).toEqual([{ hunk: "h1", action: "restored" }]);
+    await handler(P({ mergeDecisions: { resolved: [{ hunk: "h2", action: "restored" }] } }), h.deps);
+    expect(h.deps.survival.mock.calls[1][0].resolved.map((r) => r.hunk)).toEqual(["h1", "h2"]);
+  });
+
+  test("release reports a pre-merge loss → needs merge-decisions with the PR left open", async () => {
+    const h = harness({ ship_release: () => ({ success: false, pr: 42, prLeftOpen: { number: 42 }, mergeDecisionsRequired: { where: "pre-merge", lost: [{ id: "h1" }], survivedCount: 2, anchor: "a1" } }) });
+    const res = await handler(P(), h.deps);
+    expect(res).toMatchObject({ ok: false, stage: "release", needs: "merge-decisions" });
+    expect(res.detail).toMatchObject({ where: "pre-merge", prLeftOpen: { number: 42 } });
+  });
+
+  test("integration after rebaseRequired at release is a merge followed by the gate", async () => {
+    let r = 0;
+    const h = harness({ ship_release: () => (r++ === 0 ? { success: false, rebaseRequired: true, prLeftOpen: { number: 42 } } : ok.ship_release()) });
+    h.deps.survival.mockReturnValueOnce({ ok: true, open: [], lost: [], survivedCount: 1, resolvedCount: 0 }).mockReturnValueOnce(blocked);
+    const res = await handler(P(), h.deps);
+    expect(h.deps.rebase).toHaveBeenCalledWith("main", "/repo");
+    expect(res).toMatchObject({ needs: "merge-decisions", detail: { where: "after-integration", prLeftOpen: { number: 42 } } });
+  });
+
+  test("a resume after the bump with decisions re-gates and rebuilds the changed tree before the release", async () => {
+    const h = harness({}, { steps: { preflight: true, build: { fullSuiteVia: "ci" }, bump: { bump: "minor", vNew: "1.3.0" } }, base: "main", branch: "feat/x", run: { preflight: { base: "main", branch: "feat/x", mode: "git", intermediate: false, inWorktree: true, mergeStrategy: "squash" }, buildTree: "T0", build: { steps: [] } } });
+    ver.current = "1.3.0";
+    const res = await handler(P({ mergeDecisions: { resolved: [{ hunk: "h1", action: "restored" }] } }), h.deps);
+    expect(res.ok).toBe(true);
+    expect(h.deps.survival.mock.calls[0][0]).toMatchObject({ base: "main", branch: "feat/x" });
+    expect(h.names()).toEqual(["ship_build", "ship_release", "ship_cleanup", "ship_hygiene"]);
+  });
+
+  test("a skipped check (fail open) only warns", async () => {
+    const h = harness();
+    h.deps.survival.mockReturnValueOnce({ ok: true, skipped: "no-anchor", open: [], lost: [], survivedCount: 0, resolvedCount: 0 });
+    const res = await handler(P(), h.deps);
+    expect(res.ok).toBe(true);
+    expect(res.warnings.join(" ")).toMatch(/survival check skipped \(preflight\): no-anchor/);
   });
 });

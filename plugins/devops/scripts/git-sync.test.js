@@ -72,18 +72,52 @@ describe("merge source — the regression that made the sync a silent no-op", ()
 });
 
 describe("uncommitted work", () => {
-  test("skips silently while a dirty file overlaps the incoming change", async () => {
+  test("parks a dirty overlapping file in a local wip(sync) commit and merges instead of skipping", async () => {
+    const { root, wt, other } = await makeWorld();
+    const lines = (first, last) => [first, ...Array.from({ length: 18 }, (_, i) => `l${i + 2}`), last].join("\n") + "\n";
+    await advanceOrigin(other, "lines.txt", lines("l1", "l20"), "main adds lines.txt");
+    await git(wt, ["fetch", "--quiet", "origin"]);
+    await git(wt, ["merge", "--no-edit", "--quiet", "origin/main"]);
+    await advanceOrigin(other, "lines.txt", lines("ONE", "l20"), "main edits the first line");
+
+    write(wt, "lines.txt", lines("l1", "TWENTY, edited in the worktree"));
+    const report = await runSync(wt, path.join(root, "result"));
+
+    expect(report).toContain("✓ origin/main → feature: 1 commit(s)");
+    expect(report).toContain("parked in a local wip(sync) commit");
+    // Both intents survive; nothing is left uncommitted; the park is a LOCAL commit only.
+    const merged = read(wt, "lines.txt");
+    expect(merged).toContain("ONE");
+    expect(merged).toContain("TWENTY, edited in the worktree");
+    expect(await git(wt, ["status", "--porcelain"])).toBe("");
+    expect(await git(wt, ["log", "--format=%s", "-5"])).toContain("wip(sync): park work before merging origin/main");
+    expect(await git(wt, ["ls-remote", "--heads", "origin", "feature"])).toBe("");
+    // The own tip was snapshotted before the integration (survival check input),
+    // and a merge that lost nothing leaves no merge-queue behind.
+    expect(await git(wt, ["rev-parse", "--verify", "refs/devops/intent/feature"])).toMatch(/^[0-9a-f]{40}$/);
+    expect(fs.existsSync(path.join(wt, ".claude", "merge-queue.json"))).toBe(false);
+  });
+
+  test("records the synced remote signature only after a run that skipped nothing", async () => {
+    const { root, wt, other } = await makeWorld();
+    await advanceOrigin(other, "elsewhere.txt", "elsewhere\n", "main moves");
+    const tipFile = path.join(root, "tip");
+
+    await runSync(wt, path.join(root, "result"), { DEVOPS_GIT_SYNC_TIP_FILE: tipFile, DEVOPS_GIT_SYNC_TIP: "abc refs/heads/main" });
+
+    expect(fs.readFileSync(tipFile, "utf8")).toBe("abc refs/heads/main");
+  });
+
+  test("a conflicting overlap is reported (⚠) and the user's work stays safe in the wip commit", async () => {
     const { root, wt, other } = await makeWorld();
     await advanceOrigin(other, "base.txt", "base, edited on main\n", "main edits base.txt");
 
     write(wt, "base.txt", "base, edited in the worktree\n");
-    const resultFile = path.join(root, "result");
+    const report = await runSync(wt, path.join(root, "result"));
 
-    expect(await runSync(wt, resultFile)).toBe("");
-    expect(fs.existsSync(resultFile)).toBe(false);
-    // The user's work in progress is untouched and still uncommitted.
+    expect(report).toContain("⚠ origin/main → feature");
+    expect(await git(wt, ["log", "-1", "--format=%s"])).toBe("wip(sync): park work before merging origin/main");
     expect(read(wt, "base.txt")).toBe("base, edited in the worktree\n");
-    expect(await git(wt, ["status", "--porcelain"])).toContain("base.txt");
   });
 
   test("merges anyway when the dirty file is not part of the incoming change", async () => {
@@ -99,16 +133,14 @@ describe("uncommitted work", () => {
     expect(read(wt, "untouched.txt")).toBe("work in progress\n");
   });
 
-  test("picks the commits up on the next run once the work is committed", async () => {
+  test("a committed conflicting change is still reported as ⚠ on the next run", async () => {
     const { root, wt, other } = await makeWorld();
     await advanceOrigin(other, "base.txt", "base, edited on main\n", "main edits base.txt");
 
     write(wt, "base.txt", "base, edited in the worktree\n");
-    expect(await runSync(wt, path.join(root, "result"))).toBe("");
-
     await commitAll(wt, "worktree edits base.txt");
 
-    // Now genuinely conflicting: both sides changed the same line.
+    // Genuinely conflicting: both sides changed the same line.
     const report = await runSync(wt, path.join(root, "result2"));
     expect(report).toContain("⚠ origin/main → feature");
     expect(report).toContain("base.txt");

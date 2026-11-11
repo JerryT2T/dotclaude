@@ -15,6 +15,9 @@ import {
   startBackgroundSync,
 } from "./git-sync-bg.js";
 
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+
 let tmpdir;
 
 beforeEach(() => {
@@ -94,9 +97,9 @@ describe("claimSyncSlot — one sync per worktree per window", () => {
     expect(claimSyncSlot("C:/repo", { tmpdir, now: later })).toBe(true);
   });
 
-  test("still refused one minute before the window closes", () => {
+  test("still refused one minute before the 2-minute floor closes", () => {
     claimSyncSlot("C:/repo", { tmpdir });
-    const almost = Date.now() + 29 * 60 * 1000;
+    const almost = Date.now() + 60 * 1000;
     expect(claimSyncSlot("C:/repo", { tmpdir, now: almost })).toBe(false);
   });
 
@@ -265,5 +268,45 @@ describe("startBackgroundSync — detached, never blocking", () => {
   test("a spawn failure is swallowed — a hook must never break on it", () => {
     const boom = () => { throw new Error("ENOENT"); };
     expect(startBackgroundSync("C:/repo", { tmpdir, spawn: boom, scriptPath: "/x.js" })).toBe(false);
+  });
+});
+
+describe("remote-moved trigger", () => {
+  const lib = require("./git-sync-bg.js");
+  const fakeRun = (heads) => (args) => (args[0] === "remote" ? "origin\n" : heads);
+
+  test("watchedRefs covers the default branch candidates and every path-segment parent", () => {
+    expect(lib.watchedRefs("feat/auth/login")).toEqual([
+      "refs/heads/main", "refs/heads/master", "refs/heads/feat", "refs/heads/feat/auth",
+    ]);
+    expect(lib.watchedRefs("solo")).toEqual(["refs/heads/main", "refs/heads/master"]);
+  });
+
+  test("signature is the sorted ls-remote lines; unknown (no remote / error) is null", () => {
+    const sig = lib.remoteSignature("C:/r", "x", { run: fakeRun("bbb\trefs/heads/main\naaa\trefs/heads/feat\n") });
+    expect(sig).toBe("aaa refs/heads/feat\nbbb refs/heads/main");
+    expect(lib.remoteSignature("C:/r", "x", { run: () => "" })).toBeNull();
+    expect(lib.remoteSignature("C:/r", "x", { run: () => { throw new Error("offline"); } })).toBeNull();
+    expect(lib.remoteSignature("C:/r", "x", { run: fakeRun("") })).toBeNull();
+  });
+
+  test("moved when no sync is recorded, not moved when the signature matches, moved again after the remote advances", () => {
+    const opts = (heads) => ({ tmpdir, run: fakeRun(heads) });
+    const first = lib.remoteMoved("C:/repo", "x", opts("aaa\trefs/heads/main\n"));
+    expect(first.moved).toBe(true);
+    fs.writeFileSync(lib.tipFile("C:/repo", tmpdir), first.signature);
+    expect(lib.remoteMoved("C:/repo", "x", opts("aaa\trefs/heads/main\n")).moved).toBe(false);
+    expect(lib.remoteMoved("C:/repo", "x", opts("bbb\trefs/heads/main\n")).moved).toBe(true);
+  });
+
+  test("an unreadable remote never triggers a sync", () => {
+    expect(lib.remoteMoved("C:/repo", "x", { tmpdir, run: () => { throw new Error("x"); } })).toEqual({ moved: false, signature: null });
+  });
+
+  test("the spawn hands the child the signature and the tip file it records on completion", () => {
+    let env;
+    startBackgroundSync("C:/repo", { tmpdir, signature: "aaa refs/heads/main", scriptPath: "/x.js", spawn: (_c, _a, o) => { env = o.env; return { unref() {} }; } });
+    expect(env.DEVOPS_GIT_SYNC_TIP).toBe("aaa refs/heads/main");
+    expect(env.DEVOPS_GIT_SYNC_TIP_FILE).toBe(lib.tipFile("C:/repo", tmpdir));
   });
 });

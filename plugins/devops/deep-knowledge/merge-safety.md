@@ -44,8 +44,9 @@ commit has **no ancestry relationship** to B's original branch. When Dev A later
 Git uses the pre-B state as merge base — which can silently drop B's changes if A's
 branch has an older version of overlapping files.
 
-**Fix**: mandatory rebase before merge. This moves the merge base to current main,
-forcing Git to surface real conflicts instead of silently overwriting.
+**Fix**: mandatory integration of `origin/<base>` (by `git merge`) before the PR merge,
+plus a content-level survival check (§ Parallel Shipping Without Losses) — ancestry
+alone does not prove that an earlier shipper's content survived.
 
 ## Required Git Config
 
@@ -65,11 +66,11 @@ it nearly impossible to understand what the base version was.
 ## GitHub Branch Protection (Recommended)
 
 Enable on main branch:
-- **Require branches to be up to date before merging** — forces rebase at platform level
+- **Require branches to be up to date before merging** — forces integration at platform level
 - **Require pull request reviews** — catches structural changes a second pair of eyes would spot
 - **Require status checks to pass** — prevents merging broken code
 
-These protect against bypassing the plugin's rebase checks (e.g., manual `gh pr merge`).
+These protect against bypassing the plugin's integration checks (e.g., manual `gh pr merge`).
 
 ## Mergiraf — AST-Aware Merge Driver
 
@@ -105,7 +106,7 @@ unsupported or unparseable files.
 
 - background `git-sync` merging parent branches into the current working branch
 - Feature agent merging sub-agent branches at integration
-- `/do-ship` when base branch has diverged
+- `/do-ship` when base branch has diverged (integrates by merge, then the survival check)
 - Any `git merge` or `git rebase` during collaborative work
 
 ## Conflict Resolution Protocol
@@ -138,7 +139,7 @@ For each conflicted file:
 | **Redundant** | Both sides made the same or equivalent change | Keep one copy. |
 | **Superseding** | One change is a refinement of the other (e.g., rename + extended rename) | Keep the more complete version. |
 | **Mutually exclusive — technical** | Different implementation of the same thing (import path, utility name, algorithm choice) where neither is a user-facing decision | AI picks the better option. No user question needed. |
-| **Mutually exclusive — design** | Different user-facing choices (color, text, layout, behavior, feature toggle) | **Ask the user.** These are product decisions. |
+| **Mutually exclusive — design** | Same element + same property changed differently (color, text, shape, position, logic branch, feature toggle) | **Ask the user** (visual → concept page, logic → text question; see § Surfacing). These are product decisions. |
 | **Delete vs. modify** | One side deletes code the other side modified | Investigate intent. Deletion for cleanup → deletion likely wins. Modification adding functionality → modification likely wins. When unclear → ask user. |
 
 ### Step 4 — Resolve
@@ -257,9 +258,145 @@ the sync killed wrote it. The `✗` line says what happened (`merge timed out
 after …` / `merge failed (<git's reason>) mid-checkout — worktree restored to
 <sha>`), and the next sync retries.
 
+## Parallel Shipping Without Losses
+
+The failure this section prevents: a later shipper silently discards an earlier
+shipper's changes on `<base>` (a restructure on one side swallows a value added
+on the other; the ancestry check passes because the merge base moved). The
+credo: everything that anyone developed since the branch left `<base>` lands.
+It holds for two people, for N, for sub-branches of feature branches (base =
+parent, transitively) and for people working directly on `main`.
+
+### Knowledge anchor ("what the user knew")
+
+Per worktree, `.claude/knowledge-anchor.json` (runtime state, ignored;
+`hooks/lib/knowledge-anchor.js`) holds the `origin/<base>` SHA the user's work
+is built on:
+
+- set at the session's **first user prompt**;
+- reset to the new base tip after each **completed ship** of the session
+  (essential for very long sessions with several ships);
+- a **concept page** opened pins the anchor at concept open when that is
+  earlier (the concept's state is the state before the concept);
+- **agents and side sessions inherit** the earliest anchor of their chain —
+  the parent's, never their own start;
+- absent → fallback: merge-base of HEAD and `origin/<base>` at branch
+  creation (the old boundary).
+
+Everything on `<base>` between the anchor and `origin/<base>` is *upstream*:
+other people's work the user never saw.
+
+### Survival check
+
+`hooks/lib/survival.js` (pure, read-only, never throws) walks the hunks of
+`git diff <anchor> origin/<base>` and reports `survived` or `lost` per hunk: a
+hunk survives when its added lines are present, whitespace-normalised, in the
+corresponding file of the candidate tree (HEAD after integration), moves and
+renames tolerated; lines deleted upstream must stay deleted. For each `lost`
+hunk it compares with the own diff (`git diff <anchor> refs/devops/intent/<branch>`,
+a snapshot taken before every integration) and returns a verdict:
+`unseen-lost`, `moved`, `same-aspect-candidate`, `overlap-candidate`. Code
+computes verdicts and overlaps; **the classification and the restore edit are
+model work**, and code never silently picks a side. The check runs after every
+integration (ship merge, sync merge) and again right before the PR merge.
+
+### Classes and the user's boundary
+
+> Automatic only when different elements or different properties changed;
+> same element + same property (colour, shape, position, logic branch) =
+> always a decision.
+
+| Class | Meaning | Outcome |
+|---|---|---|
+| `unseen-lost` | upstream hunk lost, own side never touched that region | restore automatically |
+| `moved` | own side restructured a container, upstream changed children in it | restore into the new structure |
+| `same-aspect` | same element + same property / logic branch changed on both sides | user decision |
+| `rule-vs-exception` | own cross-cutting rule (standardisation) covers an element upstream set explicitly | user decision |
+
+The conflict-hunk table in Step 3 below covers textual conflicts; this table
+covers silent losses that produce no conflict. "Mutually exclusive — design"
+and `same-aspect` are the same boundary.
+
+### Chain rule for 3+ shippers, and the ledger
+
+`.claude/merge-decisions.json` is **tracked on main** and ships with the PR
+(`hooks/lib/merge-decisions.js`). Key = stable aspect id
+`<file>›<element or symbol>›<property>`; value = ordered chain
+`[{ship, by, value}, …, {ship, by, value, decided: true, at}]`.
+
+- The **last shipper decides**. The first shipper's value is context, the
+  second shipper's decision is part of the chain.
+- A later shipper is asked about an aspect only when they changed it
+  themselves without knowing the decision (it landed after their anchor); they
+  see the whole chain and decide as the last shipper. An aspect they did not
+  touch keeps the standing decision. If the second shipper had no collision,
+  the third is the first to decide.
+- Decided entries are re-applied silently on every later integration of the
+  same branch (rerere-like).
+
+### Surfacing
+
+| Decision touches | Surface |
+|---|---|
+| anything visible (UI file, CSS, template, asset, copy) | ALWAYS an auto-concept page with Basis \| other shipper \| you \| proposal — even for one tiny decision; screenshots when the project has a preview |
+| non-visual logic / structure | `AskUserQuestion`, at most 3 per round |
+
+The gate is `ship_run` → `needs: "merge-decisions"`; the merge never happens
+while a lost hunk is neither restored nor decided. Flow details:
+`skills/do-ship/deep-knowledge/merge-decisions.md`.
+
+Under `$SHIP_LOCKOUT` nothing is asked: automatic restores are done, the
+branch is parked with a `ship-blocked` card listing the prepared decisions,
+and the run continues with the next item.
+
+After the merge the skill posts one `gh pr comment` on each **overruled**
+earlier PR (only `same-aspect` / `rule-vs-exception` decisions that replaced a
+value): aspect, before, after, who decided.
+
+### Sync in the session
+
+`git-sync` (hooks `ss.git.sync`, `stop.git.sync`, `prompt.git.sync`) keeps the
+branch current while the user works:
+
+- **Trigger:** at each turn end a model-free `git ls-remote origin <base>`;
+  merge only when the remote tip differs from the last synced tip, with a
+  short floor (about 2 minutes) against bursts — no fixed 30-minute throttle.
+- **Overlap with uncommitted work:** a local `wip(sync): …` commit (never
+  pushed) is created and the merge runs, instead of skipping.
+- After each sync merge the survival check runs; open decisions go to
+  `.claude/merge-queue.json` (runtime, ignored) and are shown by
+  `prompt.git.sync` as turn context. The ship gate recomputes from git and
+  the ledger; an answer given mid-session counts once it is in the ledger.
+  Answering can wait until ship; decisions stay answerable until then.
+
+### Guards on every branch
+
+The ban on `checkout --ours|--theirs`, `-X ours|theirs`, `-s ours` and
+`restore --ours|--theirs` (formerly only `pre.main.guard`) applies on **all**
+branches and worktrees. A Write that replaces a whole file that is currently
+conflicted (unmerged index entry) is blocked: resolve hunk by hunk, keep both
+intents.
+
+**Direct work on the default branch** never passes a ship, so `pre.merge.guard`
+runs the survival check on every `git push` from the default branch: a change
+other people landed on `origin/<default>` since the knowledge anchor that is
+missing in HEAD and undecided in the ledger refuses the push. Restore it, or
+decide it with the user and record it in the ledger — same rules as the ship
+gate. Bypass only when the user accepts the loss: inline
+`DEVOPS_ALLOW_UPSTREAM_LOSS=1`.
+
+### Early warning
+
+No extra pushes and no tokens spent. A throttled hook (SessionStart / turn
+end) compares own changed files and regions with branches that are on the
+remote for other reasons (open PRs via `gh pr list --json headRefName,files`,
+or `git ls-remote` heads plus `git merge-tree`) and adds a one-line warning
+to the turn context when the same region is touched. Without `gh` or a remote
+it stays silent.
+
 ## How ship_release Prevents Overwrites
 
-`ship_release` enforces a **two-phase rebase gate** plus a **post-merge tree
+`ship_release` enforces a **two-phase up-to-date gate** (plus the survival check before the merge) plus a **post-merge tree
 guard**. Together these make a parallel change on `base` impossible to drop or
 overwrite — regardless of merge strategy.
 
@@ -268,7 +405,7 @@ overwrite — regardless of merge strategy.
 1. `git fetch origin <base>` — get latest base
 2. `isRebasedOnto(origin/<base>)` — verify HEAD includes all base commits
 3. If not rebased → return `rebaseRequired: true` with overlap analysis
-4. The do-ship skill (Step 1 loop) handles rebase + AI conflict resolution + test
+4. The do-ship skill (Step 1 loop) handles the merge + conflict classes + survival check (`skills/do-ship/deep-knowledge/preflight-rebase.md`, `merge-decisions.md`)
 
 ### Phase 2 — pre-merge re-check (the critical one)
 
@@ -281,7 +418,7 @@ tool re-asserts `isRebasedOnto(origin/<base>)` immediately before the merge:
 
 - still up to date → proceed to merge
 - base advanced → return `rebaseRequired: true` + `baseAdvancedDuringChecks:
-  true`, PR left **open** (not merged). The skill rebases and retries.
+  true`, PR left **open** (not merged). The skill merges base in again, re-runs the survival check and retries.
 
 This restores, in our own code, the up-to-date guarantee that `--admin`
 discards. It is the fix for the silent-overwrite vector in #207.
@@ -305,16 +442,16 @@ Phase 2 guarantees `HEAD ⊇ origin/base` at merge time, the merge is
 ### Why squash is safe here
 
 The classic squash data-loss (see "Why Squash Merges Cause Data Loss" above)
-requires merging **without** a rebase. Phase 2 forbids that: every merge —
+requires merging **without** integrating base. Phase 2 forbids that: every merge —
 intermediate *and* final — is ff-equivalent, so the squash commit's tree equals
-HEAD's tree and a later branch sharing history is itself forced to rebase before
+HEAD's tree and a later branch sharing history is itself forced to integrate base before
 it can merge. `squash` therefore cannot sever ancestry in a data-losing way. The
 skill still upgrades `squash` → `merge` when preflight reports file overlap, as a
 belt-and-suspenders for history readability.
 
 ### Force-push scoping
 
-The `git push --force-with-lease` only ever targets the **feature branch**,
+A `git push --force-with-lease` (needed only after a rewrite, never after a merge) only ever targets the **feature branch**,
 never `base` — so it cannot clobber base commits. It uses an **explicit lease**
 pinned to the last-known remote sha (`--force-with-lease=<branch>:<sha>`) rather
 than the bare form, so an implicit background fetch (the background git-sync) cannot
@@ -359,7 +496,9 @@ same — only the side labels change.
 
 ## Anti-Patterns
 
-- **`--ours` / `--theirs`**: Silently drops one side's work. **Never use.**
+- **`--ours` / `--theirs`** (also `-X ours|theirs`, `-s ours`, `restore --ours|--theirs`): Silently drops one side's work. **Never use, on any branch** (guarded).
+- **Whole-file overwrite of a conflicted file**: resolve hunk by hunk, keep both intents.
+- **Trusting ancestry alone**: `isRebasedOnto` passing proves nothing about content; run the survival check.
 - **Skipping conflicts**: Leaving conflict markers in code. Never commit unresolved markers.
   Delete **all four** — `<<<<<<<`, `|||||||`, `=======`, `>>>>>>>`. The diff3 base
   marker is the one that gets missed, because it only exists under the `diff3`

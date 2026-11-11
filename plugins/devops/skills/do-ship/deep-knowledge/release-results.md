@@ -212,9 +212,9 @@ intermediate ship, overlap-with-merge-commit). For intermediate merges: no tag,
 no release notes, no version commit — the tool automatically skips tag/release
 creation when `base` is not `main`.
 
-The tool handles: commit (optional), rebase verification, push (explicit force-with-lease after rebase), PR create (or reuse with mergeability check), **pre-merge CI checks gate (waits for green)**, **pre-merge rebase re-check (closes the checks-window race)**, merge (squash or merge commit), **post-merge tree guard**, **alpha channel tag** (main only), GitHub release deferred to promotion.
+The tool handles: commit (optional), up-to-date verification (`origin/<base>` is an ancestor — reached by merge, so a plain push; force-with-lease only for a branch that was rebased by hand), PR create (or reuse with mergeability check), **pre-merge CI checks gate (waits for green)**, **pre-merge up-to-date re-check (closes the checks-window race)**, **pre-merge survival gate** (every change on `<base>` since the knowledge anchor still in the tree, else `mergeDecisionsRequired` and the PR stays open — `merge-decisions.md`), merge (squash or merge commit), **post-merge tree guard**, **alpha channel tag** (main only), GitHub release deferred to promotion.
 
-Returns: `{ branch, commit, rebased, pushed, pr: {number, url}, checks: {status, passed, failed, pending}, merged, mergeSha, mergeVerified?, mergeWarning?, mergeStrategy, intermediate, tag, channel, tagVerified, releaseDeferred, postMergeTreeMatch, postMergeWarning, postMergeError?, titleClamped }`.
+Returns: `{ branch, commit, rebased, pushed, pr: {number, url}, checks: {status, passed, failed, pending}, merged, mergeSha, mergeVerified?, mergeWarning?, mergeStrategy, intermediate, tag, channel, tagVerified, releaseDeferred, postMergeTreeMatch, postMergeWarning, postMergeError?, titleClamped, survival?, mergeDecisionsRequired?, prLeftOpen? }`.
 
 ## Landing lock, channel state, full-suite gate
 
@@ -243,4 +243,4 @@ Returns: `{ branch, commit, rebased, pushed, pr: {number, url}, checks: {status,
 
 ## autoRebased
 
-**`autoRebased` set** (with `rebaseRequired` + `retestRequired`): only version files collided, so `ship_release` already rebased and bumped again (`autoRebased.to`; the CHANGELOG header follows). Skip the manual rebase: push the branch (`git push --force-with-lease`), run `ship_build`, re-run preflight, then call `ship_release` again — the release commit exists, a `commitMessage` on the clean tree is skipped. Use `autoRebased.to` as `vNew` on the card. `autoRebaseRefused` names why the tool left it to Step 1b.
+**`autoRebased` set** (with `rebaseRequired` + `retestRequired`): only version files collided, so `ship_release` already merged `origin/<base>` in and bumped again (`autoRebased.method: "merge"`, `autoRebased.to`; the CHANGELOG header follows; the field keeps its old name for existing callers). Skip the manual integration: push the branch (a plain `git push` — a merge rewrites nothing), run `ship_build`, re-run preflight, then call `ship_release` again — the release commit exists, a `commitMessage` on the clean tree is skipped. Use `autoRebased.to` as `vNew` on the card. `autoRebaseRefused` names why the tool left it to Step 1b.

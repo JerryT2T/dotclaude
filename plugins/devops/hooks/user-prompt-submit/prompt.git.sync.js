@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook prompt.git.sync
- * @version 1.1.0
+ * @version 1.2.0
  * @event UserPromptSubmit
  * @plugin devops
  * @description Delivers the result of a background git sync — nothing else.
@@ -59,7 +59,15 @@ try {
 } catch { /* batch state unreadable — deliver as usual */ }
 
 const result = takeResult(cwd);
-if (!result) process.exit(0);
+
+// Early warning from branches already on the remote (hooks/lib/early-warning.js):
+// delivered on its own, whether or not a sync result is pending.
+let warning = null;
+try { warning = require('../lib/early-warning').takeWarning(cwd); } catch { /* advisory */ }
+if (!result) {
+  if (warning) process.stdout.write(warning);
+  process.exit(0);
+}
 
 // Desktop reuses worktrees across sessions with a new branch each time: a
 // result left by the previous branch's sync is about a tree that is gone.
@@ -67,8 +75,27 @@ if (!result) process.exit(0);
 const target = resultBranch(result);
 if (target) {
   const branch = currentBranch();
-  if (branch && branch !== target) process.exit(0);
+  if (branch && branch !== target) {
+    if (warning) process.stdout.write(warning);
+    process.exit(0);
+  }
 }
 
-process.stdout.write(renderContext(result).join('\n'));
+const lines = renderContext(result);
+
+// One extra line when the sync's survival check found upstream work that is
+// missing from this branch (hooks/lib/merge-queue.js). Only alongside a merge
+// result: the queue is rewritten by exactly those runs.
+if (result.kind === 'synced') {
+  try {
+    const mq = require('../lib/merge-queue');
+    const queue = mq.readQueue(cwd);
+    const line = queue && (!queue.branch || queue.branch === currentBranch()) ? mq.renderQueueLine(queue) : null;
+    if (line) lines.push('', line);
+  } catch { /* the queue is advisory context */ }
+}
+
+if (warning) lines.push('', warning);
+
+process.stdout.write(lines.join('\n'));
 process.exit(0);
