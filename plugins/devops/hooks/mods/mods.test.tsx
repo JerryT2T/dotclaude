@@ -76,8 +76,9 @@ const BAND = { plugin: 'devops', component: 'AbovePrompt', props: { hasSurvey: f
 const MEASURE = {
   context: { window: 200000, tokens: 170000, percent: 85 },
   rateLimits: [
-    { kind: 'five_hour', percentUsed: 42 },
-    { kind: 'seven_day', percentUsed: 18 },
+    // 5h: 72 % used, 2 h to reset (60 % of the window gone) → 12 pp ahead → yellow; Wk: 3 d to reset, on pace → omitted.
+    { kind: 'five_hour', percentUsed: 72, resetsAt: new Date(NOW + 2 * 3_600_000).toISOString() },
+    { kind: 'seven_day', percentUsed: 18, resetsAt: new Date(NOW + 3 * 86_400_000).toISOString() },
   ],
   changed: ['context', 'rateLimits'],
 }
@@ -128,20 +129,43 @@ test('agent pane lists a subagent with type, model, elapsed and status, on every
   }
 })
 
-test('budget band shows 5-h, weekly and context with a compact hint; the cleanup button submits the fixed prompt', async ($, on) => {
+test('budget band draws the card bars (SVG on desktop, glyphs on the terminal) with the card rules; one cleanup press = one prompt', async ($, on) => {
   const { seen } = engine(on, { files: { '/.claude/orphan-report.json': ORPHAN_REPORT } })
   await $.session.start({ cwd: 'P:/Projects/demo', surface: 'desktop', isInteractive: true })
   await $.session.measure(MEASURE as any)
   for (const surface of SURFACES) {
     const band = await $.ui.mount({ ...BAND, surface })
-    const line = await band.find({ type: 'Text', text: /5h/ })
-    expect(line?.text).toBe('5h 42 % · week 18 % · context 85 % → /compact recommended')
-    await band.press({ key: 'cleanup' })
+    if (surface === 'terminal') {
+      const line = await band.find({ type: 'Text', text: /5h/ })
+      expect(line?.text).toBe('⚠ 5h ▰▰▰▰▰▰▰▰▱▱│▱▱▱ 2 h 0 m   🧠 context 85 %')
+    } else {
+      const bar = await band.find({ type: 'Svg' })
+      expect(bar?.props.alt).toBe('5h: 72 % used · resets in 2 h 0 m')
+      expect(bar?.props.source).toMatch(/<animate attributeName="x"/)
+      expect(bar?.props.source).toMatch(/fill="#e6c36a"/)
+      expect((await band.find({ type: 'Text', text: /context/ }))?.text).toBe('🧠 context 85 %')
+    }
+    if (surface === SURFACES[0]) await band.press({ key: 'cleanup' })
     await band.unmount()
   }
-  expect(seen.prompts.length).toBe(2)
+  // The first press sent the prompt; until the next main turn ends the button is a dim "waiting…" text.
+  const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await band.find({ key: 'cleanup' })).toBeUndefined()
+  expect((await band.find({ type: 'Text', text: /waiting/ }))?.text).toBe('[ Clean up · waiting… ]')
+  await band.unmount()
+  expect(seen.prompts.length).toBe(1)
   expect(seen.prompts[0]).toMatch(/model opus and effort medium/)
   expect(seen.writes).toEqual([])
+})
+
+test('hygiene ignores the worktree this session works in; zero counts are left out of the line', async ($, on) => {
+  const report = JSON.stringify({
+    generatedAt: new Date(NOW - 3_600_000).toISOString(),
+    repos: [{ path: 'P:/Projects/demo', atRisk: [{ branch: 'mine', path: 'P:/Projects/demo/.claude/worktrees/mine', dirty: 1 }, { branch: 'old' }] }],
+  })
+  const { seen } = engine(on, { files: { '/.claude/orphan-report.json': report } })
+  await $.session.start({ cwd: 'P:/Projects/demo/.claude/worktrees/mine', surface: 'desktop', isInteractive: true })
+  expect(seen.status.at(-1)).toBe('devops: 1 open branch')
 })
 
 test('toasts: permission request, long subagent, SessionStart notices (hook text unchanged)', async ($, on) => {
@@ -231,8 +255,8 @@ test('spike command runs one fork without effort and logs the cache fields', asy
     output_tokens: 2,
     context_tokens: 100000,
     cache_read_share: 0.99,
-    five_hour_before: 42,
-    five_hour_after: 42,
+    five_hour_before: 72,
+    five_hour_after: 72,
     weekly_before: 18,
     weekly_after: 18,
   })

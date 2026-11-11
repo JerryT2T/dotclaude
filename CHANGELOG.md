@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.369.0] — 2026-11-12
+
+### Added
+- Mods band: the completion card budget bars (5h / weekly, time fill with moving sheen, usage marker coloured by pace, reset watermark) on Desktop, VS Code and mobile; the card glyph bar on the terminal; context shown from 50 %.
+
+### Fixed
+- Mods band cleanup button: one prompt per press, a dim "waiting…" while a turn runs; the hygiene count no longer counts the worktree the session works in and leaves zero counts out.
+
 ## [0.368.0] — 2026-11-11
 
 ### Added

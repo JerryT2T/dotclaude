@@ -16,6 +16,9 @@ export type Budget = {
   fiveHour: number | null
   weekly: number | null
   context: number | null
+  /** Window resets, epoch ms (the rate limit's resetsAt); null when none was reported. */
+  fiveHourResetsAt?: number | null
+  weeklyResetsAt?: number | null
 }
 
 export type Hygiene = { branches: number; worktrees: number; ageHours: number }
@@ -28,6 +31,8 @@ export type ShipView = {
   checkedAt: number
 }
 
+export type CleanupLock = { busy: boolean; sent: boolean }
+
 declare module 'claude-code' {
   interface PluginState {
     devops: {
@@ -36,6 +41,7 @@ declare module 'claude-code' {
       hygiene: Hygiene | null
       ship: ShipView | null
       shells: Record<string, number>
+      cleanup: CleanupLock
     }
   }
 }

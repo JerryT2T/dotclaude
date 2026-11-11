@@ -5,7 +5,6 @@
  */
 import type { AgentRow, Budget, Hygiene, ShipView } from '../../types/index'
 
-export const CONTEXT_HINT_PERCENT = 80
 export const LONG_RUN_MS = 120_000
 
 /** "42 s", "3 m 05 s", "1 h 02 m". */
@@ -43,27 +42,143 @@ export function agentRow(a: AgentRow, now: number): string {
 /** The budget from one `session.measure` (or `$.session.usage()`) reading. */
 export function budgetFrom(m: {
   context?: { percent?: number }
-  rateLimits?: ReadonlyArray<{ kind: string; percentUsed: number }>
+  rateLimits?: ReadonlyArray<{ kind: string; percentUsed: number; resetsAt?: string }>
 }): Budget {
   const limits = Array.isArray(m.rateLimits) ? m.rateLimits : []
-  const pick = (kind: string) => {
-    const r = limits.find(l => l && l.kind === kind)
+  const find = (kind: string) => limits.find(l => l && l.kind === kind)
+  const pct = (kind: string) => {
+    const r = find(kind)
     return r && Number.isFinite(r.percentUsed) ? Math.round(r.percentUsed) : null
   }
+  const reset = (kind: string) => {
+    const r = find(kind)
+    const t = r && r.resetsAt ? Date.parse(r.resetsAt) : NaN
+    return Number.isFinite(t) ? t : null
+  }
   const ctx = m.context && Number.isFinite(m.context.percent) ? Math.round(m.context.percent as number) : null
-  return { fiveHour: pick('five_hour'), weekly: pick('seven_day'), context: ctx }
+  return {
+    fiveHour: pct('five_hour'),
+    weekly: pct('seven_day'),
+    context: ctx,
+    fiveHourResetsAt: reset('five_hour'),
+    weeklyResetsAt: reset('seven_day'),
+  }
 }
 
-/** "5h 42 % · week 18 % · context 81 % → /compact"; null when nothing is known. */
-export function budgetLine(b: Budget | null): string | null {
+// --- Budget bars: the completion card's rules (mcp-server/index.js § 2.4), mirrored. ---
+// Bar = time elapsed in the window, marker = usage, marker colour = usage ahead of time.
+// 5h shows from 50 % used or 1 h before reset; Wk once usage is > 10 pp ahead of time
+// or in the last 24 h before reset; context sits dim at the end from CONTEXT_SHOW_PERCENT.
+
+const WINDOW_5H_MIN = 300
+const WINDOW_WK_MIN = 7 * 1440
+const WEEKLY_SHOW_BEFORE_RESET_MIN = 1440
+export const CONTEXT_SHOW_PERCENT = 50
+export const BUDGET_BAR_WIDTH = 14
+
+export type BudgetBar = {
+  label: '5h' | 'Wk'
+  pct: number
+  elapsedPct: number
+  level: 'white' | 'yellow' | 'red'
+  watermark: string
+}
+
+function clampPct(v: number): number {
+  return Math.max(0, Math.min(100, Number(v) || 0))
+}
+
+function elapsedOf(resetMinutes: number | null, windowMin: number): number {
+  return resetMinutes != null ? ((windowMin - resetMinutes) / windowMin) * 100 : 0
+}
+
+export function markerLevel(pct: number, elapsedPct: number): BudgetBar['level'] {
+  const diff = pct - elapsedPct
+  if (diff <= 10) return 'white'
+  if (diff <= 25) return 'yellow'
+  return 'red'
+}
+
+/** "3 h 39 m" / "6 d 20 h" — the watermark inside a bar. */
+export function formatResetSpaced(minutes: number | null): string {
+  if (minutes == null || !Number.isFinite(minutes)) return '—'
+  if (minutes >= 1440) return `${Math.floor(minutes / 1440)} d ${Math.floor((minutes % 1440) / 60)} h`
+  return `${Math.floor(minutes / 60)} h ${minutes % 60} m`
+}
+
+/** The bars the card would draw for this budget at `now`; empty when every window is omitted. */
+export function budgetBars(b: Budget | null, now: number): BudgetBar[] {
+  if (!b) return []
+  const minsTo = (t: number | null | undefined) => (typeof t === 'number' ? Math.max(0, Math.round((t - now) / 60_000)) : null)
+  const bars: BudgetBar[] = []
+  if (b.fiveHour !== null) {
+    const r = minsTo(b.fiveHourResetsAt)
+    const e = elapsedOf(r, WINDOW_5H_MIN)
+    if (!(b.fiveHour < 50 && (r == null || r > 60))) {
+      bars.push({ label: '5h', pct: b.fiveHour, elapsedPct: e, level: r == null ? 'white' : markerLevel(b.fiveHour, e), watermark: formatResetSpaced(r) })
+    }
+  }
+  if (b.weekly !== null) {
+    const r = minsTo(b.weeklyResetsAt)
+    const e = elapsedOf(r, WINDOW_WK_MIN)
+    const level = markerLevel(b.weekly, e)
+    if (r != null && (level !== 'white' || r <= WEEKLY_SHOW_BEFORE_RESET_MIN)) {
+      bars.push({ label: 'Wk', pct: b.weekly, elapsedPct: e, level, watermark: formatResetSpaced(r) })
+    }
+  }
+  return bars
+}
+
+/** Terminal glyph bar: ▰ time elapsed · │ usage marker · ▱ time left (the card's terminal fallback). */
+export function budgetGlyphBar(pct: number, elapsedPct: number, width = BUDGET_BAR_WIDTH): string {
+  const usagePos = Math.min(width - 1, Math.round((clampPct(pct) / 100) * width))
+  const elapsedEnd = Math.round((clampPct(elapsedPct) / 100) * width)
+  let bar = ''
+  for (let i = 0; i < width; i++) bar += i === usagePos ? '│' : i < elapsedEnd ? '▰' : '▱'
+  return bar
+}
+
+const BAR = { w: 220, h: 12, track: '#2b2d3a', fill: '#4a5384', watermark: '#7d84a8', white: '#ffffff', yellow: '#e6c36a', red: '#e07a7a' }
+
+/** The card's bar as SVG: lilac time fill with the moving sheen, usage marker, reset watermark. */
+export function budgetBarSvg(bar: BudgetBar): string {
+  const fillW = Math.round((clampPct(bar.elapsedPct) / 100) * BAR.w)
+  const x = Math.min(BAR.w - 3, Math.round((clampPct(bar.pct) / 100) * BAR.w))
+  const y = 6
+  const h = BAR.h + 12
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${BAR.w}" height="${h}" viewBox="0 0 ${BAR.w} ${h}">` +
+    `<defs><clipPath id="f"><rect x="0" y="${y}" width="${fillW}" height="${BAR.h}" rx="5"/></clipPath></defs>` +
+    `<rect x="0" y="${y}" width="${BAR.w}" height="${BAR.h}" rx="5" fill="${BAR.track}"/>` +
+    `<rect x="0" y="${y}" width="${fillW}" height="${BAR.h}" rx="5" fill="${BAR.fill}"/>` +
+    `<g clip-path="url(#f)"><rect x="-24" y="${y}" width="24" height="${BAR.h}" fill="#ffffff" fill-opacity="0.12">` +
+    `<animate attributeName="x" from="-24" to="${BAR.w}" dur="4s" repeatCount="indefinite"/></rect></g>` +
+    `<text x="${BAR.w - 6}" y="${y + 10}" text-anchor="end" font-size="11" font-family="system-ui,sans-serif" fill="${BAR.watermark}">${bar.watermark}</text>` +
+    `<rect x="${x}" y="0" width="3" height="${h}" rx="2" fill="${BAR[bar.level]}"/>` +
+    `</svg>`
+  )
+}
+
+/** Screen-reader text of one bar, as the card's tooltip. */
+export function budgetBarAlt(bar: BudgetBar): string {
+  return `${bar.label}: ${Math.round(bar.pct)} % used · resets in ${bar.watermark}`
+}
+
+/** "🧠 context 72 %" from CONTEXT_SHOW_PERCENT on; null below. */
+export function contextNote(b: Budget | null): string | null {
+  if (!b || b.context === null || b.context < CONTEXT_SHOW_PERCENT) return null
+  return `🧠 context ${b.context} %`
+}
+
+/** One terminal line for the band: the card's markdown budget line plus context; null when nothing shows. */
+export function budgetLine(b: Budget | null, now: number): string | null {
   if (!b) return null
-  const parts: string[] = []
-  if (b.fiveHour !== null) parts.push(`5h ${b.fiveHour} %`)
-  if (b.weekly !== null) parts.push(`week ${b.weekly} %`)
-  if (b.context !== null) parts.push(`context ${b.context} %`)
-  if (!parts.length) return null
-  const hint = b.context !== null && b.context >= CONTEXT_HINT_PERCENT ? ' → /compact recommended' : ''
-  return parts.join(' · ') + hint
+  const bars = budgetBars(b, now)
+  const segs = bars.map(x => `${x.label} ${budgetGlyphBar(x.pct, x.elapsedPct)} ${x.watermark}`)
+  const ctx = contextNote(b)
+  if (ctx) segs.push(ctx)
+  if (!segs.length) return null
+  return (bars.some(x => x.level !== 'white') ? '⚠ ' : '') + segs.join('   ')
 }
 
 const ORPHAN_MAX_AGE_MS = 24 * 3_600_000
@@ -88,8 +203,11 @@ export function hygieneFrom(report: unknown, cwd: string, now: number): Hygiene 
     .filter(e => e && e.path && (here === norm(e.path) || here.startsWith(`${norm(e.path)}/`)))
     .sort((a, b) => norm(b.path as string).length - norm(a.path as string).length)[0]
   if (!entry) return null
-  const risk = Array.isArray(entry.atRisk) ? entry.atRisk : []
-  const dirty = risk.filter(x => x && (x.dirty || 0) > 0).length
+  // The worktree this session works in is never "open work" to clean up: it is in use.
+  const risk = (Array.isArray(entry.atRisk) ? entry.atRisk : []).filter(
+    x => x && !((x as { path?: string }).path && (here === norm((x as { path: string }).path) || here.startsWith(`${norm((x as { path: string }).path)}/`))),
+  )
+  const dirty = risk.filter(x => (x.dirty || 0) > 0).length
   const remote = Array.isArray(entry.remoteOnly) ? entry.remoteOnly.length : 0
   return { branches: risk.length - dirty + remote, worktrees: dirty, ageHours: Math.floor((now - t) / 3_600_000) }
 }
@@ -97,7 +215,10 @@ export function hygieneFrom(report: unknown, cwd: string, now: number): Hygiene 
 /** Status-line text; null when nothing is open. */
 export function hygieneLine(h: Hygiene | null): string | null {
   if (!h || h.branches + h.worktrees === 0) return null
-  return `devops: ${h.branches} open ${h.branches === 1 ? 'branch' : 'branches'} · ${h.worktrees} dirty ${h.worktrees === 1 ? 'worktree' : 'worktrees'}`
+  const parts: string[] = []
+  if (h.branches > 0) parts.push(`${h.branches} open ${h.branches === 1 ? 'branch' : 'branches'}`)
+  if (h.worktrees > 0) parts.push(`${h.worktrees} dirty ${h.worktrees === 1 ? 'worktree' : 'worktrees'}`)
+  return `devops: ${parts.join(' · ')}`
 }
 
 /** The fixed prompt the cleanup button submits (d2-branch = submit, d2-branch-model = opus medium). */
