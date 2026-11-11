@@ -17,7 +17,7 @@
  *   AbovePrompt band                       5-h / weekly percentUsed + context fill (session.measure), compact hint,
  *                                          branch-hygiene count with a cleanup button (fixed prompt)
  *   Status line                            branch-hygiene count (~/.claude/orphan-report.json)
- *   Toasts                                 permission request waiting, long subagent finished, SessionStart notices
+ *   Toasts                                 permission request waiting, long subagent / background Bash finished, SessionStart notices
  *   /mods-spike-fork                       Spike 1: one $.model.fork, usage logged to ~/.claude/devops-mods-spike.jsonl
  *
  * Deterministic: no model call except the explicit, user-run spike command.
@@ -37,6 +37,7 @@ import {
   hygieneLine,
   LONG_RUN_MS,
   shipFrom,
+  taskNotice,
   verbatimNotices,
 } from './format'
 import { featureAllowed, homeDir } from './gate'
@@ -52,6 +53,8 @@ const agents = atom({ plugin: 'devops', key: 'agents' } as const, [] as AgentRow
 const budget = atom({ plugin: 'devops', key: 'budget' } as const, null as Budget | null, { shape: 'budget-1' })
 const hygiene = atom({ plugin: 'devops', key: 'hygiene' } as const, null as Hygiene | null, { shape: 'hygiene-1' })
 const ship = atom({ plugin: 'devops', key: 'ship' } as const, null as ShipView | null, { shape: 'ship-1' })
+// Background Bash runs by tool_use_id → start time, so their notification can say how long they ran.
+const shells = atom({ plugin: 'devops', key: 'shells' } as const, {} as Record<string, number>, { shape: 'shells-1' })
 
 // One gate answer per session (reset at session.start); module vars reset on reload anyway.
 let gate: Promise<boolean> | null = null
@@ -199,6 +202,42 @@ export const register: Register = on => {
     }
     return result
   }).catch(($, e, next) => next(e)) // display only: a failure never changes the stop answer
+
+  // C6 (close-out): a background Bash run starts; remember when. The call is passed on unchanged.
+  on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
+    const result = await next(e)
+    const id = e.tool_use_id
+    if (id && (e as { run_in_background?: boolean }).run_in_background === true && (await open($))) {
+      const now = await $.clock.now()
+      await update($, shells, map => {
+        const keep = Object.entries(map).filter(([, t]) => now - t < 24 * 3600_000).slice(-49)
+        return { ...Object.fromEntries(keep), [id]: now }
+      })
+    }
+    return result
+  }).catch(($, e, next) => next(e)) // display only: a failure never changes the tool call
+
+  // C6 (close-out): its notification arrives; a long one gets a toast. The prompt is passed on unchanged.
+  on('prompt.submit', async ($, e, next) => {
+    const result = await next(e)
+    const notice = taskNotice(e.text)
+    if (notice && (await open($))) {
+      const startedAt = (await read($, shells))[notice.toolUseId]
+      if (typeof startedAt === 'number') {
+        const now = await $.clock.now()
+        await update($, shells, map => {
+          const rest = { ...map }
+          delete rest[notice.toolUseId]
+          return rest
+        })
+        if (now - startedAt >= LONG_RUN_MS) {
+          const what = notice.summary || `Background command ${notice.status || 'finished'}`
+          $.ui.toast(`${what} · ${elapsed(now - startedAt)}`.slice(0, 200), { timeoutMs: 8000 })
+        }
+      }
+    }
+    return result
+  }).catch(($, e, next) => next(e)) // display only: a failure never changes the prompt
 
   // C5: the live budget, one source (session.measure); nothing is written.
   on('session.measure', async ($, e, next) => {

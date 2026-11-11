@@ -7135,13 +7135,9 @@ Stufe 3  Steuer-Mods, je nach Spike: Warmhalten (2 h, 2 Sessions, Not-Aus, Check
           data-issue-milestone="[New] Claude Mods — display panes, cache keep-alive, titles, concept timers"
           data-oq-origin="shortfall"
           data-route-default="issue"
-          data-route-reason="außerhalb Repo">
+          data-route-reason="außerhalb Repo" data-routed>
         <span class="oq-label">Toast bei Bash-Ende fehlt</span>
-        <dl class="fr-fkv">
-          <dt>Was</dt><dd>Nicht umgesetzt, weil Claude Code kein Ereignis meldet, wenn ein Hintergrund-Bash endet; Subagenten sind abgedeckt.</dd>
-          <dt>Wo</dt><dd>Toast-Hinweise des Mods</dd>
-          <dt>Warum vorbelegt</dt><dd>📌 Issue — hängt an einem Ereignis, das nur Anthropic liefern kann.</dd>
-        </dl>
+        <span class="oq-done">✓ umgesetzt — <code>plugins/devops/hooks/mods/index.tsx</code> (Start über <code>tool.call</code>, Ende über die Task-Benachrichtigung)</span>
       </li>
     </ul>
   </details>
@@ -7151,7 +7147,7 @@ Stufe 3  Steuer-Mods, je nach Spike: Warmhalten (2 h, 2 Sessions, Not-Aus, Check
     <ul class="fr-dev">
       <li>Commits <code>1f3617d1</code>…<code>77fe7829</code> auf <code>claude/claude-code-desktop-mods-a120b4</code>, nicht gepusht</li>
       <li><code>plugins/devops/hooks/mods/index.tsx</code>, <code>hooks/dispatch/build-hooks-json.js</code>, <code>docs/dev/mods.md</code></li>
-      <li>Tests: <code>claude plugin test</code> 7/7 · validate ✓ (alle Gating-Hooks mit <code>.catch</code>) · lint ✓ · volle <code>npm test</code>: 12 752 grün, 3 übersprungen (504 Dateien)</li>
+      <li>Tests: <code>claude plugin test</code> 8/8 · validate ✓ (alle Gating-Hooks mit <code>.catch</code>) · lint ✓ · volle <code>npm test</code>: 12 752 grün, 3 übersprungen (504 Dateien)</li>
       <li>qax unabhängig: C1–C5, C7, C9–C11 erfüllt; C6 ohne Ton (kein Asset), C8-Knopf live = Spike 5 (#1104)</li>
       <li>Issues #1100–#1106, Meilenstein 1; Sound bewusst weggelassen</li>
     </ul>

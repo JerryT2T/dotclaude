@@ -145,11 +145,11 @@ without input, then run `/mods-spike-fork`. **Pass:** `cache_read_share`
 |---|---|
 | Module | `plugins/devops/hooks/mods/index.tsx` (+ `gate.ts`, `format.ts`), listed in `hooks.json` as `"modules": ["./mods/index.tsx"]` |
 | Adding modules | `hooks/dispatch/manifest.json`, then `node plugins/devops/hooks/dispatch/build-hooks-json.js` (hooks.json is generated) |
-| State contract | `plugins/devops/types/index.d.ts` (`devops.agents`, `devops.budget`, `devops.hygiene`, `devops.ship`), named in `plugin.json` `"types"` |
+| State contract | `plugins/devops/types/index.d.ts` (`devops.agents`, `devops.budget`, `devops.hygiene`, `devops.ship`, `devops.shells`), named in `plugin.json` `"types"` |
 | Gate | `hooks/mods/gate.ts` mirrors `features.js`: reads `features.json`, `~/.claude/plugins/.channels.json` and `installed_plugins.json` via `$.fs`, fails closed, cached per session. Closed gate → every hook passes through, no command is registered, nothing is drawn |
 | Agent pane | `/devops-agents`: subagents with type, model, elapsed, status (`agent.spawn`, `classic.SubagentStop`, `$.agent.list()`) |
 | Budget band | Above the prompt: 5-h, weekly and context fill from `session.measure`; `/compact` hint from 80 % context. Display only, writes nothing |
-| Toasts | Waiting permission request (`classic.Notification`), subagents that ran ≥ 120 s, and the hook lines Claude is asked to show verbatim (hook output passes through unchanged). No sound: no asset ships cleanly. Finished background Bash runs have no event yet |
+| Toasts | Waiting permission request (`classic.Notification`), subagents and background Bash runs that ran ≥ 120 s (Bash: start time per `tool_use_id` from `tool.call`, end from the `<task-notification>` that reaches `prompt.submit`; call and prompt pass through unchanged), and the hook lines Claude is asked to show verbatim (hook output passes through unchanged). No sound: no asset ships cleanly |
 | Ship pane | `/devops-ship`: `.claude/.ship-checkpoint.json` of this branch plus one bounded `gh pr view` (8 s) on open or Refresh |
 | Branch hygiene | Count from `~/.claude/orphan-report.json` (same rules as `ss.orphan.nudge.js`) in the status line and the band; the "Clean up (opus · medium)" button submits a fixed prompt (spike 5, #1104) |
 

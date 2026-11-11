@@ -165,6 +165,24 @@ test('toasts: permission request, long subagent, SessionStart notices (hook text
   ])
 })
 
+test('a long background Bash run gets a toast when its notification arrives (call and prompt unchanged)', async ($, on) => {
+  const { seen, tick } = engine(on)
+  on('tool.call', () => ({ result: { stdout: '', stderr: '', interrupted: false } }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.tool.call({ tool: 'Bash', command: 'npm test', run_in_background: true, tool_use_id: 'toolu_long' } as any)
+  await $.tool.call({ tool: 'Bash', command: 'npm run lint', run_in_background: true, tool_use_id: 'toolu_short' } as any)
+  tick(30_000)
+  const short = '<task-notification>\n<task-id>b1</task-id>\n<tool-use-id>toolu_short</tool-use-id>\n<status>completed</status>\n<summary>Background command "Lint" completed (exit code 0)</summary>\n</task-notification>'
+  const shortOut = await $.prompt.submit({ text: short } as any)
+  expect(shortOut.text).toBe(short)
+  tick(100_000)
+  const long = '<task-notification>\n<task-id>b2</task-id>\n<tool-use-id>toolu_long</tool-use-id>\n<status>completed</status>\n<summary>Background command "Run tests" completed (exit code 0)</summary>\n</task-notification>'
+  const longOut = await $.prompt.submit({ text: long } as any)
+  expect(longOut.text).toBe(long)
+  await $.prompt.submit({ text: 'plain prompt mentioning toolu_long' } as any)
+  expect(seen.toasts).toEqual(['Background command "Run tests" completed (exit code 0) · 2 m 10 s'])
+})
+
 test('ship pane shows the checkpoint of this branch and the PR checks', async ($, on) => {
   engine(on, {
     files: {

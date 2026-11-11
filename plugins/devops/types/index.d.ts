@@ -35,6 +35,7 @@ declare module 'claude-code' {
       budget: Budget | null
       hygiene: Hygiene | null
       ship: ShipView | null
+      shells: Record<string, number>
     }
   }
 }

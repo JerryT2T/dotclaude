@@ -17,6 +17,22 @@ export function elapsed(ms: number): string {
   return `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')} m`
 }
 
+/**
+ * A background task's notification as the engine delivers it
+ * (`<task-notification>` with `<tool-use-id>`, `<status>`, `<summary>`).
+ * Null for any other text. Pure parsing, nothing inferred.
+ */
+export function taskNotice(text: string): { toolUseId: string; status: string; summary: string } | null {
+  if (typeof text !== 'string' || !text.includes('<task-notification>')) return null
+  const tag = (name: string) => {
+    const m = text.match(new RegExp(`<${name}>([\\s\\S]*?)</${name}>`))
+    return m ? m[1].trim() : ''
+  }
+  const toolUseId = tag('tool-use-id')
+  if (!toolUseId) return null
+  return { toolUseId, status: tag('status'), summary: tag('summary') }
+}
+
 /** One pane row: status, type, model, elapsed, description. */
 export function agentRow(a: AgentRow, now: number): string {
   const end = typeof a.endedAt === 'number' ? a.endedAt : now
