@@ -1,9 +1,8 @@
 # Claude Code mods in devops (developer guide)
 
 Not shipped: the marketplace ships `./plugins/devops` only, so this file never
-reaches a consumer. Decided in the concept
-`docs/concepts/20261110-1935-claude-code-mods.html` (3 rounds, decisions in
-`docs/concepts/20261110-1935-claude-code-mods-decisions.json`).
+reaches a consumer. Decided in a three-round concept (2026-11-10/11, page
+discarded at close-out); every decision and its why is recorded below.
 
 A **mod** is a Claude Code plugin hooks module: `hooks/hooks.json` names a
 TypeScript/JavaScript module under `modules`, which exports
