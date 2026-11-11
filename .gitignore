@@ -74,6 +74,10 @@ service-account*.json
 **/.claude/run-contract.prev.json
 **/.claude/run-contract.pending
 **/.claude/run-task.md
+**/.claude/knowledge-anchor.json
+**/.claude/knowledge-anchor.json.*
+**/.claude/merge-queue.json
+**/.claude/merge-queue.json.*
 **/.claude/runs/
 **/.claude/batch-handoff.json
 **/.claude/.ship-in-progress
