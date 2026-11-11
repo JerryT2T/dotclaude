@@ -25,7 +25,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { AgentRow, Budget, Hygiene, ShipView } from '../../types/index'
+import type { AgentRow, Budget, CleanupLock, Hygiene, ShipView } from '../../types/index'
 import {
   agentRow,
   budgetFrom,
@@ -55,6 +55,27 @@ const hygiene = atom({ plugin: 'devops', key: 'hygiene' } as const, null as Hygi
 const ship = atom({ plugin: 'devops', key: 'ship' } as const, null as ShipView | null, { shape: 'ship-1' })
 // Background Bash runs by tool_use_id → start time, so their notification can say how long they ran.
 const shells = atom({ plugin: 'devops', key: 'shells' } as const, {} as Record<string, number>, { shape: 'shells-1' })
+// Cleanup button lock: `busy` while the main turn runs, `sent` from a press until the next main turn ends.
+// One press = one prompt; a press while busy or already sent does nothing.
+const cleanup = atom({ plugin: 'devops', key: 'cleanup' } as const, { busy: false, sent: false } as CleanupLock, {
+  shape: 'cleanup-1',
+})
+
+async function pressCleanup($: EngineInterface): Promise<void> {
+  let go = false
+  await update($, cleanup, s => {
+    go = false
+    if (s.busy || s.sent) return s
+    go = true
+    return { ...s, sent: true }
+  })
+  if (!go) return
+  try {
+    await $.prompt.submit({ text: CLEANUP_PROMPT })
+  } catch {
+    await update($, cleanup, s => ({ ...s, sent: false })) // vetoed or refused: the button comes back
+  }
+}
 
 // One gate answer per session (reset at session.start); module vars reset on reload anyway.
 let gate: Promise<boolean> | null = null
@@ -239,6 +260,19 @@ export const register: Register = on => {
     return result
   }).catch(($, e, next) => next(e)) // display only: a failure never changes the prompt
 
+  // Cleanup button lock follows the main loop's turns (observe only).
+  on('turn.start', async ($, e, next) => {
+    const result = await next(e)
+    if (e.agentId === undefined && (await open($))) await update($, cleanup, s => ({ ...s, busy: true }))
+    return result
+  })
+
+  on('turn.complete', async ($, e, next) => {
+    const result = await next(e)
+    if (e.agentId === undefined && (await open($))) await update($, cleanup, () => ({ busy: false, sent: false }))
+    return result
+  })
+
   // C5: the live budget, one source (session.measure); nothing is written.
   on('session.measure', async ($, e, next) => {
     const measured = await next(e)
@@ -365,6 +399,7 @@ export const register: Register = on => {
     const hyg = await read($, hygiene)
     const hl = hygieneLine(hyg)
     if (!line && !hl) return next(e)
+    const lock = await read($, cleanup)
     const { Box, Button, Text } = $.ui.resolve(e)
     return (
       <Box flexDirection="column">
@@ -372,7 +407,11 @@ export const register: Register = on => {
         {hl && (
           <Box>
             <Text dimColor>{hl} </Text>
-            <Button key="cleanup" label="Clean up (opus · medium)" onPress={() => $.prompt.submit({ text: CLEANUP_PROMPT })} />
+            {lock.busy || lock.sent ? (
+              <Text dimColor>[ Clean up · waiting… ]</Text>
+            ) : (
+              <Button key="cleanup" label="Clean up (opus · medium)" onPress={() => pressCleanup($)} />
+            )}
           </Box>
         )}
       </Box>

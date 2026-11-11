@@ -128,7 +128,7 @@ test('agent pane lists a subagent with type, model, elapsed and status, on every
   }
 })
 
-test('budget band shows 5-h, weekly and context with a compact hint; the cleanup button submits the fixed prompt', async ($, on) => {
+test('budget band shows 5-h, weekly and context with a compact hint; one cleanup press = one prompt, then waiting', async ($, on) => {
   const { seen } = engine(on, { files: { '/.claude/orphan-report.json': ORPHAN_REPORT } })
   await $.session.start({ cwd: 'P:/Projects/demo', surface: 'desktop', isInteractive: true })
   await $.session.measure(MEASURE as any)
@@ -136,12 +136,27 @@ test('budget band shows 5-h, weekly and context with a compact hint; the cleanup
     const band = await $.ui.mount({ ...BAND, surface })
     const line = await band.find({ type: 'Text', text: /5h/ })
     expect(line?.text).toBe('5h 42 % · week 18 % · context 85 % → /compact recommended')
-    await band.press({ key: 'cleanup' })
+    if (surface === SURFACES[0]) await band.press({ key: 'cleanup' })
     await band.unmount()
   }
-  expect(seen.prompts.length).toBe(2)
+  // The first press sent the prompt; until the next main turn ends the button is a dim "waiting…" text.
+  const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await band.find({ key: 'cleanup' })).toBeUndefined()
+  expect((await band.find({ type: 'Text', text: /waiting/ }))?.text).toBe('[ Clean up · waiting… ]')
+  await band.unmount()
+  expect(seen.prompts.length).toBe(1)
   expect(seen.prompts[0]).toMatch(/model opus and effort medium/)
   expect(seen.writes).toEqual([])
+})
+
+test('hygiene ignores the worktree this session works in; zero counts are left out of the line', async ($, on) => {
+  const report = JSON.stringify({
+    generatedAt: new Date(NOW - 3_600_000).toISOString(),
+    repos: [{ path: 'P:/Projects/demo', atRisk: [{ branch: 'mine', path: 'P:/Projects/demo/.claude/worktrees/mine', dirty: 1 }, { branch: 'old' }] }],
+  })
+  const { seen } = engine(on, { files: { '/.claude/orphan-report.json': report } })
+  await $.session.start({ cwd: 'P:/Projects/demo/.claude/worktrees/mine', surface: 'desktop', isInteractive: true })
+  expect(seen.status.at(-1)).toBe('devops: 1 open branch')
 })
 
 test('toasts: permission request, long subagent, SessionStart notices (hook text unchanged)', async ($, on) => {

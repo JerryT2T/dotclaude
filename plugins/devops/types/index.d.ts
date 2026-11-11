@@ -28,6 +28,8 @@ export type ShipView = {
   checkedAt: number
 }
 
+export type CleanupLock = { busy: boolean; sent: boolean }
+
 declare module 'claude-code' {
   interface PluginState {
     devops: {
@@ -36,6 +38,7 @@ declare module 'claude-code' {
       hygiene: Hygiene | null
       ship: ShipView | null
       shells: Record<string, number>
+      cleanup: CleanupLock
     }
   }
 }

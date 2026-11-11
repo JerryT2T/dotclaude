@@ -88,8 +88,11 @@ export function hygieneFrom(report: unknown, cwd: string, now: number): Hygiene 
     .filter(e => e && e.path && (here === norm(e.path) || here.startsWith(`${norm(e.path)}/`)))
     .sort((a, b) => norm(b.path as string).length - norm(a.path as string).length)[0]
   if (!entry) return null
-  const risk = Array.isArray(entry.atRisk) ? entry.atRisk : []
-  const dirty = risk.filter(x => x && (x.dirty || 0) > 0).length
+  // The worktree this session works in is never "open work" to clean up: it is in use.
+  const risk = (Array.isArray(entry.atRisk) ? entry.atRisk : []).filter(
+    x => x && !((x as { path?: string }).path && (here === norm((x as { path: string }).path) || here.startsWith(`${norm((x as { path: string }).path)}/`))),
+  )
+  const dirty = risk.filter(x => (x.dirty || 0) > 0).length
   const remote = Array.isArray(entry.remoteOnly) ? entry.remoteOnly.length : 0
   return { branches: risk.length - dirty + remote, worktrees: dirty, ageHours: Math.floor((now - t) / 3_600_000) }
 }
@@ -97,7 +100,10 @@ export function hygieneFrom(report: unknown, cwd: string, now: number): Hygiene 
 /** Status-line text; null when nothing is open. */
 export function hygieneLine(h: Hygiene | null): string | null {
   if (!h || h.branches + h.worktrees === 0) return null
-  return `devops: ${h.branches} open ${h.branches === 1 ? 'branch' : 'branches'} · ${h.worktrees} dirty ${h.worktrees === 1 ? 'worktree' : 'worktrees'}`
+  const parts: string[] = []
+  if (h.branches > 0) parts.push(`${h.branches} open ${h.branches === 1 ? 'branch' : 'branches'}`)
+  if (h.worktrees > 0) parts.push(`${h.worktrees} dirty ${h.worktrees === 1 ? 'worktree' : 'worktrees'}`)
+  return `devops: ${parts.join(' · ')}`
 }
 
 /** The fixed prompt the cleanup button submits (d2-branch = submit, d2-branch-model = opus medium). */
