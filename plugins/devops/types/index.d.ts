@@ -16,6 +16,9 @@ export type Budget = {
   fiveHour: number | null
   weekly: number | null
   context: number | null
+  /** Window resets, epoch ms (the rate limit's resetsAt); null when none was reported. */
+  fiveHourResetsAt?: number | null
+  weeklyResetsAt?: number | null
 }
 
 export type Hygiene = { branches: number; worktrees: number; ageHours: number }

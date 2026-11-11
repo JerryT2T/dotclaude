@@ -76,8 +76,9 @@ const BAND = { plugin: 'devops', component: 'AbovePrompt', props: { hasSurvey: f
 const MEASURE = {
   context: { window: 200000, tokens: 170000, percent: 85 },
   rateLimits: [
-    { kind: 'five_hour', percentUsed: 42 },
-    { kind: 'seven_day', percentUsed: 18 },
+    // 5h: 72 % used, 2 h to reset (60 % of the window gone) → 12 pp ahead → yellow; Wk: 3 d to reset, on pace → omitted.
+    { kind: 'five_hour', percentUsed: 72, resetsAt: new Date(NOW + 2 * 3_600_000).toISOString() },
+    { kind: 'seven_day', percentUsed: 18, resetsAt: new Date(NOW + 3 * 86_400_000).toISOString() },
   ],
   changed: ['context', 'rateLimits'],
 }
@@ -128,14 +129,22 @@ test('agent pane lists a subagent with type, model, elapsed and status, on every
   }
 })
 
-test('budget band shows 5-h, weekly and context with a compact hint; one cleanup press = one prompt, then waiting', async ($, on) => {
+test('budget band draws the card bars (SVG on desktop, glyphs on the terminal) with the card rules; one cleanup press = one prompt', async ($, on) => {
   const { seen } = engine(on, { files: { '/.claude/orphan-report.json': ORPHAN_REPORT } })
   await $.session.start({ cwd: 'P:/Projects/demo', surface: 'desktop', isInteractive: true })
   await $.session.measure(MEASURE as any)
   for (const surface of SURFACES) {
     const band = await $.ui.mount({ ...BAND, surface })
-    const line = await band.find({ type: 'Text', text: /5h/ })
-    expect(line?.text).toBe('5h 42 % · week 18 % · context 85 % → /compact recommended')
+    if (surface === 'terminal') {
+      const line = await band.find({ type: 'Text', text: /5h/ })
+      expect(line?.text).toBe('⚠ 5h ▰▰▰▰▰▰▰▰▱▱│▱▱▱ 2 h 0 m   🧠 context 85 %')
+    } else {
+      const bar = await band.find({ type: 'Svg' })
+      expect(bar?.props.alt).toBe('5h: 72 % used · resets in 2 h 0 m')
+      expect(bar?.props.source).toMatch(/<animate attributeName="x"/)
+      expect(bar?.props.source).toMatch(/fill="#e6c36a"/)
+      expect((await band.find({ type: 'Text', text: /context/ }))?.text).toBe('🧠 context 85 %')
+    }
     if (surface === SURFACES[0]) await band.press({ key: 'cleanup' })
     await band.unmount()
   }
@@ -246,8 +255,8 @@ test('spike command runs one fork without effort and logs the cache fields', asy
     output_tokens: 2,
     context_tokens: 100000,
     cache_read_share: 0.99,
-    five_hour_before: 42,
-    five_hour_after: 42,
+    five_hour_before: 72,
+    five_hour_after: 72,
     weekly_before: 18,
     weekly_after: 18,
   })

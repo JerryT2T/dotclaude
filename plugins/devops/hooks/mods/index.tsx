@@ -29,7 +29,11 @@ import type { AgentRow, Budget, CleanupLock, Hygiene, ShipView } from '../../typ
 import {
   agentRow,
   budgetFrom,
+  budgetBarAlt,
+  budgetBars,
+  budgetBarSvg,
   budgetLine,
+  contextNote,
   checksFrom,
   CLEANUP_PROMPT,
   elapsed,
@@ -282,6 +286,8 @@ export const register: Register = on => {
         fiveHour: b.fiveHour ?? (prev ? prev.fiveHour : null),
         weekly: b.weekly ?? (prev ? prev.weekly : null),
         context: b.context ?? (prev ? prev.context : null),
+        fiveHourResetsAt: b.fiveHourResetsAt ?? (prev ? prev.fiveHourResetsAt ?? null : null),
+        weeklyResetsAt: b.weeklyResetsAt ?? (prev ? prev.weeklyResetsAt ?? null : null),
       }))
     }
     return measured
@@ -395,15 +401,32 @@ export const register: Register = on => {
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     if (e.props.hasSurvey || !(await open($))) return next(e)
-    const line = budgetLine(await read($, budget))
+    const b = await read($, budget)
+    const now = await $.clock.now()
+    const line = budgetLine(b, now)
     const hyg = await read($, hygiene)
     const hl = hygieneLine(hyg)
     if (!line && !hl) return next(e)
     const lock = await read($, cleanup)
     const { Box, Button, Text } = $.ui.resolve(e)
+    // Desktop, VS Code, mobile: the card's animated SVG bars; the terminal has no Svg, so its glyph line.
+    const Svg = e.surface === 'terminal' ? null : ($.ui.resolve(e) as { Svg?: any }).Svg
+    const bars = budgetBars(b, now)
+    const ctx = contextNote(b)
     return (
       <Box flexDirection="column">
-        {line && <Text dimColor>{line}</Text>}
+        {line && !Svg && <Text dimColor>{line}</Text>}
+        {line && Svg && (
+          <Box flexDirection="row" gap={2}>
+            {bars.map(bar => (
+              <Box key={bar.label} flexDirection="row" gap={1}>
+                <Text dimColor>{bar.label}</Text>
+                <Svg source={budgetBarSvg(bar)} alt={budgetBarAlt(bar)} isInteractive />
+              </Box>
+            ))}
+            {ctx && <Text dimColor>{ctx}</Text>}
+          </Box>
+        )}
         {hl && (
           <Box>
             <Text dimColor>{hl} </Text>
