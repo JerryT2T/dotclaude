@@ -37,6 +37,15 @@
       "scripts": [
         "hooks/lib/token-log.js"
       ]
+    },
+    "claude-mods": {
+      "minChannel": "alpha",
+      "summary": "Display-only Claude Code mods: agent pane, budget and context band, ship/CI pane, branch-hygiene status, notice toasts, and the fork-cache spike command",
+      "docs": [],
+      "scripts": [
+        "hooks/mods/index.tsx",
+        "hooks/mods/gate.ts"
+      ]
     }
   }
 }

@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.369.0] — 2026-11-12
+
+### Added
+- Mods band: the completion card budget bars (5h / weekly, time fill with moving sheen, usage marker coloured by pace, reset watermark) on Desktop, VS Code and mobile; the card glyph bar on the terminal; context shown from 50 %.
+
+### Fixed
+- Mods band cleanup button: one prompt per press, a dim "waiting…" while a turn runs; the hygiene count no longer counts the worktree the session works in and leaves zero counts out.
+
+## [0.368.0] — 2026-11-11
+
+### Added
+- Claude Code mods (alpha, feature `claude-mods`): agent pane, budget and context band, toasts for waiting permissions and long runs, ship/CI pane, branch-hygiene status with a cleanup button — display only, every hook unchanged
+- `/mods-spike-fork` measures whether a keep-alive ping is served from the prompt cache
+- Developer guide `docs/dev/mods.md` with the staged mods plan
+
 ## [0.367.0] — 2026-11-11
 
 ### Added

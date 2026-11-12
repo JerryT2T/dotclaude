@@ -97,6 +97,12 @@ jobs:
           TMP: ${{ runner.temp }}
         run: npx vitest run --shard=${{ matrix.shard }}/4
 
+      # Engine tests of hooks/mods (claude plugin test); skips with a message
+      # when the runner has no `claude` CLI. One shard is enough.
+      - name: Mod engine tests
+        if: ${{ matrix.shard == 1 }}
+        run: npm run test:mods
+
   suite:
     name: suite
     needs: [gate, shards]
