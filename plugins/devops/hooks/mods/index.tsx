@@ -38,6 +38,8 @@ import {
   CLEANUP_PROMPT,
   elapsed,
   hygieneFrom,
+  CACHE_WARM_MS,
+  cleanupOffered,
   hygieneLine,
   LONG_RUN_MS,
   shipFrom,
@@ -83,6 +85,8 @@ async function pressCleanup($: EngineInterface): Promise<void> {
 
 // One gate answer per session (reset at session.start); module vars reset on reload anyway.
 let gate: Promise<boolean> | null = null
+// The timer that hides the cleanup button when the cache goes cold (lost on a reload; the render checks the time too).
+let coldTimer: { cancel: () => void } | null = null
 function open($: EngineInterface): Promise<boolean> {
   if (!gate) gate = featureAllowed($, 'claude-mods').catch(() => false)
   return gate
@@ -267,13 +271,25 @@ export const register: Register = on => {
   // Cleanup button lock follows the main loop's turns (observe only).
   on('turn.start', async ($, e, next) => {
     const result = await next(e)
-    if (e.agentId === undefined && (await open($))) await update($, cleanup, s => ({ ...s, busy: true }))
+    if (e.agentId === undefined && (await open($))) {
+      if (coldTimer) coldTimer.cancel()
+      coldTimer = null
+      await update($, cleanup, s => ({ ...s, busy: true, cold: false }))
+    }
     return result
   })
 
   on('turn.complete', async ($, e, next) => {
     const result = await next(e)
-    if (e.agentId === undefined && (await open($))) await update($, cleanup, () => ({ busy: false, sent: false }))
+    if (e.agentId === undefined && (await open($))) {
+      const now = await $.clock.now()
+      await update($, cleanup, () => ({ busy: false, sent: false, idleSince: now, cold: false }))
+      // Redraw the band once the cache has likely gone cold: the button leaves until the next turn.
+      if (coldTimer) coldTimer.cancel()
+      coldTimer = $.clock.after(CACHE_WARM_MS, () => {
+        void update($, cleanup, s => ({ ...s, cold: true }))
+      })
+    }
     return result
   })
 
@@ -405,9 +421,10 @@ export const register: Register = on => {
     const now = await $.clock.now()
     const line = budgetLine(b, now)
     const hyg = await read($, hygiene)
-    const hl = hygieneLine(hyg)
-    if (!line && !hl) return next(e)
     const lock = await read($, cleanup)
+    // The band's hygiene row only while a cleanup is worth sending from here (cache warm); the status line keeps the count.
+    const hl = cleanupOffered(lock, now) ? hygieneLine(hyg, false) : null
+    if (!line && !hl) return next(e)
     const { Box, Button, Text } = $.ui.resolve(e)
     // Desktop, VS Code, mobile: the card's animated SVG bars; the terminal has no Svg, so its glyph line.
     const Svg = e.surface === 'terminal' ? null : ($.ui.resolve(e) as { Svg?: any }).Svg
@@ -428,12 +445,20 @@ export const register: Register = on => {
           </Box>
         )}
         {hl && (
-          <Box>
+          <Box flexDirection="row" alignItems="center">
+            {!Svg && <Text dimColor>devops · </Text>}
             <Text dimColor>{hl} </Text>
             {lock.busy || lock.sent ? (
               <Text dimColor>[ Clean up · waiting… ]</Text>
             ) : (
               <Button key="cleanup" label="Clean up (opus · medium)" onPress={() => pressCleanup($)} />
+            )}
+            {Svg && (
+              <Box flexGrow={1} justifyContent="center">
+                <Text color="#5c6070" italic>
+                  devops
+                </Text>
+              </Box>
             )}
           </Box>
         )}

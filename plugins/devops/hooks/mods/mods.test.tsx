@@ -3,6 +3,7 @@
 // The hooks `on` registers here stand for the engine: files, env, clock,
 // gh/git, the model. Nothing reaches the real machine.
 import { expect, test } from 'claude-code/testing'
+import { CACHE_WARM_MS, cleanupOffered, hygieneLine } from './format'
 
 const HOME = 'C:/Users/tester'
 const NOW = Date.parse('2026-11-10T20:00:00.000Z')
@@ -261,4 +262,14 @@ test('spike command runs one fork without effort and logs the cache fields', asy
     weekly_after: 18,
   })
   expect(r.text).toMatch(/cache read 99000/)
+})
+
+test('cleanup is offered only while the prompt cache is warm; the band row drops the devops prefix', async () => {
+  expect(cleanupOffered(null, NOW)).toBe(true)
+  expect(cleanupOffered({ idleSince: null }, NOW)).toBe(true)
+  expect(cleanupOffered({ idleSince: NOW - CACHE_WARM_MS + 60_000 }, NOW)).toBe(true)
+  expect(cleanupOffered({ idleSince: NOW - CACHE_WARM_MS }, NOW)).toBe(false)
+  expect(cleanupOffered({ idleSince: NOW, cold: true }, NOW)).toBe(false)
+  expect(hygieneLine({ branches: 0, worktrees: 2, ageHours: 1 }, false)).toBe('2 dirty worktrees')
+  expect(hygieneLine({ branches: 0, worktrees: 2, ageHours: 1 })).toBe('devops: 2 dirty worktrees')
 })

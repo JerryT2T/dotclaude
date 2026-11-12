@@ -31,7 +31,9 @@ export type ShipView = {
   checkedAt: number
 }
 
-export type CleanupLock = { busy: boolean; sent: boolean }
+/** Cleanup button: busy while the main turn runs, sent from a press until the next main turn ends,
+ * idleSince = when the last main turn ended (epoch ms), cold once the prompt cache has likely expired. */
+export type CleanupLock = { busy: boolean; sent: boolean; idleSince?: number | null; cold?: boolean }
 
 declare module 'claude-code' {
   interface PluginState {

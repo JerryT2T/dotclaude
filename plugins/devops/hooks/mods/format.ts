@@ -212,13 +212,26 @@ export function hygieneFrom(report: unknown, cwd: string, now: number): Hygiene 
   return { branches: risk.length - dirty + remote, worktrees: dirty, ageHours: Math.floor((now - t) / 3_600_000) }
 }
 
-/** Status-line text; null when nothing is open. */
-export function hygieneLine(h: Hygiene | null): string | null {
+/**
+ * The prompt cache lives 1 h after the last request (5 min in overage). A cleanup prompt sent
+ * after that re-reads the whole context uncached, so the band offers the button only while the
+ * cache is still warm: up to CACHE_WARM_MS after the last main turn ended. A new turn offers it again.
+ */
+export const CACHE_WARM_MS = 55 * 60_000
+
+/** Whether the band offers the cleanup button now (cache still warm, or no turn ended yet). */
+export function cleanupOffered(lock: { idleSince?: number | null; cold?: boolean } | null, now: number): boolean {
+  if (!lock || lock.cold) return !lock
+  return typeof lock.idleSince !== 'number' || now - lock.idleSince < CACHE_WARM_MS
+}
+
+/** Status-line text, "devops: …"; prefix false for the band, which carries its own mark. Null when nothing is open. */
+export function hygieneLine(h: Hygiene | null, prefix = true): string | null {
   if (!h || h.branches + h.worktrees === 0) return null
   const parts: string[] = []
   if (h.branches > 0) parts.push(`${h.branches} open ${h.branches === 1 ? 'branch' : 'branches'}`)
   if (h.worktrees > 0) parts.push(`${h.worktrees} dirty ${h.worktrees === 1 ? 'worktree' : 'worktrees'}`)
-  return `devops: ${parts.join(' · ')}`
+  return `${prefix ? 'devops: ' : ''}${parts.join(' · ')}`
 }
 
 /** The fixed prompt the cleanup button submits (d2-branch = submit, d2-branch-model = opus medium). */
