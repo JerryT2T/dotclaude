@@ -3,7 +3,7 @@
 // The hooks `on` registers here stand for the engine: files, env, clock,
 // gh/git, the model. Nothing reaches the real machine.
 import { expect, test } from 'claude-code/testing'
-import { CACHE_WARM_MS, cleanupOffered, hygieneLine } from './format'
+import { cleanupApplyPrompt, cleanupPlanPrompt, hygieneLine } from './format'
 
 const HOME = 'C:/Users/tester'
 const NOW = Date.parse('2026-11-10T20:00:00.000Z')
@@ -130,7 +130,7 @@ test('agent pane lists a subagent with type, model, elapsed and status, on every
   }
 })
 
-test('budget band draws the card bars (SVG on desktop, glyphs on the terminal) with the card rules; one cleanup press = one prompt', async ($, on) => {
+test('budget band draws the card bars (SVG on desktop, glyphs on the terminal) with the card rules', async ($, on) => {
   const { seen } = engine(on, { files: { '/.claude/orphan-report.json': ORPHAN_REPORT } })
   await $.session.start({ cwd: 'P:/Projects/demo', surface: 'desktop', isInteractive: true })
   await $.session.measure(MEASURE as any)
@@ -146,17 +146,51 @@ test('budget band draws the card bars (SVG on desktop, glyphs on the terminal) w
       expect(bar?.props.source).toMatch(/fill="#e6c36a"/)
       expect((await band.find({ type: 'Text', text: /context/ }))?.text).toBe('🧠 context 85 %')
     }
-    if (surface === SURFACES[0]) await band.press({ key: 'cleanup' })
     await band.unmount()
   }
-  // The first press sent the prompt; until the next main turn ends the button is a dim "waiting…" text.
-  const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
-  expect(await band.find({ key: 'cleanup' })).toBeUndefined()
-  expect((await band.find({ type: 'Text', text: /waiting/ }))?.text).toBe('[ Clean up · waiting… ]')
-  await band.unmount()
-  expect(seen.prompts.length).toBe(1)
-  expect(seen.prompts[0]).toMatch(/model opus and effort medium/)
+  expect(seen.prompts).toEqual([])
   expect(seen.writes).toEqual([])
+})
+
+test('cleanup button: one press = one read-only opus plan subagent; its answer lands in the pane with Apply; Apply runs that plan', async ($, on) => {
+  const { seen } = engine(on, {
+    files: { '/.claude/orphan-report.json': ORPHAN_REPORT },
+    agents: [
+      { id: 'c1', description: 'Branch cleanup plan', type: 'general-purpose', status: 'running' },
+      { id: 'c2', description: 'Branch cleanup apply', type: 'general-purpose', status: 'running' },
+    ],
+  })
+  const spawns: Array<{ prompt: string; model?: string }> = []
+  on('agent.spawn', (_: unknown, e: { prompt: string; model?: string }) => {
+    spawns.push({ prompt: e.prompt, model: e.model })
+    return { model: 'claude-opus', agentId: `c${spawns.length}` }
+  })
+  on('session.root', () => ({ value: 'P:/Projects/demo' }))
+  on('turn.complete', (_: unknown, e: { answer: string }) => ({ text: e.answer }))
+  await $.session.start({ cwd: 'P:/Projects/demo', surface: 'desktop', isInteractive: true })
+  const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  await band.press({ key: 'cleanup' })
+  expect(spawns.length).toBe(1)
+  await band.unmount()
+  // While the plan runs the button is a dim text: a second press cannot start another run.
+  const busy = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await busy.find({ key: 'cleanup' })).toBeUndefined()
+  expect((await busy.find({ type: 'Text', text: /planning/ }))?.text).toBe('[ Clean up · planning… ]')
+  await busy.unmount()
+  expect(spawns.length).toBe(1)
+  expect(spawns[0].model).toBe('opus')
+  expect(spawns[0].prompt).toMatch(/READ-ONLY/)
+  expect(seen.prompts).toEqual([]) // nothing reaches the main conversation
+
+  const planText = '## Plan\n1. git worktree remove P:/Projects/demo/.claude/worktrees/old (landed, clean)'
+  await $.turn.complete({ answer: planText, durationMs: 1000, isAborted: false, turnId: 't1', agentId: 'c1', reason: 'end' } as any)
+  expect(seen.toasts.at(-1)).toMatch(/plan ready/)
+  const pane = await $.ui.mount({ plugin: 'devops', component: 'Pane', requestId: 'devops-cleanup', props: { isFocused: false, bodyColumns: 60, placement: 'dock', scroll: { offset: 0, bodyRows: 20 }, view: {}, title: 'Cleanup' }, surface: 'desktop' } as any)
+  expect((await pane.find({ type: 'Markdown' }))?.props.text).toBe(planText)
+  await pane.press({ key: 'cleanup-apply' })
+  await pane.unmount()
+  expect(spawns.length).toBe(2)
+  expect(spawns[1].prompt).toMatch(/APPROVED PLAN:\n## Plan\n1\. git worktree remove/)
 })
 
 test('hygiene ignores the worktree this session works in; zero counts are left out of the line', async ($, on) => {
@@ -264,12 +298,13 @@ test('spike command runs one fork without effort and logs the cache fields', asy
   expect(r.text).toMatch(/cache read 99000/)
 })
 
-test('cleanup is offered only while the prompt cache is warm; the band row drops the devops prefix', async () => {
-  expect(cleanupOffered(null, NOW)).toBe(true)
-  expect(cleanupOffered({ idleSince: null }, NOW)).toBe(true)
-  expect(cleanupOffered({ idleSince: NOW - CACHE_WARM_MS + 60_000 }, NOW)).toBe(true)
-  expect(cleanupOffered({ idleSince: NOW - CACHE_WARM_MS }, NOW)).toBe(false)
-  expect(cleanupOffered({ idleSince: NOW, cold: true }, NOW)).toBe(false)
+test('cleanup briefs keep the session worktree out and approve only the plan; the band row drops the devops prefix', async () => {
+  const plan = cleanupPlanPrompt('P:/r', 'P:/r/.claude/worktrees/me')
+  expect(plan).toMatch(/Never touch the worktree P:\/r\/\.claude\/worktrees\/me/)
+  expect(plan).toMatch(/Do not commit, delete/)
+  const apply = cleanupApplyPrompt('P:/r', 'P:/r/.claude/worktrees/me', 'PLAN X')
+  expect(apply).toMatch(/Run no command that is not in the plan/)
+  expect(apply.endsWith('APPROVED PLAN:\nPLAN X')).toBe(true)
   expect(hygieneLine({ branches: 0, worktrees: 2, ageHours: 1 }, false)).toBe('2 dirty worktrees')
   expect(hygieneLine({ branches: 0, worktrees: 2, ageHours: 1 })).toBe('devops: 2 dirty worktrees')
 })

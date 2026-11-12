@@ -212,19 +212,6 @@ export function hygieneFrom(report: unknown, cwd: string, now: number): Hygiene 
   return { branches: risk.length - dirty + remote, worktrees: dirty, ageHours: Math.floor((now - t) / 3_600_000) }
 }
 
-/**
- * The prompt cache lives 1 h after the last request (5 min in overage). A cleanup prompt sent
- * after that re-reads the whole context uncached, so the band offers the button only while the
- * cache is still warm: up to CACHE_WARM_MS after the last main turn ended. A new turn offers it again.
- */
-export const CACHE_WARM_MS = 55 * 60_000
-
-/** Whether the band offers the cleanup button now (cache still warm, or no turn ended yet). */
-export function cleanupOffered(lock: { idleSince?: number | null; cold?: boolean } | null, now: number): boolean {
-  if (!lock || lock.cold) return !lock
-  return typeof lock.idleSince !== 'number' || now - lock.idleSince < CACHE_WARM_MS
-}
-
 /** Status-line text, "devops: …"; prefix false for the band, which carries its own mark. Null when nothing is open. */
 export function hygieneLine(h: Hygiene | null, prefix = true): string | null {
   if (!h || h.branches + h.worktrees === 0) return null
@@ -234,10 +221,44 @@ export function hygieneLine(h: Hygiene | null, prefix = true): string | null {
   return `${prefix ? 'devops: ' : ''}${parts.join(' · ')}`
 }
 
-/** The fixed prompt the cleanup button submits (d2-branch = submit, d2-branch-model = opus medium). */
-export const CLEANUP_PROMPT =
-  'Branch cleanup: start the cleanup in a separate side session (a subagent or a new session) with model opus and effort medium, ' +
-  'and do not clean up in this session. Use the devops cleanup flow ("branch cleanup"); it asks before deleting anything.'
+/** The plan subagent's brief: read only, a numbered plan, nothing changed. */
+export function cleanupPlanPrompt(root: string, cwd: string): string {
+  return [
+    `You plan the branch and worktree cleanup of the git repository at ${root}. This run is READ-ONLY:`,
+    'run only read commands (git status, git worktree list --porcelain, git branch -vv, git log, git cherry, gh pr list).',
+    'Do not commit, delete, prune, push or change any file.',
+    'Rules of the devops cleanup flow: a branch or worktree may go only when its work is landed in the default branch',
+    '(merged, or the same tree) and it has no uncommitted or unpushed changes. Uncommitted changes are never discarded:',
+    'list them for the user. Never touch the worktree ' + cwd + ' (this session) nor a worktree another running Claude',
+    'session uses (its folder has a recent .claude/ session marker or is the cwd of a running claude process).',
+    'Answer in German markdown, no preamble:',
+    '## Plan — numbered actions, each: what, the exact command(s), and why it is safe.',
+    '## Braucht deine Entscheidung — everything that is not safe, with the evidence (uncommitted files, unmerged commits).',
+    'If nothing is safe to remove, say so in one line under Plan.',
+  ].join('\n')
+}
+
+/** The apply subagent's brief: exactly the approved plan, re-verified per action. */
+export function cleanupApplyPrompt(root: string, cwd: string, plan: string): string {
+  return [
+    `Execute the approved cleanup plan below for the git repository at ${root}, action by action, in order.`,
+    'Before each removing command re-check its safety condition (landed in the default branch, no uncommitted or',
+    'unpushed changes); if it no longer holds, skip that action and say why. Run no command that is not in the plan,',
+    'never force-delete an unmerged branch, never discard uncommitted changes, never touch ' + cwd + '.',
+    'Items under "Braucht deine Entscheidung" are NOT approved: skip them.',
+    'Answer in German markdown, no preamble: one line per action, ✓ done or ⏭ skipped with the reason.',
+    '',
+    'APPROVED PLAN:',
+    plan,
+  ].join('\n')
+}
+
+/** Toast text when a cleanup subagent ends. */
+export function cleanupToast(phase: 'planned' | 'done' | 'failed'): string {
+  if (phase === 'planned') return 'devops cleanup: plan ready — review it in the Cleanup pane'
+  if (phase === 'done') return 'devops cleanup: done — result in the Cleanup pane'
+  return 'devops cleanup: the subagent stopped without a result'
+}
 
 const SHIP_STEPS = ['preflight', 'build', 'bump', 'release'] as const
 

@@ -31,9 +31,16 @@ export type ShipView = {
   checkedAt: number
 }
 
-/** Cleanup button: busy while the main turn runs, sent from a press until the next main turn ends,
- * idleSince = when the last main turn ended (epoch ms), cold once the prompt cache has likely expired. */
-export type CleanupLock = { busy: boolean; sent: boolean; idleSince?: number | null; cold?: boolean }
+/**
+ * The cleanup run the band's button starts: a plan subagent (reads only), then, on the pane's
+ * Apply button, an apply subagent that executes exactly that plan. idle = nothing running.
+ */
+export type CleanupRun = {
+  phase: 'idle' | 'planning' | 'planned' | 'applying' | 'done' | 'failed'
+  agentId: string | null
+  report: string
+  at: number
+}
 
 declare module 'claude-code' {
   interface PluginState {
@@ -43,7 +50,7 @@ declare module 'claude-code' {
       hygiene: Hygiene | null
       ship: ShipView | null
       shells: Record<string, number>
-      cleanup: CleanupLock
+      cleanup: CleanupRun
     }
   }
 }

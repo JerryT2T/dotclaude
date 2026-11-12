@@ -15,7 +15,8 @@
  *   Pane `devops-agents`  /devops-agents   this session's subagents (type, model, elapsed, status)
  *   Pane `devops-ship`    /devops-ship     ship checkpoint of this branch + PR checks (gh, on open/refresh, 8 s cap)
  *   AbovePrompt band                       5-h / weekly percentUsed + context fill (session.measure), compact hint,
- *                                          branch-hygiene count with a cleanup button (fixed prompt)
+ *                                          branch-hygiene count with a cleanup button (opus subagent: plan, then apply)
+ *   Pane `devops-cleanup`                 the cleanup plan / result, Apply and Discard buttons
  *   Status line                            branch-hygiene count (~/.claude/orphan-report.json)
  *   Toasts                                 permission request waiting, long subagent / background Bash finished, SessionStart notices
  *   /mods-spike-fork                       Spike 1: one $.model.fork, usage logged to ~/.claude/devops-mods-spike.jsonl
@@ -25,7 +26,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { AgentRow, Budget, CleanupLock, Hygiene, ShipView } from '../../types/index'
+import type { AgentRow, Budget, CleanupRun, Hygiene, ShipView } from '../../types/index'
 import {
   agentRow,
   budgetFrom,
@@ -35,11 +36,11 @@ import {
   budgetLine,
   contextNote,
   checksFrom,
-  CLEANUP_PROMPT,
+  cleanupApplyPrompt,
+  cleanupPlanPrompt,
+  cleanupToast,
   elapsed,
   hygieneFrom,
-  CACHE_WARM_MS,
-  cleanupOffered,
   hygieneLine,
   LONG_RUN_MS,
   shipFrom,
@@ -50,6 +51,7 @@ import { featureAllowed, homeDir } from './gate'
 
 export const AGENTS_PANE = 'devops-agents'
 export const SHIP_PANE = 'devops-ship'
+export const CLEANUP_PANE = 'devops-cleanup'
 export const SPIKE_COMMAND = 'mods-spike-fork'
 export const SPIKE_PROMPT = 'Reply with the single word: ok'
 const SPIKE_LOG = '/.claude/devops-mods-spike.jsonl'
@@ -61,32 +63,60 @@ const hygiene = atom({ plugin: 'devops', key: 'hygiene' } as const, null as Hygi
 const ship = atom({ plugin: 'devops', key: 'ship' } as const, null as ShipView | null, { shape: 'ship-1' })
 // Background Bash runs by tool_use_id → start time, so their notification can say how long they ran.
 const shells = atom({ plugin: 'devops', key: 'shells' } as const, {} as Record<string, number>, { shape: 'shells-1' })
-// Cleanup button lock: `busy` while the main turn runs, `sent` from a press until the next main turn ends.
-// One press = one prompt; a press while busy or already sent does nothing.
-const cleanup = atom({ plugin: 'devops', key: 'cleanup' } as const, { busy: false, sent: false } as CleanupLock, {
-  shape: 'cleanup-1',
-})
+// The cleanup run: plan subagent → pane with Apply → apply subagent. Survives a reload ($.state).
+const IDLE: CleanupRun = { phase: 'idle', agentId: null, report: '', at: 0 }
+const cleanup = atom({ plugin: 'devops', key: 'cleanup' } as const, IDLE, { shape: 'cleanup-2' })
+// The session's folder (session.start), for the subagents' briefs.
+let sessionCwd = ''
 
-async function pressCleanup($: EngineInterface): Promise<void> {
+async function repoRoot($: EngineInterface): Promise<string> {
+  try {
+    return (await $.session.root()) || sessionCwd
+  } catch {
+    return sessionCwd
+  }
+}
+
+/** Starts one cleanup subagent; a press while one runs does nothing (one press = one run). */
+async function startCleanup($: EngineInterface, kind: 'plan' | 'apply'): Promise<void> {
   let go = false
+  let plan = ''
   await update($, cleanup, s => {
     go = false
-    if (s.busy || s.sent) return s
+    if (s.phase === 'planning' || s.phase === 'applying') return s
+    if (kind === 'apply' && s.phase !== 'planned') return s
     go = true
-    return { ...s, sent: true }
+    plan = s.report
+    return { phase: kind === 'plan' ? 'planning' : 'applying', agentId: null, report: kind === 'plan' ? '' : s.report, at: 0 }
   })
   if (!go) return
+  const root = await repoRoot($)
   try {
-    await $.prompt.submit({ text: CLEANUP_PROMPT })
-  } catch {
-    await update($, cleanup, s => ({ ...s, sent: false })) // vetoed or refused: the button comes back
+    const description = kind === 'plan' ? 'Branch cleanup plan' : 'Branch cleanup apply'
+    const r = await $.agent.spawn({
+      prompt: kind === 'plan' ? cleanupPlanPrompt(root, sessionCwd) : cleanupApplyPrompt(root, sessionCwd, plan),
+      description,
+      subagentType: 'general-purpose',
+      model: 'opus',
+    })
+    if (r.deny !== undefined) throw new Error(String(r.deny))
+    // Core sets agentId; where a host leaves it out, the session's agent list names the run by its description.
+    let agentId = r.agentId
+    if (!agentId) {
+      const listed = (await $.agent.list()).filter(a => a.description === description)
+      agentId = listed.length ? listed[listed.length - 1].id : undefined
+    }
+    if (!agentId) throw new Error('no agent started')
+    await update($, cleanup, s => ({ ...s, agentId: agentId as string }))
+    await $.ui.open({ id: CLEANUP_PANE, title: 'Cleanup' })
+  } catch (err) {
+    const why = err instanceof Error ? err.message : 'spawn failed'
+    await update($, cleanup, () => ({ phase: 'failed', agentId: null, report: `Subagent not started: ${why}`, at: 0 }))
   }
 }
 
 // One gate answer per session (reset at session.start); module vars reset on reload anyway.
 let gate: Promise<boolean> | null = null
-// The timer that hides the cleanup button when the cache goes cold (lost on a reload; the render checks the time too).
-let coldTimer: { cancel: () => void } | null = null
 function open($: EngineInterface): Promise<boolean> {
   if (!gate) gate = featureAllowed($, 'claude-mods').catch(() => false)
   return gate
@@ -173,6 +203,7 @@ export const register: Register = on => {
       name: 'mods-spike-fork',
       description: 'devops spike: one fork of this thread, logs its cache read to ~/.claude/devops-mods-spike.jsonl',
     })
+    sessionCwd = e.cwd || ''
     await refreshHygiene($, e.cwd)
     return started
   })
@@ -268,30 +299,22 @@ export const register: Register = on => {
     return result
   }).catch(($, e, next) => next(e)) // display only: a failure never changes the prompt
 
-  // Cleanup button lock follows the main loop's turns (observe only).
-  on('turn.start', async ($, e, next) => {
-    const result = await next(e)
-    if (e.agentId === undefined && (await open($))) {
-      if (coldTimer) coldTimer.cancel()
-      coldTimer = null
-      await update($, cleanup, s => ({ ...s, busy: true, cold: false }))
-    }
-    return result
-  })
-
+  // A cleanup subagent ended: its answer is the plan (or the apply result) the pane shows.
   on('turn.complete', async ($, e, next) => {
     const result = await next(e)
-    if (e.agentId === undefined && (await open($))) {
-      const now = await $.clock.now()
-      await update($, cleanup, () => ({ busy: false, sent: false, idleSince: now, cold: false }))
-      // Redraw the band once the cache has likely gone cold: the button leaves until the next turn.
-      if (coldTimer) coldTimer.cancel()
-      coldTimer = $.clock.after(CACHE_WARM_MS, () => {
-        void update($, cleanup, s => ({ ...s, cold: true }))
-      })
+    if (e.agentId !== undefined && (await open($))) {
+      const run = await read($, cleanup)
+      if (run.agentId === e.agentId && (run.phase === 'planning' || run.phase === 'applying')) {
+        const answer = (e.answer || '').trim()
+        const phase = e.isAborted || !answer ? 'failed' : run.phase === 'planning' ? 'planned' : 'done'
+        const now = await $.clock.now()
+        await update($, cleanup, () => ({ phase, agentId: null, report: answer || 'No answer.', at: now }))
+        $.ui.toast(cleanupToast(phase), { timeoutMs: 8000 })
+        await $.ui.open({ id: CLEANUP_PANE, title: 'Cleanup' })
+      }
     }
     return result
-  })
+  }).catch(($, e, next) => next(e)) // display only
 
   // C5: the live budget, one source (session.measure); nothing is written.
   on('session.measure', async ($, e, next) => {
@@ -415,15 +438,44 @@ export const register: Register = on => {
     )
   })
 
+  on('ui.render', { component: 'Pane', requestId: CLEANUP_PANE }, async ($, e, next) => {
+    if (!(await open($))) return next(e)
+    const { Box, Button, Markdown, Text } = $.ui.resolve(e)
+    const run = await read($, cleanup)
+    const head =
+      run.phase === 'planning' ? 'Opus is planning the cleanup (read-only)…'
+      : run.phase === 'applying' ? 'Opus is applying the approved plan…'
+      : run.phase === 'planned' ? 'Plan ready. Nothing has changed yet.'
+      : run.phase === 'done' ? 'Cleanup applied.'
+      : run.phase === 'failed' ? 'The cleanup stopped.'
+      : 'No cleanup run yet.'
+    return (
+      <Box flexDirection="column" gap={1}>
+        <Text bold>{head}</Text>
+        {run.report && <Markdown key="cleanup-report" text={run.report} />}
+        <Box flexDirection="row" gap={2}>
+          {run.phase === 'planned' && (
+            <Button key="cleanup-apply" variant="primary" label="Apply plan (deletes)" onPress={() => startCleanup($, 'apply')} />
+          )}
+          {(run.phase === 'planned' || run.phase === 'done' || run.phase === 'failed') && (
+            <Button key="cleanup-discard" label={run.phase === 'planned' ? 'Discard plan' : 'Close'} onPress={() => update($, cleanup, () => IDLE)} />
+          )}
+          {(run.phase === 'idle' || run.phase === 'done' || run.phase === 'failed') && (
+            <Button key="cleanup-plan" label="Plan cleanup (opus)" onPress={() => startCleanup($, 'plan')} />
+          )}
+        </Box>
+      </Box>
+    )
+  })
+
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     if (e.props.hasSurvey || !(await open($))) return next(e)
     const b = await read($, budget)
     const now = await $.clock.now()
     const line = budgetLine(b, now)
     const hyg = await read($, hygiene)
-    const lock = await read($, cleanup)
-    // The band's hygiene row only while a cleanup is worth sending from here (cache warm); the status line keeps the count.
-    const hl = cleanupOffered(lock, now) ? hygieneLine(hyg, false) : null
+    const run = await read($, cleanup)
+    const hl = hygieneLine(hyg, false)
     if (!line && !hl) return next(e)
     const { Box, Button, Text } = $.ui.resolve(e)
     // Desktop, VS Code, mobile: the card's animated SVG bars; the terminal has no Svg, so its glyph line.
@@ -448,10 +500,12 @@ export const register: Register = on => {
           <Box flexDirection="row" alignItems="center">
             {!Svg && <Text dimColor>devops · </Text>}
             <Text dimColor>{hl} </Text>
-            {lock.busy || lock.sent ? (
-              <Text dimColor>[ Clean up · waiting… ]</Text>
+            {run.phase === 'planning' || run.phase === 'applying' ? (
+              <Text dimColor>[ Clean up · {run.phase === 'planning' ? 'planning…' : 'applying…'} ]</Text>
+            ) : run.phase === 'planned' ? (
+              <Button key="cleanup-review" label="Review cleanup plan" onPress={() => $.ui.open({ id: CLEANUP_PANE, title: 'Cleanup' })} />
             ) : (
-              <Button key="cleanup" label="Clean up (opus · medium)" onPress={() => pressCleanup($)} />
+              <Button key="cleanup" label="Clean up (opus)" onPress={() => startCleanup($, 'plan')} />
             )}
             {Svg && (
               <Box flexGrow={1} justifyContent="center">
