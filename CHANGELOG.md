@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.370.0] — 2026-11-12
+
+### Added
+- Mods: the band cleanup button spawns an Opus subagent that plans the cleanup read-only; the plan shows in a new Cleanup pane with a toast, and the pane Apply button spawns a second Opus subagent that executes exactly that plan (re-checking each action). No session start, works over Remote Control.
+
+### Changed
+- Mods band: devops shows as a faint centred mark on Desktop instead of a prefix.
+
 ## [0.369.0] — 2026-11-12
 
 ### Added
