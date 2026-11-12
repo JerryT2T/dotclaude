@@ -983,7 +983,7 @@ describe("runHygiene — trigger, switches and the nudge", () => {
     const first = runHygiene({ cwd: dir, trigger: "promote", settings, statePath, now: NOW, stateKey: dir });
     expect(first.nudge).toBe(true);
     expect(first.card.open).toEqual({
-      text: "3 Branches/Worktrees liegen herum (Schwelle 2) — »branches aufräumen« öffnet die Aufräum-Seite",
+      text: "3 Branches/Worktrees liegen herum (Schwelle 2) — »branches aufräumen« räumt Gelandetes selbst weg und fragt nur bei unklaren Branches",
       reply: "Ja, branches aufräumen.",
     });
     const soon = runHygiene({ cwd: dir, trigger: "promote", settings, statePath, now: NOW + DAY, stateKey: dir });
@@ -1013,7 +1013,7 @@ describe("cardLines", () => {
     expect(cardLines(r, "de")).toEqual({
       tests: { method: "Aufräumen (auto)", result: "2 Branches · 1 Worktree entfernt · 1 übersprungen" },
       open: {
-        text: "61 Branches/Worktrees liegen herum (Schwelle 50) — »branches aufräumen« öffnet die Aufräum-Seite",
+        text: "61 Branches/Worktrees liegen herum (Schwelle 50) — »branches aufräumen« räumt Gelandetes selbst weg und fragt nur bei unklaren Branches",
         reply: "Ja, branches aufräumen.",
       },
     });

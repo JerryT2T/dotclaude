@@ -127,8 +127,8 @@ every real side effect: `do-ship` "ship it" runs the lockout check first,
 tries to load the ship schemas, never attempts `gh pr create|merge` or a
 plain force-push and ends with a card render attempt (MCP or offline CLI —
 the plugin's MCP servers may not connect under `-p`); `auto-cleanup`
-"branches aufräumen" should build the page or the Apply-Manifest and attempt
-no delete without a confirm (measured 2026-10-08: it deleted before asking;
+"branches aufräumen" should remove only proven-landed branches on its own and
+put every ambiguous one on a concept page, never deleting it without a yes (measured 2026-10-08: it deleted before asking;
 since the deletion gate `pre.cleanup.gate` 3/3 runs attempt no delete — see
 `trims/auto-cleanup.md`). The #719 case `do-run/router-defaults` grades
 the router path under `-p`, where the base call is never asked (measured

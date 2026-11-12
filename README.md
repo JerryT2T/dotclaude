@@ -397,8 +397,8 @@ a suggestion: delete (in main), push + PR, reimplement on current main, commit
 or discard a dirty worktree, secure or drop an old stash, `git worktree prune`.
 
 You get one desktop notification only when a new finding appears. Its prompt
-**`WIP-Report aufräumen`** opens the cleanup page with every suggestion
-pre-selected; nothing runs before the dry-run confirmation. On: "WIP-Wächter
+**`Branches aufräumen`** cleans the repo you run it in: what provably landed
+goes on its own, every ambiguous branch lands on one concept page. On: "WIP-Wächter
 an" · off: "WIP-Wächter aus". Runbook: [`wip-watch.md`](plugins/devops/deep-knowledge/wip-watch.md).
 
 </details>

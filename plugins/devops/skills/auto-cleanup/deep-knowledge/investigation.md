@@ -1,12 +1,11 @@
-# Repo-Health Inline Detail Investigation
+# Cleanup Inline Detail Investigation
 
-Data gathered **up-front** (SKILL.md Step 7) for every entry in the concept page.
-All data is embedded in the HTML at first render, hidden behind a `<details>` „?"
-toggle per card. There is no separate iteration loop, no round-trip to Claude.
+Data gathered (SKILL.md Step 7) for every ambiguous item on the concept page and
+embedded in its topic. The autonomous class needs none of it.
 
 ## Git-Session Branch — Data Gathering
 
-For each Git-Session branch (both Löschbar and Untersuchen), gather:
+For each Git-Session branch (ambiguous ones only), gather:
 
 1. **Full commit log** against `origin/main`:
    ```bash
@@ -33,7 +32,7 @@ For each Git-Session branch (both Löschbar and Untersuchen), gather:
      --json number,title,state,mergedAt,createdAt,url
    ```
 
-5. **Squash-merge cross-check** — only for Untersuchen branches with no detected PR.
+5. **Squash-merge cross-check** — only for unproven branches with no detected PR.
    For each commit on the branch, check whether its diff content already exists in
    `origin/main`:
    ```bash
@@ -70,7 +69,7 @@ neither ancestors of main nor PR heads. The same rule decides them in
 
 `rescue/*` and `salvage/*` tips (copies an earlier cleanup made of such
 branches) go through the identical check. Passing ones are SQUASH-MERGED:
-Löschbar, pre-checked.
+autonomous when the gate's own proof also holds, else ambiguous.
 
 ### Recommendation Logic
 

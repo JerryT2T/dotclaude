@@ -4,6 +4,8 @@ Disposition, the cleanup procedure, durable-store disposal, safety rules and the
 
 ## Disposition, cleanup procedure and disposition tables
 
+**Review round first.** The closing page offers the switch "Umsetzung prüfen" (`action: "review"`, `step5-update-page.md` § Review round). A concept that went through a review round closes out like any other: the disposition, the cleanup and the card below are unchanged, and `revert` answers the user did not implement are reported on the card as left open.
+
 **Determine the disposition** in this order of preference:
 
 1. The `finalize` payload's `disposition` field → use it directly.

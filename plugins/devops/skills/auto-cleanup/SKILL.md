@@ -1,10 +1,12 @@
 ---
 name: auto-cleanup
-version: 0.8.0
+version: 0.9.0
 description: >-
-  Branch hygiene of the current project on an interactive page: stale and
-  unmerged branches, worktrees, open PRs to land via do-ship, landed-in-main
-  checks; shows an Apply-Manifest + Dry-Run-Confirm before executing anything.
+  Branch hygiene of the current repo without a report page: removes what
+  provably landed (merged / patch-equal branches, local branches whose remote
+  is gone, worktree entries without a directory) on its own, and puts every
+  ambiguous branch (idle session worktrees with own commits, unlanded work,
+  open PRs) on ONE auto-concept page with a short analysis and a decision each.
   Do NOT trigger for: code cleanup or refactoring, project setup (.gitignore,
   LICENSE), or the branch the current ship removes anyway. Triggers on: "repo
   health", "branch cleanup", "branches aufräumen", "worktrees aufräumen", or a
@@ -14,51 +16,47 @@ invokes: [auto-concept, do-ship]
 user-invocable: false
 triggers:
   en: ["repo health", "branch cleanup", "branch hygiene"]
-  de: ["branches aufräumen", "worktrees aufräumen", "offene PRs landen", "open PRs shippen", "WIP-Report aufräumen"]
+  de: ["branches aufräumen", "worktrees aufräumen", "offene PRs landen", "open PRs shippen"]
 argument-hint: "[optional: focus area — branches, sessions, PRs]"
 allowed-tools: Bash(git *), Bash(gh *), Bash(node *), Bash(start *), Bash(cmd *), Read, Write, Glob, Grep, AskUserQuestion, Skill, mcp__Claude_Browser__*, mcp__claude-in-chrome__*, mcp__Claude_Preview__*, mcp__plugin_playwright_playwright__*, mcp__Claude_in_Chrome__*, mcp__plugin_devops_dotclaude__render_completion_card, mcp__plugin_devops_dotclaude__health_check, mcp__plugin_devops_dotclaude__ship_preflight, mcp__plugin_devops_dotclaude__ship_build, mcp__plugin_devops_dotclaude__ship_version_bump, mcp__plugin_devops_dotclaude__ship_release, mcp__plugin_devops_dotclaude__ship_promote, mcp__plugin_devops_dotclaude__ship_cleanup, mcp__plugin_devops_dotclaude__ship_hygiene, mcp__ccd_session_mgmt__list_sessions, mcp__ccd_session_mgmt__get_session
 ---
 
 # Auto-Cleanup — Repo Health
 
-Analyze the current project's repository for branch hygiene, unmerged work, and
-cleanup opportunities. Present results as an interactive concept page with
-filters and decision controls.
+Clean up the **current repo** and nothing else. No report page, no
+Apply-Manifest, no checkbox list: what provably landed is removed on its own,
+and only the genuinely ambiguous branches reach the user — on ONE concept page
+with a short analysis and one decision each.
 
 ## Where this skill sits
 
-The cleanup has an automatic half and this interactive half. After every
-successful ship, `ship_hygiene` (`mcp-server/ship/lib/hygiene.js`) removes
-what provably landed — by age (older than 3 days), count (beyond the newest
-5) or disk (kept session worktrees above 10 GB) — without a page, and nudges
+After every successful ship, `ship_hygiene` (`mcp-server/ship/lib/hygiene.js`)
+removes what provably landed by age, count or disk without a page, and nudges
 here (an ⚠ OFFEN card item, at most weekly) once more than 50 leftovers lie
-around. **This skill** runs on a yes to that item or a trigger phrase and
-removes whatever the user ticks on the page, recent items included.
+around. **This skill** runs on a yes to that item, a trigger phrase or a click
+on the card's cleanup hint, and finishes the job: the autonomous class at any
+age, the rest through the concept page. The numbers are user settings
+(`{PLUGIN_ROOT}/deep-knowledge/devops-config.md`, section `cleanup`).
 
-The numbers are user settings (`{PLUGIN_ROOT}/deep-knowledge/devops-config.md`,
-section `cleanup`). Scope is the current project — except in the one input
-mode below.
+**Scope: the current repo, always.** There is no multi-repo mode. The opt-in
+WIP watch (`{PLUGIN_ROOT}/deep-knowledge/wip-watch.md`) only reports; its
+notification points at `branch cleanup`, which you run in the repo you mean.
 
-**Input mode: WIP report.** On `WIP-Report aufräumen` / "wip report
-aufräumen" (the prompt the opt-in WIP watch notification carries), or when
-invoked for the report, do NOT investigate the current repo: read
-`deep-knowledge/wip-report.md` and work `~/.claude/wip-watch/report.json`
-(multi-repo) instead. Steps 0–7 are replaced by loading that file; the page
-(Step 8) groups the findings per repo, pre-selects each item's suggested
-action and the user picks per item; Step 10 runs per repo with that repo as
-cwd, re-verifies every item (tip unchanged) and keeps the Apply-Manifest +
-Dry-Run-Confirm, the Deletion gate and the SAFETY rules unchanged. Opening the
-page is the only token-costing step — the report itself came from a zero-token
-job (`{PLUGIN_ROOT}/deep-knowledge/wip-watch.md`).
+Two classes, decided per item at execution time:
 
-On this page a session worktree only goes when the user ticks it (HARD RULE
-below).
+| Class | What | What happens |
+|---|---|---|
+| **Autonomous** | a branch landed in main (merged, or patch-equal / squash — positive proof, nothing unique left) that is checked out nowhere; a local branch whose remote is gone **and** whose content landed; a worktree registration whose directory is gone (prunable) | removed without asking |
+| **Ambiguous** | everything else: an idle session worktree with own commits, unlanded or partly landed work, a branch the proof cannot answer, an open PR | ONE `auto-concept` page, a short analysis per branch, one decision each |
+
+**Untouchable, in both classes:** branches and worktrees of running sessions
+(an idle session worktree is not autonomous even with 0 commits ahead), any
+worktree with uncommitted or untracked changes, the main checkout, the current
+branch, the default branch. Doubt is ambiguous, never autonomous.
 
 ## Step 0 — Repo-mode check
 
-Before any git command, verify this directory is a git repository (not in the
-WIP-report mode above, which names its repos itself and runs this check per
-repo before acting):
+Before any git command, verify this directory is a git repository:
 
 ```bash
 git rev-parse --is-inside-work-tree
@@ -122,32 +120,39 @@ NEVER test membership by prefix or substring (`grep -q`, `[[ $set == *$name* ]]`
 `feat/x-abc123-def456`), and a substring test silently hides the shorter
 independent branch from every list.
 
-## Deletion gate — no answer is a no
+## Deletion gate — autonomous class, or a decision
 
-**Never run a delete before the Dry-Run-Confirm is answered.** That holds for
-every local branch, remote branch and worktree, and also when there is no page:
-no browser, or a repo so small the page looks like overkill, is no exception.
-Without the page, print the Apply-Manifest (`deep-knowledge/execution.md`
-§ Step 10a) as text and ask the confirm right away.
+`pre.cleanup.gate` (armed when this skill loads) judges **every** delete at
+the moment it runs, from the live repo — never from the classification you made
+earlier, so a tip that moved since then fails the proof:
 
-- **Dry-Run-Confirm** = one `AskUserQuestion`, header `Dry-Run`, the question
-  names every branch and worktree to delete by full name (never `x-{a,b}`),
-  options `Ja, ausführen` / `Abbrechen`.
-- **Unmerged branch** (Untersuchen — content not in the default branch) =
-  additionally its own yes: one multiSelect question, header `Unmerged`,
-  options = the full branch names; only ticked names count.
+- **Passes without a question:** the autonomous class — a branch with positive
+  proof it landed (merge-base ancestry, `git cherry` without a unique commit,
+  or a no-op merge) that no worktree has checked out (main checkout, current
+  branch and session worktrees included); a remote branch with the same proof;
+  a `git worktree remove` of a registration whose directory is gone.
+- **Refused:** everything else — any directory delete, any worktree that still
+  has a directory, the default branch, a target the gate cannot name literally
+  (`$b`, a glob, `xargs`), any branch the proof cannot answer.
+- **Decided on the concept page:** an ambiguous item is deleted only after the
+  user chose "Entfernen" for it on the page. The page submit is not a tool the
+  gate can see, so relay exactly those decisions once: one `AskUserQuestion`,
+  header `Dry-Run`, the question names every branch and worktree the page
+  decided to delete by full name (never `x-{a,b}`), options `Ja, ausführen` /
+  `Abbrechen`. An unlanded branch additionally needs its own multiSelect
+  question, header `Unmerged`, options = the full branch names; only ticked
+  names count.
 - **No answer is a no.** An error (`Answer questions?` under `claude -p`), a
   denied or unavailable tool, `Abbrechen`, `Behalten`, an Other or free-text
-  reply: nothing is deleted. Do not ask "how else", do not retry another way —
-  end the run with the `analysis` card, the manifest listed as open.
+  reply: nothing of the ambiguous class is deleted. Do not retry another way —
+  end the run with the `analysis` card, the open items listed.
 
-`pre.cleanup.gate` enforces this: armed when this skill loads, it refuses every
-`git branch -d/-D`, `git push --delete`, `git worktree remove` that no yes
-covers. A refusal is final for this run.
+A refusal is final for this run. Never widen the autonomous class by hand
+(no `--force`, no script, no loop around the gate).
 
 ## Step 1 — Repo Context
 
-Gather repository identity for the page's header card:
+Gather the repository identity (also the concept page's header, if one is needed):
 
 1. **Repo name:** `basename $(git rev-parse --show-toplevel)`
 2. **Local path:** `git rev-parse --show-toplevel`
@@ -189,60 +194,57 @@ is excluded from ALL subsequent steps — classification, recommendations, AND c
      fully in main via squash). Display it as an informational badge, never as a lock.
    - For `has-changes`: collect counts (modified, added, untracked files) and
      commit-ahead count for display
-   - **clean Aktive Sessions are placed in the Löschbar group but NOT pre-checked**
-     (default = keep); the user must consciously opt in to removing them.
+   - **An Aktive Session is never autonomous** — not even clean, not even with
+     0 commits ahead: an idle session worktree with own commits (`own_content`)
+     is an ambiguous item (concept page); one with `has-changes` is untouchable
+     and shown only as read-only context.
 
 ## Step 3 — Branch Classification
 
-Every entry is a **git branch** (a ref). The two attributes per entry are:
-- **Typ**: "Aktive Session" (branch WITH a checked-out worktree directory) or
-  "Git-Session" (plain branch without a worktree)
-- **Ort**: "lokal" / "nur-remote" / "lokal+remote"
+Every entry is a **git branch** (a ref). Per entry: **Typ** "Aktive Session"
+(branch WITH a checked-out worktree directory) or "Git-Session" (plain branch),
+**Ort** "lokal" / "nur-remote" / "lokal+remote".
 
 For each local branch (excluding worktree/Aktive-Session branches — exclusion by
 **exact** protected-set membership, see SAFETY above; never by prefix):
 
-1. **Check merge status against `origin/main`:**
-   - `git merge-base --is-ancestor <branch> origin/main` -> MERGED (git ancestor)
-   - If not ancestor: check if the branch has a corresponding **merged PR** on GitHub
-     (`gh pr list --state merged --head <branch> --json number,mergedAt --limit 1`)
-   - If merged PR found -> SQUASH-MERGED (content in main via squash, but git doesn't know)
-   - If not: chain/tree check (sub-agent, `rescue/*`, `salvage/*` branches) passes -> SQUASH-MERGED
-     (`deep-knowledge/investigation.md` § Chain- and tree-landed)
-   - If neither -> UNMERGED
+1. **Positive proof of landing against `origin/main`** — the same proofs the
+   gate re-runs at delete time:
+   - `git merge-base --is-ancestor <branch> origin/main` -> MERGED
+   - else `git cherry origin/main <branch>` prints only `-` lines (every
+     commit patch-equal to one in main), or `git merge-tree --write-tree
+     origin/main <branch>` yields main's own tree (squash) -> LANDED
+   - A merged PR on GitHub, a chain/tree check (`rescue/*`, `salvage/*`, see
+     `deep-knowledge/investigation.md` § Chain- and tree-landed) or any
+     result a git call could not answer is **evidence, not proof**: the branch
+     is AMBIGUOUS (analysis: "PR #n merged, not provable by git"). Doubt never
+     becomes autonomous.
+2. **Remote tracking:** `git branch -vv` `[origin/...: gone]` = the remote
+   branch was deleted (typically after the PR merge). A gone remote alone is
+   no proof: it is autonomous only together with proof 1.
+3. **Diff against main (excluding CHANGELOG.md):**
+   `git diff --stat origin/main...<branch> -- . ':(exclude)CHANGELOG.md'`
+4. **Last commit:** `git log -1 --format="%h %s (%cr)" <branch>`
 
-2. **Check remote tracking status:**
-   - `git branch -vv` -> look for `[origin/...: gone]` markers
-   - gone = remote branch was deleted (typically after PR merge)
+Classify each entry into exactly one bucket (the buckets **partition** all
+entries):
 
-3. **Compute diff against main (excluding CHANGELOG.md):**
-   - `git diff --stat origin/main...<branch> -- . ':(exclude)CHANGELOG.md'`
-   - This shows whether the branch has substantive changes beyond changelog entries
-
-4. **Last commit info:**
-   - `git log -1 --format="%h %s (%cr)" <branch>` — hash, message, relative date
-
-Classify each branch (Git-Session) into one of two top categories that
-**partition** all entries and **sum** to the total:
-
-| Category | Meaning | Default checkbox |
-|----------|---------|-----------------|
-| 🟢 **Löschbar** | MERGED or SQUASH-MERGED Git-Sessions | Pre-checked (delete) |
-| 🟡 **Untersuchen** | UNMERGED Git-Sessions (no PR or open PR) | Unchecked (keep) |
-
-Aktive Sessions (worktree branches) are always placed in their own dedicated
-block per c6 — never mixed into the Git-Session list.
+| Bucket | Meaning | Action |
+|--------|---------|--------|
+| 🟢 **Autonomous** | LANDED by proof 1, checked out nowhere; a worktree registration whose directory is gone | removed in Step 8a |
+| 🟡 **Ambiguous** | UNMERGED / unproven / partly landed branches, open PRs, idle session worktrees with own commits | concept page (Step 8b) |
+| 🔒 **Protected** | worktree branches of sessions, the current and the default branch | never touched |
 
 **Consistency check (mandatory, end of Step 3):** every local branch must land
 in exactly one bucket, so
 
 ```
-|Löschbar| + |Untersuchen| + |protected set| == |git branch --format='%(refname:short)'|
+|Autonomous| + |Ambiguous| + |Protected| == |git branch --format='%(refname:short)'|
 ```
 
 If the sums differ, do NOT continue silently: print a warning naming the count
 gap and the branches that appear in no bucket (`comm -23` of all local branches
-vs. the union), and surface the same warning on the concept page header.
+vs. the union), and put the same warning on the concept page, if one is built.
 
 **Truth-source audit (mandatory, after classification and again in Step 10):**
 write every candidate as `[{ "branch", "ort" }]` and run
@@ -254,9 +256,9 @@ node "{PLUGIN_ROOT}/scripts/repo-health-audit.js" <repo> candidates.json --defau
 It confirms each entry exists as an exact ref where the Ort says (`refs/heads`
 for lokal, `ls-remote --heads` for remote), and rejects protected names
 (`main`, `master`, `HEAD`, `origin`, the default branch) and worktree branches.
-Every finding drops the entry from the page and is listed as a warning; the
-page header shows "N Refs geprüft, K Befunde". Never render a candidate set
-that has not passed this audit.
+Every finding drops the entry and is listed as a warning ("N Refs geprüft, K
+Befunde" on the card). Never act on a candidate set that has not passed this
+audit.
 
 ## Step 4 — Remote Branch Audit
 
@@ -265,7 +267,7 @@ After `fetch --prune`, take the remote branch list from `git ls-remote --heads o
 present in `refs/heads`:
 
 - Check if merged into `origin/main` or has a merged PR
-- Classify as Löschbar or Untersuchen
+- Classify as Autonomous (same proof against the remote tip) or Ambiguous
 - Track separately as remote-only branches (Ort = "nur-remote")
 
 ## Step 5 — PR Cross-Reference + Open-PR Inventory
@@ -308,149 +310,97 @@ git log --oneline origin/main -1
 
 Verify local `main` is up to date with `origin/main`. Flag if behind.
 
-## Step 7 — Gather Inline Detail Data
+## Step 7 — Gather the analysis for the ambiguous items
 
-For EVERY entry (both Löschbar and Untersuchen, and every Aktive Session),
-gather up-front the data the inline „?" detail panel shows — commit log, diff
-by file, age, PR status, squash cross-check, WIP heuristic and a one-line
-recommendation label. Commands and recommendation rules:
-`deep-knowledge/investigation.md`. All data is embedded in the HTML at first
-render behind a `<details>` expand; no round-trip to Claude to view it.
+For every ambiguous item only (the autonomous class needs no analysis), gather
+the data its short analysis shows — commit log, diff by file, age, PR status,
+squash cross-check, WIP heuristic and a one-line recommendation. Commands and
+recommendation rules: `deep-knowledge/investigation.md`.
 
-## Step 8 — Generate Concept Page
+## Step 8 — Autonomous removal, then ONE concept page
 
-Build a **self-contained HTML concept page** using the `dashboard` variant.
-Follow the design system and full HTML/CSS/JS scaffold in
-`skills/auto-concept/deep-knowledge/templates.md` (referenced by name, not by
-concept's step numbers).
+**8a — Remove the autonomous class** (Steps 1–6 produced it). No page, no
+manifest, no question. Per item, immediately before acting: rebuild the
+protected set (SAFETY), re-run the proof, then delete by full refname
+(`git branch -d` first; `-D` only for a squash/patch-equal branch the gate has
+proven). Remote branches with `git push origin --delete refs/heads/<name>`
+only when the proof holds for the remote tip; a gone-remote local branch needs
+the same landed proof. Prunable worktree entries: `git worktree remove
+<path>` per entry, then one `git worktree prune`. Never a native directory
+delete here. Record every removal (name, kind, proof) — the completion card
+lists them all.
 
-### Page Structure & Tooltips
-
-The full ASCII mockup of the page (header, KPI summary, Aktive-Sessions section,
-filter bar, branch list grouped into Löschbar / Untersuchen, Apply-Manifest
-sidebar, main-sync section) and the mandatory tooltip table for every action
-control live in `deep-knowledge/page-structure.md`.
-
-### Decision Schema
-
-The submit payload shape (repo metadata, filter state, per-branch decisions,
-Aktive-Session actions, global options, comments) is documented in
-`deep-knowledge/decision-schema.md`. The schema uses 2-state controls:
-delete (checked) or keep (unchecked). The inline „?" detail is read-only and
-does NOT add a third action state.
-
-### File Location
-
-Write to: `~/.claude/devops-concepts/{date}-repo-health.html`
-(resolves to `$USERPROFILE/.claude/devops-concepts/` on Windows, `$HOME/.claude/devops-concepts/` on Unix).
-The `ss.permissions.ensure.js` SessionStart hook pre-approves writes to this path so no permission prompt fires.
-Create the directory if missing: `mkdir -p ~/.claude/devops-concepts` (Unix) or `mkdir "%USERPROFILE%\.claude\devops-concepts" 2>nul` (Windows).
-
-### Filter Behavior and Design Details
-
-The filter behavior (select-all banner, filter state in the decisions JSON,
-the cross-category counter) and every design detail of the page (badges,
-the single delete checkbox, Aktive-Session and Offene-PR sections, defaults
-per group) live in `deep-knowledge/page-structure.md` § Filter Behavior and
-§ Important Design Details. Read that file before writing the HTML — the
-page is built from it, not from memory.
+**8b — Ambiguous items → ONE page.** Zero ambiguous items → no page, go to
+Step 11. Otherwise invoke `Skill("devops:auto-concept")` once, with the repo
+context and the items; read `deep-knowledge/page-structure.md` first for the
+shape (one topic per branch: a short analysis, the facts, a recommendation and
+the decision options). Never a second page per group, never a repo-health
+dashboard, never an Apply-Manifest. Open PRs are ambiguous items too
+(`deep-knowledge/open-prs.md`; decision `Shippen` / `Behalten`).
 
 ## Step 9 — Open & Monitor
 
-Open the page in the browser and monitor for the submit signal.
-Follow the open + monitor bridge in
-`skills/auto-concept/deep-knowledge/bridge-server.md` (server launch,
-Edge-open, heartbeat + decision polling), respecting the
-**Edge rules** (`{PLUGIN_ROOT}/deep-knowledge/browser-tool-strategy.md` § Edge rules):
-new tab in running Edge, user's profile context, Claude extension for interaction.
+The concept skill opens the page and monitors the submit (its bridge, Edge
+rules and heartbeat); do not build a bridge here.
 
-```bash
-start "" msedge "file:///$(cygpath -m "{filepath}")"
+## Step 10 — Execute the concept decisions
 
-# Track the opened report so /do-ship can re-open it from the main-repo
-# path after a future worktree cleanup (issue #160).
-node "{PLUGIN_ROOT}/scripts/session-open-tracker.js" track \
-  "$(cygpath -w "{filepath}")" \
-  --context=repo-health
-```
+When the page is submitted (`deep-knowledge/decision-schema.md`):
 
-**Windows note:** always run `{filepath}` through `cygpath -m` before
-prefixing `file:///` — raw `$(pwd)`-style paths produce a broken
-`file:///c/Users/...` URL (missing drive colon → `ERR_FILE_NOT_FOUND`).
-See `{PLUGIN_ROOT}/deep-knowledge/browser-file-urls.md`.
+1. **Read the decisions.** Only items decided "Entfernen" / "Shippen" act;
+   "Behalten" and anything undecided is a no-op.
+2. **Re-check worktree branches** — `git worktree list --porcelain` again,
+   rebuild the protected set. NEVER trust cached data for deletion.
+3. **Validate** every branch to delete: protected → skip with a warning;
+   gone already → skip silently; re-run `scripts/repo-health-audit.js` on the
+   exact set (second audit pass) — `main`/`master`/`HEAD`/`origin`/default
+   branch are refused here by name; any finding skips that entry. Re-verify the
+   tip is unchanged since the analysis; a moved tip is skipped as "Tip hat sich
+   geändert".
+4. **Relay the decisions to the gate** (Deletion gate above), then execute.
 
-Inform the user:
-
-> Repo-Health geoeffnet. Löschbar-Gruppe ist vorausgefuellt — hake ab, was du
-> behalten willst. Untersuchen-Gruppe ist eingeklappt — klappe auf und hake an,
-> was du loeschen willst. Offene PRs: „Shippen" ist bei landebereiten PRs
-> vorausgewaehlt — jeder wird einzeln via /do-ship gelandet. Klick „?" fuer
-> Inline-Details pro Eintrag. Submit startet Dry-Run-Vorschau bevor
-> irgendetwas passiert.
-
-## Step 10 — Execute Decisions
-
-When the user submits via the concept page:
-
-1. **Read decisions** from `#concept-decisions` JSON.
-2. **Partition items by action:**
-   - Open PRs with `ship: true` -> Step 10b (ship queue) — runs FIRST
-   - Branches with `delete: true` -> Step 10c (cleanup)
-   - Aktive Sessions (clean) with `remove: true` -> Step 10c (cleanup)
-   - Everything else -> no-op (keep)
-   - A branch that is both the head of a `ship: true` PR and `delete: true`
-     is dropped from the delete set with a note — `/do-ship` removes it.
-3. **Re-check worktree branches** — run `git worktree list --porcelain` again
-   and rebuild the protected set. NEVER trust cached data for deletion.
-4. **Validate** every branch marked for deletion:
-   - Is it in the protected set? -> SKIP with warning, update page
-   - Does it still exist? -> Skip silently if already gone
-   - Re-run `scripts/repo-health-audit.js` on the exact set about to be
-     deleted (Step 3 audit, second pass). Any finding -> SKIP that entry with
-     its reason. `main`/`master`/`HEAD`/`origin`/default branch are refused
-     here by name, regardless of what the payload says.
-
-### Steps 10a–10c — Manifest, Ship Queue, Cleanup (read before any action)
+### Steps 10a–10c — Execution (read before any action)
 
 Read `deep-knowledge/execution.md` now and follow it in order — no ship, no
 delete and no worktree removal before it is in context:
 
-- **10a** Apply-Manifest + Dry-Run-Confirm — nothing runs without the
-  user's explicit yes.
-- **10b** Ship Queue — every `ship: true` PR through the full `/do-ship`
+- **10a** Relay to the gate — nothing of the ambiguous class runs without the
+  user's explicit decision on the page and the relayed yes.
+- **10b** Ship Queue — every `Shippen` PR through the full `/do-ship`
   pipeline, oldest first, `.claude/.ship-queue` armed once; never `gh pr merge`.
-- **10c** Cleanup Execution — branches, remotes, clean worktrees, prune, sync.
+- **10c** Cleanup Execution — branches, remotes, clean worktrees, prune.
 - **Safety Invariants** and **Worktree Removal Safety** — binding for every
-  step of 10b and 10c.
+  step of 8a, 10b and 10c.
 
 ## Step 11 — Completion Card
 
-Trigger this step only when the run is **done** — i.e. the user closed the
-monitor or the most recent submit was processed.
+Trigger this step when the run is **done** — the autonomous removal finished
+and, if a page exists, the user closed it or the last submit was processed.
 
-When triggered, call `mcp__plugin_devops_dotclaude__render_completion_card`:
+Call `mcp__plugin_devops_dotclaude__render_completion_card`:
 
 | Situation | Variant |
 |-----------|---------|
 | ≥1 PR shipped via the queue and none blocked | `ship-successful` (needs `state.pushed` + `state.merged`; any doubt → `ready`) |
 | ≥1 PR blocked in the queue | `ship-blocked` (reasons listed per PR) |
-| Branches / remotes / worktrees deleted, no PRs shipped | `ready` |
-| User reviewed but didn't delete or ship anything | `analysis` |
+| Branches / remotes / worktrees removed (autonomously or by decision), no PRs shipped | `ready` |
+| Nothing removed; items left on the page, or the user reviewed only | `analysis` |
 | User aborted mid-flow | `aborted` |
 
-Pass: `variant`, `summary` (e.g. "Repo hygiene — 2 PRs shipped, 4 branches
-cleaned"), `lang`, `session_id`, `changes` (counts per action: PRs merged /
-blocked, local/remote/worktrees removed), and `state` when git operations
-happened. Each `/do-ship` in the queue rendered its own card already; this final
-card is the aggregate. Output the markdown VERBATIM as the LAST thing in the
-response.
+Pass: `variant`, `summary` (e.g. "Repo hygiene — 12 removed on its own, 3 on
+the concept page"), `lang`, `session_id`, `changes` (counts per action) and
+`state` when git operations happened. **The card reports both halves:** every
+item removed autonomously (name, kind, proof — branch, remote, worktree entry)
+and what went to the concept page (decided / still open). Each `/do-ship` in
+the queue rendered its own card already; this final card is the aggregate.
+Output the markdown VERBATIM as the LAST thing in the response.
 
 ## Rules
 
-- Concept page is the primary output — do NOT also dump a markdown report
-- Repo context (name, path, remote) is always visible in the page header
+- No repo-health page, no Apply-Manifest: the concept page exists only for
+  ambiguous items, and only one
+- Current repo only — never read another repo's refs, never a WIP report
 - German UI labels unless project overrides
-- Self-contained HTML, no external dependencies
-- Keep file size reasonable (< 500KB)
+- Everything removed autonomously is listed in the result
 - At-risk and parked work (`parked/<topic>`; landed branches are never parked)
-  is never a default deletion candidate — see git-hygiene.md § At-risk work and the park register
+  is never an autonomous candidate — see git-hygiene.md § At-risk work and the park register

@@ -744,6 +744,11 @@ What the code does, in the order of the file:
    *       U+2063 + that id (invisible, stripped wherever the text is shown or submitted) ----- */
   const MSG_MARK = '\u2063';
   const MSG_MARK_RE = /\u2063([a-z0-9]+)$/;
+  /** The plain texts of the notes a stage holds (sent messages, drafts included; markers dropped) - the closing shows them too. */
+  function noteTexts(inst, st) {
+    const store = storeOf(inst, st);
+    return store ? msgsOf(st, store).map(plainMsg).map(t => t.trim()).filter(Boolean) : [];
+  }
   function plainMsg(m) { return String(m || '').replace(MSG_MARK_RE, ''); }
   function msgIdOf(m) { const r = MSG_MARK_RE.exec(String(m || '')); return r ? r[1] : ''; }
   function slotRecs(inst, st) {
@@ -999,7 +1004,12 @@ What the code does, in the order of the file:
   function loadComposer(inst, st) {
     const store = storeOf(inst, st), ed = inst.comp.ed, prev = inst.compSt, draft = compText(ed);
     const keep = prev === st && draft && store && st.msgSig === store.value;
-    if (prev && prev !== st && !frozen(inst) && (draft || pendingRecs(inst, prev).length)) { sealDraft(inst, prev, draft); renderNotes(inst, prev); }
+    if (prev && prev !== st && !frozen(inst) && (draft || pendingRecs(inst, prev).length)) {
+      sealDraft(inst, prev, draft); renderNotes(inst, prev);
+      // The note sent with the answer (Ctrl+Enter / arrow keys / rail) is a message only now: the earlier question's own
+      // bubble under its answer is redrawn at once, never left without it (the cache of go() ran before this seal).
+      if (prev.me) fillMe(inst, prev, true);
+    }
     inst.compSt = st;
     ed.dataset.ph = L('Notiz an devops … (optional)', 'Note to devops … (optional)');   // a question with "Keine passt" re-sets it (syncDecision)
     if (!keep) clearComposer(inst);
@@ -1008,6 +1018,13 @@ What the code does, in the order of the file:
     inst.comp.att.hidden = false;   // every stage takes attachments (its own slot), not only the questions with an attach bar
     closeLightbox(inst);
     renderStrip(inst);
+  }
+  /** The stage being left: its draft (and the strip's attachments) become a sent message BEFORE any view reads the notes
+   *  (the earlier question's bubble, the closing overview) - Ctrl+Enter, arrow keys and the rail all pass through here. */
+  function sealLeaving(inst, prev) {
+    if (!prev || !inst.comp || frozen(inst) || inst.compSt !== prev) return;
+    const draft = compText(inst.comp.ed);
+    if (draft || pendingRecs(inst, prev).length) { sealDraft(inst, prev, draft); renderNotes(inst, prev); }
   }
   function focusComposer(inst) {
     const ed = inst.comp.ed;

@@ -63,7 +63,7 @@
  *      (squash merge plus later edits); never removable.
  *   2. Nudge (after ship and promote). More than `nudgeThreshold` leftovers
  *      (default 50) and the cooldown (`nudgeCooldownDays`, default 7) passed →
- *      the card gets an open item that points to the cleanup page.
+ *      the card gets an open item that points to the cleanup (autonomous for landed items, one concept page for the rest).
  *
  *   Settings come from hooks/lib/devops-config.js (`cleanup` section);
  *   the per-repo clock and the last removal log live in
@@ -1567,11 +1567,11 @@ export function cardLines(result, lang = "de") {
   if (result.nudge) {
     out.open = de
       ? {
-        text: `${result.leftover} Branches/Worktrees liegen herum (Schwelle ${result.threshold}) — »branches aufräumen« öffnet die Aufräum-Seite`,
+        text: `${result.leftover} Branches/Worktrees liegen herum (Schwelle ${result.threshold}) — »branches aufräumen« räumt Gelandetes selbst weg und fragt nur bei unklaren Branches`,
         reply: "Ja, branches aufräumen.",
       }
       : {
-        text: `${result.leftover} branches/worktrees lying around (threshold ${result.threshold}) — say "branch cleanup" to open the cleanup page`,
+        text: `${result.leftover} branches/worktrees lying around (threshold ${result.threshold}) — say "branch cleanup" — it removes what landed on its own and asks only about unclear branches`,
         reply: "Yes, branch cleanup.",
       };
   }

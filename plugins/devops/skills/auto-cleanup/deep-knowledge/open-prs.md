@@ -1,8 +1,8 @@
 # Repo-Health Open-PR Inventory
 
 Per-PR detail of SKILL.md Step 5b, read on demand: only when `gh pr list
---state open` returned at least one PR. Every open PR becomes one entry on the
-page — work that still has to land.
+--state open` returned at least one PR. Every open PR becomes one ambiguous
+item on the concept page — work that still has to land.
 
 Then per PR the landing facts:
 
@@ -36,10 +36,9 @@ or no match → `session: null`, never a failure.
 | `checks-red` | `statusCheckRollup` has a failed required check | „CI rot — /do-ship wartet nicht auf rot" (selectable, expected to block) |
 | `fremd` | not the viewer's PR | „fremder PR — nicht von hier shippen" (never selectable) |
 
-Pre-check on the page only `shippable: yes` AND `mergeStateStatus` in
-`CLEAN` / `BEHIND` / `UNSTABLE`(no required failure) — the user opts into the
-rest consciously. A PR is never both a delete candidate and a ship candidate:
-a head branch with an open PR is `pr-open` in Untersuchen (unchecked) and
-appears in the ship queue; if the user ships it, `/do-ship` removes the branch
-itself, so the delete checkbox for that branch is disabled on the page with
-tooltip „wird beim Shippen entfernt".
+Recommend `Shippen` on the concept page only for `shippable: yes` AND
+`mergeStateStatus` in `CLEAN` / `BEHIND` / `UNSTABLE` (no required failure) —
+the user opts into the rest consciously. A PR is never both a delete and a
+ship candidate: a head branch with an open PR is an ambiguous item whose
+decision is `Shippen` / `Behalten` (no delete option); if the user ships it,
+`/do-ship` removes the branch itself.

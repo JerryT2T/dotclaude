@@ -127,3 +127,18 @@ the manifest (one run listed it without the literal word "Apply-Manifest");
 regraded on the recorded streams. In all three runs the gate state was armed
 with no recorded confirmation (the question errored under `-p`) — the hook had
 nothing to refuse because the model attempted no delete. $4.37, mean 167 s.
+
+## Follow-up — no report page (2026-11-12, #4)
+
+The repo-health page and its Apply-Manifest + Dry-Run-Confirm are gone (the
+page's "Aufräumen starten" button failed with "Server nicht erreichbar" and
+the user asked to abolish it). New flow: what provably landed is removed
+without a question (the gate's autonomous class, proven per item at delete
+time), everything ambiguous goes to ONE auto-concept page with a short analysis
+per branch; the WIP-report (multi-repo) mode is removed — the cleanup is
+current-repo only. The case `manifest-before-delete` was replaced by
+`autonomous-then-concept` (graders: no repo-health page / manifest, no Dry-Run
+question for the landed branch, landed branch removed unasked, unmerged branch
+never deleted and handed to the concept). The pinned gate contract was rewritten
+accordingly; the A/B numbers above describe the old flow and are history. The
+new case has not been run against a real model yet (costs usage).

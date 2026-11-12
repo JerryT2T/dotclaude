@@ -188,7 +188,7 @@ async function restoreInFlightRound() {
     catch (e) { data = null; }
   }
   if (!data || data.submitted !== true) return;
-  if (data.action !== 'iterate' && data.action !== 'implement' && data.action !== 'next-stage') return;
+  if (data.action !== 'iterate' && data.action !== 'implement' && data.action !== 'next-stage' && data.action !== 'review') return;
   if (data.iteration == null || String(data.iteration) !== String(live.dataset.iteration)) return;
   // The user may have submitted from this tab while the fetch was out.
   if (_submittedAt || _submitInFlight) return;

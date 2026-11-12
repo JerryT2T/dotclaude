@@ -6,7 +6,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 
-vi.setConfig({ testTimeout: 30_000 });
+vi.setConfig({ testTimeout: 120_000 });
 
 const require = createRequire(import.meta.url);
 // A loaded box lets a 5 s call expire and the gate then (correctly) fails closed - not a gate bug.
@@ -48,7 +48,11 @@ function scaffold() {
   fs.writeFileSync(path.join(repo, "wip.txt"), "w\n");
   git(repo, "add", "-A"); git(repo, "commit", "-qm", "wip");
   git(repo, "checkout", "-q", "main");
-  git(repo, "push", "-q", "origin", "main", "feat/merged", "feat/squash", "feat/unmerged");
+  git(repo, "checkout", "-q", "-b", "feat/ambig");
+  fs.writeFileSync(path.join(repo, "ambig.txt"), "a\n");
+  git(repo, "add", "-A"); git(repo, "commit", "-qm", "ambig");
+  git(repo, "checkout", "-q", "main");
+  git(repo, "push", "-q", "origin", "main", "feat/merged", "feat/squash", "feat/unmerged", "feat/ambig");
   fs.mkdirSync(path.join(repo, ".claude"), { recursive: true });
   fs.writeFileSync(path.join(repo, ".claude", "settings.json"), JSON.stringify({ enabledPlugins: { "devops@dotclaude": true } }));
   return { dir, repo };
@@ -218,7 +222,7 @@ describe("namesBranch / namesWorktree — exact names only", () => {
 
 describe("hasLanded / decide against a real repo", () => {
   let w;
-  beforeAll(() => { w = scaffold(); });
+  beforeAll(() => { w = scaffold(); }, 120_000);
   afterAll(() => { try { fs.rmSync(w.dir, { recursive: true, force: true }); } catch { /* best effort */ } });
 
   test("merged and squash-merged branches have landed; unmerged and missing ones have not", () => {
@@ -238,16 +242,16 @@ describe("hasLanded / decide against a real repo", () => {
     expect(decide("git branch -D feat/unmerged", null)).toBeNull();
   });
 
-  test("armed without any answer (the -p run: AskUserQuestion errored) → every delete refused", () => {
-    const r = decide("git branch -d feat/merged", armed());
-    expect(r.block).toMatch(/no Dry-Run-Confirm was answered "Ja" for feat\/merged/);
+  test("armed without any answer (the -p run: AskUserQuestion errored) → every non-autonomous delete refused", () => {
+    const r = decide("git branch -D feat/unmerged", armed());
+    expect(r.block).toMatch(/no Dry-Run-Confirm was answered "Ja" for feat\/unmerged/);
     expect(r.block).toMatch(/NO deletion/);
-    expect(decide(`git -C "${w.repo}" push origin --delete feat/merged`, armed()).block).toBeTruthy();
+    expect(decide(`git -C "${w.repo}" push origin --delete feat/unmerged`, armed()).block).toBeTruthy();
     expect(decide("git worktree remove .claude/worktrees/x", armed()).block).toBeTruthy();
   });
 
   test("Abbrechen → refused", () => {
-    expect(decide("git branch -d feat/merged", armed(dryRun(["- feat/merged"], "Abbrechen"))).block).toBeTruthy();
+    expect(decide("git branch -D feat/unmerged", armed(dryRun(["- feat/unmerged"], "Abbrechen"))).block).toBeTruthy();
   });
 
   test("confirmed Dry-Run naming a landed branch → allowed, local and remote", () => {
@@ -257,8 +261,8 @@ describe("hasLanded / decide against a real repo", () => {
   });
 
   test("a confirmed Dry-Run does not cover a branch it does not name", () => {
-    const r = decide("git branch -d feat/merged feat/squash", armed(dryRun(["- feat/merged"])));
-    expect(r.block).toMatch(/does not name feat\/squash/);
+    const r = decide("git branch -D feat/ambig feat/unmerged", armed(dryRun(["- feat/ambig"]), unmergedYes("feat/ambig")));
+    expect(r.block).toMatch(/does not name feat\/unmerged/);
   });
 
   test("unmerged branch: the Dry-Run yes alone is not enough", () => {
@@ -447,13 +451,83 @@ describe("hasLanded / decide against a real repo", () => {
   });
 });
 
+describe("autonomous class — no question, proven per item at delete time (#4)", () => {
+  let w;
+  let wt;
+  beforeAll(() => {
+    w = scaffold();
+    const r = w.repo;
+    // patch-equal: cherry-picked onto main, history differs
+    git(r, "checkout", "-q", "-b", "feat/picked", "main");
+    fs.writeFileSync(path.join(r, "picked.txt"), "p\n");
+    git(r, "add", "-A"); git(r, "commit", "-qm", "picked");
+    git(r, "checkout", "-q", "main");
+    git(r, "cherry-pick", "feat/picked");
+    git(r, "push", "-q", "origin", "main", "feat/picked");
+    // landed, but a session worktree holds it
+    git(r, "branch", "feat/session", "main");
+    wt = path.join(w.dir, "session-wt");
+    git(r, "worktree", "add", "-q", wt, "feat/session");
+    // landed when classified, tip moved afterwards
+    git(r, "branch", "feat/moved", "main");
+    git(r, "checkout", "-q", "feat/moved");
+    fs.writeFileSync(path.join(r, "later.txt"), "l\n");
+    git(r, "add", "-A"); git(r, "commit", "-qm", "later");
+    git(r, "checkout", "-q", "main");
+    // a worktree whose directory is gone (prunable)
+    git(r, "branch", "feat/gone-wt", "main");
+    git(r, "worktree", "add", "-q", path.join(w.dir, "gone-wt"), "feat/gone-wt");
+    fs.rmSync(path.join(w.dir, "gone-wt"), { recursive: true, force: true });
+  }, 120_000);
+  afterAll(() => { try { fs.rmSync(w.dir, { recursive: true, force: true }); } catch { /* best effort */ } });
+
+  const decide = (command) => gate.decide({ command, cwd: w.repo, state: armed(), gitFor });
+
+  test("merged, squash-merged and patch-equal local branches pass without any answer", () => {
+    expect(decide("git branch -d feat/merged")).toBeNull();
+    expect(decide("git branch -D feat/squash")).toBeNull();
+    expect(decide("git branch -D feat/picked")).toBeNull();
+    expect(gate.provenLanded(gitFor(w.repo), "refs/heads/feat/picked", "refs/remotes/origin/main")).toBe(true);
+  });
+
+  test("a landed remote branch passes; an unlanded one does not", () => {
+    expect(decide("git push origin --delete feat/merged")).toBeNull();
+    expect(decide("git push origin --delete feat/unmerged").block).toBeTruthy();
+  });
+
+  test("unlanded work, a missing branch and a moved tip are refused", () => {
+    expect(decide("git branch -D feat/unmerged").block).toBeTruthy();
+    expect(decide("git branch -D feat/ambig").block).toBeTruthy();
+    expect(decide("git branch -D feat/does-not-exist").block).toBeTruthy();
+    expect(decide("git branch -D feat/moved").block).toBeTruthy();
+  });
+
+  test("the main checkout's branch, the current branch and a session worktree's branch are never autonomous", () => {
+    expect(decide("git branch -D main").block).toBeTruthy();
+    expect(decide("git branch -D feat/session").block).toBeTruthy();
+    git(w.repo, "checkout", "-q", "feat/merged");
+    try { expect(decide("git branch -D feat/merged").block).toBeTruthy(); } finally { git(w.repo, "checkout", "-q", "main"); }
+  });
+
+  test("a worktree entry without a directory passes; one with a directory, and any directory delete, does not", () => {
+    expect(decide(`git worktree remove "${path.join(w.dir, "gone-wt")}"`)).toBeNull();
+    expect(decide(`git worktree remove "${wt}"`).block).toBeTruthy();
+    expect(decide(`rm -rf "${wt}"`).block).toBeTruthy();
+    expect(decide(`git worktree remove "${w.repo}"`).block).toBeTruthy();
+  });
+
+  test("a mixed command is refused as a whole when one target is not autonomous", () => {
+    expect(decide("git branch -D feat/merged feat/ambig").block).toMatch(/feat\/ambig/);
+  });
+});
+
 describe("hooks end to end — post arms and records, pre refuses", () => {
   let w;
   let tmp;
   beforeAll(() => {
     w = scaffold();
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), "cleanup-gate-state-"));
-  });
+  }, 120_000);
   afterAll(() => {
     for (const d of [w.dir, tmp]) try { fs.rmSync(d, { recursive: true, force: true }); } catch { /* best effort */ }
   });
@@ -477,27 +551,29 @@ describe("hooks end to end — post arms and records, pre refuses", () => {
     expect(bash("S1", "git branch -d feat/merged").status).toBe(0); // not armed yet
     expect(run(POST, { session_id: "S1", tool_name: "Skill", tool_input: { skill: "devops:auto-cleanup" } }).status).toBe(0);
 
-    const refused = bash("S1", "git branch -d feat/merged");
+    const refused = bash("S1", "git branch -D feat/ambig");
     expect(refused.status).toBe(2);
     expect(refused.stderr).toMatch(/\[cleanup-gate\] BLOCKED/);
-
-    expect(ask("S1", dryRun(["- feat/merged", "- feat/unmerged"])).status).toBe(0);
+    // the autonomous class (provably landed, checked out nowhere) needs no question
     expect(bash("S1", "git branch -d feat/merged").status).toBe(0);
+
+    expect(ask("S1", dryRun(["- feat/ambig", "- feat/unmerged"])).status).toBe(0);
     const unm = bash("S1", "git branch -D feat/unmerged");
     expect(unm.status).toBe(2);
     expect(unm.stderr).toMatch(/unmerged work/);
 
     expect(ask("S1", unmergedYes("feat/unmerged")).status).toBe(0);
     expect(bash("S1", "git branch -D feat/unmerged").status).toBe(0);
-  });
+  }, 180_000);
 
   test("another session is not gated; a re-armed skill drops earlier yeses", () => {
     expect(bash("S2", "git branch -D feat/unmerged").status).toBe(0);
     run(POST, { session_id: "S3", tool_name: "Skill", tool_input: { skill: "auto-cleanup" } });
-    ask("S3", dryRun(["- feat/merged"]));
-    expect(bash("S3", "git branch -d feat/merged").status).toBe(0);
+    ask("S3", dryRun(["- feat/ambig"]));
+    ask("S3", unmergedYes("feat/ambig"));
+    expect(bash("S3", "git branch -D feat/ambig").status).toBe(0);
     run(POST, { session_id: "S3", tool_name: "Skill", tool_input: { skill: "devops:auto-cleanup" } });
-    expect(bash("S3", "git branch -d feat/merged").status).toBe(2);
+    expect(bash("S3", "git branch -D feat/ambig").status).toBe(2);
   });
 
   test("an unrelated skill does not arm; garbage stdin exits 0", () => {

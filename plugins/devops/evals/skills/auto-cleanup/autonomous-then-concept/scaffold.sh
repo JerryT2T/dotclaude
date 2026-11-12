@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# A repo with a local bare origin: one branch merged into main (Löschbar),
-# one with an unshipped commit (Untersuchen). Deletes, pushes, the browser and
-# Write are denied, so the run can only *attempt* the page and the deletes.
+# A repo with a local bare origin: one branch merged into main (autonomous class),
+# one with an unshipped commit (ambiguous). Pushes, -D, worktree removal, the browser and
+# Write are denied, so the run can only attempt the page and the deletes.
 set -e
 
 git init -q . 2>/dev/null || true
