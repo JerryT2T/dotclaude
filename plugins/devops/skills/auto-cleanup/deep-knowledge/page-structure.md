@@ -1,301 +1,52 @@
-# Repo-Health Concept Page — Structure & Tooltips
+# Cleanup Concept Page — ONE page for the ambiguous items
 
-## Conceptual Model
+Read by `SKILL.md` Step 8b. There is no repo-health dashboard, no KPI strip,
+no Löschbar list, no Apply-Manifest sidebar and no filter bar any more: what
+provably landed was already removed in Step 8a. This page exists only for what
+needs a human, and only when at least one such item exists.
 
-Every entry is a **git branch** (a ref). A worktree is NOT a separate entity —
-it is a branch WITH a checked-out directory.
+## Which items land here
 
-**Typ** (type attribute per entry):
-- **Aktive Session** — a branch WITH a checked-out worktree directory
-  (a running or paused Claude session)
-- **Git-Session** — a plain branch WITHOUT a worktree
+- an idle **session worktree with own commits** (`own_content: true`); an idle
+  one with 0 commits ahead is also ambiguous — never autonomous
+- unlanded or partly landed work, a branch whose landing git cannot prove
+  (merged PR without patch-equality, doubt, a timed-out git call)
+- an **open PR** (decision `Shippen` / `Behalten`)
+- a worktree with uncommitted changes appears as read-only context
+  ("hat lokale Änderungen — wird nicht angefasst"), without a decision
 
-**Ort** (location attribute per entry):
-- `lokal` — exists only locally
-- `nur-remote` — exists only on the remote
-- `lokal+remote` — exists in both
+Running sessions' branches are never listed as candidates.
 
-## Typ × Zustand Matrix
+## Shape (built with `auto-concept`, analysis variant)
 
-Status is derived into exactly **two categories** that **partition** all entries
-and **sum** to the total. Every entry belongs to exactly one.
+One topic per branch, ordered by risk (open PRs first, then work with own
+commits, then the rest). Per topic:
 
-| | merged / clean | unmerged / has-changes |
-|---|---|---|
-| **Git-Session** | 🟢 **Löschbar** — delete branch | 🟡 **Untersuchen** — investigate; no destructive action |
-| **Aktive Session** | 🟢 **Löschbar** — remove worktree ONLY (branch stays); NOT pre-checked by default | 🟡 **Untersuchen** — has changes; inline detail only; NEVER destructive |
+| Part | Content |
+|---|---|
+| Title | full branch name (the rail label may be shortened per auto-concept's rules) |
+| Short analysis | 2–4 lines: what the branch holds (own commits / files not in main), age, where it lives (`lokal` / `nur-remote` / `lokal+remote`), PR state, why it is not autonomous (e.g. "Session idle seit 4 Tagen, 37 Commits eigener Inhalt") |
+| Facts | commits ahead, last commit, worktree path + clean/dirty, the squash cross-check result |
+| Recommendation | one line from `investigation.md` § Recommendation Logic |
+| Decision | exactly one per topic (below) |
 
-Notes on cells:
-- "Aktive Session + merged/clean → Löschbar" means: worktree removal is offered, but
-  the branch itself is NOT automatically queued for deletion. The branch may still be
-  needed (it is protected). After worktree removal, the branch transitions to a plain
-  Git-Session and can be cleaned in a subsequent run.
-- "has-changes → never destructive": no delete checkbox, no remove option; only the
-  read-only „?" inline detail toggle is rendered.
+Decision options per kind (2-state, no third "maybe"):
 
-## Page Structure
+| Item | Options |
+|---|---|
+| Git-Session branch / idle session worktree | `Behalten` (recommended unless the analysis says the content is in main) · `Entfernen` (worktree directory, then branch) |
+| Unlanded branch | `Behalten` · `Entfernen` (needs the extra `Unmerged` yes at execution) |
+| Open PR | `Behalten` · `Shippen` (full `/do-ship`) |
 
-```
-[Header]
-  Repo name (large)
-  Local path | Remote URL | Current branch | Default branch
-  Last fetch timestamp
+Page header: repo name, path, default branch, "N autonom entfernt" (the
+Step 8a list, collapsed), and the audit line "N Refs geprüft, K Befunde" plus
+any consistency warning. Texts German unless the project overrides.
 
-[Summary KPI — one total partitioned into two]
-  ┌─────────────────────────────────────────────────────────────┐
-  │  Gesamt: 9      🟢 Löschbar: 6          🟡 Untersuchen: 3  │
-  │                    ├ Git-Sessions: 4        ├ Git-Sessions: 3 │
-  │                    │   lokal: 2             │   lokal: 2      │
-  │                    │   nur-remote: 1        │   nur-remote: 1 │
-  │                    │   lokal+remote: 1      │   lokal+remote: 0│
-  │                    └ Aktive Sessions: 2     └ Aktive Sessions: 0│
-  │                        lokal: 2                              │
-  └─────────────────────────────────────────────────────────────┘
-  Main sync status (separate line): up to date / X commits behind
+## Hard rules
 
-[Aktive Sessions Section — DEDICATED, separate from Git-Session list]
-  Only shown if Aktive Sessions (worktrees) exist.
-  Header: "Aktive Sessions (N)"  — expandable block
-  Sub-labels behind header: "mit Aenderungen: X / sauber: Y"
-
-  Per Aktive Session card:
-    Branch name (monospace) + worktree path (smaller, muted)
-    Typ badge: "Aktive Session" (blue)
-    Ort badge: "lokal" (gray)
-    Status badge:
-      - "Mit Aenderungen" (amber) if has-changes
-      - "Sauber" (gray) if clean
-    Merge status: merged / unmerged (last known state; note a session may
-      have multiple PRs/merges — show the most recent)
-    If has-changes:
-      File summary: "X geaendert, Y ungetrackt" (compact inline)
-      Commits ahead: "Z Commits vor main" (if any)
-      HARD RULE: NO delete checkbox, no discard, no reset, no cleanup options.
-      Action controls (read-only detail only):
-        [?] inline detail toggle (expands commit log + file list + recommendation)
-        No comment field, no submit-affecting controls.
-    If clean:
-      "Keine lokalen Aenderungen"
-      Action controls:
-        [ ] Entfernen (checkbox, UNCHECKED by default — must consciously opt in)
-        [?] inline detail toggle
-        Tooltip on checkbox — see Tooltip section below
-  Card styling: subtle border, lower visual weight than Git-Session cards,
-  distinct background tint (blue-gray) to avoid confusion with Git-Sessions
-
-[Offene PRs Section — DEDICATED, between Aktive Sessions and Git-Sessions]
-  Only shown if open PRs exist. Blue-tinted block, expandable, OPEN by default.
-  Header: "🔵 Offene PRs (N)"
-  Sub-labels behind header: "bereit: X / blockiert: Y / fremd: Z"
-
-  Per PR card:
-    "#412  fix(ship): a timed-out git probe is unknown" (number monospace, title prominent)
-    head → base (monospace, smaller): claude/ship-probe → main
-    Quelle badge: Session (blue) / lokal (gray) / nur-remote (gray) / fremd (red)
-    Session link (if quelle = Session and the owning session is known):
-      "Session: 🔧 Ship probe" as [title](#<sessionId>) — plus "archiviert" / "läuft"
-    CI badge: grün / rot / ausstehend / keine Checks
-    Mergeable badge: mergeable / Konflikt / unbekannt   + mergeStateStatus
-    Review: approved / changes requested / keine
-    Age: "erstellt vor 3 Tagen, letzte Änderung vor 2 Stunden"
-    Shippability label (from SKILL.md Step 5b table), e.g.
-      "bereit — via /do-ship landen" / "in Session <title> shippen — uncommittete Änderungen"
-    Action controls:
-      [x] Shippen  (checkbox; PRE-CHECKED only for shippable=yes with clean/behind
-                    merge state; DISABLED for session-dirty / draft / fremd — the
-                    disabled reason is the tooltip)
-      [?] inline detail toggle (PR body excerpt, commit list, files changed,
-                                failing check names, conflict files if known)
-      Optional comment field (collapsed by default)
-    Cross-link: the head branch's row in Untersuchen shows "→ Offener PR #412"
-      and its Löschen checkbox is DISABLED while the PR's Shippen box is checked
-      (tooltip "wird beim Shippen entfernt"); unchecking Shippen re-enables it.
-
-  Ship order note under the header (muted):
-    "Wird in dieser Reihenfolge gelandet (älteste zuerst) — jeder PR läuft
-     durch die volle /ship-Pipeline: Rebase, Build, Tests, Version, CI-Gate, Merge."
-
-[Filter Bar]
-  Category toggles: [Löschbar] [Untersuchen] [nur-remote]
-  (NO Aktive-Session toggle — Aktive Sessions have their own section above)
-  Select all / Deselect all buttons (apply to visible items only)
-  When a filter is active and select-all is clicked:
-    Banner: "Alle N gefilterten markieren (vs. M sichtbar)" — must confirm
-    before bulk-acting on rows outside the current view.
-
-[Git-Session List — filterable, excludes Aktive Session branches]
-
-  [Löschbar Group — expandable, OPEN by default]
-  Header: "🟢 Löschbar (N)" with sub-labels "merged X / not-merged Y"
-  "Alles aufklappen" button for this section
-
-  Per Git-Session card in Löschbar:
-    Branch name (monospace, prominent)
-    Typ badge: "Git-Session" (neutral)
-    Ort badge: lokal / nur-remote / lokal+remote
-    Kategorie badge: "Löschbar" (green)
-    Merge status: merged / squash-merged
-    PR reference (if exists): #123 — title
-    Last commit: hash + message + relative date
-    Diff stats: X files changed (excluding CHANGELOG)
-    Remote status: exists / gone / n/a
-    Action controls:
-      [x] Löschen  (checkbox, PRE-CHECKED for safe-delete Git-Sessions)
-      [?] inline detail toggle (expands commit-log + diff + recommendation)
-      Optional comment field (collapsed by default, expandable)
-
-  [Untersuchen Group — expandable, COLLAPSED by default]
-  Header: "🟡 Untersuchen (N)" with sub-labels "merged X / not-merged Y"
-  "Alles aufklappen" button for this section
-
-  Per Git-Session card in Untersuchen:
-    Branch name (monospace, prominent)
-    Typ badge: "Git-Session" (neutral)
-    Ort badge: lokal / nur-remote / lokal+remote
-    Kategorie badge: "Untersuchen" (amber)
-    Merge status: unmerged / open PR
-    PR reference (if exists): #123 — title — state
-    Last commit: hash + message + relative date
-    Diff stats: X files changed (excluding CHANGELOG)
-    Remote status: exists / gone / n/a
-    Action controls:
-      [ ] Löschen  (checkbox, UNCHECKED by default — user opts in consciously)
-      [?] inline detail toggle (expands commit-log + diff + recommendation)
-      Optional comment field (collapsed by default, expandable)
-
-  [Inline Detail Panel — per card, triggered by „?" toggle]
-    Rendered inside the card below the action controls, hidden by default.
-    No round-trip to Claude — all data is embedded at first render.
-    Content:
-      Section heading: "Detail"
-      Recommendation badge: ship-needed / safe-delete / rebase-needed /
-        wip-keep / pr-open / commit-and-ship / wip-continue / stale-investigate
-        (color-coded, see investigation.md)
-      Short recommendation label (e.g. "3 ungeschippte Commits — ship empfohlen")
-      Full commit log (scrollable, monospace, latest first)
-      Diff summary by file (path + +X/-Y)
-      Branch age: "Erster Commit vor 14 Tagen, letzter vor 2 Tagen"
-      Open PRs (if any): #N — title — state
-      Rationale text (1-2 sentences explaining the recommendation)
-    Implemented as a `<details><summary>[?] Details</summary>...</details>` element.
-
-[Main Sync Section]
-  Current status: up to date / X commits behind
-  Checkbox: "Main synchronisieren" (pre-checked if behind)
-
-[Apply-Manifest Sidebar]
-  A complete list of everything that will happen, live-updated as user
-  toggles checkboxes. Acts as a preview / manifest before submission.
-
-  Content:
-    "Folgende Aktionen:"
-    Shippen (P): #412, #409, ...  (in Landereihenfolge)
-    Lokal löschen (N): branch-a, branch-b, ...
-    Remote löschen (M): branch-a (origin), ...
-    Worktrees entfernen (K): claude/old-session (/path)
-    Main synchronisieren: ja / nein
-    Remote prunen: ja / nein
-
-  Checkbox: "Remote-Branches auch loeschen" (default: checked) + tooltip
-  Checkbox: "Worktrees prunen" (default: checked) + tooltip
-  Submit button label: "Aufraeumen starten"
-
-  On Submit: show Dry-Run-Confirm before executing anything:
-    "Shippt P PRs (jeder via /do-ship), löscht N lokal, M remote, entfernt K Worktrees.
-    Merges und Löschungen sind NICHT rückgängig zu machen.
-    Fortfahren?" [Ja] [Abbrechen]
-```
-
-## Tooltip Explanations
-
-Every action control and global option MUST have an explanatory tooltip
-(HTML `title` attribute) so the user understands the effect before acting.
-
-| Element | Tooltip text |
-|---------|-------------|
-| Löschen checkbox (Löschbar Git-Session) | "Branch lokal loeschen. Arbeit ist bereits in main (merged/squash-merged)." |
-| Löschen checkbox (Untersuchen Git-Session) | "Branch lokal loeschen. ACHTUNG: Aenderungen sind moeglicherweise NICHT in main!" |
-| Shippen checkbox (enabled) | "PR via /do-ship landen: Rebase auf main, Build, Tests, Versions-Bump, CI-Gate, Squash-Merge. Branch und ggf. temporärer Worktree werden danach entfernt." |
-| Shippen checkbox (disabled: session-dirty) | "Der Worktree dieser Session hat uncommittete Änderungen — dort /do-ship aufrufen, nicht von hier." |
-| Shippen checkbox (disabled: draft) | "Draft-PR — erst als bereit markieren (gh pr ready), dann shippen." |
-| Shippen checkbox (disabled: fremd) | "PR eines anderen Autors — wird von hier nie gemergt." |
-| Löschen checkbox (disabled: PR wird geshippt) | "Wird beim Shippen entfernt — Shippen abwählen, um den Branch stattdessen zu löschen." |
-| Entfernen checkbox (clean Aktive Session) | "Nur den Worktree entfernen. Der Branch bleibt erhalten und kann spaeter separat geloescht werden." |
-| „?" inline detail toggle | "Commit-Log, Diff-Statistik und Empfehlung anzeigen — keine Aktion wird ausgeloest." |
-| "Remote-Branches auch loeschen" | "Loescht die Branches auch auf GitHub/origin. Betrifft nur die oben ausgewaehlten Branches." |
-| "Worktrees prunen" | "Entfernt verwaiste Worktree-Referenzen (bereits geloeschte Verzeichnisse). Aktive Sessions werden NICHT beruehrt." |
-| "Main synchronisieren" | "Holt die neuesten Aenderungen von origin/main und aktualisiert den lokalen main-Branch." |
-| "Select all" button | "Alle sichtbaren Git-Sessions zum Loeschen markieren." |
-| "Deselect all" button | "Alle sichtbaren Git-Sessions auf Behalten setzen." |
-
-Implement tooltips as `title` attributes on the label/checkbox wrapper.
-Keep text concise — one sentence max, no jargon.
-
-## Action Control Notes
-
-- Each Git-Session card has exactly **one checkbox** (delete / keep — two states only).
-  There is no radio group, no third "Untersuchen" action state.
-- has-changes Aktive Sessions expose NO submit-affecting controls — only the „?"
-  inline detail toggle (read-only). The inline detail may include a recommendation
-  (e.g. "commit + ship"), but it is advisory; no button triggers any git action.
-- clean Aktive Sessions expose one checkbox (Entfernen, unchecked by default).
-  The associated branch is NOT included in the deletion — only the worktree directory
-  is removed via `git worktree remove`.
-- "Select all" sets all visible Git-Session checkboxes to checked (delete).
-  "Deselect all" sets them to unchecked (keep). Aktive Session checkboxes are
-  never affected by bulk select.
-- Comment fields are per-card, collapsed by default; their content is included in
-  the submit payload for logging purposes only.
-- Open-PR cards have exactly **one checkbox** (Shippen). There is no merge button,
-  no "close PR" control and no per-PR strategy choice — every selected PR goes
-  through `/do-ship` unchanged. Bulk select never touches PR checkboxes.
-
-## Filter Behavior
-
-- Filters toggle visibility of branch cards by category
-- When a filter is active and the user clicks select-all, show a Gmail-style
-  banner: "Alle N gefilterten markieren (vs. M sichtbar)" — bulk selection must
-  never silently act only on rendered rows.
-- Filter state is preserved in the decisions JSON so Claude knows what the
-  user was looking at when they submitted
-- Counter in Apply-Manifest sidebar updates based on checked items across ALL
-  categories (not just visible ones)
-
-## Important Design Details
-
-- Branch names in monospace font, visually prominent
-- Category badges with distinct colors: green (Löschbar), amber (Untersuchen),
-  blue (Aktive Session)
-- Branch action controls are a **single delete checkbox** per row (NOT a radio group):
-  - Checked = löschen, unchecked = behalten
-  - Löschbar group: safe-delete items pre-checked; clean Aktive Sessions NOT pre-checked
-  - Untersuchen group: all items unchecked (user opts in consciously)
-- Aktive Sessions section is visually distinct from Git-Session list (different
-  background tint, dedicated header, never mixed into the branch cards)
-- Aktive Sessions with changes (has-changes): amber badge, file summary, NO
-  destructive controls. Only a read-only „?" inline detail toggle is shown.
-- Aktive Sessions without changes (clean): gray badge, delete checkbox (unchecked
-  by default, i.e. keep); removes the worktree only — the branch is NOT deleted.
-- Clean Aktive Sessions that are ahead of `origin/main` keep the gray badge and
-  the checkbox; `commits_ahead` + `own_content` appear as an informational
-  secondary badge — "N ahead · Inhalt in main" (`own_content: false`, typical
-  squash-merged session) or "N ahead · eigener Inhalt" (`own_content: true`).
-  Being ahead never turns a clean session amber or removes its controls.
-- **Offene PRs section** (only when open PRs exist): its own block between
-  Aktive Sessions and the Git-Session list, blue-tinted, header
-  „🔵 Offene PRs (N)" with sub-labels „bereit: X / blockiert: Y / fremd: Z".
-  One card per PR: `#N title`, head → base, `quelle` badge (Session / lokal /
-  nur-remote / fremd), owning session title as a link when known, CI badge
-  (grün / rot / ausstehend), mergeable badge, review decision, age. Action is a
-  **single „Shippen" checkbox** — pre-checked per Step 5b, disabled (with the
-  reason as tooltip) for `session-dirty`, `draft`, `fremd`. Never a merge
-  button that bypasses `/do-ship`: the queue lands every PR through the full
-  pipeline (preflight, rebase, build, tests, version bump, CI gate).
-- Every action option has a `title` tooltip — see Tooltip Explanations table
-- "Remote-Branches auch loeschen" as a global toggle in the Apply-Manifest sidebar
-  (not per-branch) — applies to all selected branches that have a remote
-- Smooth expand/collapse for „?" inline detail panels
-- "Alles aufklappen" button per section to expand all inline details at once
-- Dark/light mode toggle in header
-- Löschbar group: expandable, **open by default**
-- Untersuchen group: expandable, **collapsed by default**
+- ONE page per run; never one per group, never a second after submit
+- A `has-changes` worktree carries no decision control
+- The page never offers to delete the main checkout, the current branch, the
+  default branch or a running session's branch
+- Nothing on the page deletes anything by itself: the decisions come back
+  through the concept bridge and run in Step 10 behind the gate

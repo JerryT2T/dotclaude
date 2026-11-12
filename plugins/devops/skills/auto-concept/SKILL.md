@@ -287,6 +287,9 @@ Exit 126 or `"known":false` → nothing changes. `known:true` → read the `doc`
      `phase: "implemented"` — no code was written.
 See `deep-knowledge/step5-process.md` § 5b · implement steps 1–4. Mapping as spec, execution through `auto-agents`, the full approved scope, the `implemented` phase POST and the final-report append.
 
+**`action: "review"` ("Umsetzung prüfen" switch next to the eye — only on the final report):** no code, no ship — append ONE review round that shows the build on an example, with an auto-note per deviation from what the last concept expected and green findings as Behalten/Zurückbauen decisions.
+See `deep-knowledge/step5-update-page.md` § Review round — the switch `Umsetzung prüfen`. Data sources, strict auto-note rules, green findings.
+
 **`action: "refine"` ("🔧 Nachbessern" — only on the final report):** the user's notes are change orders; build them, rewrite the report in place, never ship.
 See `deep-knowledge/step5-finalize.md` § Nachbessern. The change-order loop and the in-place rewrite.
 

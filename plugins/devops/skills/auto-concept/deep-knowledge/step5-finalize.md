@@ -325,7 +325,7 @@ a change order on the approved scope:
    waker, end the turn with the `waiting` card. The sheet comes back armed with the
    same choices Claude authored.
 
-`refine` never ships and never disposes of anything. Only `finalize` does.
+`refine` never ships and never disposes of anything. Only `finalize` does. The same holds for `action: "review"` (switch "Umsetzung prüfen"): it appends a review round (`step5-update-page.md` § Review round), the closing page stays and is reached again by the switch "Zur Abschlussseite".
 
 ## Legacy mapping, rationale and the critical invariant
 

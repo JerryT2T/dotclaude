@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.371.0] — 2026-11-13
+
+### Added
+- Concept pages: "Umsetzung prüfen" switch on the final report opens a review round with auto-notes for every deviation from the last concept and green findings as keep/revert decisions.
+- Concept pages: rail labels are capped at 28 characters (gate warning) and end-truncate with the full title as tooltip.
+
+### Changed
+- Branch cleanup no longer builds a repo-health page: proven-landed branches and dangling worktree entries go without asking, ambiguous ones land on one concept page; cleanup works on the current repo only.
+
+### Fixed
+- Concept pages: a note sent with an answer (Ctrl+Enter) no longer disappears from the history, the reload view, frozen rounds or the closing overview.
+
 ## [0.370.0] — 2026-11-12
 
 ### Added

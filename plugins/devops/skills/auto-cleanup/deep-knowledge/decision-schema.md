@@ -1,168 +1,36 @@
-# Repo-Health Decision Schema
+# Cleanup Decision Schema
 
-Submit payload shape collected by the concept page and POSTed back via
-the bridge server. Claude reads this in Step 10 to execute the user's
-cleanup decisions.
+What `SKILL.md` Step 10 reads when the concept page is submitted. The
+shape is the auto-concept decision payload (one decision per topic); only the
+cleanup-specific meaning is defined here.
 
 ```json
 {
-  "submitted": true,
-  "repo": {
-    "name": "dotclaude",
-    "path": "/path/to/repo",
-    "remote": "git@github.com:user/repo.git"
-  },
-  "filters": {
-    "loeschbar": true,
-    "untersuchen": true,
-    "nur-remote": true
-  },
+  "repo": { "name": "my-repo", "path": "/p/my-repo", "defaultBranch": "main" },
   "decisions": [
-    {
-      "id": "branch-feature-xyz",
-      "branch": "feature/xyz",
-      "typ": "Git-Session",
-      "ort": "lokal+remote",
-      "kategorie": "loeschbar",
-      "delete": true
-    },
-    {
-      "id": "branch-old-experiment",
-      "branch": "old-experiment",
-      "typ": "Git-Session",
-      "ort": "lokal",
-      "kategorie": "untersuchen",
-      "delete": false
-    },
-    {
-      "id": "branch-stale-wip",
-      "branch": "stale-wip",
-      "typ": "Git-Session",
-      "ort": "lokal+remote",
-      "kategorie": "untersuchen",
-      "delete": true
-    }
+    { "id": "br-claude-old-session", "kind": "session-worktree", "branch": "claude/old-session",
+      "path": "/p/my-repo/.claude/worktrees/old-session", "ort": "lokal", "choice": "Entfernen" },
+    { "id": "br-feat-experiment", "kind": "branch", "branch": "feat/experiment", "ort": "lokal+remote", "choice": "Behalten" },
+    { "id": "pr-412", "kind": "open-pr", "number": 412, "branch": "claude/ship-probe", "choice": "Shippen" }
   ],
-  "aktiveSessions": [
-    {
-      "branch": "claude/brave-pike",
-      "path": "/repo/.claude/worktrees/brave-pike",
-      "typ": "Aktive Session",
-      "ort": "lokal",
-      "status": "has-changes",
-      "modified": 3,
-      "untracked": 1,
-      "commits_ahead": 2,
-      "own_content": true,
-      "remove": false
-    },
-    {
-      "branch": "claude/old-session",
-      "path": "/repo/.claude/worktrees/old-session",
-      "typ": "Aktive Session",
-      "ort": "lokal",
-      "status": "clean",
-      "modified": 0,
-      "untracked": 0,
-      "commits_ahead": 0,
-      "remove": true
-    }
-  ],
-  "offenePRs": [
-    {
-      "id": "pr-412",
-      "number": 412,
-      "title": "fix(ship): a timed-out git probe is unknown",
-      "branch": "claude/ship-probe-07da25",
-      "base": "main",
-      "quelle": "session",
-      "worktree": "/repo/.claude/worktrees/ship-probe-07da25",
-      "session": { "id": "local_551b…", "title": "🔧 Ship probe", "archived": false, "running": false },
-      "shippable": "yes",
-      "mergeable": "MERGEABLE",
-      "mergeStateStatus": "BEHIND",
-      "checks": "success",
-      "ship": true
-    },
-    {
-      "id": "pr-409",
-      "number": 409,
-      "title": "feat(card): clickable CTA verbs",
-      "branch": "claude/card-cta-11ab22",
-      "base": "main",
-      "quelle": "nur-remote",
-      "worktree": null,
-      "session": null,
-      "shippable": "checks-red",
-      "mergeable": "MERGEABLE",
-      "mergeStateStatus": "UNSTABLE",
-      "checks": "failure",
-      "ship": false
-    }
-  ],
-  "options": {
-    "delete_remote": true,
-    "prune_worktrees": true,
-    "sync_main": true
-  },
-  "comments": [
-    { "id": "branch-old-experiment", "text": "Might still need this" }
-  ]
+  "comments": [ { "id": "br-feat-experiment", "text": "Might still need this" } ]
 }
 ```
 
-**Notes:**
+| `kind` | `choice` → action |
+|---|---|
+| `branch` | `Entfernen` → delete local (and the remote ref when `ort` has one); `Behalten` / missing → nothing |
+| `session-worktree` | `Entfernen` → remove the worktree directory (clean only), then the branch; `Behalten` / missing → nothing |
+| `open-pr` | `Shippen` → ship queue (Step 10b); `Behalten` / missing → nothing |
 
-- `decisions[].delete` — boolean, two states only: `true` = löschen, `false` = behalten.
-  There is no `"investigate"` action value; investigation is handled inline via the
-  „?" detail panel (read-only, no submit action required).
+Rules:
 
-- `decisions[].typ` — `"Git-Session"` or `"Aktive Session"` (user-facing category).
-
-- `decisions[].ort` — `"lokal"`, `"nur-remote"`, or `"lokal+remote"`.
-
-- `decisions[].kategorie` — `"loeschbar"` or `"untersuchen"`. Combined with
-  `options.delete_remote` to decide the full scope of the delete.
-
-- `offenePRs[].ship` — boolean. `true` = land this PR via `/do-ship` in Step 10b,
-  `false` = leave it open. Only valid when `shippable` is one of `yes`,
-  `conflict`, `checks-red`; the UI never renders an enabled control for
-  `session-dirty` / `draft` / `fremd`, and if `ship: true` arrives for one of
-  those anyway Claude skips it with a warning (safety guard — a foreign PR is
-  never merged from here, a dirty session worktree is never touched).
-
-- `offenePRs[].quelle` — `"session"`, `"lokal"`, `"nur-remote"`, `"fremd"`.
-  Decides the ship working directory: the session worktree, or a temporary
-  `.claude/worktrees/cleanup-pr-<n>` that Step 10b creates and removes.
-
-- `offenePRs[].session` — owning Desktop session when known (`null` otherwise);
-  purely informational (page link + manifest line), never a merge criterion.
-
-- A `decisions[]` entry whose `branch` is the head of an `offenePRs[]` entry with
-  `ship: true` must arrive with `delete: false` (the UI disables the box).
-  If it arrives `true`, Claude drops it from the delete set with a note — the
-  ship removes the branch.
-
-- `aktiveSessions[].remove` — boolean. `true` only valid for `status: clean`
-  Aktive Sessions. Triggers `git worktree remove <path>` (never `--force`).
-  The associated branch is NOT deleted as part of this action.
-
-- `aktiveSessions` with `status: has-changes` MUST always have `remove: false`.
-  The UI must never render a remove control for them; if this value arrives as
-  `true` in the payload, Claude must skip with a warning (safety guard).
-
-- `filters` preserves the user's category selection at submit time so Claude
-  knows what was visible when the user clicked. This is for logging and
-  Apply-Manifest display — not for scoping the actions.
-
-- `options.delete_remote` — when `true`, also delete the remote tracking branch
-  for every `decisions` item with `delete: true` and `ort` of `"lokal+remote"`
-  or `"nur-remote"`.
-
-- `options.prune_worktrees` — run `git worktree prune` after removals to clean
-  up stale worktree references (does NOT touch active Aktive Sessions).
-
-- `options.sync_main` — pull `origin/main` into local `main` after cleanup.
-
-- `comments` — per-item freeform notes captured from the comment fields.
-  Logged to the decisions JSON file; do not affect which actions are taken.
+- A missing decision is `Behalten`. A choice that names a protected branch,
+  the default branch or a worktree that gained changes is skipped with a
+  warning, whatever the payload says.
+- `Entfernen` of an unlanded branch needs the separate `Unmerged` yes at
+  execution (Deletion gate); a `Shippen` PR is never also deleted.
+- There are no global options: remote branches go with their branch, the main
+  sync is part of the run, worktree prune runs once after removals.
+- The decisions and the executed result (removed / skipped / error per item)
+  are persisted to `~/.claude/devops-concepts/{date}-cleanup-decisions.json`.

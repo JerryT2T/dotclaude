@@ -1,4 +1,4 @@
-# Concept templates, part 04 of 49: Panel chrome — page-level JS
+# Concept templates, part 04 of 50: Panel chrome — page-level JS
 
 
 ```javascript
@@ -393,6 +393,82 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', later);
   else later();
 })();
+
+// --- Review switch ("Umsetzung prüfen", templates-final-report-review.md § The review switch) ---
+// A pill beside the eye. On the closing page it asks Claude for a review round
+// (one `review` submission); on the review round it goes back to the closing
+// page. It pulses until the first click (sessionStorage remembers it), the
+// reduced-motion fallback is pure CSS. Visibility follows the active round, not
+// the connection, so it survives reloads.
+function wireReviewSwitch() {
+  // The button is part of the page skeleton; when a hand-written page lacks it, it is created
+  // here (same markup as § The review switch) so the closing page never loses the entry.
+  let btn = document.getElementById('review-switch');
+  if (!btn && document.querySelector('section[data-final-report], section[data-review]')) {
+    btn = document.createElement('button');
+    btn.type = 'button'; btn.id = 'review-switch'; btn.className = 'review-switch'; btn.hidden = true;
+    btn.setAttribute('data-pulse', '');
+    btn.dataset.labelOpen = 'Umsetzung prüfen'; btn.dataset.labelBack = 'Zur Abschlussseite';
+    btn.dataset.tipOpen = 'Das fertige Ergebnis noch einmal als normales Concept ansehen: Abweichungen vom letzten Konzept sind als Auto-Notizen markiert, du kannst weiter iterieren und umsetzen lassen.';
+    btn.dataset.tipBack = 'Zurück zur Abschlussseite (Shippen / Abschließen)';
+    btn.innerHTML = '<span class="review-switch-dot" aria-hidden="true"></span><span class="review-switch-label">Umsetzung prüfen</span>';
+    document.body.appendChild(btn);
+  }
+  if (!btn || btn.dataset.wired === 'true') return;
+  btn.dataset.wired = 'true';
+  let seen = false;
+  try { seen = sessionStorage.getItem('review-switch-seen') === '1'; } catch (e) { /* storage blocked: pulse each load */ }
+  if (seen) btn.removeAttribute('data-pulse');
+  const onReview = () => {
+    const s = document.querySelector('section[data-iteration].active') || document.querySelector('section[data-iteration]:not([hidden])');
+    return !!(s && s.hasAttribute('data-review'));
+  };
+  const sync = () => {
+    const fin = document.body.classList.contains('viewing-final');
+    const rev = !fin && onReview();
+    btn.hidden = !(fin || rev);
+    const label = btn.querySelector('.review-switch-label');
+    const mode = rev ? 'back' : 'open';
+    if (label) label.textContent = btn.dataset['label' + (rev ? 'Back' : 'Open')] || label.textContent;
+    btn.dataset.tip = btn.dataset['tip' + (rev ? 'Back' : 'Open')] || btn.dataset.tip || '';
+    btn.dataset.mode = mode;
+  };
+  btn.addEventListener('click', () => {
+    btn.removeAttribute('data-pulse');
+    try { sessionStorage.setItem('review-switch-seen', '1'); } catch (e) { /* ignore */ }
+    if (btn.dataset.mode === 'back') {
+      const fr = document.querySelector('section[data-final-report]');
+      const target = (document.querySelector('section[data-review]') || {}).dataset;
+      const n = (target && target.reviewFrom) || (fr && fr.dataset.iteration);
+      if (n != null && typeof showIteration === 'function') showIteration(Number(n));
+      return;
+    }
+    submitReview();
+  });
+  async function submitReview() {
+    const active = document.querySelector('section[data-final-report]');
+    if (!active) return;
+    const data = typeof collectDecisions === 'function' ? collectDecisions('review') : {};
+    const payload = Object.assign({}, data, {
+      submitted: true,
+      action: 'review',
+      submission_id: typeof newSubmissionId === 'function' ? newSubmissionId() : String(Date.now()),
+      iteration: active.dataset.iteration
+    });
+    document.getElementById('concept-decisions')?.replaceChildren(document.createTextNode(JSON.stringify(payload)));
+    document.body.classList.add('concept-submitted', 'content-dimmed');
+    try {
+      const res = await fetch('/decisions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      if (res.ok) return;
+    } catch (e) { /* queued below */ }
+    if (typeof _guardedSetItem === 'function') _guardedSetItem('concept-pending-review', JSON.stringify(payload));
+  }
+  ['iteration:changed', 'view:changed', 'screen:changed'].forEach(ev => document.addEventListener(ev, sync));
+  new MutationObserver(sync).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+  sync();
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wireReviewSwitch);
+else wireReviewSwitch();
 ```
 
 ```css

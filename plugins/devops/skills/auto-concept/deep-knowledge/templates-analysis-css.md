@@ -1,4 +1,4 @@
-# Concept templates, part 44 of 49: Template: analysis — styling CSS (Full + Lite)
+# Concept templates, part 45 of 50: Template: analysis — styling CSS (Full + Lite)
 
 ## Styling (Full + Lite)
 
@@ -199,10 +199,13 @@ html[data-theme="light"] .an-kind { color: var(--an-ac); }
 .an-ans-hint { margin: -4px 4px 10px; font-size: 12.5px; color: var(--an-mu); }
 .an-rail > .an-ri:first-child { margin-top: auto; }
 .an-rail > .an-ri:last-child { margin-bottom: auto; }
-.an-rail:hover, .an-rail:focus-within { width: 260px; }
+.an-rail:hover, .an-rail:focus-within { width: 260px; max-width: calc(100vw - 44px); }
 .an-ri { display: flex; align-items: center; justify-content: flex-end; gap: 10px; width: 100%; height: 24px; flex: none; font-size: 11px; line-height: 24px; color: transparent; white-space: nowrap; cursor: pointer; transition: font-size .18s cubic-bezier(.2,.7,.2,1), color .18s ease; }
 @media (prefers-reduced-motion: reduce) { .an-ri { transition: none; } }
 .an-ri.an-ri-gs { height: 40px; padding-top: 16px; }
+/* A long title is cut at its END with "…" (the full title is the app tooltip, data-tip); never clipped on the left: the label shrinks, the dot keeps its place. */
+.an-ri > span { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+.an-ri > b { flex: none; }
 .an-ri > i { width: 4px; height: 4px; margin-right: 2.5px; border-radius: 50%; flex: none; background: var(--dc); box-shadow: 0 0 6px var(--dc); }
 .an-ri-topic > i { width: 8px; height: 8px; margin-right: .5px; }
 .an-ri-edge > i { width: 7px; height: 7px; margin-right: 1px; }
@@ -218,8 +221,9 @@ html[data-theme="light"] .an-kind { color: var(--an-ac); }
 /* The tag is part of the rail's hit area: it sticks out left of the 28 px rail, so hovering any part of it opens the rail
    (the expanded rail then covers the tag and keeps itself open); a click focuses the open row (JS), for touch too. */
 [data-analysis]:has(> .an-here-tag:hover) > .an-rail { width: 260px; }
+[data-analysis]:has(> .an-here-tag:hover) > .an-rail { max-width: calc(100vw - 44px); }
 .an-here-tag[hidden] { display: none; }
-.an-here-tag > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.an-here-tag > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .an-here-tag::after { content: ""; position: absolute; left: 100%; top: 50%; margin-top: -6px; border-style: solid; border-width: 6px 0 6px 7px; border-color: transparent transparent transparent var(--dc, var(--an-b2)); }
 [data-analysis]:has(> .an-rail:hover) > .an-here-tag, [data-analysis]:has(> .an-rail:focus-within) > .an-here-tag { opacity: 0; }
 @media (prefers-reduced-motion: reduce) { .an-here-tag { transition: none; } }
@@ -323,6 +327,8 @@ html[data-theme="light"] .an-att-i { box-shadow: 0 6px 18px rgba(31,35,40,.18); 
 .an-sigrow > i { width: 8px; height: 26px; border-radius: 4px; background: var(--tc); }
 .an-sig-n b, .an-sig-n small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .an-sig-n small { font-size: 12.5px; color: var(--an-mu); }
+.an-sig-n small.an-sig-note { margin-top: 3px; overflow: visible; text-overflow: clip; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--an-tx2); }
+.an-mini-note { margin-top: 4px; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--an-tx2); }
 .an-dw { height: 8px; border-radius: 4px; background: rgba(255,255,255,.08); overflow: hidden; }
 .an-dw > b { display: block; height: 100%; background: rgba(255,255,255,.30); }
 .an-dw.an-warn > b { background: linear-gradient(90deg, var(--an-b4), var(--an-b2)); }

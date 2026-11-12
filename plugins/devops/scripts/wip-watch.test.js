@@ -107,7 +107,7 @@ describe("detection", () => {
     expect(f.id).toMatch(/^[0-9a-f]{12}$/);
     wip.run(w.io);
     expect(w.calls).toHaveLength(1);
-    expect(w.calls[0].body).toContain("WIP-Report aufräumen");
+    expect(w.calls[0].body).toContain("Branches aufräumen");
     expect(w.calls[0].body).toContain("report.json");
   }, 60000);
 

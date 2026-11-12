@@ -1,64 +1,37 @@
-# Repo-Health — Executing the Decisions (Step 10a–10c)
+# Cleanup — Executing the Decisions (Step 10a–10c)
 
-Read by `SKILL.md` Step 10 after the decisions are partitioned, re-checked
-and validated (Step 10, items 1–4). Everything below runs only after that.
+Read by `SKILL.md` Step 10 after the concept decisions are read, re-checked
+and validated (Step 10, items 1–3). Everything below runs only after that.
+Step 8a (autonomous removal) follows the same Safety Invariants and Worktree
+Removal Safety below.
 
-## Step 10a — Apply-Manifest + Dry-Run-Confirm
+## Step 10a — Relay the page decisions to the gate
 
-Before executing any action, generate the **Apply-Manifest**: a complete list
-of everything that will happen, shown to the user for confirmation.
+Applies only to the ambiguous class decided on the concept page. The
+autonomous class (Step 8a) never comes here: the gate lets it through on its
+own live proof, and nothing is asked.
 
-**Apply-Manifest format:**
+The page submit is invisible to `pre.cleanup.gate`, so relay exactly what the
+user decided, nothing more. No Apply-Manifest, no list of everything: only the
+items the page marked `Entfernen`.
 
-```
-Folgende Aktionen werden ausgeführt:
+Ask it as ONE `AskUserQuestion`: header `Dry-Run`, the question names every
+branch, remote branch and worktree path to delete by full name, options
+`Ja, ausführen` / `Abbrechen`. Merges and removals are NICHT rückgängig zu
+machen: say so in one line. Then, for every unlanded branch in that set, its
+own yes: one multiSelect question, header `Unmerged`, options = the full
+branch names (4 options per question: chunk them into several questions of one
+call). Only ticked names are approved; unticked ones drop out and the rest
+proceeds.
 
-Shippen (P) — nacheinander, je ein voller /ship-Lauf:
-  1. #412 fix(ship): timed-out probe …  (claude/ship-probe → main, Session „🔧 Ship probe")
-  2. #409 feat(card): …                 (claude/card-cta → main, nur-remote)
+The question names every branch literally, never brace- or prefix-compressed
+(`x-{a,b}`, `x-*`): the gate matches exact names and refuses a compressed one
+even after the yes.
 
-Lokal löschen (N):
-  - branch-a
-  - branch-b
-
-Remote löschen (M):
-  - branch-a (origin)
-
-Worktrees entfernen (K):
-  - claude/old-session (/path/to/worktree)
-
-Main synchronisieren: ja / nein
-Remote prunen: ja / nein
-```
-
-Then show a **Dry-Run-Confirm** prompt before executing:
-
-> Shippt P PRs (jeder via /do-ship: Rebase, Build, Tests, CI-Gate, Merge),
-> löscht N lokal, M remote, entfernt K Worktrees.
-> Merges und Löschungen sind NICHT rückgängig zu machen.
-> Fortfahren?  [Ja] [Abbrechen]
-
-Ask it as ONE `AskUserQuestion`: header `Dry-Run`, the question carries the
-manifest (every branch, remote branch and worktree path by full name, every
-ship PR with its `#<n>` and head branch), options `Ja, ausführen` /
-`Abbrechen`. `pre.cleanup.gate` lets through only the deletes that question
-names — a name missing from it is refused even after the yes.
-
-Then, for every unmerged branch in the delete set (Untersuchen — content not
-in the default branch), its own yes: one multiSelect question, header
-`Unmerged`, options = the full branch names (description: unshipped commits).
-The tool allows 4 options per question: chunk the branches into several
-`Unmerged` questions of one call. Only ticked names are approved; unticked
-branches drop out of the set and the rest proceeds.
-
-The manifest and the Dry-Run question name every branch literally, never
-brace- or prefix-compressed (`x-{a,b}`, `x-*`): the gate matches exact names
-and refuses a compressed one even after the yes.
-
-Only proceed after explicit confirmation. No answer — the tool errors
-(`Answer questions?` under `claude -p`), is denied or unavailable, or the reply
-is `Abbrechen`, Other or free text — is `Abbrechen`: nothing ships, nothing is
-deleted, the run ends with the `analysis` card.
+Only proceed after explicit confirmation. No answer (the tool errors with
+`Answer questions?` under `claude -p`, is denied or unavailable, or the reply
+is `Abbrechen`, Other or free text) is `Abbrechen`: nothing of the ambiguous
+class ships or is deleted, the run ends with the `analysis` card.
 
 ## Step 10b — Ship Queue (before any cleanup)
 
@@ -109,7 +82,7 @@ present, every `/do-ship` gate stays interactive.
    - `tempWorktree: true` → `git worktree remove <path>` (no `--force`), then
      `git branch -d <branch>` (lowercase `-d`: refuses if not merged — a
      second safety net), then `git push origin --delete <branch>` when
-     `options.delete_remote` is set and the remote ref still exists.
+     the remote ref still exists.
    - `quelle: session` → leave the worktree in place; it now classifies as a
      clean, squash-merged Aktive Session. The owning session keeps working or
      gets removed in a later run — never yank a directory from under a session.
@@ -124,17 +97,15 @@ present, every `/do-ship` gate stays interactive.
    read `{project}/.claude/skills/do-ship/reference.md` (legacy name `SKILL.md`; pre-PR-2 fallback: `ship/`) for the step the extension
    deferred while `.claude/.ship-queue` existed, run it, capture its output.
 2. Delete `.claude/.ship-queue`.
-3. Update the concept page via browser eval: ✅ per merged PR (with merge
-   SHA + version), ⏸ per blocked PR (with reason), then continue with
-   Step 10c — the cleanup set was fixed at submit time and is not widened by
-   the merges.
+3. Report ✅ per merged PR (with merge SHA + version) and ⏸ per blocked PR
+   (with reason), then continue with Step 10c: the cleanup set was fixed at
+   submit time and is not widened by the merges.
 
 ## Step 10c — Cleanup Execution
 
-Execute in order after Dry-Run-Confirm and after the ship queue (10b):
-   a. Delete selected local branches: `git branch -D <branch>`
-   b. If `delete_remote` is true: `git push origin --delete <branch>` for
-      each selected branch that has a remote
+Execute in order after the relayed Dry-Run-Confirm and after the ship queue (10b):
+   a. Delete the decided local branches: `git branch -D <branch>`
+   b. `git push origin --delete <branch>` for each decided branch that has a remote
    c. Remove selected clean worktrees — in the background (Bash
       `run_in_background: true`), one removal after the other, never under a
       foreground timeout. A worktree with `node_modules` takes minutes per
@@ -146,34 +117,32 @@ Execute in order after Dry-Run-Confirm and after the ship queue (10b):
         Entfernung abgebrochen."
       - Delete the folder natively: `cmd /c rmdir /s /q "<path>"` (Windows) or
         `rm -rf "<path>"` — literal path, one per command. `pre.cleanup.gate`
-        allows it only for a path the confirmed Dry-Run names, never for the
+        allows it only for a path the relayed Dry-Run names, never for the
         main checkout or the session's own directory, and only while its tree
         is clean.
       - Echo one progress line per worktree (`[3/31] <path> entfernt`) and
-        report it on the page; a folder still on disk afterwards is
+        report it in the chat; a folder still on disk afterwards is
         `beschädigt` (half removed) — finish it per
         `{PLUGIN_ROOT}/deep-knowledge/git-hygiene.md` § *A half-done worktree
         removal is Claude's to finish*, never hand it to the user.
       After the last one: ONE `git worktree prune` drops the registrations.
-   d. If `prune_worktrees` is true: `git worktree prune` (already done when c ran)
+   d. `git worktree prune` (already done when c ran)
    e. `git remote prune origin`
-   f. If `sync_main` is true: `git checkout main && git pull origin main`,
-      then return to original branch
+   f. Sync main only when the main checkout is clean: `git pull --ff-only origin main`
+      there; never switch a checkout away from a branch a session uses
 
-Update the concept page via browser eval:
-   - Mark completed deletions with a green checkmark
-   - Mark skipped items with a warning icon + reason
-   - Show summary: "X Branches geloescht, Y uebersprungen"
+Report the outcome in the chat and on the completion card (removed / skipped +
+reason per item), together with the autonomous list from Step 8a.
 
-Persist results to `~/.claude/devops-concepts/{date}-repo-health-decisions.json`.
+Persist results to `~/.claude/devops-concepts/{date}-cleanup-decisions.json`.
 
 ## Safety Invariants
 
 - **Never delete a worktree-attached branch** — even if checked by the user.
-  Show a warning on the page: "Branch X ist an einen aktiven Worktree gebunden.
+  Report it: "Branch X ist an einen aktiven Worktree gebunden.
   Entferne zuerst den Worktree."
 - **Re-validate before every delete** — the state may have changed since
-  the page was generated.
+  the analysis or the page was generated.
 - **Never push --delete a remote branch** that is attached to a local worktree.
 - **Log every action** with branch name and result (deleted / skipped / error).
 - **Delete by full refname only** — `git branch -D <name>` with a name taken
@@ -182,8 +151,10 @@ Persist results to `~/.claude/devops-concepts/{date}-repo-health-decisions.json`
 
 ## Worktree Removal Safety
 
-Worktree removal (action `remove: true` in the decisions JSON) is only allowed
-for Aktive Sessions classified as `clean` in Step 2. Enforce these rules:
+Worktree removal (`choice: "Entfernen"` on a `session-worktree` decision) is
+only allowed for Aktive Sessions classified as `clean` in Step 2, and never
+for a running session. The only removal that needs no decision is a worktree
+registration whose directory is already gone. Enforce these rules:
 
 1. **Re-check before removal:** Run `git -C <worktree_path> status --porcelain`
    again immediately before acting. If ANY output → SKIP with warning:
@@ -197,14 +168,13 @@ for Aktive Sessions classified as `clean` in Step 2. Enforce these rules:
    `{PLUGIN_ROOT}/deep-knowledge/git-hygiene.md` § *A half-done worktree
    removal is Claude's to finish*.
 3. **Never discard changes:** If a worktree (Aktive Session) has `status: has-changes`,
-   the UI must NOT render any DESTRUCTIVE action controls — no delete checkbox,
-   no "discard", no "reset", no implicit-cleanup option. The ONLY allowed
-   interactive element is the read-only „?" inline detail toggle (no destructive
-   action can be triggered from it). Even when the inline detail recommends
-   `discard`, the action stays advisory: the user must commit or checkout
-   manually. This is enforced in the HTML generation, not just in execution.
+   the concept page must NOT render any DESTRUCTIVE action control for it: no
+   `Entfernen`, no "discard", no "reset". It is read-only context. Even when
+   the analysis recommends `discard`, the action stays advisory: the user must
+   commit or checkout manually. This is enforced in the page generation, not
+   just in execution.
 4. **Branch cleanup after removal:** After successfully removing a clean
    worktree, the associated branch is NOT automatically deleted. The branch
-   can be scheduled for deletion via the normal Löschbar flow, but it must
-   be checked independently (check that it is not the current branch in the
+   is decided on its own (a separate topic on the page, or the autonomous proof
+   in a later run), and must be checked independently (check that it is not the current branch in the
    main repo first).

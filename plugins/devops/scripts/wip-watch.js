@@ -10,7 +10,7 @@
  *   content is not in the default branch, dirty worktrees, old stashes and
  *   broken worktrees. It writes ~/.claude/wip-watch/report.json and shows ONE
  *   desktop notification that carries the prompt to paste into Claude
- *   ("WIP-Report aufräumen"); the auto-cleanup skill then works the report.
+ *   ("Branches aufräumen"); the auto-cleanup skill then cleans the current repo.
  *   It only REPORTS: nothing is deleted, pruned, fetched or pushed. The only
  *   network call is the optional bounded `gh pr list` (merged PR heads).
  *
@@ -46,7 +46,7 @@ const desktop = require('./lib/desktop-notify');
 
 const JOB = 'wip-watch';
 const JOB_TIME = '10:00';
-const PROMPT = 'WIP-Report aufräumen';
+const PROMPT = 'Branches aufräumen';
 const GIT_TIMEOUT = 15_000;
 const GH_TIMEOUT = 20_000;
 const DAY_MS = 86_400_000;

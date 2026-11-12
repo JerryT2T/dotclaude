@@ -1222,6 +1222,28 @@ function findStageIssues(html) {
   return { errors, warnings };
 }
 
+/** Rail labels of analysis rounds (topic data-nav-label, decision data-label) stay short: the rail names them in one line. */
+const RAIL_LABEL_MAX = 28;
+function findRailLabelWarnings(html) {
+  const body = String(html || '').replace(/<!--[\s\S]*?-->/g, m => ' '.repeat(m.length));
+  const warnings = [];
+  if (!/\sdata-analysis=/i.test(body)) return warnings;
+  const tagRe = /<\w+\b(?:[^>"']|"[^"]*"|'[^']*')*>/g;
+  let t;
+  while ((t = tagRe.exec(body)) !== null) {
+    const tag = t[0];
+    const isTopic = /\sdata-topic(?=[\s=>/])/i.test(tag), isDec = /\sdata-decision=/i.test(tag);
+    if (!isTopic && !isDec) continue;
+    const attr = isTopic ? 'data-nav-label' : 'data-label';
+    const label = attrOf(tag, attr);
+    if (label && [...label.trim()].length > RAIL_LABEL_MAX) {
+      warnings.push({ kind: 'rail-label-length', at: t.index,
+        why: `${isTopic ? 'topic' : 'decision'} ${attr} "${label.trim()}" is ${[...label.trim()].length} chars — rail labels are at most ${RAIL_LABEL_MAX}; the rail cuts the rest with "…" (step2-generate.md § Rail labels)` });
+    }
+  }
+  return warnings;
+}
+
 /**
  * Full evaluation for a written file.
  * @returns {{applicable:boolean, ok:boolean, missing:Array, forbidden:Array, structural:Array, mapping:Array, overlap:Array}}
@@ -1254,7 +1276,7 @@ function evaluate(filePath, html) {
     finalReport,
     analysis: [...a.errors, ...legacyViews],
     // Advisory, never part of `ok`.
-    warnings: [...findDesignAuthoringWarnings(html), ...findIdenticalFirstScreens(html), ...findDifferingAlternativePages(html), ...findFinalReportPlaceholders(html), ...a.warnings, ...st.warnings],
+    warnings: [...findDesignAuthoringWarnings(html), ...findIdenticalFirstScreens(html), ...findDifferingAlternativePages(html), ...findFinalReportPlaceholders(html), ...findRailLabelWarnings(html), ...a.warnings, ...st.warnings],
   };
 }
 
@@ -1460,6 +1482,8 @@ module.exports = {
   findDifferingAlternativePages,
   findSubpageOnlyRounds,
   findStageIssues,
+  findRailLabelWarnings,
+  RAIL_LABEL_MAX,
   SCREEN_SIM_THRESHOLD,
   SUBPAGE_MAX_DIFF,
   SUBPAGE_MIN_SAME_SHARE,

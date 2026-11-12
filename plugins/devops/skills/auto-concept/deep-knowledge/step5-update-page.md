@@ -22,6 +22,38 @@ round FRAGMENT (`rounds/NN.html`), never the built page; the build keeps every
 check the user already answered.
 See `deep-knowledge/reality-check.md` § The forced round.
 
+## Review round — the switch `Umsetzung prüfen`
+
+Authoring procedure for `action: "review"` (sent from the closing page's switch,
+`templates-final-report-review.md` § The review switch). No code is written and nothing
+ships: it is an `iterate`-like branch that appends ONE regular round.
+
+1. **Checkpoint** `review:start`, then freeze the previous round as for any append
+   (`bake`, step 1–2 of Final-report append). The closing page stays in the build;
+   the review round is a new round after it.
+2. **Gather the expectation** (`d-rev-expect`): the last concept round's decisions
+   (`{name}-decisions.json` or the baked `#concept-decisions` of the round before
+   the implement) plus the implementation plan (the mapping / brief checklist the
+   implement ran from). Number every expectation line.
+3. **Gather the actual:** the `git diff` of the implementation against the base, the
+   changed files, and the running result. Real data (`d-rev-data`): if the app or
+   CLI runs locally, run it on a real input and capture the output; if not, build a
+   fixture and label it "Beispiel" (`.rv-badge`).
+4. **Compare strictly:** one auto-note (`.rv-note[data-review-note][data-kind="deviation"]`)
+   per expectation line the build does not meet exactly, in either direction.
+   Everything in the diff that matches no expectation line is a **finding**:
+   `.rv-note.rv-green[data-kind="finding"]` plus its own decision `rv-<slug>`
+   (`single`: `keep` Behalten / `revert` Zurückbauen).
+5. **Write `rounds/{N+1}.html`** with `data-review`, `data-review-from="<closing round>"`
+   and the concept's template per Step 1a (never a template switch), tab label
+   "Umsetzung"; the example first, then the notes beside what they concern. Same
+   append checklist as § 5c; the round has the normal controls, so iterate and
+   implement work as everywhere.
+6. `build`, `/reload`, then `/reset` with the captured `_version` (the bridge treats
+   `review` like `iterate`: reload before reset), re-launch the waker, end the turn
+   with the `waiting` card. A later `implement` from this round rewrites only the
+   `revert` answers plus the user's notes and appends a fresh closing page.
+
 ## 5c · Append procedure
 
 The page is built from its source folder (`step2-build.md`): every step

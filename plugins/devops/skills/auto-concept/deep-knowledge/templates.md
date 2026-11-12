@@ -47,14 +47,15 @@ Index of the concept engine reference: the three templates (decision, design, fr
 | 39 | [templates-utilities.md](templates-utilities.md) | 503 | App Tooltips · Theme Toggle · Neural Backdrop |
 | 40 | [templates-heartbeat.md](templates-heartbeat.md) | 597 | Claude Connection Heartbeat (HTTP Bridge) |
 | 41 | [templates-rounds.md](templates-rounds.md) | 447 | Iteration Tabs |
-| 42 | [templates-final-report.md](templates-final-report.md) | 499 | Final Report Panel · Design System |
-| 43 | [templates-analysis.md](templates-analysis.md) | 293 | Template: analysis (Full + Lite) · Markup contract · Decision modes · Payload · collectModeDecision · Display palette |
-| 44 | [templates-analysis-css.md](templates-analysis-css.md) | 341 | Template: analysis — Styling CSS (Full + Lite) |
-| 45 | [templates-analysis-js.md](templates-analysis-js.md) | 579 | Template: analysis — Engine UI JS (palette, stages, stepper, choreography) |
-| 46 | [templates-analysis-js-2.md](templates-analysis-js-2.md) | 609 | Template: analysis — Engine UI JS (continued) |
-| 47 | [templates-stages.md](templates-stages.md) | 195 | Etappen (stages) — contract, panel head name, round row, stepper tabs, next-stage station · CSS |
-| 48 | [templates-stages-js.md](templates-stages-js.md) | 468 | Etappen JS |
-| 49 | [templates-voice-js.md](templates-voice-js.md) | 449 | Voice input — mic buttons, notes voice mode (JS + CSS) |
+| 42 | [templates-final-report.md](templates-final-report.md) | 513 | Final Report Panel · Design System |
+| 43 | [templates-final-report-review.md](templates-final-report-review.md) | 120 | Final Report Panel (continued) · The review switch — "Umsetzung prüfen" · The review round |
+| 44 | [templates-analysis.md](templates-analysis.md) | 293 | Template: analysis (Full + Lite) · Markup contract · Decision modes · Payload · collectModeDecision · Display palette |
+| 45 | [templates-analysis-css.md](templates-analysis-css.md) | 341 | Template: analysis — Styling CSS (Full + Lite) |
+| 46 | [templates-analysis-js.md](templates-analysis-js.md) | 579 | Template: analysis — Engine UI JS (palette, stages, stepper, choreography) |
+| 47 | [templates-analysis-js-2.md](templates-analysis-js-2.md) | 609 | Template: analysis — Engine UI JS (continued) |
+| 48 | [templates-stages.md](templates-stages.md) | 195 | Etappen (stages) — contract, panel head name, round row, stepper tabs, next-stage station · CSS |
+| 49 | [templates-stages-js.md](templates-stages-js.md) | 468 | Etappen JS |
+| 50 | [templates-voice-js.md](templates-voice-js.md) | 449 | Voice input — mic buttons, notes voice mode (JS + CSS) |
 
 ## Using the parts
 

@@ -91,6 +91,12 @@ one page; quoted originals and code identifiers are the only exceptions.
 from the engine. `data-nav-label` of a design is the bare name ("Ruhige Karten"), never
 "A · Ruhige Karten", "Design A" or "Variante 1". The build gate warns on a leading letter marker.
 
+**Rail labels: at most 28 characters.** The analysis rail (right edge) names each stage in one
+line: the `data-nav-label` of a topic and the `data-label` of a decision stay at 28 characters
+or fewer ("Bekannte Fehler auf main", not the sentence it summarises). The full wording belongs
+in the heading; the rail shows a longer label cut at the END with "…" and the app tooltip
+(`data-tip`) carries the whole title. The build gate warns (`rail-label-length`) above 28.
+
 **Variant copy: name the thing first** (`data-design-motto` / `data-design-traits`).
 Binding. After one read the user must know WHAT the variant is. Name the concrete
 UI thing in plain words first (header, 76 px tall, bevelled edges, back button

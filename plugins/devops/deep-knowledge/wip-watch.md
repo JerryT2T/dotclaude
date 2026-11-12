@@ -78,14 +78,15 @@ findings never notify ("all ok" does not exist) and reset the set so a later
 finding notifies again. A notification that could not be shown is retried next
 run. The toast carries the count, the report path and the prompt to paste:
 
-> WIP-Report aufräumen
+> WIP-Report aufräumen  (set in `scripts/wip-watch.js`; the skill has no WIP-report mode any more)
 
-That phrase starts `auto-cleanup` in its WIP-report input mode: one page,
-findings grouped per repo, each item's suggested action pre-selected, you pick
-per item, execution runs per repo behind the Apply-Manifest + Dry-Run-Confirm
-with each item re-verified first. The job itself never invokes Claude.
+The report is read-only information. There is no cleanup path from it: the
+cleanup (`auto-cleanup`, "branch cleanup") always works on the CURRENT repo
+only — open the repo a finding names and run it there. It removes what
+provably landed on its own and puts only the ambiguous branches on one concept
+page. The job itself never invokes Claude.
 
 ## Token cost
 
 Zero. Scan, report and notification are plain node + git; tokens are spent only
-when you open the cleanup page.
+when you run the cleanup in a repo.

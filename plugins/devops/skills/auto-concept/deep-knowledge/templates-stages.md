@@ -1,4 +1,4 @@
-# Concept templates, part 47 of 49: Shared systems — Etappen (stages): contract, head name, round row, stepper tabs, next-stage — markup and CSS
+# Concept templates, part 48 of 50: Shared systems — Etappen (stages): contract, head name, round row, stepper tabs, next-stage — markup and CSS
 
 ## Etappen (stages)
 

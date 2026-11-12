@@ -1,4 +1,4 @@
-# Concept templates, part 46 of 49: Template: analysis — engine UI JS (continued 2)
+# Concept templates, part 47 of 50: Template: analysis — engine UI JS (continued 2)
 
 ```javascript
   function prepIntro(inst, g) {
@@ -627,6 +627,7 @@
     i = clamp(Number.isFinite(i) ? i : 0, 0, inst.stages.length - 1);
     const prev = inst.stages[inst.idx], st = inst.stages[i];
     hesStop(inst);
+    if (!opt.initial && prev !== st) sealLeaving(inst, prev);
     // Going to the stage that is already open is no visit (rail item, Shift+Enter, left arrow on the first question ...).
     const same = i === inst.idx;
     if (!opt.initial && !same && prev && prev.kind === 'dec') inst.visited.add(decId(prev.el));
@@ -701,7 +702,8 @@
     if (!force && (s.editing || me.__sig === sig)) return;
     me.__sig = sig;
     me.textContent = '';
-    // The answer is a bubble of its own (it is a choice, not a message: no pen); every message is one with pen and x.
+    // The answer is a bubble of its own (it is a choice: no pen); the note sent with it is its OWN bubble right under it, like
+    // every message one with pen and x (never merged into the answer, never dropped).
     if (ans && ans !== '–') me.appendChild(h('div', 'an-bub-me an-ans-m', ans));
     if (store) msgsOf(s, store).forEach((m, i) => me.appendChild(noteRow(inst, s, m, i, !frozen(inst))));
     me.hidden = !me.firstChild;
@@ -897,6 +899,8 @@
       const name = btn('an-sig-n');
       name.dataset.go = String(inst.stages.indexOf(x.s));
       name.append(h('b', '', x.s.el.dataset.label || id), h('small', '', x.e.untouched ? L('nicht angesehen — Vorauswahl gilt', 'not looked at — the preselection stands') : valueText(x.s.el, x.e)));
+      // The user's notes stand next to their answer (every one, in full, wrapped - never cut).
+      noteTexts(inst, x.s).forEach(t => name.appendChild(h('small', 'an-sig-note', '✎ ' + t)));
       const dw = h('div', 'an-dw'), bar = h('b');
       bar.style.width = Math.round(x.hs.ms / max * 100) + '%';
       dw.appendChild(bar);
@@ -953,6 +957,7 @@
       const e = entryOf(s.el), c = h('div'); if (e.deviates) c.className = 'an-dv';
       c.appendChild(h('b', '', s.el.dataset.label || decId(s.el)));
       c.appendChild(document.createTextNode(valueText(s.el, e) + (e.deviates ? ' · ' + L('weicht ab', 'differs') : '')));
+      noteTexts(inst, s).forEach(t => c.appendChild(h('div', 'an-mini-note', '✎ ' + t)));
       mini.appendChild(c);
     });
     el.appendChild(mini);

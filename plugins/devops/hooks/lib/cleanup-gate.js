@@ -5,9 +5,10 @@
  * @plugin devops
  * @description The /auto-cleanup deletion gate: no branch or worktree is
  *   deleted without an ANSWERED Dry-Run-Confirm, and a branch whose content
- *   has not landed in the default branch needs its own per-branch yes.
+ *   has not landed in the default branch needs its own per-branch yes —
+ *   EXCEPT the autonomous class, which needs no question at all (below).
  *
- *   Measured 2026-10-08 (evals/skills/auto-cleanup/manifest-before-delete):
+ *   Measured 2026-10-08 (evals/skills/auto-cleanup/autonomous-then-concept (was manifest-before-delete)):
  *   under `claude -p` the skill judged the page "overkill" for two branches,
  *   ran `git branch -d feat/merged` before asking anything, and asked only
  *   after the delete was refused — in one run per variant it also tried
@@ -32,6 +33,18 @@
  *   a "Ja"/"Yes" option label (Abbrechen, Other, free text) revokes the earlier
  *   Dry-Run approvals. A target the parser cannot resolve to a literal name
  *   (`$b`, a glob, `xargs`) is refused: the gate cannot tell what it deletes.
+ *
+ *   Autonomous class (no confirm, decided per item at the moment of the
+ *   delete from the live repo, never cached — a tip that moved fails the
+ *   proof): (1) a local branch whose content PROVABLY landed in the default
+ *   branch (merge-base ancestry, `git cherry` without a unique commit, or a
+ *   no-op `merge-tree`) and that is checked out nowhere — not the main
+ *   checkout, not the current branch, no session worktree; (2) a remote
+ *   branch with the same proof whose namesake is checked out nowhere; (3) a
+ *   worktree registration whose directory is gone (prunable). Never
+ *   autonomous: any directory delete, any worktree that still has a
+ *   directory, the default branch, anything the proof cannot answer (doubt =
+ *   ambiguous = concept page + the Dry-Run / Unmerged yes below).
  *
  *   State: `<tmpdir>/dotclaude-cleanup-gate-<session>.json`, per session,
  *   expires ARM_TTL_MS after the last arm. Outside an armed session the gate
@@ -600,15 +613,72 @@ function namesWorktree(scope, target, dir) {
   return Boolean(m && new RegExp(`#${m[1]}(?!\\d)`).test(scope));
 }
 
+// ── autonomous class ───────────────────────────────────────────────────────
+
+/** `git worktree list --porcelain` → [{path, branch|null}], main checkout first; null if unreadable. */
+function listWorktrees(git) {
+  const out = git(['worktree', 'list', '--porcelain']);
+  if (out === null) return null;
+  const list = [];
+  let cur = null;
+  for (const line of out.split('\n')) {
+    if (line.startsWith('worktree ')) { cur = { path: line.slice(9).trim(), branch: null }; list.push(cur); }
+    else if (cur && line.startsWith('branch refs/heads/')) cur.branch = line.slice('branch refs/heads/'.length).trim();
+  }
+  return list;
+}
+
+/**
+ * Positive proof that every change of `ref` is in `base`: ancestor, or
+ * `git cherry` lists commits and none is unique, or merging it would not
+ * change the base tree. A git call that fails answers "no proof".
+ */
+function provenLanded(git, ref, base) {
+  if (!ref || !base) return false;
+  if (git(['merge-base', '--is-ancestor', ref, base]) !== null) return true;
+  const cherry = git(['cherry', base, ref]);
+  if (cherry && cherry.split('\n').filter(Boolean).every(l => l.startsWith('-'))) return true;
+  const merged = git(['merge-tree', '--write-tree', base, ref]);
+  const baseTree = git(['rev-parse', `${base}^{tree}`]);
+  return Boolean(merged && baseTree && merged.split('\n')[0].trim() === baseTree);
+}
+
+/** Is this one delete in the autonomous class? Evaluated now, from the live repo. */
+function isAutonomous(d, git) {
+  try {
+    if (d.kind === 'dir') return false;
+    const wts = listWorktrees(git);
+    if (!wts || !wts.length) return false;
+    if (d.kind === 'worktree') {
+      const abs = normPath(resolvePath(d.dir, d.target));
+      const i = wts.findIndex(w => normPath(w.path) === abs);
+      return i > 0 && !fs.existsSync(wts[i].path);
+    }
+    if (d.kind !== 'branch' && d.kind !== 'remote') return false;
+    const name = stripRefsHeads(String(d.target || ''));
+    if (!name || name === 'HEAD') return false;
+    if (wts.some(w => w.branch === name)) return false; // main checkout, current branch, any session worktree
+    const base = defaultBase(git);
+    if (!base) return false;
+    const baseName = base.replace(/^refs\/(remotes\/[^/]+|heads)\//, '');
+    if (name === baseName || name === 'main' || name === 'master') return false;
+    const ref = d.kind === 'remote' ? `refs/remotes/${d.remote}/${name}` : `refs/heads/${name}`;
+    if (!git(['rev-parse', '--verify', '--quiet', `${ref}^{commit}`])) return false;
+    return provenLanded(git, ref, base);
+  } catch {
+    return false;
+  }
+}
+
 const NO_ANSWER_RULE =
   'A missing, unanswered, errored or non-"Ja" confirmation means NO deletion. ' +
   'Do not retry, do not route around it (another delete form, a script, a loop).';
 
 const HOW_TO_CONFIRM =
-  'Print the Apply-Manifest, then ask the Dry-Run-Confirm with AskUserQuestion: ' +
+  'This item is not in the autonomous class (provably landed and checked out nowhere, or a worktree entry without a directory). ' +
+  'Put it on the ONE concept page; once the user decided it there, relay exactly those decisions with one AskUserQuestion: ' +
   'header "Dry-Run", the question lists every branch / worktree by full name, ' +
-  'options "Ja, ausführen" and "Abbrechen". No yes → end the run with the ' +
-  '`analysis` card, the manifest listed as open.';
+  'options "Ja, ausführen" and "Abbrechen". No yes → keep it, list it as open on the `analysis` card.';
 
 /**
  * The gate's verdict for one Bash/PowerShell command.
@@ -661,8 +731,11 @@ function decide({ command, cwd, state, gitFor, mergedHeads, budgetMs = CHAIN_BUD
     if (r.ok) deletes.push(d);
   }
   if (!deletes.length) return null;
+  // The autonomous class passes on its own live proof; everything else needs the yes below.
+  const gated = deletes.filter(d => !isAutonomous(d, gitFor(d.dir)));
+  if (!gated.length) return null;
   const dryScopes = state.dryRun.map(a => a.scope);
-  const missing = deletes.filter(d => !dryScopes.some(s => d.kind === 'worktree' || d.kind === 'dir'
+  const missing = gated.filter(d => !dryScopes.some(s => d.kind === 'worktree' || d.kind === 'dir'
     ? namesWorktree(s, d.target, d.dir)
     : namesBranch(s, d.target)));
   if (missing.length) {
@@ -674,7 +747,7 @@ function decide({ command, cwd, state, gitFor, mergedHeads, budgetMs = CHAIN_BUD
   }
   const headCache = new Map();
   const deadline = Date.now() + budgetMs;
-  const notLanded = deletes.filter(d => d.kind !== 'worktree' && d.kind !== 'dir'
+  const notLanded = gated.filter(d => d.kind !== 'worktree' && d.kind !== 'dir'
     && !state.unmerged.some(a => (a.exact ? a.scope === d.target : namesBranch(a.scope, d.target)))
     && !hasLanded(gitFor(d.dir), d, { cwd: d.dir, mergedHeads, cache: headCache, deadline }));
   if (notLanded.length) {
@@ -694,5 +767,5 @@ module.exports = {
   statePath, readState, writeState, arm, isCleanupSkill,
   isYesAnswer, questionScope, recordAnswers,
   segments, fromMsys, parseDeletes, defaultBase, hasLanded,
-  namesBranch, namesWorktree, decide,
+  provenLanded, isAutonomous, namesBranch, namesWorktree, decide,
 };
