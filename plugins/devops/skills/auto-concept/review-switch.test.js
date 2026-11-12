@@ -10,7 +10,7 @@ import { readSkill } from "./skill-source.js";
 
 const DK = path.join(path.dirname(fileURLToPath(import.meta.url)), "deep-knowledge");
 const read = (f) => fs.readFileSync(path.join(DK, f), "utf8");
-const fr = read("templates-final-report.md");
+const fr = read("templates-final-report.md") + read("templates-final-report-review.md");
 const chrome = read("templates-panel-chrome-js.md");
 const update = read("step5-update-page.md");
 const skill = readSkill();

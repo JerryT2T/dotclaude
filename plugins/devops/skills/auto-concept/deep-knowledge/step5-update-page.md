@@ -25,7 +25,7 @@ See `deep-knowledge/reality-check.md` § The forced round.
 ## Review round — the switch `Umsetzung prüfen`
 
 Authoring procedure for `action: "review"` (sent from the closing page's switch,
-`templates-final-report.md` § The review switch). No code is written and nothing
+`templates-final-report-review.md` § The review switch). No code is written and nothing
 ships: it is an `iterate`-like branch that appends ONE regular round.
 
 1. **Checkpoint** `review:start`, then freeze the previous round as for any append

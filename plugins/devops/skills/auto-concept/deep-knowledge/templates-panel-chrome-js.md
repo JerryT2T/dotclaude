@@ -1,4 +1,4 @@
-# Concept templates, part 04 of 49: Panel chrome — page-level JS
+# Concept templates, part 04 of 50: Panel chrome — page-level JS
 
 
 ```javascript
@@ -394,7 +394,7 @@
   else later();
 })();
 
-// --- Review switch ("Umsetzung prüfen", § Final Report Panel → The review switch) ---
+// --- Review switch ("Umsetzung prüfen", templates-final-report-review.md § The review switch) ---
 // A pill beside the eye. On the closing page it asks Claude for a review round
 // (one `review` submission); on the review round it goes back to the closing
 // page. It pulses until the first click (sessionStorage remembers it), the

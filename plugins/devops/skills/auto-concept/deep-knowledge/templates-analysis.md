@@ -1,4 +1,4 @@
-# Concept templates, part 43 of 49: Template: analysis — Full + Lite contract, decision modes, collect
+# Concept templates, part 44 of 50: Template: analysis — Full + Lite contract, decision modes, collect
 
 ## Analysis presentation (Full + Lite) — engine fit
 
