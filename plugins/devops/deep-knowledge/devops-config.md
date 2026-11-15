@@ -70,6 +70,20 @@ Never offer or describe a feature that `list` reports as not allowed.
 
 Also part of every automatic cleanup (not separate settings):
 
+- **Sub-agent leftovers (one rule).** Isolated sub-agent leftovers
+  (`.claude/worktrees/agent-*` worktrees, `worktree-agent-*` branches, agent
+  sub-branches) whose CONTENT is fully in the default branch (content check,
+  `scripts/lib/content-landed.js` — a squash merge hides them from `git cherry`)
+  and that are pushed count as removable without a question. They go under the
+  same `autoCleanMinAgeDays` / `autoCleanKeepNewest` / `autoCleanMaxGB` rules as
+  every other leftover (the newest stay for inspection, the user wants to look
+  at what happened), never immediately. The one rule function is
+  `scripts/lib/cleanup-rule.js`; `ship_hygiene`, the `auto-cleanup` autonomous
+  class (`orphan-scan --clean-landed`) and auto-agents' post-merge removal
+  (`integration-check --remove`, `--now` skips only the idle wait) all use it.
+  Uncommitted changes, unpushed commits, a live session or content that is not
+  fully landed keep a leftover — it then stays in the orphan report as at risk.
+
 - **Landed proof via PR chain.** A branch counts as landed when its tip is an
   ancestor of a merged PR's head (an integration branch that collected
   sub-agent branches) and that head still holds all of the branch's changes.

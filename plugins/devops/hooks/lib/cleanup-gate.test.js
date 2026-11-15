@@ -516,6 +516,19 @@ describe("autonomous class — no question, proven per item at delete time (#4)"
     expect(decide(`git worktree remove "${w.repo}"`).block).toBeTruthy();
   });
 
+  test("the auto-cleanup route for agent leftovers (orphan-scan --clean-landed --apply) is not a delete the gate sees", () => {
+    const scan = path.join(__dirname, "..", "..", "scripts", "orphan-scan.js");
+    for (const c of [
+      `node "${scan}" --clean-landed --repo . --apply`,
+      `node "${scan}" --clean-landed --repo "${w.repo}" --apply --no-fetch`,
+      `cd "${w.repo}" && node "${scan}" --clean-landed --apply`,
+      `node "${scan}" --clean-landed --json`,
+    ]) expect(decide(c), c).toBeNull();
+    // while the manual route to the same worktree stays refused
+    expect(decide(`git worktree remove --force "${wt}"`).block).toBeTruthy();
+    expect(decide(`node "${scan}" --clean-landed --apply && git worktree remove "${wt}"`).block).toBeTruthy();
+  });
+
   test("a mixed command is refused as a whole when one target is not autonomous", () => {
     expect(decide("git branch -D feat/merged feat/ambig").block).toMatch(/feat\/ambig/);
   });

@@ -98,6 +98,9 @@ function chainLanded(sha, ctx) {
     if (!gitOk(['merge-base', '--is-ancestor', sha, head], ctx.cwd)) continue;
     const f = filesInBase(sha, ctx, head);
     if (f && f.filesIn === f.filesTotal) return true;
+    // over MAX_FILES (or unreadable): the one-call path comparison against the merged head, measured
+    // from the fork point with the base; fails closed
+    if (!f && require('./content-landed').contentInBase(ctx.cwd, sha, head, { forkRef: ctx.baseRef }).landed) return true;
   }
   return false;
 }

@@ -3,7 +3,7 @@
  * Every number shown comes from the arguments (engine events or files the
  * plugin's scripts already write), never from memory.
  */
-import type { AgentRow, Budget, CardButton, CardView, Hygiene, PlanStep, Progress, ShipView } from '../../types/index'
+import type { AgentRow, Budget, CardButton, CardView, CleanupHistory, Hygiene, PlanStep, Progress, RunMarker, ShipView } from '../../types/index'
 
 export const LONG_RUN_MS = 120_000
 
@@ -109,7 +109,7 @@ export function passiveSpikeRow(
 
 /** The budget from one `session.measure` (or `$.session.usage()`) reading. */
 export function budgetFrom(m: {
-  context?: { percent?: number }
+  context?: { percent?: number; tokens?: number; window?: number }
   rateLimits?: ReadonlyArray<{ kind: string; percentUsed: number; resetsAt?: string }>
 }): Budget {
   const limits = Array.isArray(m.rateLimits) ? m.rateLimits : []
@@ -130,6 +130,8 @@ export function budgetFrom(m: {
     context: ctx,
     fiveHourResetsAt: reset('five_hour'),
     weeklyResetsAt: reset('seven_day'),
+    contextTokens: m.context && Number.isFinite(m.context.tokens) ? (m.context.tokens as number) : null,
+    contextWindow: m.context && Number.isFinite(m.context.window) ? (m.context.window as number) : null,
   }
 }
 
@@ -231,25 +233,16 @@ export function budgetBarSvg(bar: BudgetBar): string {
 export const BUDGET_BAR_SIZE = { width: BAR.w, height: BAR.h + 12 } as const
 
 /** Screen-reader text of one bar, as the card's tooltip. */
-export function budgetBarAlt(bar: BudgetBar): string {
-  return `${bar.label}: ${Math.round(bar.pct)} % used · resets in ${bar.watermark}`
+export function budgetBarAlt(bar: BudgetBar, loc: Locale = 'en'): string {
+  return tr(loc, 'barAlt', { label: bar.label, p: Math.round(bar.pct), w: bar.watermark })
 }
 
-/** "🧠 context 72 %" from CONTEXT_SHOW_PERCENT on; null below. */
-export function contextNote(b: Budget | null): string | null {
-  if (!b || b.context === null || b.context < CONTEXT_SHOW_PERCENT) return null
-  return `🧠 context ${b.context} %`
-}
-
-/** One terminal line for the band: the card's markdown budget line plus context; null when nothing shows. */
+/** One terminal line for the band's budget bars (the card's markdown line); null when no bar shows. The context has its own ring. */
 export function budgetLine(b: Budget | null, now: number): string | null {
   if (!b) return null
   const bars = budgetBars(b, now)
-  const segs = bars.map(x => `${x.label} ${budgetGlyphBar(x.pct, x.elapsedPct)} ${x.watermark}`)
-  const ctx = contextNote(b)
-  if (ctx) segs.push(ctx)
-  if (!segs.length) return null
-  return (bars.some(x => x.level !== 'white') ? '⚠ ' : '') + segs.join('   ')
+  if (!bars.length) return null
+  return (bars.some(x => x.level !== 'white') ? '⚠ ' : '') + bars.map(x => `${x.label} ${budgetGlyphBar(x.pct, x.elapsedPct)} ${x.watermark}`).join('   ')
 }
 
 // --- Completion card mirror: the card tool's own result, never rebuilt. ---
@@ -397,21 +390,36 @@ export function workingLine(p: Progress | null): { head: string; detail: string 
 }
 
 /**
- * The hourglass that turns while Claude works: SMIL, drawn in the interactive
- * frame (a plain image would not animate everywhere). Amber, the ⏳ of the titles.
+ * The hourglass that turns while Claude works: the ⏳ emoji of the card and its titles, drawn in
+ * the interactive frame (SMIL does not run in a plain image) and turning all the time, one full
+ * turn per 8 s (slower than a flip, so it reads as "something is happening", not as a nervous tic).
  */
-export const HOURGLASS_SIZE = 16
+export const HOURGLASS_SIZE = 18
+export const HOURGLASS_TURN_SECONDS = 8
 export function hourglassSvg(): string {
-  const c = '#e6c36a'
+  const n = HOURGLASS_SIZE
+  const c = n / 2
   return (
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${HOURGLASS_SIZE}" height="${HOURGLASS_SIZE}" viewBox="0 0 16 16">` +
-    `<g fill="none" stroke="${c}" stroke-width="1.4" stroke-linecap="round">` +
-    `<path d="M3.5 1.5h9M3.5 14.5h9"/>` +
-    `<path d="M5 1.5c0 3.2 3 4.2 3 6.5s-3 3.3-3 6.5M11 1.5c0 3.2-3 4.2-3 6.5s3 3.3 3 6.5"/>` +
-    `<path d="M6.2 4.2h3.6L8 6.6z" fill="${c}" stroke="none"/>` +
-    `<path d="M6.4 13.4h3.2L8 11.6z" fill="${c}" stroke="none"/>` +
-    `<animateTransform attributeName="transform" type="rotate" values="0 8 8;0 8 8;180 8 8" keyTimes="0;0.75;1" dur="2.4s" repeatCount="indefinite"/>` +
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${n}" height="${n}" viewBox="0 0 ${n} ${n}">` +
+    `<g><text x="${c}" y="${n - 4}" text-anchor="middle" font-size="${n - 4}" font-family="'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif">⏳</text>` +
+    `<animateTransform attributeName="transform" type="rotate" from="0 ${c} ${c}" to="360 ${c} ${c}" dur="${HOURGLASS_TURN_SECONDS}s" repeatCount="indefinite"/>` +
     `</g></svg>`
+  )
+}
+
+export const HELP_SIZE = 16
+/**
+ * The batch / mode hints' trigger: a round "?" in the card's secondary text colour (dark / light by the
+ * frame's colour scheme). Hovering the keyed Box around it reveals the hints as an overlay (round-4 review).
+ */
+export function helpSvg(): string {
+  const n = HELP_SIZE
+  const c = n / 2
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${n}" height="${n}" viewBox="0 0 ${n} ${n}">` +
+    `<style>circle{stroke:#a9a9a9}text{fill:#a9a9a9}@media (prefers-color-scheme: light){circle{stroke:#6b6b6b}text{fill:#6b6b6b}}</style>` +
+    `<circle cx="${c}" cy="${c}" r="${c - 1}" fill="none" stroke-width="1.4"/>` +
+    `<text x="${c}" y="${c + 4}" text-anchor="middle" font-size="11" font-weight="600" font-family=${JSON.stringify(CARD_FONT)}>?</text></svg>`
   )
 }
 
@@ -433,12 +441,54 @@ export function isUndecidedCopy(p: { branch?: string; reason?: string; legacy?: 
   return Boolean(p && (p.legacy || p.coveredBy || p.nudge))
 }
 
+const INACTIVE_AFTER_DAYS = 1
+// `isAgentUnit` tests "<path> <branch>": a path-less branch starts after the space.
+const AGENT_UNIT = /\/worktrees\/agent-|(^|[\/\s])(worktree-)?agent-[0-9a-f]/i
+
+type RiskEntry = {
+  kind?: string
+  branch?: string | null
+  path?: string | null
+  state?: string
+  dirty?: number
+  live?: boolean
+  idleDays?: number
+  broken?: boolean
+}
+
+function isBroken(x: RiskEntry): boolean {
+  return x.broken === true || x.state === 'broken' || x.state === 'prunable'
+}
+
+function isAgentUnit(x: RiskEntry): boolean {
+  return AGENT_UNIT.test(`${String(x.path || '').replace(/[\\]/g, '/')} ${x.branch || ''}`)
+}
+
+/** What kind of leftover an inactive unmerged entry is: the cause the learn offer counts. */
+export function causeOf(x: RiskEntry): string {
+  if (isAgentUnit(x)) return 'agent worktree'
+  return x.kind === 'worktree' || x.path ? 'session worktree' : 'branch'
+}
+
+/**
+ * B12: unlanded or uncommitted work that no live session uses and that has been idle for a day
+ * or more (`idleDays` missing = inactive). Merged leftovers never count here.
+ */
+export function isInactiveUnmerged(x: RiskEntry): boolean {
+  if (!x || x.live === true) return false
+  const unmerged = x.state === 'unlanded' || x.state === 'partial' || (x.dirty || 0) > 0
+  if (!unmerged) return false
+  return typeof x.idleDays !== 'number' || x.idleDays >= INACTIVE_AFTER_DAYS
+}
+
 /**
  * Open branches, dirty worktrees and undecided safety copies of the current repo from
  * ~/.claude/orphan-report.json, counted as ss.orphan.nudge.js `counts` does
  * (unlanded = atRisk − dirty + remoteOnly; copies = parked ≥ 3 days and undecided), so
  * band, status line and nudge name the same numbers. null for a missing report, one older
  * than 72 h, or an unknown repo; from 24 h on `ageHours` makes the line say how old it is.
+ * Also carries what the band needs: agent / broken carve-outs, landed leftovers, the inactive
+ * unmerged entries and their causes, the report's time and the repo's path.
  */
 export function hygieneFrom(report: unknown, cwd: string, now: number): Hygiene | null {
   const r = report as { generatedAt?: string; repos?: unknown[] } | null
@@ -446,33 +496,50 @@ export function hygieneFrom(report: unknown, cwd: string, now: number): Hygiene 
   const t = Date.parse(r.generatedAt || '')
   if (!Number.isFinite(t) || now - t > ORPHAN_MAX_AGE_MS) return null
   const here = norm(cwd)
-  const entry = (r.repos as Array<{ path?: string; atRisk?: Array<{ dirty?: number }>; remoteOnly?: unknown[]; parked?: Array<{ ageDays?: number }> }>)
+  const entry = (r.repos as Array<{ path?: string; atRisk?: RiskEntry[]; remoteOnly?: unknown[]; parked?: Array<{ ageDays?: number }>; landedLeftovers?: number }>)
     .filter(e => e && e.path && (here === norm(e.path) || here.startsWith(`${norm(e.path)}/`)))
     .sort((a, b) => norm(b.path as string).length - norm(a.path as string).length)[0]
   if (!entry) return null
   // The worktree this session works in is never "open work" to clean up: it is in use.
   const risk = (Array.isArray(entry.atRisk) ? entry.atRisk : []).filter(
-    x => x && !((x as { path?: string }).path && (here === norm((x as { path: string }).path) || here.startsWith(`${norm((x as { path: string }).path)}/`))),
+    x => x && x.live !== true && !(x.path && (here === norm(x.path) || here.startsWith(`${norm(x.path)}/`))),
   )
   const dirty = risk.filter(x => (x.dirty || 0) > 0).length
   const remote = Array.isArray(entry.remoteOnly) ? entry.remoteOnly.length : 0
   const parked = Array.isArray(entry.parked) ? entry.parked : []
   const copies = parked.filter(p => p && (p.ageDays || 0) >= UNDECIDED_AFTER_DAYS && isUndecidedCopy(p as never)).length
-  return { branches: risk.length - dirty + remote, worktrees: dirty, copies, ageHours: Math.floor((now - t) / 3_600_000) }
+  const idle = risk.filter(isInactiveUnmerged)
+  const causes: Record<string, number> = {}
+  for (const x of idle) causes[causeOf(x)] = (causes[causeOf(x)] || 0) + 1
+  const broken = risk.filter(isBroken).length
+  return {
+    branches: risk.length - dirty + remote,
+    worktrees: dirty,
+    copies,
+    ageHours: Math.floor((now - t) / 3_600_000),
+    agent: risk.filter(x => !isBroken(x) && isAgentUnit(x)).length,
+    broken,
+    landed: Number.isFinite(entry.landedLeftovers) ? Math.max(0, Math.floor(entry.landedLeftovers as number)) : 0,
+    inactive: idle.length,
+    causes,
+    reportAt: t,
+    repo: entry.path as string,
+  }
 }
 
 /**
  * Status-line text, "devops: …"; prefix false for the band, which carries its own mark.
  * A report 24 h or older adds "as of N h". Null when nothing is open.
  */
-export function hygieneLine(h: Hygiene | null, prefix = true): string | null {
+export function hygieneLine(h: Hygiene | null, prefix = true, loc: Locale = 'en'): string | null {
   const copies = (h && h.copies) || 0
   if (!h || h.branches + h.worktrees + copies === 0) return null
   const parts: string[] = []
-  if (h.branches > 0) parts.push(`${h.branches} open ${h.branches === 1 ? 'branch' : 'branches'}`)
-  if (h.worktrees > 0) parts.push(`${h.worktrees} dirty ${h.worktrees === 1 ? 'worktree' : 'worktrees'}`)
-  if (copies > 0) parts.push(`${copies} undecided safety ${copies === 1 ? 'copy' : 'copies'}`)
-  const aged = h.ageHours * 3_600_000 >= ORPHAN_FRESH_MS ? ` · as of ${h.ageHours} h` : ''
+  const pick = (n: number, one: StrKey, many: StrKey) => tr(loc, n === 1 ? one : many, { n })
+  if (h.branches > 0) parts.push(pick(h.branches, 'stBranch1', 'stBranchN'))
+  if (h.worktrees > 0) parts.push(pick(h.worktrees, 'stDirty1', 'stDirtyN'))
+  if (copies > 0) parts.push(pick(copies, 'stCopy1', 'stCopyN'))
+  const aged = h.ageHours * 3_600_000 >= ORPHAN_FRESH_MS ? ` · ${tr(loc, 'asOf', { h: h.ageHours })}` : ''
   return `${prefix ? 'devops: ' : ''}${parts.join(' · ')}${aged}`
 }
 
@@ -509,10 +576,8 @@ export function cleanupApplyPrompt(root: string, cwd: string, plan: string): str
 }
 
 /** Toast text when a cleanup subagent ends. */
-export function cleanupToast(phase: 'planned' | 'done' | 'failed'): string {
-  if (phase === 'planned') return 'devops cleanup: plan ready — review it in the Cleanup pane'
-  if (phase === 'done') return 'devops cleanup: done — result in the Cleanup pane'
-  return 'devops cleanup: the subagent stopped without a result'
+export function cleanupToast(phase: 'planned' | 'done' | 'failed', loc: Locale = 'en'): string {
+  return tr(loc, phase === 'planned' ? 'toastPlanned' : phase === 'done' ? 'toastDone' : 'toastFailed')
 }
 
 const SHIP_STEPS = ['preflight', 'build', 'bump', 'release'] as const
@@ -582,4 +647,461 @@ export function verbatimNotices(contexts: readonly string[] | undefined): string
     })
   }
   return [...new Set(out)].map(t => t.slice(0, 200))
+}
+
+// --- Locales (B15): one string table, seven languages, picked from the Claude Code `language` setting. ---
+
+export const LOCALES = ['en', 'de', 'es', 'fr', 'pt', 'ja', 'zh'] as const
+export type Locale = (typeof LOCALES)[number]
+
+// Order: en, de, es, fr, pt, ja, zh. `{n}` etc. are filled by tr().
+const TABLE = {
+  ctx: ['Context', 'Kontext', 'Contexto', 'Contexte', 'Contexto', 'コンテキスト', '上下文'],
+  compact: ['Compact', 'Kompaktieren', 'Compactar', 'Compacter', 'Compactar', 'コンパクト化', '压缩'],
+  cleanupBtn: ['Clean up', 'Aufräumen', 'Limpiar', 'Nettoyer', 'Limpar', '整理する', '清理'],
+  junk: ['{n} leftovers', '{n} Altlasten', '{n} restos', '{n} restes', '{n} restos', '残り {n} 件', '{n} 项遗留'],
+  last: ['Last:', 'Zuletzt:', 'Último:', 'Dernier :', 'Último:', '直近:', '最近：'],
+  rowAgent: ['Agent worktrees', 'Agent-Worktrees', 'Worktrees de agentes', "Worktrees d'agents", 'Worktrees de agentes', 'エージェントの worktree', '代理 worktree'],
+  rowCopies: ['Safety copies', 'Sicherungskopien', 'Copias de seguridad', 'Copies de sauvegarde', 'Cópias de segurança', 'バックアップ', '备份副本'],
+  rowBranches: ['Branches', 'Branches', 'Ramas', 'Branches', 'Branches', 'ブランチ', '分支'],
+  rowBroken: ['Broken worktrees', 'defekte Worktrees', 'Worktrees dañados', 'Worktrees défectueux', 'Worktrees quebrados', '壊れた worktree', '损坏的 worktree'],
+  ruleInactive: [
+    'Trigger: {n} unmerged, inactive for over a day',
+    'Auslöser: {n} ungemergt und seit über einem Tag inaktiv',
+    'Motivo: {n} sin fusionar e inactivos desde hace más de un día',
+    "Déclencheur : {n} non fusionnés, inactifs depuis plus d'un jour",
+    'Motivo: {n} sem merge e inativos há mais de um dia',
+    '理由: 未マージで1日以上動いていないもの {n} 件',
+    '触发：{n} 项未合并且超过一天无活动',
+  ],
+  ruleCount: [
+    'Trigger: {n} leftovers, more than {t}',
+    'Auslöser: {n} Altlasten, mehr als {t}',
+    'Motivo: {n} restos, más de {t}',
+    'Déclencheur : {n} restes, plus de {t}',
+    'Motivo: {n} restos, mais de {t}',
+    '理由: 残骸 {n} 件（しきい値 {t} 超）',
+    '触发：{n} 项遗留，超过 {t}',
+  ],
+  hints: ['Hints', 'Hinweise', 'Indicaciones', 'Conseils', 'Dicas', 'ヒント', '提示'],
+  working: ['Claude is working', 'Claude arbeitet', 'Claude está trabajando', 'Claude travaille', 'Claude está trabalhando', 'Claude が作業中', 'Claude 正在工作'],
+  ringAlt: [
+    'Context: {p} % of the auto-compact limit',
+    'Kontext: {p} % des Auto-Compact-Limits',
+    'Contexto: {p} % del límite de compactación automática',
+    'Contexte : {p} % de la limite de compactage automatique',
+    'Contexto: {p} % do limite de compactação automática',
+    'コンテキスト: 自動コンパクト上限の {p} %',
+    '上下文：自动压缩上限的 {p} %',
+  ],
+  stBranch1: ['{n} open branch', '{n} offener Branch', '{n} rama abierta', '{n} branche ouverte', '{n} branch aberto', '未完了ブランチ {n}', '{n} 个未完成分支'],
+  stBranchN: ['{n} open branches', '{n} offene Branches', '{n} ramas abiertas', '{n} branches ouvertes', '{n} branches abertos', '未完了ブランチ {n}', '{n} 个未完成分支'],
+  stDirty1: ['{n} dirty worktree', '{n} unsauberer Worktree', '{n} worktree con cambios', '{n} worktree modifié', '{n} worktree sujo', '未コミット worktree {n}', '{n} 个有改动的 worktree'],
+  stDirtyN: ['{n} dirty worktrees', '{n} unsaubere Worktrees', '{n} worktrees con cambios', '{n} worktrees modifiés', '{n} worktrees sujos', '未コミット worktree {n}', '{n} 个有改动的 worktree'],
+  stCopy1: ['{n} undecided safety copy', '{n} offene Sicherungskopie', '{n} copia de seguridad sin decidir', '{n} copie de sauvegarde en attente', '{n} cópia de segurança pendente', '未判断のバックアップ {n}', '{n} 个待定备份副本'],
+  stCopyN: ['{n} undecided safety copies', '{n} offene Sicherungskopien', '{n} copias de seguridad sin decidir', '{n} copies de sauvegarde en attente', '{n} cópias de segurança pendentes', '未判断のバックアップ {n}', '{n} 个待定备份副本'],
+  asOf: ['as of {h} h', 'Stand vor {h} h', 'de hace {h} h', 'il y a {h} h', 'de {h} h atrás', '{h} 時間前の状態', '截至 {h} 小时前'],
+  toastPlanned: [
+    'devops cleanup: plan ready — review it in the Cleanup pane',
+    'devops Aufräumen: Plan fertig — im Aufräumen-Bereich prüfen',
+    'devops limpieza: plan listo — revísalo en el panel de limpieza',
+    'devops nettoyage : plan prêt — à vérifier dans le volet Nettoyage',
+    'devops limpeza: plano pronto — revise no painel de limpeza',
+    'devops 整理: プランができました — 整理ペインで確認してください',
+    'devops 清理：计划已就绪 — 请在清理面板中查看',
+  ],
+  toastDone: [
+    'devops cleanup: done — result in the Cleanup pane',
+    'devops Aufräumen: erledigt — Ergebnis im Aufräumen-Bereich',
+    'devops limpieza: hecho — resultado en el panel de limpieza',
+    'devops nettoyage : terminé — résultat dans le volet Nettoyage',
+    'devops limpeza: concluída — resultado no painel de limpeza',
+    'devops 整理: 完了 — 結果は整理ペインにあります',
+    'devops 清理：完成 — 结果见清理面板',
+  ],
+  toastFailed: [
+    'devops cleanup: the subagent stopped without a result',
+    'devops Aufräumen: der Subagent hat ohne Ergebnis gestoppt',
+    'devops limpieza: el subagente se detuvo sin resultado',
+    "devops nettoyage : le sous-agent s'est arrêté sans résultat",
+    'devops limpeza: o subagente parou sem resultado',
+    'devops 整理: サブエージェントが結果なしで停止しました',
+    'devops 清理：子代理未给出结果就停止了',
+  ],
+  toastLearn: [
+    'devops learn: unmerged work keeps being left behind — offer in the Cleanup pane',
+    'devops learn: ungemergte Arbeit bleibt wiederholt liegen — Angebot im Aufräumen-Bereich',
+    'devops learn: el trabajo sin fusionar se queda atrás con frecuencia — oferta en el panel de limpieza',
+    'devops learn : du travail non fusionné reste souvent en plan — proposition dans le volet Nettoyage',
+    'devops learn: trabalho sem merge fica para trás com frequência — oferta no painel de limpeza',
+    'devops learn: 未マージの作業が繰り返し残っています — 整理ペインに提案があります',
+    'devops learn：未合并的工作反复被遗留 — 清理面板中有建议',
+  ],
+  permission: ['Permission request waiting', 'Berechtigungsanfrage wartet', 'Solicitud de permiso en espera', "Demande d'autorisation en attente", 'Pedido de permissão aguardando', '権限リクエストが待機中', '权限请求等待中'],
+  finishedAfter: ['{what} finished after {t}', '{what} nach {t} fertig', '{what} terminó tras {t}', '{what} terminé après {t}', '{what} terminou após {t}', '{what} が {t} で完了', '{what} 用时 {t} 完成'],
+  bgCommand: ['Background command {s}', 'Hintergrundbefehl {s}', 'Comando en segundo plano {s}', 'Commande en arrière-plan {s}', 'Comando em segundo plano {s}', 'バックグラウンドコマンド {s}', '后台命令 {s}'],
+  paneIdle: ['No cleanup run yet.', 'Noch kein Aufräumlauf.', 'Aún no hay limpieza.', 'Aucun nettoyage pour le moment.', 'Nenhuma limpeza ainda.', '整理はまだ実行されていません。', '尚未运行清理。'],
+  panePlanning: ['Opus is planning the cleanup (read-only)…', 'Opus plant das Aufräumen (nur lesend) …', 'Opus planifica la limpieza (solo lectura)…', 'Opus planifie le nettoyage (lecture seule)…', 'Opus planeja a limpeza (somente leitura)…', 'Opus が整理を計画中（読み取りのみ）…', 'Opus 正在规划清理（只读）…'],
+  paneApplying: ['Opus is applying the approved plan…', 'Opus führt den freigegebenen Plan aus …', 'Opus aplica el plan aprobado…', 'Opus applique le plan approuvé…', 'Opus aplica o plano aprovado…', 'Opus が承認済みプランを実行中…', 'Opus 正在执行已批准的计划…'],
+  panePlanned: ['Plan ready. Nothing has changed yet.', 'Plan fertig. Noch nichts verändert.', 'Plan listo. Aún no se ha cambiado nada.', "Plan prêt. Rien n'a encore changé.", 'Plano pronto. Nada foi alterado ainda.', 'プランができました。まだ何も変更していません。', '计划已就绪，尚未更改任何内容。'],
+  paneDone: ['Cleanup applied.', 'Aufgeräumt.', 'Limpieza aplicada.', 'Nettoyage appliqué.', 'Limpeza aplicada.', '整理を実行しました。', '清理已完成。'],
+  paneFailed: ['The cleanup stopped.', 'Das Aufräumen wurde abgebrochen.', 'La limpieza se detuvo.', "Le nettoyage s'est arrêté.", 'A limpeza parou.', '整理が停止しました。', '清理已停止。'],
+  btnApply: ['Apply plan (deletes)', 'Plan ausführen (löscht)', 'Aplicar plan (borra)', 'Appliquer le plan (supprime)', 'Aplicar plano (apaga)', 'プランを実行（削除あり）', '执行计划（会删除）'],
+  btnDiscard: ['Discard plan', 'Plan verwerfen', 'Descartar plan', 'Abandonner le plan', 'Descartar plano', 'プランを破棄', '放弃计划'],
+  btnClose: ['Close', 'Schließen', 'Cerrar', 'Fermer', 'Fechar', '閉じる', '关闭'],
+  btnPlan: ['Plan cleanup', 'Aufräumen planen', 'Planificar limpieza', 'Planifier le nettoyage', 'Planejar limpeza', '整理を計画', '规划清理'],
+  btnReview: ['Review cleanup plan', 'Aufräum-Plan prüfen', 'Revisar el plan de limpieza', 'Vérifier le plan de nettoyage', 'Revisar o plano de limpeza', '整理プランを確認', '查看清理计划'],
+  runPlanning: ['planning…', 'plant …', 'planificando…', 'planification…', 'planejando…', '計画中…', '规划中…'],
+  runApplying: ['applying…', 'führt aus …', 'aplicando…', 'application…', 'aplicando…', '実行中…', '执行中…'],
+  learnOffer: [
+    'The same kind of unmerged work was left behind in {runs} cleanups: {cause}.',
+    'Dieselbe Art ungemergter Arbeit blieb in {runs} Aufräumläufen liegen: {cause}.',
+    'El mismo tipo de trabajo sin fusionar quedó atrás en {runs} limpiezas: {cause}.',
+    'Le même type de travail non fusionné est resté en plan lors de {runs} nettoyages : {cause}.',
+    'O mesmo tipo de trabalho sem merge ficou para trás em {runs} limpezas: {cause}.',
+    '同じ種類の未マージ作業が {runs} 回の整理で残りました: {cause}。',
+    '同一类未合并工作在 {runs} 次清理中被遗留：{cause}。',
+  ],
+  runBusy: [
+    'A cleanup is already running in another session',
+    'In einer anderen Session läuft schon ein Aufräumen',
+    'Ya hay una limpieza en curso en otra sesión',
+    'Un nettoyage est déjà en cours dans une autre session',
+    'Já há uma limpeza em andamento em outra sessão',
+    '別のセッションで整理がすでに実行中です',
+    '另一个会话中已有清理在运行',
+  ],
+  barAlt: [
+    '{label}: {p} % used · resets in {w}',
+    '{label}: {p} % verbraucht · Reset in {w}',
+    '{label}: {p} % usado · se restablece en {w}',
+    '{label} : {p} % utilisé · réinitialisation dans {w}',
+    '{label}: {p} % usado · reinicia em {w}',
+    '{label}: {p} % 使用済み · {w} 後にリセット',
+    '{label}：已用 {p} % · {w} 后重置',
+  ],
+  titleCleanup: ['Cleanup', 'Aufräumen', 'Limpieza', 'Nettoyage', 'Limpeza', '整理', '清理'],
+  titleAgents: ['Agents', 'Agenten', 'Agentes', 'Agents', 'Agentes', 'エージェント', '代理'],
+  titleShip: ['Ship / CI', 'Ship / CI', 'Ship / CI', 'Ship / CI', 'Ship / CI', 'Ship / CI', 'Ship / CI'],
+  noAgents: ['No subagents in this session yet.', 'Noch keine Subagenten in dieser Session.', 'Aún no hay subagentes en esta sesión.', "Aucun sous-agent dans cette session pour l'instant.", 'Ainda não há subagentes nesta sessão.', 'このセッションにはまだサブエージェントがありません。', '此会话中还没有子代理。'],
+  noShip: ['No ship data read yet.', 'Noch keine Ship-Daten gelesen.', 'Aún no se han leído datos de ship.', 'Aucune donnée de ship lue pour le moment.', 'Ainda não foram lidos dados de ship.', 'Ship のデータはまだ読み込まれていません。', '尚未读取 ship 数据。'],
+  shipBranch: ['Branch: {b}', 'Branch: {b}', 'Rama: {b}', 'Branche : {b}', 'Branch: {b}', 'ブランチ: {b}', '分支：{b}'],
+  unknown: ['unknown', 'unbekannt', 'desconocida', 'inconnue', 'desconhecido', '不明', '未知'],
+  shipDone: ['Ship: {steps} done', 'Ship: {steps} erledigt', 'Ship: {steps} hecho', 'Ship : {steps} terminé', 'Ship: {steps} concluído', 'Ship: {steps} 完了', 'Ship：{steps} 已完成'],
+  shipNone: ['Ship: no checkpoint', 'Ship: kein Checkpoint', 'Ship: sin punto de control', 'Ship : aucun point de contrôle', 'Ship: sem checkpoint', 'Ship: チェックポイントなし', 'Ship：无检查点'],
+  shipNext: [' · next: {next}', ' · als Nächstes: {next}', ' · siguiente: {next}', ' · ensuite : {next}', ' · próximo: {next}', ' · 次: {next}', ' · 下一步：{next}'],
+  prLine: [
+    'PR #{n} {state}: {pass} passed, {fail} failed, {pending} pending',
+    'PR #{n} {state}: {pass} bestanden, {fail} fehlgeschlagen, {pending} offen',
+    'PR #{n} {state}: {pass} correctos, {fail} fallidos, {pending} pendientes',
+    'PR #{n} {state} : {pass} réussis, {fail} échoués, {pending} en attente',
+    'PR #{n} {state}: {pass} aprovados, {fail} falharam, {pending} pendentes',
+    'PR #{n} {state}: 成功 {pass}、失敗 {fail}、保留 {pending}',
+    'PR #{n} {state}：通过 {pass}，失败 {fail}，待定 {pending}',
+  ],
+  prNone: ['PR: none found (or gh unavailable)', 'PR: keiner gefunden (oder gh nicht verfügbar)', 'PR: ninguno (o gh no disponible)', 'PR : aucune trouvée (ou gh indisponible)', 'PR: nenhum encontrado (ou gh indisponível)', 'PR: 見つかりません（または gh が使えません）', 'PR：未找到（或 gh 不可用）'],
+  refresh: ['Refresh', 'Aktualisieren', 'Actualizar', 'Actualiser', 'Atualizar', '更新', '刷新'],
+  spawnFailed: ['Subagent not started: {why}', 'Subagent nicht gestartet: {why}', 'Subagente no iniciado: {why}', 'Sous-agent non démarré : {why}', 'Subagente não iniciado: {why}', 'サブエージェントを起動できませんでした: {why}', '子代理未启动：{why}'],
+  finishedWord: ['finished', 'beendet', 'terminado', 'terminé', 'concluído', '完了', '已结束'],
+  noAnswer: ['No answer.', 'Keine Antwort.', 'Sin respuesta.', 'Pas de réponse.', 'Sem resposta.', '回答がありません。', '没有回答。'],
+  learnBtn: ['devops learn', 'devops learn', 'devops learn', 'devops learn', 'devops learn', 'devops learn', 'devops learn'],
+} as const
+
+export type StrKey = keyof typeof TABLE
+
+/** The string `key` in `loc`, `{name}` placeholders filled; an unknown key or a gap falls back to English. */
+export function tr(loc: Locale, key: StrKey, vars: Record<string, string | number> = {}): string {
+  const row = TABLE[key] as readonly string[]
+  const idx = LOCALES.indexOf(loc)
+  const text = (idx >= 0 ? row[idx] : undefined) || row[0] || ''
+  return text.replace(/\{(\w+)\}/g, (m, k: string) => (k in vars ? String(vars[k]) : m))
+}
+
+const LOCALE_NAMES: Array<[Locale, RegExp]> = [
+  ['de', /^(de\b|de[-_]|german|deutsch)/i],
+  ['es', /^(es\b|es[-_]|spanish|espa[nñ]ol|castellano)/i],
+  ['fr', /^(fr\b|fr[-_]|french|fran[cç]ais)/i],
+  ['pt', /^(pt\b|pt[-_]|portuguese|portugu[eê]s)/i],
+  ['ja', /^(ja\b|ja[-_]|japanese|日本語)/i],
+  ['zh', /^(zh\b|zh[-_]|chinese|中文|简体|繁體|繁体)/i],
+]
+
+/** The band's language from the Claude Code `language` setting ("german", "de", "日本語" …); anything else is English. */
+export function localeFrom(setting: unknown): Locale {
+  const v = typeof setting === 'string' ? setting.trim() : ''
+  if (!v) return 'en'
+  const hit = LOCALE_NAMES.find(([, re]) => re.test(v))
+  return hit ? hit[0] : 'en'
+}
+
+// --- Context ring (B5–B7): share of the effective auto-compact threshold. ---
+
+/** Tokens Claude Code keeps free for the compaction summary below the window; only the default threshold uses it. */
+export const COMPACT_BUFFER_TOKENS = 13_000
+export const RING_AMBER_FROM = 80
+export const RING_SIZE = 32
+export const RING_CHIP_SIZE = 14
+
+export type CompactEnv = {
+  /** CLAUDE_AUTOCOMPACT_PCT_OVERRIDE: compact at this share of the window. */
+  pctOverride?: number | null
+  /** The user's own auto-compact window in tokens (settings `autoCompactWindow` / CLAUDE_CODE_AUTO_COMPACT_WINDOW). */
+  windowCap?: number | null
+}
+
+/** The token count where the session compacts, from the measured `window` and the user's own settings — never a model constant. */
+export function compactThreshold(window: number, env: CompactEnv = {}): number {
+  const cap = env.windowCap && env.windowCap > 0 ? Math.min(window, env.windowCap) : window
+  const buffer = Math.min(COMPACT_BUFFER_TOKENS, cap * 0.1)
+  let threshold = cap - buffer
+  const pct = env.pctOverride
+  if (typeof pct === 'number' && pct > 0 && pct <= 100) threshold = Math.min(threshold, (cap * pct) / 100)
+  return Math.max(1, threshold)
+}
+
+/**
+ * Ring percent: tokens in use ÷ the effective auto-compact threshold (100 = compacts now), capped at 100.
+ * Without a measured window the plain context share stands in. Null when nothing was measured.
+ */
+export function ringPercent(b: Budget | null, env: CompactEnv = {}): number | null {
+  if (!b) return null
+  const window = typeof b.contextWindow === 'number' && b.contextWindow > 0 ? b.contextWindow : null
+  const tokens =
+    typeof b.contextTokens === 'number' ? b.contextTokens : window && b.context !== null ? (b.context / 100) * window : null
+  if (window && tokens !== null) return Math.max(0, Math.min(100, Math.round((tokens / compactThreshold(window, env)) * 100)))
+  return b.context === null ? null : Math.max(0, Math.min(100, b.context))
+}
+
+export type WorkState = { concept: boolean; changes: boolean; steps: boolean; settled?: boolean }
+
+/**
+ * B7: amber ring + Compact button from 80 % — only while work is open (an open concept page, unshipped
+ * changes, open plan steps) and not right after a ship / released / finished card (🟩 heading), where a
+ * compaction would only burn tokens.
+ */
+export function compactAdvised(pct: number | null, work: WorkState, card: CardView | null): boolean {
+  if (pct === null || pct < RING_AMBER_FROM) return false
+  if (card && /^🟩/u.test(card.heading)) return false
+  // After a ship the branch stays "ahead" of main (squash merge) and the plan is done: only an open concept page still counts.
+  if (work.settled) return work.concept
+  return work.concept || work.changes || work.steps
+}
+
+const RING = { track: '#3a3a3a', neutral: '#9a9a9a', amber: '#e6c36a' }
+
+/** The ring as SVG: grey track, arc from 12 o'clock; amber when advised. `size` in CSS px. */
+export function ringSvg(pct: number, amber: boolean, size = RING_SIZE): string {
+  const stroke = Math.max(2, Math.round(size / 7))
+  const r = (size - stroke) / 2
+  const c = size / 2
+  const len = 2 * Math.PI * r
+  const arc = (Math.max(0, Math.min(100, pct)) / 100) * len
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">` +
+    `<circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="${RING.track}" stroke-width="${stroke}"/>` +
+    `<circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="${amber ? RING.amber : RING.neutral}" stroke-width="${stroke}" stroke-linecap="round" ` +
+    `stroke-dasharray="${arc.toFixed(2)} ${len.toFixed(2)}" transform="rotate(-90 ${c} ${c})"/>` +
+    `</svg>`
+  )
+}
+
+// --- Cleanup block (B11, B12): what shows, and why. ---
+
+/** `cleanup.nudgeThreshold` default of devops-config.js. */
+export const NUDGE_THRESHOLD_DEFAULT = 50
+
+/** The nudge threshold from config files in order project > global; default 50. Same validity as devops-config.js (integer 1..100000). */
+export function nudgeThresholdFrom(...layers: unknown[]): number {
+  for (const l of layers) {
+    const sec = l && typeof l === 'object' ? (l as { cleanup?: { nudgeThreshold?: unknown } }).cleanup : undefined
+    const v = sec && typeof sec === 'object' ? sec.nudgeThreshold : undefined
+    if (typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 100000) return v
+  }
+  return NUDGE_THRESHOLD_DEFAULT
+}
+
+export type CleanupView = {
+  /** The number the band, the status line and ss.orphan.nudge.js name. */
+  n: number
+  rows: Array<{ key: 'rowAgent' | 'rowCopies' | 'rowBranches' | 'rowBroken'; n: number }>
+  rule: { kind: 'inactive' | 'count'; n: number; t: number }
+}
+
+/**
+ * B12: the cleanup block shows when inactive unmerged work exists (always), or when all leftovers
+ * (open work, copies and landed leftovers hygiene would remove) exceed `threshold`; otherwise null.
+ */
+export function cleanupView(h: Hygiene | null, threshold: number): CleanupView | null {
+  if (!h) return null
+  const copies = h.copies || 0
+  const n = h.branches + h.worktrees + copies
+  const total = n + (h.landed || 0)
+  const inactive = h.inactive || 0
+  if (n === 0 && inactive === 0) return null
+  if (inactive === 0 && total <= threshold) return null
+  const agent = h.agent || 0
+  const broken = h.broken || 0
+  const rows = [
+    { key: 'rowAgent' as const, n: agent },
+    { key: 'rowCopies' as const, n: copies },
+    { key: 'rowBranches' as const, n: Math.max(0, h.branches + h.worktrees - agent - broken) },
+    { key: 'rowBroken' as const, n: broken },
+  ].filter(r => r.n > 0)
+  return { n, rows, rule: inactive > 0 ? { kind: 'inactive', n: inactive, t: threshold } : { kind: 'count', n: total, t: threshold } }
+}
+
+export function ruleText(v: CleanupView, loc: Locale): string {
+  return tr(loc, v.rule.kind === 'inactive' ? 'ruleInactive' : 'ruleCount', { n: v.rule.n, t: v.rule.t })
+}
+
+// --- Cross-session run marker (B13) and learn history (B14). ---
+
+export const RUN_STALE_MS = 2 * 3_600_000
+
+export function sameRepo(a: string, b: string): boolean {
+  return !!a && !!b && norm(a) === norm(b)
+}
+
+/** Parses ~/.claude/devops-cleanup-run.json; null for anything that is not a marker. */
+export function markerFrom(raw: unknown): RunMarker | null {
+  const m = raw as Partial<RunMarker> | null
+  if (!m || typeof m.repo !== 'string' || typeof m.session !== 'string' || !Number.isFinite(m.startedAt)) return null
+  return { repo: m.repo, session: m.session, startedAt: m.startedAt as number, ...(Number.isFinite(m.endedAt) ? { endedAt: m.endedAt as number } : {}) }
+}
+
+/** A run is on right now: not ended, not older than 2 h (a crashed session never blocks for good). */
+export function markerActive(m: RunMarker | null, repo: string, now: number): boolean {
+  return !!m && sameRepo(m.repo, repo) && m.endedAt === undefined && now - m.startedAt < RUN_STALE_MS
+}
+
+/**
+ * Whether this session's band hides the cleanup block: a run of another session is on for this repo,
+ * or a finished run's end is not yet followed by a newer orphan report. Stale after 2 h. The session
+ * that started the run keeps its own run state visible while it runs.
+ */
+export function markerHides(m: RunMarker | null, repo: string, sid: string, reportAt: number, now: number): boolean {
+  if (!m || !sameRepo(m.repo, repo) || now - m.startedAt >= RUN_STALE_MS) return false
+  if (m.endedAt === undefined) return m.session !== sid
+  return reportAt <= m.endedAt
+}
+
+export const HISTORY_KEEP = 40
+export const LEARN_MIN_LEFTOVERS = 3
+export const LEARN_MIN_RUNS = 2
+
+export function historyFrom(raw: unknown): CleanupHistory {
+  const runs = raw && typeof raw === 'object' ? (raw as { runs?: unknown }).runs : null
+  return {
+    runs: (Array.isArray(runs) ? runs : [])
+      .filter(r => r && typeof r.repo === 'string' && Number.isFinite(r.at) && r.causes && typeof r.causes === 'object')
+      .slice(-HISTORY_KEEP),
+  }
+}
+
+export function addRun(h: CleanupHistory, run: { repo: string; at: number; causes: Record<string, number> }): CleanupHistory {
+  return { runs: [...h.runs, run].slice(-HISTORY_KEEP) }
+}
+
+/**
+ * B14: the cause the latest run of `repo` left ≥ 3 inactive UNMERGED leftovers of, when an earlier run
+ * did too (≥ 2 runs). Merged leftovers and removals for age or count never reach `causes`, so they never count.
+ */
+export function learnCause(h: CleanupHistory, repo: string): { cause: string; runs: number } | null {
+  const mine = h.runs.filter(r => sameRepo(r.repo, repo))
+  const last = mine[mine.length - 1]
+  if (!last) return null
+  const hits = (c: string) => mine.filter(r => (r.causes[c] || 0) >= LEARN_MIN_LEFTOVERS).length
+  const cause = Object.keys(last.causes)
+    .filter(c => (last.causes[c] || 0) >= LEARN_MIN_LEFTOVERS && hits(c) >= LEARN_MIN_RUNS)
+    .sort((a, b) => (last.causes[b] || 0) - (last.causes[a] || 0))[0]
+  return cause ? { cause, runs: hits(cause) } : null
+}
+
+/** The prompt of the learn offer: the cause named, the trigger phrase the router knows. */
+export function learnPrompt(cause: string, runs: number): string {
+  return [
+    'devops learn',
+    `Cleanup runs keep finding unmerged work that nobody continues: ${runs} runs each left at least ${LEARN_MIN_LEFTOVERS} inactive, unmerged leftovers of the same cause: "${cause}".`,
+    'Find out why this work is not landed (what the sessions skip or forget) and propose a rule or workflow fix that stops it.',
+  ].join('\n')
+}
+
+/** B10: "Last: {title} · {time}", dim, left of the idle row; '' without a last card. */
+export function lastLine(last: { title: string; at: string } | null, loc: Locale): string {
+  if (!last || !last.title) return ''
+  return `${tr(loc, 'last')} ${last.title}${last.at ? ` · ${last.at}` : ''}`
+}
+
+/** The cleanup-count label "42 Altlasten" in `loc`. */
+export function junkLabel(n: number, loc: Locale): string {
+  return tr(loc, 'junk', { n })
+}
+
+/**
+ * B17: a pure mode-activation card (batch collect mode `👉 📚 Batch — sammelt …`) whose points are usage
+ * hints, not decisions: the band folds them behind a `?`. Ship / decision / concept / test cards (their steps are the CTA) keep their CTA points open.
+ */
+export function isHintCard(c: { heading: string; points: readonly string[] } | null): boolean {
+  return !!c && c.points.length > 0 && /^(?:👉|🟦)\s*📚\s*Batch/u.test(c.heading)
+}
+
+/** A ship / released / finished card (🟩 heading): the work it reports is shipped. */
+export function isShippedCard(c: { heading: string } | null): boolean {
+  return !!c && /^🟩/u.test(c.heading)
+}
+
+// --- The card's type scale as an image (B2): the mod API's Text has size names but no pixel values. ---
+
+export const CARD_FONT = "system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif"
+/** Longer text falls back to the wrapping Text element: an image cannot wrap. */
+export const CARD_SVG_MAX_WIDTH = 560
+
+export type CardRole = 'title' | 'heading' | 'time'
+/** card-widget.js: title and heading 16 px / 500 in the primary colour, the time 12 px tabular in the secondary colour. */
+export const CARD_TYPE: Record<CardRole, { px: number; weight: number; secondary: boolean; tabular: boolean }> = {
+  title: { px: 16, weight: 500, secondary: false, tabular: false },
+  heading: { px: 16, weight: 500, secondary: false, tabular: false },
+  time: { px: 12, weight: 400, secondary: true, tabular: true },
+}
+
+/** Width of `text` at `px` in a system sans: a per-character estimate (the engine cannot measure text), padded a little so nothing clips. */
+export function estimateTextWidth(text: string, px: number, tabular = false): number {
+  let em = 0
+  for (const ch of Array.from(text)) {
+    const cp = ch.codePointAt(0) || 0
+    if (cp > 0x2e80 || cp >= 0x1f000) em += 1.05 // CJK, kana, emoji
+    else if (cp >= 0x2190 && cp <= 0x2bff) em += 1.0 // arrows, symbols (› — ✓)
+    else if (tabular && /\d/.test(ch)) em += 0.62
+    else if (/[iIl.,:;'|!]/.test(ch)) em += 0.32
+    else if (/[ ()\[\]\-/]/.test(ch)) em += 0.38
+    else if (/[mwMW@]/.test(ch)) em += 0.9
+    else if (/[A-Z]/.test(ch)) em += 0.68
+    else em += 0.57
+  }
+  return Math.ceil(em * px * 1.06) + 2
+}
+
+function xmlEscape(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+/**
+ * One line of card text as an SVG image at the card's exact size, weight and colours (dark / light by the
+ * frame's colour scheme). Null when it would not fit CARD_SVG_MAX_WIDTH: the caller falls back to Text.
+ */
+export function cardTextSvg(text: string, role: CardRole): { source: string; width: number; height: number; alt: string } | null {
+  const t = String(text || '').replace(/\s+/g, ' ').trim()
+  if (!t) return null
+  const { px, weight, secondary, tabular } = CARD_TYPE[role]
+  const width = estimateTextWidth(t, px, tabular)
+  if (width > CARD_SVG_MAX_WIDTH) return null
+  const height = Math.round(px * 1.5)
+  const dark = secondary ? '#a9a9a9' : '#ececec'
+  const light = secondary ? '#6b6b6b' : '#1f1f1f'
+  const source =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">` +
+    `<style>text{fill:${dark};font-family:${CARD_FONT};font-size:${px}px;font-weight:${weight};${tabular ? 'font-variant-numeric:tabular-nums;' : ''}}` +
+    `@media (prefers-color-scheme: light){text{fill:${light}}}</style>` +
+    `<text x="0" y="${Math.round(px * 1.12)}" xml:space="preserve">${xmlEscape(t)}</text></svg>`
+  return { source, width, height, alt: t }
 }

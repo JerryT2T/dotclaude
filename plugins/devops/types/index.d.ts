@@ -19,10 +19,36 @@ export type Budget = {
   /** Window resets, epoch ms (the rate limit's resetsAt); null when none was reported. */
   fiveHourResetsAt?: number | null
   weeklyResetsAt?: number | null
+  /** The measured context: tokens in use and the window they sit in (session.measure); the ring's basis, never a model constant. */
+  contextTokens?: number | null
+  contextWindow?: number | null
 }
 
 /** copies: undecided safety copies (parked ≥ 3 days); optional so a value stored before it still reads. */
-export type Hygiene = { branches: number; worktrees: number; copies?: number; ageHours: number }
+export type Hygiene = {
+  branches: number
+  worktrees: number
+  copies?: number
+  ageHours: number
+  /** Of branches + worktrees: agent worktrees (`.claude/worktrees/agent-*`, `worktree-agent-*`) and broken worktrees; the rest are plain branches. */
+  agent?: number
+  broken?: number
+  /** Landed leftovers hygiene would remove (report `landedLeftovers`): count toward the nudge threshold only. */
+  landed?: number
+  /** Unlanded or dirty at-risk entries no live session uses, idle >= 1 day (or age unknown): always shown. */
+  inactive?: number
+  /** Those inactive unmerged entries by cause ("agent worktree", "session worktree", "branch"), for the learn offer. */
+  causes?: Record<string, number>
+  /** The report's own time (epoch ms) and the repo's path in it. */
+  reportAt?: number
+  repo?: string
+}
+
+/** ~/.claude/devops-cleanup-run.json: one cleanup run per repo machine-wide; other sessions hide the block while it runs. */
+export type RunMarker = { repo: string; session: string; startedAt: number; endedAt?: number }
+
+/** ~/.claude/devops-cleanup-history.json: finished runs with the inactive unmerged leftovers each cause held. */
+export type CleanupHistory = { runs: Array<{ repo: string; at: number; causes: Record<string, number> }> }
 
 export type ShipView = {
   branch: string
@@ -41,6 +67,11 @@ export type CleanupRun = {
   agentId: string | null
   report: string
   at: number
+  /** Inactive unmerged leftovers by cause when the run started (the learn offer's input). */
+  causes?: Record<string, number>
+  /** The cause a finished run offers `devops learn` for; set once, when the repeat rule holds. */
+  learn?: string
+  learnRuns?: number
 }
 
 /** Once-per-session flags: SessionStart notices toasted, Agents pane opened by itself. */
@@ -91,6 +122,12 @@ declare module 'claude-code' {
       spike: SpikeWatch
       card: CardView | null
       progress: Progress
+      /** The band's cleanup block expanded (per session). */
+      fold: boolean
+      /** The hint card's points are expanded behind its `?` (per session). */
+      hintsOpen: boolean
+      /** The last card's title and time, kept after the card is spent (the idle row's "Last:"). */
+      lastCard: { title: string; at: string } | null
     }
   }
 }

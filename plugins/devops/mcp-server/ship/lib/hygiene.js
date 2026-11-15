@@ -84,6 +84,7 @@ const { contentInBase } = require("../../../scripts/lib/content-landed.js");
 const { chainLanded: chainLandedShared, supersededByHead: supersededByHeadShared, filesInBase: filesInBaseShared } = require("../../../scripts/lib/chain-landed.js");
 const { isParked, coveringRef } = require("../../../hooks/lib/park-register.js");
 const { clearStaleLocks } = require("../../../scripts/lib/stale-git-locks.js");
+const { isAgentLeftover, pickByAgeCount } = require("../../../scripts/lib/cleanup-rule.js");
 
 const DAY_MS = 86_400_000;
 const GB = 1024 ** 3;
@@ -103,7 +104,7 @@ const MAIN_CHECKOUT_IDLE_MS = 24 * 3_600_000;
  * (git-hygiene.md orphan rule). Any other ignored file keeps the worktree.
  */
 const REGENERABLE_DIRS = new Set(["node_modules", "dist", "build", "out", ".next", ".nuxt", ".cache",
-  "coverage", ".turbo", "__pycache__", ".pytest_cache", "target"]);
+  "coverage", ".turbo", "__pycache__", ".pytest_cache", "target", ".angular", ".vitest"]);
 const REGENERABLE_FILE = /\.pyc$/i;
 /**
  * Root-level files of do-run's autonomous, backlog and burn modes: journals,
@@ -139,6 +140,7 @@ const NEVER_DELETE = new Set(["main", "master", "HEAD", "origin"]);
 const SESSION_WORKTREE_MARKER = "/.claude/worktrees/";
 /** A sub-agent's worktree (Agent tool, `isolation: "worktree"`) — never a Desktop session. */
 const AGENT_WORKTREE = /\/\.claude\/worktrees\/agent-[0-9a-f]+$/i;
+export { isAgentLeftover };
 /** More touched files than this and the tree comparison is left to the page. */
 const TREE_CHECK_MAX_FILES = 200;
 const LOG_KEEP = 200;
@@ -458,7 +460,10 @@ export function landedVia(sha, branch, ctx) {
     if (supersededByHead(sha, ctx)) return "superseded";
     if (chainLanded(sha, ctx)) return "chain";
   }
-  return contentInBase(ctx.cwd, sha, ctx.baseRef, { maxFiles: TREE_CHECK_MAX_FILES }).landed ? "tree" : null;
+  // one `git diff` over all touched paths (stdin pathspec): scales past TREE_CHECK_MAX_FILES
+  const res = contentInBase(ctx.cwd, sha, ctx.baseRef);
+  (ctx.contentRes || (ctx.contentRes = new Map())).set(sha, res);
+  return res.landed ? "tree" : null;
 }
 
 /** `sha` sits under a merged PR head whose tree equals the base tree (#983). */
@@ -502,7 +507,15 @@ export function landingState(sha, branch, ctx) {
     if (baseTree && trial.split("\n")[0].trim() === baseTree) return done({ state: "landed", via: "tree", filesIn: 0, filesTotal: 0 });
   }
   const f = filesInBase(sha, ctx);
-  if (!f) return done({ state: "unlanded", via: null, filesIn: 0, filesTotal: 0 });
+  if (!f) {
+    // too many files for the per-file patch check: the cheap path comparison still tells how many
+    // touched files are identical in the base (one call); any error leaves it unlanded 0/0
+    const c = ctx.contentRes && ctx.contentRes.get(sha);
+    if (c && c.files.length > 0 && (c.reason === "content-differs" || c.reason === "conflicts") && c.differing.length < c.files.length) {
+      return done({ state: "partial", via: null, filesIn: c.files.length - c.differing.length, filesTotal: c.files.length });
+    }
+    return done({ state: "unlanded", via: null, filesIn: 0, filesTotal: 0 });
+  }
   if (f.filesTotal > 0 && f.filesIn === f.filesTotal) return done({ state: "landed", via: "tree", ...f });
   if (f.filesIn > 0) return done({ state: "partial", via: null, ...f });
   return done({ state: "unlanded", via: null, ...f });
@@ -833,7 +846,10 @@ function keepReason(unit, ctx) {
     const why = worktreeContentReason(unit.path, ctx.mainPath);
     if (why) return why;
   }
-  return landedEnough(unit, ctx) ? null : "not-landed";
+  if (!landedEnough(unit, ctx)) return "not-landed";
+  // an isolated sub-agent leftover goes only once its work is also on a remote (C1)
+  if (isAgentLeftover(unit) && !isPushed(unit, ctx.cwd)) return "not-pushed";
+  return null;
 }
 
 /** A non-session linked worktree whose work landed and that holds nothing: no lock, live session, nested checkout or changes. */
@@ -945,6 +961,32 @@ function isPushed(u, cwd) {
   return Boolean(out);
 }
 
+/** Newest mtime of a checkout's top-level entries (`.git` excluded) — an unstaged edit touches no git admin file. 0 when unreadable. */
+function topLevelActivityMs(dir) {
+  let last = 0;
+  try {
+    for (const n of fs.readdirSync(dir)) {
+      if (n === ".git") continue;
+      try { last = Math.max(last, fs.lstatSync(path.join(dir, n)).mtimeMs); } catch { /* vanished */ }
+    }
+  } catch { /* unreadable */ }
+  return last;
+}
+
+/**
+ * Days since the last commit or file change of an at-risk unit (one decimal).
+ * A branch has only its tip commit; a checkout also its git admin files and
+ * the newest top-level entry of its tree.
+ */
+function idleDaysOf(u, ctx) {
+  let last;
+  if (typeof u.activityMs === "number") last = u.activityMs;
+  else if (u.kind === "branch") last = ctx.now - (u.ageDays || 0) * DAY_MS;
+  else last = Number(gitOut(["log", "-1", "--format=%ct", u.head], ctx.cwd) || 0) * 1000;
+  if (u.kind !== "branch" && u.path) last = Math.max(last, topLevelActivityMs(u.path));
+  return Math.round((Math.max(0, ctx.now - last) / DAY_MS) * 10) / 10;
+}
+
 /**
  * Classify every leftover once, read-only: removable (landed and safe to go),
  * keep (with the reason) and atRisk. At risk = (a) not landed (state
@@ -990,6 +1032,7 @@ export function classifyUnits(scan, io) {
           commits: ownCommits(u.head, ctx),
           state: landing.state, filesIn: landing.filesIn, filesTotal: landing.filesTotal,
           pushed: isPushed(u, io.cwd), dirty: 0,
+          live: hasLiveSession(u.path, io.projectsDir), idleDays: idleDaysOf(u, ctx),
         });
       }
       continue;
@@ -1025,6 +1068,7 @@ export function classifyUnits(scan, io) {
         commits: ownCommits(u.head, ctx),
         state: landing.state, filesIn: landing.filesIn, filesTotal: landing.filesTotal,
         pushed: isPushed(u, io.cwd), dirty,
+        live: false, idleDays: idleDaysOf(u, ctx),
         ...(landing.state === "partial" ? residualFields(u.head, ctx) : {}),
       });
     }
@@ -1042,7 +1086,7 @@ export function classifyUnits(scan, io) {
  * (`autoCleanGateDays` / `autoCleanMinAgeDays`), count (all but the
  * `autoCleanKeepNewest` newest) and disk (kept session worktrees above
  * `autoCleanMaxGB` lose their checkout, oldest first, the branch stays).
- * A removable sub-agent worktree (`agent-*`) goes at once, past age and count.
+ * A removable sub-agent leftover obeys the same age/count rule (scripts/lib/cleanup-rule.js).
  * 0 switches the count or the disk trigger off. The at-risk check ignores
  * age: unpushed work is worth a warning on the day it is abandoned.
  * @param {{units:object[], defaultBranch:string}} scan
@@ -1070,13 +1114,10 @@ export function planAutoClean(scan, settings, io) {
   };
   // abandoned temp worktrees (evals, parity builds) go as soon as nothing holds them
   for (const u of removable) if (u.temp && !u.session) pick(u, "temp");
-  // a landed, clean sub-agent worktree has no follow-up value: no age gate, no "keep N newest" (#982)
-  for (const u of removable) if (u.agent && !u.archive) pick(u, "agent");
-  const newestFirst = [...removable].filter((u) => !picked.has(u.key)).sort((a, b) => a.ageDays - b.ageDays);
-  if (removable.some((u) => u.ageDays > gate)) {
-    for (const u of removable) if (u.ageDays > minAge) pick(u, "age");
-  }
-  if (keepNewest > 0) for (const u of newestFirst.slice(keepNewest)) pick(u, "count");
+  // A landed, pushed, clean sub-agent leftover is removable without a question (C1) but obeys the
+  // same age/count rule as every other leftover: the newest stay for inspection (C2).
+  const { picks, newestFirst } = pickByAgeCount(removable, settings, new Set(picked.keys()));
+  for (const { unit, trigger } of picks) pick(unit, trigger);
   let keptBytes = null;
   if (maxBytes > 0) {
     const cache = io.sizeCache || {};

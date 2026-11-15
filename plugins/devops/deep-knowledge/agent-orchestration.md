@@ -587,8 +587,9 @@ The orchestrator (calling skill) is responsible for:
 3. Merging each wave's branches back before spawning the next wave — then
    **pushing the integration branch again** (`git push origin <integration-branch>`)
    so the merged-back work is durable before the next wave spawns. Right after
-   each sub-branch merge is verified, remove that agent's worktree and branch:
-   `node "{PLUGIN_ROOT}/scripts/integration-check.js" --integration <integration-branch> --sub <sub-branch|path> --remove --now` (`--now` skips only the ≥30 min idle wait; every other safety check stays). A reset
+   each sub-branch merge is verified, hand that agent's worktree and branch to
+   the shared cleanup rule:
+   `node "{PLUGIN_ROOT}/scripts/integration-check.js" --integration <integration-branch> --sub <sub-branch|path> --remove --now` (`--now` skips only the ≥30 min idle wait; every other safety check stays). An agent worktree goes only once it is due under the age/count rule (`cleanup.autoCleanMinAgeDays`, `autoCleanKeepNewest`, `autoCleanMaxGB`); until then it is kept for inspection (`kept-for-inspection`) and `ship_hygiene` removes it later. A reset
    between waves can only lose what was never pushed (see Inter-Wave Verification
    Gate § handoff durability).
 4. Before returning (and before any report), prove integration: `node "{PLUGIN_ROOT}/scripts/integration-check.js" --integration <integration-branch> --slug <run-slug> [--sub <branch|path,...>] [--remove]` lists every agent worktree / run branch not yet in the integration branch or holding uncommitted work (`open`: "ungelandet: N Teile"); `--remove` (final sweep; add `--now` right after a merge to skip the idle wait) deletes only the run's own parts (`--sub`, or branches carrying the whole slug) that are landed, clean, have own commits, no live/recent session and no ignored files (re-checked, never forced; other runs' worktrees are never touched). Squash/cherry-pick/copy integrations are recognised; anything else is unfinished work, never "done". `substop.agent.wip` already WIP-commits an agent worktree's leftovers on its branch.

@@ -280,6 +280,54 @@ describe("orphan-scan", () => {
     });
   });
 
+  test("at-risk entries carry live and idleDays", async () => {
+    const root = mkRoot();
+    const r = repoIn(root, "app");
+    commitOn(r, "feat/unpushed", "u.txt", "u\n");
+    const later = Date.now() + 4 * DAY;
+    const { entry } = await scanOne(r, { ...opts, now: later });
+    expect(entry.atRisk).toEqual([expect.objectContaining({ branch: "feat/unpushed", live: false, idleDays: expect.any(Number) })]);
+    expect(entry.atRisk[0].idleDays).toBeGreaterThan(3.5);
+    expect(entry.atRisk[0].idleDays).toBeLessThan(4.5);
+  });
+
+  test("a content-landed agent worktree is no at-risk entry, a dirty one is", async () => {
+    const root = mkRoot();
+    const r = repoIn(root, "app");
+    const wt = path.join(r, ".claude", "worktrees", "agent-a1b2c3d4");
+    git(r, "worktree", "add", "-q", "-b", "kw/stage-a", wt, "main");
+    expect((await scanOne(r, opts)).entry.atRisk).toEqual([]);
+    fs.writeFileSync(path.join(wt, "x.txt"), "x\n");
+    expect((await scanOne(r, opts)).entry.atRisk).toEqual([expect.objectContaining({ kind: "worktree", dirty: 1, live: false })]);
+  });
+
+  test("--clean-landed lets sub-agent worktrees obey age/count: the newest 5 stay", async () => {
+    const root = mkRoot();
+    const r = repoIn(root, "app");
+    const wts = [];
+    for (let i = 0; i < 7; i++) {
+      const wt = path.join(r, ".claude", "worktrees", `agent-a0b0c0d${i}`);
+      git(r, "worktree", "add", "-q", "-b", `kw/stage-${i}`, wt, "main");
+      wts.push(wt);
+    }
+    // two days idle: the age gate (3) stays shut, the count rule keeps the newest five
+    const done = await cleanLanded(r, { apply: false, now: Date.now() + 2 * DAY, ...opts, settings: { autoCleanGateDays: 3, autoCleanMinAgeDays: 3, autoCleanKeepNewest: 5 } });
+    expect(done.would.filter((w) => w.kind === "worktree")).toHaveLength(2);
+    const none = await cleanLanded(r, { apply: false, now: Date.now() + 2 * DAY, ...opts, settings: { autoCleanGateDays: 3, autoCleanMinAgeDays: 3, autoCleanKeepNewest: 9 } });
+    expect(none.would.filter((w) => w.kind === "worktree")).toHaveLength(0);
+  });
+
+  test("--clean-landed ranks agent leftovers among ALL removable leftovers, as ship_hygiene does", async () => {
+    const root = mkRoot();
+    const r = repoIn(root, "app");
+    for (let i = 0; i < 5; i++) git(r, "worktree", "add", "-q", "-b", `kw/stage-${i}`, path.join(r, ".claude", "worktrees", `agent-a0b0c0e${i}`), "main");
+    // a newer non-agent leftover: overall six removable, keep five -> the oldest agent worktree goes too
+    git(r, "worktree", "add", "-q", "-b", "feat/extra", path.join(r, ".claude", "worktrees", "extra"), "main");
+    const done = await cleanLanded(r, { apply: false, now: Date.now() + 2 * DAY, ...opts, settings: { autoCleanGateDays: 3, autoCleanMinAgeDays: 3, autoCleanKeepNewest: 5 } });
+    const agentsGone = done.would.filter((w) => w.kind === "worktree" && /agent-/.test(w.path));
+    expect(agentsGone).toHaveLength(1);
+  });
+
   test("parseArgs", () => {
     expect(parseArgs(["--clean-landed", "--repo", "x", "--apply", "--no-fetch"])).toMatchObject({ cleanLanded: true, apply: true, repo: "x", fetch: false });
   });

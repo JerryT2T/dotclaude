@@ -245,6 +245,31 @@ first day (a cloud session that pushed and ended), not only after
 runs per ship, so a repo nobody ships again is only seen by the orphan scan: every
 leftover class must reach that report, or it stays unseen.
 
+**Sub-agent leftovers (age/count, not at risk).** An isolated sub-agent leftover
+(`.claude/worktrees/agent-*`, `worktree-agent-*` branch, agent sub-branch) that is
+pushed, clean, has no live session and whose content is fully in the default
+branch is `landed`: it is removable without a question and is never listed as at
+risk (`orphan-scan.js` `atRisk` omits it). It is removed only under the existing
+age/count/disk rules (`autoCleanMinAgeDays`, `autoCleanKeepNewest`,
+`autoCleanMaxGB`) so the newest stay for inspection — one function,
+`scripts/lib/cleanup-rule.js`, used by `ship_hygiene`, `auto-cleanup`'s
+autonomous class and auto-agents' post-merge removal (`integration-check.js
+--remove`: a part not yet due stays and is left to the next `ship_hygiene`; the
+old "remove immediately after the merge" path is gone). Landed but not pushed
+keeps it (`not-pushed`). `partial` or `unlanded` stays at risk. Every `atRisk`
+entry of the orphan report carries `live` (a live Claude session uses that
+worktree, transcript based) and `idleDays` (days since the last commit or file
+change); `ss.orphan.nudge.js` does not count `live` entries.
+
+**Big branches.** The content check (`scripts/lib/content-landed.js`) no longer gives up above 200
+touched files: one `git diff --name-only <tip> <base>` over the whole tree is intersected with the
+paths the branch changed since its merge base (no argv, any error = not landed). All touched paths
+identical in the base = `landed`; some = `partial` with that count (the per-file patch check and the
+95 % line rule stay capped at 200 files); none = `unlanded`. The orphan scan route
+(`orphan-scan.js --clean-landed --apply`) is not a delete command the `pre.cleanup.gate` hook sees, so
+it runs while auto-cleanup is armed; a hand-made `git worktree remove` of the same worktree stays
+refused (`cleanup-gate.test.js`).
+
 **Parked** = deliberately set-aside, unlanded work someone wants to keep. One
 prefix: `parked/<topic>`. Read-only legacy aliases, still recognized and never
 created again: `wip/`, `backup/`, `salvage/`, and any branch whose tip subject

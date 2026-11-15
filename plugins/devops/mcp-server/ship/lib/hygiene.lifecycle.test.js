@@ -385,15 +385,49 @@ describe("sub-agent worktrees after a ship (#982)", () => {
     return { scan, plan: planAutoClean(scan, SETTINGS, { cwd: dir, fetchMerged: stub, projectsDir: null, now: NOW }) };
   };
 
-  test("a fresh landed clean agent worktree and its branch go right away", () => {
+  const plan10 = (dir, days) => {
+    const scan = scanRepo(dir, NOW + days * DAY);
+    return { scan, plan: planAutoClean(scan, SETTINGS, { cwd: dir, fetchMerged: stub, projectsDir: null, now: NOW + days * DAY }) };
+  };
+
+  test("a fresh landed clean agent worktree stays for inspection (age/count rule, no immediate delete)", () => {
     const { dir, c1 } = makeRepo();
     const wt = agentWorktree(dir, c1, "agent-a1b2c3", "worktree-agent-a1b2c3");
-    const { scan, plan: p } = plan(dir);
-    expect(p.remove.map((u) => [path.basename(u.path), u.trigger])).toEqual([["agent-a1b2c3", "agent"]]);
+    expect(plan(dir).plan.remove).toEqual([]);
+    expect(fs.existsSync(wt)).toBe(true);
+  });
+
+  test("an aged landed clean agent worktree and its branch go by the age trigger", () => {
+    const { dir, c1 } = makeRepo();
+    const wt = agentWorktree(dir, c1, "agent-a1b2c3", "worktree-agent-a1b2c3");
+    const { scan, plan: p } = plan10(dir, 5);
+    expect(p.remove.map((u) => [path.basename(u.path), u.trigger])).toEqual([["agent-a1b2c3", "age"]]);
     const done = executeAutoClean(p, scan, { cwd: dir, projectsDir: null });
     expect(done.removed.some((r) => r.kind === "worktree")).toBe(true);
     expect(fs.existsSync(wt)).toBe(false);
     expect(git(dir, "branch", "--list", "worktree-agent-a1b2c3")).toBe("");
+  });
+
+  test("count trigger: only all but the newest autoCleanKeepNewest agent worktrees go", () => {
+    const { dir, c1 } = makeRepo();
+    for (let i = 0; i < 7; i++) agentWorktree(dir, c1, `agent-a0b0c0d${i}`, `worktree-agent-a0b0c0d${i}`);
+    const { plan: p } = plan(dir);
+    expect(p.remove).toHaveLength(2);
+    expect(p.remove.every((u) => u.trigger === "count")).toBe(true);
+  });
+
+  test("a content-landed agent worktree that is not pushed is kept until its work is on a remote", () => {
+    const { dir, c1 } = makeRepo();
+    const wt = agentWorktree(dir, c1, "agent-b1b1b1", "kw/stage-x", { commit: true });
+    // the same change lands on main as another commit (squash merge): content landed, tip not on any remote
+    fs.writeFileSync(path.join(dir, "agent.txt"), "work\n");
+    git(dir, "add", "-A");
+    git(dir, "commit", "-q", "-m", "squash");
+    git(dir, "update-ref", "refs/remotes/origin/main", "HEAD");
+    expect(plan10(dir, 10).plan.remove).toEqual([]);
+    git(dir, "update-ref", "refs/remotes/origin/kw/stage-x", git(wt, "rev-parse", "HEAD"));
+    const { plan: p } = plan10(dir, 10);
+    expect(p.remove.map((u) => path.basename(u.path))).toEqual(["agent-b1b1b1"]);
   });
 
   test("a dirty agent worktree stays", () => {

@@ -620,7 +620,8 @@ function assemble({ page, head, fragments, slug = 'concept', md = readTemplates(
     if (r !== live && !hasAttr(r.attrs, 'data-baked')) problems.push(`round ${r.n}: frozen but never baked — run "concept-build.js bake --round ${r.n}" with its payload first`);
   }
   if (finals > 1) problems.push('more than one data-final-report round');
-  if (finals === 1 && live && !hasAttr(live.attrs, 'data-final-report')) problems.push('a final-report round must be the last round');
+  // A review round ("Umsetzung prüfen" on the closing page) is the one round allowed after the final report.
+  if (finals === 1 && live && !hasAttr(live.attrs, 'data-final-report') && !hasAttr(live.attrs, 'data-review')) problems.push('a final-report round must be the last round');
 
   const liveN = live ? live.n : 0;
   const sectionsHtml = rounds.map(r => {
