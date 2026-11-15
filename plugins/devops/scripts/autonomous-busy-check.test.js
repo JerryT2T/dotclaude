@@ -30,6 +30,14 @@ describe("findBusy", () => {
     expect(bc.findBusy({ procs, patterns: ["python"], selfPids: [11] })).toEqual([]);
     expect(bc.findBusy({ lockFiles: [{ file: "a.lock", pid: 7 }], isAlive: () => true, selfPids: [7] })).toEqual([]);
   });
+  test("check: our own child (the powershell that lists processes) never matches, a sibling job does", () => {
+    const listProcs = () => [
+      { pid: 90001, ppid: process.pid, name: "powershell.exe", cmd: "powershell -NoProfile -Command Get-CimInstance" },
+      { pid: 90002, ppid: 90001, name: "conhost.exe", cmd: "conhost powershell" },
+      { pid: 90003, ppid: process.ppid, name: "powershell.exe", cmd: "powershell .\\upload.ps1" },
+    ];
+    expect(bc.check({ listProcs, patterns: ["powershell"], lockFiles: [] })).toEqual([{ why: "process", name: "powershell.exe" }]);
+  });
   test("readLockFiles parses PIDs from a dir", () => {
     const d = fs.mkdtempSync(path.join(os.tmpdir(), "busy-"));
     fs.writeFileSync(path.join(d, "a.lock"), "123\n");

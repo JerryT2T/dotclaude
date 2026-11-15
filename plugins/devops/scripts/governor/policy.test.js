@@ -557,7 +557,12 @@ describe('priority app vs many short builds and tests (#1115)', () => {
     expect(res.filter((r) => r.decision === 'defer').every((r) => r.reason === 'priority:c:/games')).toBe(true);
   });
   it('counts running build jobs from state.jobs; disk priority too; gpu-only priority and no priority stay open', () => {
-    const jobs = [{ id: 'a', name: 'dotnet.exe', kind: 'build', heavy: false }];
+    const jobs = [{ id: 'a', name: 'dotnet.exe', kind: 'build', heavy: false, cmdKind: 'dotnet test', cpuPct: 12 }];
+    // An idle `governor wait`, a shell or `tail -f` holds no slot; a CPU-burning job without a known kind does.
+    const idle = [{ id: 'w', name: 'node.exe', kind: 'foreground', heavy: false, cmdKind: null, cpuPct: 0 }];
+    expect(P.admit({ command: 'dotnet test', now, state: { ...base, jobs: idle }, cfg }).decision).toBe('allow');
+    expect(P.admit({ command: 'dotnet test', now, state: { ...base, jobs: [{ ...idle[0], cpuPct: 30 }] }, cfg }).decision).toBe('defer');
+    expect(P.admit({ command: 'dotnet test', now, state: { ...base, jobs: [{ id: 'o', kind: 'build' }] }, cfg }).decision).toBe('allow'); // older watcher state
     expect(P.admit({ command: 'dotnet test', now, state: { ...base, jobs }, cfg })).toMatchObject({ decision: 'defer', reason: 'priority:c:/games' });
     expect(P.admit({ command: 'dotnet test', now, state: { ...base, jobs, pressure: { priority: ['disk'], over: [] } }, cfg }).decision).toBe('defer');
     expect(P.admit({ command: 'dotnet test', now, state: { ...base, jobs, pressure: { priority: ['gpu'], over: [] } }, cfg }).decision).toBe('allow');

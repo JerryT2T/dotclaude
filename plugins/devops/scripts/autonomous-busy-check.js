@@ -95,6 +95,14 @@ function check(deps = {}) {
   // Ancestors of this process (the shell that launched us) are never "busy".
   const byPid = new Map(procs.map((p) => [p.pid, p]));
   for (let cur = byPid.get(process.ppid), n = 0; cur && cur.ppid && n < 8; n++, cur = byPid.get(cur.ppid)) selfPids.push(cur.ppid);
+  // Our own descendants (the powershell.exe that listed the processes, its conhost)
+  // neither — only below process.pid: an ancestor's other children are real jobs.
+  const own = [process.pid];
+  for (let added = true, n = 0; added && n < 4; n++) {
+    added = false;
+    for (const p of procs) if (!own.includes(p.pid) && own.includes(p.ppid)) { own.push(p.pid); added = true; }
+  }
+  for (const pid of own) if (!selfPids.includes(pid)) selfPids.push(pid);
   return findBusy({
     procs, patterns, selfPids,
     lockFiles: deps.lockFiles || readLockFiles(lockDir()),
