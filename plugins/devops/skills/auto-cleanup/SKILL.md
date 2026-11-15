@@ -47,6 +47,7 @@ Two classes, decided per item at execution time:
 | Class | What | What happens |
 |---|---|---|
 | **Autonomous** | a branch landed in main (merged, or patch-equal / squash — positive proof, nothing unique left) that is checked out nowhere; a local branch whose remote is gone **and** whose content landed; a worktree registration whose directory is gone (prunable) | removed without asking |
+| **Autonomous (agent leftovers)** | an isolated sub-agent worktree (`.claude/worktrees/agent-*`) or `worktree-agent-*` branch, pushed, clean, no live session, content fully in the default branch (content check, squash-safe) — only when the age/count rule makes it due: `node "{PLUGIN_ROOT}/scripts/orphan-scan.js" --clean-landed --repo . --apply` applies `autoCleanMinAgeDays` / `autoCleanKeepNewest` to them, the newest stay for inspection | removed without asking, never by a hand-made delete |
 | **Ambiguous** | everything else: an idle session worktree with own commits, unlanded or partly landed work, a branch the proof cannot answer, an open PR | ONE `auto-concept` page, a short analysis per branch, one decision each |
 
 **Untouchable, in both classes:** branches and worktrees of running sessions

@@ -273,15 +273,19 @@ async function keepReason(part, { cwd, explicit, idleMs = IDLE_MIN_MS }) {
  * a live/recent session, ignored files or a link inside. A lock naming a dead
  * pid is lifted (`git worktree unlock`, never forced) right before removing;
  * a live or pid-less lock keeps the part (reason `locked`).
- * @param {{kept?: Array<{part:string, reason:string}>}} o - `kept` collects why parts stayed
+ * @param {{kept?: Array<{part:string, reason:string}>, due?: (part:object) => Promise<string|null>}} o -
+ *   `kept` collects why parts stayed; `due` (see ageCountReason) holds back parts the age/count rule keeps
  * @returns {Promise<string[]>} removed paths/branches
  */
-async function removeIntegrated({ cwd, integrationRef, result, explicit = false, idleMs, kept = [] }) {
+async function removeIntegrated({ cwd, integrationRef, result, explicit = false, idleMs, kept = [], due = null }) {
   const removed = [];
   const keep = (p, reason) => { kept.push({ part: p.path || p.branch, reason }); };
   for (const p of result.parts) {
     const why = await keepReason(p, { cwd, explicit, idleMs });
     if (why) { keep(p, why); continue; }
+    // the shared age/count rule: not yet due → handed to ship_hygiene, which removes it later
+    const wait = due ? await due(p) : null;
+    if (wait) { keep(p, wait); continue; }
     const fresh = await checkIntegration({ cwd, integrationRef, subRefs: [{ branch: p.branch, path: p.path }] });
     const f = { ...fresh.parts[0], removable: p.removable };
     const whyFresh = f.sha ? await keepReason(f, { cwd, explicit, idleMs }) : 'no-sha';
@@ -294,7 +298,35 @@ async function removeIntegrated({ cwd, integrationRef, result, explicit = false,
   return removed;
 }
 
+/**
+ * The age/count rule for auto-agents' post-merge worktrees: a part is removed only when
+ * ship_hygiene's own plan (landed in the DEFAULT branch, pushed, older than autoCleanMinAgeDays
+ * or beyond autoCleanKeepNewest) would remove it. Anything else stays for inspection and is
+ * handed to the next ship_hygiene run — reason `kept-for-inspection`. Fails closed.
+ * @param {string} cwd
+ * @returns {Promise<(part:{path?:string, branch?:string}) => Promise<string|null>>}
+ */
+async function ageCountReason(cwd) {
+  let plan = null;
+  let hyg = null;
+  try {
+    hyg = await loadHygiene();
+    const scan = hyg && hyg.scanRepo(cwd);
+    const settings = require('./devops-config').load(cwd).values.cleanup;
+    if (scan) plan = hyg.planAutoClean(scan, settings, { cwd, projectsDir: hyg.defaultProjectsDir() });
+  } catch { plan = null; }
+  const due = new Set();
+  if (plan) {
+    for (const u of plan.remove) due.add(u.kind === 'worktree' ? `w:${hyg.normPath(u.path)}` : `b:${u.branch}`);
+  }
+  return async (part) => {
+    if (!plan) return 'kept-for-inspection (age/count rule unavailable)';
+    const id = part.path ? `w:${hyg.normPath(part.path)}` : `b:${part.branch}`;
+    return due.has(id) ? null : 'kept-for-inspection (age/count rule: ship_hygiene removes it later)';
+  };
+}
+
 module.exports = {
-  checkIntegration, discoverParts, summarize, removeIntegrated,
+  ageCountReason, checkIntegration, discoverParts, summarize, removeIntegrated,
   listWorktrees, dirtyPaths, mergeAddsNothing, loadHygiene, carriesSlug, keepReason, lockHeld,
 };

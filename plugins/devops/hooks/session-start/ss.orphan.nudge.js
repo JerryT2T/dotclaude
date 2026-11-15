@@ -134,7 +134,8 @@ const UNDECIDED_AFTER_DAYS = 3;
 
 /** At-risk branches, dirty worktrees and undecided safety copies of one report entry. */
 function counts(entry) {
-  const risk = Array.isArray(entry.atRisk) ? entry.atRisk : [];
+  // a worktree a live session uses is being worked on, not forgotten
+  const risk = (Array.isArray(entry.atRisk) ? entry.atRisk : []).filter((r) => !r.live);
   const dirty = risk.filter((r) => r.dirty > 0).length;
   const parked = Array.isArray(entry.parked) ? entry.parked : [];
   const undecided = parked.filter((p) => (p.ageDays || 0) >= UNDECIDED_AFTER_DAYS && isUndecided(p)).length;

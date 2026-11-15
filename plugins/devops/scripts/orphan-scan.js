@@ -9,7 +9,12 @@
  *     { generatedAt, root, repos: [{ path, atRisk[], parked[], stashes,
  *       landedLeftovers, offline }] }
  *   atRisk   = unlanded/partial work without PR or live session, and
- *              worktrees with real uncommitted changes (hygiene.js classifyUnits)
+ *              worktrees with real uncommitted changes (hygiene.js classifyUnits).
+ *              Content-landed, pushed sub-agent leftovers are not at risk: they
+ *              are removable under the age/count rule (cleanup-rule.js).
+ *              Every entry also carries `live` (a Claude session uses that
+ *              worktree, transcript based) and `idleDays` (days since the last
+ *              commit or file change).
  *   parked   = deliberately set-aside unlanded branches (park-register.js);
  *              older than 30 days they carry a nudge
  *   landedLeftovers = landed branches/worktrees hygiene may remove
@@ -40,6 +45,7 @@ const { pathToFileURL } = require('url');
 
 const parkRegister = require('../hooks/lib/park-register');
 const { clearStaleLocks } = require('./lib/stale-git-locks');
+const { isAgentLeftover, pickByAgeCount } = require('./lib/cleanup-rule');
 
 const FETCH_TIMEOUT = 60_000;
 const GIT_TIMEOUT = 15_000;
@@ -152,6 +158,7 @@ async function scanOne(repo, opts = {}) {
       atRisk: cls.atRisk.map((r) => ({
         kind: r.kind, branch: r.branch || null, path: r.path || null, commits: r.commits,
         state: r.state, filesIn: r.filesIn, filesTotal: r.filesTotal, pushed: r.pushed, dirty: r.dirty,
+        live: r.live === true, idleDays: typeof r.idleDays === 'number' ? r.idleDays : null,
       })),
       parked,
       stashes: parkRegister.listStashes(repo, now).length,
@@ -162,6 +169,16 @@ async function scanOne(repo, opts = {}) {
       offline: cls.merged === null,
     },
   };
+}
+
+/** devops-config `cleanup` defaults for the age/count rule (hooks/lib/devops-config.js is the source). */
+const DEFAULT_RULE = { autoCleanGateDays: 3, autoCleanMinAgeDays: 3, autoCleanKeepNewest: 5 };
+/** The age/count settings of `repo` from devops-config (project > global > default). */
+function cleanupRule(repo) {
+  try {
+    const c = require('../hooks/lib/devops-config').load(repo).values.cleanup;
+    return { autoCleanGateDays: c.autoCleanGateDays, autoCleanMinAgeDays: c.autoCleanMinAgeDays, autoCleanKeepNewest: c.autoCleanKeepNewest };
+  } catch { return DEFAULT_RULE; }
 }
 
 const CLEAN_MIN_IDLE_MS = 24 * 3_600_000;
@@ -197,12 +214,18 @@ function worktreeTreeActivityMs(wtPath, now) {
 }
 
 /** Dry-run or apply the safe removal of landed leftovers in one repo. */
-async function cleanLanded(repo, { apply, now = Date.now(), projectsDir, fetch: doFetch, fetchMerged, fetchOpen } = {}) {
+async function cleanLanded(repo, { apply, now = Date.now(), projectsDir, fetch: doFetch, fetchMerged, fetchOpen, settings } = {}) {
   const hy = await loadHygiene();
   const r = await scanOne(repo, { fetch: doFetch, now, projectsDir, fetchMerged, fetchOpen });
   if (!r) return { repo, removed: [], skipped: [], would: [] };
   const remove = [];
+  // sub-agent leftovers obey the shared age/count rule (newest stay for inspection); the rest of
+  // the landed class keeps the idle-day gate below
+  const rule = settings || DEFAULT_RULE;
+  const agents = r.cls.removable.filter(isAgentLeftover);
+  const agentGo = new Set(pickByAgeCount(agents, rule).picks.map((p) => p.unit.key));
   for (const u of r.cls.removable) {
+    if (isAgentLeftover(u) && !agentGo.has(u.key)) continue;
     // a worktree must have been idle for CLEAN_MIN_IDLE_MS — "landed" alone also
     // matches a fresh checkout at main or a session idle for just over 2 h.
     // activityMs = max(commit time, <gitdir>/index|HEAD|logs/HEAD); live/moved
@@ -251,7 +274,7 @@ async function main(argv) {
 
   if (args.cleanLanded) {
     const results = [];
-    for (const repo of repos) results.push(await cleanLanded(repo, { apply: args.apply, fetch: args.fetch }));
+    for (const repo of repos) results.push(await cleanLanded(repo, { apply: args.apply, fetch: args.fetch, settings: cleanupRule(repo) }));
     if (args.json) {
       process.stdout.write(JSON.stringify(results, null, 2) + '\n');
     } else {
@@ -290,4 +313,4 @@ if (require.main === module) {
   main(process.argv.slice(2)).then((c) => process.exit(c), () => process.exit(0));
 }
 
-module.exports = { isProtectedBranch, findRepos, mainCheckoutOf, scanOne, cleanLanded, parseArgs, defaultReportPath };
+module.exports = { cleanupRule, isProtectedBranch, findRepos, mainCheckoutOf, scanOne, cleanLanded, parseArgs, defaultReportPath };

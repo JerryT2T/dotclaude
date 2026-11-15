@@ -142,6 +142,19 @@ describe('checkIntegration', () => {
     expect(summarize(res, kept)).toMatch(/^gesperrt: 2 Teile/);
   });
 
+  test('the age/count rule (due) holds back a part that is not yet due and stays for ship_hygiene', async () => {
+    const w1 = agentWt('agent-aaa', 'run-abcdef-1');
+    commit(w1, 'one.txt', '1');
+    g(main, 'merge', '--no-ff', '-m', 'merge', 'run-abcdef-1');
+    const res = await checkIntegration({ cwd: main, integrationRef: 'feature', subRefs: [{ branch: 'run-abcdef-1', path: w1, removable: true }] });
+    const kept = [];
+    const due = async () => 'kept-for-inspection (age/count rule: ship_hygiene removes it later)';
+    expect(await removeIntegrated({ cwd: main, integrationRef: 'feature', result: res, idleMs: 0, kept, due })).toEqual([]);
+    expect(fs.existsSync(w1)).toBe(true);
+    expect(kept.map((k) => k.reason)).toEqual([expect.stringMatching(/^kept-for-inspection/)]);
+    expect((await removeIntegrated({ cwd: main, integrationRef: 'feature', result: res, idleMs: 0, due: async () => null })).map(n)).toEqual([n(w1)]);
+  });
+
   test('ignored files inside keep the worktree', async () => {
     const w1 = agentWt('agent-aaa', 'run-abcdef-1');
     commit(w1, '.gitignore', 'keep.bin\n');

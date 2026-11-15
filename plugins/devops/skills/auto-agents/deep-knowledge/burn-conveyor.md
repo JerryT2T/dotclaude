@@ -59,7 +59,10 @@ Loop until the gate says `finish`, `pause` or `stop`:
    only the ≥30 min idle wait; landed, clean, own-commits, live-session,
    ignored-file and lock checks (a dead pid's lock is lifted) still apply; a
    kept worktree (`kept` in the output) is retried by the Step 7 sweep. Do
-   not leave agent worktrees for the end of the run.
+   not hand-delete agent worktrees to get around it: the removal obeys the
+   shared age/count rule (`autoCleanMinAgeDays`, `autoCleanKeepNewest`; landed
+   in the default branch and pushed), a worktree not yet due stays for
+   inspection (`kept-for-inspection`) and `ship_hygiene` removes it later.
 3. **Before removing any worktree** → `B prune-check --branch=<b>
    --worktree=<w>`; exit 1 means keep it.
 4. After the loop: the full QA run as an ordinary last task (not a gate),
