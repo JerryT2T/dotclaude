@@ -45,12 +45,12 @@ describe("planOutput (#1106)", () => {
   test("test, git and CI commands keep their full output", () => {
     for (const c of ["npm test", "npx vitest run x", "cd app && npm run test", "pytest -q", "python -m pytest",
       "dotnet test", "go test ./...", "cargo test", "git diff origin/main...HEAD", "gh pr checks 12", "gh run view 9 --log",
-      "npm run lint", "pnpm run ci", "npx playwright test"]) {
+      "npm run lint", "pnpm run ci", "npx playwright test", "CI=1 npm test", "cd app; dotnet test", "ls && git log -5"]) {
       expect([c, R.planOutput(c, out).reason]).toEqual([c, "exempt-command"]);
     }
   });
   test("look-alikes are not exempt", () => {
-    for (const c of ["cat digit.log", "node react-build.js", "echo contest", "type latest.txt"]) {
+    for (const c of ["cat digit.log", "node react-build.js", "echo contest", "type latest.txt", "echo \"npm test\"", "node gen.js --label vitest", "cat git-notes.txt"]) {
       expect([c, R.planOutput(c, out).redirect]).toEqual([c, true]);
     }
   });
@@ -65,7 +65,7 @@ describe("excerpt", () => {
     const e = R.excerpt(text, "C:/tmp/paste-abc.txt");
     const lines = e.split("\n");
     expect(lines[0]).toBe(text.split("\n")[0]);
-    expect(lines[R.HEAD_LINES]).toMatch(/^\[… 420 lines, ~\d+ tokens in total, omitted here — full original: C:\/tmp\/paste-abc\.txt …\]$/);
+    expect(lines[R.HEAD_LINES]).toMatch(/^\[… 420 lines \(~\d+ of ~\d+ tokens\) omitted here — full original: C:\/tmp\/paste-abc\.txt …\]$/);
     expect(lines[lines.length - 1]).toBe(text.split("\n")[499]);
     expect(R.excerpt(text, "C:/tmp/paste-abc.txt")).toBe(e);
     expect(R.estimateTokens(e)).toBeLessThan(R.estimateTokens(text) / 4);
@@ -79,6 +79,9 @@ describe("excerpt", () => {
     const e = R.excerpt(one, "p", { halfMaxChars: 1000 });
     expect(e.length).toBeLessThan(2200 + 200);
     expect(e).toContain("full original: p");
+    // #1106 Codex: 0 lines omitted, but ~24k tokens of the one line are — the marker says so.
+    expect(e).toMatch(/\[… 0 lines \(~\d+ of ~25000 tokens\)/);
+    expect(Number(e.match(/\(~(\d+) of/)[1])).toBeGreaterThan(24000);
   });
   test("CRLF input is split like LF", () => {
     const crlf = big(200).replace(/\n/g, "\r\n");

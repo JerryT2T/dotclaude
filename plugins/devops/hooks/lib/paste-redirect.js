@@ -46,20 +46,21 @@ function isExemptPrompt(prompt) {
 
 // Commands whose full output is the evidence: a test run (an excerpt can hide
 // the failing test), git (diffs, logs feed merges and reviews) and CI / PR
-// checks. Matched per shell segment, so `cd x && npm test` counts too.
-const EXEMPT_COMMAND_RE = new RegExp([
-  String.raw`(?:^|[;&|(]\s*)(?:git|gh)\s`,
-  String.raw`\b(?:npm|pnpm|yarn|bun)\s+(?:run\s+)?test\b`,
-  String.raw`\b(?:npx\s+)?(?:vitest|jest|mocha|ava|playwright\s+test)\b`,
-  String.raw`\b(?:pytest|tox|nox)\b`,
-  String.raw`\bpython\d*\s+-m\s+(?:pytest|unittest)\b`,
-  String.raw`\b(?:dotnet|go|cargo|mvn|gradle|gradlew|swift|mix|rspec|phpunit)\s+test\b`,
-  String.raw`\b(?:npm|pnpm|yarn)\s+run\s+(?:ci|lint|typecheck)\b`,
-].join('|'), 'i');
+// checks. Matched at the START of each shell segment, so `cd x && npm test`
+// counts but `echo "npm test"` does not.
+const EXEMPT_SEGMENT_RE = new RegExp('^(?:\\w+=\\S*\\s+)*(?:' + [
+  String.raw`(?:git|gh)(?:\.exe)?\s`,
+  String.raw`(?:npm|pnpm|yarn|bun)\s+(?:run\s+)?test\b`,
+  String.raw`(?:npx\s+)?(?:vitest|jest|mocha|ava|playwright\s+test)\b`,
+  String.raw`(?:pytest|tox|nox)\b`,
+  String.raw`python\d*(?:\.exe)?\s+-m\s+(?:pytest|unittest)\b`,
+  String.raw`(?:dotnet|go|cargo|mvn|gradle|\.?\/?gradlew|swift|mix|rspec|phpunit)\s+test\b`,
+  String.raw`(?:npm|pnpm|yarn)\s+run\s+(?:ci|lint|typecheck)\b`,
+].join('|') + ')', 'i');
 
 /** @param {string} command */
 function isExemptCommand(command) {
-  return EXEMPT_COMMAND_RE.test(String(command || ''));
+  return String(command || '').split(/&&|\|\||[;|&()\n]/).some((seg) => EXEMPT_SEGMENT_RE.test(seg.trim()));
 }
 
 /**
@@ -111,8 +112,10 @@ function excerpt(text, filePath, opts = {}) {
   if (lines.length <= headN + tailN && src.length <= 2 * maxChars) return src;
   const head = clampHead(lines.slice(0, headN).join('\n'), maxChars);
   const tail = clampTail(lines.slice(Math.max(headN, lines.length - tailN)).join('\n'), maxChars);
-  const omitted = Math.max(0, lines.length - headN - tailN);
-  const marker = `[… ${omitted} lines, ~${estimateTokens(src)} tokens in total, omitted here — full original: ${filePath} …]`;
+  const omittedLines = Math.max(0, lines.length - headN - tailN);
+  // Count what is really missing, also inside a clamped giant line.
+  const omittedTokens = estimateTokens(' '.repeat(Math.max(0, src.length - head.length - tail.length)));
+  const marker = `[… ${omittedLines} lines (~${omittedTokens} of ~${estimateTokens(src)} tokens) omitted here — full original: ${filePath} …]`;
   return `${head}\n${marker}\n${tail}`;
 }
 
