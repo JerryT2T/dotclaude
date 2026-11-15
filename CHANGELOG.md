@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.373.0] — 2026-11-15
+
+### Added
+- Mods: Agents pane opens itself at the first background subagent, updates live and merges identical rows with a ×n column
+- Mods: load marker plus SessionStart notice when the mod did not load in the previous session
+- Mods: passive Spike 1 measurement after a 50-minute pause, without a model call
+
+### Changed
+- Mods: SessionStart notices toast once per session; the version notice toasts too; concept watchers toast only on failure
+- Mods: branch line counts undecided safety copies and shows a 24-72 h old report with its age
+
 ## [0.372.0] — 2026-11-15
 
 ### Added
