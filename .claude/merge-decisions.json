@@ -25,5 +25,16 @@
         ]
       }
     ]
-  }
+  },
+  "plugins/devops/hooks/mods/index.tsx›AbovePrompt band›idle early-return": [
+    {
+      "ship": "claude/batch-206a00",
+      "by": "Claude (superset, no value replaced)",
+      "value": "#1125 idle rule kept; batch row added as one more reason to show the band",
+      "decided": true,
+      "at": "2026-11-15T22:14:24.869Z",
+      "hunk": "0474c2a6c2c6",
+      "upstreamPr": 1125
+    }
+  ]
 }
