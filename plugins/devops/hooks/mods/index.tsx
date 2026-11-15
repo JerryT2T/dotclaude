@@ -14,26 +14,40 @@
  * Surfaces:
  *   Pane `devops-agents`  /devops-agents   this session's subagents (type, model, elapsed, status)
  *   Pane `devops-ship`    /devops-ship     ship checkpoint of this branch + PR checks (gh, on open/refresh, 8 s cap)
- *   AbovePrompt band                       5-h / weekly percentUsed + context fill (session.measure), compact hint,
- *                                          branch-hygiene count with a cleanup button (opus subagent: plan, then apply)
+ *   AbovePrompt band                       working: turning hourglass + running step (update_plan / TodoWrite) + tool;
+ *                                          after a card: its template part (title, heading, points, buttons that
+ *                                          send the card's own prompts) — copied from render_completion_card's
+ *                                          result, the answer stays inline; 5-h / weekly bars + context fill
+ *                                          (session.measure); branch-hygiene count with a cleanup button
+ *                                          (opus subagent: plan, then apply)
  *   Pane `devops-cleanup`                 the cleanup plan / result, Apply and Discard buttons
  *   Status line                            branch-hygiene count (~/.claude/orphan-report.json)
  *   Toasts                                 permission request waiting, long subagent / background Bash finished, SessionStart notices
  *   /mods-spike-fork                       Spike 1: one $.model.fork, usage logged to ~/.claude/devops-mods-spike.jsonl
  *
  * Deterministic: no model call except the explicit, user-run spike command.
+ * The only prompts it sends are a card button's own prompt, on the person's press.
  */
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { AgentRow, Budget, CleanupRun, Hygiene, ShipView } from '../../types/index'
+import type { AgentRow, Budget, CardView, CleanupRun, Hygiene, Progress, ShipView } from '../../types/index'
 import {
+  activityOf,
   agentRow,
+  applyPlan,
   budgetFrom,
   budgetBarAlt,
+  BUDGET_BAR_SIZE,
   budgetBars,
   budgetBarSvg,
   budgetLine,
+  cardFromResult,
+  hourglassSvg,
+  HOURGLASS_SIZE,
+  isCardTool,
+  todoSteps,
+  workingLine,
   contextNote,
   checksFrom,
   cleanupApplyPrompt,
@@ -66,6 +80,20 @@ const shells = atom({ plugin: 'devops', key: 'shells' } as const, {} as Record<s
 // The cleanup run: plan subagent → pane with Apply → apply subagent. Survives a reload ($.state).
 const IDLE: CleanupRun = { phase: 'idle', agentId: null, report: '', at: 0 }
 const cleanup = atom({ plugin: 'devops', key: 'cleanup' } as const, IDLE, { shape: 'cleanup-2' })
+// The last completion card of this prompt's turn (its template part, no answer) and what the turn is doing now.
+const card = atom({ plugin: 'devops', key: 'card' } as const, null as CardView | null, { shape: 'card-1' })
+const NO_PROGRESS: Progress = { steps: [], activity: '', startedAt: 0 }
+const progress = atom({ plugin: 'devops', key: 'progress' } as const, NO_PROGRESS, { shape: 'progress-1' })
+
+/** A card button: its prompt goes out as the person's own turn; the card leaves the band at once (one press = one prompt). */
+async function pressCardButton($: EngineInterface, prompt: string): Promise<void> {
+  let shown = false
+  await update($, card, c => {
+    shown = c !== null
+    return null
+  })
+  if (shown) await $.prompt.submit({ text: prompt, asUser: true })
+}
 // The session's folder (session.start), for the subagents' briefs.
 let sessionCwd = ''
 
@@ -277,6 +305,42 @@ export const register: Register = on => {
     return result
   }).catch(($, e, next) => next(e)) // display only: a failure never changes the tool call
 
+  // Card band: a prompt starts a new main turn → the last card is spent, the task list starts over.
+  // A turn without text (a continuation, the app's no-output nudge after a card) keeps both.
+  on('turn.start', async ($, e, next) => {
+    const started = await next(e)
+    if (e.agentId === undefined && (e.text || '').trim() && (await open($))) {
+      const now = await $.clock.now()
+      await update($, card, () => null)
+      await update($, progress, () => ({ steps: [], activity: '', startedAt: now }))
+    }
+    return started
+  }).catch(($, e, next) => next(e)) // display only
+
+  // Card band: what the main turn is doing (task list, running tool), and the card the card tool rendered.
+  // The call and its result pass through unchanged; the card itself stays with the tool and stop.flow.guard.
+  on('tool.call', async ($, e, next) => {
+    const tool = String(e.tool)
+    const main = (e as { agentId?: string }).agentId === undefined
+    const gateOpen = main && (await open($))
+    if (gateOpen) {
+      const input = e as unknown as Record<string, unknown>
+      const act = activityOf(tool, input)
+      await update($, progress, p => {
+        let steps = p.steps
+        if (tool.endsWith('ccd_turn__update_plan')) steps = applyPlan(p.steps, input)
+        else if (tool === 'TodoWrite') steps = todoSteps(input.todos)
+        return { ...p, steps, activity: act || p.activity }
+      })
+    }
+    const result = await next(e)
+    if (gateOpen && isCardTool(tool) && result && typeof result.text === 'string' && !result.isError) {
+      const view = cardFromResult(result.text)
+      if (view) await update($, card, () => view)
+    }
+    return result
+  }).catch(($, e, next) => next(e)) // display only: a failure never changes the tool call
+
   // C6 (close-out): its notification arrives; a long one gets a toast. The prompt is passed on unchanged.
   on('prompt.submit', async ($, e, next) => {
     const result = await next(e)
@@ -468,51 +532,90 @@ export const register: Register = on => {
     )
   })
 
+  // The band above the prompt, top to bottom:
+  //   working: turning hourglass + the running step (n/m · text) + the tool running now
+  //   idle after a card: the card's template part — title + time, heading, up to 3 points, its buttons
+  //   always (when due): the budget bars, the branch-hygiene row with the cleanup button.
+  // The card's answer never shows here: it stays inline in the transcript.
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     if (e.props.hasSurvey || !(await open($))) return next(e)
+    const working = e.props.isWorking === true
+    const c = working ? null : await read($, card)
+    const w = working ? workingLine(await read($, progress)) : null
     const b = await read($, budget)
     const now = await $.clock.now()
     const line = budgetLine(b, now)
     const hyg = await read($, hygiene)
     const run = await read($, cleanup)
     const hl = hygieneLine(hyg, false)
-    if (!line && !hl) return next(e)
+    if (!w && !c && !line && !hl) return next(e)
     const { Box, Button, Text } = $.ui.resolve(e)
-    // Desktop, VS Code, mobile: the card's animated SVG bars; the terminal has no Svg, so its glyph line.
+    // Desktop: the card's animated SVG (bars, hourglass) at a fixed size; the terminal has no Svg, so glyphs.
     const Svg = e.surface === 'terminal' ? null : ($.ui.resolve(e) as { Svg?: any }).Svg
     const bars = budgetBars(b, now)
     const ctx = contextNote(b)
     return (
-      <Box flexDirection="column">
+      <Box flexDirection="column" rowGap={1}>
+        {w && (
+          <Box key="working" flexDirection="row" alignItems="center" columnGap={1}>
+            {Svg ? (
+              <Svg source={hourglassSvg()} alt="Claude is working" width={HOURGLASS_SIZE} height={HOURGLASS_SIZE} isInteractive />
+            ) : (
+              <Text>⏳</Text>
+            )}
+            <Text bold>{w.head}</Text>
+            {w.detail && <Text dimColor>{w.detail}</Text>}
+          </Box>
+        )}
+        {c && (c.title || c.at) && (
+          <Box key="card-title" flexDirection="row" justifyContent="space-between" columnGap={2}>
+            <Text bold>{c.title}</Text>
+            {c.at && <Text dimColor>{c.at}</Text>}
+          </Box>
+        )}
         {line && !Svg && <Text dimColor>{line}</Text>}
         {line && Svg && (
-          <Box flexDirection="row" gap={2}>
+          <Box key="budget" flexDirection="row" alignItems="center" columnGap={2} flexWrap="wrap">
             {bars.map(bar => (
-              <Box key={bar.label} flexDirection="row" gap={1}>
+              <Box key={bar.label} flexDirection="row" alignItems="center" columnGap={1}>
                 <Text dimColor>{bar.label}</Text>
-                <Svg source={budgetBarSvg(bar)} alt={budgetBarAlt(bar)} isInteractive />
+                <Svg source={budgetBarSvg(bar)} alt={budgetBarAlt(bar)} width={BUDGET_BAR_SIZE.width} height={BUDGET_BAR_SIZE.height} isInteractive />
               </Box>
             ))}
             {ctx && <Text dimColor>{ctx}</Text>}
           </Box>
         )}
+        {c && (
+          <Box key="card-decision" flexDirection="column" rowGap={1}>
+            <Text bold>{c.heading}</Text>
+            {c.points.map((p, i) => (
+              <Text key={`card-point-${i}`} dimColor>
+                › {p}
+              </Text>
+            ))}
+            {c.buttons.length > 0 && (
+              <Box flexDirection="row" columnGap={1} flexWrap="wrap">
+                {c.buttons.map((bt, i) => (
+                  <Button
+                    key={`card-button-${i}`}
+                    label={bt.label}
+                    variant={bt.primary ? 'primary' : undefined}
+                    onPress={() => pressCardButton($, bt.prompt)}
+                  />
+                ))}
+              </Box>
+            )}
+          </Box>
+        )}
         {hl && (
-          <Box flexDirection="row" alignItems="center">
-            {!Svg && <Text dimColor>devops · </Text>}
-            <Text dimColor>{hl} </Text>
+          <Box key="hygiene" flexDirection="row" alignItems="center" columnGap={1}>
+            <Text dimColor>{Svg ? hl : `devops · ${hl}`}</Text>
             {run.phase === 'planning' || run.phase === 'applying' ? (
               <Text dimColor>[ Clean up · {run.phase === 'planning' ? 'planning…' : 'applying…'} ]</Text>
             ) : run.phase === 'planned' ? (
               <Button key="cleanup-review" label="Review cleanup plan" onPress={() => $.ui.open({ id: CLEANUP_PANE, title: 'Cleanup' })} />
             ) : (
-              <Button key="cleanup" label="Clean up (opus)" onPress={() => startCleanup($, 'plan')} />
-            )}
-            {Svg && (
-              <Box flexGrow={1} justifyContent="center">
-                <Text color="#5c6070" italic>
-                  devops
-                </Text>
-              </Box>
+              <Button key="cleanup" label="Clean up (opus)" dimColor onPress={() => startCleanup($, 'plan')} />
             )}
           </Box>
         )}
