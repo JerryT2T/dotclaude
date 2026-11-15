@@ -17,6 +17,47 @@ signal). Hidden tabs throttle page timers, so the overlay arms its timeout
 only while visible. Never put a `__`-prefixed global on the page: it hangs
 every extension `executeScript` tool.
 
+## Sleeping — the zero-token wake ping (Windows)
+
+Long-polling costs one model call per 30 s, so an idle guide used to pause
+after 20 min and wait for „weiter" in the chat. Instead, after 10 min without
+a real event the guide **sleeps**: Claude ends its turn and costs nothing until
+the user clicks in the panel again (spike 2026-11-15, measured 1–2 s from
+click to a woken session; 30-min and 2-h waits made no model call).
+
+```
+payload sleep → sleep(key) in the page → listen --guide (run_in_background) → turn ends
+click in the panel → claude-guide://ping/<key>/ → handler writes <key>.ping
+→ listen exits (PING) → the task notification re-invokes the session → drain
+```
+
+- **Pieces.** `scripts/web-guide-ping.js` (handler, `listen`, arm files under
+  `~/.dotclaude/web-guide/pings`), `web-guide.js payload sleep` (marker
+  `paused` + `sleeping` + `pingKey`, arms the key, prints the `sleep()` eval),
+  overlay `sleep(key, token)`: the next click of any type, made while nobody
+  polls, launches the URL from inside the click handler (Edge only launches
+  external protocols from a gesture). `setStep()`/`wait()` end the sleep.
+- **The ping carries no data.** The key only wakes; the event still comes out
+  of the overlay queue through a tokened `wait(0)`. `handle` writes only for a
+  32-hex key that is currently armed, so a hostile page can launch the scheme
+  but cannot wake anything. The overlay never stores the key.
+- **Disarm.** `guide active` / `guide pause` / `guide clear` remove the arm
+  file; a listener still waiting then exits `DISARMED` (exit 4), so a guide
+  resumed via the chat is never woken a second time.
+- **MSIX container.** The Claude desktop app is MSIX-packaged: processes its
+  Bash tool starts see a virtualized `HKCU\Software\Classes` and `AppData`.
+  A handler registered from there is invisible to Edge, which then drops the
+  click silently (no dialog, no console message). Register with the
+  PowerShell tool, and keep the marker dir outside `AppData`.
+- **Edge asks once per site** whether „Claude Webguide" may open
+  (`FriendlyAppName` on the verb; without it the dialog names
+  `conhost.exe` as „Host für Konsolenfenster"). The panel says so while the
+  wake is pending.
+- **Limits.** A navigation while Claude sleeps removes the panel and nobody
+  re-injects it — the user then writes „weiter" in the chat (the paused path).
+  An app restart kills the listener: same fallback. No handler on macOS/Linux:
+  there the guide pauses as before.
+
 ## Roles
 
 | Side | Owns | Never does |
@@ -196,9 +237,12 @@ never during a normal long-poll, and never after the click reached a live
 no new step within 90 s (`DELIVERED_STALE_MS`, typically a question Claude
 asked in the chat) turns the line into "Claude braucht länger – steht im
 Chat eine Frage, antworte bitte dort." The Claude loop separately counts
-time: 5 min without a real event → it re-sends the current step, 20 min →
-the guide pauses (recovery.md § Waiting) — unrelated to the heartbeat, which
-only concerns the status text.
+time: 5 min without a real event → it re-sends the current step, 10 min →
+the guide sleeps (§ Sleeping; without the wake ping it pauses at 20 min,
+recovery.md § Waiting) — unrelated to the heartbeat, which only concerns the
+status text. While a wake is pending (a click launched the ping less than
+60 s ago) the line reads "Claude wird geweckt … Fragt Edge, ob „Claude
+Webguide“ geöffnet werden darf: bitte „Öffnen“ klicken."
 
 **Surviving a dead caller (#529).** `deliverEvent` (fired by every panel
 button) **always** pushes onto `eventQueue` first. It hands the event to the
@@ -215,7 +259,7 @@ forever — it always gets a definitive (if unobserved) resolution.
 ### State
 
 ```json
-{ "version": "1.14.1", "stepId": "3", "collapsed": false, "edgeTab": false, "queued": 0, "url": "https://…", "pendingWaiter": false, "lastDeliveredId": null, "lastDeliveredStepId": null, "sent": false, "destroyed": false }
+{ "version": "1.15.0", "stepId": "3", "collapsed": false, "edgeTab": false, "queued": 0, "url": "https://…", "pendingWaiter": false, "lastDeliveredId": null, "lastDeliveredStepId": null, "sent": false, "sleeping": false, "destroyed": false }
 ```
 
 `pendingWaiter` is `true` while a `wait()` call is currently armed (waiting
@@ -225,7 +269,8 @@ skill can compare it against an expected id to detect a stranded event after
 a CDP timeout. `sent` is `true` while the panel shows a click of the current
 step as sent (buttons disabled); with `queued: 0` and `lastDeliveredStepId`
 equal to `stepId`, that click went to a `wait()` nobody read — re-sending the
-same step re-arms it and asks the user to click once more.
+same step re-arms it and asks the user to click once more. `sleeping` is
+`true` between `sleep()` and the next `setStep()`/`wait()` (§ Sleeping).
 
 ## UI state persistence
 
@@ -330,8 +375,9 @@ every resumed turn, and clears it in Step 6 and Step 7.
 While the marker is fresh **and not paused** (`isGuideLoopLive`),
 `stop.flow.guard` also blocks a card-less turn end once with "guide loop
 still active — continue 5c …" (#619); `stop_hook_active` lets the follow-up
-stop through. The 20-min pause step runs `guide pause` first, so a
-deliberate pause ends the turn without a block. An unattended panel tells
+stop through. The sleep (`payload sleep`) and the 20-min pause step
+(`guide pause`) both set `paused`, so a deliberate sleep or pause ends the
+turn without a block. An unattended panel tells
 the user itself: after 45 s without a listener it shows "Claude hört gerade
 nicht zu — schreib im Chat „weiter"." (§ Lost result recovery).
 
@@ -343,8 +389,9 @@ nicht zu — schreib im Chat „weiter"." (§ Lost result recovery).
 | `payload step <step.json>` | `window.claudeGuide.setStep(<json>, "<token>")`, guarded to `"reinject-needed"` when the global is missing, with the JSON validated against the schema above (exit 1 + reason on violation). |
 | `payload wait [ms]` | `window.claudeGuide.stringify(await window.claudeGuide.wait(<ms>, "<token>"))` (Finding 7: serialized with the overlay's native-captured stringify, never the page's own `JSON.stringify`), guarded to `JSON.stringify({"type":"reinject-needed"})` (default 30000; the CLI accepts up to 35000 as headroom, the loop uses 30000 — the CDP limit is ≈ 45 s). `ms=0` is the "drain" call (#529): reclaims a stranded event from the queue without arming a real wait. |
 | `payload destroy` | `window.claudeGuide.destroy("<token>")`, guarded to `"reinject-needed"` when the global is missing (Finding 7: `destroy()` now requires the channel token). |
+| `payload sleep` | § Sleeping: sets `paused` + `sleeping` + the guide's `pingKey` on the marker, arms the key and prints `window.claudeGuide.sleep("<key>", "<token>")`, guarded to `"no-sleep"` (an overlay older than 1.15.0) / `"reinject-needed"`. Exits 1 with `ping-unavailable` (nothing printed) when the ping cannot work: not Windows, `install` never ran (no handler copy in `~/.dotclaude/web-guide`), no guide. It checks the handler file, not the registry: inside the MSIX container the Bash tool reads the app's view of the registry. |
 | `store --file <path> --key <KEY> [--b64 <value>] [--user]` | Value from `--b64` (base64, the panel's `secret` encoding) or from stdin. Upserts `KEY=value` in a dotenv-style file (creates it, keeps other lines and comments, quotes when needed). Guards: file inside CWD, no symlink, not git-tracked, no control characters, mode 0600 — and inside a git work tree the file must be gitignored (`git check-ignore`), else it refuses and names the `.gitignore` line to add: an untracked secret file is one `git add -A` away from a push. `--user`: `--file` is a bare name stored under `~/.claude` (per-user secrets such as the devops API key, `api-credits.md`), same guards with that dir as CWD. Prints only `stored KEY → <path>`. |
 | `pause <seconds>` | Sleeps 1–55 s and prints `paused Ns` — the gap between two `payload wait 0` drains while the tab is hidden, and between two probes of a redirect chain (`recovery.md`). |
-| `guide active` / `guide clear` | Writes (with the channel token, kept until `guide clear`) / removes `<project>/.claude/auto-guide-active.json` (#526 § Not ending the turn mid-loop above). A failed removal exits 1 with `guide-clear-failed`, never `guide-cleared`. |
+| `guide active` / `guide clear` | Writes (with the channel token, kept until `guide clear`) / removes `<project>/.claude/auto-guide-active.json` (#526 § Not ending the turn mid-loop above). A failed removal exits 1 with `guide-clear-failed`, never `guide-cleared`. Both (and `guide pause`) disarm the wake ping, so a waiting `listen --guide` exits `DISARMED`. |
 | `guide pause` | Sets `paused: true` on the marker (token and `lastStep` kept, TTL refreshed) and prints `guide-paused <file>` — the 20-min pause step, so the stop guard lets the turn end (#619). Without a marker it exits 1 with `guide-pause-failed: no active guide`. |
-| `guide status` | `{active, ageMinutes, lastStep, paused}` (`paused` only when a marker exists) from the marker — the last step sent, for resuming after a compaction or restart. Never prints the token. |
+| `guide status` | `{active, ageMinutes, lastStep, paused, sleeping}` (`paused`/`sleeping` only when a marker exists) from the marker — the last step sent, for resuming after a compaction or restart. Never prints the token. |

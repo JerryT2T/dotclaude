@@ -1,6 +1,6 @@
 /**
  * @script web-guide-overlay
- * @version 1.14.1
+ * @version 1.15.0
  * @plugin devops
  * @description In-page overlay for /auto-guide. Injected verbatim via the
  *   Claude-in-Chrome javascript_tool into a third-party page. Renders a
@@ -27,7 +27,7 @@
   var nativeObjectCreate = Object.create;
   var nativeDefineProperty = Object.defineProperty;
 
-  var VERSION = "1.14.1";
+  var VERSION = "1.15.0";
   // AUD-C007: per-guide channel token, substituted by `web-guide.js payload
   // inject` (32 hex chars). setStep()/wait() must pass it and every event
   // echoes it, so a page script can neither push steps nor steal events.
@@ -74,6 +74,13 @@
   var DELIVERED_STALE_MS = 90000;
   var HEARTBEAT_TICK_MS = 2000;
   var INPUT_TYPES = ["text", "secret", "choice", "confirm"];
+  // Wake ping (protocol.md § Sleeping): while Claude sleeps, a panel click
+  // launches claude-guide://ping/<key>/ — Windows starts the guide's protocol
+  // handler, which wakes the session. The key is not a credential (a ping only
+  // wakes; events still need the token) and is never written to storage.
+  var PING_KEY_RE = /^[0-9a-f]{32}$/;
+  var PING_GRACE_MS = 60000;
+  var pingKey = null, sleeping = false, pingedAt = 0;
 
   var currentStep = null, collapsed = true, edgeTab = false, pos = { right: 24, bottom: 24 };
   var eventQueue = [], pendingWaiter = null, helpOpen = false, abortConfirm = false;
@@ -661,7 +668,9 @@
       var deadAt = pendingWaiter ? pendingWaiterArmedAt + CALLER_TIMEOUT_MS : 0;
       var lastLive = listenerLive() ? Date.now() : Math.max(lastPoll, deadAt);
       var text;
-      if (undelivered && (noListenerAtClick || Date.now() - lastLive > HEARTBEAT_STALE_MS)) {
+      if (undelivered && pingedAt && Date.now() - pingedAt < PING_GRACE_MS) {
+        text = "Claude wird geweckt … Fragt Edge, ob „Claude Webguide“ geöffnet werden darf: bitte „Öffnen“ klicken.";
+      } else if (undelivered && (noListenerAtClick || Date.now() - lastLive > HEARTBEAT_STALE_MS)) {
         text = sent === "abort"
           ? "Claude hört gerade nicht zu — schreib im Chat „Guide beenden“."
           : "Claude hört gerade nicht zu — schreib im Chat „weiter“.";
@@ -684,11 +693,21 @@
     tickHeartbeat();
   }
 
+  // Runs inside the click handler, so the navigation carries the user's
+  // activation — Edge launches external protocols only from a gesture.
+  function firePing() {
+    try {
+      window.location.href = "claude-guide://ping/" + pingKey + "/";
+      pingedAt = Date.now();
+    } catch {}
+  }
+
   function deliverEvent(event) {
     event.id = ++lastEventId;
     noListenerAtClick = noListenerNow();
     eventQueue.push(event);
     saveQueue();
+    if (sleeping && pingKey && !listenerLive()) firePing();
     // Hand off to the current pendingWaiter only while it is young enough to
     // plausibly still be alive. Once it has plausibly already exceeded the
     // CDP eval's hard limit, resolving it here would drop the event into a
@@ -1404,6 +1423,8 @@
       contentUpdated = !isNewStep && !clickAgain && !sameStepContent(step, currentStep);
       if (clickAgain || contentUpdated) sentFlag = false;
       awaitingResponse = false; // Claude just sent us something — it isn't waiting any more
+      sleeping = false;
+      pingedAt = 0;
       currentStep = step;
       if (isNewStep) {
         noListenerAtClick = false;
@@ -1434,6 +1455,8 @@
       // wait() nor receives an event.
       if (!authorized(token)) return Promise.resolve({ type: "bad-token" });
       noListenerAtClick = false;
+      sleeping = false; // any wait(), the drain included, means Claude is awake
+      pingedAt = 0;
       lastPoll = Date.now(); // #513: heartbeat — every wait() records a poll.
       awaitingResponse = false; // #530: a new poll means Claude is listening again
       // #529: a new wait() call proves the previous call's caller has moved
@@ -1500,6 +1523,16 @@
         pendingWaiterArmedAt = Date.now();
       });
     },
+    // Wake ping: Claude ends its turn and sleeps; the next panel click (any
+    // type) launches the ping. setStep()/wait() end the sleep again.
+    sleep: function (key, token) {
+      if (!authorized(token)) return "bad-token";
+      if (typeof key !== "string" || !PING_KEY_RE.test(key)) return "bad-key";
+      pingKey = key;
+      sleeping = true;
+      pingedAt = 0;
+      return "ok";
+    },
     // Finding 7: lets a caller (the `payload wait`/`payload step` eval
     // snippets) serialize a `wait()`/`state()` result with the NATIVE
     // JSON.stringify captured at injection time, instead of calling the
@@ -1527,6 +1560,7 @@
         // a required-but-empty field: statusEl hidden, yet some button --
         // the submit -- was disabled too).
         sent: sentFlag,
+        sleeping,
         destroyed,
       };
     },
@@ -1548,6 +1582,9 @@
       currentStep = null;
       eventQueue = [];
       destroyed = true;
+      sleeping = false;
+      pingKey = null;
+      pingedAt = 0;
       sentFlag = false;
       contentUpdated = false;
       awaitingResponse = false;

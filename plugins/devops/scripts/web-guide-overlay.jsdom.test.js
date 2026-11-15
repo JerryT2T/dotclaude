@@ -86,7 +86,7 @@ describe("AUD-C007: the hosting page cannot own the channel", () => {
     expect(d.configurable).toBe(false);
     expect(Object.isFrozen(a.api())).toBe(true);
     a.w.eval('window.claudeGuide = { version: "x" }; try { window.claudeGuide.wait = function () {}; } catch (e) {}');
-    expect(a.api().version).toBe("1.14.1");
+    expect(a.api().version).toBe("1.15.0");
     expect(a.api().wait.length).toBe(2);
   });
 
@@ -107,7 +107,7 @@ describe("AUD-C007: the hosting page cannot own the channel", () => {
   });
 
   test("a page-predefined same-version global yields already-injected (hostile on a fresh document)", () => {
-    const a = page({ pageScript: 'window.claudeGuide = { version: "1.14.1" };' });
+    const a = page({ pageScript: 'window.claudeGuide = { version: "1.15.0" };' });
     expect(a.result).toBe("already-injected");
     expect(a.w.document.querySelector("[id^=wg-host-]")).toBeNull();
   });
@@ -115,7 +115,7 @@ describe("AUD-C007: the hosting page cannot own the channel", () => {
   test("a page-defined configurable global of another version is replaced", () => {
     const a = page({ pageScript: 'window.claudeGuide = { version: "0.0.1", destroy: function () {} };' });
     expect(a.result).toBe("injected");
-    expect(a.api().version).toBe("1.14.1");
+    expect(a.api().version).toBe("1.15.0");
   });
 
   test("the token never reaches page-readable storage", () => {
@@ -708,5 +708,45 @@ describe("#530: heartbeat thresholds (Fix 8)", () => {
     expect(SRC).toMatch(/HEARTBEAT_STALE_MS\s*=\s*45000/);
     expect(SRC).toMatch(/DELIVERED_STALE_MS\s*=\s*90000/);
     expect(SRC).toMatch(/Claude braucht länger/);
+  });
+});
+
+describe("wake ping (protocol.md § Sleeping)", () => {
+  const KEY = "fedcba9876543210fedcba9876543210";
+
+  test("sleep() needs the token and a 32-hex key", () => {
+    const a = page();
+    expect(a.api().sleep(KEY)).toBe("bad-token");
+    expect(a.api().sleep("../evil", TOKEN)).toBe("bad-key");
+    expect(a.api().sleep(KEY, TOKEN)).toBe("ok");
+    expect(a.api().state().sleeping).toBe(true);
+  });
+
+  test("a click while sleeping queues the event and says Claude is being woken", async () => {
+    const a = page();
+    a.api().setStep(STEP, TOKEN);
+    a.api().sleep(KEY, TOKEN);
+    btn(a, "Weiter").click();
+    expect(a.api().state().queued).toBe(1);
+    expect(a.shadow().textContent).toContain("Claude wird geweckt");
+    expect(JSON.stringify(session(a))).not.toContain(KEY);
+    // The woken Claude drains the queued click; any wait() ends the sleep.
+    expect(await a.api().wait(0, TOKEN)).toMatchObject({ type: "next", stepId: "3" });
+    expect(a.api().state().sleeping).toBe(false);
+  });
+
+  test("without sleep() a click never claims a wake", () => {
+    const a = page();
+    a.api().setStep(STEP, TOKEN);
+    btn(a, "Weiter").click();
+    expect(a.shadow().textContent).not.toContain("Claude wird geweckt");
+  });
+
+  test("setStep() ends the sleep", () => {
+    const a = page();
+    a.api().setStep(STEP, TOKEN);
+    a.api().sleep(KEY, TOKEN);
+    a.api().setStep({ ...STEP, id: "4", index: 4 }, TOKEN);
+    expect(a.api().state().sleeping).toBe(false);
   });
 });

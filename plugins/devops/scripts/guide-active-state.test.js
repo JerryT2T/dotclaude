@@ -11,6 +11,8 @@ import {
   isGuideActive,
   isGuideLoopLive,
   pauseGuide,
+  sleepGuide,
+  readPingKey,
   recordGuideStep,
   hasValueField,
   getGuideStatus,
@@ -394,5 +396,29 @@ describe("guide-active-state", () => {
       expect(status.active).toBe(false);
       expect(status.lastStep).toEqual(step);
     });
+  });
+});
+
+describe("guide-active-state — sleeping (wake ping)", () => {
+  test("sleepGuide without a marker is a no-op returning null", () => {
+    expect(sleepGuide(makeTmpDir())).toBeNull();
+  });
+
+  test("sleepGuide pauses with a stable ping key; a refresh wakes but keeps the key", () => {
+    const dir = makeTmpDir();
+    const t0 = Date.now();
+    markGuideActive(dir, t0);
+    const token = readGuideToken(dir);
+    const key = sleepGuide(dir, t0 + 1);
+    expect(key).toMatch(/^[0-9a-f]{32}$/);
+    expect(key).not.toBe(token);
+    expect(isGuideLoopLive(dir, t0 + 2)).toBe(false);
+    expect(getGuideStatus(dir, t0 + 2)).toMatchObject({ paused: true, sleeping: true });
+    expect(sleepGuide(dir, t0 + 3)).toBe(key);
+    markGuideActive(dir, t0 + 4);
+    expect(readPingKey(dir)).toBe(key);
+    expect(readGuideToken(dir)).toBe(token);
+    expect(isGuideLoopLive(dir, t0 + 5)).toBe(true);
+    expect(getGuideStatus(dir, t0 + 5)).toMatchObject({ paused: false, sleeping: false });
   });
 });
