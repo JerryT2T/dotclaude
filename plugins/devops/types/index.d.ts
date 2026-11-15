@@ -21,7 +21,8 @@ export type Budget = {
   weeklyResetsAt?: number | null
 }
 
-export type Hygiene = { branches: number; worktrees: number; ageHours: number }
+/** copies: undecided safety copies (parked ≥ 3 days); optional so a value stored before it still reads. */
+export type Hygiene = { branches: number; worktrees: number; copies?: number; ageHours: number }
 
 export type ShipView = {
   branch: string

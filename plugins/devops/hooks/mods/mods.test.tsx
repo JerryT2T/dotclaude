@@ -3,7 +3,7 @@
 // The hooks `on` registers here stand for the engine: files, env, clock,
 // gh/git, the model. Nothing reaches the real machine.
 import { expect, test } from 'claude-code/testing'
-import { agentRows, cleanupApplyPrompt, cleanupPlanPrompt, hygieneLine, passiveSpikeRow, verbatimNotices } from './format'
+import { agentRows, cleanupApplyPrompt, cleanupPlanPrompt, hygieneFrom, hygieneLine, passiveSpikeRow, verbatimNotices } from './format'
 
 const HOME = 'C:/Users/tester'
 const NOW = Date.parse('2026-11-10T20:00:00.000Z')
@@ -509,4 +509,36 @@ test('agentRows merges content-equal rows only; passiveSpikeRow computes the cac
   const row = passiveSpikeRow(3_300_000, { input_tokens: 10, output_tokens: 5, cache_read_input_tokens: 980, cache_creation_input_tokens: 10, model: 'claude-opus' }, null, NOW)
   expect(row).toMatchObject({ mode: 'passive', pause_min: 55, cache_read_share: 0.98, pass: true })
   expect(verbatimNotices(['[ss.version.notice] … verbatim in your first reply, once:\nℹ v1 → v2'])).toEqual(['ℹ v1 → v2'])
+})
+
+test('branch line: undecided safety copies count like the nudge; a 24-72 h old report shows its age, older hides', async () => {
+  const report = (hoursAgo: number) => ({
+    generatedAt: new Date(NOW - hoursAgo * 3_600_000).toISOString(),
+    repos: [{
+      path: 'P:/Projects/demo',
+      atRisk: [{ branch: 'w', dirty: 1 }],
+      parked: [
+        { branch: 'parked/autosave/a', ageDays: 5 },
+        { branch: 'parked/autosave/fresh', ageDays: 1 },
+        { branch: 'backup/x', ageDays: 9, legacy: true },
+        { branch: 'parked/old', ageDays: 40, reason: 'ARCHIVED' },
+      ],
+    }],
+  })
+  const h = hygieneFrom(report(2), 'P:/Projects/demo', NOW)
+  expect(h).toMatchObject({ branches: 0, worktrees: 1, copies: 2 })
+  expect(hygieneLine(h)).toBe('devops: 1 dirty worktree · 2 undecided safety copies')
+  expect(hygieneLine(hygieneFrom(report(26), 'P:/Projects/demo', NOW), false)).toBe('1 dirty worktree · 2 undecided safety copies · as of 26 h')
+  expect(hygieneFrom(report(73), 'P:/Projects/demo', NOW)).toBeNull()
+})
+
+test('load marker: session.start writes this session into ~/.claude/devops-mods-loaded.json, keeping earlier ones', async ($, on) => {
+  const { seen } = engine(on, { files: { '/.claude/devops-mods-loaded.json': JSON.stringify({ sessions: [{ sid: 'old', surface: 'terminal', interactive: true, ts: 'x' }] }) } })
+  on('session.id', () => ({ value: 'sid-123' }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  const w = seen.writes.find(x => x.path.replace(/\\/g, '/').endsWith('/.claude/devops-mods-loaded.json'))
+  expect(w).toBeDefined()
+  const rows = JSON.parse(String(w?.text)).sessions
+  expect(rows.map((r: { sid: string }) => r.sid)).toEqual(['old', 'sid-123'])
+  expect(rows[1]).toMatchObject({ surface: 'desktop', interactive: true })
 })

@@ -44,7 +44,8 @@
       "docs": [],
       "scripts": [
         "hooks/mods/index.tsx",
-        "hooks/mods/gate.ts"
+        "hooks/mods/gate.ts",
+        "hooks/session-start/ss.mods.load.js"
       ]
     }
   }

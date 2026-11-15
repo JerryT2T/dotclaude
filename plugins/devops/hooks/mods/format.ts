@@ -415,17 +415,30 @@ export function hourglassSvg(): string {
   )
 }
 
-const ORPHAN_MAX_AGE_MS = 24 * 3_600_000
+/** The line stays this long after the daily report (dimmed with its age from 24 h on), then it goes. */
+const ORPHAN_MAX_AGE_MS = 72 * 3_600_000
+const ORPHAN_FRESH_MS = 24 * 3_600_000
+/** Safety copies count once they are this old, as ss.orphan.nudge.js does (a fresh one is the live session's net). */
+const UNDECIDED_AFTER_DAYS = 3
 
 function norm(p: string): string {
   return String(p || '').replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase()
 }
 
+/** park-register.js isUndecided, mirrored: an autosave copy, or a legacy / covered / nudged one not marked ARCHIVED. */
+export function isUndecidedCopy(p: { branch?: string; reason?: string; legacy?: boolean; coveredBy?: unknown; nudge?: unknown }): boolean {
+  const name = String((p && p.branch) || '').replace(/^origin\//, '')
+  if (name.startsWith('parked/autosave/')) return true
+  if (/ARCHIVED/.test(String((p && p.reason) || '')) && !(p && p.nudge)) return false
+  return Boolean(p && (p.legacy || p.coveredBy || p.nudge))
+}
+
 /**
- * Open branches / dirty worktrees of the current repo from
+ * Open branches, dirty worktrees and undecided safety copies of the current repo from
  * ~/.claude/orphan-report.json, counted as ss.orphan.nudge.js `counts` does
- * (unlanded = atRisk − dirty + remoteOnly). null for a stale (> 24 h) or
- * missing report, or an unknown repo — the nudge is silent there too.
+ * (unlanded = atRisk − dirty + remoteOnly; copies = parked ≥ 3 days and undecided), so
+ * band, status line and nudge name the same numbers. null for a missing report, one older
+ * than 72 h, or an unknown repo; from 24 h on `ageHours` makes the line say how old it is.
  */
 export function hygieneFrom(report: unknown, cwd: string, now: number): Hygiene | null {
   const r = report as { generatedAt?: string; repos?: unknown[] } | null
@@ -433,7 +446,7 @@ export function hygieneFrom(report: unknown, cwd: string, now: number): Hygiene 
   const t = Date.parse(r.generatedAt || '')
   if (!Number.isFinite(t) || now - t > ORPHAN_MAX_AGE_MS) return null
   const here = norm(cwd)
-  const entry = (r.repos as Array<{ path?: string; atRisk?: Array<{ dirty?: number }>; remoteOnly?: unknown[] }>)
+  const entry = (r.repos as Array<{ path?: string; atRisk?: Array<{ dirty?: number }>; remoteOnly?: unknown[]; parked?: Array<{ ageDays?: number }> }>)
     .filter(e => e && e.path && (here === norm(e.path) || here.startsWith(`${norm(e.path)}/`)))
     .sort((a, b) => norm(b.path as string).length - norm(a.path as string).length)[0]
   if (!entry) return null
@@ -443,16 +456,24 @@ export function hygieneFrom(report: unknown, cwd: string, now: number): Hygiene 
   )
   const dirty = risk.filter(x => (x.dirty || 0) > 0).length
   const remote = Array.isArray(entry.remoteOnly) ? entry.remoteOnly.length : 0
-  return { branches: risk.length - dirty + remote, worktrees: dirty, ageHours: Math.floor((now - t) / 3_600_000) }
+  const parked = Array.isArray(entry.parked) ? entry.parked : []
+  const copies = parked.filter(p => p && (p.ageDays || 0) >= UNDECIDED_AFTER_DAYS && isUndecidedCopy(p as never)).length
+  return { branches: risk.length - dirty + remote, worktrees: dirty, copies, ageHours: Math.floor((now - t) / 3_600_000) }
 }
 
-/** Status-line text, "devops: …"; prefix false for the band, which carries its own mark. Null when nothing is open. */
+/**
+ * Status-line text, "devops: …"; prefix false for the band, which carries its own mark.
+ * A report 24 h or older adds "as of N h". Null when nothing is open.
+ */
 export function hygieneLine(h: Hygiene | null, prefix = true): string | null {
-  if (!h || h.branches + h.worktrees === 0) return null
+  const copies = (h && h.copies) || 0
+  if (!h || h.branches + h.worktrees + copies === 0) return null
   const parts: string[] = []
   if (h.branches > 0) parts.push(`${h.branches} open ${h.branches === 1 ? 'branch' : 'branches'}`)
   if (h.worktrees > 0) parts.push(`${h.worktrees} dirty ${h.worktrees === 1 ? 'worktree' : 'worktrees'}`)
-  return `${prefix ? 'devops: ' : ''}${parts.join(' · ')}`
+  if (copies > 0) parts.push(`${copies} undecided safety ${copies === 1 ? 'copy' : 'copies'}`)
+  const aged = h.ageHours * 3_600_000 >= ORPHAN_FRESH_MS ? ` · as of ${h.ageHours} h` : ''
+  return `${prefix ? 'devops: ' : ''}${parts.join(' · ')}${aged}`
 }
 
 /** The plan subagent's brief: read only, a numbered plan, nothing changed. */

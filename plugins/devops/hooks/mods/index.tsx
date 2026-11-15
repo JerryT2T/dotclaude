@@ -74,6 +74,9 @@ export const SPIKE_COMMAND = 'mods-spike-fork'
 export const SPIKE_PROMPT = 'Reply with the single word: ok'
 const SPIKE_LOG = '/.claude/devops-mods-spike.jsonl'
 const SPIKE_LOG_MAX_LINES = 500
+const LOAD_MARKER = '/.claude/devops-mods-loaded.json'
+const LOAD_MARKER_MAX = 30
+type LoadMark = { sid: string; surface: string | null; interactive: boolean; ts: string }
 
 const agents = atom({ plugin: 'devops', key: 'agents' } as const, [] as AgentRow[], { shape: 'agents-1' })
 const budget = atom({ plugin: 'devops', key: 'budget' } as const, null as Budget | null, { shape: 'budget-1' })
@@ -243,6 +246,21 @@ async function refreshShip($: EngineInterface): Promise<void> {
   await update($, ship, () => view)
 }
 
+/**
+ * The load marker: proof that the mod loaded in this session. ss.mods.load.js (SessionStart)
+ * reports a session that ran without one, so a silent load failure (#105936) shows up.
+ */
+async function writeLoadMarker($: EngineInterface, surface: string | null, interactive: boolean): Promise<void> {
+  const home = await homeDir($)
+  if (!home) return
+  const file = home + LOAD_MARKER
+  const sid = await $.session.id()
+  const prev = (await readJson($, file)) as { sessions?: LoadMark[] } | null
+  const kept = (prev && Array.isArray(prev.sessions) ? prev.sessions : []).filter(s => s && s.sid !== sid).slice(-(LOAD_MARKER_MAX - 1))
+  const row: LoadMark = { sid, surface, interactive, ts: new Date(await $.clock.now()).toISOString() }
+  await $.fs.write(file, `${JSON.stringify({ sessions: [...kept, row] }, null, 1)}\n`)
+}
+
 async function appendSpikeLog($: EngineInterface, row: unknown): Promise<string> {
   const home = await homeDir($)
   if (!home) throw new Error('no home folder')
@@ -272,6 +290,7 @@ export const register: Register = on => {
       description: 'devops spike: one fork of this thread, logs its cache read to ~/.claude/devops-mods-spike.jsonl',
     })
     sessionCwd = e.cwd || ''
+    await writeLoadMarker($, e.surface || null, e.isInteractive === true).catch(() => undefined)
     await refreshHygiene($, e.cwd)
     return started
   })
