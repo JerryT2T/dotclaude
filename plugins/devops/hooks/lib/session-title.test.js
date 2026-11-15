@@ -289,7 +289,7 @@ describe("session-title — transcript path from session_id + cwd", () => {
 });
 
 describe("session-title — do-batch titles", () => {
-  const { BATCH_PREFIX, batchTitle, unbatchTitle } = hookRequire("lib", "session-title.js");
+  const { BATCH_PREFIX, batchTitle, unbatchTitle, fireTitle } = hookRequire("lib", "session-title.js");
 
   test("BATCH_PREFIX mirrors SESSION_PREFIX.batch", () => {
     expect(BATCH_PREFIX).toBe(SESSION_PREFIX.batch);
@@ -321,5 +321,14 @@ describe("session-title — do-batch titles", () => {
     // The legacy batch prefix of an older session is retired too.
     expect(unbatchTitle("📥 Batch – Fix login")).toBe("Fix login");
     expect(unbatchTitle(null)).toBeNull();
+  });
+
+  test("fireTitle swaps the batch prefix for the work prefix (#1126); off stays bare", () => {
+    expect(fireTitle(SESSION_PREFIX.batch + "Feedback zu X")).toBe("⏳ ➜ 🤖 Solo ┃ Feedback zu X");
+    expect(fireTitle("📥 Batch – Feedback zu X")).toBe("⏳ ➜ 🤖 Solo ┃ Feedback zu X");
+    expect(fireTitle("Renamed by user")).toBeNull();
+    expect(fireTitle(SESSION_PREFIX.batch)).toBeNull();
+    expect(fireTitle(null)).toBeNull();
+    expect(unbatchTitle(SESSION_PREFIX.batch + "Feedback zu X")).toBe("Feedback zu X");
   });
 });
