@@ -182,7 +182,7 @@ function handlerCommand(target) {
 }
 
 function reg(args) {
-  return execFileSync('reg.exe', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+  return execFileSync('reg.exe', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true, timeout: 10000 });
 }
 
 function install() {
