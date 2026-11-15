@@ -112,8 +112,12 @@ function arm(key) {
   fs.writeFileSync(armFile(key), String(Date.now()));
 }
 
+// Disarming also drops a ping that is still lying around: a second click
+// after the listener consumed the first one would otherwise wake the next
+// sleep of the same key at once, without a new click.
 function disarm(key) {
   if (!KEY_RE.test(key || '')) return false;
+  consume(key);
   try {
     fs.unlinkSync(armFile(key));
     return true;

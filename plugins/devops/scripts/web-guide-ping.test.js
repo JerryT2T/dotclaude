@@ -45,6 +45,13 @@ describe("web-guide-ping", () => {
     expect(fs.existsSync(path.join(root, "pings", `${KEY}.ping`))).toBe(false);
   }, 15000);
 
+  test("disarm drops a leftover ping, so the next sleep does not wake at once", () => {
+    ping.arm(KEY);
+    expect(ping.handle(`claude-guide://ping/${KEY}/`)).toBe(true); // a second click after the wake
+    ping.disarm(KEY); // the resume
+    expect(fs.existsSync(path.join(root, "pings", `${KEY}.ping`))).toBe(false);
+  });
+
   test("listen exits DISARMED once the arm file is removed", async () => {
     ping.disarm(KEY); // the previous test's listener left its arm behind
     const child = spawn(process.execPath, [CLI, "listen", KEY, "--hours", "0.01"], {
