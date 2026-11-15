@@ -54,6 +54,18 @@ Everything else stays local — the user reviews and decides to ship when they
 return. Log as "blocked action" in the report **and the decision journal** if the
 task required one.
 
+- **Quiet window.** A task line like "heavy work only after 02:00" or "I am
+  gaming until 2" is a binding constraint, not colour: until the window opens
+  (or while `~/.claude/governor/state.json` has a non-empty
+  `pressure.priority`) the run does light work only — reading, planning, docs,
+  small edits, touched-file tests — with at most one implementing agent; full
+  builds and suites, installs, engine starts and parallel waves are scheduled
+  for the window. Record the schedule in the decision journal.
+- **Never raise priority.** A process Claude started keeps its priority (or
+  is lowered); never raise it (`Start-Process` priority changes, `renice`,
+  `.PriorityClass =`, `wmic ... setpriority`) while a priority app is active,
+  however slow it is. Wait instead. See `load-governor.md` § Orchestration behaviour.
+
 ## Untrusted Content & Egress
 
 `WebFetch`/`WebSearch` stay enabled for research, so the outbound channel is open

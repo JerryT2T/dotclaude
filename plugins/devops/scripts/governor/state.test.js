@@ -12,6 +12,20 @@ let p;
 beforeEach(() => { dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gov-')); p = paths(dir); });
 afterEach(() => { fs.rmSync(dir, { recursive: true, force: true }); });
 
+describe('admission reservations', () => {
+  it('recordAdmission keeps only the window; readState exposes them as state.admitted', () => {
+    St.writeState(p, { heartbeat: 1 });
+    St.recordAdmission(p, { kind: 'dotnet test', mb: 361, session: 's' }, 1000, 30000);
+    St.recordAdmission(p, { kind: 'npm test', mb: 500 }, 20000, 30000);
+    St.recordAdmission(p, { kind: 'cargo build', mb: 900 }, 45000, 30000);
+    expect(St.readState(p).admitted.map((a) => a.kind)).toEqual(['npm test', 'cargo build']);
+  });
+  it('no file -> empty list', () => {
+    St.writeState(p, { heartbeat: 1 });
+    expect(St.readState(p).admitted).toEqual([]);
+  });
+});
+
 describe('state file', () => {
   it('writes atomically and reads back with the format version', () => {
     St.writeState(p, { heartbeat: 1, throttles: [{ jobId: 'a' }] });

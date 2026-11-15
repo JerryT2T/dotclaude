@@ -88,7 +88,20 @@ function sweep(p, now, { maxAgeMs = 3600000, queueExpiryMs = 24 * 3600000, alive
 function readState(p) {
   const s = readJson(p.state);
   if (!s) return null;
-  return { ...s, newer: Number(s.format) > FORMAT };
+  const admitted = readJson(p.admitted);
+  return { ...s, admitted: Array.isArray(admitted) ? admitted : [], newer: Number(s.format) > FORMAT };
+}
+
+/**
+ * Record an admitted build/test (gate hook) so the next admission in the same seconds sees its
+ * reservation and its slot. Keeps only entries younger than windowMs. Best effort, never throws.
+ */
+function recordAdmission(p, entry, now, windowMs = 30000) {
+  try {
+    const cur = readJson(p.admitted);
+    const keep = (Array.isArray(cur) ? cur : []).filter((a) => a && now - a.at >= 0 && now - a.at < windowMs);
+    writeJson(p.admitted, [...keep, { at: now, kind: entry.kind || null, mb: entry.mb, session: entry.session || null }]);
+  } catch { /* best effort */ }
 }
 
 function writeState(p, state) { writeJson(p.state, { ...state, format: FORMAT }); }
@@ -185,6 +198,6 @@ function handoverRequested(p, version, now, maxAgeMs = 60000) {
 }
 
 module.exports = {
-  FORMAT, readJson, writeJson, removeFile, readDir, readState, writeState, sweep,
+  FORMAT, readJson, writeJson, removeFile, readDir, readState, recordAdmission, writeState, sweep,
   compareVersions, isAlive, processStart, acquireLock, heartbeat, releaseLock, handoverRequested,
 };

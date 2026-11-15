@@ -124,6 +124,24 @@ describe("agent-orchestration.md § Model & Effort Defaults stays the source of 
     expect(waves).toMatch(/< ~2 min[\s\S]*in the foreground, not with `run_in_background`/);
   });
 
+  it("sizes waves by the governor state and quiet windows (#1116)", () => {
+    const waves = section(orchestration, "### Parallel implementers per wave", "\n## ");
+    expect(waves).toMatch(/\*\*Priority app or quiet window\*\*/);
+    expect(waves).toMatch(/governor\/state\.json[\s\S]*non-empty `pressure\.priority`/);
+    expect(waves).toMatch(/at most \*\*one\*\* implementing agent at a time/);
+    expect(waves).toMatch(/tests\s+of\s+the\s+touched\s+files\s+only[\s\S]*full\s+suite\s+once\s+per\s+merge,\s+serially/);
+    expect(waves).toMatch(/Never raise the priority of a process Claude\s+started/);
+    const step22 = section(skill, "### 2.2 Agent selection", "### 2.3");
+    expect(step22).toMatch(/Governor state is an input to wave sizing/);
+    expect(step22).toMatch(/one implementing agent at a time/);
+    const auto = readFileSync(join(PLUGIN_ROOT, "deep-knowledge", "autonomous-execution.md"), "utf8");
+    expect(auto).toMatch(/\*\*Quiet window\.\*\*[\s\S]*heavy work only after/);
+    expect(auto).toMatch(/\*\*Never raise priority\.\*\*/);
+    const gov = readFileSync(join(PLUGIN_ROOT, "deep-knowledge", "load-governor.md"), "utf8");
+    expect(gov).toMatch(/## Orchestration behaviour/);
+    expect(gov).toMatch(/slotsUnderPriority/);
+  });
+
   it("matches every roster row to the agent's frontmatter", () => {
     const rows = defaults.split("\n").filter((l) => /^\| \*\*[a-z]+\*\* \|/.test(l));
     expect(rows.length).toBeGreaterThan(5);
