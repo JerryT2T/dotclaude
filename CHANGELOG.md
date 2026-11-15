@@ -5,6 +5,14 @@
 ### Added
 - auto-guide: an idle guide now sleeps after 10 min at zero token cost; the next click in the panel wakes Claude through a `claude-guide://` protocol ping (Windows), so the guide no longer needs „weiter“ in the chat after a long break.
 
+## [0.376.1] — 2026-11-15
+
+### Changed
+- Deep knowledge: the interactive engagement rules and the QA wave protocol live in their own docs (`agent-engagement-rules.md`, `agent-qa-wave.md`); `agent-orchestration.md` keeps pointers
+
+### Added
+- Mods groundwork: deterministic paste / tool-output redirect logic (`hooks/lib/paste-redirect.js`, not wired yet) — head + tail + file path, `/do-run`, autostart and slash-command prompts and test/git/CI output exempt (#1106)
+
 ## [0.376.0] — 2026-11-15
 
 ### Added
