@@ -1031,3 +1031,59 @@ export function isHintCard(c: { heading: string; points: readonly string[] } | n
 export function isShippedCard(c: { heading: string } | null): boolean {
   return !!c && /^🟩/u.test(c.heading)
 }
+
+// --- The card's type scale as an image (B2): the mod API's Text has size names but no pixel values. ---
+
+export const CARD_FONT = "system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif"
+/** Longer text falls back to the wrapping Text element: an image cannot wrap. */
+export const CARD_SVG_MAX_WIDTH = 560
+
+export type CardRole = 'title' | 'heading' | 'time'
+/** card-widget.js: title and heading 16 px / 500 in the primary colour, the time 12 px tabular in the secondary colour. */
+export const CARD_TYPE: Record<CardRole, { px: number; weight: number; secondary: boolean; tabular: boolean }> = {
+  title: { px: 16, weight: 500, secondary: false, tabular: false },
+  heading: { px: 16, weight: 500, secondary: false, tabular: false },
+  time: { px: 12, weight: 400, secondary: true, tabular: true },
+}
+
+/** Width of `text` at `px` in a system sans: a per-character estimate (the engine cannot measure text), padded a little so nothing clips. */
+export function estimateTextWidth(text: string, px: number, tabular = false): number {
+  let em = 0
+  for (const ch of Array.from(text)) {
+    const cp = ch.codePointAt(0) || 0
+    if (cp > 0x2e80 || cp >= 0x1f000) em += 1.05 // CJK, kana, emoji
+    else if (cp >= 0x2190 && cp <= 0x2bff) em += 1.0 // arrows, symbols (› — ✓)
+    else if (tabular && /\d/.test(ch)) em += 0.62
+    else if (/[iIl.,:;'|!]/.test(ch)) em += 0.32
+    else if (/[ ()\[\]\-/]/.test(ch)) em += 0.38
+    else if (/[mwMW@]/.test(ch)) em += 0.9
+    else if (/[A-Z]/.test(ch)) em += 0.68
+    else em += 0.57
+  }
+  return Math.ceil(em * px * 1.06) + 2
+}
+
+function xmlEscape(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+/**
+ * One line of card text as an SVG image at the card's exact size, weight and colours (dark / light by the
+ * frame's colour scheme). Null when it would not fit CARD_SVG_MAX_WIDTH: the caller falls back to Text.
+ */
+export function cardTextSvg(text: string, role: CardRole): { source: string; width: number; height: number; alt: string } | null {
+  const t = String(text || '').replace(/\s+/g, ' ').trim()
+  if (!t) return null
+  const { px, weight, secondary, tabular } = CARD_TYPE[role]
+  const width = estimateTextWidth(t, px, tabular)
+  if (width > CARD_SVG_MAX_WIDTH) return null
+  const height = Math.round(px * 1.5)
+  const dark = secondary ? '#a9a9a9' : '#ececec'
+  const light = secondary ? '#6b6b6b' : '#1f1f1f'
+  const source =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">` +
+    `<style>text{fill:${dark};font-family:${CARD_FONT};font-size:${px}px;font-weight:${weight};${tabular ? 'font-variant-numeric:tabular-nums;' : ''}}` +
+    `@media (prefers-color-scheme: light){text{fill:${light}}}</style>` +
+    `<text x="0" y="${Math.round(px * 1.12)}" xml:space="preserve">${xmlEscape(t)}</text></svg>`
+  return { source, width, height, alt: t }
+}

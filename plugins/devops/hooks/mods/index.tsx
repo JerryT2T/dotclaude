@@ -39,6 +39,7 @@ import {
   agentRows,
   applyPlan,
   budgetBarAlt,
+  cardTextSvg,
   isShippedCard,
   BUDGET_BAR_SIZE,
   budgetBars,
@@ -123,6 +124,7 @@ const TICK_MS = 5000
 // Band look: the card's lilac › and amber, the divider and rail of the concept (rounds/02.html).
 const AMBER = '#e6c36a'
 const VIOLET = '#9d8cd6'
+const AMBER_BG = '#3d3220'
 const DIVIDER = '#353535'
 const RAIL_WIDTH = 30
 let ticker: { cancel: () => void } | null = null
@@ -919,6 +921,17 @@ export const register: Register = on => {
           small: { size: 'caption', dimColor: true },
         }
       : { title: { bold: true }, point: { dimColor: true }, time: { dimColor: true }, small: { dimColor: true } }
+    // Card text: the card's own type scale as an image where it fits (the API's Text has no pixel sizes); else the wrapping Text.
+    const cardText = (key: string, text: string, role: 'title' | 'heading' | 'time') => {
+      const img = Svg ? cardTextSvg(text, role) : null
+      return img ? (
+        <Box key={key}>
+          <Svg source={img.source} alt={img.alt} width={img.width} height={img.height} />
+        </Box>
+      ) : (
+        <Text key={key} {...(role === 'time' ? S.time : S.title)}>{text}</Text>
+      )
+    }
     const toggle = () => update($, fold, v => !v)
 
     const cta = !cv ? null : run.phase === 'planning' || run.phase === 'applying' ? (
@@ -962,7 +975,13 @@ export const register: Register = on => {
       ) : (
         <Text key="ring" dimColor={!advised} {...(advised ? { color: AMBER } : {})}>{`🧠 ${tr(loc, 'ctx')} ${ring} %`}</Text>
       )
-    const compactBtn = advised && !working ? <Button key="compact" label={tr(loc, 'compact')} onPress={() => $.session.compact()} /> : null
+    // Desktop: the amber pill (#e6c36a on #3d3220) drawn as the Button's children, one pressable; the terminal keeps the label.
+    const compactBtn =
+      advised && !working ? (
+        <Button key="compact" label={tr(loc, 'compact')} onPress={() => $.session.compact()}>
+          {desktop ? <Text color={AMBER} backgroundColor={AMBER_BG}>{` ${tr(loc, 'compact')} `}</Text> : tr(loc, 'compact')}
+        </Button>
+      ) : null
     const budgetEl = !bars.length ? null : Svg ? (
       <Box key="budget" flexDirection="row" alignItems="center" columnGap={2} flexWrap="wrap">
         {bars.map(bar => (
@@ -1064,10 +1083,10 @@ export const register: Register = on => {
         <Box key="zones" position="relative" flexDirection="row" columnGap={2}>
           <Box key="main" flexDirection="column" flexGrow={1} rowGap={1}>
             {workEl}
-            {c && c.title && <Text key="card-title" {...S.title}>{c.title}</Text>}
+            {c && c.title && cardText('card-title', c.title, 'title')}
             {c && (
               <Box key="card-heading-row" flexDirection="row" alignItems="center" columnGap={1}>
-                <Text key="card-heading" {...S.title}>{c.heading}</Text>
+                {cardText('card-heading', c.heading, 'heading')}
                 {hintToggle}
               </Box>
             )}
@@ -1082,7 +1101,7 @@ export const register: Register = on => {
           </Box>
           {c && c.at && (
             <Box key="card-time" position="absolute" top={0} right={0}>
-              <Text {...S.time}>{c.at}</Text>
+              {cardText('card-time-text', c.at, 'time')}
             </Box>
           )}
         </Box>

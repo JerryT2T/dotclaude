@@ -13,6 +13,8 @@ import {
   compactAdvised,
   compactThreshold,
   budgetBarAlt,
+  cardTextSvg,
+  estimateTextWidth,
   hourglassSvg,
   isHintCard,
   hygieneFrom,
@@ -88,6 +90,12 @@ function engine(on: any, opts: { pin?: string; files?: Files; agents?: unknown[]
     return { text: e.text }
   })
   return { seen, tick: (ms: number) => { clock += ms } }
+}
+
+/** A marker if the mounted band shows `word` anywhere (as Text, or as the alt of a card-text image), else undefined. */
+async function has(band: any, word: string): Promise<string | undefined> {
+  const root = await band.find({ key: 'band' })
+  return root && JSON.stringify(root).includes(word) ? word : undefined
 }
 
 /** The Svg inside a found element: an Svg has no key of its own, its wrapping Box does. */
@@ -363,17 +371,20 @@ test('card band: the card tool result puts the template part above the prompt; a
   expect(r.text).toBe(CARD_RESULT) // passed through unchanged
   for (const surface of SURFACES) {
     const band = await $.ui.mount({ ...BAND, surface })
-    expect((await band.find({ type: 'Text', text: /^Band zeigt/ }))?.text).toBe('Band zeigt die Card')
-    expect((await band.find({ type: 'Text', text: /^01:43$/ }))?.text).toBe('01:43')
-    expect((await band.find({ type: 'Text', text: /Committed/ }))?.text).toBe('👉 📦 Committed — fertig — shippen?')
+    if (surface === 'terminal') {
+      expect((await band.find({ type: 'Text', text: /^Band zeigt/ }))?.text).toBe('Band zeigt die Card')
+      expect((await band.find({ type: 'Text', text: /^01:43$/ }))?.text).toBe('01:43')
+      expect((await band.find({ type: 'Text', text: /Committed/ }))?.text).toBe('👉 📦 Committed — fertig — shippen?')
+    }
     if (surface === 'terminal') expect((await band.find({ type: 'Text', text: /Doku/ }))?.text).toBe('› Doku nachziehen')
     else {
       // B2: the point is 14 px secondary with its own violet › (the card's marker), the title and heading 16 px medium, the time 12 px tabular.
       expect((await band.find({ type: 'Text', text: /^Doku/ }))?.props).toMatchObject({ size: 'body', dimColor: true })
       expect((await band.find({ type: 'Text', text: '›' }))?.props.color).toBe('#9d8cd6')
-      expect((await band.find({ type: 'Text', text: /^Band zeigt/ }))?.props).toMatchObject({ size: 'heading', weight: 'medium' })
-      expect((await band.find({ type: 'Text', text: /Committed/ }))?.props).toMatchObject({ size: 'heading', weight: 'medium' })
-      expect((await band.find({ type: 'Text', text: /^01:43$/ }))?.props).toMatchObject({ size: 'caption', tabular: true })
+      // The title, heading and time are images at the card's exact scale (see the cardTextSvg test).
+      expect(svgIn(await band.find({ key: 'card-title' }))?.props.alt).toBe('Band zeigt die Card')
+      expect(svgIn(await band.find({ key: 'card-heading' }))?.props.alt).toBe('👉 📦 Committed — fertig — shippen?')
+      expect(svgIn(await band.find({ key: 'card-time-text' }))?.props.alt).toBe('01:43')
     }
     expect(await band.find({ type: 'Text', text: /THE ANSWER/ })).toBeUndefined() // the answer stays inline
     expect((await band.find({ key: 'card-button-0' }))?.props.variant).toBe('primary')
@@ -400,20 +411,20 @@ test('card band: a typed prompt spends the card, a textless continuation keeps i
   await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
   await $.tool.call({ tool: CARD_TOOL, summary: 'x', agentId: 'sub1' } as any)
   let band = await $.ui.mount({ ...BAND, surface: 'desktop' })
-  expect(await band.find({ type: 'Text', text: /Committed/ })).toBeUndefined()
+  expect(await has(band, 'Committed')).toBeUndefined()
   await band.unmount()
   await $.tool.call({ tool: CARD_TOOL, summary: 'refused' } as any)
   band = await $.ui.mount({ ...BAND, surface: 'desktop' })
-  expect(await band.find({ type: 'Text', text: /Committed/ })).toBeUndefined()
+  expect(await has(band, 'Committed')).toBeUndefined()
   await band.unmount()
   await $.tool.call({ tool: CARD_TOOL, summary: 'x' } as any)
   await $.turn.start({ text: '', turnId: 't2' } as any)
   band = await $.ui.mount({ ...BAND, surface: 'desktop' })
-  expect(await band.find({ type: 'Text', text: /Committed/ })).toBeDefined()
+  expect(await has(band, 'Committed')).toBeDefined()
   await band.unmount()
   await $.turn.start({ text: 'next task', turnId: 't3' } as any)
   band = await $.ui.mount({ ...BAND, surface: 'desktop' })
-  expect(await band.find({ type: 'Text', text: /Committed/ })).toBeUndefined()
+  expect(await has(band, 'Committed')).toBeUndefined()
   await band.unmount()
 })
 
@@ -449,7 +460,7 @@ test('working band: turning hourglass, the running step of the task list and the
     const band = await $.ui.mount({ ...WORKING_BAND, surface })
     expect((await band.find({ type: 'Text', text: /^2\/3/ }))?.text).toBe('2/3 · Bauen')
     expect((await band.find({ type: 'Text', text: /^Bash/ }))?.text).toBe('Bash · Run the mod tests')
-    expect(await band.find({ type: 'Text', text: /Committed/ })).toBeUndefined()
+    expect(await has(band, 'Committed')).toBeUndefined()
     if (surface === 'desktop') {
       const glass = await svgIn(await band.find({ key: 'working' }))
       // B8: the ⏳ emoji itself, turning all the time (a full turn, repeatCount indefinite), slower than a flip.
@@ -1045,7 +1056,7 @@ test('B17 hint cards (batch / test mode): heading plus a ? toggle, hints collaps
   for (const surface of SURFACES) {
     let band = await $.ui.mount({ ...BAND, surface })
     console.log('DBGB', surface, JSON.stringify(await band.find({ key: 'card-heading-row' })))
-    expect(await band.find({ type: 'Text', text: /Batch — sammelt/ })).toBeDefined()
+    expect(await has(band, 'Batch — sammelt')).toBeDefined()
     expect((await band.find({ key: 'hints-toggle' }))?.props.label).toBe('?')
     expect(JSON.stringify(await band.find({ key: 'band' }))).not.toContain('Aufträge einzeln')
     await band.press({ key: 'hints-toggle' })
@@ -1220,4 +1231,54 @@ test('defect 6: the apply refreshes the run marker start, so a late apply keeps 
   const marks = seen.writes.filter(x => x.path.replaceAll(String.fromCharCode(92), '/').endsWith('/.claude/devops-cleanup-run.json')).map(x => JSON.parse(x.text))
   expect(marks.length).toBe(2)
   expect(marks[1].startedAt - marks[0].startedAt).toBe(90 * 60_000)
+})
+
+test('cardTextSvg: title and heading 16 px / 500, time 12 px tabular-nums, the card font stack, light and dark colours', () => {
+  const title = cardTextSvg('Offene Popup-Punkte erledigt', 'title')
+  expect(title?.source).toMatch(/font-size:16px;font-weight:500/)
+  expect(title?.source).toMatch(/font-family:system-ui,/)
+  expect(title?.source).toMatch(/fill:#ececec/)
+  expect(title?.source).toMatch(/prefers-color-scheme: light\)\{text\{fill:#1f1f1f/)
+  expect(title?.height).toBe(24)
+  const heading = cardTextSvg('🟩 🚀 Released Alpha — v0.270.1 — nach Beta promoten?', 'heading')
+  expect(heading?.source).toMatch(/font-size:16px;font-weight:500/)
+  expect(heading?.source).toContain('🟩 🚀 Released')
+  const time = cardTextSvg('14:10', 'time')
+  expect(time?.source).toMatch(/font-size:12px;font-weight:400;font-variant-numeric:tabular-nums/)
+  expect(time?.source).toMatch(/fill:#a9a9a9/) // secondary
+  expect(time?.height).toBe(18)
+  // The width is an estimate that grows with the text and leaves room; it must not clip a long title.
+  expect(estimateTextWidth('iiii', 16)).toBeLessThan(estimateTextWidth('WWWW', 16))
+  expect(estimateTextWidth('14:10', 12, true)).toBeGreaterThan(24)
+  expect(cardTextSvg('<b>&', 'title')?.source).toContain('&lt;b&gt;&amp;')
+  // Text that would not fit one line, and empty text, fall back to the wrapping Text element.
+  expect(cardTextSvg('sehr lang '.repeat(30), 'heading')).toBeNull()
+  expect(cardTextSvg('  ', 'title')).toBeNull()
+})
+
+test('a long card heading falls back to the wrapping Text element on Desktop', async ($, on) => {
+  engine(on)
+  const long = { ...CARD_DATA, h: `👉 📦 ${'Sehr langer Status '.repeat(8)}— shippen?` }
+  on('tool.call', () => ({ result: {}, text: `<script type="application/json" id="dc-card-data">${JSON.stringify(long)}</script>` }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.tool.call({ tool: CARD_TOOL, summary: 'x' } as any)
+  const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(svgIn(await band.find({ key: 'card-heading' }))).toBeUndefined()
+  expect((await band.find({ type: 'Text', text: /Sehr langer/ }))?.props).toMatchObject({ size: 'heading', weight: 'medium' })
+  await band.unmount()
+})
+
+test('the Compact button is an amber pill (#e6c36a on #3d3220) as the Button children on Desktop, the plain label on the terminal', async ($, on) => {
+  engine(on, { files: { '/.claude/concept-active.json': '{}' } })
+  await $.session.start({ cwd: REPO, surface: 'desktop', isInteractive: true })
+  await $.session.measure(MEASURE as any)
+  const d = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  const btn: any = await d.find({ key: 'compact' })
+  expect(btn?.props.label).toBe('Compact')
+  const pill = btn.children.find((c: any) => c.type === 'Text')
+  expect(pill.props).toMatchObject({ color: '#e6c36a', backgroundColor: '#3d3220' })
+  await d.unmount()
+  const t: any = await (await $.ui.mount({ ...BAND, surface: 'terminal' })).find({ key: 'compact' })
+  expect(t?.props.label).toBe('Compact')
+  expect(t.children.some((c: any) => c.type === 'Text' && c.props?.backgroundColor)).toBe(false)
 })
