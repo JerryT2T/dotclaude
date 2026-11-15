@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.376.0] — 2026-11-15
+
+### Added
+- Autonomous runs: before the PC shuts down, jobs listed in `shutdown.busyProcesses` or holding a live busy lock keep it on (polled up to 6 h), and the report names the job; the watchdog's forced shutdown checks the same (#1124)
+- Governor: while a priority app holds CPU or disk, builds and tests share one slot, admitted jobs reserve their RAM peak until measured, and the summed load of many short jobs is throttled (#1115)
+- Orchestration: with a priority app or a quiet window in the task, runs start one implementer at a time, briefs ask for targeted tests, the full suite runs once per merge, and no process priority is raised (#1116)
+
+### Fixed
+- Completion card: a ready card keeps Ship as its primary button when only follow-up points are open; the ship step itself is no longer listed as an open point (#1117)
+- Browser check: a Playwright script run through Bash counts as a passed browser check (#1122)
+- Batch: firing a batch shows the ⏳ working title instead of the bare topic (#1126)
+- Concept: the page no longer shows "Verbindung weg" while Claude is still implementing; a successor pulser keeps the heartbeat after WAKER_MISSING (#1119)
+- Concept: implement checklist lines keep their source quote ("like X" names X's real mechanism) and a moved role becomes two lines, checked against the quote (#1110, #1111)
+- Browser: agent-started browsers run headless, also for GPU measurement, and never take the foreground; a concept page reuses its open tab (#1099)
+- Watchdog: the recovery script is written with a BOM so Windows PowerShell 5.1 parses it
+
 ## [0.375.0] — 2026-11-15
 
 ### Added
