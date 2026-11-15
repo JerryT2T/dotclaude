@@ -19,6 +19,7 @@ turn end. Nothing else strips or sets titles.
 | `🟩` | Done, nothing mandatory left (not ✅) |
 | `🟥` | Aborted |
 | `🟦` | Paused |
+| `🔴` | Offline: the concept page lost its bridge (reboot, crash, app quit) — resume the session to reconnect |
 
 | State | Prefix |
 |---|---|
@@ -27,6 +28,7 @@ turn end. Nothing else strips or sets titles.
 | done | `🟩 ➜ 🚀 Released Alpha ┃` (merged ship), `🟩 ➜ 📦 Delivered ┃` (side session delivered its part, the parent ships), `🚀 Released Beta` / `🚀 Released Stable` (ship and promote in one run), `🎊 Beta` / `🎊 Stable` (promote only), `📦 Committed`, `✨ Started`, `📊 Analysis`, `🖥️ System` (work outside the repo); never "LIVE" |
 | aborted | `🟥 ➜ 📦 Aborted ┃` (generic), `🚀 Ship`, `🎊 Promote`, `🧪 Test`, `🧭 Concept`, `📚 Batch`, `📊 Analysis`, `🤖 Team` |
 | paused | `🟦 ➜ ✋ Paused ┃`, `🔋 Limit reset`, `🔌 Restart`, `💻 Reboot` |
+| offline | `🔴 ➜ 🧭 Concept ┃` (set by `ss.title.sweep` only, see F5 after a crash) |
 
 A named abort keeps its activity (`🟥 ➜ 🚀 Ship ┃ X`).
 
@@ -98,8 +100,14 @@ hook, so its ⏳ title survives. `ss.title.sweep` (SessionStart of the next sess
 the user starts) finds sessions whose `custom-title.json` sidecar says ⏳, whose
 transcript has been idle ≥ 2 min and whose governor pid is gone, and hands Claude
 the exact old → new titles; Claude renames the ones `list_sessions` reports
-`isRunning:false` to `👉 ➜ ⚡ Interrupted ┃ <title>` — every ⏳ form, a working
-concept page included. The scan runs detached, so the list arrives with a prompt
+`isRunning:false` to `👉 ➜ ⚡ Interrupted ┃ <title>` — every ⏳ form. A concept
+title (`👉 ➜ 🧭 Concept ┃` or `⏳ ➜ 🧭 Concept ┃`) whose bridge is gone becomes
+`🔴 ➜ 🧭 Concept ┃ <title>` instead, also without a crash of the session itself:
+the bridge counts as alive only when `~/.claude/concept-bridges/<port>.json` names
+the session's worktree (transcript `cwd`, or the #1090 watcher pointer), a live pid
+and a `started_at` after the last boot — Windows reuses pids, so after a reboot every
+entry is dead. No cwd known → the title stays. A prompt in that session strips 🔴
+like any outcome, and `ss.concept.resume` relaunches the bridge. The scan runs detached, so the list arrives with a prompt
 of that session, not with its start. Nothing runs before a session is started, and an
 interrupted session asks nothing by itself: it waits for the user's next prompt.
 

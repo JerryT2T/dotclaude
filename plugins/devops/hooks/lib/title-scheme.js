@@ -1,6 +1,6 @@
 /**
  * @module title-scheme
- * @version 2.6.0
+ * @version 2.7.0
  * @description The ONE table behind the session title and the completion
  *   card's CTA heading (concept 2026-10-21 "title-iconography").
  *
@@ -46,13 +46,19 @@ const BAR = String.fromCharCode(0x2503);
 /** U+279C — the arrow between status and activity. */
 const ARROW = String.fromCharCode(0x279C);
 
-/** First icon — the status. 🟩 (not ✅) matches the red 🟥 box. */
+/**
+ * First icon — the status. 🟩 (not ✅) matches the red 🟥 box. 🔴 (2.7) is
+ * a concept page whose bridge is gone (reboot, crash, app quit): the page
+ * cannot reach Claude until the session is resumed — a round, not a box, so
+ * it never reads as 🟥 Aborted.
+ */
 const STATUS = Object.freeze({
   work: '⏳',
   user: '👉',
   done: '🟩',
   aborted: '🟥',
   paused: '🟦',
+  offline: '🔴',
 });
 
 /** Old paused status — still recognised on titles in the wild. */
@@ -113,6 +119,9 @@ const STATES = Object.freeze({
   'paused-usage-reset': ['paused', 'Limit reset', '🔋'],
   'paused-restart': ['paused', 'Restart', '🔌'],
   'paused-reboot': ['paused', 'Reboot', '💻'],
+  // 🔴 the concept page lost its bridge; resuming the session reconnects it
+  // (ss.concept.resume relaunches the server). Set by ss.title.sweep only.
+  'concept-offline': ['offline', 'Concept', '🧭'],
 });
 
 /**
@@ -235,6 +244,8 @@ const BATCH_PREFIX = prefixOf('batch');
 /** The concept page waits for the user / Claude works on it. */
 const CONCEPT_PREFIX = prefixOf('concept-waiting');
 const CONCEPT_WORKING_PREFIX = prefixOf('concept-working');
+/** The concept page lost its bridge (reboot, crash) — resume reconnects it. */
+const CONCEPT_OFFLINE_PREFIX = prefixOf('concept-offline');
 /** F5: a turn that ended without a card. */
 const INTERRUPTED_PREFIX = prefixOf('interrupted');
 
@@ -504,6 +515,7 @@ module.exports = {
   BATCH_PREFIX,
   CONCEPT_PREFIX,
   CONCEPT_WORKING_PREFIX,
+  CONCEPT_OFFLINE_PREFIX,
   INTERRUPTED_PREFIX,
   LEGACY_PREFIXES,
   LEGACY,

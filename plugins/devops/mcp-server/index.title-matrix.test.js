@@ -210,7 +210,8 @@ describe("title = CTA — every completion-card variant × every heading/prefix 
   test("the matrix reaches every scheme state but the card-less F5 one", () => {
     const reached = new Set(CASES.map(([, , [s, w, a]]) => `${s} ➜ ${a} ${w} ┃`));
     for (const [id, [statusKey, word, act]] of Object.entries(TITLE_SCHEME.STATES)) {
-      if (id === "interrupted" || id === "shipping") continue; // F5 (stop hook) and /do-ship Pre-Step C set these
+      // F5 (stop hook), /do-ship Pre-Step C and ss.title.sweep (concept offline) set these
+      if (id === "interrupted" || id === "shipping" || id === "concept-offline") continue;
       const status = TITLE_SCHEME.STATUS[statusKey];
       expect(reached.has(`${status} ➜ ${act} ${word} ┃`), id).toBe(true);
     }

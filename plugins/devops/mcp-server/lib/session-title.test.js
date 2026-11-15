@@ -30,7 +30,7 @@ const deps = {
   hasConcept: (c) => !!c,
 };
 
-const STATUS_ICONS = ["⏳", "👉", "🟩", "🟥", "🟦"];
+const STATUS_ICONS = ["⏳", "👉", "🟩", "🟥", "🟦", "🔴"];
 
 describe("SESSION_PREFIX", () => {
   test("every named prefix is `<status> ➜ <activity> <Word…> ┃ `; work is Solo", () => {
