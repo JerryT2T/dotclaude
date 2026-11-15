@@ -2,7 +2,7 @@ import { describe, test, expect, beforeEach, afterEach } from "vitest";
 import fs from "fs";
 import os from "os";
 import path from "path";
-import { findStaleTitles, interruptedFor } from "../lib/stale-titles.js";
+import { findStaleTitles, interruptedFor, offlineFor } from "../lib/stale-titles.js";
 import { buildContext, nextSeen } from "./ss.title.sweep.js";
 import { spawnSync } from "child_process";
 import { fileURLToPath } from "url";
@@ -47,10 +47,21 @@ describe("interruptedFor", () => {
 
   test("non-⏳ and empty titles stay", () => {
     expect(interruptedFor("👉 ➜ 🧭 Concept ┃ Page")).toBeNull();
+    expect(interruptedFor("🔴 ➜ 🧭 Concept ┃ Page")).toBeNull();
     expect(interruptedFor("🟩 ➜ 📊 Analysis ┃ X")).toBeNull();
     expect(interruptedFor("Plain title")).toBeNull();
     expect(interruptedFor("⏳ ")).toBeNull();
     expect(interruptedFor(null)).toBeNull();
+  });
+});
+
+describe("offlineFor", () => {
+  test("concept heads get the red status, everything else stays", () => {
+    expect(offlineFor("👉 ➜ 🧭 Concept ┃ Page")).toBe("🔴 ➜ 🧭 Concept ┃ Page");
+    expect(offlineFor("⏳ ➜ 🧭 Concept ┃ Page")).toBe("🔴 ➜ 🧭 Concept ┃ Page");
+    expect(offlineFor("🔴 ➜ 🧭 Concept ┃ Page")).toBeNull();
+    expect(offlineFor("⏳ ➜ 🤖 Solo ┃ Page")).toBeNull();
+    expect(offlineFor("👉 ➜ 🧭 Concept ┃ ")).toBeNull();
   });
 });
 
@@ -102,6 +113,69 @@ describe("findStaleTitles", () => {
     const seenMtime = NOW - 30 * MIN;
     expect(find({ seen: { seen: seenMtime } })).toEqual([]);
     expect(find({ seen: { seen: seenMtime - 1 } }).map((s) => s.sessionId)).toEqual(["seen"]);
+  });
+
+  describe("concept offline (🔴)", () => {
+    const WT = "P:\\Projects\\app\\.claude\\worktrees\\x";
+    let reg;
+    const withCwd = (id, cwd) => {
+      const jsonl = path.join(root, "C--r-app", `${id}.jsonl`);
+      const st = fs.statSync(jsonl);
+      fs.writeFileSync(jsonl, JSON.stringify({ type: "user", cwd }) + "\n");
+      fs.utimesSync(jsonl, st.atime, st.mtime);
+    };
+    const bridgeEntry = (port, o) => fs.writeFileSync(path.join(reg, `${port}.json`),
+      JSON.stringify({ port, pid: 4242, worktree: WT, html_path: "docs/concepts/a.html", started_at: new Date(NOW - 10 * MIN).toISOString(), ...o }));
+    const findB = (o = {}) => find({ bridge: { registryDir: reg, bootMs: NOW - 60 * MIN, tmpDir: tmp, isAlive: (pid) => pid === 4242, ...o } });
+
+    beforeEach(() => { reg = path.join(tmp, "bridges"); fs.mkdirSync(reg, { recursive: true }); });
+
+    test("a waiting concept without a bridge turns red", () => {
+      session("C--r-app", "cw", "👉 ➜ 🧭 Concept ┃ Review page", 30);
+      withCwd("cw", WT);
+      expect(findB().map((s) => [s.sessionId, s.next])).toEqual([["cw", "🔴 ➜ 🧭 Concept ┃ Review page"]]);
+    });
+
+    test("a working concept without a bridge turns red, not Interrupted", () => {
+      session("C--r-app", "cx", "⏳ ➜ 🧭 Concept ┃ Round 3", 30);
+      withCwd("cx", WT);
+      expect(findB().map((s) => s.next)).toEqual(["🔴 ➜ 🧭 Concept ┃ Round 3"]);
+    });
+
+    test("a live bridge for the worktree keeps the title", () => {
+      session("C--r-app", "cl", "👉 ➜ 🧭 Concept ┃ Live", 30);
+      withCwd("cl", WT);
+      bridgeEntry(8800);
+      expect(findB()).toEqual([]);
+    });
+
+    test("a registry entry from before the last boot is dead even if its pid is reused", () => {
+      session("C--r-app", "cb", "👉 ➜ 🧭 Concept ┃ Rebooted", 30);
+      withCwd("cb", WT);
+      bridgeEntry(8801, { started_at: new Date(NOW - 120 * MIN).toISOString() });
+      expect(findB().map((s) => s.sessionId)).toEqual(["cb"]);
+    });
+
+    test("an entry for another worktree or a dead pid does not count", () => {
+      session("C--r-app", "co", "👉 ➜ 🧭 Concept ┃ Other", 30);
+      withCwd("co", WT);
+      bridgeEntry(8802, { worktree: "P:\\Projects\\other" });
+      bridgeEntry(8803, { pid: 1 });
+      expect(findB().map((s) => s.sessionId)).toEqual(["co"]);
+    });
+
+    test("the concept checkout from the watcher pointer counts too (#1090)", () => {
+      session("C--r-app", "cp", "👉 ➜ 🧭 Concept ┃ Elsewhere", 30);
+      withCwd("cp", "P:\\Projects\\launcher");
+      fs.writeFileSync(path.join(tmp, "dotclaude-devops-concept-state-cp"), WT + "\\.claude\\concept-active.json");
+      bridgeEntry(8804);
+      expect(findB()).toEqual([]);
+    });
+
+    test("no known cwd keeps a waiting concept as it is", () => {
+      session("C--r-app", "cn", "👉 ➜ 🧭 Concept ┃ Unknown", 30);
+      expect(findB()).toEqual([]);
+    });
   });
 
   test("missing root → empty", () => {

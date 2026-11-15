@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.373.0] — 2026-11-15
+## [0.374.0] — 2026-11-15
 
 ### Added
 - Mods: Agents pane opens itself at the first background subagent, updates live and merges identical rows with a ×n column
@@ -10,6 +10,11 @@
 ### Changed
 - Mods: SessionStart notices toast once per session; the version notice toasts too; concept watchers toast only on failure
 - Mods: branch line counts undecided safety copies and shows a 24-72 h old report with its age
+
+## [0.373.0] — 2026-11-15
+
+### Added
+- Session title: concept sessions whose bridge server is gone (reboot, crash, app quit) turn `🔴 ➜ 🧭 Concept ┃` in the crash sweep instead of keeping `👉`; resuming the session reconnects the page.
 
 ## [0.372.0] — 2026-11-15
 
