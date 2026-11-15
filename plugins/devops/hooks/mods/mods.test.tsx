@@ -75,7 +75,27 @@ function pane(requestId: string, title: string) {
   return { plugin: 'devops', component: 'Pane', requestId, props: { ...PANE_PROPS, title } } as const
 }
 
-const BAND = { plugin: 'devops', component: 'AbovePrompt', props: { hasSurvey: false, isCollapsed: false, view: {} } } as const
+const BAND = { plugin: 'devops', component: 'AbovePrompt', props: { hasSurvey: false, isCollapsed: false, isWorking: false, view: {} } } as const
+const WORKING_BAND = { ...BAND, props: { ...BAND.props, isWorking: true } } as const
+
+const CARD_TOOL = 'mcp__plugin_devops_dotclaude__render_completion_card'
+const CARD_DATA = {
+  v: 1,
+  l: 'de',
+  ti: 'Band zeigt die Card',
+  at: '01:43',
+  h: '👉 📦 Committed — fertig — shippen?',
+  pt: ['Doku nachziehen'],
+  bt: [
+    { l: 'Ship', i: 'rocket', p: 'ship', pr: 1 },
+    { l: 'Nachbessern', i: 'pencil', p: 'Ja, die Doku bitte auch nachziehen.' },
+  ],
+}
+const CARD_RESULT =
+  '[CARD WIDGET — DO NOT OUTPUT THIS BLOCK]\n----- widget_code -----\n' +
+  '<div class="dc-answer"><p>THE ANSWER</p></div><div id="dc-card"></div>\n' +
+  `<script type="application/json" id="dc-card-data">${JSON.stringify(CARD_DATA)}</script>\n` +
+  '----- end widget_code -----'
 
 const MEASURE = {
   context: { window: 200000, tokens: 170000, percent: 85 },
@@ -299,6 +319,122 @@ test('spike command runs one fork without effort and logs the cache fields', asy
     weekly_after: 18,
   })
   expect(r.text).toMatch(/cache read 99000/)
+})
+
+test('card band: the card tool result puts the template part above the prompt; a button sends its prompt once', async ($, on) => {
+  const { seen } = engine(on)
+  on('tool.call', (_: unknown, e: { tool: string }) => ({ result: {}, text: e.tool === CARD_TOOL ? CARD_RESULT : 'ok' }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  const r = await $.tool.call({ tool: CARD_TOOL, variant: 'ready', summary: 'x' } as any)
+  expect(r.text).toBe(CARD_RESULT) // passed through unchanged
+  for (const surface of SURFACES) {
+    const band = await $.ui.mount({ ...BAND, surface })
+    expect((await band.find({ type: 'Text', text: /^Band zeigt/ }))?.text).toBe('Band zeigt die Card')
+    expect((await band.find({ type: 'Text', text: /^01:43$/ }))?.text).toBe('01:43')
+    expect((await band.find({ type: 'Text', text: /Committed/ }))?.text).toBe('👉 📦 Committed — fertig — shippen?')
+    expect((await band.find({ type: 'Text', text: /Doku/ }))?.text).toBe('› Doku nachziehen')
+    expect(await band.find({ type: 'Text', text: /THE ANSWER/ })).toBeUndefined() // the answer stays inline
+    expect((await band.find({ key: 'card-button-0' }))?.props.variant).toBe('primary')
+    expect((await band.find({ key: 'card-button-1' }))?.props.label).toBe('Nachbessern')
+    await band.unmount()
+  }
+  const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  await band.press({ key: 'card-button-1' })
+  await band.unmount()
+  expect(seen.prompts).toEqual(['Ja, die Doku bitte auch nachziehen.'])
+  // The card left the band with the press: a second press has nothing to hit.
+  const after = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await after.find({ key: 'card-button-0' })).toBeUndefined()
+  await after.unmount()
+  expect(seen.prompts.length).toBe(1)
+})
+
+test('card band: a typed prompt spends the card, a textless continuation keeps it; subagent calls and refusals never set it', async ($, on) => {
+  engine(on)
+  on('tool.call', (_: unknown, e: { tool: string; agentId?: string }) =>
+    e.tool === CARD_TOOL && (e as any).summary === 'refused' ? { result: {}, text: 'Card refused: validation missing', isError: true } : { result: {}, text: CARD_RESULT },
+  )
+  on('turn.start', (_: unknown, e: { turnId: string }) => ({ turnId: e.turnId || 't' }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.tool.call({ tool: CARD_TOOL, summary: 'x', agentId: 'sub1' } as any)
+  let band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await band.find({ type: 'Text', text: /Committed/ })).toBeUndefined()
+  await band.unmount()
+  await $.tool.call({ tool: CARD_TOOL, summary: 'refused' } as any)
+  band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await band.find({ type: 'Text', text: /Committed/ })).toBeUndefined()
+  await band.unmount()
+  await $.tool.call({ tool: CARD_TOOL, summary: 'x' } as any)
+  await $.turn.start({ text: '', turnId: 't2' } as any)
+  band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await band.find({ type: 'Text', text: /Committed/ })).toBeDefined()
+  await band.unmount()
+  await $.turn.start({ text: 'next task', turnId: 't3' } as any)
+  band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await band.find({ type: 'Text', text: /Committed/ })).toBeUndefined()
+  await band.unmount()
+})
+
+test('card band on the terminal: the markdown card gives title and heading, no buttons', async ($, on) => {
+  engine(on)
+  const md = '&nbsp;\n\n---\n\n### **✨✨✨ Fix gelandet ✨✨✨**\n› 2 Dateien geändert\n**🟩 🚀 Released Alpha — v0.1.0 — fertig.**\n---'
+  on('tool.call', () => ({ result: {}, text: md }))
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await $.tool.call({ tool: CARD_TOOL, summary: 'x' } as any)
+  const band = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect((await band.find({ type: 'Text', text: /^Fix/ }))?.text).toBe('Fix gelandet')
+  expect((await band.find({ type: 'Text', text: /Released/ }))?.text).toBe('🟩 🚀 Released Alpha — v0.1.0 — fertig.')
+  expect((await band.find({ type: 'Text', text: /Dateien/ }))?.text).toBe('› 2 Dateien geändert')
+  expect(await band.find({ key: 'card-button-0' })).toBeUndefined()
+  await band.unmount()
+})
+
+test('working band: turning hourglass, the running step of the task list and the tool running now; no card while working', async ($, on) => {
+  engine(on)
+  on('tool.call', () => ({ result: {}, text: CARD_RESULT }))
+  on('turn.start', () => ({ turnId: 't' }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.tool.call({ tool: CARD_TOOL, summary: 'x' } as any)
+  await $.turn.start({ text: 'build it', turnId: 't1' } as any)
+  await $.tool.call({
+    tool: 'mcp__ccd_turn__update_plan',
+    items: [{ content: 'Lesen', status: 'in_progress' }, { content: 'Bauen', status: 'pending' }, { content: 'Testen', status: 'pending' }],
+    scope: 'continuation',
+  } as any)
+  await $.tool.call({ tool: 'mcp__ccd_turn__update_plan', advance: true } as any)
+  await $.tool.call({ tool: 'Bash', command: 'npm test', description: 'Run the mod tests' } as any)
+  for (const surface of SURFACES) {
+    const band = await $.ui.mount({ ...WORKING_BAND, surface })
+    expect((await band.find({ type: 'Text', text: /^2\/3/ }))?.text).toBe('2/3 · Bauen')
+    expect((await band.find({ type: 'Text', text: /^Bash/ }))?.text).toBe('Bash · Run the mod tests')
+    expect(await band.find({ type: 'Text', text: /Committed/ })).toBeUndefined()
+    if (surface === 'desktop') {
+      const glass = await band.find({ type: 'Svg', props: { alt: 'Claude is working' } } as any)
+      expect(glass?.props.source).toMatch(/<animateTransform attributeName="transform" type="rotate"/)
+      expect(glass?.props.width).toBe(16)
+      expect(glass?.props.height).toBe(16)
+    } else {
+      expect((await band.find({ type: 'Text', text: '⏳' }))?.text).toBe('⏳')
+    }
+    await band.unmount()
+  }
+  // TodoWrite: the running step reads in its present-continuous form.
+  await $.tool.call({ tool: 'TodoWrite', todos: [{ content: 'Fix it', activeForm: 'Fixing it', status: 'in_progress' }] } as any)
+  const band = await $.ui.mount({ ...WORKING_BAND, surface: 'terminal' })
+  expect((await band.find({ type: 'Text', text: /^1\/1/ }))?.text).toBe('1/1 · Fixing it')
+  await band.unmount()
+})
+
+test('budget bars carry a fixed size (an interactive Svg frame takes none from the markup); no devops watermark', async ($, on) => {
+  engine(on, { files: { '/.claude/orphan-report.json': ORPHAN_REPORT } })
+  await $.session.start({ cwd: 'P:/Projects/demo', surface: 'desktop', isInteractive: true })
+  await $.session.measure(MEASURE as any)
+  const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  const bar = await band.find({ type: 'Svg' })
+  expect(bar?.props.width).toBe(220)
+  expect(bar?.props.height).toBe(24)
+  expect(await band.find({ type: 'Text', text: /^devops$/ })).toBeUndefined()
+  await band.unmount()
 })
 
 test('cleanup briefs keep the session worktree out and approve only the plan; the band row drops the devops prefix', async () => {

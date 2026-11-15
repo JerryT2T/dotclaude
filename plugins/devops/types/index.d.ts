@@ -51,6 +51,28 @@ export type SessionFlags = { noticesShown: boolean; agentsPaneOpened: boolean }
  */
 export type SpikeWatch = { lastMainEnd: number; armed: { turnId: string; gapMs: number } | null }
 
+/** One button of the completion card: its label and the prompt it sends. */
+export type CardButton = { label: string; prompt: string; primary: boolean }
+
+/**
+ * The completion card's template part as the card tool rendered it (never the
+ * `answer`, which stays inline in the transcript): title, time, decision
+ * heading, open points and buttons. Copied from the tool's result, not rebuilt.
+ */
+export type CardView = {
+  title: string
+  at: string
+  heading: string
+  points: string[]
+  buttons: CardButton[]
+}
+
+/** One step of the turn's task list (update_plan / TodoWrite), as the tool call set it. */
+export type PlanStep = { text: string; status: 'pending' | 'in_progress' | 'completed' }
+
+/** What the main turn is doing: its task list and the tool call running now. */
+export type Progress = { steps: PlanStep[]; activity: string; startedAt: number }
+
 declare module 'claude-code' {
   interface PluginState {
     devops: {
@@ -66,6 +88,8 @@ declare module 'claude-code' {
       /** Bumped every few seconds while a subagent runs, so the Agents pane redraws its elapsed times. */
       tick: number
       spike: SpikeWatch
+      card: CardView | null
+      progress: Progress
     }
   }
 }

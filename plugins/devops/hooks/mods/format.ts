@@ -3,7 +3,7 @@
  * Every number shown comes from the arguments (engine events or files the
  * plugin's scripts already write), never from memory.
  */
-import type { AgentRow, Budget, Hygiene, ShipView } from '../../types/index'
+import type { AgentRow, Budget, CardButton, CardView, Hygiene, PlanStep, Progress, ShipView } from '../../types/index'
 
 export const LONG_RUN_MS = 120_000
 
@@ -227,6 +227,9 @@ export function budgetBarSvg(bar: BudgetBar): string {
   )
 }
 
+/** The bar's drawn size in CSS px: an interactive Svg sits in a frame that takes no size from the markup. */
+export const BUDGET_BAR_SIZE = { width: BAR.w, height: BAR.h + 12 } as const
+
 /** Screen-reader text of one bar, as the card's tooltip. */
 export function budgetBarAlt(bar: BudgetBar): string {
   return `${bar.label}: ${Math.round(bar.pct)} % used · resets in ${bar.watermark}`
@@ -247,6 +250,169 @@ export function budgetLine(b: Budget | null, now: number): string | null {
   if (ctx) segs.push(ctx)
   if (!segs.length) return null
   return (bars.some(x => x.level !== 'white') ? '⚠ ' : '') + segs.join('   ')
+}
+
+// --- Completion card mirror: the card tool's own result, never rebuilt. ---
+
+const CARD_POINTS_MAX = 3
+const STATUS_HEAD = /^(?:🟩|👉|⏳|🟥|🟦)\s/u
+
+function plain(s: unknown): string {
+  return typeof s === 'string' ? s.replace(/\s+/g, ' ').trim() : ''
+}
+
+/**
+ * The card's template part from the text render_completion_card returned.
+ * Desktop: the `#dc-card-data` JSON the widget mounts (title, heading, points,
+ * buttons). Terminal: the markdown card's title and status heading, no buttons
+ * (the markdown card has none either). Never the `answer`: it stays inline.
+ * Null when the text holds no card (a refusal, a failed render).
+ */
+export function cardFromResult(text: unknown): CardView | null {
+  if (typeof text !== 'string' || !text) return null
+  const m = text.match(/<script type="application\/json" id="dc-card-data">([\s\S]*?)<\/script>/)
+  if (m) {
+    try {
+      const d = JSON.parse(m[1] ?? '') as { ti?: string; at?: string; h?: string; pt?: unknown[]; bt?: Array<{ l?: string; p?: string; pr?: number }> }
+      const heading = plain(d.h)
+      if (!heading) return null
+      const buttons: CardButton[] = (Array.isArray(d.bt) ? d.bt : [])
+        .filter(b => b && plain(b.l) && typeof b.p === 'string' && b.p.trim())
+        .map(b => ({ label: plain(b.l), prompt: String(b.p), primary: b.pr === 1 }))
+      return {
+        title: plain(d.ti),
+        at: plain(d.at),
+        heading,
+        points: (Array.isArray(d.pt) ? d.pt : []).map(plain).filter(Boolean).slice(0, CARD_POINTS_MAX),
+        buttons,
+      }
+    } catch {
+      return null
+    }
+  }
+  const lines = text.split(/\r?\n/).map(l => l.replace(/^#+\s*/, '').replace(/\*\*/g, '').trim())
+  const heading = lines.find(l => STATUS_HEAD.test(l) && l.includes(' — '))
+  if (!heading) return null
+  const titleLine = lines.find(l => l.startsWith('✨✨✨'))
+  const title = titleLine ? titleLine.replace(/✨/g, '').trim() : ''
+  const points = lines.filter(l => l.startsWith('› ')).map(l => l.slice(2).trim()).slice(0, CARD_POINTS_MAX)
+  return { title, at: '', heading, points, buttons: [] }
+}
+
+/** A tool call is the card tool, whatever the server key the install gave it. */
+export function isCardTool(tool: unknown): boolean {
+  return typeof tool === 'string' && tool.startsWith('mcp__') && tool.endsWith('__render_completion_card')
+}
+
+type PlanInput = {
+  items?: Array<{ content?: unknown; status?: unknown }>
+  advance?: unknown
+  done?: unknown
+  start?: unknown
+}
+
+function stepStatus(s: unknown): PlanStep['status'] {
+  return s === 'completed' || s === 'in_progress' ? s : 'pending'
+}
+
+/**
+ * The task list after one `update_plan` call (the Desktop app's list):
+ * `items` replaces it, `advance` completes the running step and starts the
+ * next pending one, `done` / `start` (1-based) set steps out of order.
+ */
+export function applyPlan(steps: readonly PlanStep[], input: PlanInput): PlanStep[] {
+  let next: PlanStep[] = Array.isArray(input.items)
+    ? input.items.map(i => ({ text: plain(i && i.content), status: stepStatus(i && i.status) })).filter(s => s.text)
+    : steps.map(s => ({ ...s }))
+  const set = (i: number, status: PlanStep['status']) => {
+    next = next.map((s, j) => (j === i ? { ...s, status } : s))
+  }
+  if (input.advance === true) {
+    const cur = next.findIndex(s => s.status === 'in_progress')
+    if (cur >= 0) set(cur, 'completed')
+    const after = next.findIndex((s, i) => i > cur && s.status === 'pending')
+    if (after >= 0) set(after, 'in_progress')
+  }
+  if (Array.isArray(input.done)) {
+    for (const n of input.done) if (typeof n === 'number' && n >= 1 && n <= next.length) set(n - 1, 'completed')
+  }
+  const start = input.start
+  if (typeof start === 'number' && start >= 1 && start <= next.length) {
+    next = next.map(s => (s.status === 'in_progress' ? { ...s, status: 'pending' } : s))
+    set(start - 1, 'in_progress')
+  }
+  return next
+}
+
+/** TodoWrite's list: the running step reads in its present-continuous form. */
+export function todoSteps(todos: unknown): PlanStep[] {
+  if (!Array.isArray(todos)) return []
+  return todos
+    .map((t: { content?: unknown; activeForm?: unknown; status?: unknown }) => {
+      const status = stepStatus(t && t.status)
+      const text = plain(status === 'in_progress' && t.activeForm ? t.activeForm : t && t.content)
+      return { text, status }
+    })
+    .filter(s => s.text)
+}
+
+function baseName(p: unknown): string {
+  const s = plain(p)
+  return s ? s.replace(/\\/g, '/').split('/').filter(Boolean).pop() || s : ''
+}
+
+/** One short line for the tool call running now ("Bash · Run the tests"); '' for the task-list tools. */
+export function activityOf(tool: string, input: Record<string, unknown>): string {
+  if (tool.endsWith('__update_plan') || tool === 'TodoWrite' || isCardTool(tool)) return ''
+  const name = tool.startsWith('mcp__') ? tool.split('__').slice(2).join('__') : tool
+  const detail =
+    plain(input.description) ||
+    baseName(input.file_path) ||
+    plain(input.pattern) ||
+    plain(input.query) ||
+    plain(input.url) ||
+    plain(input.title)
+  return (detail ? `${name} · ${detail}` : name).slice(0, 120)
+}
+
+/** "3/6 · Band neu layouten": the running step and where it stands; null without a list. */
+export function stepLine(steps: readonly PlanStep[]): string | null {
+  if (!steps.length) return null
+  let i = steps.findIndex(s => s.status === 'in_progress')
+  if (i < 0) {
+    const done = steps.filter(s => s.status === 'completed').length
+    if (done === steps.length) return `${done}/${steps.length} ✓`
+    i = steps.findIndex(s => s.status === 'pending')
+  }
+  const step = steps[i]
+  return step ? `${i + 1}/${steps.length} · ${step.text}` : null
+}
+
+/** The band's working line: the step, else the running tool, else a bare marker. */
+export function workingLine(p: Progress | null): { head: string; detail: string } {
+  const step = p ? stepLine(p.steps) : null
+  const act = p ? p.activity : ''
+  if (step) return { head: step, detail: act }
+  return { head: act || '…', detail: '' }
+}
+
+/**
+ * The hourglass that turns while Claude works: SMIL, drawn in the interactive
+ * frame (a plain image would not animate everywhere). Amber, the ⏳ of the titles.
+ */
+export const HOURGLASS_SIZE = 16
+export function hourglassSvg(): string {
+  const c = '#e6c36a'
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${HOURGLASS_SIZE}" height="${HOURGLASS_SIZE}" viewBox="0 0 16 16">` +
+    `<g fill="none" stroke="${c}" stroke-width="1.4" stroke-linecap="round">` +
+    `<path d="M3.5 1.5h9M3.5 14.5h9"/>` +
+    `<path d="M5 1.5c0 3.2 3 4.2 3 6.5s-3 3.3-3 6.5M11 1.5c0 3.2-3 4.2-3 6.5s3 3.3 3 6.5"/>` +
+    `<path d="M6.2 4.2h3.6L8 6.6z" fill="${c}" stroke="none"/>` +
+    `<path d="M6.4 13.4h3.2L8 11.6z" fill="${c}" stroke="none"/>` +
+    `<animateTransform attributeName="transform" type="rotate" values="0 8 8;0 8 8;180 8 8" keyTimes="0;0.75;1" dur="2.4s" repeatCount="indefinite"/>` +
+    `</g></svg>`
+  )
 }
 
 const ORPHAN_MAX_AGE_MS = 24 * 3_600_000
