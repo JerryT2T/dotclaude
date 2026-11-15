@@ -58,6 +58,14 @@ a screenshot of the real result (never mock data). Report one row per line —
 `done` / `partial` / `not done` → evidence. The builders' own acceptance
 tables are input, not proof; a line without your evidence is `not done`.
 
+Judge each line against its source quote, not against the line's wording
+(#1110): report quote → observed behaviour → verdict. If the quote and the line
+disagree, the quote wins. A line that points at an existing element ("like X")
+fails when the observed mechanism differs from X's real one (a tooltip where X
+shows a label under the object). For a moved role (#1111, "statt A … B") list
+for each visible object, A and B alike, its hover label and link target: B must
+carry the role, A must not.
+
 ## Design parity (concept implement)
 
 When the brief carries a **parity checklist** and mock fragment paths (an
