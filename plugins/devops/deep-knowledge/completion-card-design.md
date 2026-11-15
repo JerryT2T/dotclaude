@@ -213,6 +213,7 @@ alpha **v0.179.0** › beta v0.176.0 (−3) › stable v0.170.0 (−9 · 12 d)
   and port). No sign-in works there → the step says what is missing instead
   of a URL that dead-ends at a failed login.
 - **The next step is no point (#751).** On `test` and `ready` cards the card server drops every `open` item that is the approved scope's routine next step (ship, push, release, version bump, post, merge, `nach main`, `ausgeben`, Discord — `mcp-server/lib/open-admission.js`, step 0d). An item ending in `?` is a real question and stays. The drop is silent on the card, logged to stderr, and the tool result names the count; the next step belongs in `nextStep`.
+- **No reminder of what runs by itself.** A lifecycle the plugin manages — a local store kept N days, then swept — is never a card line (`open`, 👉, 🧪): the automation owns it, and the card server drops such a note on every variant (`open-admission.js`, step 0f). A lifecycle that is not automated yet gets automated (a hook or a scheduled routine), not a reminder.
 - **A task chip is no point.** On the Desktop app a finding outside the work
   is flagged with `spawn_task`: the chip is the offer, one click starts the fix
   in its own session. The card server drops every point that says a chip or

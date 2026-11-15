@@ -1,5 +1,5 @@
 import { describe, test, expect } from "vitest";
-import { dropNextStepOpenItems, isNextStep, refuseInScopeFindings } from "./open-admission.js";
+import { dropNextStepOpenItems, dropSelfManagedNotices, isNextStep, isSelfManagedNotice, refuseInScopeFindings } from "./open-admission.js";
 
 describe("refuseInScopeFindings (#920)", () => {
   test("refuses an in-scope finding, keeps out-of-scope, untagged and strings", () => {
@@ -135,5 +135,23 @@ describe("dropNextStepOpenItems", () => {
   test("empty and absent input pass through", () => {
     expect(dropNextStepOpenItems(undefined)).toEqual({ open: undefined, dropped: 0 });
     expect(dropNextStepOpenItems([])).toEqual({ open: [], dropped: 0 });
+  });
+});
+
+describe("dropSelfManagedNotices", () => {
+  test("drops a note on a lifecycle the plugin runs itself, keeps questions and decisions", () => {
+    const r = dropSelfManagedNotices([
+      "Concept-Vorlage zum Abgleich, 30 Tage lokal: .claude/concepts/2026-11-15-mods-max-display-review/spec/",
+      { text: "Spec kept 30 days locally for comparison" },
+      "Kept spec in .claude/concepts/x/spec/ — behalten oder jetzt löschen?",
+      "Die alte Config-Datei wird nicht mehr gelesen — löschen oder behalten",
+    ]);
+    expect(r.dropped).toBe(2);
+    expect(r.items).toHaveLength(2);
+    expect(isSelfManagedNotice("Mod im Desktop-Code-Tab sichtbar laden")).toBe(false);
+  });
+
+  test("empty and absent input pass through", () => {
+    expect(dropSelfManagedNotices(undefined)).toEqual({ items: undefined, dropped: 0 });
   });
 });

@@ -63,7 +63,7 @@ import { ensureDeps } from "./lib/ensure-deps.js";
 import { detectRepoMode } from "./ship/lib/repo-mode.js";
 import { correctShipVariant, renderDowngradeNote } from "./lib/variant-guard.js";
 import { dropForeignOpenItems, foreignTokensFor } from "./lib/foreign-branches.js";
-import { dropNextStepOpenItems, refuseInScopeFindings } from "./lib/open-admission.js";
+import { dropNextStepOpenItems, dropSelfManagedNotices, refuseInScopeFindings } from "./lib/open-admission.js";
 import { hasPending, pendingWhat, renderPendingLine, hasConcept, normalizePending, normalizeConcept, CONCEPT_LABEL } from "./lib/pending.js";
 import { clampText, clampEllipsis } from "./lib/soft-limits.js";
 import { summarizeShip, shipDurationTest } from "./ship/lib/ship-timings.js";
@@ -2859,6 +2859,19 @@ function buildCompletionCard(params) {
       console.error(`[dotclaude-mcp] dropped ${routine.dropped} open point(s) that are the scope's routine next step`);
       params.open = routine.open;
       params._openDropped = routine.dropped;
+    }
+  }
+
+  // 0f. A note on a lifecycle the plugin runs itself (a local store kept N days,
+  //     then swept by ss.concept.resume) is no point for the user, on any card:
+  //     the automation owns it (lib/open-admission.js). Silent drop like 0d.
+  for (const field of ['open', 'userFinalTest']) {
+    if (!Array.isArray(params[field]) || !params[field].length) continue;
+    const self = dropSelfManagedNotices(params[field]);
+    if (self.dropped) {
+      console.error(`[dotclaude-mcp] dropped ${self.dropped} ${field} item(s) about a lifecycle the plugin manages itself`);
+      params[field] = self.items;
+      params._openDropped = (params._openDropped || 0) + self.dropped;
     }
   }
 

@@ -266,6 +266,9 @@ describe("final-report close-out sheet", () => {
     expect(skill).toMatch(/\*\*After code landed:\*\* keep the store/);
     // The orphan sweep honours the longer window.
     expect(skill).toContain('[ -d "$d/spec" ] && days=30');
+    // The 30 days end by themselves (ss.concept.resume) — no reminder on the card.
+    expect(head).toContain("ss.concept.resume");
+    expect(head).not.toMatch(/Vorlage\s+zum Abgleich/);
   });
 
   test("a login-gated try-it link says how to sign in on that origin (#933)", () => {

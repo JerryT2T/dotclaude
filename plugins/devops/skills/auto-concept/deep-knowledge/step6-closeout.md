@@ -102,10 +102,11 @@ mv -- "docs/concepts/{date}-{slug}.html" "docs/concepts/{date}-{slug}-decisions.
 ```
 
 The store then stays (no `rm -rf` of it in the durable-store table below), the
-orphan sweep keeps it for 30 days instead of 7, and the completion card gets
-one 👉 hand-off line naming `.claude/concepts/{date}-{slug}/spec/` — "Vorlage
-zum Abgleich, 30 Tage lokal". It is outside git, so it never blocks a ship and
-never reaches the repo. A concept that wrote no code discards as before.
+orphan sweep keeps it for 30 days instead of 7. The sweep runs by itself at
+every session start (`ss.concept.resume`), so the kept spec needs no line on
+the completion card — no 👉 hand-off, no `open` point (the card server drops
+one, `open-admission.js` step 0f). It is outside git, so it never blocks a
+ship and never reaches the repo. A concept that wrote no code discards as before.
 
 **Drop the local exclude lines (#931).** If part C wrote this concept's paths
 to the local exclude file (`step5-finalize.md` § Ship-safe local exclude),
