@@ -120,7 +120,7 @@ and the bridge gone.
 | `closed` | accent ✓ | Abgeschlossen. | `sub`, e.g. "Nichts geshippt, alles liegt auf Branch X." |
 | `partial` | warning ! | Fast fertig. | `sub` and up to three "Nicht erreicht: …" (`misses`), also when the ship was green |
 | `blocked` | danger – | Ship blockiert. | `reason`, "Das Concept bleibt offen", and "Zum Bericht", because the sheet stays usable |
-| `lost` | accent – | Verbindung weg. | "Das Ergebnis steht im Chat" and "Zum Bericht". The page sets this itself after a minute without a bridge during a finalize; never green |
+| `lost` | accent – | Verbindung weg. | "Das Ergebnis steht im Chat" and "Zum Bericht". The page sets this itself after a minute without a bridge heartbeat during a finalize, but only when no `/status` phase `implementing`/`shipping` was seen in that minute; never green |
 
 **The result always comes from Claude**, never from a silent bridge or from
 `ship.run`: `POST /status {"phase":"closed","finished":{…}}` (`step5-finalize.md`
