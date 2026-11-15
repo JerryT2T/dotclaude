@@ -2,7 +2,7 @@ import { describe, test, expect } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { parseArgs, validate, checkState, run, isForeignBridge, DEFAULTS, BYE_GRACE_MS } from "./concept-watch.js";
+import { parseArgs, validate, checkState, run, isForeignBridge, reopenCommand, DEFAULTS, BYE_GRACE_MS } from "./concept-watch.js";
 
 function stateFile(contents) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "concept-watch-"));
@@ -18,7 +18,7 @@ function stateFile(contents) {
  *  seconds) is testable. `stopAfter` ends an otherwise endless loop — the
  *  pulser never gives up on request failures any more — by reporting the
  *  state file gone from that poll on (STATE_GONE after `confirm` polls). */
-function harness({ mode = "watch", port = 8883, state, responses = [], exists = true, grace = 60, interval, stopAfter = Infinity, confirm, beat, beats }) {
+function harness({ mode = "watch", port = 8883, state, responses = [], exists = true, grace = 60, interval, stopAfter = Infinity, confirm, beat, beats, spawnSuccessor, order }) {
   const calls = [];
   let reason = null;
   let clock = 1_000_000;
@@ -43,7 +43,8 @@ function harness({ mode = "watch", port = 8883, state, responses = [], exists = 
       const next = typeof responses === "function" ? responses() : responses.shift();
       return next ?? { ok: false, body: "" };
     },
-    emit: (r) => { reason = r; return r; },
+    ...(spawnSuccessor ? { spawnSuccessor: () => { if (order) order.push("spawn"); spawnSuccessor(); } } : {}),
+    emit: (r) => { if (order) order.push("emit"); reason = r; return r; },
   });
   return { done: p.then(() => reason), calls, requests: () => calls.filter(c => c.reqPath) };
 }
@@ -786,5 +787,69 @@ describe("pulser as the waker's safety net (no backstop cron)", () => {
     await expect(h.done).resolves.toBe("PENDING_SUBMISSION");
     expect(beats[0]).toMatchObject({ woke_version: null });
     expect(beats[beats.length - 1].woke_version).toBe(7);
+  });
+
+  test("WAKER_MISSING spawns one successor pulser before the emit, with woke_version in the beat", async () => {
+    const order = [], beats = [];
+    let spawned = 0;
+    const h = harness({ mode: "pulse", state: "ok", beat: () => null, beats, order, spawnSuccessor: () => { spawned++; },
+      responses: [beatOk, pending(7), beatOk, pending(7)] });
+    await expect(h.done).resolves.toBe("WAKER_MISSING");
+    expect(spawned).toBe(1);
+    expect(order).toEqual(["spawn", "emit"]);
+    expect(beats[beats.length - 1]).toMatchObject({ woke_version: 7 });
+  });
+  test("the successor sees the woken beat and does not re-emit the same version", async () => {
+    const h = harness({ mode: "pulse", state: "ok", stopAfter: 4, confirm: 1,
+      beat: () => ({ ts: 0, woke_version: 7 }), responses: () => pending(7) });
+    await expect(h.done).resolves.toBe("STATE_GONE");
+  });
+  test("a successor survives the predecessor's id echoed once and ends on STATE_GONE", async () => {
+    let n = 0;
+    const h = harness({ mode: "pulse", state: "ok", stopAfter: 6, confirm: 1,
+      beat: () => ({ ts: 0, woke_version: 7 }),
+      responses: () => ({ ok: true, body: JSON.stringify(++n <= 2 ? { pending: false, prev_pulser: "1-1" } : { pending: false }) }) });
+    await expect(h.done).resolves.toBe("STATE_GONE");
+  });
+  test("child process: claude_ts keeps advancing after the WAKER_MISSING exit line", async () => {
+    const http = await import("node:http");
+    const { spawn } = await import("node:child_process");
+    let heartbeats = 0;
+    const server = http.createServer((req, res) => {
+      if (req.url.startsWith("/heartbeat")) heartbeats++;
+      res.setHeader("content-type", "application/json");
+      res.end(req.url.startsWith("/pending") ? JSON.stringify({ pending: true, version: 9, action: "review" }) : "{}");
+    });
+    await new Promise(r => server.listen(0, "127.0.0.1", r));
+    const port = server.address().port;
+    const state = stateFile({ port, html_path: "/x.html", owner: "t" });
+    const script = path.join(path.dirname(new URL(import.meta.url).pathname.replace(/^\/(\w:)/, "$1")), "concept-watch.js");
+    const args = [script, "--mode", "pulse", "--port", String(port), "--state", state, "--interval", "0.2", "--timeout", "2"];
+    let out = "";
+    const child = spawn(process.execPath, args, { stdio: ["ignore", "pipe", "ignore"], windowsHide: true });
+    child.stdout.on("data", d => { out += d; });
+    await new Promise(r => child.on("exit", r));
+    try {
+      expect(out).toContain("PULSER_EXIT reason=WAKER_MISSING version=9 action=review");
+      const atExit = heartbeats;
+      await new Promise(r => setTimeout(r, 1500));
+      expect(heartbeats).toBeGreaterThan(atExit + 2);
+    } finally {
+      fs.rmSync(state);   // successor ends on STATE_GONE
+      await new Promise(r => setTimeout(r, 1200));
+      server.close();
+    }
+  }, 20000);
+});
+
+describe("reopenCommand", () => {
+  test("Windows re-opens minimized so the window does not take focus", () => {
+    const { cmd, args } = reopenCommand("http://localhost:1/x.html", "win32");
+    expect(cmd).toBe("cmd");
+    expect(args).toEqual(["/c", "start", "", "/min", "msedge", "http://localhost:1/x.html"]);
+  });
+  test("other platforms keep the plain opener", () => {
+    expect(reopenCommand("u", "darwin")).toEqual({ cmd: "open", args: ["u"] });
+    expect(reopenCommand("u", "linux")).toEqual({ cmd: "xdg-open", args: ["u"] });
   });
 });

@@ -281,12 +281,17 @@ function readState(statePath) {
  * down with it. Windows opens Edge explicitly — the page is a localhost URL
  * and `start` would otherwise pick whatever handles http://.
  */
+function reopenCommand(url, platform = process.platform) {
+  // /min: the waker re-opens while the user may be working elsewhere; a
+  // minimized window does not steal focus (best effort, Windows only).
+  if (platform === 'win32') return { cmd: 'cmd', args: ['/c', 'start', '', '/min', 'msedge', url] };
+  if (platform === 'darwin') return { cmd: 'open', args: [url] };
+  return { cmd: 'xdg-open', args: [url] };
+}
+
 function reopen(url) {
   const { spawn } = require('child_process');
-  let cmd, args;
-  if (process.platform === 'win32') { cmd = 'cmd'; args = ['/c', 'start', '', 'msedge', url]; }
-  else if (process.platform === 'darwin') { cmd = 'open'; args = [url]; }
-  else { cmd = 'xdg-open'; args = [url]; }
+  const { cmd, args } = reopenCommand(url);
   try {
     spawn(cmd, args, { detached: true, stdio: 'ignore', windowsHide: true }).on('error', () => {}).unref();
   } catch { /* best effort */ }
@@ -334,6 +339,13 @@ function writeBeat(statePath, port, beat) {
 /** A beat older than this means the waker is not polling any more. */
 function beatStaleMs(opts) {
   return Math.max(60_000, opts.interval * 1000 * 3 + opts.timeout * 1000);
+}
+
+/** Detached copy of this pulser (same args) that carries the heartbeat on after the wake exit. */
+function spawnSuccessor() {
+  const { spawn } = require('child_process');
+  spawn(process.execPath, process.argv.slice(1), { detached: true, stdio: 'ignore', windowsHide: true })
+    .on('error', () => {}).unref();
 }
 
 function finish(tag, reason, detail = '') {
@@ -472,6 +484,14 @@ async function run(opts, deps = {}) {
           if (orphanRuns >= 2) {
             const version = Number.isInteger(pb.version) ? ` version=${pb.version}` : '';
             const action = typeof pb.action === 'string' && /^[a-z-]+$/.test(pb.action) ? ` action=${pb.action}` : '';
+            // The exit IS the wake, but it must not end the keepalive: with
+            // the only pulser gone, claude_ts stops and the page flips to
+            // `lost` while Claude is mid-implement (#1119). Mark the version
+            // as woken (keeping the beat's ts, so the beat stays stale and
+            // the successor does not re-emit it), hand the heartbeat to a
+            // detached successor, then emit.
+            io.writeBeat(opts.state, opts.port, { ...(b || {}), woke_version: Number.isInteger(pb.version) ? pb.version : (b && b.woke_version) ?? null });
+            try { (io.spawnSuccessor || spawnSuccessor)(); } catch { /* the wake still goes out */ }
             return emit('WAKER_MISSING', version + action);
           }
         } else orphanRuns = 0;
@@ -553,7 +573,7 @@ async function run(opts, deps = {}) {
   }
 }
 
-module.exports = { beatPath, readBeat, writeBeat, beatStaleMs, parseArgs, validate, checkState, readState, isForeignBridge, reopen, run, pulserId, pulserStart, DEFAULTS, BYE_GRACE_MS, DUPLICATE_AFTER };
+module.exports = { spawnSuccessor, beatPath, readBeat, writeBeat, beatStaleMs, parseArgs, validate, checkState, readState, isForeignBridge, reopen, reopenCommand, run, pulserId, pulserStart, DEFAULTS, BYE_GRACE_MS, DUPLICATE_AFTER };
 
 if (require.main === module) {
   const opts = parseArgs(process.argv.slice(2));
