@@ -40,7 +40,20 @@ const NEXT_STEP_RE = new RegExp([
   // webhook config") — the routine step always says where: nach/into main, a post.
   String.raw`\bnach\s+(?:main|master)\b`,
   String.raw`\b(?:to|into)\s+(?:main|master)\b`,
+  // #1117: the ship landing itself, however it is phrased.
+  String.raw`\bausliefer\w*`,
+  String.raw`\bauslieferung\b`,
+  // Verb forms only: "Lieferzeiten aus der API laden" is a real follow-up.
+  String.raw`\bliefer(?:e|t|n|st)?\b[^.?!]{0,60}\baus\b(?!\s+(?:der|dem|den|die|das|einer|einem|einen))`,
+  String.raw`\bdeliver(?:y|ing|s)?\b`,
+  String.raw`\bnicht\s+auf\s+(?:main|master)\b`,
 ].join('|'), 'i');
+
+// #1117: a reply that lands the work. Narrow on purpose: a reply is prose for
+// the next turn, so the full NEXT_STEP_RE would swallow real follow-ups.
+// A bare "ship" counts only as the whole reply ("Ja, ship it.") — "bau den
+// Ship-Button um" is a real follow-up about the card.
+const SHIP_REPLY_RE = /\b(?:nach|into)\s+(?:main|master)\b|\bausliefer\w*|\bliefer(?:e|t|n|st)?\b[^.?!]{0,60}\baus\b(?!\s+(?:der|dem|den|die|das|einer|einem|einen))|^\s*(?:(?:ja|yes|ok)[,.!]?\s*)?\/?(?:do-)?ship(?:\s+(?:it|es))?\s*[.!]?\s*$/i;
 
 // #759: finished work in a linked side session that still has to ship is not
 // this scope's next step — it is the user's to land, carried by its reply.
@@ -65,7 +78,8 @@ function isNextStep(it) {
   if (/[?？]["')\]*_`]*(?:\s|$)/.test(text)) return false;
   const reply = it && typeof it === 'object' && typeof it.reply === 'string' ? it.reply : '';
   if (reply && SIDE_SESSION_RE.test(text + ' ' + reply)) return false;
-  return NEXT_STEP_RE.test(text);
+  if (NEXT_STEP_RE.test(text)) return true;
+  return !!reply && SHIP_REPLY_RE.test(reply);
 }
 
 /**

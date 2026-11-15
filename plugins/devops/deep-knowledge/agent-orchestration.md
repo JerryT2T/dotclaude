@@ -202,6 +202,19 @@ The count follows the work, not a fixed number. Parallel **implementers**
    than one implementer ends in the inter-wave gate below: merge, then the
    full test suite. A central check after the merge is what keeps parallel
    errors from compounding; the prose summary is what gets cut.
+7. **Priority app or quiet window** — when `~/.claude/governor/state.json`
+   has a non-empty `pressure.priority` (a game or other app holds CPU, GPU or
+   disk), or the task names a quiet window ("heavy work only after HH:MM")
+   that has not started: at most **one** implementing agent at a time (this
+   overrides the ceilings and the budget class). Its brief asks for the tests
+   of the touched files only — no full-suite command; the orchestrator runs the
+   full suite once per merge, serially. Heavy steps — parallel waves, full
+   builds and test suites, installs, engine starts — wait for the window (or
+   until `pressure.priority` is empty); until then do light work (reading,
+   planning, docs, small edits). Never raise the priority of a process Claude
+   started. Why: N agents each running the full gate multiply the heaviest
+   command by N, and an unthrottled run took a priority app's CPU for hours
+   (#1115, #1116). See `load-governor.md` § Orchestration behaviour.
 
 Measured: sessions with ≥ 6 agents cost ~5× in the
 main context and compacted 1.9× as often, and 7 parallel "split" frontend
@@ -287,6 +300,13 @@ Every spawned agent MUST receive:
    verbatim brief `docs/concepts/{name}/briefs/implement.md` and the
    checklist lines the agent owns, with the order to return an acceptance
    table — item → done / partial / not done → evidence (#1004).
+   Each line travels with its source quote (the quote wins; "like X" names X's
+   real mechanism with file:line, #1110); a moved role is two lines — B gains
+   it, A loses it — and the agent owning A's line removes it (#1111). Rules:
+   `step5-process.md` § Every implement.
+13. **Browsers never take focus** — scripted browsers run headless, also for a
+   real GPU; headed only on request or while the user is away, never activated
+   (`browser-tool-strategy.md` § Scripts that start their own browser, #1099).
 
 ### Interaction Directives
 

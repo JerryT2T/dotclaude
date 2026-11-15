@@ -64,6 +64,9 @@ function main(hook, deps = {}) {
   log.event('admit', { decision: res.decision, reason: res.reason, kind: res.kind, escape: c.escape || undefined, session: sid, command });
   if (res.decision === 'allow') {
     if (res.reason === 'watcher-absent') spawnWatcher();
+    // Reserve the admitted job's expected peak and its build/test slot until the
+    // watcher has measured it (#1115) — parallel admits in one tick see it.
+    else if (res.kind) S.recordAdmission(p, { kind: res.kind, mb: res.expectedMB, session: sid }, now, cfg.admission.reserveMs);
     return null;
   }
   // Deferred: record it with the state it was deferred at (drift context for Claude); do NOT run it.

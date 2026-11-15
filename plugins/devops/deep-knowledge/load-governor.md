@@ -55,7 +55,11 @@ MCP servers are never throttled. Concept:
    folder.
 3. A job is **heavy** after 20 s over 25 % CPU, 20 % GPU or high disk IO
    (> 20 MB/s or > 500 operations/s — many small accesses count) while the
-   disk is pressed. Kinds: server (listens on a port), foreground (Claude
+   disk is pressed. Many short jobs that each stay under that bar still add
+   up: under a CPU priority app or CPU over budget, `plan` adds the newest
+   not-yet-heavy, non-user, non-server jobs to the heavy set (resource CPU)
+   until the rest sum to ≤ `heavy.cpuPct` — those are throttled like any
+   heavy job. Kinds: server (listens on a port), foreground (Claude
    waits on it), generator (heavy > 2 min), build.
 4. **Pressure** = foreign priority per resource ∪ over budget.
    - **Priority** (decays 10 min after the app's last load). Only the
@@ -118,8 +122,16 @@ MCP servers are never throttled. Concept:
    `sc create`, `systemd-run`, segment-anchored) only when a resource that
    command would load is actually pressed. Builds, tests and browser checks
    (npm test/build, vitest, playwright, tsc, cargo …) never wait for
-   pressure — the watcher caps them only if they turn heavy. Any recognised
-   kind still waits while free RAM < expected-per-kind + 4096 MB. Foreign disk IO earns
+   pressure — the watcher caps them only if they turn heavy — **except** for
+   one machine-wide slot: while an app holds **CPU or disk** priority, builds
+   and tests share `admission.slotsUnderPriority` (default 1) slots; another
+   one is deferred with reason `priority:<app>` while a build/foreground job
+   runs or one was admitted within `admission.reserveMs` (30 s). GPU-only
+   priority and no priority never limit them (parallel builds stay fast). Any
+   recognised kind still waits while free RAM, minus the expected peaks of jobs
+   admitted within `reserveMs` and not measured yet (`admitted.json`, merged
+   into `state.admitted` by `readState`, written by the gate through
+   `state.recordAdmission`), < expected-per-kind + 4096 MB. Foreign disk IO earns
    priority only while the disk budget is pressed (IO counters include
    network). Matching looks only at
    the LEADING command of each `;`/`&&`/`||`/`|` segment (quotes and heredocs
@@ -141,6 +153,18 @@ MCP servers are never throttled. Concept:
    dropped; Claude re-runs the same command itself under normal
    permissions — the gate checks it again, it is never bypassed), 2 on
    timeout, 1 for an unknown id. `wait` itself is a light command for the gate.
+
+## Orchestration behaviour
+
+The governor only sees processes; a run that fans out agents decides the load
+before it exists. Autonomous runs and `auto-agents` therefore read
+`~/.claude/governor/state.json` (`pressure.priority`, `priorityBy`) when sizing
+a wave: with a priority app, or before a quiet window the task names ("heavy
+work only after 02:00"), at most one implementing agent runs at a time, briefs
+ask for touched-file tests only, the orchestrator runs the full suite once per
+merge, heavy steps wait for the window, and a Claude-started process is never
+raised in priority. Rules: `agent-orchestration.md` § Parallel implementers
+per wave item 7, `autonomous-execution.md` § Safety Guardrails.
 
 ## Reading a governor block
 

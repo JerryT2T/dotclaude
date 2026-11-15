@@ -180,6 +180,12 @@ const SCHEMA = Object.freeze({
       doc: 'Let the prompt detector ask Claude to judge a stuck session and offer an analysis (channel-gated feature; see deep-knowledge/frustrated-mode.md where available).',
     }),
   }),
+  shutdown: Object.freeze({
+    busyProcesses: Object.freeze({
+      type: 'list', default: Object.freeze([]), globalOnly: true,
+      doc: 'Comma-separated process-name or command-line fragments (case-insensitive). While one runs, an autonomous run does not power the PC off (waits up to 6 h, then leaves it on). Lock files in %LOCALAPPDATA%\\dotclaude\\busy\\*.lock holding a live PID count too.',
+    }),
+  }),
   wipWatch: Object.freeze({
     enabled: Object.freeze({
       type: 'boolean', default: false, globalOnly: true,

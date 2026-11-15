@@ -221,6 +221,12 @@ function markCloseoutDone() {
 }
 function noteCloseoutPhase(data) {
   if (!data) return;
+  // Claude posted a work phase moments ago: the finalize is alive even when
+  // the keepalive is late (#1119) - watchFinalizeLost must not call it lost.
+  // The server phase is sticky, so only a CHANGE into a work phase counts as
+  // proof of life; re-reading the same phase every poll would mask a dead Claude.
+  if ((data._phase === 'implementing' || data._phase === 'shipping') && data._phase !== _finLastPhase) _finWorkPhaseAt = Date.now();
+  _finLastPhase = data._phase;
   if (data._phase === 'closed') {
     markCloseoutDone();
     showFinished(data._finished || { state: 'closed' });
@@ -338,6 +344,8 @@ function showFinished(raw) {
 const FIN_LOST_MS = 60000;
 let _finLostTicks = 0;
 let _finLostSince = 0;
+let _finWorkPhaseAt = 0;   // last poll that saw /status CHANGE into implementing|shipping
+let _finLastPhase = '';
 function finalizeInFlight() {
   if (_submittedAction === 'finalize' && !!_submittedAt) return true;
   const sheet = document.getElementById('closeout-sheet');
@@ -346,7 +354,8 @@ function finalizeInFlight() {
 }
 function watchFinalizeLost() {
   const conn = document.getElementById('connection-status');
-  const down = !!conn && conn.dataset.state === 'disconnected';
+  const down = !!conn && conn.dataset.state === 'disconnected'
+    && !(_finWorkPhaseAt && Date.now() - _finWorkPhaseAt < FIN_LOST_MS);
   if (!(down && finalizeInFlight())) { _finLostTicks = 0; _finLostSince = 0; return; }
   const now = Date.now();
   if (!_finLostSince) _finLostSince = now;

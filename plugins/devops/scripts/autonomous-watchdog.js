@@ -300,9 +300,19 @@ function buildRecoveryScript({
   let recoveryPs;
   if (action === 'shutdown') {
     // The task goes first: nothing after shutdown.exe is sure to run.
+    // Busy guard: a user job from shutdown.busyProcesses / busy lock keeps the PC
+    // on. Exit 3 = busy; any other result (incl. check failure) fails open.
+    const nodePs = process.execPath.replace(/'/g, "''");
+    const busyPs = path.join(__dirname, 'autonomous-busy-check.js').replace(/'/g, "''");
     recoveryPs = `  Add-Content -Path $logPath -Value "[$ts] flag MISSING at $flag — forcing shutdown"
   Remove-WatchdogTask
-  & "$env:SystemRoot\\System32\\shutdown.exe" /s /t 0 /c "Claude autonomous watchdog: session unresponsive after ${hours}h, forcing shutdown"`;
+  $busyOut = ''
+  try { $busyOut = (& '${nodePs}' '${busyPs}' check) -join ' '; $busyExit = $LASTEXITCODE } catch { $busyExit = 1 }
+  if ($busyExit -eq 3) {
+    Add-Content -Path $logPath -Value "[$ts] PC bleibt an: busy job still running — shutdown skipped ($busyOut)"
+  } else {
+    & "$env:SystemRoot\\System32\\shutdown.exe" /s /t 0 /c "Claude autonomous watchdog: session unresponsive after ${hours}h, forcing shutdown"
+  }`;
   } else if (action === 'resume') {
     const recoveryFlagPs = String(recoveryFlagPath || '').replace(/'/g, "''");
     const dirPs = String(workingDir || '').replace(/'/g, "''");
@@ -529,8 +539,11 @@ function runRegister(args) {
   // Write a separate PowerShell script — robust escaping, self-deletes after run.
   const scriptPath = path.join(os.tmpdir(),
     `claude-autonomous-watchdog-${Date.now()}.ps1`);
+  // BOM: Windows PowerShell 5.1 reads a BOM-less .ps1 as ANSI, so a non-ASCII
+  // character (the em dashes in the log lines) turns into a quote and the whole
+  // script fails to parse — no shutdown, no busy guard, no self-removal.
   fs.writeFileSync(scriptPath,
-    buildRecoveryScript({
+    '﻿' + buildRecoveryScript({
       action, hours, flagPath, stalledPath, recoveryFlagPath, workingDir, resumePrompt, taskName,
     }), 'utf8');
 

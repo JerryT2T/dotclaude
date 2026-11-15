@@ -135,7 +135,7 @@ let sessionFile, readSessionFile, writeSessionFile, projectRoot, inOwnWorkTree, 
   SPAWN_TOOL_RE, DISMISS_TOOL_RE, recordSpawn, recordDismiss, chipReminder,
   decideCardTurnEnd, cardTurnBlockedLines, CARD_STOP_REASON, isGuideActive, archiveGate,
   classifyProfile, carveOutsFromProfile, domPathsFromProfile, resolveVerificationKind,
-  inRepoTree, isCodeChange, isBrowserTool, isTestRunnerTool, testRunOutcome, LIGHT_SKIPPED_FLAG;
+  inRepoTree, isCodeChange, isBrowserTool, isBrowserScriptRun, isTestRunnerTool, testRunOutcome, LIGHT_SKIPPED_FLAG;
 let loadError = false;
 let loadingModule = '';
 const guardedRequire = (m) => { loadingModule = m; return require(m); };
@@ -166,6 +166,7 @@ try {
     resolveVerificationKind,
     isCodeChange,
     isBrowserTool,
+    isBrowserScriptRun,
     isTestRunnerTool,
     testRunOutcome,
     LIGHT_SKIPPED_FLAG,
@@ -699,6 +700,18 @@ function observeVerification(hook, toolName, command, profileClass) {
     (owedKind === 'runner' || owedKind === 'any') && isTestRunnerTool(toolName, command);
 
   if (browserSatisfies) {
+    writeSessionFile(
+      sessionFile('dotclaude-devops-light-verified', hook.session_id),
+      toolName,
+    );
+  }
+  // A Playwright script run from the shell is a browser check; it verifies
+  // only when it passed (exit 0, else the text verdict). A red run changes nothing.
+  if (
+    !browserSatisfies && (owedKind === 'dom' || owedKind === 'any') &&
+    isBrowserScriptRun(toolName, command, hook.cwd) &&
+    testRunOutcome(hook.tool_response) === 'pass'
+  ) {
     writeSessionFile(
       sessionFile('dotclaude-devops-light-verified', hook.session_id),
       toolName,

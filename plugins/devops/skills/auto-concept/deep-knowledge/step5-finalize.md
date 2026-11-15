@@ -78,6 +78,19 @@ substituted by the build, but writing the locale VALUE stays correct too.
 
 ## B · Implement the selected follow-ups
 
+**Before the long run: relaunch the waker (#1119).** A `finalize` pickup ends the
+waker that woke you, and the implement + ship run that follows is ~15 minutes of
+tool calls in one turn. Re-launch the waker FIRST (`concept-open.js prepare` prints
+the command), before part B starts. Without it a "Nachbessern" submission during
+the run finds nobody waiting; the pulser then wakes you with `WAKER_MISSING` and
+hands the heartbeat to a successor, but the session cannot react until its turn
+ends, so a waker is the only thing that picks the submission up in time. Also
+post the work state so the page shows it large and never reads a late heartbeat
+as `lost`: `POST /status {"phase":"implementing"}` before part B and
+`{"phase":"shipping"}` before part C, and `POST /progress` at each checkpoint
+below (items implemented, ship started, ship done). Skipping these is the
+failure the Fertig-Seite `lost` state exists to catch.
+
 The points the user routed to "Jetzt umsetzen" are ordinary implementation
 work that happens to arrive at close-out time. Build them exactly the way the
 `implement` branch does — **through the `auto-agents` skill, which runs the

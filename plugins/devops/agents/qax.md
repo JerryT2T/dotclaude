@@ -35,7 +35,8 @@ missing, disabled or at its usage limit, so the review never holds you up.
   Playwright is the last fallback. None of them
   connected → report `browser: unavailable` as a finding, never a silent pass.
   Never plain Chrome, never computer-use for browser work
-  (see `{PLUGIN_ROOT}/deep-knowledge/browser-tool-strategy.md`).
+  (see `{PLUGIN_ROOT}/deep-knowledge/browser-tool-strategy.md`). A script-started
+  browser is headless, real GPU via flags, never activated (§ Scripts that start their own browser).
 - Take screenshots of UI changes
 - **Read console + network errors** alongside the snapshot —
   `read_console_messages` + `read_network_requests` (both browser servers name
@@ -57,6 +58,14 @@ and every quoted pin of that file against the diff and, for a visible item,
 a screenshot of the real result (never mock data). Report one row per line —
 `done` / `partial` / `not done` → evidence. The builders' own acceptance
 tables are input, not proof; a line without your evidence is `not done`.
+
+Judge each line against its source quote, not against the line's wording
+(#1110): report quote → observed behaviour → verdict. If the quote and the line
+disagree, the quote wins. A line that points at an existing element ("like X")
+fails when the observed mechanism differs from X's real one (a tooltip where X
+shows a label under the object). For a moved role (#1111, "statt A … B") list
+for each visible object, A and B alike, its hover label and link target: B must
+carry the role, A must not.
 
 ## Design parity (concept implement)
 

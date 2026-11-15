@@ -565,6 +565,28 @@ function updateBudget(prev, sys, now, cfg) {
 // ---------------------------------------------------------------------------
 
 /**
+ * Aggregate heaviness (#1115): under a CPU priority app or CPU over budget, many short Claude jobs
+ * that each stay under `heavy.cpuPct` still add up. While the summed CPU of the not-yet-heavy,
+ * Claude-attributed, non-user, non-server jobs exceeds the threshold, the newest of them is marked
+ * heavy on CPU until the remainder is under it. Returns a copy; the tracked jobs are not mutated.
+ */
+function aggregateHeavy(jobs, prio, over, now, cfg) {
+  if (!(prio.has('cpu') || over.has('cpu'))) return jobs;
+  const limit = cfg.heavy.cpuPct;
+  const cand = Object.values(jobs).filter((j) => !j.heavy && j.kind !== 'user-app' && j.kind !== 'server' && (j.cpuPct || 0) > 0)
+    .sort((a, b) => (b.startMs || 0) - (a.startMs || 0));
+  let sum = cand.reduce((s, j) => s + (j.cpuPct || 0), 0);
+  if (sum <= limit) return jobs;
+  const out = { ...jobs };
+  for (const j of cand) {
+    if (sum <= limit) break;
+    out[j.id] = { ...j, heavy: true, heavySince: now, res: Array.from(new Set([...(j.res || []), 'cpu'])) };
+    sum -= j.cpuPct || 0;
+  }
+  return out;
+}
+
+/**
  * Desired throttle level per job. Priority resources: every heavy job loading
  * them yields at once to its max level. Over-budget only: one step per
  * escalateMs, newest heavy job first. Relief: each throttled job on its own
@@ -573,9 +595,10 @@ function updateBudget(prev, sys, now, cfg) {
  * elsewhere or a new throttle on another job never holds every other cap.
  * @returns {{desired:Record<string,{level:number, resources:string[]}>, last:object}}
  */
-function plan(jobs, current, pressure, now, cfg, last = {}) {
+function plan(jobsIn, current, pressure, now, cfg, last = {}) {
   const prio = new Set(pressure.priority || []);
   const over = new Set(pressure.over || []);
+  const jobs = aggregateHeavy(jobsIn, prio, over, now, cfg);
   const pressured = new Set([...prio, ...over]);
   const desired = {};
   for (const [id, t] of Object.entries(current || {})) if (jobs[id] && maxLevel(jobs[id]) > 0) desired[id] = { level: Math.min(t.level, maxLevel(jobs[id])), resources: [...(t.resources || [])] };
@@ -799,8 +822,10 @@ function commandKind(cmd) { return classifyCommand(cmd).kind; }
 /**
  * Admission. Fail open: no or stale watcher state → allow. Generators, containers
  * and escapes defer while a resource they load is pressed; builds, tests and
- * browser checks never wait for pressure (the watcher caps them only if they
- * turn heavy). Any known kind defers when free RAM < expected + headroom.
+ * browser checks wait for pressure only for the machine-wide slot under a CPU/disk
+ * priority app (`admission.slotsUnderPriority`; the watcher caps them if they turn heavy).
+ * Any known kind defers when free RAM minus the reserved peaks of jobs admitted within
+ * `admission.reserveMs` (state.admitted) < expected + headroom.
  * @returns {{decision:'allow'|'defer', reason:string, kind:string|null, resources:string[]}}
  */
 function admit({ command, now, state, kinds = {}, cfg }) {
@@ -817,8 +842,25 @@ function admit({ command, now, state, kinds = {}, cfg }) {
   }
   if (!c.kind) return { decision: 'allow', reason: 'escape-no-pressure', ...base };
   const expected = (kinds[c.kind] && kinds[c.kind].peakMB) || cfg.admission.defaultMB;
+  base.expectedMB = expected;
+  // Admitted a moment ago and not measured yet: invisible in state.jobs and in the free-RAM reading.
+  const recent = (Array.isArray(state.admitted) ? state.admitted : []).filter((a) => a && Number.isFinite(a.at) && now - a.at >= 0 && now - a.at < cfg.admission.reserveMs);
+  // Builds and tests share one machine-wide slot while a CPU/disk priority app runs (#1115).
+  if (!c.heavy && (p.priority || []).some((r) => r === 'cpu' || r === 'disk')) {
+    // Only a job that is a known build/test command or actually burns CPU holds the slot: an
+    // idle `governor wait`, shell or `tail -f` never does. An older watcher state without
+    // either field holds no slot — fail open.
+    const busy = (j) => Boolean(j.cmdKind) || (Number.isFinite(j.cpuPct) && j.cpuPct >= cfg.admission.slotCpuPct);
+    const running = (Array.isArray(state.jobs) ? state.jobs : []).filter((j) => j && (j.kind === 'build' || j.kind === 'foreground') && busy(j)).length;
+    const active = Math.max(running, recent.length);
+    if (active >= cfg.admission.slotsUnderPriority) {
+      const r = (p.priority || []).filter((x) => x === 'cpu' || x === 'disk');
+      return { decision: 'defer', reason: `priority:${state.priorityBy || 'app'}`, pressed: r, ...base };
+    }
+  }
   const free = state.sys && Number.isFinite(state.sys.freeMB) ? state.sys.freeMB : Infinity;
-  if (free < expected + cfg.admission.headroomMB) return { decision: 'defer', reason: 'ram', pressed: ['ram'], ...base };
+  const reserved = recent.reduce((s, a) => s + (Number.isFinite(a.mb) ? a.mb : cfg.admission.defaultMB), 0);
+  if (free - reserved < expected + cfg.admission.headroomMB) return { decision: 'defer', reason: 'ram', pressed: ['ram'], ...base };
   return { decision: 'allow', reason: 'slot', ...base };
 }
 

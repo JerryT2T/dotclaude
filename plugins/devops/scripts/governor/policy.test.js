@@ -541,3 +541,61 @@ describe('self-check (wave 6)', () => {
     for (const c of ['wsl -e make', 'wsl make', 'wsl -d Ubuntu -- npm test', 'schtasks /create /tn x', 'schtasks /run /tn x']) expect([c, P.classifyCommand(c).escape]).toEqual([c, true]);
   });
 });
+
+describe('priority app vs many short builds and tests (#1115)', () => {
+  const now = 1000 * S;
+  const base = { heartbeat: now - S, pressure: { priority: ['cpu'], over: [] }, priorityBy: 'c:/games', sys: { freeMB: 20000 }, jobs: [], admitted: [] };
+  it('six dotnet test under a CPU priority app: one admit, five defer with a priority reason', () => {
+    const state = { ...base, admitted: [] };
+    const res = [];
+    for (let i = 0; i < 6; i++) {
+      const r = P.admit({ command: 'dotnet test', now, state, cfg });
+      res.push(r);
+      if (r.decision === 'allow') state.admitted.push({ at: now, kind: r.kind, mb: r.expectedMB });
+    }
+    expect(res.filter((r) => r.decision === 'allow')).toHaveLength(1);
+    expect(res.filter((r) => r.decision === 'defer').every((r) => r.reason === 'priority:c:/games')).toBe(true);
+  });
+  it('counts running build jobs from state.jobs; disk priority too; gpu-only priority and no priority stay open', () => {
+    const jobs = [{ id: 'a', name: 'dotnet.exe', kind: 'build', heavy: false, cmdKind: 'dotnet test', cpuPct: 12 }];
+    // An idle `governor wait`, a shell or `tail -f` holds no slot; a CPU-burning job without a known kind does.
+    const idle = [{ id: 'w', name: 'node.exe', kind: 'foreground', heavy: false, cmdKind: null, cpuPct: 0 }];
+    expect(P.admit({ command: 'dotnet test', now, state: { ...base, jobs: idle }, cfg }).decision).toBe('allow');
+    expect(P.admit({ command: 'dotnet test', now, state: { ...base, jobs: [{ ...idle[0], cpuPct: 30 }] }, cfg }).decision).toBe('defer');
+    expect(P.admit({ command: 'dotnet test', now, state: { ...base, jobs: [{ id: 'o', kind: 'build' }] }, cfg }).decision).toBe('allow'); // older watcher state
+    expect(P.admit({ command: 'dotnet test', now, state: { ...base, jobs }, cfg })).toMatchObject({ decision: 'defer', reason: 'priority:c:/games' });
+    expect(P.admit({ command: 'dotnet test', now, state: { ...base, jobs, pressure: { priority: ['disk'], over: [] } }, cfg }).decision).toBe('defer');
+    expect(P.admit({ command: 'dotnet test', now, state: { ...base, jobs, pressure: { priority: ['gpu'], over: [] } }, cfg }).decision).toBe('allow');
+    expect(P.admit({ command: 'dotnet test', now, state: { ...base, jobs, pressure: { priority: [], over: [] } }, cfg }).decision).toBe('allow');
+    expect(P.admit({ command: 'dotnet test', now, state: base, cfg }).decision).toBe('allow'); // no jobs -> allow
+    expect(P.admit({ command: 'dotnet test', now, state: { ...base, jobs }, cfg: merge(cfg, { admission: { slotsUnderPriority: 2 } }) }).decision).toBe('allow');
+  });
+  it('an admission older than reserveMs no longer holds the slot', () => {
+    const old = [{ at: now - cfg.admission.reserveMs - S, kind: 'dotnet test', mb: 361 }];
+    expect(P.admit({ command: 'dotnet test', now, state: { ...base, admitted: old }, cfg }).decision).toBe('allow');
+  });
+  it('summed load of short jobs is throttled although no single job is heavy', () => {
+    const jobs = {};
+    for (let i = 0; i < 6; i++) jobs[`j${i}`] = { id: `j${i}`, kind: 'build', heavy: false, heavySince: null, res: [], startMs: 100 * S + i * S, cpuPct: 15, gpu: false };
+    const { desired } = P.plan(jobs, {}, { priority: ['cpu'], over: [] }, 200 * S, cfg);
+    expect(Object.keys(desired).sort()).toEqual(['j1', 'j2', 'j3', 'j4', 'j5']); // newest five yield, the oldest keeps running
+    expect(desired.j5).toEqual({ level: 1, resources: ['cpu'] });
+    expect(jobs.j5.heavy).toBe(false); // input untouched
+    // over budget (no priority app): one step per escalateMs, newest first
+    expect(Object.keys(P.plan(jobs, {}, { priority: [], over: ['cpu'] }, 200 * S, cfg).desired)).toEqual(['j5']);
+    // no CPU pressure, or user apps / servers: nothing to aggregate
+    expect(P.plan(jobs, {}, { priority: ['gpu'], over: [] }, 200 * S, cfg).desired).toEqual({});
+    const mixed = { a: { ...jobs.j0, kind: 'user-app' }, b: { ...jobs.j1, kind: 'server' }, c: jobs.j2 };
+    expect(P.plan(mixed, {}, { priority: ['cpu'], over: [] }, 200 * S, cfg).desired).toEqual({});
+  });
+  it('RAM: two admits in the same tick, free RAM covers one peak plus headroom -> second defers ram', () => {
+    const free = 361 + cfg.admission.headroomMB + 200;
+    const kinds = { 'dotnet test': { peakMB: 361 } };
+    const state = { heartbeat: now - S, pressure: { priority: [], over: [] }, sys: { freeMB: free }, admitted: [] };
+    const first = P.admit({ command: 'dotnet test', now, state, kinds, cfg });
+    expect(first).toMatchObject({ decision: 'allow', expectedMB: 361 });
+    state.admitted.push({ at: now, kind: first.kind, mb: first.expectedMB });
+    expect(P.admit({ command: 'dotnet test', now, state, kinds, cfg })).toMatchObject({ decision: 'defer', reason: 'ram' });
+    expect(P.admit({ command: 'dotnet test', now: now + cfg.admission.reserveMs, state, kinds, cfg }).decision).toBe('allow');
+  });
+});
