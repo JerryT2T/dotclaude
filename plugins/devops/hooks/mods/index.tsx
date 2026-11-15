@@ -31,39 +31,60 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { AgentRow, Budget, CardView, CleanupRun, Hygiene, Progress, SessionFlags, ShipView, SpikeWatch } from '../../types/index'
+import type { AgentRow, Budget, CardView, CleanupHistory, CleanupRun, Hygiene, Progress, RunMarker, SessionFlags, ShipView, SpikeWatch } from '../../types/index'
+import type { CompactEnv, Locale, WorkState } from './format'
 import {
   activityOf,
+  addRun,
   agentRows,
   applyPlan,
-  budgetFrom,
   budgetBarAlt,
   BUDGET_BAR_SIZE,
   budgetBars,
   budgetBarSvg,
+  budgetFrom,
   budgetLine,
   cardFromResult,
-  hourglassSvg,
-  HOURGLASS_SIZE,
-  isCardTool,
-  todoSteps,
-  workingLine,
-  contextNote,
   checksFrom,
   cleanupApplyPrompt,
   cleanupPlanPrompt,
   cleanupToast,
+  cleanupView,
+  compactAdvised,
   elapsed,
+  historyFrom,
+  hourglassSvg,
+  HOURGLASS_SIZE,
   hygieneFrom,
   hygieneLine,
+  isCardTool,
+  isHintCard,
   isFailedStatus,
   isWatcherCommand,
+  junkLabel,
+  lastLine,
+  learnCause,
+  learnPrompt,
+  localeFrom,
   LONG_RUN_MS,
+  markerActive,
+  markerFrom,
+  markerHides,
+  nudgeThresholdFrom,
   passiveSpikeRow,
+  RING_CHIP_SIZE,
+  RING_SIZE,
+  ringPercent,
+  ringSvg,
+  ruleText,
   shipFrom,
   SPIKE_PAUSE_MS,
   taskNotice,
+  todoSteps,
+  tr,
   verbatimNotices,
+  workingLine,
+  CONTEXT_SHOW_PERCENT,
 } from './format'
 import { featureAllowed, homeDir } from './gate'
 
@@ -74,6 +95,8 @@ export const SPIKE_COMMAND = 'mods-spike-fork'
 export const SPIKE_PROMPT = 'Reply with the single word: ok'
 const SPIKE_LOG = '/.claude/devops-mods-spike.jsonl'
 const SPIKE_LOG_MAX_LINES = 500
+const RUN_MARKER = '/.claude/devops-cleanup-run.json'
+const HISTORY_FILE = '/.claude/devops-cleanup-history.json'
 const LOAD_MARKER = '/.claude/devops-mods-loaded.json'
 const LOAD_MARKER_MAX = 30
 type LoadMark = { sid: string; surface: string | null; interactive: boolean; ts: string }
@@ -96,6 +119,11 @@ const tick = atom({ plugin: 'devops', key: 'tick' } as const, 0, { shape: 'tick-
 // Passive Spike 1 (docs/dev/mods.md): the first request of a main turn after a long pause.
 const spike = atom({ plugin: 'devops', key: 'spike' } as const, { lastMainEnd: 0, armed: null } as SpikeWatch, { shape: 'spike-1' })
 const TICK_MS = 5000
+// Band look: the card's lilac › and amber, the divider and rail of the concept (rounds/02.html).
+const AMBER = '#e6c36a'
+const VIOLET = '#9d8cd6'
+const DIVIDER = '#353535'
+const RAIL_WIDTH = 30
 let ticker: { cancel: () => void } | null = null
 
 /** Keeps the Agents pane's elapsed times live: a timer that bumps `tick` while any subagent runs, and stops itself after. */
@@ -123,6 +151,11 @@ function startTicker($: EngineInterface): void {
     ticker = null
   }
 }
+// The band's cleanup block is expanded (per session; B11).
+const fold = atom({ plugin: 'devops', key: 'fold' } as const, false, { shape: 'fold-1' })
+const hintsOpen = atom({ plugin: 'devops', key: 'hintsOpen' } as const, false, { shape: 'hints-open-1' })
+// The last card's title and time, kept after the card is spent: the idle row's "Last:".
+const lastCard = atom({ plugin: 'devops', key: 'lastCard' } as const, null as { title: string; at: string } | null, { shape: 'last-card-1' })
 // The last completion card of this prompt's turn (its template part, no answer) and what the turn is doing now.
 const card = atom({ plugin: 'devops', key: 'card' } as const, null as CardView | null, { shape: 'card-1' })
 const NO_PROGRESS: Progress = { steps: [], activity: '', startedAt: 0 }
@@ -148,8 +181,42 @@ async function repoRoot($: EngineInterface): Promise<string> {
   }
 }
 
-/** Starts one cleanup subagent; a press while one runs does nothing (one press = one run). */
+/** The machine-wide run marker (B13): one cleanup run per repo, seen by every session. */
+async function readMarker($: EngineInterface): Promise<RunMarker | null> {
+  const home = await homeDir($)
+  return home ? markerFrom(await readJson($, home + RUN_MARKER)) : null
+}
+
+async function writeMarker($: EngineInterface, m: RunMarker): Promise<void> {
+  const home = await homeDir($)
+  if (home) await $.fs.write(home + RUN_MARKER, `${JSON.stringify(m, null, 1)}\n`).catch(() => undefined)
+}
+
+/** Ends this session's run in the marker (other sessions show the block again once the report is newer). */
+async function endRun($: EngineInterface): Promise<void> {
+  try {
+    const m = await readMarker($)
+    const sid = await $.session.id()
+    if (m && m.session === sid && m.endedAt === undefined) await writeMarker($, { ...m, endedAt: await $.clock.now() })
+  } catch {
+    /* the marker is bookkeeping: a stale one expires after 2 h */
+  }
+}
+
+/** Starts one cleanup subagent; a press while one runs does nothing (one press = one run, one run per repo machine-wide). */
 async function startCleanup($: EngineInterface, kind: 'plan' | 'apply'): Promise<void> {
+  const sh = await sharedNow($, true)
+  const root = await repoRoot($)
+  const repo = (sh.hyg && sh.hyg.repo) || root
+  const sid = await $.session.id().catch(() => '')
+  const now = await $.clock.now()
+  if (kind === 'plan') {
+    const other = await readMarker($)
+    if (markerActive(other, repo, now) && other && other.session !== sid) {
+      $.ui.toast(tr(sh.loc, 'runBusy'), { timeoutMs: 8000 })
+      return
+    }
+  }
   let go = false
   let plan = ''
   await update($, cleanup, s => {
@@ -158,10 +225,16 @@ async function startCleanup($: EngineInterface, kind: 'plan' | 'apply'): Promise
     if (kind === 'apply' && s.phase !== 'planned') return s
     go = true
     plan = s.report
-    return { phase: kind === 'plan' ? 'planning' : 'applying', agentId: null, report: kind === 'plan' ? '' : s.report, at: 0 }
+    return {
+      phase: kind === 'plan' ? 'planning' : 'applying',
+      agentId: null,
+      report: kind === 'plan' ? '' : s.report,
+      at: 0,
+      causes: kind === 'plan' ? { ...((sh.hyg && sh.hyg.causes) || {}) } : s.causes,
+    }
   })
   if (!go) return
-  const root = await repoRoot($)
+  if (kind === 'plan') await writeMarker($, { repo, session: sid, startedAt: now })
   try {
     const description = kind === 'plan' ? 'Branch cleanup plan' : 'Branch cleanup apply'
     const r = await $.agent.spawn({
@@ -183,7 +256,19 @@ async function startCleanup($: EngineInterface, kind: 'plan' | 'apply'): Promise
   } catch (err) {
     const why = err instanceof Error ? err.message : 'spawn failed'
     await update($, cleanup, () => ({ phase: 'failed', agentId: null, report: `Subagent not started: ${why}`, at: 0 }))
+    await endRun($)
   }
+}
+
+/** A finished apply run: its causes go to the history; the same unmerged cause in two runs offers `devops learn` (B14). */
+async function recordRun($: EngineInterface, run: CleanupRun, now: number): Promise<{ cause: string; runs: number } | null> {
+  const home = await homeDir($)
+  if (!home) return null
+  const sh = await sharedNow($)
+  const repo = (sh.hyg && sh.hyg.repo) || (await repoRoot($))
+  const history: CleanupHistory = addRun(historyFrom(await readJson($, home + HISTORY_FILE)), { repo, at: now, causes: run.causes || {} })
+  await $.fs.write(home + HISTORY_FILE, `${JSON.stringify(history, null, 1)}\n`).catch(() => undefined)
+  return learnCause(history, repo)
 }
 
 // One gate answer per session (reset at session.start); module vars reset on reload anyway.
@@ -210,11 +295,100 @@ async function usageNow($: EngineInterface): Promise<Budget | null> {
   }
 }
 
-async function refreshHygiene($: EngineInterface, cwd: string): Promise<void> {
+type Shared = {
+  at: number
+  loc: Locale
+  sid: string
+  hyg: Hygiene | null
+  marker: RunMarker | null
+  threshold: number
+  env: CompactEnv
+  work: Pick<WorkState, 'concept' | 'changes'>
+}
+let shared: Shared | null = null
+const SHARED_TTL_MS = 10_000
+
+function positive(v: unknown): number | null {
+  const n = typeof v === 'string' ? Number(v) : v
+  return typeof n === 'number' && Number.isFinite(n) && n > 0 ? n : null
+}
+
+async function gitOut($: EngineInterface, cwd: string, args: string[]): Promise<string | null> {
+  try {
+    const r = await $.process.run(['git', ...args], { cwd: cwd || undefined, timeoutMs: 3000 })
+    return r.exitCode === 0 ? r.stdout : null
+  } catch {
+    return null
+  }
+}
+
+/** B7: is there open work: a concept page open here, or unshipped changes (dirty tree, commits ahead of the default branch). */
+async function openWork($: EngineInterface, cwd: string): Promise<Pick<WorkState, 'concept' | 'changes'>> {
+  const concept = cwd ? (await readJson($, `${cwd}/.claude/concept-active.json`)) !== null : false
+  let changes = false
+  const status = await gitOut($, cwd, ['status', '--porcelain'])
+  if (status && status.trim()) changes = true
+  else {
+    for (const ref of ['origin/HEAD', 'origin/main', 'origin/master', 'main', 'master']) {
+      const ahead = await gitOut($, cwd, ['rev-list', '--count', `${ref}..HEAD`])
+      if (ahead !== null) {
+        changes = Number.parseInt(ahead.trim(), 10) > 0
+        break
+      }
+    }
+  }
+  return { concept, changes }
+}
+
+/**
+ * Everything the band reads from the machine, cached 10 s: the orphan report, the run marker, the
+ * cleanup threshold (project > global config, default 50), the language, the user's own auto-compact
+ * settings and whether work is open. One place, so band and status line cannot disagree.
+ */
+async function sharedNow($: EngineInterface, force = false): Promise<Shared> {
+  const now = await $.clock.now()
+  if (!force && shared && now - shared.at < SHARED_TTL_MS) return shared
   const home = await homeDir($)
-  const found = home ? hygieneFrom(await readJson($, `${home}/.claude/orphan-report.json`), cwd, await $.clock.now()) : null
-  await update($, hygiene, () => found)
-  $.ui.status(hygieneLine(found) ?? undefined)
+  const cwd = sessionCwd.replace(/[\\]/g, '/').replace(/[/]+$/, '')
+  const hyg = home ? hygieneFrom(await readJson($, `${home}/.claude/orphan-report.json`), cwd, now) : null
+  let language: unknown
+  let windowCap: number | null = null
+  let pctOverride: number | null = null
+  const files = [home && `${home}/.claude/settings.json`, cwd && `${cwd}/.claude/settings.json`, cwd && `${cwd}/.claude/settings.local.json`]
+  for (const f of files) {
+    const j = f ? ((await readJson($, f)) as Record<string, unknown> | null) : null
+    if (!j || typeof j !== 'object') continue
+    if (typeof j.language === 'string' && j.language) language = j.language
+    const env = (j.env && typeof j.env === 'object' ? j.env : {}) as Record<string, unknown>
+    windowCap = positive(j.autoCompactWindow) ?? positive(env.CLAUDE_CODE_AUTO_COMPACT_WINDOW) ?? windowCap
+    pctOverride = positive(env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE) ?? pctOverride
+  }
+  // The process environment wins over the settings' env block.
+  pctOverride = positive(await $.env.get('CLAUDE_AUTOCOMPACT_PCT_OVERRIDE').catch(() => undefined)) ?? pctOverride
+  windowCap = positive(await $.env.get('CLAUDE_CODE_AUTO_COMPACT_WINDOW').catch(() => undefined)) ?? windowCap
+  const main = (hyg && hyg.repo) || cwd
+  const threshold = nudgeThresholdFrom(
+    main ? await readJson($, `${main}/.claude/devops-config.json`) : null,
+    home ? await readJson($, `${home}/.claude/devops-config.json`) : null,
+  )
+  const next: Shared = {
+    at: now,
+    loc: localeFrom(language),
+    sid: await $.session.id().catch(() => ''),
+    hyg,
+    marker: await readMarker($),
+    threshold,
+    env: { pctOverride, windowCap },
+    work: await openWork($, cwd),
+  }
+  shared = next
+  return next
+}
+
+async function refreshHygiene($: EngineInterface): Promise<void> {
+  const sh = await sharedNow($, true)
+  await update($, hygiene, () => sh.hyg)
+  $.ui.status(hygieneLine(sh.hyg, true, sh.loc) ?? undefined)
 }
 
 async function refreshShip($: EngineInterface): Promise<void> {
@@ -281,6 +455,7 @@ async function appendSpikeLog($: EngineInterface, row: unknown): Promise<string>
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     gate = null
+    shared = null
     const started = await next(e)
     if (!(await open($))) return started
     await $.command.register({ name: 'devops-agents', description: 'devops: show this session\'s subagents in a pane' })
@@ -291,7 +466,7 @@ export const register: Register = on => {
     })
     sessionCwd = e.cwd || ''
     await writeLoadMarker($, e.surface || null, e.isInteractive === true).catch(() => undefined)
-    await refreshHygiene($, e.cwd)
+    await refreshHygiene($)
     return started
   })
 
@@ -314,7 +489,8 @@ export const register: Register = on => {
   on('classic.Notification', async ($, e, next) => {
     const result = await next(e)
     if (e.notification_type === 'permission_prompt' && (await open($))) {
-      $.ui.toast(`Permission request waiting${e.message ? `: ${e.message}` : ''}`.slice(0, 200), { timeoutMs: 8000 })
+      const loc = (await sharedNow($)).loc
+      $.ui.toast(`${tr(loc, 'permission')}${e.message ? `: ${e.message}` : ''}`.slice(0, 200), { timeoutMs: 8000 })
     }
     return result
   }).catch(($, e, next) => next(e)) // display only: a failure never changes the engine's answer
@@ -356,7 +532,8 @@ export const register: Register = on => {
         }),
       )
       if (done && now - done.startedAt >= LONG_RUN_MS) {
-        $.ui.toast(`${done.type} finished after ${elapsed(now - done.startedAt)}: ${done.description}`.slice(0, 200), { timeoutMs: 8000 })
+        const loc = (await sharedNow($)).loc
+        $.ui.toast(`${tr(loc, 'finishedAfter', { what: done.type, t: elapsed(now - done.startedAt) })}: ${done.description}`.slice(0, 200), { timeoutMs: 8000 })
       }
     }
     return result
@@ -420,7 +597,10 @@ export const register: Register = on => {
     const result = await next(e)
     if (gateOpen && isCardTool(tool) && result && typeof result.text === 'string' && !result.isError) {
       const view = cardFromResult(result.text)
-      if (view) await update($, card, () => view)
+      if (view) {
+        await update($, card, () => view)
+        if (view.title) await update($, lastCard, () => ({ title: view.title, at: view.at }))
+      }
     }
     return result
   }).catch(($, e, next) => next(e)) // display only: a failure never changes the tool call
@@ -449,7 +629,7 @@ export const register: Register = on => {
         // A concept watcher ending normally is plumbing that wakes Claude anyway: a toast only when it failed, at any length.
         const failed = isFailedStatus(notice.status) || /\bfailed\b|exit code [1-9]/i.test(notice.summary)
         if (isWatcher ? failed : now - startedAt >= LONG_RUN_MS) {
-          const what = notice.summary || `Background command ${notice.status || 'finished'}`
+          const what = notice.summary || tr((await sharedNow($)).loc, 'bgCommand', { s: notice.status || 'finished' })
           $.ui.toast(`${what} · ${elapsed(now - startedAt)}`.slice(0, 200), { timeoutMs: 8000 })
         }
       }
@@ -488,8 +668,20 @@ export const register: Register = on => {
         const answer = (e.answer || '').trim()
         const phase = e.isAborted || !answer ? 'failed' : run.phase === 'planning' ? 'planned' : 'done'
         const now = await $.clock.now()
-        await update($, cleanup, () => ({ phase, agentId: null, report: answer || 'No answer.', at: now }))
-        $.ui.toast(cleanupToast(phase), { timeoutMs: 8000 })
+        const loc = (await sharedNow($)).loc
+        // B14: a finished run feeds the history; the same unmerged cause in two runs makes the pane offer `devops learn`.
+        const offer = phase === 'done' ? await recordRun($, run, now).catch(() => null) : null
+        await update($, cleanup, () => ({
+          phase,
+          agentId: null,
+          report: answer || 'No answer.',
+          at: now,
+          causes: run.causes,
+          ...(offer ? { learn: offer.cause, learnRuns: offer.runs } : {}),
+        }))
+        if (phase !== 'planned') await endRun($)
+        $.ui.toast(cleanupToast(phase, loc), { timeoutMs: 8000 })
+        if (offer) $.ui.toast(tr(loc, 'toastLearn'), { timeoutMs: 10000 })
         await $.ui.open({ id: CLEANUP_PANE, title: 'Cleanup' })
       }
     }
@@ -507,6 +699,8 @@ export const register: Register = on => {
         context: b.context ?? (prev ? prev.context : null),
         fiveHourResetsAt: b.fiveHourResetsAt ?? (prev ? prev.fiveHourResetsAt ?? null : null),
         weeklyResetsAt: b.weeklyResetsAt ?? (prev ? prev.weeklyResetsAt ?? null : null),
+        contextTokens: b.contextTokens ?? (prev ? prev.contextTokens ?? null : null),
+        contextWindow: b.contextWindow ?? (prev ? prev.contextWindow ?? null : null),
       }))
     }
     return measured
@@ -625,119 +819,263 @@ export const register: Register = on => {
     if (!(await open($))) return next(e)
     const { Box, Button, Markdown, Text } = $.ui.resolve(e)
     const run = await read($, cleanup)
+    const loc = (await sharedNow($)).loc
     const head =
-      run.phase === 'planning' ? 'Opus is planning the cleanup (read-only)…'
-      : run.phase === 'applying' ? 'Opus is applying the approved plan…'
-      : run.phase === 'planned' ? 'Plan ready. Nothing has changed yet.'
-      : run.phase === 'done' ? 'Cleanup applied.'
-      : run.phase === 'failed' ? 'The cleanup stopped.'
-      : 'No cleanup run yet.'
+      run.phase === 'planning' ? tr(loc, 'panePlanning')
+      : run.phase === 'applying' ? tr(loc, 'paneApplying')
+      : run.phase === 'planned' ? tr(loc, 'panePlanned')
+      : run.phase === 'done' ? tr(loc, 'paneDone')
+      : run.phase === 'failed' ? tr(loc, 'paneFailed')
+      : tr(loc, 'paneIdle')
+    const finish = async () => {
+      await update($, cleanup, () => IDLE)
+      await endRun($)
+    }
     return (
       <Box flexDirection="column" gap={1}>
         <Text bold>{head}</Text>
         {run.report && <Markdown key="cleanup-report" text={run.report} />}
+        {run.phase === 'done' && run.learn && (
+          <Box key="cleanup-learn-offer" flexDirection="column" gap={1}>
+            <Text>{tr(loc, 'learnOffer', { runs: run.learnRuns || 2, cause: run.learn })}</Text>
+            <Box flexDirection="row">
+              <Button
+                key="cleanup-learn"
+                variant="primary"
+                label={tr(loc, 'learnBtn')}
+                onPress={async () => {
+                  const cause = run.learn as string
+                  await update($, cleanup, s => ({ ...s, learn: undefined, learnRuns: undefined }))
+                  await $.prompt.submit({ text: learnPrompt(cause, run.learnRuns || 2), asUser: true })
+                }}
+              />
+            </Box>
+          </Box>
+        )}
         <Box flexDirection="row" gap={2}>
-          {run.phase === 'planned' && (
-            <Button key="cleanup-apply" variant="primary" label="Apply plan (deletes)" onPress={() => startCleanup($, 'apply')} />
-          )}
+          {run.phase === 'planned' && <Button key="cleanup-apply" variant="primary" label={tr(loc, 'btnApply')} onPress={() => startCleanup($, 'apply')} />}
           {(run.phase === 'planned' || run.phase === 'done' || run.phase === 'failed') && (
-            <Button key="cleanup-discard" label={run.phase === 'planned' ? 'Discard plan' : 'Close'} onPress={() => update($, cleanup, () => IDLE)} />
+            <Button key="cleanup-discard" label={run.phase === 'planned' ? tr(loc, 'btnDiscard') : tr(loc, 'btnClose')} onPress={finish} />
           )}
           {(run.phase === 'idle' || run.phase === 'done' || run.phase === 'failed') && (
-            <Button key="cleanup-plan" label="Plan cleanup (opus)" onPress={() => startCleanup($, 'plan')} />
+            <Button key="cleanup-plan" label={tr(loc, 'btnPlan')} onPress={() => startCleanup($, 'plan')} />
           )}
         </Box>
       </Box>
     )
   })
 
-  // The band above the prompt, top to bottom:
-  //   working: turning hourglass + the running step (n/m · text) + the tool running now
-  //   idle after a card: the card's template part — title + time, heading, up to 3 points, its buttons
-  //   always (when due): the budget bars, the branch-hygiene row with the cleanup button.
-  // The card's answer never shows here: it stays inline in the transcript.
+  // The band above the prompt (concept 20261115-1417-band-redesign, design r2-d2):
+  //   a card is shown: left the card part (title, heading, CTA points, buttons), a divider, right the status
+  //     rail (context ring + Compact when advised, the cleanup block when due); the time sits in the band's
+  //     top-right corner. The terminal has no columns: the same parts, one column.
+  //   working: turning ⏳ + the running step (n/m · text) + the tool; the rail shows the ring only.
+  //   idle: one slim row, "Last: {card title} · {time}" left, ring chip + 🧹 N ▸ right; hidden when nothing is due.
+  // The card's answer and its result lines never show here: they stay inline in the transcript.
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     if (e.props.hasSurvey || !(await open($))) return next(e)
+    const sh = await sharedNow($)
+    const loc = sh.loc
     const working = e.props.isWorking === true
+    const prog = await read($, progress)
     const c = working ? null : await read($, card)
-    const w = working ? workingLine(await read($, progress)) : null
+    const last = await read($, lastCard)
+    const w = working ? workingLine(prog) : null
     const b = await read($, budget)
     const now = await $.clock.now()
-    const line = budgetLine(b, now)
-    const hyg = await read($, hygiene)
-    const run = await read($, cleanup)
-    const hl = hygieneLine(hyg, false)
-    if (!w && !c && !line && !hl) return next(e)
-    const { Box, Button, Text } = $.ui.resolve(e)
-    // Desktop: the card's animated SVG (bars, hourglass) at a fixed size; the terminal has no Svg, so glyphs.
-    const Svg = e.surface === 'terminal' ? null : ($.ui.resolve(e) as { Svg?: any }).Svg
     const bars = budgetBars(b, now)
-    const ctx = contextNote(b)
+    const ring = ringPercent(b, sh.env)
+    const run = await read($, cleanup)
+    const folded = await read($, fold)
+    const hintsUp = await read($, hintsOpen)
+    const hintCard = isHintCard(c)
+    const hidden = markerHides(sh.marker, (sh.hyg && sh.hyg.repo) || '', sh.sid, (sh.hyg && sh.hyg.reportAt) || 0, now)
+    const cv = working || hidden ? null : cleanupView(sh.hyg, sh.threshold)
+    const advised = compactAdvised(ring, { concept: sh.work.concept, changes: sh.work.changes, steps: prog.steps.some(s => s.status !== 'completed') }, c)
+    const idle = !w && !c
+    // Idle and nothing due (no cleanup, no context worth a glance, no budget bar): the band stays away.
+    if (idle && !cv && !bars.length && !(ring !== null && ring >= CONTEXT_SHOW_PERCENT)) return next(e)
+    const { Box, Button, Text } = $.ui.resolve(e)
+    // Desktop: the card's animated SVG (bars, hourglass, ring) at a fixed size; the terminal has no Svg, so glyphs.
+    const desktop = e.surface !== 'terminal'
+    const Svg = desktop ? ($.ui.resolve(e) as { Svg?: any }).Svg : null
+    // The card's type scale as far as the mod API has one: title/heading 16 px medium, points 14 px, time 12 px tabular.
+    const S: Record<string, any> = desktop
+      ? {
+          title: { size: 'heading', weight: 'medium' },
+          point: { size: 'body', dimColor: true },
+          time: { size: 'caption', dimColor: true, tabular: true },
+          small: { size: 'caption', dimColor: true },
+        }
+      : { title: { bold: true }, point: { dimColor: true }, time: { dimColor: true }, small: { dimColor: true } }
+    const toggle = () => update($, fold, v => !v)
+
+    const cta = !cv ? null : run.phase === 'planning' || run.phase === 'applying' ? (
+      <Text key="cleanup-run" dimColor>{`[ ${tr(loc, 'cleanupBtn')} · ${tr(loc, run.phase === 'planning' ? 'runPlanning' : 'runApplying')} ]`}</Text>
+    ) : run.phase === 'planned' ? (
+      <Button key="cleanup-review" label={tr(loc, 'btnReview')} onPress={() => $.ui.open({ id: CLEANUP_PANE, title: 'Cleanup' })} />
+    ) : (
+      <Button key="cleanup" label={tr(loc, 'cleanupBtn')} onPress={() => startCleanup($, 'plan')} />
+    )
+    const detail = cv && folded && (
+      <Box key="cleanup-detail" flexDirection="column">
+        {cv.rows.map(r => (
+          <Box key={r.key} flexDirection="row" justifyContent="space-between" columnGap={2}>
+            <Text {...S.small}>{tr(loc, r.key)}</Text>
+            <Text>{r.n}</Text>
+          </Box>
+        ))}
+        <Text key="cleanup-rule" {...S.small}>{ruleText(cv, loc)}</Text>
+        {cta}
+      </Box>
+    )
+    // Collapsed: one line "🧹 N leftovers ▸" + the button; expanded: the breakdown, the rule, the button.
+    const cleanupBlock = cv && (
+      <Box key="hygiene" flexDirection="column" rowGap={1}>
+        <Box flexDirection="row" alignItems="center" columnGap={1}>
+          <Button key="cleanup-fold" plain label={`🧹 ${junkLabel(cv.n, loc)} ${folded ? '▾' : '▸'}`} onPress={toggle} />
+          {!folded && cta}
+        </Box>
+        {detail}
+      </Box>
+    )
+    const ringEl =
+      ring === null ? null : Svg ? (
+        <Box key="ring" flexDirection="row" alignItems="center" columnGap={1}>
+          <Svg source={ringSvg(ring, advised)} alt={tr(loc, 'ringAlt', { p: ring })} width={RING_SIZE} height={RING_SIZE} isInteractive />
+          <Box flexDirection="column">
+            <Text bold {...(advised ? { color: AMBER } : {})}>{ring} %</Text>
+            <Text {...S.small}>{tr(loc, 'ctx')}</Text>
+          </Box>
+        </Box>
+      ) : (
+        <Text key="ring" dimColor={!advised} {...(advised ? { color: AMBER } : {})}>{`🧠 ${tr(loc, 'ctx')} ${ring} %`}</Text>
+      )
+    const compactBtn = advised ? <Button key="compact" label={tr(loc, 'compact')} onPress={() => $.session.compact()} /> : null
+    const budgetEl = !bars.length ? null : Svg ? (
+      <Box key="budget" flexDirection="row" alignItems="center" columnGap={2} flexWrap="wrap">
+        {bars.map(bar => (
+          <Box key={`bar-${bar.label}`} flexDirection="row" alignItems="center" columnGap={1}>
+            <Text dimColor>{bar.label}</Text>
+            <Svg source={budgetBarSvg(bar)} alt={budgetBarAlt(bar)} width={BUDGET_BAR_SIZE.width} height={BUDGET_BAR_SIZE.height} isInteractive />
+          </Box>
+        ))}
+      </Box>
+    ) : (
+      <Text key="budget" dimColor>{budgetLine(b, now)}</Text>
+    )
+
+    // --- idle: one slim row ---
+    if (idle) {
+      const text = lastLine(last, loc)
+      return (
+        <Box key="band" flexDirection="column" rowGap={1}>
+          <Box key="idle" flexDirection="row" alignItems="center" columnGap={2}>
+            <Text key="idle-last" {...S.small}>{text}</Text>
+            <Box flexGrow={1} />
+            {ring !== null && (
+              <Box key="idle-ring" flexDirection="row" alignItems="center" columnGap={1}>
+                {Svg && <Svg source={ringSvg(ring, advised, RING_CHIP_SIZE)} alt={tr(loc, 'ringAlt', { p: ring })} width={RING_CHIP_SIZE} height={RING_CHIP_SIZE} isInteractive />}
+                <Text {...S.small} {...(advised ? { color: AMBER } : {})}>{`${Svg ? '' : '🧠 '}${ring} %`}</Text>
+              </Box>
+            )}
+            {cv && <Button key="cleanup-fold" plain label={`🧹 ${cv.n} ${folded ? '▾' : '▸'}`} onPress={toggle} />}
+            {compactBtn}
+          </Box>
+          {cv && folded && detail}
+          {budgetEl}
+        </Box>
+      )
+    }
+
+    // --- working: ⏳ + the step + the tool; the rail is the ring alone ---
+    const workEl = w && (
+      <Box key="working" flexDirection="row" alignItems="center" columnGap={1}>
+        {Svg ? <Svg source={hourglassSvg()} alt={tr(loc, 'working')} width={HOURGLASS_SIZE} height={HOURGLASS_SIZE} isInteractive /> : <Text>⏳</Text>}
+        <Text bold>{w.head}</Text>
+        {w.detail && <Text dimColor>{w.detail}</Text>}
+      </Box>
+    )
+
+    // --- the card part: title, heading, CTA points (never the result lines), the card's own buttons ---
+    const buttons = c && c.buttons.length > 0 && (
+      <Box key="card-buttons" flexDirection="row" columnGap={1} flexWrap="wrap">
+        {c.buttons.map((bt, i) => (
+          <Button key={`card-button-${i}`} label={bt.label} variant={bt.primary ? 'primary' : undefined} onPress={() => pressCardButton($, bt.prompt)} />
+        ))}
+      </Box>
+    )
+    const hintToggle = hintCard ? <Button key="hints-toggle" plain label={hintsUp ? '? ▾' : '?'} onPress={() => update($, hintsOpen, v => !v)} /> : null
+    const points =
+      c &&
+      (!hintCard || hintsUp) &&
+      c.points.map((p, i) =>
+        desktop ? (
+          <Box key={`card-point-${i}`} flexDirection="row" columnGap={1}>
+            <Text color={VIOLET} weight="medium">›</Text>
+            <Text {...S.point}>{p}</Text>
+          </Box>
+        ) : (
+          <Text key={`card-point-${i}`} dimColor>
+            › {p}
+          </Text>
+        ),
+      )
+
+    if (!desktop) {
+      // Terminal: one column, same parts.
+      return (
+        <Box key="band" flexDirection="column" rowGap={1}>
+          {workEl}
+          {c && (c.title || c.at) && (
+            <Box key="card-title" flexDirection="row" justifyContent="space-between" columnGap={2}>
+              <Text {...S.title}>{c.title}</Text>
+              {c.at && <Text {...S.time}>{c.at}</Text>}
+            </Box>
+          )}
+          {c && (
+            <Box key="card-heading-row" flexDirection="row" columnGap={1}>
+              <Text key="card-heading" bold>{c.heading}</Text>
+              {hintToggle}
+            </Box>
+          )}
+          {points}
+          {buttons}
+          {budgetEl}
+          {ringEl}
+          {compactBtn}
+          {cleanupBlock}
+        </Box>
+      )
+    }
     return (
-      <Box flexDirection="column" rowGap={1}>
-        {w && (
-          <Box key="working" flexDirection="row" alignItems="center" columnGap={1}>
-            {Svg ? (
-              <Svg source={hourglassSvg()} alt="Claude is working" width={HOURGLASS_SIZE} height={HOURGLASS_SIZE} isInteractive />
-            ) : (
-              <Text>⏳</Text>
-            )}
-            <Text bold>{w.head}</Text>
-            {w.detail && <Text dimColor>{w.detail}</Text>}
-          </Box>
-        )}
-        {c && (c.title || c.at) && (
-          <Box key="card-title" flexDirection="row" justifyContent="space-between" columnGap={2}>
-            <Text bold>{c.title}</Text>
-            {c.at && <Text dimColor>{c.at}</Text>}
-          </Box>
-        )}
-        {line && !Svg && <Text dimColor>{line}</Text>}
-        {line && Svg && (
-          <Box key="budget" flexDirection="row" alignItems="center" columnGap={2} flexWrap="wrap">
-            {bars.map(bar => (
-              <Box key={bar.label} flexDirection="row" alignItems="center" columnGap={1}>
-                <Text dimColor>{bar.label}</Text>
-                <Svg source={budgetBarSvg(bar)} alt={budgetBarAlt(bar)} width={BUDGET_BAR_SIZE.width} height={BUDGET_BAR_SIZE.height} isInteractive />
-              </Box>
-            ))}
-            {ctx && <Text dimColor>{ctx}</Text>}
-          </Box>
-        )}
-        {c && (
-          <Box key="card-decision" flexDirection="column" rowGap={1}>
-            <Text bold>{c.heading}</Text>
-            {c.points.map((p, i) => (
-              <Text key={`card-point-${i}`} dimColor>
-                › {p}
-              </Text>
-            ))}
-            {c.buttons.length > 0 && (
-              <Box flexDirection="row" columnGap={1} flexWrap="wrap">
-                {c.buttons.map((bt, i) => (
-                  <Button
-                    key={`card-button-${i}`}
-                    label={bt.label}
-                    variant={bt.primary ? 'primary' : undefined}
-                    onPress={() => pressCardButton($, bt.prompt)}
-                  />
-                ))}
+      <Box key="band" flexDirection="column" rowGap={1}>
+        <Box key="zones" position="relative" flexDirection="row" columnGap={2}>
+          <Box key="main" flexDirection="column" flexGrow={1} rowGap={1}>
+            {workEl}
+            {c && c.title && <Text key="card-title" {...S.title}>{c.title}</Text>}
+            {c && (
+              <Box key="card-heading-row" flexDirection="row" alignItems="center" columnGap={1}>
+                <Text key="card-heading" {...S.title}>{c.heading}</Text>
+                {hintToggle}
               </Box>
             )}
+            {points}
+            {buttons}
           </Box>
-        )}
-        {hl && (
-          <Box key="hygiene" flexDirection="row" alignItems="center" columnGap={1}>
-            <Text dimColor>{Svg ? hl : `devops · ${hl}`}</Text>
-            {run.phase === 'planning' || run.phase === 'applying' ? (
-              <Text dimColor>[ Clean up · {run.phase === 'planning' ? 'planning…' : 'applying…'} ]</Text>
-            ) : run.phase === 'planned' ? (
-              <Button key="cleanup-review" label="Review cleanup plan" onPress={() => $.ui.open({ id: CLEANUP_PANE, title: 'Cleanup' })} />
-            ) : (
-              <Button key="cleanup" label="Clean up (opus)" dimColor onPress={() => startCleanup($, 'plan')} />
-            )}
+          <Box key="rail-divider" width={1} backgroundColor={DIVIDER} />
+          <Box key="rail" flexDirection="column" rowGap={1} width={RAIL_WIDTH}>
+            {ringEl}
+            {compactBtn}
+            {cleanupBlock}
           </Box>
-        )}
+          {c && c.at && (
+            <Box key="card-time" position="absolute" top={0} right={0}>
+              <Text {...S.time}>{c.at}</Text>
+            </Box>
+          )}
+        </Box>
+        {budgetEl}
       </Box>
     )
   })
