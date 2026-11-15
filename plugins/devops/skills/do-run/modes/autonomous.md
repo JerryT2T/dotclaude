@@ -571,7 +571,7 @@ Collaboration protocol (handoffs, merge order): `{PLUGIN_ROOT}/deep-knowledge/ag
 
 ### Live Testing (implement mode only)
 
-Follow the **QA Testing Protocol** from `{PLUGIN_ROOT}/deep-knowledge/agent-orchestration.md` § QA Wave.
+Follow the **QA Testing Protocol** in `{PLUGIN_ROOT}/deep-knowledge/agent-qa-wave.md`.
 Use `$BROWSER_TOOL` (from Step 3b) for all browser-based visual verification.
 
 **Autonomous-specific additions:**
