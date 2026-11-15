@@ -57,6 +57,8 @@ import {
   historyFrom,
   hourglassSvg,
   HOURGLASS_SIZE,
+  helpSvg,
+  HELP_SIZE,
   hygieneFrom,
   hygieneLine,
   isCardTool,
@@ -124,9 +126,11 @@ const TICK_MS = 5000
 // Band look: the card's lilac › and amber, the divider and rail of the concept (rounds/02.html).
 const AMBER = '#e6c36a'
 const VIOLET = '#9d8cd6'
-const AMBER_BG = '#3d3220'
 const DIVIDER = '#353535'
 const RAIL_WIDTH = 30
+// The hover overlay of the batch / mode hints: cells wide, opaque so it covers the buttons under it.
+const HINTS_WIDTH = 56
+const POPOVER_BG = '#262626'
 let ticker: { cancel: () => void } | null = null
 
 /** Keeps the Agents pane's elapsed times live: a timer that bumps `tick` while any subagent runs, and stops itself after. */
@@ -975,13 +979,8 @@ export const register: Register = on => {
       ) : (
         <Text key="ring" dimColor={!advised} {...(advised ? { color: AMBER } : {})}>{`🧠 ${tr(loc, 'ctx')} ${ring} %`}</Text>
       )
-    // Desktop: the amber pill (#e6c36a on #3d3220) drawn as the Button's children, one pressable; the terminal keeps the label.
-    const compactBtn =
-      advised && !working ? (
-        <Button key="compact" label={tr(loc, 'compact')} onPress={() => $.session.compact()}>
-          {desktop ? <Text color={AMBER} backgroundColor={AMBER_BG}>{` ${tr(loc, 'compact')} `}</Text> : tr(loc, 'compact')}
-        </Button>
-      ) : null
+    // The same native button as "Aufräumen" (round-4 review: the square amber pill read as foreign); the amber ring carries the urgency.
+    const compactBtn = advised && !working ? <Button key="compact" label={tr(loc, 'compact')} onPress={() => $.session.compact()} /> : null
     const budgetEl = !bars.length ? null : Svg ? (
       <Box key="budget" flexDirection="row" alignItems="center" columnGap={2} flexWrap="wrap">
         {bars.map(bar => (
@@ -1035,11 +1034,10 @@ export const register: Register = on => {
         ))}
       </Box>
     )
-    const hintToggle = hintCard ? <Button key="hints-toggle" plain label={hintsUp ? '? ▾' : '?'} onPress={() => update($, hintsOpen, v => !v)} /> : null
-    const points =
-      c &&
-      (!hintCard || hintsUp) &&
-      c.points.map((p, i) =>
+    // Hint cards: a pointer surface (Desktop, editor) shows a round "?" whose hover overlays the hints; touch and the terminal toggle.
+    const hoverHints = hintCard && Svg && (e.surface === 'desktop' || e.surface === 'vscode')
+    const pointRows = (list: string[]) =>
+      list.map((p, i) =>
         desktop ? (
           <Box key={`card-point-${i}`} flexDirection="row" columnGap={1}>
             <Text color={VIOLET} weight="medium">›</Text>
@@ -1051,6 +1049,30 @@ export const register: Register = on => {
           </Text>
         ),
       )
+    const hintToggle = !hintCard ? null : hoverHints ? (
+      <Box key="hints" position="relative">
+        <Svg source={helpSvg()} alt={tr(loc, 'hints')} width={HELP_SIZE} height={HELP_SIZE} />
+        <Box
+          position="absolute"
+          top={1}
+          left={0}
+          width={HINTS_WIDTH}
+          display="none"
+          hover={{ display: 'flex' }}
+          flexDirection="column"
+          rowGap={1}
+          paddingX={1}
+          borderStyle="round"
+          borderColor={DIVIDER}
+          backgroundColor={POPOVER_BG}
+        >
+          {pointRows(c!.points)}
+        </Box>
+      </Box>
+    ) : (
+      <Button key="hints-toggle" plain label={hintsUp ? '? ▾' : '?'} onPress={() => update($, hintsOpen, v => !v)} />
+    )
+    const points = c && (!hintCard || (hintsUp && !hoverHints)) && pointRows(c.points)
 
     if (!desktop) {
       // Terminal: one column, same parts.

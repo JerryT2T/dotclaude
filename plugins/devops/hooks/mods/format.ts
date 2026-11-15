@@ -407,6 +407,22 @@ export function hourglassSvg(): string {
   )
 }
 
+export const HELP_SIZE = 16
+/**
+ * The batch / mode hints' trigger: a round "?" in the card's secondary text colour (dark / light by the
+ * frame's colour scheme). Hovering the keyed Box around it reveals the hints as an overlay (round-4 review).
+ */
+export function helpSvg(): string {
+  const n = HELP_SIZE
+  const c = n / 2
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${n}" height="${n}" viewBox="0 0 ${n} ${n}">` +
+    `<style>circle{stroke:#a9a9a9}text{fill:#a9a9a9}@media (prefers-color-scheme: light){circle{stroke:#6b6b6b}text{fill:#6b6b6b}}</style>` +
+    `<circle cx="${c}" cy="${c}" r="${c - 1}" fill="none" stroke-width="1.4"/>` +
+    `<text x="${c}" y="${c + 4}" text-anchor="middle" font-size="11" font-weight="600" font-family=${JSON.stringify(CARD_FONT)}>?</text></svg>`
+  )
+}
+
 /** The line stays this long after the daily report (dimmed with its age from 24 h on), then it goes. */
 const ORPHAN_MAX_AGE_MS = 72 * 3_600_000
 const ORPHAN_FRESH_MS = 24 * 3_600_000
@@ -667,6 +683,7 @@ const TABLE = {
     '理由: 残骸 {n} 件（しきい値 {t} 超）',
     '触发：{n} 项遗留，超过 {t}',
   ],
+  hints: ['Hints', 'Hinweise', 'Indicaciones', 'Conseils', 'Dicas', 'ヒント', '提示'],
   working: ['Claude is working', 'Claude arbeitet', 'Claude está trabajando', 'Claude travaille', 'Claude está trabalhando', 'Claude が作業中', 'Claude 正在工作'],
   ringAlt: [
     'Context: {p} % of the auto-compact limit',

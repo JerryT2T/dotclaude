@@ -1047,6 +1047,25 @@ test('B6 the user own auto-compact setting moves the ring (CLAUDE_AUTOCOMPACT_PC
   await band.unmount()
 })
 
+test('review 4: on Desktop the hints sit behind a round ? icon whose hover overlays them (hidden at rest, absolute, opaque)', async ($, on) => {
+  engine(on)
+  const batch = { ...CARD_DATA, ti: 'Batch', h: '👉 📚 Batch — sammelt Aufträge', pt: ['Aufträge einzeln senden', 'batch ship beendet den Modus'] }
+  on('tool.call', () => ({ result: {}, text: `<script type="application/json" id="dc-card-data">${JSON.stringify(batch)}</script>` }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.tool.call({ tool: CARD_TOOL, summary: 'x' } as any)
+  const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await band.find({ key: 'hints-toggle' })).toBeUndefined()
+  const trigger: any = await band.find({ key: 'hints' })
+  expect(svgIn(trigger)?.props.source).toMatch(/<circle/)
+  const pop: any = trigger.children.find((c: any) => c && c.type === 'Box') // unkeyed: the hover scope is the keyed "hints" Box
+  expect(pop.props).toMatchObject({ position: 'absolute', display: 'none' })
+  expect(pop.hover).toEqual({ display: 'flex' }) // the engine accepted the reveal (it refuses one scoped to a hidden keyed Box)
+  expect(pop.props.backgroundColor).toBeTruthy()
+  expect(JSON.stringify(pop)).toContain('Aufträge einzeln')
+  expect(JSON.stringify(pop)).toContain('batch ship beendet')
+  await band.unmount()
+})
+
 test('B17 hint cards (batch / test mode): heading plus a ? toggle, hints collapsed by default and per session; decision cards keep their points', async ($, on) => {
   engine(on)
   const batch = { ...CARD_DATA, ti: 'Batch', h: '👉 📚 Batch — sammelt Aufträge', pt: ['Aufträge einzeln senden', 'batch ship beendet den Modus'] }
@@ -1054,9 +1073,8 @@ test('B17 hint cards (batch / test mode): heading plus a ? toggle, hints collaps
   on('tool.call', () => ({ result: {}, text: `<script type="application/json" id="dc-card-data">${JSON.stringify(data)}</script>` }))
   await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
   await $.tool.call({ tool: CARD_TOOL, summary: 'x' } as any)
-  for (const surface of SURFACES) {
+  for (const surface of ['terminal', 'mobile'] as const) {
     let band = await $.ui.mount({ ...BAND, surface })
-    console.log('DBGB', surface, JSON.stringify(await band.find({ key: 'card-heading-row' })))
     expect(await has(band, 'Batch — sammelt')).toBeDefined()
     expect((await band.find({ key: 'hints-toggle' }))?.props.label).toBe('?')
     expect(JSON.stringify(await band.find({ key: 'band' }))).not.toContain('Aufträge einzeln')
@@ -1073,6 +1091,7 @@ test('B17 hint cards (batch / test mode): heading plus a ? toggle, hints collaps
   const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
   expect(JSON.stringify(await band.find({ key: 'band' }))).toContain('Doku nachziehen')
   expect(await band.find({ key: 'hints-toggle' })).toBeUndefined()
+  expect(await band.find({ key: 'hints' })).toBeUndefined()
   await band.unmount()
 })
 
@@ -1269,15 +1288,16 @@ test('a long card heading falls back to the wrapping Text element on Desktop', a
   await band.unmount()
 })
 
-test('the Compact button is an amber pill (#e6c36a on #3d3220) as the Button children on Desktop, the plain label on the terminal', async ($, on) => {
+test('review 4: the Compact button is the same native button as the cleanup one (no square pill), on Desktop and the terminal', async ($, on) => {
   engine(on, { files: { '/.claude/concept-active.json': '{}' } })
   await $.session.start({ cwd: REPO, surface: 'desktop', isInteractive: true })
   await $.session.measure(MEASURE as any)
   const d = await $.ui.mount({ ...BAND, surface: 'desktop' })
   const btn: any = await d.find({ key: 'compact' })
   expect(btn?.props.label).toBe('Compact')
-  const pill = btn.children.find((c: any) => c.type === 'Text')
-  expect(pill.props).toMatchObject({ color: '#e6c36a', backgroundColor: '#3d3220' })
+  expect(btn.props.plain).toBeUndefined()
+  expect(btn.props.variant).toBeUndefined()
+  expect((btn.children || []).some((c: any) => c.type === 'Text')).toBe(false)
   await d.unmount()
   const t: any = await (await $.ui.mount({ ...BAND, surface: 'terminal' })).find({ key: 'compact' })
   expect(t?.props.label).toBe('Compact')
