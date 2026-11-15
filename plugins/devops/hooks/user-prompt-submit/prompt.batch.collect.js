@@ -68,7 +68,7 @@ const { execFileSync } = require('child_process');
 const B = require('../lib/batch-state');
 // JSON block verdict, not exit 2 — the reasoning lives in lib/block-prompt.js.
 const { blockPrompt } = require('../lib/block-prompt');
-const { unbatchTitle, readCurrentTitle } = require('../lib/session-title');
+const { fireTitle, readCurrentTitle } = require('../lib/session-title');
 
 /** Absolute path to the state module, so injected guidance can quote a command
  *  that actually runs — a relative require resolves against the wrong cwd. */
@@ -312,7 +312,7 @@ function sessionLocale(sessionId) {
  */
 function retireTitleLines(title, ctx = {}) {
   if (typeof title === 'string') {
-    const next = unbatchTitle(title, ctx);
+    const next = fireTitle(title, ctx);
     if (next === null) return [];
     return [
       '',
@@ -326,7 +326,7 @@ function retireTitleLines(title, ctx = {}) {
   return [
     '',
     'Session-Titel: Beginnt er mit "👉 ➜ 📚 Batch ┃ " oder dem alten "📥 Batch – " (mcp__ccd_session_mgmt__get_session',
-    'self), entferne genau dieses Präfix via mcp__ccd_session_mgmt__set_session_title',
+    'self), ersetze genau dieses Präfix durch "⏳ ➜ 🤖 Solo ┃ " via mcp__ccd_session_mgmt__set_session_title',
     'self. Nur zurückgestellt (deferred) ist nicht fehlend: dann beide einmal per ToolSearch',
     '"select:mcp__ccd_session_mgmt__get_session,mcp__ccd_session_mgmt__set_session_title" laden, dann aufrufen.',
     'Fehlen die Tools wirklich (Terminal, unbeaufsichtigt) oder schlägt der Aufruf fehl: still überspringen.',
