@@ -219,6 +219,9 @@ describe("concept-build — assemble", () => {
     const bad = cb.build(dir, { home });
     expect(bad.ok).toBe(false);
     expect(bad.problems.join("\n")).toMatch(/final-report round must be the last/);
+    write(dir, 3, '<section data-iteration="3" data-iteration-template="free" data-review data-review-from="2"><h2>Umsetzung</h2></section>');
+    const review = cb.build(dir, { home });
+    expect(review.problems.join("\n")).not.toMatch(/final-report round must be the last/);
   });
 
   test("fragment checks: wrong number / template, unbaked frozen round, stray content all block and keep the last page", () => {

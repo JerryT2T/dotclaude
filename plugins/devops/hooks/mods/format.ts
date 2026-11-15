@@ -426,7 +426,8 @@ export function isUndecidedCopy(p: { branch?: string; reason?: string; legacy?: 
 }
 
 const INACTIVE_AFTER_DAYS = 1
-const AGENT_UNIT = /\/worktrees\/agent-|(^|\/)(worktree-)?agent-[0-9a-f]/i
+// `isAgentUnit` tests "<path> <branch>": a path-less branch starts after the space.
+const AGENT_UNIT = /\/worktrees\/agent-|(^|[\/\s])(worktree-)?agent-[0-9a-f]/i
 
 type RiskEntry = {
   kind?: string

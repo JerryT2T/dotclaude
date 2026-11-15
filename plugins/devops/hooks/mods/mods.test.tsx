@@ -14,6 +14,7 @@ import {
   compactThreshold,
   budgetBarAlt,
   cardTextSvg,
+  causeOf,
   estimateTextWidth,
   hourglassSvg,
   isHintCard,
@@ -1281,4 +1282,10 @@ test('the Compact button is an amber pill (#e6c36a on #3d3220) as the Button chi
   const t: any = await (await $.ui.mount({ ...BAND, surface: 'terminal' })).find({ key: 'compact' })
   expect(t?.props.label).toBe('Compact')
   expect(t.children.some((c: any) => c.type === 'Text' && c.props?.backgroundColor)).toBe(false)
+})
+
+test("review fix: a path-less worktree-agent branch counts as an agent leftover, not as a branch", () => {
+  expect(causeOf({ kind: "branch", branch: "worktree-agent-a769ed106dfc8c7c1", path: null, state: "unlanded" })).toBe("agent worktree")
+  expect(causeOf({ kind: "branch", branch: "tmp-gaps-main", path: null, state: "partial" })).toBe("branch")
+  expect(causeOf({ kind: "worktree", branch: "kw/scene", path: "P:/x/.claude/worktrees/agent-a2d1db7a", state: "partial" })).toBe("agent worktree")
 })
