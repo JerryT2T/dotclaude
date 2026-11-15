@@ -924,6 +924,110 @@ function findLegacyDecisionViews(html) {
   return issues;
 }
 
+// --- A13 analysis-ui-question -------------------------------------------------
+
+// UI vocabulary (signal b). German stems may sit inside a compound
+// ("Akzentfarbe"), English words need a word boundary on both sides.
+const UI_WORDS_DE = ['farbe', 'farben', 'schrift', 'schriftgröße', 'abstand', 'abstände', 'rahmen', 'layout', 'position', 'animation', 'button', 'icon', 'symbol', 'knopf', 'schaltfläche', 'hintergrund', 'kontrast', 'ausrichtung', 'eckenradius', 'rundung', 'schatten', 'oberfläche', 'darstellung', 'anordnung'];
+const UI_WORDS_EN = ['color', 'colour', 'font', 'spacing', 'padding', 'margin', 'border', 'layout', 'position', 'animation', 'button', 'icon', 'alignment', 'placement', 'shadow', 'radius', 'typography', 'tooltip', 'label text', 'wording of the button'];
+const UI_WORD_RE = new RegExp(
+  '(?<![\\p{L}\\p{N}])(?:\\p{L}*(?:' + UI_WORDS_DE.join('|') + ')|(?:' + UI_WORDS_EN.join('|') + '))(?:s|e|n|en)?(?![\\p{L}\\p{N}])', 'iu');
+const VARIANT_N_RE = /(?<![\p{L}\p{N}])(?:variante|variant|design|entwurf)\s*(?:n(?:r\.?)?\s*)?\d+(?![\p{L}\p{N}])/iu;
+
+function decodeText(s) {
+  return String(s || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * A13 `analysis-ui-question` (fail): in a LIVE design round the analysis view
+ * (`section[data-view-kind="analysis"]`) must not ask about the UI of the
+ * variants shown in that same round — the analysis has no UI in front of it.
+ * A detail question is an auto-note on the element in the variant, a direction
+ * question is its own variant. Two signals on the decision's question,
+ * situation, label and option labels: (a) it names a `data-nav-label` of a
+ * `data-design` / `data-screen` of the round, or "Variante N"; (b) a UI word.
+ * `data-ui-ok="<why>"` on the decision (reason required) waives a false
+ * positive. Frozen rounds (no `data-active`) are exempt.
+ *
+ * @returns {Array<{kind:string, why:string, at:number}>}
+ */
+function findAnalysisUiQuestions(html) {
+  const body = String(html || '').replace(/<!--[\s\S]*?-->/g, m => ' '.repeat(m.length))
+    .replace(/<(script|style)\b[\s\S]*?<\/\1\s*>/gi, m => ' '.repeat(m.length));
+  const issues = [];
+  const tagRe = /<(\/?)section\b[^>]*>/gi;
+  // Iteration regions: from one data-iteration open tag to the next.
+  const iters = [];
+  let m;
+  while ((m = tagRe.exec(body)) !== null) {
+    if (m[1] === '' && /\sdata-iteration=/i.test(m[0])) iters.push({ at: m.index, tag: m[0] });
+  }
+  iters.forEach((it, i) => { it.end = i + 1 < iters.length ? iters[i + 1].at : body.length; });
+  for (const it of iters) {
+    if (!/\sdata-active(?=[\s=>])/i.test(it.tag)) continue;
+    const region = body.slice(it.at, it.end);
+    const names = [];
+    const nameRe = /<section\b[^>]*\sdata-(?:design|screen)(?=[\s=>])[^>]*>/gi;
+    let n;
+    while ((n = nameRe.exec(region)) !== null) {
+      const label = decodeText(attrOf(n[0], 'data-nav-label') || '');
+      if ([...label].length >= 4) names.push(label);
+    }
+    const isDesign = (attrOf(it.tag, 'data-iteration-template') || '').toLowerCase() === 'design' || names.length > 0 || /\sdata-design(?=[\s=>])/i.test(region);
+    if (!isDesign) continue;
+    // Analysis views: balanced <section> scan from each analysis open tag.
+    const secRe = /<(\/?)section\b[^>]*>/gi;
+    const views = [];
+    let s;
+    const stack = [];
+    while ((s = secRe.exec(region)) !== null) {
+      if (s[1] === '/') {
+        const top = stack.pop();
+        if (top && top.analysis) views.push({ from: top.at, to: s.index });
+      } else {
+        stack.push({ at: s.index, analysis: /\sdata-view-kind=("|')analysis\1/i.test(s[0]) && /\sdata-view(?=[\s=>])/i.test(s[0]) });
+      }
+    }
+    for (const v of views) {
+      const vr = region.slice(v.from, v.to);
+      const decRe = /<\w+\b[^>]*\sdata-decision=("|')([^"']*)\1[^>]*>/gi;
+      const decs = [];
+      let d;
+      while ((d = decRe.exec(vr)) !== null) decs.push({ id: d[2], tag: d[0], at: d.index });
+      decs.forEach((dec, i) => {
+        const text = vr.slice(dec.at, i + 1 < decs.length ? decs[i + 1].at : vr.length);
+        const ok = attrOf(dec.tag, 'data-ui-ok');
+        if (ok !== null && ok.trim()) return;
+        const parts = [decodeText(attrOf(dec.tag, 'data-label') || '')];
+        const textRe = /<(\w+)\b[^>]*\sdata-(?:question|situation|opt-label)(?=[\s=>])[^>]*>([\s\S]*?)<\/\1\s*>/gi;
+        let t;
+        while ((t = textRe.exec(text)) !== null) parts.push(decodeText(t[2]));
+        const optRe = /\sdata-opt-label=("|')([^"']*)\1/gi;
+        let o;
+        while ((o = optRe.exec(text)) !== null) parts.push(decodeText(o[2]));
+        const hay = parts.filter(Boolean).join(' \n ');
+        let signal = null;
+        const lower = hay.toLowerCase();
+        const hit = names.find(nm => lower.includes(nm.toLowerCase()));
+        if (hit) signal = `names the variant / screen "${hit}" of this round`;
+        else {
+          const vm = VARIANT_N_RE.exec(hay);
+          if (vm) signal = `names "${vm[0]}"`;
+          else {
+            const wm = UI_WORD_RE.exec(hay);
+            if (wm) signal = `uses the UI word "${wm[0]}"`;
+          }
+        }
+        if (!signal) return;
+        const ui = it.at + v.from + dec.at;
+        issues.push({ kind: 'analysis-ui-question', at: ui,
+          why: `decision "${dec.id}" in the analysis view of a design round ${signal} — the analysis has no UI in front of it, so it must not ask about the UI of the variants. Fix: a detail question becomes an auto-note (annotation) on the element in the variant (templates-design-views.md § auto-notes); a direction question becomes its own variant (design). A genuine false positive: data-ui-ok="<why>" on the decision (decision-modes.md § Rules)` });
+      });
+    }
+  }
+  return issues;
+}
+
 // --- Variant overview authoring (validation-gate.md § Variant overview) -----
 
 /**
@@ -1262,7 +1366,7 @@ function evaluate(filePath, html) {
   const collisions = findChromeCollisions(html);
   const finalReport = findFinalReportIssues(html);
   const a = findAnalysisIssues(html);
-  const legacyViews = findLegacyDecisionViews(html);
+  const legacyViews = [...findLegacyDecisionViews(html), ...findAnalysisUiQuestions(html)];
   return {
     applicable: true,
     ok: missing.length === 0 && forbidden.length === 0 && structural.length === 0 && mapping.length === 0 && overlap.length === 0 && stale.length === 0 && collisions.length === 0 && finalReport.length === 0 && a.errors.length === 0 && legacyViews.length === 0,
@@ -1474,6 +1578,7 @@ module.exports = {
   findMappingIssues,
   findViewOverlap,
   findLegacyDecisionViews,
+  findAnalysisUiQuestions,
   findChromeCollisions,
   findFinalReportIssues,
   finalReportRegion,

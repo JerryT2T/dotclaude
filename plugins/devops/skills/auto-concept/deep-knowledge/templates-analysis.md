@@ -117,6 +117,7 @@ Attribute reference:
 | `data-alevel="1\|2\|3"` + `data-title` | block | analysis level: 1 briefing/overall, 2 topic, 3 this decision. `data-title` equals the rail / topic-page name exactly. Lite has L1 + L3 only. The stage shows ONE level as its first message (brief → L1, topic → L2, decision → L3, falling back to L2, then L1) |
 | `data-slot="short\|long"` | child of a level | short = 1 sentence + KPI or mini graphic (formatted text only when there is no number); long = one palette display + 2-4 sentences, never scrolls |
 | `data-example` | inside a level (next to / inside the long slot) | the "Beispiel" tab of the finding message: a concrete case from the real application; required at L3 whenever something visible exists (gate A12) |
+| `data-ui-ok="<why>"` | decision | waives gate A13 (`analysis-ui-question`: an analysis view of a design round must not ask about the UI of the round's variants) for a false positive; the reason is the value and is required |
 | `data-no-example="<why>"` | decision | opt-out of the L3 example when nothing visible exists (pure strategy, budget); the reason is the value |
 | `data-opt-preview` | inside an option | optional "So sähe das aus" line of that option |
 | `data-viz="<type>"` + `data-viz-spec='<json>'` | any element in a slot | palette display (below) |

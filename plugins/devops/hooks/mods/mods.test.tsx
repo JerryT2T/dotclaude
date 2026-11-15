@@ -6,6 +6,9 @@ import { expect, test } from 'claude-code/testing'
 import {
   addRun,
   agentRows,
+  batchDropReason,
+  batchMaybeCollectable,
+  batchViewFrom,
   budgetFrom,
   cleanupApplyPrompt,
   cleanupPlanPrompt,
@@ -28,6 +31,7 @@ import {
   markerActive,
   markerHides,
   nudgeThresholdFrom,
+  parseWriterOutput,
   passiveSpikeRow,
   ringPercent,
   tr,
@@ -1308,4 +1312,134 @@ test("review fix: a path-less worktree-agent branch counts as an agent leftover,
   expect(causeOf({ kind: "branch", branch: "worktree-agent-a769ed106dfc8c7c1", path: null, state: "unlanded" })).toBe("agent worktree")
   expect(causeOf({ kind: "branch", branch: "tmp-gaps-main", path: null, state: "partial" })).toBe("branch")
   expect(causeOf({ kind: "worktree", branch: "kw/scene", path: "P:/x/.claude/worktrees/agent-a2d1db7a", state: "partial" })).toBe("agent worktree")
+})
+
+// --- Batch collect (B3): the mod files the note through scripts/batch-note.js; the classic hook stays the fallback. ---
+
+const BATCH_MODE = JSON.stringify({ active: true, startedAt: '2026-11-10T19:00:00.000Z', expiresAt: '2026-11-11T03:00:00.000Z', maxNotes: 100, sessionId: 'sess-1' })
+const BATCH_NOTES = '# do-batch notes\n\n<!-- 2026-11-10T19:30:00.000Z -->\nfirst\n\n<!-- 2026-11-10T19:40:00.000Z -->\nsecond\n'
+const WRITER_OK = (n: number) => ({ value: { exitCode: 0, stdout: `${JSON.stringify({ ok: true, n, images: 0 })}\n`, stderr: '' } })
+
+/** Armed collection in /repo; `writer` answers the node entry, every call is recorded. */
+function batchEngine(on: any, writer: (argv: string[], stdin: string) => unknown, files: Files = {}) {
+  const e = engine(on, { files: { '/repo/.claude/batch-mode.json': BATCH_MODE, '/repo/.claude/batch.md': BATCH_NOTES, ...files } })
+  const calls: { argv: string[]; stdin: string }[] = []
+  on('process.run', (_: unknown, ev: { argv: string[]; init?: { stdin?: string } }) => {
+    if (ev.argv[0] !== 'node') return { value: { exitCode: 1, stdout: '', stderr: '' } } // git / gh of the other panes
+    calls.push({ argv: ev.argv, stdin: ev.init?.stdin ?? '' })
+    return writer(ev.argv, ev.init?.stdin ?? '')
+  })
+  on('session.id', () => ({ value: 'sess-1' }))
+  return { ...e, calls }
+}
+
+test('batch: an armed collection files the note via the writer, drops the prompt, toasts and counts in the band', async ($, on) => {
+  const { seen, calls } = batchEngine(on, () => WRITER_OK(3))
+  await $.session.start({ cwd: '/repo', surface: 'desktop', isInteractive: true })
+  const out = await $.prompt.submit({ text: 'Mach den Button blau' } as any)
+  expect(out).toEqual({ drop: '💾 #3' })
+  expect(seen.prompts).toEqual([]) // never reached the hooks beneath: no double filing with the classic hook
+  expect(seen.toasts).toEqual(['💾 Note #3 saved'])
+  expect(calls.length).toBe(1)
+  expect(calls[0].argv[0]).toBe('node')
+  expect(calls[0].argv[1]).toMatch(/scripts\/batch-note\.js$/)
+  const req = JSON.parse(calls[0].stdin)
+  expect(req).toMatchObject({ cwd: '/repo', sessionId: 'sess-1', text: 'Mach den Button blau', attachments: [] })
+  expect(req.key).toBeUndefined() // no dedupe: an identical repeat is a second note, never a silent drop
+  const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await has(band, '📚 Batch · 3')).toBe('📚 Batch · 3')
+  await band.unmount()
+})
+
+test('batch: the band shows the standing row while armed (count from batch.md)', async ($, on) => {
+  batchEngine(on, () => WRITER_OK(1))
+  await $.session.start({ cwd: '/repo', surface: 'terminal', isInteractive: true })
+  const band = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect(await has(band, '📚 Batch · 2')).toBe('📚 Batch · 2')
+  await band.unmount()
+})
+
+test('batch: no collection armed → the prompt passes unchanged and the writer is never started', async ($, on) => {
+  const { seen, calls } = batchEngine(on, () => WRITER_OK(1), { '/repo/.claude/batch-mode.json': JSON.stringify({ active: false }) })
+  await $.session.start({ cwd: '/repo', surface: 'desktop', isInteractive: true })
+  const out = await $.prompt.submit({ text: 'normal prompt' } as any)
+  expect(out.text).toBe('normal prompt')
+  expect(seen.prompts).toEqual(['normal prompt'])
+  expect(calls.length).toBe(0)
+})
+
+test('batch: another session owns the notes → next(e), the writer is not asked', async ($, on) => {
+  const { seen, calls } = batchEngine(on, () => WRITER_OK(1), { '/repo/.claude/batch-mode.json': JSON.stringify({ active: true, expiresAt: '2026-11-11T03:00:00.000Z', sessionId: 'other' }) })
+  await $.session.start({ cwd: '/repo', surface: 'desktop', isInteractive: true })
+  expect((await $.prompt.submit({ text: 'a note' } as any)).text).toBe('a note')
+  expect(calls.length).toBe(0)
+  expect(seen.prompts).toEqual(['a note'])
+})
+
+test('batch: writer failure, timeout, bad output, missing node → next(e), never a drop', async ($, on) => {
+  const answers: Array<() => unknown> = [
+    () => ({ value: { exitCode: 1, stdout: '{"ok":false,"reason":"foreign"}\n', stderr: '' } }), // refused
+    () => { throw new Error('timeout: the child was killed') }, // timeout / missing node (the call rejects)
+    () => ({ value: { exitCode: 0, stdout: 'not json', stderr: '' } }), // garbage
+    () => ({ value: { exitCode: 0, stdout: '{"ok":true}\n', stderr: '' } }), // no note number
+    () => ({ value: { exitCode: 0, stdout: '{"ok":true,"n":0}\n', stderr: '' } }), // no positive number
+    () => ({ value: { exitCode: 0, stdout: '', stderr: '' } }), // silent
+  ]
+  let i = 0
+  const { seen, calls } = batchEngine(on, () => answers[i++ % answers.length]())
+  await $.session.start({ cwd: '/repo', surface: 'desktop', isInteractive: true })
+  for (let k = 0; k < answers.length; k++) {
+    const out = await $.prompt.submit({ text: `note ${k}` } as any)
+    expect(out.text).toBe(`note ${k}`)
+    expect((out as any).drop).toBeUndefined()
+  }
+  expect(seen.prompts.length).toBe(answers.length) // every one reached the classic hook path
+  expect(seen.toasts).toEqual([])
+  expect(calls.length).toBe(answers.length)
+})
+
+test('batch: prompts that are never notes (slash command, empty) → next(e), writer not asked', async ($, on) => {
+  const { seen, calls } = batchEngine(on, () => WRITER_OK(9))
+  await $.session.start({ cwd: '/repo', surface: 'desktop', isInteractive: true })
+  for (const text of ['/do-batch go', '/do-batch off', '/compact', '   ']) {
+    const out = await $.prompt.submit({ text } as any)
+    expect((out as any).drop).toBeUndefined()
+  }
+  expect(calls.length).toBe(0)
+  expect(seen.prompts.length).toBe(4)
+})
+
+test('batch: an @file mention and pasted text travel verbatim to the writer, which files them', async ($, on) => {
+  const { calls } = batchEngine(on, () => WRITER_OK(4))
+  await $.session.start({ cwd: '/repo', surface: 'desktop', isInteractive: true })
+  const text = 'siehe @docs/spec.md und\n```\nzeile 1\nzeile 2\n```'
+  expect(await $.prompt.submit({ text } as any)).toEqual({ drop: '💾 #4' })
+  expect(JSON.parse(calls[0].stdin).text).toBe(text)
+})
+
+test('batch: an image the engine cannot hand over whole → next(e) (the hook takes the whole prompt), writer not asked', async ($, on) => {
+  const { seen, calls } = batchEngine(on, () => WRITER_OK(5))
+  await $.session.start({ cwd: '/repo', surface: 'desktop', isInteractive: true })
+  const out = await $.prompt.submit({ text: 'siehe Bild', attachments: [{ type: 'image', mediaType: 'image/png', id: 'missing' }] } as any)
+  expect((out as any).drop).toBeUndefined()
+  expect(calls.length).toBe(0)
+  expect(seen.prompts).toEqual(['siehe Bild'])
+})
+
+test('batch helpers: drop reason, writer output, mode view, pre-filter', () => {
+  expect(batchDropReason(7)).toBe('💾 #7')
+  expect(parseWriterOutput('{"ok":true,"n":2,"images":1}\n')).toEqual({ n: 2, images: 1 })
+  expect(parseWriterOutput('warn\n{"ok":true,"n":2}\n')).toEqual({ n: 2, images: 0 })
+  for (const bad of ['', 'x', '{"ok":false,"n":2}', '{"ok":true,"n":"2"}', '{"ok":true,"n":1.5}', undefined, 5]) expect(parseWriterOutput(bad)).toBeNull()
+  expect(batchViewFrom(BATCH_MODE, BATCH_NOTES, 'sess-1', NOW)).toEqual({ count: 2 })
+  expect(batchViewFrom(BATCH_MODE, BATCH_NOTES, 'other', NOW)).toBeNull() // another session's collection
+  expect(batchViewFrom(BATCH_MODE, BATCH_NOTES, 'sess-1', Date.parse('2026-11-12T00:00:00Z'))).toBeNull() // expired
+  expect(batchViewFrom(JSON.stringify({ active: true, maxNotes: 2 }), BATCH_NOTES, '', NOW)).toBeNull() // full
+  expect(batchViewFrom('{bad', BATCH_NOTES, '', NOW)).toBeNull()
+  expect(batchMaybeCollectable({ text: 'hello' })).toBe(true)
+  expect(batchMaybeCollectable({ text: '', attachments: [{}] })).toBe(true)
+  expect(batchMaybeCollectable({ text: '/x' })).toBe(false)
+  expect(batchMaybeCollectable({ text: 'hello', isMeta: true })).toBe(false)
+  expect(batchMaybeCollectable({ text: 'hello', command: { name: 'x', args: '' } })).toBe(false)
+  for (const loc of LOCALES) expect(tr(loc, 'toastNote', { n: 3 })).toMatch(/3/)
 })
