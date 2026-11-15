@@ -5,6 +5,15 @@
 ### Added
 - auto-guide: an idle guide now sleeps after 10 min at zero token cost; the next click in the panel wakes Claude through a `claude-guide://` protocol ping (Windows), so the guide no longer needs „weiter“ in the chat after a long break.
 
+## [0.377.0] — 2026-11-15
+
+### Added
+- auto-concept: blocking gate A13 `analysis-ui-question` — an analysis view of a design round may not ask about the variants' UI; detail questions go to an auto-note on the element, direction questions become their own variant (`data-ui-ok="<why>"` waives a false positive).
+- mods (alpha, Desktop): batch collection files a prompt as a note itself and drops it only after a confirmed write — toast „Notiz #N gespeichert“ and a „Batch · N“ band row instead of the red blocked-input panel; attachments included. New writer `scripts/batch-note.js` shared with the collect hook path; any failure falls back to the classic hook.
+
+### Changed
+- auto-concept: the dictation button is an SVG line mic; while dictating it becomes an accent pill with a live waveform and stop square, and the dictated field takes the accent border.
+
 ## [0.376.1] — 2026-11-15
 
 ### Changed

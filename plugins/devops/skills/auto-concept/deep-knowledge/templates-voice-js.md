@@ -157,6 +157,10 @@ function createConceptVoice(env) {
   }
 
   // ---- UI state ------------------------------------------------------------
+  // Off: a line microphone. On: a 4-bar waveform plus a stop square (mock d1 "Akzent-Pille").
+  const ICON_OFF = '<svg class="voice-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>';
+  const ICON_ON = '<span class="voice-wave" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="voice-stop" aria-hidden="true"></span>';
+  const FIELD_ON = 'voice-field-listening';
   const fab = () => doc.getElementById('feedback-toggle');
   const modeBtn = () => doc.getElementById('voice-mode-toggle');
   function paint() {
@@ -177,11 +181,17 @@ function createConceptVoice(env) {
     st.buttons.forEach(b => {
       const on = !!st.fs && st.fs.btn === b;
       b.classList.toggle('is-listening', on);
+      const ico = on ? 'on' : 'off';
+      if (b.dataset.voiceIcon !== ico) { b.dataset.voiceIcon = ico; b.innerHTML = on ? ICON_ON : ICON_OFF; }
       b.setAttribute('aria-pressed', String(on));
       b.setAttribute('aria-disabled', String(!!st.blocked));
       b.dataset.tip = st.blocked ? TIP[st.blocked] : (on ? TIP.mic_stop : TIP.mic_start);
       b.setAttribute('aria-label', b.dataset.tip);
     });
+    // The field being dictated into takes the accent border; every stop path ends in paint().
+    const live = st.fs && !st.blocked ? st.fs.field : null;
+    doc.querySelectorAll('.' + FIELD_ON).forEach(f => { if (f !== live) f.classList.remove(FIELD_ON); });
+    if (live) live.classList.add(FIELD_ON);
   }
   function flashDone() {
     if (!st.globalOn) return;
@@ -342,7 +352,7 @@ function createConceptVoice(env) {
   // ---- mounting the buttons ------------------------------------------------------
   function micButton(cls) {
     const b = doc.createElement('button');
-    b.type = 'button'; b.className = cls; b.textContent = '🎤';
+    b.type = 'button'; b.className = cls; b.innerHTML = ICON_OFF; b.dataset.voiceIcon = 'off';
     return b;
   }
   /** Every field gets one mic: attach bars (static markup), plain fields, the analysis composer. */
@@ -396,7 +406,7 @@ function createConceptVoice(env) {
       if (ce) st.lastRange.set(ce, r.cloneRange());
     });
     doc.addEventListener('visibilitychange', () => { if (!doc.hidden && wanted() && !st.rec) startRec(); });
-    win.addEventListener('pagehide', () => { st.globalOn = false; st.fs = null; if (st.rec) { try { st.rec.abort(); } catch (e) { /* ignore */ } } });
+    win.addEventListener('pagehide', () => { st.globalOn = false; st.fs = null; paint(); if (st.rec) { try { st.rec.abort(); } catch (e) { /* ignore */ } } });
     // The dock and the stages rebuild their fields: new fields get a mic, a rebuilt first note is re-resolved.
     if (win.MutationObserver && doc.body) new win.MutationObserver(scheduleScan).observe(doc.body, { childList: true, subtree: true });
     let saved = '0';
@@ -434,19 +444,32 @@ function createConceptVoice(env) {
 /* Same look as the 📎 beside it: one button family. */
 .voice-btn {
   background: var(--surface-2); border: 1px solid var(--border-color);
-  color: var(--text-secondary); border-radius: 6px; cursor: pointer;
-  padding: .1rem .35rem; font-size: .85rem; line-height: 1.3;
+  color: var(--text-secondary); border-radius: 8px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-width: 30px; height: 30px; padding: 0 7px; box-sizing: border-box; line-height: 1;
+  transition: background .15s, border-color .15s, color .15s, border-radius .15s;
 }
+.voice-btn .voice-ico { width: 16px; height: 16px; flex: none; }
 .voice-btn:hover { border-color: var(--accent-color); color: var(--text-primary); }
 .voice-btn[aria-disabled="true"] { opacity: .4; cursor: not-allowed; }
-.voice-btn.is-listening {
-  border-color: var(--danger-color, #f85149); color: var(--text-primary);
-  animation: voicePulse 1.2s ease-in-out infinite;
+/* On: filled accent pill, waveform + stop square instead of the microphone. */
+.voice-btn.is-listening, .voice-btn.is-listening:hover {
+  background: var(--accent-color); border-color: var(--accent-color); color: #fff;
+  border-radius: 15px; padding: 0 10px;
 }
+.voice-wave { display: inline-flex; gap: 2px; align-items: center; height: 14px; }
+.voice-wave i { display: block; width: 3px; height: 4px; border-radius: 2px; background: currentColor; animation: voiceBar 1s ease-in-out infinite; }
+.voice-wave i:nth-child(2) { animation-delay: .15s; } .voice-wave i:nth-child(3) { animation-delay: .3s; } .voice-wave i:nth-child(4) { animation-delay: .45s; }
+.voice-stop { width: 8px; height: 8px; border-radius: 2px; background: currentColor; opacity: .85; }
+@keyframes voiceBar { 0%, 100% { height: 4px; } 50% { height: 14px; } }
+/* The field being dictated into takes the accent border too. */
+.voice-field-listening { border-color: color-mix(in srgb, var(--accent-color) 55%, var(--border-color)) !important; }
 .voice-btn-solo { margin-top: .4rem; vertical-align: top; }
 .an-att .voice-btn { display: none; }
 .an-comp:has(.voice-btn-an) { grid-template-columns: minmax(0, 1fr) auto auto auto; }
-.voice-btn-an { padding: 0; font-size: 16px; }
+.voice-btn-an { padding: 0; width: 36px; height: 36px; border-radius: 10px; }
+.an-comp-b.voice-btn-an.is-listening { width: auto; min-width: 36px; padding: 0 12px; border-radius: 18px; background: var(--accent-color); border-color: var(--accent-color); color: #fff; }
+.an-comp-ed.voice-field-listening { outline: 1px solid color-mix(in srgb, var(--accent-color) 55%, var(--border-color)); outline-offset: -1px; }
 /* In the notes dock the buttons sit inside the field, bottom right: mic left of the 📎. */
 .feedback-dock .attach-slot .voice-btn { position: absolute; right: 52px; top: -34px; opacity: .7; }
 .feedback-dock .attach-slot .voice-btn:hover, .feedback-dock .attach-slot .voice-btn.is-listening { opacity: 1; }
@@ -457,10 +480,6 @@ html .feedback-dock .feedback-section textarea[data-attachable] { padding-right:
 .voice-mode-btn[aria-pressed="true"]::after {
   content: ""; display: inline-block; width: 6px; height: 6px; margin-left: 3px; vertical-align: super;
   border-radius: 50%; background: currentColor; animation: voiceBlink 1.2s ease-in-out infinite;
-}
-@keyframes voicePulse {
-  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--danger-color, #f85149) 45%, transparent); }
-  50%      { box-shadow: 0 0 0 5px transparent; }
 }
 @keyframes voiceBlink { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
 /* The collapsed FAB shows that the mic is listening, then that the words arrived. */
@@ -476,7 +495,7 @@ html .feedback-dock .feedback-section textarea[data-attachable] { padding-right:
   border-radius: inherit; background: var(--success-color, #2ea043); color: #fff; font-size: 1.9rem; font-weight: 700;
 }
 @media (prefers-reduced-motion: reduce) {
-  .voice-btn.is-listening, .feedback-fab[data-voice="listening"], .voice-mode-btn[aria-pressed="true"]::after { animation: none; }
+  .voice-wave i, .feedback-fab[data-voice="listening"], .voice-mode-btn[aria-pressed="true"]::after { animation: none; }
   .feedback-fab[data-voice="listening"] { box-shadow: 0 0 0 4px color-mix(in srgb, var(--danger-color, #f85149) 60%, transparent), 0 6px 16px rgba(0,0,0,0.4); }
 }
 ```
