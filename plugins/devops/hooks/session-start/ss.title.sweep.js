@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook ss.title.sweep
- * @version 0.2.0
+ * @version 0.3.0
  * @event SessionStart
  * @plugin devops
  * @description Fixes sidebar titles a crash or an app quit left on ⏳. A turn
@@ -14,6 +14,9 @@
  *   list_sessions row says `isRunning:false` to `👉 ➜ ⚡ Interrupted ┃ <title>`.
  *   Reported sessions go into ~/.claude/title-sweep-seen.json (session id →
  *   transcript mtime) so the next session start does not repeat them.
+ *   0.3.0: a concept title (👉 waiting or ⏳ working) whose bridge server is
+ *   gone (reboot, crash) becomes `🔴 ➜ 🧭 Concept ┃ <title>` instead —
+ *   resuming that session relaunches the bridge (ss.concept.resume).
  *   The scan walks every project's sessions (1–5 s under session-start load, it
  *   hit its budget), so it runs detached (lib/deferred-results) and its rename
  *   list arrives with the next user prompt. Silent when nothing is stale. Never
@@ -51,7 +54,8 @@ function buildContext(stale) {
   const rows = stale.slice(0, MAX_LISTED).map((s) => `  ${JSON.stringify(s.title)} → ${JSON.stringify(s.next)}`);
   return [
     '[ss.title.sweep] Desktop app only, once, silently, in this turn\'s first tool batch: these sessions still',
-    'show ⏳ although their transcript has been idle — the app or Claude Code was closed or crashed mid-turn.',
+    'show ⏳ although their transcript has been idle — the app or Claude Code was closed or crashed mid-turn —',
+    'or show a concept page whose bridge server is gone (🔴: resuming the session reconnects it).',
     `Call mcp__ccd_session_mgmt__list_sessions {limit: 50}; for every row with isRunning:false whose title`,
     'equals a left-hand title below, call mcp__ccd_session_mgmt__set_session_title {session_id: <its sessionId>,',
     'title: <the right-hand title>}. Leave running rows, rows not listed and archived sessions alone.',
