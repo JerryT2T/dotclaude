@@ -317,6 +317,17 @@ describe("orphan-scan", () => {
     expect(none.would.filter((w) => w.kind === "worktree")).toHaveLength(0);
   });
 
+  test("--clean-landed ranks agent leftovers among ALL removable leftovers, as ship_hygiene does", async () => {
+    const root = mkRoot();
+    const r = repoIn(root, "app");
+    for (let i = 0; i < 5; i++) git(r, "worktree", "add", "-q", "-b", `kw/stage-${i}`, path.join(r, ".claude", "worktrees", `agent-a0b0c0e${i}`), "main");
+    // a newer non-agent leftover: overall six removable, keep five -> the oldest agent worktree goes too
+    git(r, "worktree", "add", "-q", "-b", "feat/extra", path.join(r, ".claude", "worktrees", "extra"), "main");
+    const done = await cleanLanded(r, { apply: false, now: Date.now() + 2 * DAY, ...opts, settings: { autoCleanGateDays: 3, autoCleanMinAgeDays: 3, autoCleanKeepNewest: 5 } });
+    const agentsGone = done.would.filter((w) => w.kind === "worktree" && /agent-/.test(w.path));
+    expect(agentsGone).toHaveLength(1);
+  });
+
   test("parseArgs", () => {
     expect(parseArgs(["--clean-landed", "--repo", "x", "--apply", "--no-fetch"])).toMatchObject({ cleanLanded: true, apply: true, repo: "x", fetch: false });
   });

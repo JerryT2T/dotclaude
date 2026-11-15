@@ -219,11 +219,11 @@ async function cleanLanded(repo, { apply, now = Date.now(), projectsDir, fetch: 
   const r = await scanOne(repo, { fetch: doFetch, now, projectsDir, fetchMerged, fetchOpen });
   if (!r) return { repo, removed: [], skipped: [], would: [] };
   const remove = [];
-  // sub-agent leftovers obey the shared age/count rule (newest stay for inspection); the rest of
-  // the landed class keeps the idle-day gate below
+  // sub-agent leftovers obey the shared age/count rule (newest stay for inspection), ranked among ALL
+  // removable leftovers exactly as ship_hygiene's planAutoClean ranks them, so both pick the same
+  // agent leftovers; the rest of the landed class keeps the idle-day gate below
   const rule = settings || DEFAULT_RULE;
-  const agents = r.cls.removable.filter(isAgentLeftover);
-  const agentGo = new Set(pickByAgeCount(agents, rule).picks.map((p) => p.unit.key));
+  const agentGo = new Set(pickByAgeCount(r.cls.removable, rule).picks.map((p) => p.unit.key));
   for (const u of r.cls.removable) {
     if (isAgentLeftover(u) && !agentGo.has(u.key)) continue;
     // a worktree must have been idle for CLEAN_MIN_IDLE_MS — "landed" alone also
