@@ -272,6 +272,25 @@ All checkable while writing; several are gate warnings.
 - **An exclusive choice is never N bi-states.** Three cards that each say
   "Miteinbeziehen" for alternatives of one question can be submitted as "all
   three" — use `single` (gate A7).
+- **An analysis never asks about the UI of the variants of its own round
+  (gate A13, fail).** The analysis has no UI in front of it, so a question
+  about the look, position or wording of what the variants show cannot be
+  answered there. Route it: a *detail* question (colour, icon, spacing, label
+  text, position of one element) becomes an auto-note (annotation) on that
+  element in the variant; a *direction* question (which of two layouts, which
+  interaction model) becomes its own variant (design). The gate flags a
+  decision in the round's analysis view that names a `data-nav-label` of a
+  design / screen of the same round or "Variante N", or uses a UI word
+  (Farbe, Icon, Button, Layout, Position, Abstand, Schrift, Animation,
+  Rahmen, … / colour, font, spacing, border, …). A genuine false positive
+  (the UI word is about something not shown in the round): `data-ui-ok="<why>"`
+  on the decision, reason required.
+  *Before:* analysis question "Soll der Diktier-Button im aktiven Zustand die
+  Akzentfarbe tragen oder rot bleiben?" — the user has no button to look at.
+  *After:* an auto-note on the button in variant d1 ("Aktiv: Akzentfarbe statt
+  Rot?"), and — if the open point is really "Pille oder Vollfläche" — a
+  second variant d2 next to d1. The analysis keeps only what is not visible
+  in the variants (rules, data, behaviour, scope).
 - **Findings are content, not decisions.** A finding gets a control only when
   Claude needs it confirmed — then it is `verify`.
 - **≤ 3 topics, ≤ 7 decisions each** in a Full analysis; ≤ 5 decisions in a

@@ -182,6 +182,74 @@ and their shapes are checked strictly. vitest only collects
 message and exit 0 when no `claude` CLI is on PATH). CI runs it on shard 1 of
 `.github/workflows/ci-suite.yml`. Tests: `plugins/devops/hooks/mods/mods.test.tsx`.
 
+## Batch collect (concept 20261115-2125-batch-ux, note #3)
+
+While `/do-batch` collects, the classic hook `prompt.batch.collect.js` blocks every
+prompt, and the harness draws each block as a red "a hook blocked your input"
+panel. On Desktop (alpha, mod loaded) the mod files the note itself and the panel
+goes away; the hook stays untouched as the fallback everywhere else (terminal
+without the mod, cloud, mod not loaded, every failure).
+
+| Part | Decision |
+|---|---|
+| Hook | `on('prompt.submit')` in `hooks/mods/index.tsx` (`fileBatchNote`), before the existing task-notice toast logic |
+| Writer | `scripts/batch-note.js`, run with `$.process.run(['node', …])`, request JSON on stdin, one JSON line on stdout. It wraps `hooks/lib/batch-state.js` (`classify`, `isModeActive`, `isForeignSession`, `appendNote`, `assetsDir`), so mod and hook share one write path and one note format |
+| Confirmation | Toast `💾 Note #N saved` (localised, 7 languages: `toastNote`) plus a standing band row `📚 Batch · N` while collection is armed for this session (`batchViewFrom`, read from `.claude/batch-mode.json` + `batch.md`, cached 2 s). No red |
+| Drop reason | `💾 #N` — the shortest neutral text (`batchDropReason`) |
+| Attachments | The mod reads each image / document with `$.prompt.media` (4 MiB slices, 12 MiB cap per item) and hands base64 to the writer, which writes `.claude/batch-assets/<stamp>-<k>.<ext>` and appends `[Anhang-Datei] <path>` lines to the note. `@file` mentions that exist on disk get the same line, pasted text is plain text of the prompt (the engine expands pastes) and is filed verbatim |
+
+**Robustness contract** (the owner's condition: notes incl. attachments must never be lost):
+
+- The prompt is dropped **only** after the writer confirmed: exit code 0, stdout
+  parsed to `ok: true` with a positive integer note number (`parseWriterOutput`),
+  every attachment written and size-checked. Anything else — non-zero exit, a
+  timeout (20 s) or missing `node` (the call rejects), garbage output, a media
+  read that fails or exceeds the cap, a mod exception, the gate closed — returns
+  `next(e)`. `fileBatchNote` never throws and the shared `.catch` of the handler
+  only ever passes the prompt on; it can never drop.
+- The writer refuses (exit 1, reason in the JSON) when collection is off,
+  expired or full, when another session owns the notes (#841), and for
+  everything `classify` does not call `collect`: machine prompts, expanded or
+  typed slash commands, the execute marker (`go …`), `/do-batch off|go|status`.
+  Attachment placeholders (`[Image #1]`, `@file`) are neutralised for that probe
+  only.
+- Order inside the writer: images first (exclusive create, size verified), the
+  note last in one `appendNote`, confirmed by the count. **One image failing
+  aborts the whole filing** and removes the copies already written; the hook then
+  takes the whole prompt. Chosen over "keep the text, name the missing image"
+  because a note that silently reads "like the image" without the image is the
+  loss this feature exists to prevent.
+- No dedupe: the mod sends no idempotency key, so two identical prompts (a
+  "ja" typed twice) are two notes. A content key cannot tell a retry from a
+  deliberate repeat, and the engine raises one `prompt.submit` per Enter. The
+  writer still honours an explicit `key` for other callers. The residual risk is
+  a writer killed between the append and its stdout line: the hook then files a
+  second copy — a duplicate, never a loss.
+- Concurrent sessions or writers: notes are appended (`appendFileSync`, no
+  read-modify-write), assets use exclusive create with the next free index.
+- No double filing when the mod succeeded: the dropped prompt never reaches the
+  hooks beneath.
+
+Only `origin.kind` `composer` and `bridge` (the person typing) are collected;
+`e.command`, `isMeta`, and a leading `/` skip the writer without spawning it.
+
+**B3.0 spike — still open, to be checked in the Desktop app.** Not verifiable
+from the CLI: how the app renders a `prompt.submit` `{ drop: reason }`. The
+engine types say only "a hook's text is shown to the user as the reason" and
+"a broken plugin never blocks one". If the app wraps the reason in the same red
+blocked-input panel, the shortest-neutral reason above plus the toast and band row
+are the whole answer; if it shows the reason quietly, nothing changes. Record the
+observed rendering here after one real submit with collection armed (alpha
+channel, mod loaded — mind the Desktop load bug #105936: without the mod the
+classic hook runs and the panel stays).
+
+Tests: `batch:` cases in `hooks/mods/mods.test.tsx` (`npm run test:mods`: collect
+→ drop + toast + band count, writer refusal / timeout / bad output / missing node
+→ next, never-note prompts → next, foreign session → next, `@file` and pasted
+text, unreadable image → next) and `scripts/batch-note.test.js` (vitest: filing,
+images, long text, refusals, image-write failure leaves no half note, key
+idempotency, 8 concurrent writers).
+
 ## Sources
 
 - Mod API types of the running build (`.claude-plugin/types/` once a mod has

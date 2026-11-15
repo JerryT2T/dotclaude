@@ -242,3 +242,62 @@ describe("robustness", () => {
     expect(FakeRec.all.length).toBe(0);
   });
 });
+
+describe("dictation button look: icon swap + field marker", () => {
+  const FIELD = "voice-field-listening";
+  test("off = SVG microphone, on = waveform + stop square, back to the microphone on stop; no emoji", () => {
+    make();
+    const btn = doc.querySelector(".voice-btn");
+    expect(btn.querySelector("svg rect")).not.toBeNull();
+    expect(btn.querySelector(".voice-wave")).toBeNull();
+    btn.click();
+    expect(btn.classList.contains("is-listening")).toBe(true);
+    expect(btn.querySelectorAll(".voice-wave i").length).toBe(4);
+    expect(btn.querySelector(".voice-stop")).not.toBeNull();
+    expect(btn.querySelector("svg")).toBeNull();
+    btn.click();
+    expect(btn.querySelector("svg")).not.toBeNull();
+    expect(btn.querySelector(".voice-wave")).toBeNull();
+    expect(doc.body.innerHTML).not.toContain("🎤");
+  });
+
+  test("the dictated field carries the marker; click, Enter, a second mic and blocked all clear it", () => {
+    make();
+    const b = doc.getElementById("b"), solo = doc.getElementById("solo");
+    const btn = doc.querySelector(".voice-btn"), soloBtn = solo.nextElementSibling;
+    btn.click();
+    expect(b.classList.contains(FIELD)).toBe(true);
+    btn.click();
+    expect(b.classList.contains(FIELD)).toBe(false);
+    btn.click();
+    b.dispatchEvent(new win.KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+    expect(b.classList.contains(FIELD)).toBe(false);
+    btn.click();
+    soloBtn.click();
+    expect(b.classList.contains(FIELD)).toBe(false);
+    expect(solo.classList.contains(FIELD)).toBe(true);
+    cur().onerror({ error: "audio-capture" });
+    expect(solo.classList.contains(FIELD)).toBe(false);
+    expect(soloBtn.querySelector("svg")).not.toBeNull();
+  });
+
+  test("recognizer ending on its own with dictation wanted restarts and keeps the marker; permission denial clears it", () => {
+    make();
+    const b = doc.getElementById("b");
+    doc.querySelector(".voice-btn").click();
+    cur().onend();
+    vi.advanceTimersByTime(300);
+    expect(b.classList.contains(FIELD)).toBe(true);
+    cur().onerror({ error: "not-allowed" });
+    expect(b.classList.contains(FIELD)).toBe(false);
+  });
+
+  test("pagehide clears the marker; an analysis composer button swaps its icon too", () => {
+    make();
+    const b = doc.getElementById("b");
+    doc.querySelector(".voice-btn").click();
+    win.dispatchEvent(new win.Event("pagehide"));
+    expect(b.classList.contains(FIELD)).toBe(false);
+    expect(doc.querySelector(".voice-btn").classList.contains("is-listening")).toBe(false);
+  });
+});

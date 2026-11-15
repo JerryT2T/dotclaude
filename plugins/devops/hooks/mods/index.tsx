@@ -38,6 +38,11 @@ import {
   addRun,
   agentRows,
   applyPlan,
+  BATCH_MAX_ATTACHMENT_BYTES,
+  BATCH_WRITER_TIMEOUT_MS,
+  batchDropReason,
+  batchMaybeCollectable,
+  batchViewFrom,
   budgetBarAlt,
   cardTextSvg,
   isShippedCard,
@@ -75,6 +80,7 @@ import {
   markerFrom,
   markerHides,
   nudgeThresholdFrom,
+  parseWriterOutput,
   passiveSpikeRow,
   RING_CHIP_SIZE,
   RING_SIZE,
@@ -188,6 +194,92 @@ async function repoRoot($: EngineInterface): Promise<string> {
   } catch {
     return sessionCwd
   }
+}
+
+// --- Batch collect (docs/dev/mods.md § Batch collect) ---
+// While `/do-batch` collects, the mod files the prompt itself through the SAME node entry the hook family uses
+// (scripts/batch-note.js) and drops the prompt only after that entry confirmed the note. Every other outcome passes the
+// prompt on, so the classic hook (prompt.batch.collect.js) handles it exactly as without the mod.
+let batchCache: { at: number; view: { count: number } | null } = { at: 0, view: null }
+
+type BatchAttachment = { id?: string; filename?: string; mediaType?: string }
+
+/** The collection as armed for this session (count of notes), read from the mode file; cached 2 s. */
+async function batchView($: EngineInterface, force = false): Promise<{ count: number } | null> {
+  const now = await $.clock.now()
+  if (!force && now - batchCache.at < 2000) return batchCache.view
+  let view: { count: number } | null = null
+  const cwd = sessionCwd.replace(/[\\]/g, '/').replace(/[/]+$/, '')
+  if (cwd) {
+    try {
+      const mode = await $.fs.read(`${cwd}/.claude/batch-mode.json`)
+      const notes = await $.fs.read(`${cwd}/.claude/batch.md`).catch(() => '')
+      view = batchViewFrom(mode, notes, await $.session.id().catch(() => ''), now)
+    } catch {
+      view = null
+    }
+  }
+  batchCache = { at: now, view }
+  return view
+}
+
+/** The submitted images / documents as base64 for the writer; null when any one cannot be read whole (the hook then takes the prompt). */
+async function batchAttachments($: EngineInterface, e: { attachments?: readonly BatchAttachment[] }): Promise<{ name?: string; mediaType?: string; base64: string }[] | null> {
+  const out: { name?: string; mediaType?: string; base64: string }[] = []
+  for (const a of e.attachments || []) {
+    if (!a.id) return null
+    let base64 = ''
+    let offset = 0
+    for (;;) {
+      const m = await $.prompt.media({ id: a.id, offset })
+      if (!m || typeof m.base64 !== 'string' || typeof m.size !== 'number' || m.size > BATCH_MAX_ATTACHMENT_BYTES) return null
+      base64 += m.base64
+      if (m.next === undefined) break
+      offset = m.next
+    }
+    out.push({ name: a.filename, mediaType: a.mediaType, base64 })
+  }
+  return out
+}
+
+/**
+ * File this prompt as a batch note when collection is armed. `{ drop }` only when the writer confirmed (exit 0, a parsed
+ * note number, every attachment written); null for everything else, including every error: the caller then passes the
+ * prompt on. Never throws.
+ */
+async function fileBatchNote(
+  $: EngineInterface,
+  e: { text: string; isMeta?: true; command?: unknown; attachments?: readonly BatchAttachment[]; origin?: { kind?: string } },
+): Promise<{ drop: string } | null> {
+  let n = 0
+  try {
+    if (!batchMaybeCollectable(e) || (e.origin && e.origin.kind !== 'composer' && e.origin.kind !== 'bridge')) return null
+    if (!(await open($))) return null
+    if (!(await batchView($, true))) return null
+    const files = await batchAttachments($, e)
+    if (!files) return null
+    const sessionId = await $.session.id().catch(() => '')
+    const cwd = sessionCwd.replace(/[\\]/g, '/').replace(/[/]+$/, '')
+    // No dedupe key: two identical prompts are two notes. A duplicate is harmless, a dropped note is not.
+    const request = { cwd, sessionId, text: e.text, attachments: files }
+    const r = await $.process.run(['node', `${$.plugin.root}/scripts/batch-note.js`], { cwd, stdin: JSON.stringify(request), timeoutMs: BATCH_WRITER_TIMEOUT_MS })
+    if (r.exitCode !== 0) return null
+    const out = parseWriterOutput(r.stdout)
+    if (!out) return null
+    n = out.n
+  } catch {
+    return null
+  }
+  // The note is filed: nothing below may change that, so display failures are swallowed and the prompt is still dropped.
+  try {
+    const loc = (await sharedNow($)).loc
+    $.ui.toast(tr(loc, 'toastNote', { n }), { timeoutMs: 4000 })
+    batchCache = { at: await $.clock.now(), view: { count: n } }
+    $.ui.invalidate('ui.render')
+  } catch {
+    /* display only */
+  }
+  return { drop: batchDropReason(n) }
 }
 
 /** The machine-wide run marker (B13): one cleanup run per repo, seen by every session. */
@@ -628,6 +720,9 @@ export const register: Register = on => {
 
   // C6 (close-out): its notification arrives; a long one gets a toast. The prompt is passed on unchanged.
   on('prompt.submit', async ($, e, next) => {
+    // Batch collect first: a confirmed note ends the submission here (drop); anything else falls through unchanged.
+    const filed = await fileBatchNote($, e)
+    if (filed) return filed
     const result = await next(e)
     const notice = taskNotice(e.text)
     if (notice && (await open($))) {
@@ -910,8 +1005,9 @@ export const register: Register = on => {
     const isSettled = await read($, settled)
     const advised = compactAdvised(ring, { concept: sh.work.concept, changes: sh.work.changes, steps: prog.steps.some(s => s.status !== 'completed'), settled: isSettled }, c)
     const idle = !w && !c
-    // Idle and nothing due (no cleanup, no context worth a glance, no budget bar): the band stays away.
-    if (idle && !cv && !bars.length && !(ring !== null && ring >= CONTEXT_SHOW_PERCENT)) return next(e)
+    const bt = await batchView($)
+    // Idle and nothing due (no cleanup, no context worth a glance, no budget bar, no batch collection): the band stays away.
+    if (idle && !cv && !bars.length && !bt && !(ring !== null && ring >= CONTEXT_SHOW_PERCENT)) return next(e)
     const { Box, Button, Text } = $.ui.resolve(e)
     // Desktop: the card's animated SVG (bars, hourglass, ring) at a fixed size; the terminal has no Svg, so glyphs.
     const desktop = e.surface !== 'terminal'
@@ -937,6 +1033,8 @@ export const register: Register = on => {
       )
     }
     const toggle = () => update($, fold, v => !v)
+    // Collecting: one persistent row, neutral colour (the confirmation toast carries the event, this the standing state).
+    const batchEl = bt ? <Text key="batch" {...S.small}>{tr(loc, 'bandBatch', { n: bt.count })}</Text> : null
 
     const cta = !cv ? null : run.phase === 'planning' || run.phase === 'applying' ? (
       <Text key="cleanup-run" dimColor>{`[ ${tr(loc, 'cleanupBtn')} · ${tr(loc, run.phase === 'planning' ? 'runPlanning' : 'runApplying')} ]`}</Text>
@@ -999,6 +1097,7 @@ export const register: Register = on => {
       const text = lastLine(last, loc)
       return (
         <Box key="band" flexDirection="column" rowGap={1}>
+          {batchEl}
           <Box key="idle" flexDirection="row" alignItems="center" columnGap={2}>
             <Text key="idle-last" {...S.small}>{text}</Text>
             <Box flexGrow={1} />
@@ -1078,6 +1177,7 @@ export const register: Register = on => {
       // Terminal: one column, same parts.
       return (
         <Box key="band" flexDirection="column" rowGap={1}>
+          {batchEl}
           {workEl}
           {c && (c.title || c.at) && (
             <Box key="card-title" flexDirection="row" justifyContent="space-between" columnGap={2}>
@@ -1102,6 +1202,7 @@ export const register: Register = on => {
     }
     return (
       <Box key="band" flexDirection="column" rowGap={1}>
+        {batchEl}
         <Box key="zones" position="relative" flexDirection="row" columnGap={2}>
           <Box key="main" flexDirection="column" flexGrow={1} rowGap={1}>
             {workEl}

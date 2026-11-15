@@ -804,6 +804,8 @@ const TABLE = {
   spawnFailed: ['Subagent not started: {why}', 'Subagent nicht gestartet: {why}', 'Subagente no iniciado: {why}', 'Sous-agent non démarré : {why}', 'Subagente não iniciado: {why}', 'サブエージェントを起動できませんでした: {why}', '子代理未启动：{why}'],
   finishedWord: ['finished', 'beendet', 'terminado', 'terminé', 'concluído', '完了', '已结束'],
   noAnswer: ['No answer.', 'Keine Antwort.', 'Sin respuesta.', 'Pas de réponse.', 'Sem resposta.', '回答がありません。', '没有回答。'],
+  toastNote: ['💾 Note #{n} saved', '💾 Notiz #{n} gespeichert', '💾 Nota #{n} guardada', '💾 Note #{n} enregistrée', '💾 Nota #{n} salva', '💾 メモ #{n} を保存しました', '💾 笔记 #{n} 已保存'],
+  bandBatch: ['📚 Batch · {n}', '📚 Batch · {n}', '📚 Batch · {n}', '📚 Batch · {n}', '📚 Batch · {n}', '📚 Batch · {n}', '📚 Batch · {n}'],
   learnBtn: ['devops learn', 'devops learn', 'devops learn', 'devops learn', 'devops learn', 'devops learn', 'devops learn'],
 } as const
 
@@ -1104,4 +1106,59 @@ export function cardTextSvg(text: string, role: CardRole): { source: string; wid
     `@media (prefers-color-scheme: light){text{fill:${light}}}</style>` +
     `<text x="0" y="${Math.round(px * 1.12)}" xml:space="preserve">${xmlEscape(t)}</text></svg>`
   return { source, width, height, alt: t }
+}
+
+// --- Batch collect (docs/dev/mods.md § Batch collect): the mod files a note, the hook stays the fallback. ---
+
+/** Upper bound for the writer process: it takes milliseconds, a hang must fall back to the hook. */
+export const BATCH_WRITER_TIMEOUT_MS = 20_000
+/** One attached item above this (decoded bytes) is left to the classic hook. */
+export const BATCH_MAX_ATTACHMENT_BYTES = 12 * 1024 * 1024
+
+/** The drop reason: as short and neutral as a reason can be; the toast and the band row carry the confirmation. */
+export function batchDropReason(n: number): string {
+  return `💾 #${n}`
+}
+
+/**
+ * Cheap pre-filter before a process is spawned: a prompt that can never be a note (machine / meta text, a slash command,
+ * nothing typed) is passed on without asking the writer. The writer stays the authority (`classify` in batch-state.js).
+ */
+export function batchMaybeCollectable(e: { text: string; isMeta?: boolean; command?: unknown; attachments?: readonly unknown[] }): boolean {
+  if (e.isMeta === true || e.command) return false
+  const t = typeof e.text === 'string' ? e.text.trim() : ''
+  if (!t && !(e.attachments && e.attachments.length)) return false
+  return !t.startsWith('/')
+}
+
+/** The mode file as the band reads it: armed for this session (not expired, not full, not another session's), with the note count; else null. */
+export function batchViewFrom(modeText: unknown, notesText: unknown, sessionId: string, now: number): { count: number } | null {
+  let mode: { active?: unknown; expiresAt?: unknown; maxNotes?: unknown; sessionId?: unknown } | null = null
+  try {
+    mode = typeof modeText === 'string' ? JSON.parse(modeText) : null
+  } catch {
+    mode = null
+  }
+  if (!mode || typeof mode !== 'object' || mode.active !== true) return null
+  if (typeof mode.expiresAt === 'string' && now >= Date.parse(mode.expiresAt)) return null
+  if (typeof mode.sessionId === 'string' && mode.sessionId && sessionId && mode.sessionId !== sessionId) return null
+  const raw = typeof notesText === 'string' ? notesText.replace(/\r\n?/g, '\n') : ''
+  const count = (raw.match(/^<!--\s*\d{4}-\d{2}-\d{2}T[^\s>]*?\s*-->$/gm) || []).length
+  if (typeof mode.maxNotes === 'number' && mode.maxNotes > 0 && count >= mode.maxNotes) return null
+  return { count }
+}
+
+/** The writer's stdout as a confirmed note number, or null for anything else (no JSON, `ok` not true, no positive integer). */
+export function parseWriterOutput(stdout: unknown): { n: number; images: number } | null {
+  if (typeof stdout !== 'string') return null
+  const line = stdout.trim().split('\n').filter(Boolean).pop() || ''
+  try {
+    const j = JSON.parse(line) as { ok?: unknown; n?: unknown; images?: unknown }
+    if (j && j.ok === true && typeof j.n === 'number' && Number.isInteger(j.n) && j.n > 0) {
+      return { n: j.n, images: typeof j.images === 'number' ? j.images : 0 }
+    }
+  } catch {
+    /* not JSON */
+  }
+  return null
 }

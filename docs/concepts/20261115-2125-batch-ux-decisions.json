@@ -1,0 +1,178 @@
+[
+  {
+    "iteration": 1,
+    "action": "implement",
+    "favorite": "d1",
+    "decisions": [
+      {
+        "id": "d-ui-route",
+        "label": "Wohin mit UI-Fragen",
+        "mode": "single",
+        "value": "split",
+        "rec": "split",
+        "deviates": false,
+        "none": false,
+        "untouched": false,
+        "note": "",
+        "appliesTo": "alle Concept-Seiten mit Designs",
+        "finding": "f-ui-route",
+        "issue": false,
+        "epic": "",
+        "hesitation": {
+          "ms": 13330,
+          "noteWords": 0,
+          "revisits": 0,
+          "flagged": false
+        },
+        "view": "analysis"
+      },
+      {
+        "id": "d-ui-gate",
+        "label": "Durchsetzung",
+        "mode": "single",
+        "value": "fail",
+        "rec": "warnfix",
+        "deviates": true,
+        "none": false,
+        "untouched": false,
+        "note": "",
+        "appliesTo": "den Concept-Build",
+        "finding": "f-ui-gate",
+        "issue": false,
+        "epic": "",
+        "hesitation": {
+          "ms": 11018,
+          "noteWords": 0,
+          "revisits": 0,
+          "flagged": false
+        },
+        "view": "analysis"
+      },
+      {
+        "id": "d-ui-detect",
+        "label": "Erkennung",
+        "mode": "multi",
+        "value": [
+          "screen",
+          "words"
+        ],
+        "rec": "screen words",
+        "deviates": false,
+        "none": false,
+        "untouched": false,
+        "note": "",
+        "appliesTo": "die Gate-Prüfung aus der vorigen Frage",
+        "finding": "f-ui-detect",
+        "issue": false,
+        "epic": "",
+        "hesitation": {
+          "ms": 19129,
+          "noteWords": 0,
+          "revisits": 1,
+          "flagged": false
+        },
+        "view": "analysis"
+      },
+      {
+        "id": "d-batch-confirm",
+        "label": "Bestätigung",
+        "mode": "single",
+        "value": "toastband",
+        "rec": "toastband",
+        "deviates": false,
+        "none": false,
+        "untouched": false,
+        "note": "",
+        "appliesTo": "Desktop-App mit geladenem devops-Mod",
+        "finding": "f-batch-confirm",
+        "issue": false,
+        "epic": "",
+        "hesitation": {
+          "ms": 8586,
+          "noteWords": 0,
+          "revisits": 0,
+          "flagged": false
+        },
+        "view": "analysis"
+      },
+      {
+        "id": "d-batch-writer",
+        "label": "Wer schreibt die Notiz",
+        "mode": "single",
+        "value": "process",
+        "rec": "process",
+        "deviates": false,
+        "none": false,
+        "untouched": false,
+        "note": "ber notizen daürfen inkl. anhänge nicht verlorgen gehen, wenn super robust gegen allemöglichen szenartien machen !",
+        "appliesTo": "den devops-Mod",
+        "finding": "f-batch-writer",
+        "issue": false,
+        "epic": "",
+        "hesitation": {
+          "ms": 22981,
+          "noteWords": 16,
+          "revisits": 1,
+          "flagged": false
+        },
+        "view": "analysis"
+      },
+      {
+        "id": "d-batch-attach",
+        "label": "Anhänge",
+        "mode": "yesnoalt",
+        "value": {
+          "answer": "yes",
+          "alt": ""
+        },
+        "rec": "yes",
+        "deviates": false,
+        "none": false,
+        "untouched": true,
+        "note": "",
+        "appliesTo": "Notizen mit Bild, eingefügtem Text oder @Datei",
+        "finding": "f-batch-attach",
+        "issue": false,
+        "epic": "",
+        "hesitation": {
+          "ms": 4623,
+          "noteWords": 0,
+          "revisits": 1,
+          "flagged": false
+        },
+        "view": "analysis"
+      }
+    ],
+    "comments": {
+      "general": {
+        "text": "",
+        "attachments": []
+      },
+      "items": [
+        {
+          "id": "anno-d1-s1-a3",
+          "text": "ja gern!",
+          "attachments": []
+        },
+        {
+          "id": "d-batch-writer-note",
+          "text": "ber notizen daürfen inkl. anhänge nicht verlorgen gehen, wenn super robust gegen allemöglichen szenartien machen !",
+          "attachments": []
+        }
+      ],
+      "designs": {},
+      "screens": {},
+      "views": {}
+    },
+    "annotations": [
+      {
+        "id": "d1-s1-a3",
+        "screen": "d1-s1",
+        "design": "d1",
+        "question": "Soll auch der Feldrand den Akzent annehmen, solange diktiert wird?",
+        "answer": "ja gern!"
+      }
+    ],
+    "userPins": []
+  }
+]

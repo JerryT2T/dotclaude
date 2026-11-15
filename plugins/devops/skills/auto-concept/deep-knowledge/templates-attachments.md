@@ -132,7 +132,7 @@ The bar is injected per field by `ensureCommentSlots()` and
   <button type="button" class="attach-btn"
           data-tip="{{attach.button_title}}" aria-label="{{attach.button_title}}">📎</button>
   <button type="button" class="voice-btn" data-tip="{{voice.mic_start}}"
-          aria-label="{{voice.mic_start}}" aria-pressed="false">🎤</button>
+          aria-label="{{voice.mic_start}}" aria-pressed="false"><svg class="voice-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg></button>
   <input type="file" multiple hidden>
   <div class="attach-thumbs"></div>
 </div>
@@ -141,7 +141,7 @@ The bar is injected per field by `ensureCommentSlots()` and
 `{{attach.button_title}}` → e.g. "Datei anhängen (oder Strg+V / hierher
 ziehen)". Resolve it at generation time per § UI Locale.
 
-**Voice:** the 🎤 (`.voice-btn`) next to the 📎 is the same kind of button (same CSS family, § Voice input) and dictates into this field; fields without an attach bar get a mic of their own from the voice scan.
+**Voice:** the mic (`.voice-btn`, line-microphone SVG; accent pill with waveform while dictating) next to the 📎 is the same kind of button (same CSS family, § Voice input) and dictates into this field; fields without an attach bar get a mic of their own from the voice scan.
 
 **The 📎 alone is the affordance — no hint label.** Every attachable field
 carries a bar, so a spelled-out "Ctrl+V or drop any file" line repeated under

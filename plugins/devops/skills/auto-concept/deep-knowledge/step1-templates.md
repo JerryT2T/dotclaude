@@ -390,7 +390,7 @@ completely (SKILL.md Step 1b-ii names both). Markup, payload and gate rules:
 | Situation | Variant | Shape |
 |---|---|---|
 | The concept's content IS analysis results + the decisions that follow (an audit, a measurement, "where do the tokens go", a findings review) | **Full** — `data-analysis="full"` on a `decision` round | Briefing → one Themenfeld after another → one decision per stage → Closing |
-| An analysis inside a design concept (variants, views) | **Full** — a `section[data-view][data-view-kind="analysis"][data-analysis="full"]` view | The same briefing, topics, right rail and chat flow as a standalone analysis page; the top bar shows one plain "Analyse" segment (no dropdown, no count) |
+| An analysis inside a design concept (variants, views) | **Full** — a `section[data-view][data-view-kind="analysis"][data-analysis="full"]` view | The same briefing, topics, right rail and chat flow as a standalone analysis page; the top bar shows one plain "Analyse" segment (no dropdown, no count). The view never asks about the UI of the round's own variants — detail → auto-note on the element, direction → its own variant (gate A13, `decision-modes.md` § Rules) |
 | A few questions come up inside a `decision` / `free` round and need their finding beside them | **Lite** — `data-analysis="lite"` (a section in that round) | L1 + L3, one decision at a time with progress dots, **≤ 5 decisions** |
 | More than 5 such questions | Full, as its own round | — |
 

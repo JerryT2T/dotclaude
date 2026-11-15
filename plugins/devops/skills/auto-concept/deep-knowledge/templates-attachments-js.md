@@ -64,7 +64,9 @@ function buildAttachmentBar(slotKey) {
     '<button type="button" class="attach-btn" data-tip="{{attach.button_title}}"' +
     ' aria-label="{{attach.button_title}}">📎</button>' +
     '<button type="button" class="voice-btn" data-tip="{{voice.mic_start}}"' +
-    ' aria-label="{{voice.mic_start}}" aria-pressed="false">🎤</button>' +
+    ' aria-label="{{voice.mic_start}}" aria-pressed="false">' +
+    '<svg class="voice-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">' +
+    '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg></button>' +
     '<input type="file" multiple hidden>' +
     '<div class="attach-thumbs"></div>';
   return bar;
