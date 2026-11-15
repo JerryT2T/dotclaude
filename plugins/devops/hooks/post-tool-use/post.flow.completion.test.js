@@ -1724,3 +1724,35 @@ describe("post.flow.completion — edits outside the repo are no code edits", ()
     cleanup(dir);
   });
 });
+
+// #1122 — a Playwright script run through Bash verifies a DOM change only when it passed
+describe("post.flow.completion — a Playwright script run is a browser Light check (#1122)", () => {
+  const has = (dir, name, sid) => fs.existsSync(path.join(dir, ".tmp", `dotclaude-devops-${name}-${sid}`));
+  const run = (sid, response) => {
+    const dir = project();
+    fs.writeFileSync(path.join(dir, "qa.cjs"),
+      "const { chromium } = require('playwright-core');\nconst page = null; page.screenshot();");
+    runHook(dir, sid, "Bash", { tool_input: { command: "node qa.cjs", description: "QA" }, tool_response: response });
+    return dir;
+  };
+
+  test("exit 0 writes light-verified", () => {
+    const dir = run("s-1122-pass", { exit_code: 0, stdout: "ok", stderr: "" });
+    expect(has(dir, "light-verified", "s-1122-pass")).toBe(true);
+    cleanup(dir);
+  });
+
+  test("exit 1 stays unverified", () => {
+    const dir = run("s-1122-fail", { exit_code: 1, stdout: "", stderr: "TimeoutError" });
+    expect(has(dir, "light-verified", "s-1122-fail")).toBe(false);
+    cleanup(dir);
+  });
+
+  test("a plain script never verifies", () => {
+    const dir = project();
+    fs.writeFileSync(path.join(dir, "plain.cjs"), "console.log(1)");
+    runHook(dir, "s-1122-plain", "Bash", { tool_input: { command: "node plain.cjs" }, tool_response: { exit_code: 0, stdout: "1" } });
+    expect(has(dir, "light-verified", "s-1122-plain")).toBe(false);
+    cleanup(dir);
+  });
+});

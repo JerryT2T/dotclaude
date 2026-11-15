@@ -1,5 +1,7 @@
 import { describe, test, expect } from "vitest";
 import os from "os";
+import fs from "fs";
+import path from "path";
 import {
   BLOCK_CAP,
   isWebRenderableChange,
@@ -12,6 +14,7 @@ import {
   resolveVerificationKind,
   needsLightVerification,
   isBrowserTool,
+  isBrowserScriptRun,
   isTestRunnerTool,
   isLightVerification,
   normalizeToolResponse,
@@ -389,6 +392,39 @@ describe("isTestRunnerTool", () => {
 // ---------------------------------------------------------------------------
 // isLightVerification
 // ---------------------------------------------------------------------------
+
+// #1122 — a Playwright script run from the shell is a browser check
+describe("isBrowserScriptRun", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "bscript-"));
+  fs.writeFileSync(path.join(dir, "qa.cjs"),
+    "const { chromium } = require('playwright-core');\n(async()=>{const page=await (await chromium.launch()).newPage();await page.screenshot({path:'a.png'});})();");
+  fs.writeFileSync(path.join(dir, "plain.cjs"), "console.log('hi');");
+  fs.writeFileSync(path.join(dir, "qa.mjs"), "import { chromium } from '@playwright/test';");
+  fs.writeFileSync(path.join(dir, "qa.py"), "from playwright.sync_api import sync_playwright\n");
+
+  test("node <file> requiring playwright-core counts, resolved against cwd", () => {
+    expect(isBrowserScriptRun("Bash", "node qa.cjs", dir)).toBe(true);
+    expect(isBrowserScriptRun("PowerShell", "cd x; node ./qa.cjs", dir)).toBe(true);
+    expect(isBrowserScriptRun("Bash", "node qa.mjs", dir)).toBe(true);
+    expect(isBrowserScriptRun("Bash", "python qa.py", dir)).toBe(true);
+  });
+  test("a plain script, a missing file, or another tool does not", () => {
+    expect(isBrowserScriptRun("Bash", "node plain.cjs", dir)).toBe(false);
+    expect(isBrowserScriptRun("Bash", "node nope.cjs", dir)).toBe(false);
+    expect(isBrowserScriptRun("Read", "node qa.cjs", dir)).toBe(false);
+    expect(isBrowserScriptRun("Bash", "", dir)).toBe(false);
+  });
+  test("npx playwright (not test) and node -e with chromium.launch count", () => {
+    expect(isBrowserScriptRun("Bash", "npx playwright screenshot http://x a.png", dir)).toBe(true);
+    expect(isBrowserScriptRun("Bash", "npx playwright test", dir)).toBe(false);
+    expect(isBrowserScriptRun("Bash", "node -e \"require('playwright').chromium.launch()\"", dir)).toBe(true);
+    expect(isBrowserScriptRun("Bash", "node -e \"console.log(1)\"", dir)).toBe(false);
+  });
+  test("a script run is not a Light check by tool name alone (npm test stays dom-false)", () => {
+    expect(isLightVerification("dom", "Bash", "npm test")).toBe(false);
+    expect(isLightVerification("dom", "Bash", "node qa.cjs")).toBe(false);
+  });
+});
 
 describe("isLightVerification", () => {
   test("dom → only a browser tool satisfies", () => {
