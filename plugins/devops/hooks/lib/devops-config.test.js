@@ -177,6 +177,13 @@ describe("machine-level opt-ins: string, enum and list settings (homeBackup, wip
     expect(v.wipWatch).toEqual({ enabled: false, roots: [], day: "sun", discardAfterWeeks: 8 });
   });
 
+  test("shutdown.busyProcesses is a global-only string list, empty by default", () => {
+    const home = mkTmp("cfg-home-");
+    expect(cfg.load(home, { home }).values.shutdown).toEqual({ busyProcesses: [] });
+    expect(cfg.parseValue("shutdown.busyProcesses", "ffmpeg, Train.py ,")).toEqual(["ffmpeg", "Train.py"]);
+    expect(() => cfg.setValue("shutdown.busyProcesses", "x", "project", home, { home })).toThrow(/machine-wide/);
+  });
+
   test("parseValue: repo pattern, weekday words, comma lists", () => {
     expect(cfg.parseValue("homeBackup.repo", " Jerry0022/claude-home ")).toBe("Jerry0022/claude-home");
     expect(() => cfg.parseValue("homeBackup.repo", "not a repo")).toThrow(/expected text matching/);
