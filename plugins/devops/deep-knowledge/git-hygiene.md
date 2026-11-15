@@ -261,6 +261,15 @@ entry of the orphan report carries `live` (a live Claude session uses that
 worktree, transcript based) and `idleDays` (days since the last commit or file
 change); `ss.orphan.nudge.js` does not count `live` entries.
 
+**Big branches.** The content check (`scripts/lib/content-landed.js`) no longer gives up above 200
+touched files: one `git diff --name-only <tip> <base>` over the whole tree is intersected with the
+paths the branch changed since its merge base (no argv, any error = not landed). All touched paths
+identical in the base = `landed`; some = `partial` with that count (the per-file patch check and the
+95 % line rule stay capped at 200 files); none = `unlanded`. The orphan scan route
+(`orphan-scan.js --clean-landed --apply`) is not a delete command the `pre.cleanup.gate` hook sees, so
+it runs while auto-cleanup is armed; a hand-made `git worktree remove` of the same worktree stays
+refused (`cleanup-gate.test.js`).
+
 **Parked** = deliberately set-aside, unlanded work someone wants to keep. One
 prefix: `parked/<topic>`. Read-only legacy aliases, still recognized and never
 created again: `wip/`, `backup/`, `salvage/`, and any branch whose tip subject

@@ -460,7 +460,10 @@ export function landedVia(sha, branch, ctx) {
     if (supersededByHead(sha, ctx)) return "superseded";
     if (chainLanded(sha, ctx)) return "chain";
   }
-  return contentInBase(ctx.cwd, sha, ctx.baseRef, { maxFiles: TREE_CHECK_MAX_FILES }).landed ? "tree" : null;
+  // one `git diff` over all touched paths (stdin pathspec): scales past TREE_CHECK_MAX_FILES
+  const res = contentInBase(ctx.cwd, sha, ctx.baseRef);
+  (ctx.contentRes || (ctx.contentRes = new Map())).set(sha, res);
+  return res.landed ? "tree" : null;
 }
 
 /** `sha` sits under a merged PR head whose tree equals the base tree (#983). */
@@ -504,7 +507,15 @@ export function landingState(sha, branch, ctx) {
     if (baseTree && trial.split("\n")[0].trim() === baseTree) return done({ state: "landed", via: "tree", filesIn: 0, filesTotal: 0 });
   }
   const f = filesInBase(sha, ctx);
-  if (!f) return done({ state: "unlanded", via: null, filesIn: 0, filesTotal: 0 });
+  if (!f) {
+    // too many files for the per-file patch check: the cheap path comparison still tells how many
+    // touched files are identical in the base (one call); any error leaves it unlanded 0/0
+    const c = ctx.contentRes && ctx.contentRes.get(sha);
+    if (c && c.files.length > 0 && (c.reason === "content-differs" || c.reason === "conflicts") && c.differing.length < c.files.length) {
+      return done({ state: "partial", via: null, filesIn: c.files.length - c.differing.length, filesTotal: c.files.length });
+    }
+    return done({ state: "unlanded", via: null, filesIn: 0, filesTotal: 0 });
+  }
   if (f.filesTotal > 0 && f.filesIn === f.filesTotal) return done({ state: "landed", via: "tree", ...f });
   if (f.filesIn > 0) return done({ state: "partial", via: null, ...f });
   return done({ state: "unlanded", via: null, ...f });

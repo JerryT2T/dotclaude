@@ -30,6 +30,8 @@ const { execFileSync } = require('child_process');
 
 const GIT_TIMEOUT = 15_000;
 const MAX_FILES = 200;
+/** Ceiling for the touched-path set: no argv is built from it, one whole-tree diff answers for all of them. */
+const BULK_MAX_FILES = 20_000;
 
 function makeGit(cwd) {
   return (args) => {
@@ -52,7 +54,7 @@ function makeGit(cwd) {
  */
 function contentInBase(cwd, sha, baseRef, opts = {}) {
   const git = opts.git || makeGit(cwd);
-  const maxFiles = opts.maxFiles ?? MAX_FILES;
+  const maxFiles = opts.maxFiles ?? BULK_MAX_FILES;
   const no = (reason, files = [], differing = []) => ({ landed: false, via: null, files, differing, reason });
   if (!sha || !baseRef) return no('missing-ref');
   const mb = git(['merge-base', sha, opts.forkRef || baseRef]);
@@ -63,7 +65,13 @@ function contentInBase(cwd, sha, baseRef, opts = {}) {
   const files = diff.out.split('\0').filter(Boolean);
   if (files.length === 0) return { landed: true, via: 'empty', files, differing: [], reason: null };
   if (files.length > maxFiles) return no('too-many-files', files);
-  if (git(['diff', '--quiet', sha, baseRef, '--', ...files]).ok) {
+  // ONE whole-tree diff of the tip against the base, intersected with the touched paths: scales
+  // with the number of differing paths, not with an argv. Any git error -> not landed (fail closed).
+  const td = git(['diff', '--no-renames', '--name-only', '-z', sha, baseRef]);
+  if (!td.ok) return no('diff-failed', files);
+  const treeDiff = new Set(td.out.split('\0').filter(Boolean));
+  const differing = files.filter((f) => treeDiff.has(f));
+  if (differing.length === 0) {
     return { landed: true, via: 'files', files, differing: [], reason: null };
   }
   const mt = git(['merge-tree', '--write-tree', `--merge-base=${base}`, baseRef, sha]);
@@ -71,9 +79,7 @@ function contentInBase(cwd, sha, baseRef, opts = {}) {
   if (mt.ok && baseTree.ok && mt.out.split('\n')[0].trim() === baseTree.out.trim()) {
     return { landed: true, via: 'merge', files, differing: [], reason: null };
   }
-  const dn = git(['diff', '--name-only', '-z', sha, baseRef, '--', ...files]);
-  const differing = dn.ok || dn.out ? dn.out.split('\0').filter(Boolean) : files;
   return no(mt.ok ? 'content-differs' : (mt.status === 1 ? 'conflicts' : 'content-differs'), files, differing);
 }
 
-module.exports = { contentInBase, MAX_FILES };
+module.exports = { contentInBase, MAX_FILES, BULK_MAX_FILES };
