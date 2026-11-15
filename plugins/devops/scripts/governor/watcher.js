@@ -69,7 +69,9 @@ function createWatcher({ adapter, p, loadCfg, now, deps = {} }) {
     pid: st.pid, version, heartbeat: now(), helperPid: adapter.selfPids[1] || null, logFile: logger.name || null,
     throttles: Object.values(st.throttles), pressure: st.pressure, priorityBy: st.priorityBy, culprit: st.culprit, sys: st.sys, kinds: st.kinds,
     budget: { over: st.budget.over },
-    jobs: Object.values(st.tracked).map((j) => ({ id: j.id, name: j.name, kind: j.kind, heavy: j.heavy })),
+    // cmdKind + cpuPct: the gate's build/test slot counts only jobs that are a known build/test
+    // command or actually burn CPU — never an idle `governor wait`, shell or `tail -f` (#1115).
+    jobs: Object.values(st.tracked).map((j) => ({ id: j.id, name: j.name, kind: j.kind, heavy: j.heavy, cmdKind: P.commandKind(j.cmd), cpuPct: j.cpuPct })),
   });
 
   // Release by key; the record goes ONLY on success.

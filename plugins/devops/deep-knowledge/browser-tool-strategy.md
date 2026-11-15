@@ -67,13 +67,18 @@ blocks, DOM state, form values and attributes are read with `javascript_tool` /
 A visible window is always Edge, also when a script starts the browser itself
 (Playwright, Puppeteer, `chrome.exe`) and no browser tool is involved:
 
-- **A window is needed** (a real-GPU benchmark, a headed test run): Playwright
-  `channel: 'msedge'` in the same launch options or `--browser=msedge`; Puppeteer
-  `executablePath` pointing at `msedge.exe`. These runs use a temporary profile,
-  never the user's Edge profile. Numbers from Edge and from Chrome for Testing are
-  not comparable without saying so.
-- **No window is needed:** run headless. Chrome for Testing is fine there (`ng test`
-  with ChromeHeadless, Playwright measurements), because the user sees nothing.
+- **Headless is the default**, also for a real-GPU benchmark: a headed window
+  steals focus from the user. Headless keeps the real GPU with
+  `--enable-gpu --use-angle=d3d11 --ignore-gpu-blocklist`; confirm the renderer
+  via `UNMASKED_RENDERER_WEBGL` (WEBGL_debug_renderer_info) and report it. Chrome
+  for Testing is fine headless (`ng test` with ChromeHeadless, Playwright
+  measurements), because the user sees nothing.
+- **A visible window only when the user asked for one or is known to be away:**
+  Playwright `channel: 'msedge'` in the same launch options or `--browser=msedge`;
+  Puppeteer `executablePath` pointing at `msedge.exe`. Start it without
+  activation (minimized / behind other windows) and never call `bringToFront`.
+  These runs use a temporary profile, never the user's Edge profile. Numbers from
+  Edge and from Chrome for Testing are not comparable without saying so.
 
 `pre.visible-browser.guard` enforces this on written code and shell commands. It
 cannot see options built elsewhere (`launch(opts)`) or a browser path in a shell

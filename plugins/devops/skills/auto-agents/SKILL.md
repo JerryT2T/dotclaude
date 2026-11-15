@@ -145,6 +145,13 @@ keeps its own overrides). **Fewer wake-ups:** one agent per disjoint bundle,
 ≤ ~5 tool calls stay inline, commands under ~2 min run in the foreground.
 Both: same doc § Model override rules and § Parallel implementers, item 6.
 
+**Governor state is an input to wave sizing.** If `~/.claude/governor/state.json`
+has a non-empty `pressure.priority`, or the task names a quiet window ("heavy
+work only after HH:MM") that has not started: one implementing agent at a time,
+briefs ask for touched-file tests only, the orchestrator runs the full suite
+once per merge, heavy steps wait for the window, and no process Claude started
+is ever raised in priority — same doc, § Parallel implementers, item 7.
+
 ### 2.3 Permission audit (parallel and full ceremony)
 
 Before spawning more than one agent, scan recent sessions for MCP tools that

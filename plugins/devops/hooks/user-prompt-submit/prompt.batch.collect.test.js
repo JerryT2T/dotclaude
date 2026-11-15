@@ -434,13 +434,20 @@ describe("message builders", () => {
   test("a known title rides along exactly: set in parallel, no get_session", () => {
     const note = [{ at: "2026-08-16T10:00:00.000Z", text: "x" }];
     const ctx = buildMergeContext(note, "", "/tmp/p/.claude/batch.md", { title: "📥 Batch – Fix login" });
-    expect(ctx).toContain('title:"Fix login"');
+    expect(ctx).toContain('title:"⏳ ➜ 🤖 Solo ┃ Fix login"');
     expect(ctx).toContain("mcp__ccd_session_mgmt__set_session_title");
     expect(ctx).toMatch(/kein get_session/);
     expect(ctx).not.toContain("mcp__ccd_session_mgmt__get_session");
     // A title without the prefix was renamed meanwhile — that name wins, no line at all.
     const renamed = buildMergeContext(note, "", "/tmp/p/.claude/batch.md", { title: "Renamed" });
     expect(renamed).not.toContain("set_session_title");
+  });
+
+  test("firing from the armed title instructs the work prefix, not the bare topic (#1126)", () => {
+    const note = [{ at: "2026-08-16T10:00:00.000Z", text: "x" }];
+    const ctx = buildMergeContext(note, "", "/tmp/p/.claude/batch.md", { title: "👉 ➜ 📚 Batch ┃ Feedback zu X" });
+    expect(ctx).toContain('title:"⏳ ➜ 🤖 Solo ┃ Feedback zu X"');
+    expect(ctx).not.toContain('title:"Feedback zu X"');
   });
 
   test("retireTitleLines: unknown title keeps the get_session fallback", () => {

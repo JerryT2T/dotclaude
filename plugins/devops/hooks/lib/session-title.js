@@ -131,6 +131,22 @@ function unbatchTitle(current, ctx = {}) {
 }
 
 /**
+ * The title firing a batch (`go` / `/do-batch go`) leaves: the merge and
+ * hand-off turn is real work, so the batch prefix gives way to the work
+ * prefix (`⏳ ➜ 🤖 Solo ┃ <topic>`), not to the bare topic. Plain
+ * deactivation keeps unbatchTitle. `null` when the title carries no batch
+ * prefix or nothing would be left.
+ *
+ * @param {string|null} current
+ * @param {{ lang?: string, cwd?: string }} [ctx]
+ * @returns {string|null}
+ */
+function fireTitle(current, ctx = {}) {
+  const topic = unbatchTitle(current, ctx);
+  return topic ? clampTitle(WORK_PREFIX + topic) : null;
+}
+
+/**
  * F5: the title a turn that ended WITHOUT a completion card leaves. Only a
  * bare `⏳ ` (generic work, or the legacy `⏳ Working – `) becomes
  * `👉 ➜ ⚡ Interrupted ┃ <title>`; a batch, a waiting concept, a running ship
@@ -343,6 +359,7 @@ module.exports = {
   nextTitle,
   batchTitle,
   unbatchTitle,
+  fireTitle,
   interruptedTitle,
   readCurrentTitle,
 };

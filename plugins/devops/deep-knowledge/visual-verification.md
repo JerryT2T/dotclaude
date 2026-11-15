@@ -30,7 +30,7 @@ to verify DOM structure, text content, element roles, and interactive state:
 | Tool | Snapshot call |
 |------|-------------|
 | Built-in pane / Chrome MCP | `read_page` |
-| Playwright | `browser_snapshot` |
+| Playwright (headless by default, never activated: browser-tool-strategy.md § Scripts that start their own browser) | `browser_snapshot` |
 
 Snapshots are **preferred over screenshots** for verifying:
 - Element presence/absence (button rendered, modal visible)

@@ -61,7 +61,7 @@ Work in checkpoints: commit `wip(<scope>): <what>` after every green sub-step an
   `{PLUGIN_ROOT}/deep-knowledge/test-strategy.md` § Web Tech → Always Browser-Test)
   with the Claude browser pane (`mcp__Claude_Browser__*`) for localhost / file://;
   Claude in Chrome (`mcp__claude-in-chrome__*`) only for logged-in sites; Playwright
-  last (see `{PLUGIN_ROOT}/deep-knowledge/browser-tool-strategy.md`). None connected → say so in the handoff instead of claiming a
+  last, headless and never focus-stealing (see `{PLUGIN_ROOT}/deep-knowledge/browser-tool-strategy.md`). None connected → say so in the handoff instead of claiming a
   visual check. Mocks for missing backends/APIs are expected. For
   Electron/Tauri renderers, mount the renderer HTML with main-process calls mocked.
 - Follow existing component patterns in the project

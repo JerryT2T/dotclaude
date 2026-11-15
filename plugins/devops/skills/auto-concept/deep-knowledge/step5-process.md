@@ -291,6 +291,17 @@ difference: the next round belongs to the next stage.
      Agents get this file path plus the checklist lines they own — never a
      summary of it. A design implement's parity checklist (below) is the
      checklist of this file, not a second list.
+   - **Every checklist line carries its source quote (#1110).** The quote
+     sits next to the line, word for word, and the acceptance of that line is
+     judged against the quote, not against the line. On a conflict the quote wins. A quote
+     that points at an existing element ("wie bei X", "like X", "genauso wie
+     Y") makes the line name X's actual mechanism, read from the code with
+     file:line — never a generic one such as "tooltip" (a sun whose label
+     rises under it on hover is not a tooltip).
+   - **A moved role is two lines (#1111).** A decision that moves a role, link
+     or label from A to B ("statt A … B", "instead of A, B") yields two
+     checklist lines, both carrying the quote: B gains the role, its link and
+     its hover behaviour; A loses the role, its link and its label.
    - **Acceptance table per agent.** Each implementing agent returns one row
      per checklist line it owns: item → `done` / `partial` / `not done` →
      evidence (file:line, test, screenshot). A line without evidence counts
@@ -298,7 +309,10 @@ difference: the next round belongs to the next stage.
    - **Independent check.** Before the final report, a `devops:qax` that
      built nothing compares the checklist and every quoted pin against the
      diff and, for visible items, against screenshots of the real result
-     (never mock data). Its verdict wins over the builders' tables.
+     (never mock data). Its verdict wins over the builders' tables. It gets
+     the quotes, not only the checklist, and reports each line as quote →
+     observed behaviour → verdict; for a moved role it records per visible
+     object its hover label and link target.
    - **Gaps are shortfalls.** Every `partial` / `not done` line becomes a Fund
      with data-oq-origin="shortfall" and its reason (§ Open points admission gate).
 

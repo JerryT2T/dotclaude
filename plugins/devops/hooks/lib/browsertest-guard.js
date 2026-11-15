@@ -44,6 +44,8 @@
 // ---------------------------------------------------------------------------
 
 const os = require('os');
+const fs = require('fs');
+const path = require('path');
 const { responseTaskId } = require('./pending-tasks');
 
 // Markup / style / framework-component files are ALWAYS browser-renderable.
@@ -297,6 +299,52 @@ function isBrowserTool(toolName) {
   if (!toolName) return false;
   const t = String(toolName);
   return BROWSER_MCP_RE.test(t) || BROWSER_SHORT_RE.test(t);
+}
+
+// A Playwright script driven from the shell: `node qa.cjs` that requires
+// playwright-core is a real browser check, just not through an MCP tool.
+const PW_NODE_IMPORT_RE =
+  /(?:require\s*\(\s*|from\s+|import\s+|import\s*\(\s*)['"](?:playwright|playwright-core|@playwright\/test)['"]/;
+const PW_PY_IMPORT_RE = /^\s*(?:from\s+playwright|import\s+playwright)\b/m;
+const PW_LAUNCH_RE = /\b(?:chromium|firefox|webkit)\s*\.\s*launch/;
+const PW_NPX_RE = /\bnpx\s+(?:-\w+\s+|--\S+\s+)*playwright(?:@\S+)?(?![\w-])(?!\s+test\b)/i;
+const PW_TEST_RE = /\bplaywright\s+test\b/i;
+const NODE_EVAL_RE = /\bnode(?:\.exe)?\s+(?:-\S+\s+)*(?:-e|--eval|-p|--print)\b/;
+const SCRIPT_RUN_RE = /\b(node|python3?|py)(?:\.exe)?\s+(?:-[\w-]+\s+)*(?:"([^"]+)"|'([^']+)'|([^\s;&|<>"']+))/g;
+const SCRIPT_READ_CAP = 64 * 1024;
+
+/**
+ * Does a shell command run a Playwright script (not the `playwright test`
+ * runner, which isTestRunnerTool owns)? Reads the script file fail-open.
+ * Only says the KIND of run; whether it passed is testRunOutcome's call.
+ * @param {string} toolName
+ * @param {string} command
+ * @param {string} [cwd] — script paths resolve against it
+ * @returns {boolean}
+ */
+function isBrowserScriptRun(toolName, command, cwd) {
+  if (toolName !== 'Bash' && toolName !== 'PowerShell') return false;
+  if (!command) return false;
+  const cmd = String(command);
+  if (PW_TEST_RE.test(cmd)) return false;
+  if (PW_NPX_RE.test(cmd)) return true;
+  if (NODE_EVAL_RE.test(cmd) && PW_LAUNCH_RE.test(cmd)) return true;
+  const re = new RegExp(SCRIPT_RUN_RE.source, 'g');
+  let m;
+  while ((m = re.exec(cmd))) {
+    const file = m[2] || m[3] || m[4];
+    if (!file || file.startsWith('-')) continue;
+    try {
+      const fd = fs.openSync(path.resolve(cwd || process.cwd(), file), 'r');
+      let text;
+      try {
+        const buf = Buffer.alloc(SCRIPT_READ_CAP);
+        text = buf.toString('utf8', 0, fs.readSync(fd, buf, 0, SCRIPT_READ_CAP, 0));
+      } finally { fs.closeSync(fd); }
+      if (m[1] === 'node' ? PW_NODE_IMPORT_RE.test(text) : PW_PY_IMPORT_RE.test(text)) return true;
+    } catch { /* unreadable script: not a browser run */ }
+  }
+  return false;
 }
 
 // Test-runner invocations in a Bash command. Anchored so "npm install" etc. do
@@ -891,6 +939,7 @@ module.exports = {
   resolveVerificationKind,
   needsLightVerification,
   isBrowserTool,
+  isBrowserScriptRun,
   isTestRunnerTool,
   isLightVerification,
   normalizeToolResponse,

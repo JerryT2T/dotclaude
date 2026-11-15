@@ -25,8 +25,8 @@ function message(found) {
   const lines = found.slice(0, 3).map((f) => `- ${f.shown}`);
   return `[visible-browser] Not started. This would open a visible non-Edge browser window on the user's desktop:\n${lines.join('\n')}\n`
     + 'Instead, pick one:\n'
-    + "- A window is needed: use Edge. Playwright: channel: 'msedge' in the same launch options, or --browser=msedge. Puppeteer: executablePath pointing at msedge.exe.\n"
-    + '- No window is needed: run headless. Chrome for Testing is fine there.\n'
+    + '- Default: run headless, also for a real GPU (--enable-gpu --use-angle=d3d11 --ignore-gpu-blocklist, confirm UNMASKED_RENDERER_WEBGL). Chrome for Testing is fine there.\n'
+    + "- A window is really needed (the user asked for one, or is away): use Edge, started minimized and never brought to the front. Playwright: channel: 'msedge' in the same launch options, or --browser=msedge. Puppeteer: executablePath pointing at msedge.exe.\n"
     + 'Rule: deep-knowledge/browser-tool-strategy.md. '
     + 'The text DEVOPS_ALLOW_VISIBLE_BROWSER in the command or code overrides, only when the user asked for this window.';
 }

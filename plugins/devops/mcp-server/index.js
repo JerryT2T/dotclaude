@@ -1874,16 +1874,19 @@ function resolveCardKey(input) {
 }
 
 /**
- * What still waits on the user (#714): the first `open` point and every
- * not-met requirement with `waitsOn: "user"` — or null when nothing does.
+ * What still blocks the ship (#714, #1117): the first `open` question (ends in
+ * `?`) and every `unmet` requirement with `waitsOn: "user"` — or null when nothing does.
  * Ship is offered only when this is null.
  */
 function openQuestionOf(input) {
   const open = normalizeOpenItems(input.open);
   const validation = Array.isArray(input.validation) ? input.validation : [];
-  const waits = validation.filter(v => v && typeof v === 'object' && v.waitsOn === 'user' && v.status !== 'met');
-  if (!open.length && !waits.length) return null;
-  return { first: open.length ? open[0].text : '', waits };
+  // #1117: only a real question (ends in `?`) or an unmet own requirement blocks
+  // the ship; statements and `partial` rows are follow-up points.
+  const waits = validation.filter(v => v && typeof v === 'object' && v.waitsOn === 'user' && v.status === 'unmet');
+  const question = open.find(o => /[?？]["')\]*_`]*\s*$/.test(String(o.text || '').trim()));
+  if (!question && !waits.length) return null;
+  return { first: question ? question.text : '', waits };
 }
 
 /** Ship-offering keys a pending question replaces (#714). */

@@ -13,7 +13,8 @@
  *
  *   verify --state <abs state file>
  *     Heartbeat round-trip (claude_ts must advance), 200 gate on the page URL,
- *     then opens Edge (Windows: start "" msedge <url>). Prints {ok:true,url} or
+ *     then opens Edge (Windows: start "" msedge <url>) unless a tab is already
+ *     registered on the bridge (/pending browser_tabs > 0): then {already_open:true}. Prints {ok:true,url} or
  *     {ok:false,error} and exits 1. CONCEPT_OPEN_NO_BROWSER=1 skips the open.
  *
  * Every sibling script is resolved from this file's directory.
@@ -177,6 +178,23 @@ async function verify(opts, deps = {}) {
   let run = 0;
   try { run = Number(JSON.parse(who.body).pid) || 0; } catch { /* no id: run 0 */ }
   if (run && st.opened_for_run === run) return { ok: true, url, already_open: true };
+  // A tab already registered with the bridge (/pending browser_tabs) is reused:
+  // a fresh open would activate Edge and steal focus. Reports already_open.
+  const pend = await req('GET', `${base}/pending`);
+  let tabs = 0;
+  try {
+    const pb = JSON.parse(pend.body);
+    tabs = Number(pb.browser_tabs) || 0;
+    // The registry carries tab ids only, never a page path, but the bridge
+    // reports the html_path it serves. Another concept's bridge on a reused
+    // port holds tabs of THAT page: they do not show ours, so open as before.
+    const norm = (x) => String(x).split('\\').join('/').replace(/^\/+/, '');
+    if (typeof pb.html_path === 'string' && pb.html_path) {
+      const a = norm(pb.html_path), b = norm(st.html_path);
+      if (a !== b && !a.endsWith('/' + b) && !b.endsWith('/' + a)) tabs = 0;
+    }
+  } catch { /* older bridge: no registry */ }
+  if (tabs > 0) return { ok: true, url, already_open: true };
   const err = await open(url);
   if (err) return { ok: false, error: err, url };
   try { fs.writeFileSync(opts.state, JSON.stringify({ ...st, opened_for_run: run }, null, 2)); } catch { /* the page is open; only a later verify would repeat it */ }

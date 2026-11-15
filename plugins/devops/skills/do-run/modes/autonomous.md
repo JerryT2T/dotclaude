@@ -735,6 +735,12 @@ Harmless no-op if nothing was scheduled. Then proceed by `$WATCHDOG_ACTION`:
 - **shutdown mode** (shutdown=yes), status COMPLETED or INTERRUPTED:
   1. **8a** — wait (max 30 min) for other active Claude sessions to go idle (any
      project/worktree; exclude our own tree). Never cut off another session.
+     Then the **busy check** (`scripts/autonomous-busy-check.js check`, config
+     `shutdown.busyProcesses` + `%LOCALAPPDATA%\dotclaude\busy\*.lock`): busy →
+     `… wait` (polls every 10 min up to 6 h) as a `run_in_background` task; still
+     busy or the wait killed → **skip 8b** (shutdown-watchdog.md § 8a-bis), log "PC bleibt an:
+     <name> läuft noch" to the run log, report and completion card. The fail-safe
+     timer is unconditional and was cancelled in 8.0, so it cannot cut the job.
   2. **8b** — `shutdown.exe /s /t 60` via absolute-path PowerShell; capture
      `$SHUTDOWN_EXIT`.
   3. **8c** — write the flag per the decision matrix: flag (which also removes

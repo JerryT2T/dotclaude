@@ -71,6 +71,7 @@ const ring = (current = "alpha", extra = {}) => ({
 });
 const SHIPPED = { pushed: true, merged: "main", branch: "feat/x" };
 const OPEN = ["Doku nachziehen"];
+const OPEN_Q = ["Doku nachziehen?"]; // only a question blocks the ship offer (#1117)
 const FINAL = ["Login in Alpha prüfen"];
 const WAITS = [{ requirement: "Welche Quest schlägt fehl", status: "unmet", waitsOn: "user", evidence: "Name fehlt noch" }];
 
@@ -84,14 +85,14 @@ const CASES = [
   ["handoff side session waits", { variant: "fallback", linked: [{ title: "Doku", mode: "handoff", state: "waiting" }] }, ["👉", "Linked", "🔗"]],
   ["orchestration side session waits", { variant: "fallback", linked: [{ title: "B", mode: "deliver", state: "waiting" }] }, ["👉", "Team", "🤖"]],
   ["ready", { variant: "ready" }, ["👉", "Ready", "📦"]],
-  ["ready + open point → question", { variant: "ready", open: OPEN }, ["👉", "Question", "❓"]],
+  ["ready + open point → question", { variant: "ready", open: OPEN_Q }, ["👉", "Question", "❓"]],
   ["ready + requirement waiting on the user → question", { variant: "ready", validation: WAITS }, ["👉", "Question", "❓"]],
   ["ready + red tests", { variant: "ready", tests: [{ method: "npm test", result: "10 grün · 2 rot" }] }, ["👉", "Red tests", "⚠️"]],
   ["ready + unmet requirement → ready-red", { variant: "ready", validation: [{ requirement: "Export", status: "unmet", evidence: "fehlt" }] }, ["👉", "Red tests", "⚠️"]],
   ["ready + vv-unverified", { variant: "ready", vv: { unverified: true } }, ["👉", "Unverified", "⚠️"]],
   ["ready + vv-running", { variant: "ready", vv: { unverified: true, running: true } }, ["⏳", "Testing", "🧪"]],
   ["ready + no remote (ready-local)", { variant: "ready", state: { mode: "git-no-remote" } }, ["🟩", "Committed", "📦"]],
-  ["ready + no remote + open → question", { variant: "ready", state: { mode: "git-no-remote" }, open: OPEN }, ["👉", "Question", "❓"]],
+  ["ready + no remote + open → question", { variant: "ready", state: { mode: "git-no-remote" }, open: OPEN_Q }, ["👉", "Question", "❓"]],
   ["ready + file-only → files", { variant: "ready", state: { mode: "file-only" } }, ["👉", "Files", "📦"]],
   ["ready-files", { variant: "ready-files", state: { mode: "file-only" } }, ["👉", "Files", "📦"]],
   ["ready-files + open", { variant: "ready-files", state: { mode: "file-only" }, open: OPEN }, ["👉", "Files", "📦"]],
@@ -119,7 +120,7 @@ const CASES = [
   // test
   ["test", { variant: "test", userTest: ["Login prüfen"] }, ["👉", "Test", "🧪"]],
   ["test + open keeps Test (#750)", { variant: "test", userTest: ["Login prüfen"], open: OPEN }, ["👉", "Test", "🧪"]],
-  ["test without steps + open → question", { variant: "test", open: OPEN }, ["👉", "Question", "❓"]],
+  ["test without steps + open → question", { variant: "test", open: OPEN_Q }, ["👉", "Question", "❓"]],
   ["test + no remote (test-local)", { variant: "test", userTest: ["Login prüfen"], state: { mode: "git-no-remote" } }, ["👉", "Test", "🧪"]],
   ["test-minimal", { variant: "test-minimal" }, ["🟩", "Started", "✨"]],
   ["test-minimal + userTest (mandatory)", { variant: "test-minimal", userTest: ["Spiel starten"] }, ["👉", "Started", "✨"]],
