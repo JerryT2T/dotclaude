@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.375.0] — 2026-11-15
+
+### Added
+- Mods: the band above the prompt is split into the card (title, heading, open points, buttons) and a status rail with a context ring measured against your own auto-compact limit; from 80 % with open work it offers Kompaktieren
+- Mods: a collapsible cleanup block names leftovers by cause, shows only for inactive unmerged work or more than 50 leftovers, and hides in other sessions while one cleans up
+- Mods: band strings in 7 languages; batch hints sit behind a round ? that shows them on hover
+
+### Fixed
+- Hygiene: agent worktrees whose content landed through a squash merge count as landed, also past 200 changed files, and are removed under the shared age/count rule instead of piling up
+- Hygiene: `.angular` and `.vitest` caches no longer block a worktree removal; live sessions no longer count as leftovers
+- Concept: a review round may follow the final report
+
 ## [0.374.1] — 2026-11-15
 
 ### Fixed
