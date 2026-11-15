@@ -134,7 +134,7 @@ summary and appends a row to `~/.claude/devops-mods-spike.jsonl` (capped at
 `weekly_before/after`.
 
 How to run: on an alpha-pinned machine, run any turn, wait about 50 minutes
-without input, then run `/mods-spike-fork`. **Pass:** `cache_read_share`
+without input, then run `/mods-spike-fork`. **Passive (no command, no model call):** the mod arms a main turn that starts ≥ 50 min after the last one ended (`turn.start`), reads the usage of that turn's first request from `turn.step` (passed through unchanged) and appends a row with `mode: "passive"`, `pause_min`, the cache fields, `cache_read_share` = read / (read + write + uncached input) and `pass`. **Pass:** `cache_read_share`
 ≥ 0.95 and the 5-h / weekly before/after difference about 0. A fail blocks
 #1101.
 
@@ -146,9 +146,9 @@ without input, then run `/mods-spike-fork`. **Pass:** `cache_read_share`
 | Adding modules | `hooks/dispatch/manifest.json`, then `node plugins/devops/hooks/dispatch/build-hooks-json.js` (hooks.json is generated) |
 | State contract | `plugins/devops/types/index.d.ts` (`devops.agents`, `devops.budget`, `devops.hygiene`, `devops.ship`, `devops.shells`), named in `plugin.json` `"types"` |
 | Gate | `hooks/mods/gate.ts` mirrors `features.js`: reads `features.json`, `~/.claude/plugins/.channels.json` and `installed_plugins.json` via `$.fs`, fails closed, cached per session. Closed gate → every hook passes through, no command is registered, nothing is drawn |
-| Agent pane | `/devops-agents`: subagents with type, model, elapsed, status (`agent.spawn`, `classic.SubagentStop`, `$.agent.list()`) |
+| Agent pane | `/devops-agents`, and opened once by itself at the session's first background subagent (closed, it stays closed): subagents with type, model, elapsed, status (`agent.spawn`, `classic.SubagentStop`, `$.agent.list()`). Live: a `$.clock.every` timer (5 s) bumps `devops.tick` while a subagent runs and stops itself after. Content-equal rows (status, type, model, description) merge into one with a `×n` column after the status, the latest run's elapsed |
 | Budget band | Above the prompt: 5-h, weekly and context fill from `session.measure`; `/compact` hint from 80 % context. Display only, writes nothing |
-| Toasts | Waiting permission request (`classic.Notification`), subagents and background Bash runs that ran ≥ 120 s (Bash: start time per `tool_use_id` from `tool.call`, end from the `<task-notification>` that reaches `prompt.submit`; call and prompt pass through unchanged), and the hook lines Claude is asked to show verbatim (hook output passes through unchanged). No sound: no asset ships cleanly |
+| Toasts | Waiting permission request (`classic.Notification`), subagents and background Bash runs that ran ≥ 120 s (Bash: start time per `tool_use_id` from `tool.call`, end from the `<task-notification>` that reaches `prompt.submit`; call and prompt pass through unchanged), and the hook lines Claude is asked to show verbatim (hook output passes through unchanged) — both formats: the line after a `[name] … verbatim` header (branch nudge, version notice) and a line followed by its `… verbatim, once.` instruction; once per session, never on a `compact` / `resume` SessionStart. Concept watchers (`concept-watch.js`, `concept-tick.js`, `concept-server.py`) toast only when they fail, at any length. No sound: no asset ships cleanly |
 | Ship pane | `/devops-ship`: `.claude/.ship-checkpoint.json` of this branch plus one bounded `gh pr view` (8 s) on open or Refresh |
 | Branch hygiene | Count from `~/.claude/orphan-report.json` (same rules as `ss.orphan.nudge.js`, the session's own worktree left out) in the status line and the band; the band's "Clean up (opus)" button runs the plan/apply subagents above, one run at a time |
 

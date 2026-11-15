@@ -32,11 +32,79 @@ export function taskNotice(text: string): { toolUseId: string; status: string; s
   return { toolUseId, status: tag('status'), summary: tag('summary') }
 }
 
-/** One pane row: status, type, model, elapsed, description. */
-export function agentRow(a: AgentRow, now: number): string {
+/** One pane row: status, type, model, elapsed, description; `count` = an optional "×n" column. */
+export function agentRow(a: AgentRow, now: number, count = ''): string {
   const end = typeof a.endedAt === 'number' ? a.endedAt : now
   const model = a.model ? ` · ${a.model}` : ''
-  return `${a.status.padEnd(9)} ${a.type}${model} · ${elapsed(end - a.startedAt)} · ${a.description}`
+  return `${a.status.padEnd(9)} ${count}${a.type}${model} · ${elapsed(end - a.startedAt)} · ${a.description}`
+}
+
+/**
+ * Pane rows with content-equal rows (same status, type, model and description) merged into
+ * one, which carries the latest run's elapsed time and a "×n" marker. The marker is its own
+ * fixed-width column after the status, present on every row once any row is merged, so the
+ * columns stay aligned. Order: where each group first appeared.
+ */
+export function agentRows(list: readonly AgentRow[], now: number): Array<{ text: string; isDone: boolean }> {
+  const groups: Array<{ key: string; row: AgentRow; count: number }> = []
+  for (const a of list) {
+    const key = [a.status, a.type, a.model, a.description].join('\u0000')
+    const g = groups.find(x => x.key === key)
+    if (g) {
+      g.count++
+      g.row = a
+    } else groups.push({ key, row: a, count: 1 })
+  }
+  const width = Math.max(...groups.map(g => (g.count > 1 ? `×${g.count}`.length : 0)), 0)
+  return groups.map(g => {
+    const mark = width ? `${g.count > 1 ? `×${g.count}` : ''}`.padEnd(width) + ' ' : ''
+    return { text: agentRow(g.row, now, mark), isDone: typeof g.row.endedAt === 'number' }
+  })
+}
+
+/** A background Bash run that is one of the concept page's own watchers (waker, pulser, bridge server). */
+export function isWatcherCommand(command: unknown): boolean {
+  return typeof command === 'string' && /concept-(watch|tick)\.js|concept-server\.py/.test(command)
+}
+
+/** A task notification's status that means the run failed (a watcher toasts only then). */
+export function isFailedStatus(status: string): boolean {
+  return /fail|error|kill|crash/i.test(status || '')
+}
+
+/** Passive Spike 1: a main turn that starts after this long without one is measured. */
+export const SPIKE_PAUSE_MS = 50 * 60_000
+
+/**
+ * One row of ~/.claude/devops-mods-spike.jsonl for the first request of a main turn that
+ * followed a pause of `gapMs`: the share of its prompt the cache served (read / all input).
+ * Pass = ≥ 0.95 (docs/dev/mods.md § Spike 1). No model call: the usage is the turn's own.
+ */
+export function passiveSpikeRow(
+  gapMs: number,
+  usage: { input_tokens: number; output_tokens: number; cache_read_input_tokens: number; cache_creation_input_tokens: number; model?: string },
+  budget: Budget | null,
+  ts: number,
+): Record<string, unknown> {
+  const read = usage.cache_read_input_tokens || 0
+  const write = usage.cache_creation_input_tokens || 0
+  const input = usage.input_tokens || 0
+  const all = read + write + input
+  const share = all ? Math.round((read / all) * 1000) / 1000 : null
+  return {
+    ts: new Date(ts).toISOString(),
+    mode: 'passive',
+    pause_min: Math.round(gapMs / 60_000),
+    model: usage.model || null,
+    cache_read_input_tokens: read,
+    cache_creation_input_tokens: write,
+    input_tokens: input,
+    output_tokens: usage.output_tokens || 0,
+    cache_read_share: share,
+    pass: share === null ? null : share >= 0.95,
+    five_hour: budget ? budget.fiveHour : null,
+    weekly: budget ? budget.weekly : null,
+  }
 }
 
 /** The budget from one `session.measure` (or `$.session.usage()`) reading. */
@@ -309,9 +377,10 @@ export function verbatimNotices(contexts: readonly string[] | undefined): string
     if (typeof c !== 'string' || !/verbatim/i.test(c)) continue
     const lines = c.split(/\r?\n/).map(l => l.trim())
     lines.forEach((l, i) => {
-      if (/^\[ss\.orphan\.nudge\].*verbatim/i.test(l)) {
+      // Header format: "[ss.orphan.nudge] … verbatim …", "[ss.version.notice] … verbatim …, once:" — the line after it.
+      if (/^\[[a-z0-9_.-]+\].*verbatim/i.test(l)) {
         const next = lines.slice(i + 1).find(Boolean)
-        if (next) out.push(next)
+        if (next && !next.startsWith('[')) out.push(next)
         return
       }
       const up = /^- \*\*([^*]+)\*\*: (\S+) → (\S+) \(/.exec(l)
@@ -325,5 +394,5 @@ export function verbatimNotices(contexts: readonly string[] | undefined): string
       }
     })
   }
-  return out.map(t => t.slice(0, 200))
+  return [...new Set(out)].map(t => t.slice(0, 200))
 }

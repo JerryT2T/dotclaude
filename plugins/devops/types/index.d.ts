@@ -42,6 +42,15 @@ export type CleanupRun = {
   at: number
 }
 
+/** Once-per-session flags: SessionStart notices toasted, Agents pane opened by itself. */
+export type SessionFlags = { noticesShown: boolean; agentsPaneOpened: boolean }
+
+/**
+ * Passive Spike 1: when the last main turn ended (epoch ms) and, while a turn that
+ * followed a long pause runs, its id and the pause length; null = nothing armed.
+ */
+export type SpikeWatch = { lastMainEnd: number; armed: { turnId: string; gapMs: number } | null }
+
 declare module 'claude-code' {
   interface PluginState {
     devops: {
@@ -50,7 +59,13 @@ declare module 'claude-code' {
       hygiene: Hygiene | null
       ship: ShipView | null
       shells: Record<string, number>
+      /** tool_use_ids of background Bash runs that are devops concept watchers (waker, pulser, bridge). */
+      watchers: Record<string, true>
       cleanup: CleanupRun
+      flags: SessionFlags
+      /** Bumped every few seconds while a subagent runs, so the Agents pane redraws its elapsed times. */
+      tick: number
+      spike: SpikeWatch
     }
   }
 }

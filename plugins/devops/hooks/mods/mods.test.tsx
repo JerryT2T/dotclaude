@@ -3,7 +3,7 @@
 // The hooks `on` registers here stand for the engine: files, env, clock,
 // gh/git, the model. Nothing reaches the real machine.
 import { expect, test } from 'claude-code/testing'
-import { cleanupApplyPrompt, cleanupPlanPrompt, hygieneLine } from './format'
+import { agentRows, cleanupApplyPrompt, cleanupPlanPrompt, hygieneLine, passiveSpikeRow, verbatimNotices } from './format'
 
 const HOME = 'C:/Users/tester'
 const NOW = Date.parse('2026-11-10T20:00:00.000Z')
@@ -18,7 +18,7 @@ function engine(on: any, opts: { pin?: string; files?: Files; agents?: unknown[]
     '/.claude/plugins/.channels.json': JSON.stringify({ dotclaude: opts.pin ?? 'alpha' }),
     ...(opts.files || {}),
   }
-  const seen = { toasts: [] as string[], commands: [] as string[], writes: [] as { path: string; text: string }[], prompts: [] as string[], status: [] as (string | undefined)[] }
+  const seen = { toasts: [] as string[], commands: [] as string[], writes: [] as { path: string; text: string }[], prompts: [] as string[], status: [] as (string | undefined)[], opened: [] as string[] }
   let clock = NOW
   on('fs.read', (_: unknown, e: { path: string }) => {
     const p = String(e.path).replace(/\\/g, '/')
@@ -40,7 +40,10 @@ function engine(on: any, opts: { pin?: string; files?: Files; agents?: unknown[]
     seen.status.push(e.text)
     return { value: undefined }
   })
-  on('ui.open', () => ({ value: { isPlaced: true } }))
+  on('ui.open', (_: unknown, e: { id: string }) => {
+    seen.opened.push(e.id)
+    return { value: { isPlaced: true } }
+  })
   on('command.register', (_: unknown, e: { name: string }) => {
     seen.commands.push(e.name)
     return { value: { command: e.name } }
@@ -307,4 +310,67 @@ test('cleanup briefs keep the session worktree out and approve only the plan; th
   expect(apply.endsWith('APPROVED PLAN:\nPLAN X')).toBe(true)
   expect(hygieneLine({ branches: 0, worktrees: 2, ageHours: 1 }, false)).toBe('2 dirty worktrees')
   expect(hygieneLine({ branches: 0, worktrees: 2, ageHours: 1 })).toBe('devops: 2 dirty worktrees')
+})
+
+test('SessionStart notices: header-format notices (version) become toasts; only once per session, never after a compaction', async ($, on) => {
+  const { seen } = engine(on)
+  const version = '[ss.version.notice] Show the user this line verbatim in your first reply, once:\nℹ devops: lokal 0.371.0 (alpha) · Cloud 0.368.0 updaten'
+  const nudge = '[ss.orphan.nudge] Show the user this line verbatim in your first reply, once:\n⚠ Hier: 1 Worktree mit uncommitteter Arbeit'
+  on('classic.SessionStart', () => ({ additionalContext: [version, nudge] }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.classic.SessionStart({ source: 'startup' } as any)
+  await $.classic.SessionStart({ source: 'compact' } as any)
+  await $.classic.SessionStart({ source: 'clear' } as any)
+  expect(seen.toasts).toEqual(['ℹ devops: lokal 0.371.0 (alpha) · Cloud 0.368.0 updaten', '⚠ Hier: 1 Worktree mit uncommitteter Arbeit'])
+})
+
+test('concept watchers: a normal end gets no toast, a failed one does at any length; other runs keep the 2-minute rule', async ($, on) => {
+  const { seen, tick } = engine(on)
+  on('tool.call', () => ({ result: { stdout: '', stderr: '', interrupted: false } }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  const watch = 'node "C:/p/scripts/concept-watch.js" --mode watch --port 8960'
+  await $.tool.call({ tool: 'Bash', command: watch, run_in_background: true, tool_use_id: 'toolu_w1' } as any)
+  await $.tool.call({ tool: 'Bash', command: watch, run_in_background: true, tool_use_id: 'toolu_w2' } as any)
+  tick(30_000)
+  const note = (id: string, status: string, summary: string) =>
+    `<task-notification>\n<task-id>x</task-id>\n<tool-use-id>${id}</tool-use-id>\n<status>${status}</status>\n<summary>${summary}</summary>\n</task-notification>`
+  await $.prompt.submit({ text: note('toolu_w2', 'failed', 'Background command "Relaunch concept pickup waker" failed with exit code 4') } as any)
+  tick(7 * 3_600_000)
+  await $.prompt.submit({ text: note('toolu_w1', 'completed', 'Background command "Run concept pickup waker" completed (exit code 0)') } as any)
+  expect(seen.toasts).toEqual(['Background command "Relaunch concept pickup waker" failed with exit code 4 · 30 s'])
+})
+
+test('agents pane: the first background subagent opens it once; content-equal rows merge with a ×n column', async ($, on) => {
+  const { seen, tick } = engine(on)
+  const opened = seen.opened
+  let n = 0
+  on('agent.spawn', () => ({ model: 'claude-sonnet', agentId: `a${++n}` }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.agent.spawn({ prompt: 'p', description: 'quick look', subagentType: 'Explore', background: false } as any)
+  expect(opened).toEqual([])
+  await $.agent.spawn({ prompt: 'p', description: '[W1] B1', subagentType: 'devops:frontend', background: true } as any)
+  await $.agent.spawn({ prompt: 'p', description: '[W1] B1', subagentType: 'devops:frontend', background: true } as any)
+  expect(opened).toEqual(['devops-agents'])
+  tick(10_000)
+  const ui = await $.ui.mount({ ...pane('devops-agents', 'Agents'), surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /B1/ }))?.text).toBe('running   ×2 devops:frontend · claude-sonnet · 10 s · [W1] B1')
+  expect((await ui.find({ type: 'Text', text: /Explore/ }))?.text).toBe('running      Explore · claude-sonnet · 10 s · quick look')
+  await ui.unmount()
+})
+
+test('agentRows merges content-equal rows only; passiveSpikeRow computes the cache-read share of the first request', async () => {
+  const base = { type: 'devops:qax', model: 'sonnet', description: 'QA', status: 'completed' }
+  const rows = agentRows(
+    [
+      { ...base, id: '1', startedAt: 0, endedAt: 60_000 },
+      { ...base, id: '2', startedAt: 100_000, endedAt: 220_000 },
+      { ...base, id: '3', description: 'other', startedAt: 0, endedAt: 1000 },
+    ],
+    NOW,
+  )
+  expect(rows.map(r => r.text)).toEqual(['completed ×2 devops:qax · sonnet · 2 m 00 s · QA', 'completed    devops:qax · sonnet · 1 s · other'])
+  expect(agentRows([{ ...base, id: '1', startedAt: 0, endedAt: 5000 }], NOW)[0].text).toBe('completed devops:qax · sonnet · 5 s · QA')
+  const row = passiveSpikeRow(3_300_000, { input_tokens: 10, output_tokens: 5, cache_read_input_tokens: 980, cache_creation_input_tokens: 10, model: 'claude-opus' }, null, NOW)
+  expect(row).toMatchObject({ mode: 'passive', pause_min: 55, cache_read_share: 0.98, pass: true })
+  expect(verbatimNotices(['[ss.version.notice] … verbatim in your first reply, once:\nℹ v1 → v2'])).toEqual(['ℹ v1 → v2'])
 })
