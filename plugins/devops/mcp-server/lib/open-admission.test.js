@@ -155,3 +155,40 @@ describe("dropSelfManagedNotices", () => {
     expect(dropSelfManagedNotices(undefined)).toEqual({ items: undefined, dropped: 0 });
   });
 });
+
+describe("#1117: the ship landing is the routine step, by text or by reply", () => {
+  test("ship-landing phrases in the shown text", () => {
+    for (const s of [
+      "Stand liegt nur auf dem Branch, nicht auf main",
+      "Auslieferung steht noch aus",
+      "Den Stand noch ausliefern",
+      "Liefere den Stand jetzt aus",
+      "Needs delivery to users",
+    ]) expect(isNextStep(s)).toBe(true);
+  });
+
+  test("a ship reply drops the item, a narrow follow-up reply does not", () => {
+    expect(isNextStep({ text: "Weiter", reply: "Ja, liefere den Stand jetzt nach main aus." })).toBe(true);
+    expect(isNextStep({ text: "Weiter", reply: "Ja, ausliefern." })).toBe(true);
+    expect(isNextStep({ text: "Weiter", reply: "Ja, schreib die Handbücher je Klasse um." })).toBe(false);
+    // A reply is not checked against the full list: "push" / "release" words stay.
+    expect(isNextStep({ text: "Weiter", reply: "Ja, den Release-Text überarbeiten." })).toBe(false);
+  });
+
+  test("a question still stays, whatever its reply says", () => {
+    expect(isNextStep({ text: "Soll ich ausliefern?", reply: "Ja, nach main aus." })).toBe(false);
+  });
+});
+
+describe("isNextStep keeps real follow-ups that only look like shipping (#1117)", () => {
+  test("a noun with liefer… and a ship-button follow-up stay points", () => {
+    expect(isNextStep({ text: "Lieferzeiten aus der API laden" })).toBe(false);
+    expect(isNextStep({ text: "Ship-Button im Widget größer", reply: "Ja, bau den Ship-Button um." })).toBe(false);
+    expect(isNextStep({ text: "Import prüfen", reply: "Ja, prüf, ob der Loader die Daten aus der DB liefert und liefert sie aus der Cache-Schicht." })).toBe(false);
+    expect(isNextStep({ text: "Menü-Link", reply: "Ja, verlinke das Logo to main menu." })).toBe(false);
+  });
+  test("a bare ship reply and a liefere-aus reply still count as the ship step", () => {
+    expect(isNextStep({ text: "Stand liegt nur auf dem Branch", reply: "Ja, ship it." })).toBe(true);
+    expect(isNextStep({ text: "Stand liegt nur auf dem Branch", reply: "Ja, liefere den Stand jetzt aus." })).toBe(true);
+  });
+});
