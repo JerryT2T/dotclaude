@@ -39,6 +39,7 @@ import {
   agentRows,
   applyPlan,
   budgetBarAlt,
+  isShippedCard,
   BUDGET_BAR_SIZE,
   budgetBars,
   budgetBarSvg,
@@ -153,6 +154,8 @@ function startTicker($: EngineInterface): void {
 }
 // The band's cleanup block is expanded (per session; B11).
 const fold = atom({ plugin: 'devops', key: 'fold' } as const, false, { shape: 'fold-1' })
+// A ship / released / finished card is on record: no open work until a new edit or an open plan (B7).
+const settled = atom({ plugin: 'devops', key: 'settled' } as const, false, { shape: 'settled-1' })
 const hintsOpen = atom({ plugin: 'devops', key: 'hintsOpen' } as const, false, { shape: 'hints-open-1' })
 // The last card's title and time, kept after the card is spent: the idle row's "Last:".
 const lastCard = atom({ plugin: 'devops', key: 'lastCard' } as const, null as { title: string; at: string } | null, { shape: 'last-card-1' })
@@ -234,7 +237,8 @@ async function startCleanup($: EngineInterface, kind: 'plan' | 'apply'): Promise
     }
   })
   if (!go) return
-  if (kind === 'plan') await writeMarker($, { repo, session: sid, startedAt: now })
+  // The apply refreshes the marker's start too, so the 2-h staleness counts from the latest step of the run.
+  await writeMarker($, { repo, session: sid, startedAt: now })
   try {
     const description = kind === 'plan' ? 'Branch cleanup plan' : 'Branch cleanup apply'
     const r = await $.agent.spawn({
@@ -252,10 +256,10 @@ async function startCleanup($: EngineInterface, kind: 'plan' | 'apply'): Promise
     }
     if (!agentId) throw new Error('no agent started')
     await update($, cleanup, s => ({ ...s, agentId: agentId as string }))
-    await $.ui.open({ id: CLEANUP_PANE, title: 'Cleanup' })
+    await $.ui.open({ id: CLEANUP_PANE, title: await titleOf($, 'titleCleanup') })
   } catch (err) {
     const why = err instanceof Error ? err.message : 'spawn failed'
-    await update($, cleanup, () => ({ phase: 'failed', agentId: null, report: `Subagent not started: ${why}`, at: 0 }))
+    await update($, cleanup, () => ({ phase: 'failed', agentId: null, report: tr(sh.loc, 'spawnFailed', { why }), at: 0 }))
     await endRun($)
   }
 }
@@ -276,6 +280,11 @@ let gate: Promise<boolean> | null = null
 function open($: EngineInterface): Promise<boolean> {
   if (!gate) gate = featureAllowed($, 'claude-mods').catch(() => false)
   return gate
+}
+
+/** A pane title in the session's language. */
+async function titleOf($: EngineInterface, key: 'titleCleanup' | 'titleAgents' | 'titleShip'): Promise<string> {
+  return tr((await sharedNow($)).loc, key)
 }
 
 async function readJson($: EngineInterface, path: string): Promise<unknown> {
@@ -512,7 +521,7 @@ export const register: Register = on => {
       // The first background subagent of the session opens the pane once; closed by the person, it stays closed.
       if (e.background && !(await read($, flags)).agentsPaneOpened) {
         await update($, flags, f => ({ ...f, agentsPaneOpened: true }))
-        await $.ui.open({ id: AGENTS_PANE, title: 'Agents' })
+        await $.ui.open({ id: AGENTS_PANE, title: await titleOf($, 'titleAgents') })
       }
     }
     return spawned
@@ -586,6 +595,8 @@ export const register: Register = on => {
     const gateOpen = main && (await open($))
     if (gateOpen) {
       const input = e as unknown as Record<string, unknown>
+      // New work after a ship: an edit, or a plan with open steps, ends the "settled" state.
+      if (/^(Edit|Write|MultiEdit|NotebookEdit)$/.test(tool)) await update($, settled, () => false)
       const act = activityOf(tool, input)
       await update($, progress, p => {
         let steps = p.steps
@@ -593,12 +604,16 @@ export const register: Register = on => {
         else if (tool === 'TodoWrite') steps = todoSteps(input.todos)
         return { ...p, steps, activity: act || p.activity }
       })
+      if ((tool.endsWith('ccd_turn__update_plan') || tool === 'TodoWrite') && (await read($, progress)).steps.some(st => st.status !== 'completed')) {
+        await update($, settled, () => false)
+      }
     }
     const result = await next(e)
     if (gateOpen && isCardTool(tool) && result && typeof result.text === 'string' && !result.isError) {
       const view = cardFromResult(result.text)
       if (view) {
         await update($, card, () => view)
+        if (isShippedCard(view)) await update($, settled, () => true)
         if (view.title) await update($, lastCard, () => ({ title: view.title, at: view.at }))
       }
     }
@@ -629,7 +644,7 @@ export const register: Register = on => {
         // A concept watcher ending normally is plumbing that wakes Claude anyway: a toast only when it failed, at any length.
         const failed = isFailedStatus(notice.status) || /\bfailed\b|exit code [1-9]/i.test(notice.summary)
         if (isWatcher ? failed : now - startedAt >= LONG_RUN_MS) {
-          const what = notice.summary || tr((await sharedNow($)).loc, 'bgCommand', { s: notice.status || 'finished' })
+          const what = notice.summary || tr((await sharedNow($)).loc, 'bgCommand', { s: notice.status || tr((await sharedNow($)).loc, 'finishedWord') })
           $.ui.toast(`${what} · ${elapsed(now - startedAt)}`.slice(0, 200), { timeoutMs: 8000 })
         }
       }
@@ -674,7 +689,7 @@ export const register: Register = on => {
         await update($, cleanup, () => ({
           phase,
           agentId: null,
-          report: answer || 'No answer.',
+          report: answer || tr(loc, 'noAnswer'),
           at: now,
           causes: run.causes,
           ...(offer ? { learn: offer.cause, learnRuns: offer.runs } : {}),
@@ -682,7 +697,7 @@ export const register: Register = on => {
         if (phase !== 'planned') await endRun($)
         $.ui.toast(cleanupToast(phase, loc), { timeoutMs: 8000 })
         if (offer) $.ui.toast(tr(loc, 'toastLearn'), { timeoutMs: 10000 })
-        await $.ui.open({ id: CLEANUP_PANE, title: 'Cleanup' })
+        await $.ui.open({ id: CLEANUP_PANE, title: await titleOf($, 'titleCleanup') })
       }
     }
     return result
@@ -707,12 +722,12 @@ export const register: Register = on => {
   })
 
   on('command.run', { command: 'devops-agents' }, async $ => {
-    await $.ui.open({ id: AGENTS_PANE, title: 'Agents' })
+    await $.ui.open({ id: AGENTS_PANE, title: await titleOf($, 'titleAgents') })
     return { text: 'Agents pane opened.' }
   })
 
   on('command.run', { command: 'devops-ship' }, async $ => {
-    await $.ui.open({ id: SHIP_PANE, title: 'Ship / CI' })
+    await $.ui.open({ id: SHIP_PANE, title: await titleOf($, 'titleShip') })
     await refreshShip($)
     return { text: 'Ship / CI pane opened.' }
   })
@@ -777,10 +792,11 @@ export const register: Register = on => {
     const list = (await read($, agents)).map(a => (live[a.id] && typeof a.endedAt !== 'number' ? { ...a, status: live[a.id] } : a))
     if (list.some(a => typeof a.endedAt !== 'number' && a.status === 'running')) startTicker($) // after a reload
     const rows = agentRows(list, now)
+    const loc = (await sharedNow($)).loc
     const room = Math.max(1, (e.viewport?.rows ?? 24) - 2)
     return (
       <Box flexDirection="column">
-        {rows.length === 0 && <Text dimColor>No subagents in this session yet.</Text>}
+        {rows.length === 0 && <Text dimColor>{tr(loc, 'noAgents')}</Text>}
         {rows.slice(-room).map(r => (
           <Text dimColor={r.isDone}>{r.text}</Text>
         ))}
@@ -793,24 +809,18 @@ export const register: Register = on => {
     const { Box, Button, Text } = $.ui.resolve(e)
     const v = await read($, ship)
     const pr = v && v.pr
+    const loc = (await sharedNow($)).loc
     return (
       <Box flexDirection="column">
-        {!v && <Text dimColor>No ship data read yet.</Text>}
-        {v && <Text>Branch: {v.branch || 'unknown'}</Text>}
+        {!v && <Text dimColor>{tr(loc, 'noShip')}</Text>}
+        {v && <Text>{tr(loc, 'shipBranch', { b: v.branch || tr(loc, 'unknown') })}</Text>}
         {v && (
           <Text>
-            Ship: {v.steps.length ? `${v.steps.join(', ')} done` : 'no checkpoint'}
-            {v.next ? ` · next: ${v.next}` : ''}
+            {`${v.steps.length ? tr(loc, 'shipDone', { steps: v.steps.join(', ') }) : tr(loc, 'shipNone')}${v.next ? tr(loc, 'shipNext', { next: v.next }) : ''}`}
           </Text>
         )}
-        {v && (
-          <Text>
-            {pr
-              ? `PR #${pr.number} ${pr.state}: ${pr.pass} passed, ${pr.fail} failed, ${pr.pending} pending`
-              : 'PR: none found (or gh unavailable)'}
-          </Text>
-        )}
-        <Button key="refresh" label="Refresh" onPress={() => refreshShip($)} />
+        {v && <Text>{pr ? tr(loc, 'prLine', { n: pr.number, state: pr.state, pass: pr.pass, fail: pr.fail, pending: pr.pending }) : tr(loc, 'prNone')}</Text>}
+        <Button key="refresh" label={tr(loc, 'refresh')} onPress={() => refreshShip($)} />
       </Box>
     )
   })
@@ -891,7 +901,8 @@ export const register: Register = on => {
     const hintCard = isHintCard(c)
     const hidden = markerHides(sh.marker, (sh.hyg && sh.hyg.repo) || '', sh.sid, (sh.hyg && sh.hyg.reportAt) || 0, now)
     const cv = working || hidden ? null : cleanupView(sh.hyg, sh.threshold)
-    const advised = compactAdvised(ring, { concept: sh.work.concept, changes: sh.work.changes, steps: prog.steps.some(s => s.status !== 'completed') }, c)
+    const isSettled = await read($, settled)
+    const advised = compactAdvised(ring, { concept: sh.work.concept, changes: sh.work.changes, steps: prog.steps.some(s => s.status !== 'completed'), settled: isSettled }, c)
     const idle = !w && !c
     // Idle and nothing due (no cleanup, no context worth a glance, no budget bar): the band stays away.
     if (idle && !cv && !bars.length && !(ring !== null && ring >= CONTEXT_SHOW_PERCENT)) return next(e)
@@ -913,7 +924,7 @@ export const register: Register = on => {
     const cta = !cv ? null : run.phase === 'planning' || run.phase === 'applying' ? (
       <Text key="cleanup-run" dimColor>{`[ ${tr(loc, 'cleanupBtn')} · ${tr(loc, run.phase === 'planning' ? 'runPlanning' : 'runApplying')} ]`}</Text>
     ) : run.phase === 'planned' ? (
-      <Button key="cleanup-review" label={tr(loc, 'btnReview')} onPress={() => $.ui.open({ id: CLEANUP_PANE, title: 'Cleanup' })} />
+      <Button key="cleanup-review" label={tr(loc, 'btnReview')} onPress={async () => $.ui.open({ id: CLEANUP_PANE, title: tr(loc, 'titleCleanup') })} />
     ) : (
       <Button key="cleanup" label={tr(loc, 'cleanupBtn')} onPress={() => startCleanup($, 'plan')} />
     )
@@ -951,13 +962,13 @@ export const register: Register = on => {
       ) : (
         <Text key="ring" dimColor={!advised} {...(advised ? { color: AMBER } : {})}>{`🧠 ${tr(loc, 'ctx')} ${ring} %`}</Text>
       )
-    const compactBtn = advised ? <Button key="compact" label={tr(loc, 'compact')} onPress={() => $.session.compact()} /> : null
+    const compactBtn = advised && !working ? <Button key="compact" label={tr(loc, 'compact')} onPress={() => $.session.compact()} /> : null
     const budgetEl = !bars.length ? null : Svg ? (
       <Box key="budget" flexDirection="row" alignItems="center" columnGap={2} flexWrap="wrap">
         {bars.map(bar => (
           <Box key={`bar-${bar.label}`} flexDirection="row" alignItems="center" columnGap={1}>
             <Text dimColor>{bar.label}</Text>
-            <Svg source={budgetBarSvg(bar)} alt={budgetBarAlt(bar)} width={BUDGET_BAR_SIZE.width} height={BUDGET_BAR_SIZE.height} isInteractive />
+            <Svg source={budgetBarSvg(bar)} alt={budgetBarAlt(bar, loc)} width={BUDGET_BAR_SIZE.width} height={BUDGET_BAR_SIZE.height} isInteractive />
           </Box>
         ))}
       </Box>

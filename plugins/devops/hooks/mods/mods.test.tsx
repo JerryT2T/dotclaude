@@ -12,7 +12,9 @@ import {
   cleanupView,
   compactAdvised,
   compactThreshold,
+  budgetBarAlt,
   hourglassSvg,
+  isHintCard,
   hygieneFrom,
   hygieneLine,
   isInactiveUnmerged,
@@ -648,11 +650,11 @@ test('B12 cleanup visibility: inactive unmerged work always, otherwise only abov
     NOW,
   )
   // Same counting as ss.orphan.nudge.js: atRisk − dirty + remote branches, dirty worktrees, undecided copies.
-  expect(h).toMatchObject({ branches: 4, worktrees: 0, copies: 0, agent: 2, broken: 1, landed: 40, inactive: 2, repo: REPO })
+  expect(h).toMatchObject({ branches: 3, worktrees: 0, copies: 0, agent: 1, broken: 1, landed: 40, inactive: 2, repo: REPO })
   expect(h?.causes).toEqual({ 'agent worktree': 1, branch: 1 })
   const v = cleanupView(h, 50)
-  expect(v).toMatchObject({ n: 4, rule: { kind: 'inactive', n: 2 } })
-  expect(v?.rows).toEqual([{ key: 'rowAgent', n: 2 }, { key: 'rowBranches', n: 1 }, { key: 'rowBroken', n: 1 }])
+  expect(v).toMatchObject({ n: 3, rule: { kind: 'inactive', n: 2 } })
+  expect(v?.rows).toEqual([{ key: 'rowAgent', n: 1 }, { key: 'rowBranches', n: 1 }, { key: 'rowBroken', n: 1 }])
   // No inactive unmerged work: shown only when all leftovers (incl. landed ones) exceed the threshold.
   const quiet = { branches: 3, worktrees: 0, copies: 2, ageHours: 1, landed: 44, inactive: 0 }
   expect(cleanupView(quiet, 50)).toBeNull() // 5 open + 44 landed = 49, not above 50
@@ -1060,4 +1062,162 @@ test('B17 hint cards (batch / test mode): heading plus a ? toggle, hints collaps
   expect(JSON.stringify(await band.find({ key: 'band' }))).toContain('Doku nachziehen')
   expect(await band.find({ key: 'hints-toggle' })).toBeUndefined()
   await band.unmount()
+})
+
+// ---------------------------------------------------------------------------------------------
+// qax defects 1-6.
+// ---------------------------------------------------------------------------------------------
+
+const REL = { ...CARD_DATA, h: '🟩 🚀 Released Alpha — v0.270.1 — nach Beta promoten?' }
+const cardText = (d: unknown) => `<script type="application/json" id="dc-card-data">${JSON.stringify(d)}</script>`
+
+test('defect 1: after a ship the squash-merged branch (still "ahead" of main) keeps the ring grey until a new edit or open plan', async ($, on) => {
+  engine(on)
+  on('tool.call', () => ({ result: {}, text: cardText(REL) }))
+  on('turn.start', () => ({ turnId: 't' }))
+  // Clean tree, but 3 commits ahead of origin/main: a squash merge never makes the branch "behind".
+  on('process.run', (_: unknown, e: { argv: string[] }) => ({
+    value: e.argv.includes('status') ? { exitCode: 0, stdout: '', stderr: '' } : { exitCode: 0, stdout: '3\n', stderr: '' },
+  }))
+  await $.session.start({ cwd: REPO, surface: 'desktop', isInteractive: true })
+  await $.session.measure(MEASURE as any)
+  // Before any ship: commits ahead = unshipped work, amber + button (the idle row shows it after a prompt).
+  await $.turn.start({ text: 'go', turnId: 't1' } as any)
+  let band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await band.find({ key: 'compact' })).toBeDefined()
+  await band.unmount()
+  await $.tool.call({ tool: CARD_TOOL, summary: 'ship' } as any) // 🟩 released card
+  await $.turn.start({ text: 'next', turnId: 't2' } as any) // the card is spent, the idle row shows
+  band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await band.find({ key: 'compact' })).toBeUndefined()
+  expect(svgIn(await band.find({ key: 'idle-ring' }))?.props.source).not.toMatch(/#e6c36a/)
+  await band.unmount()
+  // A new edit reopens the work.
+  await $.tool.call({ tool: 'Edit', file_path: 'a.ts' } as any)
+  band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await band.find({ key: 'compact' })).toBeDefined()
+  await band.unmount()
+})
+
+test('defect 1: an open concept page still counts after a ship', async ($, on) => {
+  engine(on, { files: { '/.claude/concept-active.json': '{}' } })
+  on('tool.call', () => ({ result: {}, text: cardText(REL) }))
+  on('turn.start', () => ({ turnId: 't' }))
+  await $.session.start({ cwd: REPO, surface: 'desktop', isInteractive: true })
+  await $.session.measure(MEASURE as any)
+  await $.tool.call({ tool: CARD_TOOL, summary: 'ship' } as any)
+  await $.turn.start({ text: 'next', turnId: 't2' } as any)
+  const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await band.find({ key: 'compact' })).toBeDefined() // concept-active stays open work
+  await band.unmount()
+})
+
+test('defect 1: a plan with open steps ends the settled state', async ($, on) => {
+  engine(on)
+  on('tool.call', (_: unknown, e: { tool: string }) => ({ result: {}, text: e.tool === CARD_TOOL ? cardText(REL) : '' }))
+  on('turn.start', () => ({ turnId: 't' }))
+  await $.session.start({ cwd: REPO, surface: 'desktop', isInteractive: true })
+  await $.session.measure(MEASURE as any)
+  await $.tool.call({ tool: CARD_TOOL, summary: 'ship' } as any)
+  await $.turn.start({ text: 'next', turnId: 't2' } as any)
+  await $.tool.call({ tool: 'mcp__ccd_turn__update_plan', items: [{ content: 'Neu', status: 'in_progress' }], scope: 'continuation' } as any)
+  const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await band.find({ key: 'compact' })).toBeDefined()
+  await band.unmount()
+})
+
+test('defect 2: only the batch card folds its points; the test card (userTest steps = CTA) stays open', async ($, on) => {
+  engine(on)
+  const testCard = { ...CARD_DATA, ti: 'Test', h: '👉 🧪 Test — Erst testen, dann shippen?', pt: ['Seite öffnen und Popup prüfen'] }
+  on('tool.call', () => ({ result: {}, text: cardText(testCard) }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.tool.call({ tool: CARD_TOOL, summary: 'x' } as any)
+  const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await band.find({ key: 'hints-toggle' })).toBeUndefined()
+  expect(JSON.stringify(await band.find({ key: 'band' }))).toContain('Seite öffnen und Popup prüfen')
+  await band.unmount()
+  expect(isHintCard({ heading: testCard.h, points: testCard.pt })).toBe(false)
+  expect(isHintCard({ heading: '🟦 🧪 Test — läuft', points: ['x'] })).toBe(false)
+  expect(isHintCard({ heading: '👉 📚 Batch — sammelt Aufträge', points: ['x'] })).toBe(true)
+  expect(isHintCard({ heading: '👉 📚 Batch — sammelt Aufträge', points: [] })).toBe(false)
+})
+
+test('defect 3: while working there is no Compact button (ring only), even with open work at 91 %', async ($, on) => {
+  engine(on, { files: { '/.claude/concept-active.json': '{}' } })
+  await $.session.start({ cwd: REPO, surface: 'desktop', isInteractive: true })
+  await $.session.measure(MEASURE as any)
+  for (const surface of SURFACES) {
+    const band = await $.ui.mount({ ...WORKING_BAND, surface })
+    expect(await band.find({ key: 'compact' })).toBeUndefined()
+    await band.unmount()
+  }
+  const w = await $.ui.mount({ ...WORKING_BAND, surface: 'desktop' })
+  expect(await w.find({ key: 'ring' })).toBeDefined()
+  await w.unmount()
+})
+
+test('defect 4: bar alt, pane bodies, spawn failure and background labels follow the language', async ($, on) => {
+  engine(on, { files: { '/.claude/settings.json': JSON.stringify({ language: 'de' }), '/.claude/orphan-report.json': ORPHAN_REPORT } })
+  on('session.root', () => ({ value: REPO }))
+  on('agent.spawn', () => ({ model: 'claude-opus' })) // no agentId, none listed: the run does not start
+  await $.session.start({ cwd: REPO, surface: 'desktop', isInteractive: true })
+  const bar = { label: '5h' as const, pct: 72, elapsedPct: 60, level: 'yellow' as const, watermark: '2 h 0 m' }
+  expect(budgetBarAlt(bar, 'de')).toBe('5h: 72 % verbraucht · Reset in 2 h 0 m')
+  expect(budgetBarAlt(bar)).toBe('5h: 72 % used · resets in 2 h 0 m')
+  const agents = await $.ui.mount({ ...pane('devops-agents', 'Agents'), surface: 'desktop' })
+  expect((await agents.find({ type: 'Text', text: /Subagenten/ }))?.text).toBe('Noch keine Subagenten in dieser Session.')
+  await agents.unmount()
+  const shipPane = await $.ui.mount({ ...pane('devops-ship', 'Ship'), surface: 'desktop' })
+  expect((await shipPane.find({ type: 'Text', text: /Ship-Daten/ }))?.text).toBe('Noch keine Ship-Daten gelesen.')
+  expect((await shipPane.find({ key: 'refresh' }))?.props.label).toBe('Aktualisieren')
+  await shipPane.unmount()
+  const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  await band.press({ key: 'cleanup-fold' })
+  await band.press({ key: 'cleanup' })
+  await band.unmount()
+  const cp = await $.ui.mount({ ...pane('devops-cleanup', 'Aufräumen'), surface: 'desktop' })
+  expect((await cp.find({ type: 'Markdown' }))?.props.text).toBe('Subagent nicht gestartet: no agent started')
+  await cp.unmount()
+  const keys: StrKey[] = ['barAlt', 'titleCleanup', 'titleAgents', 'titleShip', 'noAgents', 'noShip', 'shipBranch', 'unknown', 'shipDone', 'shipNone', 'shipNext', 'prLine', 'prNone', 'refresh', 'spawnFailed', 'finishedWord', 'noAnswer']
+  for (const loc of LOCALES)
+    for (const k of keys) {
+      const text = tr(loc, k, { label: 'x', p: 1, w: 'x', b: 'x', steps: 'x', next: 'x', n: 1, state: 'x', pass: 1, fail: 1, pending: 1, why: 'x' })
+      expect(text).toMatch(/\S/)
+      expect(text).not.toMatch(/\{\w+\}/)
+    }
+  expect(tr('de', 'finishedWord')).toBe('beendet')
+})
+
+test('defect 5: hygieneFrom drops live sessions like the nudge does, so band, status line and nudge name the same numbers', () => {
+  const h = hygieneFrom(JSON.parse(idleReport([agentWt(1), agentWt(2, { live: true }), { branch: 'feat', state: 'unlanded', live: true, dirty: 2 }])), REPO, NOW)
+  expect(h).toMatchObject({ branches: 1, worktrees: 0, inactive: 1 })
+  expect(hygieneLine(h)).toBe('devops: 1 open branch')
+})
+
+test('defect 6: the apply refreshes the run marker start, so a late apply keeps other sessions out', async ($, on) => {
+  const { seen, tick } = engine(on, {
+    agents: [
+      { id: 'c1', description: 'Branch cleanup plan', type: 'general-purpose', status: 'running' },
+      { id: 'c2', description: 'Branch cleanup apply', type: 'general-purpose', status: 'running' },
+    ],
+    files: { '/.claude/orphan-report.json': ORPHAN_REPORT },
+  })
+  let n = 0
+  on('agent.spawn', () => ({ model: 'claude-opus', agentId: `c${++n}` }))
+  on('session.id', () => ({ value: 'mine' }))
+  on('session.root', () => ({ value: REPO }))
+  on('turn.complete', (_: unknown, e: { answer: string }) => ({ text: e.answer }))
+  await $.session.start({ cwd: REPO, surface: 'desktop', isInteractive: true })
+  const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  await band.press({ key: 'cleanup-fold' })
+  await band.press({ key: 'cleanup' })
+  await band.unmount()
+  await $.turn.complete({ answer: '## Plan', durationMs: 1, isAborted: false, turnId: 't1', agentId: 'c1', reason: 'end' } as any)
+  tick(90 * 60_000) // the person reviews the plan for 90 minutes
+  const pane2 = await $.ui.mount({ ...pane('devops-cleanup', 'Cleanup'), surface: 'desktop' })
+  await pane2.press({ key: 'cleanup-apply' })
+  await pane2.unmount()
+  const marks = seen.writes.filter(x => x.path.replaceAll(String.fromCharCode(92), '/').endsWith('/.claude/devops-cleanup-run.json')).map(x => JSON.parse(x.text))
+  expect(marks.length).toBe(2)
+  expect(marks[1].startedAt - marks[0].startedAt).toBe(90 * 60_000)
 })

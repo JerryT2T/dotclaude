@@ -233,8 +233,8 @@ export function budgetBarSvg(bar: BudgetBar): string {
 export const BUDGET_BAR_SIZE = { width: BAR.w, height: BAR.h + 12 } as const
 
 /** Screen-reader text of one bar, as the card's tooltip. */
-export function budgetBarAlt(bar: BudgetBar): string {
-  return `${bar.label}: ${Math.round(bar.pct)} % used · resets in ${bar.watermark}`
+export function budgetBarAlt(bar: BudgetBar, loc: Locale = 'en'): string {
+  return tr(loc, 'barAlt', { label: bar.label, p: Math.round(bar.pct), w: bar.watermark })
 }
 
 /** One terminal line for the band's budget bars (the card's markdown line); null when no bar shows. The context has its own ring. */
@@ -485,7 +485,7 @@ export function hygieneFrom(report: unknown, cwd: string, now: number): Hygiene 
   if (!entry) return null
   // The worktree this session works in is never "open work" to clean up: it is in use.
   const risk = (Array.isArray(entry.atRisk) ? entry.atRisk : []).filter(
-    x => x && !(x.path && (here === norm(x.path) || here.startsWith(`${norm(x.path)}/`))),
+    x => x && x.live !== true && !(x.path && (here === norm(x.path) || here.startsWith(`${norm(x.path)}/`))),
   )
   const dirty = risk.filter(x => (x.dirty || 0) > 0).length
   const remote = Array.isArray(entry.remoteOnly) ? entry.remoteOnly.length : 0
@@ -753,6 +753,39 @@ const TABLE = {
     '別のセッションで整理がすでに実行中です',
     '另一个会话中已有清理在运行',
   ],
+  barAlt: [
+    '{label}: {p} % used · resets in {w}',
+    '{label}: {p} % verbraucht · Reset in {w}',
+    '{label}: {p} % usado · se restablece en {w}',
+    '{label} : {p} % utilisé · réinitialisation dans {w}',
+    '{label}: {p} % usado · reinicia em {w}',
+    '{label}: {p} % 使用済み · {w} 後にリセット',
+    '{label}：已用 {p} % · {w} 后重置',
+  ],
+  titleCleanup: ['Cleanup', 'Aufräumen', 'Limpieza', 'Nettoyage', 'Limpeza', '整理', '清理'],
+  titleAgents: ['Agents', 'Agenten', 'Agentes', 'Agents', 'Agentes', 'エージェント', '代理'],
+  titleShip: ['Ship / CI', 'Ship / CI', 'Ship / CI', 'Ship / CI', 'Ship / CI', 'Ship / CI', 'Ship / CI'],
+  noAgents: ['No subagents in this session yet.', 'Noch keine Subagenten in dieser Session.', 'Aún no hay subagentes en esta sesión.', "Aucun sous-agent dans cette session pour l'instant.", 'Ainda não há subagentes nesta sessão.', 'このセッションにはまだサブエージェントがありません。', '此会话中还没有子代理。'],
+  noShip: ['No ship data read yet.', 'Noch keine Ship-Daten gelesen.', 'Aún no se han leído datos de ship.', 'Aucune donnée de ship lue pour le moment.', 'Ainda não foram lidos dados de ship.', 'Ship のデータはまだ読み込まれていません。', '尚未读取 ship 数据。'],
+  shipBranch: ['Branch: {b}', 'Branch: {b}', 'Rama: {b}', 'Branche : {b}', 'Branch: {b}', 'ブランチ: {b}', '分支：{b}'],
+  unknown: ['unknown', 'unbekannt', 'desconocida', 'inconnue', 'desconhecido', '不明', '未知'],
+  shipDone: ['Ship: {steps} done', 'Ship: {steps} erledigt', 'Ship: {steps} hecho', 'Ship : {steps} terminé', 'Ship: {steps} concluído', 'Ship: {steps} 完了', 'Ship：{steps} 已完成'],
+  shipNone: ['Ship: no checkpoint', 'Ship: kein Checkpoint', 'Ship: sin punto de control', 'Ship : aucun point de contrôle', 'Ship: sem checkpoint', 'Ship: チェックポイントなし', 'Ship：无检查点'],
+  shipNext: [' · next: {next}', ' · als Nächstes: {next}', ' · siguiente: {next}', ' · ensuite : {next}', ' · próximo: {next}', ' · 次: {next}', ' · 下一步：{next}'],
+  prLine: [
+    'PR #{n} {state}: {pass} passed, {fail} failed, {pending} pending',
+    'PR #{n} {state}: {pass} bestanden, {fail} fehlgeschlagen, {pending} offen',
+    'PR #{n} {state}: {pass} correctos, {fail} fallidos, {pending} pendientes',
+    'PR #{n} {state} : {pass} réussis, {fail} échoués, {pending} en attente',
+    'PR #{n} {state}: {pass} aprovados, {fail} falharam, {pending} pendentes',
+    'PR #{n} {state}: 成功 {pass}、失敗 {fail}、保留 {pending}',
+    'PR #{n} {state}：通过 {pass}，失败 {fail}，待定 {pending}',
+  ],
+  prNone: ['PR: none found (or gh unavailable)', 'PR: keiner gefunden (oder gh nicht verfügbar)', 'PR: ninguno (o gh no disponible)', 'PR : aucune trouvée (ou gh indisponible)', 'PR: nenhum encontrado (ou gh indisponível)', 'PR: 見つかりません（または gh が使えません）', 'PR：未找到（或 gh 不可用）'],
+  refresh: ['Refresh', 'Aktualisieren', 'Actualizar', 'Actualiser', 'Atualizar', '更新', '刷新'],
+  spawnFailed: ['Subagent not started: {why}', 'Subagent nicht gestartet: {why}', 'Subagente no iniciado: {why}', 'Sous-agent non démarré : {why}', 'Subagente não iniciado: {why}', 'サブエージェントを起動できませんでした: {why}', '子代理未启动：{why}'],
+  finishedWord: ['finished', 'beendet', 'terminado', 'terminé', 'concluído', '完了', '已结束'],
+  noAnswer: ['No answer.', 'Keine Antwort.', 'Sin respuesta.', 'Pas de réponse.', 'Sem resposta.', '回答がありません。', '没有回答。'],
   learnBtn: ['devops learn', 'devops learn', 'devops learn', 'devops learn', 'devops learn', 'devops learn', 'devops learn'],
 } as const
 
@@ -821,7 +854,7 @@ export function ringPercent(b: Budget | null, env: CompactEnv = {}): number | nu
   return b.context === null ? null : Math.max(0, Math.min(100, b.context))
 }
 
-export type WorkState = { concept: boolean; changes: boolean; steps: boolean }
+export type WorkState = { concept: boolean; changes: boolean; steps: boolean; settled?: boolean }
 
 /**
  * B7: amber ring + Compact button from 80 % — only while work is open (an open concept page, unshipped
@@ -831,6 +864,8 @@ export type WorkState = { concept: boolean; changes: boolean; steps: boolean }
 export function compactAdvised(pct: number | null, work: WorkState, card: CardView | null): boolean {
   if (pct === null || pct < RING_AMBER_FROM) return false
   if (card && /^🟩/u.test(card.heading)) return false
+  // After a ship the branch stays "ahead" of main (squash merge) and the plan is done: only an open concept page still counts.
+  if (work.settled) return work.concept
   return work.concept || work.changes || work.steps
 }
 
@@ -985,9 +1020,14 @@ export function junkLabel(n: number, loc: Locale): string {
 }
 
 /**
- * B17: a mode-activation card (batch collect mode `👉 📚 Batch — sammelt …`, test mode 🧪) whose points are usage
- * hints, not decisions: the band folds them behind a `?`. Ship / decision / concept cards keep their CTA points open.
+ * B17: a pure mode-activation card (batch collect mode `👉 📚 Batch — sammelt …`) whose points are usage
+ * hints, not decisions: the band folds them behind a `?`. Ship / decision / concept / test cards (their steps are the CTA) keep their CTA points open.
  */
 export function isHintCard(c: { heading: string; points: readonly string[] } | null): boolean {
-  return !!c && c.points.length > 0 && /^(?:👉|🟦)\s*(?:📚|🧪)/u.test(c.heading)
+  return !!c && c.points.length > 0 && /^(?:👉|🟦)\s*📚\s*Batch/u.test(c.heading)
+}
+
+/** A ship / released / finished card (🟩 heading): the work it reports is shipped. */
+export function isShippedCard(c: { heading: string } | null): boolean {
+  return !!c && /^🟩/u.test(c.heading)
 }
