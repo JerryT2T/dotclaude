@@ -8,10 +8,10 @@ const CLI = path.join(__dirname, "integration-check.js");
 const git = (args, cwd) => execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
 const run = (cwd, extra) => JSON.parse(execFileSync("node", [CLI, "--cwd", cwd, "--integration", "main", "--sub", "feat-core", "--remove", ...extra], { encoding: "utf8" }));
 
-function setup() {
+function setup(wtRel = null) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "ic-cli-test-"));
   const repo = path.join(root, "repo");
-  const wt = path.join(root, "wt");
+  const wt = wtRel ? path.join(repo, wtRel) : path.join(root, "wt");
   fs.mkdirSync(repo);
   git(["init", "-q", "-b", "main"], repo);
   git(["config", "user.email", "t@example.com"], repo);
@@ -20,6 +20,7 @@ function setup() {
   fs.writeFileSync(path.join(repo, "a.txt"), "a");
   git(["add", "-A"], repo);
   git(["commit", "-q", "-m", "init"], repo);
+  fs.mkdirSync(path.dirname(wt), { recursive: true });
   git(["worktree", "add", "-q", "-b", "feat-core", wt], repo);
   fs.writeFileSync(path.join(wt, "b.txt"), "b");
   git(["add", "-A"], wt);
@@ -37,6 +38,16 @@ describe("integration-check --remove --now", () => {
       expect(run(repo, ["--now"]).removed.length).toBe(1);
       expect(fs.existsSync(wt)).toBe(false);
       expect(git(["branch", "--list", "feat-core"], repo)).toBe("");
+    } finally { fs.rmSync(root, { recursive: true, force: true }); }
+  }, 60000);
+
+  it("an isolated agent worktree is held back by the age/count rule even with --now", () => {
+    const { root, repo, wt } = setup(".claude/worktrees/agent-a1b2c3d4");
+    try {
+      const out = run(repo, ["--now"]);
+      expect(out.removed).toEqual([]);
+      expect(fs.existsSync(wt)).toBe(true);
+      expect(out.kept.map((k) => k.reason)).toEqual([expect.stringMatching(/^kept-for-inspection/)]);
     } finally { fs.rmSync(root, { recursive: true, force: true }); }
   }, 60000);
 

@@ -512,7 +512,7 @@ describe("auto-clean — what a worktree removal would destroy (AUD-C001/C009/C0
   const skippedWt = (res, name) => res.autoClean.skipped.find((s) => s.kind === "worktree" && path.basename(s.path) === name);
 
   test("isRegenerable: build output only", () => {
-    for (const e of ["node_modules/", "pkg/a/node_modules/", "dist/", "src/__pycache__/", "x/y.pyc", "target/debug/", ".next/"]) {
+    for (const e of ["node_modules/", "pkg/a/node_modules/", "dist/", "src/__pycache__/", "x/y.pyc", "target/debug/", ".next/", ".angular/", ".vitest/"]) {
       expect(isRegenerable(e), e).toBe(true);
     }
     // A file listed on its own under a build-named folder: that folder is not

@@ -17,6 +17,8 @@ const fs = require('fs');
 const path = require('path');
 const { pathToFileURL } = require('url');
 
+const { isAgentLeftover } = require('../../scripts/lib/cleanup-rule');
+
 const GIT_TIMEOUT = 15000;
 
 function git(args, cwd, timeout = GIT_TIMEOUT) {
@@ -302,7 +304,8 @@ async function removeIntegrated({ cwd, integrationRef, result, explicit = false,
  * The age/count rule for auto-agents' post-merge worktrees: a part is removed only when
  * ship_hygiene's own plan (landed in the DEFAULT branch, pushed, older than autoCleanMinAgeDays
  * or beyond autoCleanKeepNewest) would remove it. Anything else stays for inspection and is
- * handed to the next ship_hygiene run — reason `kept-for-inspection`. Fails closed.
+ * handed to the next ship_hygiene run — reason `kept-for-inspection`. Fails closed. Parts that are
+ * not isolated sub-agent leftovers are not held back here.
  * @param {string} cwd
  * @returns {Promise<(part:{path?:string, branch?:string}) => Promise<string|null>>}
  */
@@ -320,6 +323,8 @@ async function ageCountReason(cwd) {
     for (const u of plan.remove) due.add(u.kind === 'worktree' ? `w:${hyg.normPath(u.path)}` : `b:${u.branch}`);
   }
   return async (part) => {
+    // only isolated sub-agent leftovers (agent-* worktrees / worktree-agent-* branches) are held back
+    if (!isAgentLeftover(part.path ? { kind: 'worktree', path: part.path } : { kind: 'branch', branch: part.branch })) return null;
     if (!plan) return 'kept-for-inspection (age/count rule unavailable)';
     const id = part.path ? `w:${hyg.normPath(part.path)}` : `b:${part.branch}`;
     return due.has(id) ? null : 'kept-for-inspection (age/count rule: ship_hygiene removes it later)';

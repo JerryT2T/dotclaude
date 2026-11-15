@@ -104,7 +104,7 @@ const MAIN_CHECKOUT_IDLE_MS = 24 * 3_600_000;
  * (git-hygiene.md orphan rule). Any other ignored file keeps the worktree.
  */
 const REGENERABLE_DIRS = new Set(["node_modules", "dist", "build", "out", ".next", ".nuxt", ".cache",
-  "coverage", ".turbo", "__pycache__", ".pytest_cache", "target"]);
+  "coverage", ".turbo", "__pycache__", ".pytest_cache", "target", ".angular", ".vitest"]);
 const REGENERABLE_FILE = /\.pyc$/i;
 /**
  * Root-level files of do-run's autonomous, backlog and burn modes: journals,
