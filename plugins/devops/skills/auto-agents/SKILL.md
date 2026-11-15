@@ -321,8 +321,8 @@ Per tier:
   (Step 7). The caller opens the concept page and re-enters this skill with
   the answer.
 
-QA Wave testing protocol and single-agent shortcut: see `{PLUGIN_ROOT}/deep-knowledge/agent-orchestration.md`
-§ QA Wave — Testing Protocol and § Single-Agent Shortcut.
+QA Wave testing protocol: `{PLUGIN_ROOT}/deep-knowledge/agent-qa-wave.md`; single-agent shortcut:
+`{PLUGIN_ROOT}/deep-knowledge/agent-orchestration.md` § Single-Agent Shortcut.
 
 ### Burn conveyor (`--burn`)
 
