@@ -13,7 +13,8 @@
  *
  *   verify --state <abs state file>
  *     Heartbeat round-trip (claude_ts must advance), 200 gate on the page URL,
- *     then opens Edge (Windows: start "" msedge <url>). Prints {ok:true,url} or
+ *     then opens Edge (Windows: start "" msedge <url>) unless a tab is already
+ *     registered on the bridge (/pending browser_tabs > 0): then {already_open:true}. Prints {ok:true,url} or
  *     {ok:false,error} and exits 1. CONCEPT_OPEN_NO_BROWSER=1 skips the open.
  *
  * Every sibling script is resolved from this file's directory.
@@ -177,6 +178,12 @@ async function verify(opts, deps = {}) {
   let run = 0;
   try { run = Number(JSON.parse(who.body).pid) || 0; } catch { /* no id: run 0 */ }
   if (run && st.opened_for_run === run) return { ok: true, url, already_open: true };
+  // A tab already registered with the bridge (/pending browser_tabs) is reused:
+  // a fresh open would activate Edge and steal focus. Reports already_open.
+  const pend = await req('GET', `${base}/pending`);
+  let tabs = 0;
+  try { tabs = Number(JSON.parse(pend.body).browser_tabs) || 0; } catch { /* older bridge: no registry */ }
+  if (tabs > 0) return { ok: true, url, already_open: true };
   const err = await open(url);
   if (err) return { ok: false, error: err, url };
   try { fs.writeFileSync(opts.state, JSON.stringify({ ...st, opened_for_run: run }, null, 2)); } catch { /* the page is open; only a later verify would repeat it */ }

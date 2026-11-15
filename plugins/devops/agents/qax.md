@@ -35,7 +35,8 @@ missing, disabled or at its usage limit, so the review never holds you up.
   Playwright is the last fallback. None of them
   connected → report `browser: unavailable` as a finding, never a silent pass.
   Never plain Chrome, never computer-use for browser work
-  (see `{PLUGIN_ROOT}/deep-knowledge/browser-tool-strategy.md`).
+  (see `{PLUGIN_ROOT}/deep-knowledge/browser-tool-strategy.md`). A script-started
+  browser is headless, real GPU via flags, never activated (§ Scripts that start their own browser).
 - Take screenshots of UI changes
 - **Read console + network errors** alongside the snapshot —
   `read_console_messages` + `read_network_requests` (both browser servers name

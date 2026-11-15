@@ -164,7 +164,7 @@ screenshots or computer-use:
 5. Optionally: use `javascript_tool` (`getComputedStyle`) for CSS property verification (colors,
    spacing, fonts) — more accurate than screenshots for style checks
 
-This is the **default** for browser-based UI testing. It works in all modes
+This is the **default** for browser-based UI testing. A script-started Playwright browser is headless by default and never takes focus (browser-tool-strategy.md § Scripts that start their own browser). It works in all modes
 (foreground, background, autonomous) without interrupting the user's desktop.
 
 **Never abort testing because screenshots are unavailable.** Snapshots cover

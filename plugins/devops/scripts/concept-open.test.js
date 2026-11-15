@@ -50,7 +50,7 @@ describe("prepare", () => {
   });
 });
 
-function fakeBridge({ advance = true, pageStatus = 200 } = {}) {
+function fakeBridge({ advance = true, pageStatus = 200, tabs } = {}) {
   let ts = 1000;
   const srv = http.createServer((req, res) => {
     if (req.url.startsWith("/heartbeat")) {
@@ -58,6 +58,7 @@ function fakeBridge({ advance = true, pageStatus = 200 } = {}) {
       res.setHeader("content-type", "application/json");
       return res.end(JSON.stringify({ claude_ts: ts }));
     }
+    if (req.url.startsWith("/pending") && tabs !== undefined) return res.end(JSON.stringify({ pending: false, browser_tabs: tabs }));
     if (req.url.startsWith("/identity")) return res.end(JSON.stringify({ pid: 4242 }));
     res.statusCode = pageStatus;
     res.end("x");
@@ -81,6 +82,24 @@ describe("verify", () => {
       const r = await verify({ state: stateFor(srv.address().port) }, { openBrowser: (u) => { opened.push(u); return null; }, waitMs: 0 });
       expect(r.ok).toBe(true);
       expect(opened).toEqual([r.url]);
+    } finally { srv.close(); }
+  });
+
+  test("a tab already open on the bridge is reused: no open, already_open", async () => {
+    const srv = await fakeBridge({ tabs: 1 });
+    try {
+      const r = await verify({ state: stateFor(srv.address().port) }, { openBrowser: never, waitMs: 0 });
+      expect(r).toMatchObject({ ok: true, already_open: true });
+    } finally { srv.close(); }
+  });
+
+  test("zero registered tabs still opens", async () => {
+    const srv = await fakeBridge({ tabs: 0 });
+    try {
+      const opened = [];
+      const r = await verify({ state: stateFor(srv.address().port) }, { openBrowser: (u) => { opened.push(u); return null; }, waitMs: 0 });
+      expect(r.ok).toBe(true);
+      expect(opened).toHaveLength(1);
     } finally { srv.close(); }
   });
 

@@ -300,6 +300,13 @@ Every spawned agent MUST receive:
    verbatim brief `docs/concepts/{name}/briefs/implement.md` and the
    checklist lines the agent owns, with the order to return an acceptance
    table — item → done / partial / not done → evidence (#1004).
+   Each line travels with its source quote (the quote wins; "like X" names X's
+   real mechanism with file:line, #1110); a moved role is two lines — B gains
+   it, A loses it — and the agent owning A's line removes it (#1111). Rules:
+   `step5-process.md` § Every implement.
+13. **Browsers never take focus** — scripted browsers run headless, also for a
+   real GPU; headed only on request or while the user is away, never activated
+   (`browser-tool-strategy.md` § Scripts that start their own browser, #1099).
 
 ### Interaction Directives
 
