@@ -65,4 +65,11 @@ describe("waitUntilFree", () => {
     expect(r.busy).toHaveLength(1);
     expect(t).toBe(30 * 60000);
   });
+  test("a cap that is not a multiple of the interval is not overshot", async () => {
+    let t = 0;
+    const deps = { patterns: ["x"], lockFiles: [], now: () => t, sleep: async (ms) => { t += ms; },
+      listProcs: () => [{ pid: 1, name: "x.exe", cmd: "" }], selfPids: [] };
+    await bc.waitUntilFree({ intervalMin: 10, capMin: 25 }, deps);
+    expect(t).toBe(25 * 60000);
+  });
 });

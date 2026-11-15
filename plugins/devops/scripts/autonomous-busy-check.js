@@ -117,7 +117,7 @@ async function waitUntilFree({ intervalMin = 10, capMin = 360 } = {}, deps = {})
   const deadline = now() + capMin * 60000;
   let busy = check(deps);
   while (busy.length && now() < deadline) {
-    await sleep(intervalMin * 60000);
+    await sleep(Math.min(intervalMin * 60000, deadline - now())); // never past the cap
     busy = check(deps);
   }
   return { busy, capped: busy.length > 0 };
