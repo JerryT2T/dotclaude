@@ -8,9 +8,11 @@ Quick-reference for all deep-knowledge topics. Read this FIRST to find the right
 | [agent-branch-setup.md](agent-branch-setup.md) | Agent Branch Setup | The first step of every implementing agent (`core`, `frontend`, `aix`, |
 | [agent-collaboration.md](agent-collaboration.md) | Agent Collaboration Protocol | How agents work together on multi-role tasks. |
 | [agent-conventions.md](agent-conventions.md) | Agent Naming & Collaboration Conventions | [role:X · Type] Task description |
+| [agent-engagement-rules.md](agent-engagement-rules.md) | Interactive Mode — Engagement Rules | The rule block every agent spawned in interactive mode gets as its interactio... |
 | [agent-orchestration.md](agent-orchestration.md) | Agent Orchestration | > **Single-Source-of-Truth for test autonomy decisions:** see [test-autonomy.... |
 | [agent-proactivity-details.md](agent-proactivity-details.md) | Agent Delegation Policy — Details | On demand. The always-on core is `agent-proactivity.md` (tiers, precedence, h... |
 | [agent-proactivity.md](agent-proactivity.md) | Agent Delegation Policy | Always-on (SessionStart). This plugin instruction **is** the standing request |
+| [agent-qa-wave.md](agent-qa-wave.md) | QA Wave — Testing Protocol | Testing rules for the QA agent (Wave 3) of an agent run: what to run, how to ... |
 | [api-credits.md](api-credits.md) | API Credits (opt-in) | Run devops' read-only side work on the monthly Claude API credit of a Max/Tea... |
 | [autonomous-execution.md](autonomous-execution.md) | Autonomous Execution — Gate, Guardrails, Late-Permission Protocol | Detailed execution rules for do-run autonomous mode Step 5. Read this at the ... |
 | [browser-file-urls.md](browser-file-urls.md) | Browser File URLs (Windows + Git-Bash) | Cross-cutting rule: whenever a skill opens a local HTML file in a browser |
