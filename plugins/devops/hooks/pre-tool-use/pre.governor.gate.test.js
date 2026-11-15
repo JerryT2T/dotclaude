@@ -49,7 +49,10 @@ describe('governor hooks', () => {
     expect(fs.existsSync(fg)).toBe(false);
   });
 
-  const freshState = (o = {}) => fs.writeFileSync(path.join(home, 'state.json'), JSON.stringify({ format: 1, heartbeat: Date.now(), pressure: { priority: [], over: [] }, sys: { freeMB: 30000 }, ...o }));
+  const freshState = (o = {}) => {
+    fs.rmSync(path.join(home, 'admitted.json'), { force: true }); // admissions of an earlier phase
+    fs.writeFileSync(path.join(home, 'state.json'), JSON.stringify({ format: 1, heartbeat: Date.now(), pressure: { priority: [], over: [] }, sys: { freeMB: 30000 }, ...o }));
+  };
 
   it.runIf(win)('allow/defer table (D1 false positives now allowed)', () => {
     const cases = [
@@ -65,6 +68,8 @@ describe('governor hooks', () => {
     freshState({ pressure: { priority: ['cpu'], over: [] }, priorityBy: 'c:/games/foo' });
     expect(run(PRE, bash('git status', { tool_use_id: 'g2' })).status).toBe(0);
     expect(run(PRE, bash('npm test', { tool_use_id: 'n2' })).status).toBe(0);
+    // #1115: the first test took the one build/test slot (reserved until measured) → a second one waits.
+    expect(run(PRE, bash('npm test', { tool_use_id: 'n2b' })).status).toBe(2);
     expect(run(PRE, bash('docker build .', { tool_use_id: 'd2' })).status).toBe(2);
     // ffmpeg loads gpu; a gpu-priority state defers it but not npm test (no gpu).
     freshState({ pressure: { priority: ['gpu'], over: [] }, priorityBy: 'c:/games/foo' });
