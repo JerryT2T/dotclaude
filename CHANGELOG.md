@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.372.0] — 2026-11-15
+
+### Added
+- Mods (alpha): the band above the prompt mirrors the completion card's template part (title, time, heading, up to 3 open points, buttons). A button sends the card's own prompt; the answer stays inline in the chat only.
+- Mods (alpha): while Claude works, the band shows a turning hourglass, the running task-list step (`n/m · text`) and the tool running now.
+
+### Fixed
+- Mods (alpha): the budget bars no longer leave ~150 px of empty space in the band (interactive SVGs get a fixed size); the centred "devops" watermark is removed.
+
 ## [0.371.0] — 2026-11-13
 
 ### Added
