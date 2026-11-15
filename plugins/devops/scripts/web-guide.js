@@ -48,6 +48,13 @@
  *     (#619, the 20-min pause step) so stop.flow.guard lets the turn end;
  *     exits 1 when no marker exists.
  *   guide clear                       → clears that marker (guide ended).
+ *   guide active / pause / clear also disarm the wake ping, so a still
+ *   running `web-guide-ping.js listen --guide` exits (DISARMED).
+ *   payload sleep                     → puts the guide to sleep (protocol.md
+ *     § Sleeping): marks it paused + sleeping, arms its ping key and prints
+ *     the tokened `sleep(key)` eval. Exits 1 with `ping-unavailable` on
+ *     stderr when the wake ping cannot work here (not Windows, handler not
+ *     registered, no guide) — the skill then pauses the old way.
  */
 
 const fs = require('fs');
@@ -56,7 +63,21 @@ const os = require('os');
 const { execFileSync } = require('child_process');
 const {
   markGuideActive, clearGuideActive, pauseGuide, touchGuideToken, readGuideToken, recordGuideStep, getGuideStatus,
+  sleepGuide, readPingKey,
 } = require('./guide-active-state');
+const ping = require('./web-guide-ping');
+
+// Every way out of "sleeping" (guide active, pause, clear) removes the arm
+// file: a listener still waiting for this guide then exits with DISARMED
+// instead of waking the session later for a click that was already handled.
+function disarmPing() {
+  try {
+    const key = readPingKey(process.cwd());
+    if (key) ping.disarm(key);
+  } catch {
+    // best-effort: a stale arm only costs one spurious wake.
+  }
+}
 
 // touchGuideToken writes the marker to disk (extends its TTL); a write
 // failure (EPERM on rename, two payload calls racing) must not cost the
@@ -88,6 +109,9 @@ const USAGE = `usage:
                                                         wait, see #529)
   node web-guide.js payload destroy                    (tokened destroy(),
                                                         Finding 7)
+  node web-guide.js payload sleep                      (wake ping: paused +
+                                                        sleeping marker, arm,
+                                                        sleep(key) eval)
   node web-guide.js pause <seconds>                    (1-55, prints
                                                         "paused Ns")
   node web-guide.js store --file <path> --key <KEY> [--b64 <value>] [--user]
@@ -481,6 +505,32 @@ function payloadWait(msArg) {
 }
 
 // ---------------------------------------------------------------------------
+// payload sleep — wake ping (protocol.md § Sleeping)
+// ---------------------------------------------------------------------------
+
+function payloadSleep() {
+  const cwd = process.cwd();
+  // Read, never touch: touchGuideToken would refresh the marker and drop the
+  // paused/sleeping flags this call is about to set.
+  const token = readGuideToken(cwd);
+  if (!token || !ping.handlerInstalled()) {
+    process.stderr.write('ping-unavailable: needs Windows, an active guide and `web-guide-ping.js install`\n');
+    process.exitCode = 1;
+    return;
+  }
+  const key = sleepGuide(cwd);
+  if (!key) {
+    process.stderr.write('ping-unavailable: no active guide\n');
+    process.exitCode = 1;
+    return;
+  }
+  ping.arm(key);
+  process.stdout.write(
+    `(window.claudeGuide ? (window.claudeGuide.sleep ? window.claudeGuide.sleep("${key}", "${token}") : "no-sleep") : "reinject-needed")`
+  );
+}
+
+// ---------------------------------------------------------------------------
 // payload destroy
 // ---------------------------------------------------------------------------
 
@@ -764,6 +814,7 @@ function main(argv) {
     if (sub === 'step') return payloadStep(rest[0]);
     if (sub === 'wait') return payloadWait(rest[0]);
     if (sub === 'destroy') return payloadDestroy();
+    if (sub === 'sleep') return payloadSleep();
     process.stderr.write(`${USAGE}\n`);
     process.exitCode = 2;
     return;
@@ -777,6 +828,7 @@ function main(argv) {
 
   if (cmd === 'guide') {
     if (sub === 'active') {
+      disarmPing();
       const file = markGuideActive(process.cwd());
       process.stdout.write(`guide-active ${file}\n`);
       return;
@@ -787,6 +839,7 @@ function main(argv) {
       return;
     }
     if (sub === 'pause') {
+      disarmPing();
       const file = pauseGuide(process.cwd());
       if (file) {
         process.stdout.write(`guide-paused ${file}\n`);
@@ -799,6 +852,7 @@ function main(argv) {
     if (sub === 'clear') {
       // AUD-C061: a failed unlink is a failure, not "guide-cleared".
       try {
+        disarmPing();
         const file = clearGuideActive(process.cwd());
         process.stdout.write(`guide-cleared ${file}\n`);
       } catch (err) {
@@ -829,6 +883,7 @@ module.exports = {
   isInsideGitWorkTree,
   withToken,
   payloadDestroy,
+  payloadSleep,
   payloadStep,
   tokenArg,
   payloadInject,

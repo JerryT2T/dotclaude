@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.378.0] — 2026-11-15
+
+### Added
+- auto-guide: an idle guide now sleeps after 10 min at zero token cost; the next click in the panel wakes Claude through a `claude-guide://` protocol ping (Windows), so the guide no longer needs „weiter“ in the chat after a long break.
+
 ## [0.377.0] — 2026-11-15
 
 ### Added

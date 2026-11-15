@@ -1,6 +1,6 @@
 /**
  * @module guide-active-state
- * @version 0.5.0
+ * @version 0.6.0
  * @description Small on-disk marker recording "an /auto-guide run is
  *   currently active", shared between `web-guide.js` (writer, called from
  *   SKILL.md Step 3 / Step 6 / Step 7) and `stop.flow.guard` (reader, #526):
@@ -33,6 +33,12 @@
  *   drop the flag again: any resumed activity un-pauses. stop.flow.guard reads
  *   `isGuideLoopLive` (active AND not paused) to block a premature turn end
  *   once; a paused guide ends its turn freely.
+ *
+ *   Sleeping state (wake ping, protocol.md § Sleeping): `sleepGuide` is a
+ *   pause with a wake channel — `paused: true` plus `sleeping: true` and a
+ *   `pingKey` (32 hex) the overlay launches as `claude-guide://ping/<key>/`
+ *   when the user clicks while nobody polls. The key survives refreshes (one
+ *   per guide); `sleeping` is dropped like `paused` by any resumed activity.
  */
 
 const fs = require('fs');
@@ -102,9 +108,46 @@ function markGuideActive(cwd, now = Date.now()) {
   // recorded step — only recordGuideStep and guide clear ever change it.
   if (prev && prev.lastStep !== undefined) data.lastStep = prev.lastStep;
   if (prev && typeof prev.lastStepTs === 'number') data.lastStepTs = prev.lastStepTs;
-  // `paused` is deliberately not carried over: a refresh means the loop runs.
+  if (prev && validPingKey(prev.pingKey)) data.pingKey = prev.pingKey;
+  // `paused`/`sleeping` are deliberately not carried over: a refresh means
+  // the loop runs.
   writeMarkerFile(file, data);
   return file;
+}
+
+function validPingKey(key) {
+  return typeof key === 'string' && TOKEN_RE.test(key);
+}
+
+/**
+ * Put the guide to sleep (wake ping): paused for stop.flow.guard, plus
+ * `sleeping: true` and the guide's `pingKey` (minted on first use, kept
+ * after). A no-op returning null without a marker, like pauseGuide.
+ * @param {string} cwd
+ * @param {number} [now]
+ * @returns {string|null} the ping key, or null when there is no guide
+ */
+function sleepGuide(cwd, now = Date.now()) {
+  const prev = readMarker(cwd);
+  if (!prev) return null;
+  const keep = typeof prev.token === 'string' && TOKEN_RE.test(prev.token);
+  const token = keep ? prev.token : crypto.randomBytes(16).toString('hex');
+  const pingKey = validPingKey(prev.pingKey) ? prev.pingKey : crypto.randomBytes(16).toString('hex');
+  const data = { ts: now, token, paused: true, sleeping: true, pingKey };
+  if (prev.lastStep !== undefined) data.lastStep = prev.lastStep;
+  if (typeof prev.lastStepTs === 'number') data.lastStepTs = prev.lastStepTs;
+  writeMarkerFile(guideActiveFilePath(cwd), data);
+  return pingKey;
+}
+
+/**
+ * The guide's wake-ping key, or null.
+ * @param {string} cwd
+ * @returns {string|null}
+ */
+function readPingKey(cwd) {
+  const data = readMarker(cwd);
+  return data && validPingKey(data.pingKey) ? data.pingKey : null;
 }
 
 /**
@@ -126,6 +169,7 @@ function pauseGuide(cwd, now = Date.now()) {
   const data = { ts: now, token, paused: true };
   if (prev.lastStep !== undefined) data.lastStep = prev.lastStep;
   if (typeof prev.lastStepTs === 'number') data.lastStepTs = prev.lastStepTs;
+  if (validPingKey(prev.pingKey)) data.pingKey = prev.pingKey;
   writeMarkerFile(file, data);
   return file;
 }
@@ -177,6 +221,7 @@ function recordGuideStep(cwd, step, now = Date.now()) {
       ts: now,
       token: keepTok ? prev.token : crypto.randomBytes(16).toString('hex'),
       ...(prev.paused ? { paused: true } : {}),
+      ...(validPingKey(prev.pingKey) ? { pingKey: prev.pingKey } : {}),
     });
     return null;
   }
@@ -184,7 +229,9 @@ function recordGuideStep(cwd, step, now = Date.now()) {
   const file = guideActiveFilePath(cwd);
   const keep = typeof prev.token === 'string' && TOKEN_RE.test(prev.token);
   const token = keep ? prev.token : crypto.randomBytes(16).toString('hex');
-  writeMarkerFile(file, { ts: now, token, lastStep: step, lastStepTs: now });
+  const data = { ts: now, token, lastStep: step, lastStepTs: now };
+  if (validPingKey(prev.pingKey)) data.pingKey = prev.pingKey;
+  writeMarkerFile(file, data);
   return file;
 }
 
@@ -285,6 +332,7 @@ function getGuideStatus(cwd, now = Date.now()) {
     ageMinutes,
     lastStep: data.lastStep !== undefined ? data.lastStep : null,
     paused: data.paused === true,
+    sleeping: data.sleeping === true,
   };
 }
 
@@ -299,6 +347,8 @@ module.exports = {
   isGuideActive,
   isGuideLoopLive,
   pauseGuide,
+  sleepGuide,
+  readPingKey,
   recordGuideStep,
   hasValueField,
   getGuideStatus,
