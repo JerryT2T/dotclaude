@@ -315,6 +315,19 @@ describe("final-report close-out sheet", () => {
     expect(fs.readFileSync(path.join(root, "agents", "qax.md"), "utf8")).toContain("## Concept acceptance (every concept implement)");
   });
 
+  test("checklist lines trace to their quotes and a moved role is two lines (#1110, #1111)", () => {
+    const start = skill.indexOf("**Every implement: verbatim brief, acceptance table, independent check");
+    const rule = skill.slice(start, skill.indexOf("**Design concepts: build to the mocks"));
+    for (const part of ["carries its source quote", "the quote wins", "file:line", "never a generic one", "A moved role is two lines", "statt A", "A loses the role, its link and its label", "hover label and link target"]) {
+      expect(rule, part).toContain(part);
+    }
+    expect(rule).toMatch(/quote →\s+observed behaviour/);
+    const qa = fs.readFileSync(path.join(__dirname, "..", "..", "agents", "qax.md"), "utf8");
+    for (const part of ["quote → observed behaviour → verdict", "the quote wins", "differs from X", "statt A", "hover label and link target"]) {
+      expect(qa, part).toContain(part);
+    }
+  });
+
   test("a discard close-out does not reload the browser onto a deleted file", () => {
     const c = skill.slice(skill.indexOf("### D · Close out"), skill.indexOf("### Legacy final-report actions"));
     expect(c).toContain("no `/reload`");
