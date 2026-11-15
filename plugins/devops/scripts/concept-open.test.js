@@ -50,7 +50,7 @@ describe("prepare", () => {
   });
 });
 
-function fakeBridge({ advance = true, pageStatus = 200, tabs } = {}) {
+function fakeBridge({ advance = true, pageStatus = 200, tabs, bridgeHtml } = {}) {
   let ts = 1000;
   const srv = http.createServer((req, res) => {
     if (req.url.startsWith("/heartbeat")) {
@@ -58,7 +58,7 @@ function fakeBridge({ advance = true, pageStatus = 200, tabs } = {}) {
       res.setHeader("content-type", "application/json");
       return res.end(JSON.stringify({ claude_ts: ts }));
     }
-    if (req.url.startsWith("/pending") && tabs !== undefined) return res.end(JSON.stringify({ pending: false, browser_tabs: tabs }));
+    if (req.url.startsWith("/pending") && tabs !== undefined) return res.end(JSON.stringify({ pending: false, browser_tabs: tabs, ...(bridgeHtml ? { html_path: bridgeHtml } : {}) }));
     if (req.url.startsWith("/identity")) return res.end(JSON.stringify({ pid: 4242 }));
     res.statusCode = pageStatus;
     res.end("x");
@@ -87,6 +87,25 @@ describe("verify", () => {
 
   test("a tab already open on the bridge is reused: no open, already_open", async () => {
     const srv = await fakeBridge({ tabs: 1 });
+    try {
+      const r = await verify({ state: stateFor(srv.address().port) }, { openBrowser: never, waitMs: 0 });
+      expect(r).toMatchObject({ ok: true, already_open: true });
+    } finally { srv.close(); }
+  });
+
+  test("tabs registered on a bridge serving ANOTHER page do not count: the page opens", async () => {
+    const srv = await fakeBridge({ tabs: 2, bridgeHtml: "other/old-concept.html" });
+    try {
+      const opened = [];
+      const r = await verify({ state: stateFor(srv.address().port) }, { openBrowser: (u) => { opened.push(u); return null; }, waitMs: 0 });
+      expect(r.ok).toBe(true);
+      expect(r.already_open).toBeUndefined();
+      expect(opened).toHaveLength(1);
+    } finally { srv.close(); }
+  });
+
+  test("tabs on a bridge reporting this state's html_path are reused", async () => {
+    const srv = await fakeBridge({ tabs: 1, bridgeHtml: HTML });
     try {
       const r = await verify({ state: stateFor(srv.address().port) }, { openBrowser: never, waitMs: 0 });
       expect(r).toMatchObject({ ok: true, already_open: true });

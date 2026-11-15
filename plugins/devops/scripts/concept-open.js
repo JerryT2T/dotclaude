@@ -182,7 +182,18 @@ async function verify(opts, deps = {}) {
   // a fresh open would activate Edge and steal focus. Reports already_open.
   const pend = await req('GET', `${base}/pending`);
   let tabs = 0;
-  try { tabs = Number(JSON.parse(pend.body).browser_tabs) || 0; } catch { /* older bridge: no registry */ }
+  try {
+    const pb = JSON.parse(pend.body);
+    tabs = Number(pb.browser_tabs) || 0;
+    // The registry carries tab ids only, never a page path, but the bridge
+    // reports the html_path it serves. Another concept's bridge on a reused
+    // port holds tabs of THAT page: they do not show ours, so open as before.
+    const norm = (x) => String(x).split('\\').join('/').replace(/^\/+/, '');
+    if (typeof pb.html_path === 'string' && pb.html_path) {
+      const a = norm(pb.html_path), b = norm(st.html_path);
+      if (a !== b && !a.endsWith('/' + b) && !b.endsWith('/' + a)) tabs = 0;
+    }
+  } catch { /* older bridge: no registry */ }
   if (tabs > 0) return { ok: true, url, already_open: true };
   const err = await open(url);
   if (err) return { ok: false, error: err, url };
