@@ -79,6 +79,36 @@ function dropNextStepOpenItems(open) {
 }
 
 /**
+ * A note about a lifecycle the plugin runs itself — a local store kept N days,
+ * then swept (`.claude/concepts/<slug>/spec/`, "30 Tage lokal") — is no point
+ * for the user: the automation owns it (ss.concept.resume sweeps at every
+ * session start). A reminder the user must keep in mind is what such an
+ * automation exists to remove; when the lifecycle is not automated, automate
+ * it rather than put it on the card. A question still stays.
+ */
+const SELF_MANAGED_RE = new RegExp([
+  String.raw`\.claude[\\/]concepts[\\/]`,
+  String.raw`\b\d+\s*(?:Tage|days)\s+(?:lokal|local(?:ly)?)\b`,
+].join('|'), 'i');
+
+/** True when the item only reports a lifecycle the plugin manages itself. */
+function isSelfManagedNotice(it) {
+  const text = shownText(it).trim();
+  if (!text || /[?？]["')\]*_`]*(?:\s|$)/.test(text)) return false;
+  return SELF_MANAGED_RE.test(text);
+}
+
+/**
+ * @param {Array<string|{text:string,reply?:string}>} [items]
+ * @returns {{ items: Array, dropped: number }}
+ */
+function dropSelfManagedNotices(items) {
+  if (!Array.isArray(items) || !items.length) return { items, dropped: 0 };
+  const kept = items.filter(it => !isSelfManagedNotice(it));
+  return { items: kept, dropped: items.length - kept.length };
+}
+
+/**
  * #920: a review / QA finding that is a defect in the shipped diff's own topic
  * is fixed (with a regression test) before the merge, or the ship asks / ends
  * ship-blocked - it is never parked as an open point on a ship-successful card.
@@ -94,4 +124,4 @@ function refuseInScopeFindings(open) {
   return { open: kept, refused: open.length - kept.length };
 }
 
-export { dropNextStepOpenItems, isNextStep, refuseInScopeFindings };
+export { dropNextStepOpenItems, dropSelfManagedNotices, isNextStep, isSelfManagedNotice, refuseInScopeFindings };

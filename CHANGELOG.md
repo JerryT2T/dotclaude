@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.374.1] — 2026-11-15
+
+### Fixed
+- Concept stores are swept automatically at session start (orphans after 7 days, a kept spec after 30); the completion card no longer carries a "30 Tage lokal" reminder, and the card server drops notes about lifecycles the plugin manages itself
+
 ## [0.374.0] — 2026-11-15
 
 ### Added

@@ -1,6 +1,6 @@
 # dotclaude
 
-**Version: 0.374.0**
+**Version: 0.374.1**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
 
@@ -552,7 +552,7 @@ SessionStart  ──>  UserPromptSubmit  ──>  PreToolUse  ──>  PostToolU
 - `ss.ship.verify` — Surface results from the post-merge watcher (post-ship CI + optional deploy verify).
 - `ss.ship.resume` — Keep a running /do-ship stable across a compaction or a resume.
 - `ss.run.task` — Keep a running do-run's task verbatim across a compaction or a resume.
-- `ss.concept.resume` — Recover an open concept session after a Claude restart.
+- `ss.concept.resume` — Recover an open concept session after a Claude restart, and age out orphan concept st…
 - `ss.title.sweep` — Fixes sidebar titles a crash or an app quit left on ⏳.
 - `ss.ci.workflows.sweep` — Safety net for #949: workflows the ship pipeline paused while a skip-checks decision…
 - `ss.team.changelog` — Show a summary of changes made by other contributors on remote main since the last ti…

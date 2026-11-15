@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 /**
  * @hook ss.concept.resume
- * @version 0.7.0
+ * @version 0.8.0
  * @event SessionStart
  * @plugin devops
- * @description Recover an open concept session after a Claude restart.
+ * @description Recover an open concept session after a Claude restart, and age out
+ *   orphan concept stores (7 days, a kept spec 30 days — sweepConceptStores).
  *   Reads `.claude/concept-active.json` (written by /auto-concept Step 3),
  *   probes the bridge server to confirm it is still running, and instructs
  *   Claude to re-arm everything that watches it — the two detached background
@@ -581,7 +582,44 @@ function buildPausedHint(state) {
     `auto-concept § Resume from pause; any other prompt leaves the pause alone.`;
 }
 
+/** Orphan store age-out: 7 days, 30 for a spec kept after code landed (#936). */
+const ORPHAN_STORE_MS = 7 * 24 * 60 * 60 * 1000;
+const KEPT_SPEC_MS = 30 * 24 * 60 * 60 * 1000;
+
+/**
+ * The orphan sweep of auto-concept Step 6a (`step6-closeout.md` § Orphan
+ * sweep), run at every session start so a kept spec's 30 days end by
+ * themselves — the card carries no reminder of it. A store is swept only when
+ * its concept page is gone, it holds no UNPROCESSED submission, it is not the
+ * active concept's store, and its `state.json` (else the folder) is older
+ * than the window. File operations only; never throws.
+ * @returns {string[]} the slugs removed
+ */
+function sweepConceptStores(root = cwd, now = Date.now(), activeHtml = null) {
+  const base = path.join(root, '.claude', 'concepts');
+  const removed = [];
+  let names = [];
+  try { names = fs.readdirSync(base, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name); } catch { return removed; }
+  const active = activeHtml ? path.basename(String(activeHtml), '.html') : null;
+  for (const slug of names) {
+    try {
+      const dir = path.join(base, slug);
+      if (slug === active) continue;
+      if (fs.existsSync(path.join(root, 'docs', 'concepts', `${slug}.html`))) continue;
+      if (fs.existsSync(path.join(dir, 'UNPROCESSED'))) continue;
+      let mtime;
+      try { mtime = fs.statSync(path.join(dir, 'state.json')).mtimeMs; } catch { mtime = fs.statSync(dir).mtimeMs; }
+      const window = fs.existsSync(path.join(dir, 'spec')) ? KEPT_SPEC_MS : ORPHAN_STORE_MS;
+      if (now - mtime <= window) continue;
+      fs.rmSync(dir, { recursive: true, force: true });
+      removed.push(slug);
+    } catch { /* best effort, next store */ }
+  }
+  return removed;
+}
+
 module.exports = {
+  sweepConceptStores,
   isValidHtmlPath,
   isValidState,
   isStale,
@@ -603,6 +641,7 @@ if (require.main === module) {
 
   (async () => {
     const state = readState();
+    sweepConceptStores(cwd, Date.now(), state && state.html_path);
     if (!state) process.exit(0);
 
     // Consistency check: the concept HTML on disk is the source of truth for
