@@ -179,6 +179,19 @@ disable`. `keepDays`, `keepWeeks` and `onRoutineChange` may be set directly ("Ro
 automatisch sichern" → `set homeBackup.onRoutineChange auto --global`).
 Runbook: `deep-knowledge/home-backup.md`.
 
+### `shutdown` — keep the PC on while a long job runs (global only)
+
+| Key | Default | Meaning |
+|---|---|---|
+| `busyProcesses` | empty | Comma-separated process-name or command-line fragments (case-insensitive substring), e.g. `ffmpeg, train_model.py`. Before an autonomous run powers the PC off (Step 8) and before the watchdog's forced shutdown, `scripts/autonomous-busy-check.js` looks for them. Busy: poll every 10 min up to 6 h, then leave the PC on ("PC bleibt an: <name> läuft noch"). |
+
+Lock-file convention: a job may instead write its PID into
+`%LOCALAPPDATA%\dotclaude\busy\<job>.lock`; a lock whose PID is alive counts
+as busy, a dead PID is ignored (stale). The OS fail-safe timer
+(`shutdown /t`, Step 5.0) stays unconditional — it is cancelled before the
+busy wait so it cannot cut the job, but a wedged run is still powered off by
+the watchdog unless the busy check reports a job.
+
 ### `wipWatch` — weekly WIP watch over your repos (opt-in, global only)
 
 | Key | Default | Meaning |

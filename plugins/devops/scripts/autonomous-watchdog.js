@@ -300,9 +300,19 @@ function buildRecoveryScript({
   let recoveryPs;
   if (action === 'shutdown') {
     // The task goes first: nothing after shutdown.exe is sure to run.
+    // Busy guard: a user job from shutdown.busyProcesses / busy lock keeps the PC
+    // on. Exit 3 = busy; any other result (incl. check failure) fails open.
+    const nodePs = process.execPath.replace(/'/g, "''");
+    const busyPs = path.join(__dirname, 'autonomous-busy-check.js').replace(/'/g, "''");
     recoveryPs = `  Add-Content -Path $logPath -Value "[$ts] flag MISSING at $flag — forcing shutdown"
   Remove-WatchdogTask
-  & "$env:SystemRoot\\System32\\shutdown.exe" /s /t 0 /c "Claude autonomous watchdog: session unresponsive after ${hours}h, forcing shutdown"`;
+  $busyOut = ''
+  try { $busyOut = (& '${nodePs}' '${busyPs}' check) -join ' '; $busyExit = $LASTEXITCODE } catch { $busyExit = 1 }
+  if ($busyExit -eq 3) {
+    Add-Content -Path $logPath -Value "[$ts] PC bleibt an: busy job still running — shutdown skipped ($busyOut)"
+  } else {
+    & "$env:SystemRoot\\System32\\shutdown.exe" /s /t 0 /c "Claude autonomous watchdog: session unresponsive after ${hours}h, forcing shutdown"
+  }`;
   } else if (action === 'resume') {
     const recoveryFlagPs = String(recoveryFlagPath || '').replace(/'/g, "''");
     const dirPs = String(workingDir || '').replace(/'/g, "''");

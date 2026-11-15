@@ -251,6 +251,30 @@ stays empty and the sentinel falls through. The loop then waits on its own
 session too — burns the full 30 min cap before shutdown. Safer than cutting off
 other sessions by accident.
 
+### 8a-bis — Busy-Job Check (shutdown mode only)
+
+After the session wait, never power off over a user's long-running job
+(render, training, build). Config `shutdown.busyProcesses` (name or
+command-line fragments) plus lock files `%LOCALAPPDATA%\dotclaude\busy\*.lock`
+(content = PID; dead PID = stale, ignored) define "busy":
+
+```bash
+node "{PLUGIN_ROOT}/scripts/autonomous-busy-check.js" wait --interval-min 10 --cap-min 360
+BUSY_EXIT=$?
+```
+
+Exit 0 → free, continue with 8b. Exit 3 → still busy after the 6 h cap: **skip
+8b**, write the line `PC bleibt an: <name> läuft noch` (name from the JSON
+`busy[0].name`) to the run log, the report and the completion card, then do 8c
+as if shutdown were not requested (flag written, PC stays on). Exit 1 (check
+failed) → treat as free. With no patterns configured and no locks the check
+returns immediately.
+
+The OS fail-safe timer (`shutdown /t`, 8.0) stays unconditional by design: it is
+cancelled before this wait so it cannot cut the job, and Step 5.0 re-arming is
+not needed. The watchdog's forced shutdown (`autonomous-watchdog.js`) runs the
+same check once and skips the power-off when busy.
+
 ### 8b — Execute Shutdown (COMPLETED / INTERRUPTED, shutdown mode)
 
 **Always shell out via PowerShell with an absolute path to `shutdown.exe`.**
