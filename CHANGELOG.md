@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.373.0] — 2026-11-15
+
+### Added
+- Session title: concept sessions whose bridge server is gone (reboot, crash, app quit) turn `🔴 ➜ 🧭 Concept ┃` in the crash sweep instead of keeping `👉`; resuming the session reconnects the page.
+
 ## [0.372.0] — 2026-11-15
 
 ### Added
