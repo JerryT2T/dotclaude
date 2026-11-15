@@ -21,7 +21,8 @@ export type Budget = {
   weeklyResetsAt?: number | null
 }
 
-export type Hygiene = { branches: number; worktrees: number; ageHours: number }
+/** copies: undecided safety copies (parked ≥ 3 days); optional so a value stored before it still reads. */
+export type Hygiene = { branches: number; worktrees: number; copies?: number; ageHours: number }
 
 export type ShipView = {
   branch: string
@@ -41,6 +42,15 @@ export type CleanupRun = {
   report: string
   at: number
 }
+
+/** Once-per-session flags: SessionStart notices toasted, Agents pane opened by itself. */
+export type SessionFlags = { noticesShown: boolean; agentsPaneOpened: boolean }
+
+/**
+ * Passive Spike 1: when the last main turn ended (epoch ms) and, while a turn that
+ * followed a long pause runs, its id and the pause length; null = nothing armed.
+ */
+export type SpikeWatch = { lastMainEnd: number; armed: { turnId: string; gapMs: number } | null }
 
 /** One button of the completion card: its label and the prompt it sends. */
 export type CardButton = { label: string; prompt: string; primary: boolean }
@@ -72,7 +82,13 @@ declare module 'claude-code' {
       hygiene: Hygiene | null
       ship: ShipView | null
       shells: Record<string, number>
+      /** tool_use_ids of background Bash runs that are devops concept watchers (waker, pulser, bridge). */
+      watchers: Record<string, true>
       cleanup: CleanupRun
+      flags: SessionFlags
+      /** Bumped every few seconds while a subagent runs, so the Agents pane redraws its elapsed times. */
+      tick: number
+      spike: SpikeWatch
       card: CardView | null
       progress: Progress
     }

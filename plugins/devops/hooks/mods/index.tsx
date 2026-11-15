@@ -31,10 +31,10 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { AgentRow, Budget, CardView, CleanupRun, Hygiene, Progress, ShipView } from '../../types/index'
+import type { AgentRow, Budget, CardView, CleanupRun, Hygiene, Progress, SessionFlags, ShipView, SpikeWatch } from '../../types/index'
 import {
   activityOf,
-  agentRow,
+  agentRows,
   applyPlan,
   budgetFrom,
   budgetBarAlt,
@@ -56,8 +56,12 @@ import {
   elapsed,
   hygieneFrom,
   hygieneLine,
+  isFailedStatus,
+  isWatcherCommand,
   LONG_RUN_MS,
+  passiveSpikeRow,
   shipFrom,
+  SPIKE_PAUSE_MS,
   taskNotice,
   verbatimNotices,
 } from './format'
@@ -70,6 +74,9 @@ export const SPIKE_COMMAND = 'mods-spike-fork'
 export const SPIKE_PROMPT = 'Reply with the single word: ok'
 const SPIKE_LOG = '/.claude/devops-mods-spike.jsonl'
 const SPIKE_LOG_MAX_LINES = 500
+const LOAD_MARKER = '/.claude/devops-mods-loaded.json'
+const LOAD_MARKER_MAX = 30
+type LoadMark = { sid: string; surface: string | null; interactive: boolean; ts: string }
 
 const agents = atom({ plugin: 'devops', key: 'agents' } as const, [] as AgentRow[], { shape: 'agents-1' })
 const budget = atom({ plugin: 'devops', key: 'budget' } as const, null as Budget | null, { shape: 'budget-1' })
@@ -80,6 +87,42 @@ const shells = atom({ plugin: 'devops', key: 'shells' } as const, {} as Record<s
 // The cleanup run: plan subagent → pane with Apply → apply subagent. Survives a reload ($.state).
 const IDLE: CleanupRun = { phase: 'idle', agentId: null, report: '', at: 0 }
 const cleanup = atom({ plugin: 'devops', key: 'cleanup' } as const, IDLE, { shape: 'cleanup-2' })
+// Background Bash runs that are the concept page's own watchers: a toast only when one fails.
+const watchers = atom({ plugin: 'devops', key: 'watchers' } as const, {} as Record<string, true>, { shape: 'watchers-1' })
+// Once per session: SessionStart notices as toasts (never again after a compaction or resume), the Agents pane opening itself.
+const flags = atom({ plugin: 'devops', key: 'flags' } as const, { noticesShown: false, agentsPaneOpened: false } as SessionFlags, { shape: 'flags-1' })
+// Redraw clock of the Agents pane while a subagent runs.
+const tick = atom({ plugin: 'devops', key: 'tick' } as const, 0, { shape: 'tick-1' })
+// Passive Spike 1 (docs/dev/mods.md): the first request of a main turn after a long pause.
+const spike = atom({ plugin: 'devops', key: 'spike' } as const, { lastMainEnd: 0, armed: null } as SpikeWatch, { shape: 'spike-1' })
+const TICK_MS = 5000
+let ticker: { cancel: () => void } | null = null
+
+/** Keeps the Agents pane's elapsed times live: a timer that bumps `tick` while any subagent runs, and stops itself after. */
+function startTicker($: EngineInterface): void {
+  if (ticker) return
+  try {
+    ticker = $.clock.every(TICK_MS, () => {
+      void (async () => {
+        let live: Record<string, string> = {}
+        try {
+          live = Object.fromEntries((await $.agent.list()).map(a => [a.id, a.status]))
+        } catch {
+          /* the recorded status stands */
+        }
+        const running = (await read($, agents)).some(a => typeof a.endedAt !== 'number' && (!live[a.id] || live[a.id] === 'running'))
+        if (!running && ticker) {
+          ticker.cancel()
+          ticker = null
+          return
+        }
+        await update($, tick, n => n + 1)
+      })().catch(() => undefined)
+    })
+  } catch {
+    ticker = null
+  }
+}
 // The last completion card of this prompt's turn (its template part, no answer) and what the turn is doing now.
 const card = atom({ plugin: 'devops', key: 'card' } as const, null as CardView | null, { shape: 'card-1' })
 const NO_PROGRESS: Progress = { steps: [], activity: '', startedAt: 0 }
@@ -203,6 +246,21 @@ async function refreshShip($: EngineInterface): Promise<void> {
   await update($, ship, () => view)
 }
 
+/**
+ * The load marker: proof that the mod loaded in this session. ss.mods.load.js (SessionStart)
+ * reports a session that ran without one, so a silent load failure (#105936) shows up.
+ */
+async function writeLoadMarker($: EngineInterface, surface: string | null, interactive: boolean): Promise<void> {
+  const home = await homeDir($)
+  if (!home) return
+  const file = home + LOAD_MARKER
+  const sid = await $.session.id()
+  const prev = (await readJson($, file)) as { sessions?: LoadMark[] } | null
+  const kept = (prev && Array.isArray(prev.sessions) ? prev.sessions : []).filter(s => s && s.sid !== sid).slice(-(LOAD_MARKER_MAX - 1))
+  const row: LoadMark = { sid, surface, interactive, ts: new Date(await $.clock.now()).toISOString() }
+  await $.fs.write(file, `${JSON.stringify({ sessions: [...kept, row] }, null, 1)}\n`)
+}
+
 async function appendSpikeLog($: EngineInterface, row: unknown): Promise<string> {
   const home = await homeDir($)
   if (!home) throw new Error('no home folder')
@@ -232,15 +290,22 @@ export const register: Register = on => {
       description: 'devops spike: one fork of this thread, logs its cache read to ~/.claude/devops-mods-spike.jsonl',
     })
     sessionCwd = e.cwd || ''
+    await writeLoadMarker($, e.surface || null, e.isInteractive === true).catch(() => undefined)
     await refreshHygiene($, e.cwd)
     return started
   })
 
   // C9: the SessionStart notices the hooks ask Claude to show verbatim also become toasts; the hook text stays as is.
+  // Once per session: a compaction or resume re-runs SessionStart with the same notices, which stay in the band.
   on('classic.SessionStart', async ($, e, next) => {
     const result = await next(e)
-    if (await open($)) {
-      for (const text of verbatimNotices(result && result.additionalContext)) $.ui.toast(text, { timeoutMs: 8000 })
+    const source = (e as { source?: string }).source
+    if (source !== 'compact' && source !== 'resume' && (await open($))) {
+      const texts = verbatimNotices(result && result.additionalContext)
+      if (texts.length && !(await read($, flags)).noticesShown) {
+        await update($, flags, f => ({ ...f, noticesShown: true }))
+        for (const text of texts) $.ui.toast(text, { timeoutMs: 8000 })
+      }
     }
     return result
   }).catch(($, e, next) => next(e)) // display only: a failure never changes the engine's answer
@@ -267,6 +332,12 @@ export const register: Register = on => {
         status: 'running',
       }
       await update($, agents, list => [...list.filter(a => a.id !== row.id), row].slice(-50))
+      startTicker($)
+      // The first background subagent of the session opens the pane once; closed by the person, it stays closed.
+      if (e.background && !(await read($, flags)).agentsPaneOpened) {
+        await update($, flags, f => ({ ...f, agentsPaneOpened: true }))
+        await $.ui.open({ id: AGENTS_PANE, title: 'Agents' })
+      }
     }
     return spawned
   }).catch(($, e, next) => next(e)) // display only: a failure never changes the engine's answer
@@ -301,21 +372,34 @@ export const register: Register = on => {
         const keep = Object.entries(map).filter(([, t]) => now - t < 24 * 3600_000).slice(-49)
         return { ...Object.fromEntries(keep), [id]: now }
       })
+      if (isWatcherCommand((e as { command?: unknown }).command)) {
+        await update($, watchers, map => {
+          const live = Object.keys(map).slice(-49)
+          return { ...Object.fromEntries(live.map(k => [k, true as const])), [id]: true as const }
+        })
+      }
     }
     return result
   }).catch(($, e, next) => next(e)) // display only: a failure never changes the tool call
 
   // Card band: a prompt starts a new main turn → the last card is spent, the task list starts over.
   // A turn without text (a continuation, the app's no-output nudge after a card) keeps both.
+  // Passive Spike 1: a main turn that starts after a long pause is armed; its first request's usage is logged.
   on('turn.start', async ($, e, next) => {
     const started = await next(e)
-    if (e.agentId === undefined && (e.text || '').trim() && (await open($))) {
+    if (e.agentId === undefined && (await open($))) {
       const now = await $.clock.now()
-      await update($, card, () => null)
-      await update($, progress, () => ({ steps: [], activity: '', startedAt: now }))
+      if ((e.text || '').trim()) {
+        await update($, card, () => null)
+        await update($, progress, () => ({ steps: [], activity: '', startedAt: now }))
+      }
+      await update($, spike, s => {
+        const gapMs = s.lastMainEnd ? now - s.lastMainEnd : 0
+        return { ...s, armed: gapMs >= SPIKE_PAUSE_MS ? { turnId: e.turnId, gapMs } : null }
+      })
     }
     return started
-  }).catch(($, e, next) => next(e)) // display only
+  }).catch(($, e, next) => next(e)) // display and measuring only: never changes the turn
 
   // Card band: what the main turn is doing (task list, running tool), and the card the card tool rendered.
   // The call and its result pass through unchanged; the card itself stays with the tool and stop.flow.guard.
@@ -349,12 +433,22 @@ export const register: Register = on => {
       const startedAt = (await read($, shells))[notice.toolUseId]
       if (typeof startedAt === 'number') {
         const now = await $.clock.now()
+        const isWatcher = (await read($, watchers))[notice.toolUseId] === true
         await update($, shells, map => {
           const rest = { ...map }
           delete rest[notice.toolUseId]
           return rest
         })
-        if (now - startedAt >= LONG_RUN_MS) {
+        if (isWatcher) {
+          await update($, watchers, map => {
+            const rest = { ...map }
+            delete rest[notice.toolUseId]
+            return rest
+          })
+        }
+        // A concept watcher ending normally is plumbing that wakes Claude anyway: a toast only when it failed, at any length.
+        const failed = isFailedStatus(notice.status) || /\bfailed\b|exit code [1-9]/i.test(notice.summary)
+        if (isWatcher ? failed : now - startedAt >= LONG_RUN_MS) {
           const what = notice.summary || `Background command ${notice.status || 'finished'}`
           $.ui.toast(`${what} · ${elapsed(now - startedAt)}`.slice(0, 200), { timeoutMs: 8000 })
         }
@@ -363,9 +457,31 @@ export const register: Register = on => {
     return result
   }).catch(($, e, next) => next(e)) // display only: a failure never changes the prompt
 
+  // The step itself passes through unchanged (`yield* next(e)`); only its reported usage is read afterwards.
+  on('turn.step', async function* ($, e, next) {
+    const result = yield* next(e)
+    try {
+      if (e.agentId === undefined && e.index === 0 && result && result.usage && (await open($))) {
+        const s = await read($, spike)
+        if (s.armed && s.armed.turnId === e.turnId) {
+          const gapMs = s.armed.gapMs
+          await update($, spike, x => ({ ...x, armed: null }))
+          await appendSpikeLog($, passiveSpikeRow(gapMs, result.usage, await read($, budget), await $.clock.now()))
+        }
+      }
+    } catch {
+      /* measuring only */
+    }
+    return result
+  })
+
   // A cleanup subagent ended: its answer is the plan (or the apply result) the pane shows.
   on('turn.complete', async ($, e, next) => {
     const result = await next(e)
+    if (e.agentId === undefined && (await open($))) {
+      const now = await $.clock.now()
+      await update($, spike, s => ({ ...s, lastMainEnd: now, armed: null }))
+    }
     if (e.agentId !== undefined && (await open($))) {
       const run = await read($, cleanup)
       if (run.agentId === e.agentId && (run.phase === 'planning' || run.phase === 'applying')) {
@@ -456,6 +572,7 @@ export const register: Register = on => {
   on('ui.render', { component: 'Pane', requestId: AGENTS_PANE }, async ($, e, next) => {
     if (!(await open($))) return next(e)
     const { Box, Text } = $.ui.resolve(e)
+    await read($, tick) // the live clock: a bump redraws the elapsed times
     const now = await $.clock.now()
     let live: Record<string, string> = {}
     try {
@@ -464,12 +581,14 @@ export const register: Register = on => {
       /* the recorded status stands */
     }
     const list = (await read($, agents)).map(a => (live[a.id] && typeof a.endedAt !== 'number' ? { ...a, status: live[a.id] } : a))
+    if (list.some(a => typeof a.endedAt !== 'number' && a.status === 'running')) startTicker($) // after a reload
+    const rows = agentRows(list, now)
     const room = Math.max(1, (e.viewport?.rows ?? 24) - 2)
     return (
       <Box flexDirection="column">
-        {list.length === 0 && <Text dimColor>No subagents in this session yet.</Text>}
-        {list.slice(-room).map(a => (
-          <Text dimColor={typeof a.endedAt === 'number'}>{agentRow(a, now)}</Text>
+        {rows.length === 0 && <Text dimColor>No subagents in this session yet.</Text>}
+        {rows.slice(-room).map(r => (
+          <Text dimColor={r.isDone}>{r.text}</Text>
         ))}
       </Box>
     )

@@ -60,6 +60,9 @@
         "ss.orphan.nudge"
       ],
       [
+        "ss.mods.load"
+      ],
+      [
         "ss.backup.stale"
       ],
       [

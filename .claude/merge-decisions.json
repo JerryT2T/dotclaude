@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "aspects": {
+    "plugins/devops/hooks/mods/index.tsx›turn.start hook›condition": [
+      {
+        "ship": "0.373.0",
+        "by": "merge",
+        "value": "one hook: the #1118 card/progress reset still runs only for a typed prompt (inner text check); the spike arming runs for every main turn",
+        "decided": true,
+        "at": "2026-11-15T01:43:05.969Z",
+        "hunks": [
+          "07f990768163"
+        ]
+      }
+    ],
+    "plugins/devops/hooks/mods/index.tsx›types import›names": [
+      {
+        "ship": "0.373.0",
+        "by": "merge",
+        "value": "union of both sides (CardView, Progress from #1118 plus SessionFlags, SpikeWatch)",
+        "decided": true,
+        "at": "2026-11-15T01:43:05.969Z",
+        "hunks": [
+          "e506f3697dd3"
+        ]
+      }
+    ]
+  }
+}

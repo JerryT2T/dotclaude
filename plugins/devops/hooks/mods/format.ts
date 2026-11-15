@@ -32,11 +32,79 @@ export function taskNotice(text: string): { toolUseId: string; status: string; s
   return { toolUseId, status: tag('status'), summary: tag('summary') }
 }
 
-/** One pane row: status, type, model, elapsed, description. */
-export function agentRow(a: AgentRow, now: number): string {
+/** One pane row: status, type, model, elapsed, description; `count` = an optional "×n" column. */
+export function agentRow(a: AgentRow, now: number, count = ''): string {
   const end = typeof a.endedAt === 'number' ? a.endedAt : now
   const model = a.model ? ` · ${a.model}` : ''
-  return `${a.status.padEnd(9)} ${a.type}${model} · ${elapsed(end - a.startedAt)} · ${a.description}`
+  return `${a.status.padEnd(9)} ${count}${a.type}${model} · ${elapsed(end - a.startedAt)} · ${a.description}`
+}
+
+/**
+ * Pane rows with content-equal rows (same status, type, model and description) merged into
+ * one, which carries the latest run's elapsed time and a "×n" marker. The marker is its own
+ * fixed-width column after the status, present on every row once any row is merged, so the
+ * columns stay aligned. Order: where each group first appeared.
+ */
+export function agentRows(list: readonly AgentRow[], now: number): Array<{ text: string; isDone: boolean }> {
+  const groups: Array<{ key: string; row: AgentRow; count: number }> = []
+  for (const a of list) {
+    const key = [a.status, a.type, a.model, a.description].join('\u0000')
+    const g = groups.find(x => x.key === key)
+    if (g) {
+      g.count++
+      g.row = a
+    } else groups.push({ key, row: a, count: 1 })
+  }
+  const width = Math.max(...groups.map(g => (g.count > 1 ? `×${g.count}`.length : 0)), 0)
+  return groups.map(g => {
+    const mark = width ? `${g.count > 1 ? `×${g.count}` : ''}`.padEnd(width) + ' ' : ''
+    return { text: agentRow(g.row, now, mark), isDone: typeof g.row.endedAt === 'number' }
+  })
+}
+
+/** A background Bash run that is one of the concept page's own watchers (waker, pulser, bridge server). */
+export function isWatcherCommand(command: unknown): boolean {
+  return typeof command === 'string' && /concept-(watch|tick)\.js|concept-server\.py/.test(command)
+}
+
+/** A task notification's status that means the run failed (a watcher toasts only then). */
+export function isFailedStatus(status: string): boolean {
+  return /fail|error|kill|crash/i.test(status || '')
+}
+
+/** Passive Spike 1: a main turn that starts after this long without one is measured. */
+export const SPIKE_PAUSE_MS = 50 * 60_000
+
+/**
+ * One row of ~/.claude/devops-mods-spike.jsonl for the first request of a main turn that
+ * followed a pause of `gapMs`: the share of its prompt the cache served (read / all input).
+ * Pass = ≥ 0.95 (docs/dev/mods.md § Spike 1). No model call: the usage is the turn's own.
+ */
+export function passiveSpikeRow(
+  gapMs: number,
+  usage: { input_tokens: number; output_tokens: number; cache_read_input_tokens: number; cache_creation_input_tokens: number; model?: string },
+  budget: Budget | null,
+  ts: number,
+): Record<string, unknown> {
+  const read = usage.cache_read_input_tokens || 0
+  const write = usage.cache_creation_input_tokens || 0
+  const input = usage.input_tokens || 0
+  const all = read + write + input
+  const share = all ? Math.round((read / all) * 1000) / 1000 : null
+  return {
+    ts: new Date(ts).toISOString(),
+    mode: 'passive',
+    pause_min: Math.round(gapMs / 60_000),
+    model: usage.model || null,
+    cache_read_input_tokens: read,
+    cache_creation_input_tokens: write,
+    input_tokens: input,
+    output_tokens: usage.output_tokens || 0,
+    cache_read_share: share,
+    pass: share === null ? null : share >= 0.95,
+    five_hour: budget ? budget.fiveHour : null,
+    weekly: budget ? budget.weekly : null,
+  }
 }
 
 /** The budget from one `session.measure` (or `$.session.usage()`) reading. */
@@ -347,17 +415,30 @@ export function hourglassSvg(): string {
   )
 }
 
-const ORPHAN_MAX_AGE_MS = 24 * 3_600_000
+/** The line stays this long after the daily report (dimmed with its age from 24 h on), then it goes. */
+const ORPHAN_MAX_AGE_MS = 72 * 3_600_000
+const ORPHAN_FRESH_MS = 24 * 3_600_000
+/** Safety copies count once they are this old, as ss.orphan.nudge.js does (a fresh one is the live session's net). */
+const UNDECIDED_AFTER_DAYS = 3
 
 function norm(p: string): string {
   return String(p || '').replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase()
 }
 
+/** park-register.js isUndecided, mirrored: an autosave copy, or a legacy / covered / nudged one not marked ARCHIVED. */
+export function isUndecidedCopy(p: { branch?: string; reason?: string; legacy?: boolean; coveredBy?: unknown; nudge?: unknown }): boolean {
+  const name = String((p && p.branch) || '').replace(/^origin\//, '')
+  if (name.startsWith('parked/autosave/')) return true
+  if (/ARCHIVED/.test(String((p && p.reason) || '')) && !(p && p.nudge)) return false
+  return Boolean(p && (p.legacy || p.coveredBy || p.nudge))
+}
+
 /**
- * Open branches / dirty worktrees of the current repo from
+ * Open branches, dirty worktrees and undecided safety copies of the current repo from
  * ~/.claude/orphan-report.json, counted as ss.orphan.nudge.js `counts` does
- * (unlanded = atRisk − dirty + remoteOnly). null for a stale (> 24 h) or
- * missing report, or an unknown repo — the nudge is silent there too.
+ * (unlanded = atRisk − dirty + remoteOnly; copies = parked ≥ 3 days and undecided), so
+ * band, status line and nudge name the same numbers. null for a missing report, one older
+ * than 72 h, or an unknown repo; from 24 h on `ageHours` makes the line say how old it is.
  */
 export function hygieneFrom(report: unknown, cwd: string, now: number): Hygiene | null {
   const r = report as { generatedAt?: string; repos?: unknown[] } | null
@@ -365,7 +446,7 @@ export function hygieneFrom(report: unknown, cwd: string, now: number): Hygiene 
   const t = Date.parse(r.generatedAt || '')
   if (!Number.isFinite(t) || now - t > ORPHAN_MAX_AGE_MS) return null
   const here = norm(cwd)
-  const entry = (r.repos as Array<{ path?: string; atRisk?: Array<{ dirty?: number }>; remoteOnly?: unknown[] }>)
+  const entry = (r.repos as Array<{ path?: string; atRisk?: Array<{ dirty?: number }>; remoteOnly?: unknown[]; parked?: Array<{ ageDays?: number }> }>)
     .filter(e => e && e.path && (here === norm(e.path) || here.startsWith(`${norm(e.path)}/`)))
     .sort((a, b) => norm(b.path as string).length - norm(a.path as string).length)[0]
   if (!entry) return null
@@ -375,16 +456,24 @@ export function hygieneFrom(report: unknown, cwd: string, now: number): Hygiene 
   )
   const dirty = risk.filter(x => (x.dirty || 0) > 0).length
   const remote = Array.isArray(entry.remoteOnly) ? entry.remoteOnly.length : 0
-  return { branches: risk.length - dirty + remote, worktrees: dirty, ageHours: Math.floor((now - t) / 3_600_000) }
+  const parked = Array.isArray(entry.parked) ? entry.parked : []
+  const copies = parked.filter(p => p && (p.ageDays || 0) >= UNDECIDED_AFTER_DAYS && isUndecidedCopy(p as never)).length
+  return { branches: risk.length - dirty + remote, worktrees: dirty, copies, ageHours: Math.floor((now - t) / 3_600_000) }
 }
 
-/** Status-line text, "devops: …"; prefix false for the band, which carries its own mark. Null when nothing is open. */
+/**
+ * Status-line text, "devops: …"; prefix false for the band, which carries its own mark.
+ * A report 24 h or older adds "as of N h". Null when nothing is open.
+ */
 export function hygieneLine(h: Hygiene | null, prefix = true): string | null {
-  if (!h || h.branches + h.worktrees === 0) return null
+  const copies = (h && h.copies) || 0
+  if (!h || h.branches + h.worktrees + copies === 0) return null
   const parts: string[] = []
   if (h.branches > 0) parts.push(`${h.branches} open ${h.branches === 1 ? 'branch' : 'branches'}`)
   if (h.worktrees > 0) parts.push(`${h.worktrees} dirty ${h.worktrees === 1 ? 'worktree' : 'worktrees'}`)
-  return `${prefix ? 'devops: ' : ''}${parts.join(' · ')}`
+  if (copies > 0) parts.push(`${copies} undecided safety ${copies === 1 ? 'copy' : 'copies'}`)
+  const aged = h.ageHours * 3_600_000 >= ORPHAN_FRESH_MS ? ` · as of ${h.ageHours} h` : ''
+  return `${prefix ? 'devops: ' : ''}${parts.join(' · ')}${aged}`
 }
 
 /** The plan subagent's brief: read only, a numbered plan, nothing changed. */
@@ -475,9 +564,10 @@ export function verbatimNotices(contexts: readonly string[] | undefined): string
     if (typeof c !== 'string' || !/verbatim/i.test(c)) continue
     const lines = c.split(/\r?\n/).map(l => l.trim())
     lines.forEach((l, i) => {
-      if (/^\[ss\.orphan\.nudge\].*verbatim/i.test(l)) {
+      // Header format: "[ss.orphan.nudge] … verbatim …", "[ss.version.notice] … verbatim …, once:" — the line after it.
+      if (/^\[[a-z0-9_.-]+\].*verbatim/i.test(l)) {
         const next = lines.slice(i + 1).find(Boolean)
-        if (next) out.push(next)
+        if (next && !next.startsWith('[')) out.push(next)
         return
       }
       const up = /^- \*\*([^*]+)\*\*: (\S+) → (\S+) \(/.exec(l)
@@ -491,5 +581,5 @@ export function verbatimNotices(contexts: readonly string[] | undefined): string
       }
     })
   }
-  return out.map(t => t.slice(0, 200))
+  return [...new Set(out)].map(t => t.slice(0, 200))
 }
