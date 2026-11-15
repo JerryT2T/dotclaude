@@ -18,7 +18,7 @@ function stateFile(contents) {
  *  seconds) is testable. `stopAfter` ends an otherwise endless loop — the
  *  pulser never gives up on request failures any more — by reporting the
  *  state file gone from that poll on (STATE_GONE after `confirm` polls). */
-function harness({ mode = "watch", port = 8883, state, responses = [], exists = true, grace = 60, interval, stopAfter = Infinity, confirm, beat, beats, spawnSuccessor, order }) {
+function harness({ mode = "watch", port = 8883, state, responses = [], exists = true, grace = 60, interval, stopAfter = Infinity, confirm, beat, beats, spawnSuccessor, order, successor }) {
   const calls = [];
   let reason = null;
   let clock = 1_000_000;
@@ -27,6 +27,7 @@ function harness({ mode = "watch", port = 8883, state, responses = [], exists = 
     mode, port, state: state ?? "/fake/concept-active.json", ...DEFAULTS, grace,
     ...(interval === undefined ? {} : { interval }),
     ...(confirm === undefined ? {} : { confirm }),
+    ...(successor === undefined ? {} : { successor }),
   };
   const p = run(opts, {
     exists: () => (typeof exists === "function" ? exists() : exists),
@@ -803,6 +804,32 @@ describe("pulser as the waker's safety net (no backstop cron)", () => {
     const h = harness({ mode: "pulse", state: "ok", stopAfter: 4, confirm: 1,
       beat: () => ({ ts: 0, woke_version: 7 }), responses: () => pending(7) });
     await expect(h.done).resolves.toBe("STATE_GONE");
+  });
+  test("a successor never emits WAKER_MISSING and never spawns another successor", async () => {
+    let spawned = 0;
+    const h = harness({ mode: "pulse", state: "ok", beat: () => null, successor: "1-1", spawnSuccessor: () => { spawned++; },
+      stopAfter: 8, confirm: 1, responses: () => pending(7) });
+    await expect(h.done).resolves.toBe("STATE_GONE");
+    expect(spawned).toBe(0);
+  });
+  test("a successor yields at once to a sibling pulser, but not to its parent's echo", async () => {
+    let n = 0;
+    const h = harness({ mode: "pulse", state: "ok", successor: "1-1", stopAfter: 20, confirm: 1,
+      responses: () => ({ ok: true, body: JSON.stringify({ pending: false, prev_pulser: ++n <= 2 ? "1-1" : "5-9" }) }) });
+    await expect(h.done).resolves.toBe("DUPLICATE_PULSER");
+    expect(n).toBe(3);
+  });
+  test("no successor is spawned when the pending version is not an integer", async () => {
+    let spawned = 0;
+    const noVersion = { ok: true, body: JSON.stringify({ pending: true, action: "iterate" }) };
+    const h = harness({ mode: "pulse", state: "ok", beat: () => null, spawnSuccessor: () => { spawned++; },
+      responses: [beatOk, noVersion, beatOk, noVersion] });
+    await expect(h.done).resolves.toBe("WAKER_MISSING");
+    expect(spawned).toBe(0);
+  });
+  test("parseArgs reads --successor <parentId>", () => {
+    expect(parseArgs(["--mode", "pulse", "--successor", "12-34"]).successor).toBe("12-34");
+    expect(parseArgs(["--mode", "pulse"]).successor).toBeUndefined();
   });
   test("a successor survives the predecessor's id echoed once and ends on STATE_GONE", async () => {
     let n = 0;

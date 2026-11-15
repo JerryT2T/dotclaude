@@ -138,6 +138,13 @@ function parseArgs(argv) {
     const key = argv[i].startsWith('--') ? argv[i].slice(2) : null;
     if (!key) continue;
     const raw = argv[i + 1];
+    // `--successor <parentId>`: this process is the detached heartbeat carrier
+    // a pulser spawned on its WAKER_MISSING exit (see spawnSuccessor).
+    if (key === 'successor') {
+      out.successor = raw === undefined || raw.startsWith('--') ? 'unknown' : raw;
+      if (out.successor !== 'unknown') i++;
+      continue;
+    }
     if (raw === undefined || raw.startsWith('--')) continue;
     i++;
     // `--dead-after 300` and `--deadAfter 300` are the same option.
@@ -342,9 +349,11 @@ function beatStaleMs(opts) {
 }
 
 /** Detached copy of this pulser (same args) that carries the heartbeat on after the wake exit. */
-function spawnSuccessor() {
+function spawnSuccessor(parentId = 'unknown') {
   const { spawn } = require('child_process');
-  spawn(process.execPath, process.argv.slice(1), { detached: true, stdio: 'ignore', windowsHide: true })
+  // Its output reaches nobody, so it runs as a quiet heartbeat carrier only:
+  // no WAKER_MISSING, no further successor, yields to any other pulser.
+  spawn(process.execPath, [...process.argv.slice(1), '--successor', String(parentId)], { detached: true, stdio: 'ignore', windowsHide: true })
     .on('error', () => {}).unref();
 }
 
@@ -363,7 +372,10 @@ async function run(opts, deps = {}) {
   const tag = opts.mode === 'pulse' ? 'PULSER' : 'WAKER';
   const watch = opts.mode === 'watch';
   const intervalMs = opts.interval * 1000;
-  const emit = deps.emit || ((reason, detail) => finish(tag, reason, detail));
+  // A successor's stdout goes nowhere: it leaves silently.
+  const emit = deps.emit || (opts.successor
+    ? () => process.exit(0)
+    : (reason, detail) => finish(tag, reason, detail));
   // Cleanup is the waker's job (#363): it shuts the bridge down before it
   // leaves, so a dead concept never keeps a server alive waiting for a cron.
   // Our concept's html_path, remembered from the last readable state file so
@@ -473,7 +485,7 @@ async function run(opts, deps = {}) {
     if (!watch && res.ok) {
       const b = io.readBeat(opts.state, opts.port);
       const alive = b && Number.isFinite(b.ts) && io.now() - b.ts < beatStaleMs(opts);
-      if (alive) orphanRuns = 0;
+      if (alive || opts.successor) orphanRuns = 0;
       else {
         const p = await io.request(opts.port, '/pending', 'GET', opts.timeout);
         let pb = {};
@@ -491,7 +503,11 @@ async function run(opts, deps = {}) {
             // the successor does not re-emit it), hand the heartbeat to a
             // detached successor, then emit.
             io.writeBeat(opts.state, opts.port, { ...(b || {}), woke_version: Number.isInteger(pb.version) ? pb.version : (b && b.woke_version) ?? null });
-            try { (io.spawnSuccessor || spawnSuccessor)(); } catch { /* the wake still goes out */ }
+            // Only with an integer version: without one `already` can never
+            // hold, and every successor would re-emit and respawn forever.
+            if (Number.isInteger(pb.version)) {
+              try { (io.spawnSuccessor || spawnSuccessor)(myId); } catch { /* the wake still goes out */ }
+            }
             return emit('WAKER_MISSING', version + action);
           }
         } else orphanRuns = 0;
@@ -509,7 +525,12 @@ async function run(opts, deps = {}) {
       if (foreign(body)) return emit('FOREIGN_BRIDGE', ` port=${opts.port}`);
       if (!watch) {
         // Duplicate detection (see pulserId): the younger pulser yields.
-        if (siblingSeen(body.prev_pulser, 'older')) return emit('DUPLICATE_PULSER');
+        if (opts.successor) {
+          // Yield to ANY other pulser at once (silent). The parent's own last
+          // beat is echoed on our first polls and does not count.
+          const prev = body.prev_pulser;
+          if (Number.isFinite(pulserStart(prev)) && prev !== myId && prev !== opts.successor) return emit('DUPLICATE_PULSER');
+        } else if (siblingSeen(body.prev_pulser, 'older')) return emit('DUPLICATE_PULSER');
       }
       if (watch) {
         // A pending submission outranks everything: it is the wake this
