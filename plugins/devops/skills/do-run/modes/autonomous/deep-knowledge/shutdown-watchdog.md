@@ -259,16 +259,24 @@ command-line fragments) plus lock files `%LOCALAPPDATA%\dotclaude\busy\*.lock`
 (content = PID; dead PID = stale, ignored) define "busy":
 
 ```bash
-node "{PLUGIN_ROOT}/scripts/autonomous-busy-check.js" wait --interval-min 10 --cap-min 360
-BUSY_EXIT=$?
+node "{PLUGIN_ROOT}/scripts/autonomous-busy-check.js" check   # one snapshot, seconds
 ```
 
-Exit 0 → free, continue with 8b. Exit 3 → still busy after the 6 h cap: **skip
-8b**, write the line `PC bleibt an: <name> läuft noch` (name from the JSON
-`busy[0].name`) to the run log, the report and the completion card, then do 8c
-as if shutdown were not requested (flag written, PC stays on). Exit 1 (check
-failed) → treat as free. With no patterns configured and no locks the check
-returns immediately.
+Exit 0 → free, continue with 8b. Exit 1 (the check itself failed) → treat as
+free. Exit 3 → busy: start the up-to-6-h wait **with `run_in_background: true`**
+(the Bash tool kills a foreground command after minutes, and a killed wait
+must never read as "free"):
+
+```bash
+node "{PLUGIN_ROOT}/scripts/autonomous-busy-check.js" wait --interval-min 10 --cap-min 360
+```
+
+and act on its completion notice: exit 0 → 8b; exit 3, or any other exit or
+none (killed, timed out) → **skip 8b**, write the line `PC bleibt an: <name>
+läuft noch` (name from the JSON `busy[0].name`, or from the snapshot) to the
+run log, the report and the completion card, then do 8c as if shutdown were
+not requested (flag written, PC stays on). With no patterns configured and no
+locks the snapshot returns 0 at once.
 
 The OS fail-safe timer (`shutdown /t`, 8.0) stays unconditional by design: it is
 cancelled before this wait so it cannot cut the job, and Step 5.0 re-arming is
