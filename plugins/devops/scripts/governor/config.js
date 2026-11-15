@@ -41,7 +41,7 @@ const DEFAULTS = Object.freeze({
   // staleMs: state older than this = no watcher (fail open). Must exceed 2 x idleTickMs + the longest tick.
   // slotsUnderPriority: builds/tests allowed at once machine-wide while a CPU/disk priority app runs.
   // reserveMs: an admitted job's expected peak is reserved this long (it is not measured yet).
-  admission: { defaultMB: 1024, headroomMB: 4096, staleMs: 60000, slotsUnderPriority: 1, reserveMs: 30000 },
+  admission: { defaultMB: 1024, headroomMB: 4096, staleMs: 60000, slotsUnderPriority: 1, reserveMs: 30000, slotCpuPct: 5 },
   infraGraceMs: 20000,
   selfLoopMs: 60000,
   starvationMs: 30 * 60000,

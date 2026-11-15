@@ -539,8 +539,11 @@ function runRegister(args) {
   // Write a separate PowerShell script — robust escaping, self-deletes after run.
   const scriptPath = path.join(os.tmpdir(),
     `claude-autonomous-watchdog-${Date.now()}.ps1`);
+  // BOM: Windows PowerShell 5.1 reads a BOM-less .ps1 as ANSI, so a non-ASCII
+  // character (the em dashes in the log lines) turns into a quote and the whole
+  // script fails to parse — no shutdown, no busy guard, no self-removal.
   fs.writeFileSync(scriptPath,
-    buildRecoveryScript({
+    '﻿' + buildRecoveryScript({
       action, hours, flagPath, stalledPath, recoveryFlagPath, workingDir, resumePrompt, taskName,
     }), 'utf8');
 

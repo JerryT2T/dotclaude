@@ -847,7 +847,11 @@ function admit({ command, now, state, kinds = {}, cfg }) {
   const recent = (Array.isArray(state.admitted) ? state.admitted : []).filter((a) => a && Number.isFinite(a.at) && now - a.at >= 0 && now - a.at < cfg.admission.reserveMs);
   // Builds and tests share one machine-wide slot while a CPU/disk priority app runs (#1115).
   if (!c.heavy && (p.priority || []).some((r) => r === 'cpu' || r === 'disk')) {
-    const running = (Array.isArray(state.jobs) ? state.jobs : []).filter((j) => j && (j.kind === 'build' || j.kind === 'foreground')).length;
+    // Only a job that is a known build/test command or actually burns CPU holds the slot: an
+    // idle `governor wait`, shell or `tail -f` never does. An older watcher state without
+    // either field holds no slot — fail open.
+    const busy = (j) => Boolean(j.cmdKind) || (Number.isFinite(j.cpuPct) && j.cpuPct >= cfg.admission.slotCpuPct);
+    const running = (Array.isArray(state.jobs) ? state.jobs : []).filter((j) => j && (j.kind === 'build' || j.kind === 'foreground') && busy(j)).length;
     const active = Math.max(running, recent.length);
     if (active >= cfg.admission.slotsUnderPriority) {
       const r = (p.priority || []).filter((x) => x === 'cpu' || x === 'disk');
