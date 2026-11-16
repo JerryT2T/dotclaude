@@ -21,7 +21,12 @@
  *                                          (session.measure); branch-hygiene count with a cleanup button
  *                                          (opus subagent: plan, then apply)
  *   Pane `devops-cleanup`                 the cleanup plan / result, Apply and Discard buttons
- *   Status line                            branch-hygiene count (~/.claude/orphan-report.json)
+ *   PromptHint (under the prompt)          "● devops": green while the hooks run and the MCP server is connected, red
+ *                                          with the reason otherwise; the last benefit next to it for 90 s; a press
+ *                                          opens the info card in the band (what the plugin saved and cost, from its
+ *                                          own local logs, no model call). Terminal: the same as the hint's tail
+ *   /devops                                opens / closes that info card
+ *   Status line                            the same state as plain text, only until the line under the prompt was drawn
  *   Toasts                                 permission request waiting, long subagent / background Bash finished, SessionStart notices
  *   /mods-spike-fork                       Spike 1: one $.model.fork, usage logged to ~/.claude/devops-mods-spike.jsonl
  *
@@ -31,7 +36,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { AgentRow, Budget, CardView, CleanupHistory, CleanupRun, Hygiene, Progress, RunMarker, SessionFlags, ShipView, SpikeWatch } from '../../types/index'
+import type { AgentRow, Budget, CardView, CleanupHistory, CleanupRun, EchoState, Health, Hygiene, InfoData, InfoState, Progress, RunMarker, SessionFlags, ShipView, SpikeWatch } from '../../types/index'
 import type { CompactEnv, Locale, WorkState } from './format'
 import {
   activityOf,
@@ -65,7 +70,25 @@ import {
   helpSvg,
   HELP_SIZE,
   hygieneFrom,
-  hygieneLine,
+  apiFrom,
+  benefitFrom,
+  benefitIsOfCall,
+  mcpDown,
+  ECHO_MS,
+  echoText,
+  HOOK_FRESH_SLACK_MS,
+  hooksSeen,
+  inactiveReason,
+  infoHeadline,
+  infoIsEmpty,
+  infoRows,
+  isActive,
+  overheadFrom,
+  parseJsonl,
+  shipsFrom,
+  STATUS_GREEN,
+  STATUS_RED,
+  statusText,
   isCardTool,
   isHintCard,
   isFailedStatus,
@@ -175,6 +198,162 @@ const lastCard = atom({ plugin: 'devops', key: 'lastCard' } as const, null as { 
 const card = atom({ plugin: 'devops', key: 'card' } as const, null as CardView | null, { shape: 'card-1' })
 const NO_PROGRESS: Progress = { steps: [], activity: '', startedAt: 0 }
 const progress = atom({ plugin: 'devops', key: 'progress' } as const, NO_PROGRESS, { shape: 'progress-1' })
+
+// --- Status element under the prompt (concept 20261115-2350-devops-status) ---
+// Active = hooks running + MCP server connected, nothing else. Both start as true: unknown is never "not active".
+const health = atom({ plugin: 'devops', key: 'health' } as const, { hooks: true, mcp: true, misses: 0 } as Health, { shape: 'health-1' })
+// The last benefit of the savings log: what was already accounted for, and what is on screen for ECHO_MS.
+const echo = atom({ plugin: 'devops', key: 'echo' } as const, { seenAt: 0, last: null } as EchoState, { shape: 'echo-1' })
+// The info card a press on the status element opens; its figures are read once per opening.
+const info = atom({ plugin: 'devops', key: 'info' } as const, { open: false, data: null } as InfoState, { shape: 'info-1' })
+const SAVINGS_LOG = '/.claude/devops-savings.jsonl'
+const API_LOG = '/.claude/api-credit-usage.jsonl'
+const SHIP_LOG = '/.claude/ship-timings.jsonl'
+const TELEMETRY_LOG = '/.claude/devops-hook-telemetry.jsonl'
+const TELEMETRY_DAILY = '/.claude/devops-hook-telemetry-daily.json'
+/** The plugin's own MCP server, by its key in .mcp.json. */
+const MCP_SERVER = 'dotclaude'
+/** A green dot is re-checked against the MCP server this often (at a turn's start); a red one after every tool call. */
+const MCP_RECHECK_MS = 5 * 60_000
+const INFO_WIDTH = 64
+// The line under the prompt was drawn on this surface: the plain status line would only repeat it.
+let hintDrawn = false
+let savingsMtime = -1
+let mcpCheckedAt = 0
+let echoTimer: { cancel: () => void } | null = null
+
+/** A file's text, or null when it is missing or over the engine's read limit (4 MiB): its row is then left out. */
+async function readText($: EngineInterface, path: string): Promise<string | null> {
+  try {
+    const t = await $.fs.read(path)
+    return typeof t === 'string' ? t : null
+  } catch {
+    return null
+  }
+}
+
+/** The plain status line: the state as text while no line under the prompt carries it, cleared once one does. */
+async function refreshStatus($: EngineInterface): Promise<void> {
+  if (hintDrawn) {
+    $.ui.status(undefined)
+    return
+  }
+  const loc = (await sharedNow($)).loc
+  $.ui.status(statusText(await read($, health), (await read($, echo)).last, await $.clock.now(), loc))
+}
+
+/**
+ * Is the plugin's MCP server connected? A call that cannot answer, or that does not know the server's name
+ * (`unlisted`), leaves the state as it was: unknown is never "not active".
+ */
+async function checkMcp($: EngineInterface): Promise<void> {
+  let connected: boolean
+  try {
+    mcpCheckedAt = await $.clock.now()
+    const r = await $.mcp.connect(MCP_SERVER)
+    if (r.isConnected !== true && !mcpDown((r as { reason?: unknown }).reason)) return
+    connected = r.isConnected === true
+  } catch {
+    return
+  }
+  if ((await read($, health)).mcp !== connected) {
+    await update($, health, h => ({ ...h, mcp: connected }))
+    await refreshStatus($)
+  }
+}
+
+/** After a main tool call: did the hooks leave a telemetry record for it? HOOK_MISS_LIMIT misses in a row = not running. */
+async function checkHooks($: EngineInterface, home: string, startedAt: number): Promise<void> {
+  let mtime: number
+  try {
+    mtime = (await $.fs.stat(`${home}${TELEMETRY_LOG}`)).mtimeMs
+  } catch {
+    return // no telemetry file to judge by
+  }
+  const before = await read($, health)
+  const after = hooksSeen(before, mtime >= startedAt - HOOK_FRESH_SLACK_MS)
+  if (after === before) return
+  await update($, health, () => after)
+  if (after.hooks !== before.hooks) await refreshStatus($)
+}
+
+/**
+ * The savings log grew: a benefit newer than the last one seen, written during the tool call that just ended
+ * (`callStartedAt`), goes next to the dot for ECHO_MS. An older or foreign line found late is noted, never
+ * announced. `callStartedAt` null = session start: only note what is there.
+ */
+async function checkSavings($: EngineInterface, home: string, callStartedAt: number | null): Promise<void> {
+  const file = `${home}${SAVINGS_LOG}`
+  const baseline = callStartedAt === null
+  if (!baseline) {
+    try {
+      const mtime = (await $.fs.stat(file)).mtimeMs
+      if (mtime === savingsMtime) return
+      savingsMtime = mtime
+    } catch {
+      return
+    }
+  }
+  const text = await readText($, file)
+  if (text === null) return
+  const now = await $.clock.now()
+  const last = benefitFrom(parseJsonl(text), now).last
+  const state = await read($, echo)
+  if (!last || last.at <= state.seenAt) return
+  if (callStartedAt === null || !benefitIsOfCall(last.at, callStartedAt)) {
+    await update($, echo, s => ({ ...s, seenAt: last.at }))
+    return
+  }
+  await update($, echo, () => ({ seenAt: last.at, last: { ...last, shownAt: now } }))
+  await refreshStatus($)
+  try {
+    if (echoTimer) echoTimer.cancel()
+    echoTimer = $.clock.after(ECHO_MS + 500, () => {
+      echoTimer = null
+      void expireEcho($).catch(() => undefined)
+    })
+  } catch {
+    echoTimer = null // no timer here: the next tool call or turn clears it
+  }
+}
+
+/** The benefit had its 90 s: the line goes quiet again. */
+async function expireEcho($: EngineInterface): Promise<void> {
+  const state = await read($, echo)
+  if (!state.last || (await $.clock.now()) - state.last.shownAt < ECHO_MS) return
+  await update($, echo, s => ({ ...s, last: null }))
+  await refreshStatus($)
+}
+
+/** Everything the info card shows, from the local logs. No model call, nothing sent anywhere. */
+async function loadInfo($: EngineInterface): Promise<InfoData> {
+  const home = await homeDir($)
+  const now = await $.clock.now()
+  const savings = await readText($, `${home}${SAVINGS_LOG}`)
+  const api = await readText($, `${home}${API_LOG}`)
+  const ships = await readText($, `${home}${SHIP_LOG}`)
+  const daily = await readJson($, `${home}${TELEMETRY_DAILY}`)
+  const manifest = (await readJson($, `${String($.plugin.root || '').replace(/[\\]/g, '/')}/.claude-plugin/plugin.json`)) as { version?: unknown } | null
+  return {
+    benefit: benefitFrom(parseJsonl(savings), now),
+    overhead: overheadFrom(daily, now),
+    api: api === null ? null : apiFrom(parseJsonl(api), now),
+    ships: ships === null ? null : shipsFrom(parseJsonl(ships), now),
+    version: manifest && typeof manifest.version === 'string' ? manifest.version : '',
+    at: now,
+  }
+}
+
+/** A press on the status element (or /devops): open the card with fresh figures, or close it. */
+async function toggleInfo($: EngineInterface): Promise<void> {
+  if ((await read($, info)).open) {
+    await update($, info, i => ({ ...i, open: false }))
+    return
+  }
+  await checkMcp($)
+  const data = await loadInfo($)
+  await update($, info, () => ({ open: true, data }))
+}
 
 /** A card button: its prompt goes out as the person's own turn; the card leaves the band at once (one press = one prompt). */
 async function pressCardButton($: EngineInterface, prompt: string): Promise<void> {
@@ -495,7 +674,7 @@ async function sharedNow($: EngineInterface, force = false): Promise<Shared> {
 async function refreshHygiene($: EngineInterface): Promise<void> {
   const sh = await sharedNow($, true)
   await update($, hygiene, () => sh.hyg)
-  $.ui.status(hygieneLine(sh.hyg, true, sh.loc) ?? undefined)
+  // The count stays in the band's cleanup block; the status line carries the plugin's state only (refreshStatus).
 }
 
 async function refreshShip($: EngineInterface): Promise<void> {
@@ -571,9 +750,16 @@ export const register: Register = on => {
       name: 'mods-spike-fork',
       description: 'devops spike: one fork of this thread, logs its cache read to ~/.claude/devops-mods-spike.jsonl',
     })
+    await $.command.register({ name: 'devops', description: 'devops: what the plugin saved and cost, from its local logs (no model call)' })
     sessionCwd = e.cwd || ''
     await writeLoadMarker($, e.surface || null, e.isInteractive === true).catch(() => undefined)
     await refreshHygiene($)
+    // Status element: what the savings log already holds is old news, the MCP server is asked once, the state goes on screen.
+    hintDrawn = false
+    savingsMtime = -1
+    await checkSavings($, await homeDir($), null).catch(() => undefined)
+    await checkMcp($).catch(() => undefined)
+    await refreshStatus($).catch(() => undefined)
     return started
   })
 
@@ -681,6 +867,8 @@ export const register: Register = on => {
         const gapMs = s.lastMainEnd ? now - s.lastMainEnd : 0
         return { ...s, armed: gapMs >= SPIKE_PAUSE_MS ? { turnId: e.turnId, gapMs } : null }
       })
+      // Status element: a server that died mid-session shows at the next turn, asked at most every few minutes.
+      if (now - mcpCheckedAt >= MCP_RECHECK_MS) await checkMcp($).catch(() => undefined)
     }
     return started
   }).catch(($, e, next) => next(e)) // display and measuring only: never changes the turn
@@ -706,7 +894,20 @@ export const register: Register = on => {
         await update($, settled, () => false)
       }
     }
+    const startedAt = gateOpen ? await $.clock.now() : 0
     const result = await next(e)
+    if (gateOpen) {
+      // Status element: the hooks' telemetry of this call, a benefit this call logged, and a red MCP dot asked again.
+      try {
+        const home = await homeDir($)
+        await checkHooks($, home, startedAt)
+        await checkSavings($, home, startedAt)
+        await expireEcho($)
+        if ((await read($, health)).mcp === false) await checkMcp($)
+      } catch {
+        /* display only */
+      }
+    }
     if (gateOpen && isCardTool(tool) && result && typeof result.text === 'string' && !result.isError) {
       const view = cardFromResult(result.text)
       if (view) {
@@ -825,6 +1026,13 @@ export const register: Register = on => {
   on('command.run', { command: 'devops-agents' }, async $ => {
     await $.ui.open({ id: AGENTS_PANE, title: await titleOf($, 'titleAgents') })
     return { text: 'Agents pane opened.' }
+  })
+
+  // The keyboard path to the info card (and the terminal's, whose hint line takes no press). The answer stays one
+  // short line: a command's output can enter the conversation, the figures must not cost tokens.
+  on('command.run', { command: 'devops' }, async $ => {
+    await toggleInfo($)
+    return { text: (await read($, info)).open ? 'devops info opened above the prompt.' : 'devops info closed.' }
   })
 
   on('command.run', { command: 'devops-ship' }, async $ => {
@@ -982,6 +1190,36 @@ export const register: Register = on => {
   //     top-right corner. The terminal has no columns: the same parts, one column.
   //   working: turning ⏳ + the running step (n/m · text) + the tool; the rail shows the ring only.
   //   idle: one slim row, "Last: {card title} · {time}" left, ring chip + 🧹 N ▸ right; hidden when nothing is due.
+  // The line under the prompt: "● devops", green while the plugin is active, red with the reason otherwise, the last
+  // benefit next to it while it is fresh. A press opens the info card in the band (bottom left, right above the
+  // prompt). The engine's own hint stays: its row is drawn first. Terminal: the hint keeps its live pills and gets
+  // the same words as its tail; the card opens with /devops there.
+  on('ui.render', { component: 'PromptHint' }, async ($, e, next) => {
+    if (!(await open($))) return next(e)
+    const loc = (await sharedNow($)).loc
+    // (Not `h`: that name is the JSX factory.)
+    const state = await read($, health)
+    const said = echoText((await read($, echo)).last, await $.clock.now(), loc)
+    const ok = isActive(state)
+    const note = ok ? said : `${tr(loc, 'stInactive')} · ${inactiveReason(state, loc)}`
+    hintDrawn = true
+    if (e.surface === 'terminal') {
+      const tail = [e.props.tail, `${ok ? '●' : '○'} devops${note ? ` · ${note}` : ''}`].filter(Boolean).join(' · ')
+      return next({ ...e, props: { ...e.props, tail } })
+    }
+    const engineRow = await next(e)
+    const { Box, Button, Text } = $.ui.resolve(e)
+    return (
+      <Box key="devops-hint" flexDirection="row" alignItems="center" columnGap={2}>
+        {engineRow}
+        <Button key="devops-status" plain onPress={() => toggleInfo($)}>
+          <Text color={ok ? STATUS_GREEN : STATUS_RED}>●</Text> devops
+        </Button>
+        {note && <Text key="devops-note" dimColor={ok} {...(ok ? {} : { color: STATUS_RED })}>{note}</Text>}
+      </Box>
+    )
+  })
+
   // The card's answer and its result lines never show here: they stay inline in the transcript.
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     if (e.props.hasSurvey || !(await open($))) return next(e)
@@ -1006,8 +1244,11 @@ export const register: Register = on => {
     const advised = compactAdvised(ring, { concept: sh.work.concept, changes: sh.work.changes, steps: prog.steps.some(s => s.status !== 'completed'), settled: isSettled }, c)
     const idle = !w && !c
     const bt = await batchView($)
-    // Idle and nothing due (no cleanup, no context worth a glance, no budget bar, no batch collection): the band stays away.
-    if (idle && !cv && !bars.length && !bt && !(ring !== null && ring >= CONTEXT_SHOW_PERCENT)) return next(e)
+    const inf = await read($, info)
+    const infoData = inf.open ? inf.data : null
+    const hl = await read($, health)
+    // Idle and nothing due (no cleanup, no context worth a glance, no budget bar, no batch collection, no info card): the band stays away.
+    if (idle && !cv && !bars.length && !bt && !infoData && !(ring !== null && ring >= CONTEXT_SHOW_PERCENT)) return next(e)
     const { Box, Button, Text } = $.ui.resolve(e)
     // Desktop: the card's animated SVG (bars, hourglass, ring) at a fixed size; the terminal has no Svg, so glyphs.
     const desktop = e.surface !== 'terminal'
@@ -1035,6 +1276,48 @@ export const register: Register = on => {
     const toggle = () => update($, fold, v => !v)
     // Collecting: one persistent row, neutral colour (the confirmation toast carries the event, this the standing state).
     const batchEl = bt ? <Text key="batch" {...S.small}>{tr(loc, 'bandBatch', { n: bt.count })}</Text> : null
+    // The info card of the status element: left-aligned, the band's first row, so it sits right above the prompt's left edge.
+    const infoEl = (() => {
+      if (!infoData) return null
+      const ok = isActive(hl)
+      const head = infoHeadline(infoData, loc)
+      const rows = infoRows(infoData, loc)
+      return (
+        <Box key="devops-info-row" flexDirection="row">
+          <Box key="devops-info" flexDirection="column" rowGap={1} paddingX={1} borderStyle="round" borderColor={DIVIDER} {...(desktop ? { width: INFO_WIDTH } : {})}>
+            <Box key="info-top" flexDirection="row" alignItems="center" columnGap={1}>
+              <Text color={ok ? STATUS_GREEN : STATUS_RED}>●</Text>
+              <Text bold>{`devops ${tr(loc, ok ? 'stActive' : 'stInactive')}`}</Text>
+              {infoData.version && <Text {...S.small}>{`v${infoData.version}`}</Text>}
+              <Box flexGrow={1} />
+              <Button key="info-close" plain label="✕" onPress={() => update($, info, i => ({ ...i, open: false }))} />
+            </Box>
+            {!ok && <Text key="info-reason" color={STATUS_RED}>{inactiveReason(hl, loc)}</Text>}
+            {infoIsEmpty(infoData) ? (
+              <Text key="info-empty" {...S.small}>{tr(loc, 'infoEmpty')}</Text>
+            ) : (
+              <Box key="info-head" flexDirection="row" alignItems="center" columnGap={2}>
+                <Text {...S.title}>{head.value}</Text>
+                <Box flexDirection="column">
+                  <Text>{head.label}</Text>
+                  <Text {...S.small}>{head.note}</Text>
+                </Box>
+              </Box>
+            )}
+            {rows.map(r => (
+              <Box key={r.key} flexDirection="row" columnGap={2}>
+                <Text bold>{r.value}</Text>
+                <Box flexDirection="column">
+                  <Text>{r.label}</Text>
+                  <Text {...S.small}>{r.note}</Text>
+                </Box>
+              </Box>
+            ))}
+            <Text key="info-foot" {...S.small}>{tr(loc, 'infoFoot')}</Text>
+          </Box>
+        </Box>
+      )
+    })()
 
     const cta = !cv ? null : run.phase === 'planning' || run.phase === 'applying' ? (
       <Text key="cleanup-run" dimColor>{`[ ${tr(loc, 'cleanupBtn')} · ${tr(loc, run.phase === 'planning' ? 'runPlanning' : 'runApplying')} ]`}</Text>
@@ -1097,6 +1380,7 @@ export const register: Register = on => {
       const text = lastLine(last, loc)
       return (
         <Box key="band" flexDirection="column" rowGap={1}>
+          {infoEl}
           {batchEl}
           <Box key="idle" flexDirection="row" alignItems="center" columnGap={2}>
             <Text key="idle-last" {...S.small}>{text}</Text>
@@ -1177,6 +1461,7 @@ export const register: Register = on => {
       // Terminal: one column, same parts.
       return (
         <Box key="band" flexDirection="column" rowGap={1}>
+          {infoEl}
           {batchEl}
           {workEl}
           {c && (c.title || c.at) && (
@@ -1202,6 +1487,7 @@ export const register: Register = on => {
     }
     return (
       <Box key="band" flexDirection="column" rowGap={1}>
+        {infoEl}
         {batchEl}
         <Box key="zones" position="relative" flexDirection="row" columnGap={2}>
           <Box key="main" flexDirection="column" flexGrow={1} rowGap={1}>

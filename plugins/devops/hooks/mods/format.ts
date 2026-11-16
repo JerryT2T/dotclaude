@@ -3,7 +3,7 @@
  * Every number shown comes from the arguments (engine events or files the
  * plugin's scripts already write), never from memory.
  */
-import type { AgentRow, Budget, CardButton, CardView, CleanupHistory, Hygiene, PlanStep, Progress, RunMarker, ShipView } from '../../types/index'
+import type { AgentRow, Benefit, Budget, CardButton, CardView, CleanupHistory, Echo, Health, Hygiene, InfoData, Overhead, PlanStep, Progress, RunMarker, ShipView } from '../../types/index'
 
 export const LONG_RUN_MS = 120_000
 
@@ -807,6 +807,26 @@ const TABLE = {
   toastNote: ['💾 Note #{n} saved', '💾 Notiz #{n} gespeichert', '💾 Nota #{n} guardada', '💾 Note #{n} enregistrée', '💾 Nota #{n} salva', '💾 メモ #{n} を保存しました', '💾 笔记 #{n} 已保存'],
   bandBatch: ['📚 Batch · {n}', '📚 Batch · {n}', '📚 Batch · {n}', '📚 Batch · {n}', '📚 Batch · {n}', '📚 Batch · {n}', '📚 Batch · {n}'],
   learnBtn: ['devops learn', 'devops learn', 'devops learn', 'devops learn', 'devops learn', 'devops learn', 'devops learn'],
+  // Status display (concept 20261115-2350-devops-status): the state under the prompt, the last benefit, the info card.
+  stActive: ['active', 'aktiv', 'activo', 'actif', 'ativo', '稼働中', '运行中'],
+  stInactive: ['not active', 'nicht aktiv', 'inactivo', 'inactif', 'inativo', '停止中', '未运行'],
+  stNoHooks: ['hooks are not running', 'Hooks laufen nicht', 'los hooks no se ejecutan', 'les hooks ne tournent pas', 'os hooks não estão rodando', 'フックが動いていません', '钩子未运行'],
+  stNoMcp: ['MCP server not connected', 'MCP-Server nicht verbunden', 'servidor MCP sin conexión', 'serveur MCP non connecté', 'servidor MCP desconectado', 'MCP サーバー未接続', 'MCP 服务器未连接'],
+  echoNarrow1: ['Boom: up to {t} tokens saved, search narrowed.', 'Zack: bis zu {t} Tokens gespart, Suche eingegrenzt.', '¡Zas! Hasta {t} tokens ahorrados, búsqueda acotada.', 'Et hop : jusqu’à {t} tokens économisés, recherche ciblée.', 'Pronto: até {t} tokens poupados, busca afunilada.', 'やった: 最大 {t} トークン節約、検索を絞りました。', '搞定：最多省下 {t} 个 token，搜索已收窄。'],
+  echoNarrow2: ['Up to {t} tokens never loaded. You are welcome.', 'Bis zu {t} Tokens gar nicht erst geladen. Gern geschehen.', 'Hasta {t} tokens que ni se cargaron. De nada.', 'Jusqu’à {t} tokens jamais chargés. De rien.', 'Até {t} tokens que nem foram carregados. De nada.', '最大 {t} トークンを読み込まずに済みました。どういたしまして。', '最多 {t} 个 token 根本没加载。不客气。'],
+  echoLocal: ['{t} tokens written by the local model, not on your plan.', '{t} Tokens hat das lokale Modell geschrieben, nicht dein Abo.', '{t} tokens escritos por el modelo local, no por tu plan.', '{t} tokens écrits par le modèle local, pas par ton forfait.', '{t} tokens escritos pelo modelo local, não pelo seu plano.', '{t} トークンはローカルモデルが書きました。プランは無傷です。', '{t} 个 token 由本地模型写出，没花你的套餐。'],
+  infoHead: ['tokens kept out of your context', 'Tokens aus deinem Kontext ferngehalten', 'tokens fuera de tu contexto', 'tokens gardés hors de ton contexte', 'tokens fora do seu contexto', 'トークンをコンテキストに入れずに済みました', '个 token 没进入你的上下文'],
+  infoHeadNote: ['estimate · net · 7 days', 'geschätzt · netto · 7 Tage', 'estimación · neto · 7 días', 'estimation · net · 7 jours', 'estimativa · líquido · 7 dias', '推定 · 差し引き · 7 日間', '估算 · 净值 · 7 天'],
+  infoNarrowed: ['searches narrowed · up to {t} tokens', 'Suchen eingegrenzt · bis zu {t} Tokens', 'búsquedas acotadas · hasta {t} tokens', 'recherches ciblées · jusqu’à {t} tokens', 'buscas afuniladas · até {t} tokens', '件の検索を絞り込み · 最大 {t} トークン', '次搜索已收窄 · 最多 {t} 个 token'],
+  infoShipped: ['branches shipped · {n} test runs reused', 'Branches ausgeliefert · {n} Testläufe wiederverwendet', 'ramas entregadas · {n} pruebas reutilizadas', 'branches livrées · {n} tests réutilisés', 'branches entregues · {n} testes reaproveitados', 'ブランチを出荷 · テスト再利用 {n} 回', '个分支已发布 · 复用 {n} 次测试'],
+  infoApi: ['on API credit instead of your plan · {n} runs', 'aufs API-Guthaben statt aufs Abo · {n} Läufe', 'con crédito de API en vez del plan · {n} ejecuciones', 'sur le crédit API au lieu du forfait · {n} exécutions', 'no crédito de API em vez do plano · {n} execuções', 'を API クレジットで処理（プラン外）· {n} 回', '走 API 额度而非套餐 · {n} 次'],
+  infoGuards: ['guard interventions', 'Eingriffe der Schutz-Hooks', 'intervenciones de los guardas', 'interventions des garde-fous', 'intervenções dos guardas', '回のガード介入', '次防护拦截'],
+  infoOwn: ['tokens the hooks themselves used', 'Tokens Eigenverbrauch der Hooks', 'tokens que usaron los propios hooks', 'tokens consommés par les hooks', 'tokens gastos pelos próprios hooks', 'トークンをフック自身が使用', '个 token 为钩子自身消耗'],
+  noteMeasuredSince: ['measured · since {s}', 'gemessen · seit {s}', 'medido · desde {s}', 'mesuré · depuis {s}', 'medido · desde {s}', '実測 · {s} から', '实测 · 自 {s} 起'],
+  noteMeasured7: ['measured · 7 days', 'gemessen · 7 Tage', 'medido · 7 días', 'mesuré · 7 jours', 'medido · 7 dias', '実測 · 7 日間', '实测 · 7 天'],
+  noteCounted7: ['counted · 7 days', 'gezählt · 7 Tage', 'contado · 7 días', 'compté · 7 jours', 'contado · 7 dias', '集計 · 7 日間', '计数 · 7 天'],
+  infoFoot: ['From local logs · no model call', 'Aus lokalen Protokollen · kein Modellaufruf', 'De registros locales · sin llamada al modelo', 'Depuis les journaux locaux · aucun appel au modèle', 'De registros locais · sem chamada ao modelo', 'ローカルのログから · モデル呼び出しなし', '来自本地日志 · 不调用模型'],
+  infoEmpty: ['No savings logged yet.', 'Noch keine Ersparnis protokolliert.', 'Aún no hay ahorros registrados.', 'Aucune économie enregistrée pour l’instant.', 'Nenhuma economia registrada ainda.', 'まだ節約の記録がありません。', '尚无节省记录。'],
 } as const
 
 export type StrKey = keyof typeof TABLE
@@ -1161,4 +1181,240 @@ export function parseWriterOutput(stdout: unknown): { n: number; images: number 
     /* not JSON */
   }
   return null
+}
+
+// --- Status display (concept 20261115-2350-devops-status): what the plugin did, read from its own local logs. ---
+// No model call anywhere: ~/.claude/devops-savings.jsonl (token guard, local-llm), devops-hook-telemetry-daily.json
+// (hook runs and their output), api-credit-usage.jsonl, ship-timings.jsonl.
+
+export const WEEK_MS = 7 * 86_400_000
+/** How long the last benefit stays next to the dot before the line goes quiet again. */
+export const ECHO_MS = 90_000
+/** Main tool calls in a row without a fresh hook-telemetry record before the hooks count as not running. */
+export const HOOK_MISS_LIMIT = 5
+/** A telemetry record this much older than the tool call's start still counts as that call's. */
+export const HOOK_FRESH_SLACK_MS = 2_000
+export const STATUS_GREEN = '#7bc98f'
+export const STATUS_RED = '#e07a7a'
+
+/** JSONL text → its object rows; broken lines are left out. */
+export function parseJsonl(text: unknown): Array<Record<string, unknown>> {
+  if (typeof text !== 'string') return []
+  const out: Array<Record<string, unknown>> = []
+  for (const line of text.split(/\r?\n/)) {
+    if (!line.trim()) continue
+    try {
+      const row = JSON.parse(line) as unknown
+      if (row && typeof row === 'object' && !Array.isArray(row)) out.push(row as Record<string, unknown>)
+    } catch {
+      /* a cut or broken line */
+    }
+  }
+  return out
+}
+
+function timeOf(row: Record<string, unknown>): number {
+  const t = typeof row.ts === 'number' ? row.ts : Date.parse(String(row.ts || ''))
+  return Number.isFinite(t) ? t : NaN
+}
+
+function numberOf(v: unknown): number {
+  return typeof v === 'number' && Number.isFinite(v) ? v : 0
+}
+
+/**
+ * The savings log, netted: `net7` = blocked minus released estimates of the last 7 days (a block whose
+ * identical call went ahead saved nothing), never below 0 — an ESTIMATE. `narrowed` rows are the measured
+ * ones (an upper bound each) and count over the whole log, `since` its first row. `last` = the newest
+ * observed benefit: a search that came back narrower, or text the local model wrote.
+ */
+export function benefitFrom(rows: ReadonlyArray<Record<string, unknown>>, now: number): Benefit {
+  let blocked = 0
+  let released = 0
+  const b: Benefit = { net7: 0, blocks7: 0, released7: 0, narrowed: 0, narrowedTokens: 0, since: null, last: null }
+  for (const row of rows) {
+    const at = timeOf(row)
+    if (!Number.isFinite(at)) continue
+    if (b.since === null || at < b.since) b.since = at
+    const tokens = Math.max(0, numberOf(row.estTokens))
+    const recent = now - at < WEEK_MS
+    if (row.source === 'token-guard' && row.op === 'blocked' && recent) {
+      blocked += tokens
+      b.blocks7++
+    } else if (row.source === 'token-guard' && row.op === 'released' && recent) {
+      released += tokens
+      b.released7++
+    } else if (row.source === 'token-guard' && row.op === 'narrowed') {
+      b.narrowed++
+      b.narrowedTokens += tokens
+      if (!b.last || at >= b.last.at) b.last = { kind: 'narrowed', tokens, at }
+    } else if (row.source === 'local-llm' && row.op === 'delegated') {
+      if (!b.last || at >= b.last.at) b.last = { kind: 'delegated', tokens, at }
+    }
+  }
+  b.net7 = Math.max(0, blocked - released)
+  return b
+}
+
+/** What the plugin itself cost and how often a guard stepped in, last 7 UTC days of the hook-telemetry rollup. */
+export function overheadFrom(daily: unknown, now: number): Overhead | null {
+  const days = daily && typeof daily === 'object' ? (daily as { days?: unknown }).days : null
+  if (!days || typeof days !== 'object') return null
+  const from = new Date(now - WEEK_MS + 86_400_000).toISOString().slice(0, 10)
+  let chars = 0
+  let blocks = 0
+  for (const [day, hooks] of Object.entries(days as Record<string, unknown>)) {
+    if (day < from || !hooks || typeof hooks !== 'object') continue
+    for (const [key, v] of Object.entries(hooks as Record<string, { chars?: unknown; out?: { block?: unknown } }>)) {
+      // The dispatcher's own rows repeat what its modules already counted.
+      if (key.startsWith('dispatch:') || !v) continue
+      chars += numberOf(v.chars)
+      blocks += numberOf(v.out && v.out.block)
+    }
+  }
+  // Characters are measured; ÷ 4 is the report's own conversion (hook-telemetry-report.js).
+  return { ownTokens7: Math.round(chars / 4), guardBlocks7: blocks }
+}
+
+/** Side runs that went to the API credit instead of the plan, last 7 days (rc 0 only). */
+export function apiFrom(rows: ReadonlyArray<Record<string, unknown>>, now: number): { usd7: number; runs7: number } {
+  let usd7 = 0
+  let runs7 = 0
+  for (const row of rows) {
+    const at = timeOf(row)
+    if (!Number.isFinite(at) || now - at >= WEEK_MS || row.rc !== 0) continue
+    usd7 += numberOf(row.usd)
+    runs7++
+  }
+  return { usd7, runs7 }
+}
+
+/** Branches a ship released (distinct repo + branch) and full test runs it reused, last 7 days. */
+export function shipsFrom(rows: ReadonlyArray<Record<string, unknown>>, now: number): { branches7: number; reused7: number } {
+  const shipped = new Set<string>()
+  let reused7 = 0
+  for (const row of rows) {
+    const at = timeOf(row)
+    if (!Number.isFinite(at) || now - at >= WEEK_MS) continue
+    if (row.tool === 'ship_release' && row.outcome === 'success') shipped.add(`${String(row.repo)}|${String(row.branch)}`)
+    if (row.tool === 'ship_build' && row.testsReused === true) reused7++
+  }
+  return { branches7: shipped.size, reused7 }
+}
+
+const COMMA_LOCALES: readonly Locale[] = ['de', 'es', 'fr', 'pt']
+
+/** "541 k", "5,0 M" (de) / "5.0 M" (en): a dimension, not a count. */
+export function compactTokens(n: number, loc: Locale = 'en'): string {
+  const v = Math.max(0, Math.round(Number(n) || 0))
+  if (v >= 1_000_000) {
+    const m = (v / 1_000_000).toFixed(1)
+    return `${COMMA_LOCALES.includes(loc) ? m.replace('.', ',') : m} M`
+  }
+  if (v >= 1000) return `${Math.round(v / 1000)} k`
+  return String(v)
+}
+
+function usdText(n: number, loc: Locale): string {
+  const s = (Number(n) || 0).toFixed(2)
+  return `${COMMA_LOCALES.includes(loc) ? s.replace('.', ',') : s} $`
+}
+
+/** Day and month of a time (UTC), in the order the language reads them. */
+function dayMonth(t: number, loc: Locale): string {
+  const d = new Date(t)
+  const dd = String(d.getUTCDate()).padStart(2, '0')
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0')
+  if (loc === 'de') return `${dd}.${mm}.`
+  return loc === 'en' || loc === 'ja' || loc === 'zh' ? `${mm}/${dd}` : `${dd}/${mm}`
+}
+
+/** Active = the plugin's hooks run and its MCP server is connected: the only two things "not active" means. */
+export function isActive(h: Health | null): boolean {
+  return !h || (h.hooks !== false && h.mcp !== false)
+}
+
+/** Why it is not active, '' while it is. */
+export function inactiveReason(h: Health | null, loc: Locale = 'en'): string {
+  if (isActive(h)) return ''
+  const parts: string[] = []
+  if (h && h.hooks === false) parts.push(tr(loc, 'stNoHooks'))
+  if (h && h.mcp === false) parts.push(tr(loc, 'stNoMcp'))
+  return parts.join(' · ')
+}
+
+/**
+ * One hook-telemetry check after a main tool call: a fresh record proves the hooks write telemetry and clears
+ * the misses; HOOK_MISS_LIMIT misses in a row after such proof mean "not running". Without proof a stale file
+ * says nothing (telemetry switched off, file not writable): the state stays as it is.
+ */
+export function hooksSeen(h: Health, fresh: boolean): Health {
+  if (fresh) return h.hooks && h.misses === 0 && h.proven === true ? h : { ...h, hooks: true, misses: 0, proven: true }
+  if (h.proven !== true) return h
+  const misses = h.misses + 1
+  return { ...h, misses, hooks: misses < HOOK_MISS_LIMIT }
+}
+
+/** `$.mcp.connect` refusals that say the server is not running; `unlisted` only says the session does not know that name. */
+export function mcpDown(reason: unknown): boolean {
+  return reason !== 'unlisted'
+}
+
+/** A benefit is announced only when its log line was written during the tool call that just ended (not an old or foreign line found late). */
+export function benefitIsOfCall(at: number, callStartedAt: number): boolean {
+  return at >= callStartedAt - HOOK_FRESH_SLACK_MS
+}
+
+/** The last benefit, short and a little cheeky, while it is fresh (ECHO_MS); '' afterwards or without one. */
+export function echoText(e: Echo | null, now: number, loc: Locale = 'en'): string {
+  if (!e || now - e.shownAt >= ECHO_MS || now < e.shownAt) return ''
+  const t = compactTokens(e.tokens, loc)
+  if (e.kind === 'delegated') return tr(loc, 'echoLocal', { t })
+  // Two wordings, picked by the event itself so the same event always reads the same.
+  return tr(loc, Math.floor(e.at / 1000) % 2 === 0 ? 'echoNarrow1' : 'echoNarrow2', { t })
+}
+
+/** The plain status-line text for surfaces without a drawable line under the prompt: "🟢 active", the fresh benefit, or why not. */
+export function statusText(h: Health | null, e: Echo | null, now: number, loc: Locale = 'en'): string {
+  if (!isActive(h)) return `🔴 ${tr(loc, 'stInactive')} · ${inactiveReason(h, loc)}`
+  return `🟢 ${echoText(e, now, loc) || tr(loc, 'stActive')}`
+}
+
+export type InfoRow = { key: string; value: string; label: string; note: string }
+
+/** The card's headline: the estimated net tokens of the last 7 days, labelled as an estimate. */
+export function infoHeadline(d: InfoData, loc: Locale = 'en'): InfoRow {
+  return { key: 'info-head', value: `≈ ${compactTokens(d.benefit.net7, loc)}`, label: tr(loc, 'infoHead'), note: tr(loc, 'infoHeadNote') }
+}
+
+/** The card's rows, each only when its log has something to say. */
+export function infoRows(d: InfoData, loc: Locale = 'en'): InfoRow[] {
+  const rows: InfoRow[] = []
+  const b = d.benefit
+  if (b.narrowed > 0) {
+    rows.push({
+      key: 'info-narrowed',
+      value: String(b.narrowed),
+      label: tr(loc, 'infoNarrowed', { t: compactTokens(b.narrowedTokens, loc) }),
+      note: tr(loc, 'noteMeasuredSince', { s: b.since === null ? '' : dayMonth(b.since, loc) }),
+    })
+  }
+  if (d.ships && d.ships.branches7 > 0) {
+    rows.push({ key: 'info-shipped', value: String(d.ships.branches7), label: tr(loc, 'infoShipped', { n: d.ships.reused7 }), note: tr(loc, 'noteMeasured7') })
+  }
+  if (d.api && d.api.runs7 > 0) {
+    rows.push({ key: 'info-api', value: usdText(d.api.usd7, loc), label: tr(loc, 'infoApi', { n: d.api.runs7 }), note: tr(loc, 'noteMeasured7') })
+  }
+  if (d.overhead) {
+    if (d.overhead.guardBlocks7 > 0) {
+      rows.push({ key: 'info-guards', value: String(d.overhead.guardBlocks7), label: tr(loc, 'infoGuards'), note: tr(loc, 'noteCounted7') })
+    }
+    rows.push({ key: 'info-own', value: `≈ ${compactTokens(d.overhead.ownTokens7, loc)}`, label: tr(loc, 'infoOwn'), note: tr(loc, 'noteMeasured7') })
+  }
+  return rows
+}
+
+/** Nothing logged at all: the card says so instead of showing "≈ 0". */
+export function infoIsEmpty(d: InfoData): boolean {
+  return d.benefit.since === null && !d.overhead && !(d.api && d.api.runs7 > 0) && !(d.ships && d.ships.branches7 > 0)
 }
