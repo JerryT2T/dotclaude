@@ -855,6 +855,8 @@ export async function handler(params) {
     result.mergeSha = merge.fullSha ? merge.fullSha.slice(0, 8) : merge.sha;
     if (merge.verified === false) result.mergeVerified = false;
     if (merge.warning) result.mergeWarning = merge.warning;
+    // #1136: a refused rebase merge landed as squash — the card names the lost per-commit history.
+    if (merge.strategyFallback) { result.mergeStrategy = merge.strategyFallback.to; result.mergeStrategyFallback = merge.strategyFallback; }
 
     // If mergePR could not fetch origin/base, retry the fetch here with backoff
     // and recover mergeSha. Everything below (tree check, local sync, TAG) reads

@@ -236,7 +236,26 @@ export function landEligibility(pr) {
  *   `verified` — whether `gh pr view` confirmed state MERGED;
  *   `warning` — human-readable reason for a null sha / unverified state.
  */
+/** GitHub's refusal of a rebase merge — the branch carries a merge commit (e.g. origin/<base> merged in during the ship). */
+const REBASE_REFUSED_RE = /can'?t be rebased/i;
+
 export function mergePR(prNumber, base = "main", opts, flags = {}) {
+  // A rebase merge GitHub refuses has provably NOT landed (mergePR only throws
+  // while the PR is not merged), so one squash retry is safe and lands the same
+  // tree. The caller reports the lost per-commit history (`strategyFallback`).
+  if (flags.strategy === "rebase") {
+    try {
+      return mergePRWith(prNumber, base, opts, flags);
+    } catch (e) {
+      if (!REBASE_REFUSED_RE.test(String(e && e.message))) throw e;
+      const landed = mergePRWith(prNumber, base, opts, { ...flags, strategy: "squash" });
+      return { ...landed, strategyFallback: { from: "rebase", to: "squash", reason: "branch can't be rebased (it carries a merge commit)" } };
+    }
+  }
+  return mergePRWith(prNumber, base, opts, flags);
+}
+
+function mergePRWith(prNumber, base, opts, flags) {
   const strategy = flags.strategy || "squash";
   const sleep = typeof flags.sleep === "function" ? flags.sleep : sleepSync;
   const args = ["pr", "merge", String(prNumber), `--${strategy}`, "--admin"];

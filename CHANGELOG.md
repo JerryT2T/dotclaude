@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.382.1] — 2026-11-17
+
+### Fixed
+- Ship: a rebase merge GitHub refuses (the branch carries a merge commit of the base) now lands as squash on its own and is reported as `mergeStrategyFallback`, instead of stopping the ship with release-failed
+
+### Docs
+- Decision concept for the six parked Claude Mods issues (#1100–#1106); the decisions live in each issue
+
 ## [0.382.0] — 2026-11-16
 
 ### Added
