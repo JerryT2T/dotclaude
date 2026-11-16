@@ -1,0 +1,268 @@
+<section data-iteration="1" data-iteration-template="decision" data-analysis="full" data-active>
+
+  <section id="briefing" data-analysis-briefing data-nav-label="Briefing">
+    <p data-briefing-what>Der Backlog-Run vom 16.11. hat 6 der 10 offenen Issues geparkt, alle im Milestone „Claude Mods“. Vier hängen an einem Spike, den nur ein echter Desktop-Lauf beantwortet, zwei an einer offenen Produktfrage.</p>
+    <p data-briefing-why>Deine Antworten hier sind die Entscheidung je Issue für den nächsten Backlog-Run. Ohne sie parkt er dieselben sechs wieder.</p>
+    <div data-briefing-potential data-viz="kpi" data-viz-spec='{"value":"6","unit":"Issues","label":"wieder lauffähig für den nächsten Run"}'>6 Issues</div>
+    <a data-briefing-topic="t-spikes" data-share="50">Desktop-Spikes</a>
+    <a data-briefing-topic="t-produkt" data-share="50">Produktfragen</a>
+    <p data-briefing-duration>≈ 4 min</p>
+    <div data-alevel="1" data-title="Briefing">
+      <div data-slot="short"><div data-viz="kpi" data-viz-spec='{"value":"4 + 2","unit":"Issues","label":"Spike · Produktfrage"}'></div></div>
+      <div data-slot="long">
+        <div data-viz="bars" data-viz-spec='{"items":[{"label":"blockiert durch Desktop-Spike","value":3},{"label":"Entscheidung + Spike","value":1},{"label":"reine Produktfrage","value":2}],"unit":"Issues"}'></div>
+        <p>Gemeinsamer Engpass ist #1100: Solange niemand bestätigt, dass die Mod im Desktop Code-Tab überhaupt lädt, sind alle Desktop-Aussagen der anderen Issues ungeprüft. Ein unbeaufsichtigter Run kann Code und Tests liefern, aber keinen Desktop-Lauf.</p>
+        <p>Jede Empfehlung trennt deshalb: was der Run allein bauen kann, und was einmal deine Hand am Desktop braucht.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="t-spikes" data-topic data-nav-label="Desktop-Spikes">
+    <div data-alevel="2" data-title="Desktop-Spikes">
+      <div data-slot="short"><p>Drei Issues warten auf einen Lauf, den nur du am Desktop machen kannst.</p></div>
+      <div data-slot="long">
+        <p>#1100 (lädt die Mod?), #1101 (hält ein Fork-Ping den Cache warm?) und #1103 (weckt ein Mod-Timer die Session?) sind Spikes. Der Run kann für jeden das Werkzeug und das Protokoll bauen; das Ergebnis braucht einen echten Lauf von dir.</p>
+      </div>
+    </div>
+
+    <section id="d-1100" data-nav-label="#1100 Mod lädt im Desktop" data-decision="d-1100" data-decision-mode="single"
+             data-label="#1100 Mod-Laden im Desktop" data-rec="repro-now"
+             data-rec-why="Alle anderen Mod-Issues hängen an diesem Ergebnis, und die Reproduktion kostet dich etwa 5 Minuten."
+             data-applies-to="#1100 · docs/dev/mods.md" data-finding="f-1100" data-no-example="Ein Lade-Protokoll, nichts Sichtbares im Repo">
+      <p data-applies>Gilt für: #1100 · docs/dev/mods.md</p>
+      <p data-situation>Upstream-Bug anthropics/claude-code#105936 ist offen: im Desktop Code-Tab bleibt eine Mod nach „Turn them on“ ungeladen. Ob das auf deinem Build (Engine 2.1.321, Windows) auch passiert, weiß niemand.</p>
+      <h3 data-question>Wer klärt, ob die devops-Mod im Desktop lädt?</h3>
+      <div data-options>
+        <label data-opt="repro-now" data-recommended>
+          <input type="radio" name="dm-d-1100" value="repro-now" checked>
+          <span data-opt-label>Ich reproduziere, der Run schreibt das Protokoll</span>
+          <span data-opt-consequence>Run legt Protokoll + leere Ergebnistabelle in mods.md an; du trägst Build und Ergebnis nach.</span>
+        </label>
+        <label data-opt="protocol-only">
+          <input type="radio" name="dm-d-1100" value="protocol-only">
+          <span data-opt-label>Nur das Protokoll schreiben lassen</span>
+          <span data-opt-consequence>Doku ist fertig, der Lauf selbst bleibt offen, #1101–#1105 bleiben blockiert.</span>
+        </label>
+        <label data-opt="defer">
+          <input type="radio" name="dm-d-1100" value="defer">
+          <span data-opt-label>Auf den Upstream-Fix warten</span>
+          <span data-opt-consequence>Nichts passiert, bis #105936 geschlossen ist.</span>
+        </label>
+      </div>
+      <textarea data-comment="d-1100-note" placeholder="Notiz (optional)"></textarea>
+      <input type="hidden" name="dm-d-1100-none" value="">
+      <input type="hidden" name="dm-d-1100-hes" value="">
+      <input type="hidden" name="dm-d-1100-touched" value="">
+      <input type="hidden" name="dm-d-1100-issue" value="">
+      <input type="hidden" name="dm-d-1100-epic" value="">
+      <div data-alevel="3" data-title="#1100 Mod-Laden im Desktop">
+        <div data-slot="short"><p>Ein objektives Signal existiert schon: <code>~/.claude/devops-mods-loaded.json</code>.</p></div>
+        <div data-slot="long">
+          <p><code>session.start</code> der Mod schreibt diese Datei, und <code>ss.mods.load.js</code> meldet beim nächsten Start, wenn eine Session keinen Eintrag hatte. Der Lauf ist damit: Mod-Feature auf alpha, Desktop-Session öffnen, „Turn them on“, Datei prüfen, Pane sichtbar?</p>
+          <p>Ein „Workaround bestätigt“ ohne diesen Lauf wäre ein falscher Beleg in der Dev-Doku.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="d-1101" data-nav-label="#1101 Cache warm halten" data-decision="d-1101" data-decision-mode="single"
+             data-label="#1101 Cache-Keepalive" data-rec="measure-fork"
+             data-rec-why="Die passiven Daten messen keinen Fork; ein verfehlter Ping kostet einen vollen Cache-Write, also erst einmal echt messen."
+             data-applies-to="#1101 · hooks/mods" data-finding="f-1101" data-no-example="Messwerte, keine sichtbare Oberfläche">
+      <p data-applies>Gilt für: #1101 · hooks/mods</p>
+      <p data-situation>Spike 1 hat 17 passive Zeilen: Pausen bis 59 min lesen 97–99,9 % aus dem Cache, ab 60 min nur noch 9–54 %. Ein <code>$.model.fork</code>-Ping wurde nie gemessen.</p>
+      <h3 data-question>Was gilt als Beleg, bevor der Keepalive gebaut wird?</h3>
+      <div data-options>
+        <label data-opt="measure-fork" data-recommended>
+          <input type="radio" name="dm-d-1101" value="measure-fork" checked>
+          <span data-opt-label>Einen echten Fork-Ping messen</span>
+          <span data-opt-consequence>Du startest /mods-spike-fork nach ~55 min Pause; der Run baut derweil nur das ungekoppelte Policy-Modul mit Tests.</span>
+        </label>
+        <label data-opt="accept-passive">
+          <input type="radio" name="dm-d-1101" value="accept-passive">
+          <span data-opt-label>Passive Daten als Beleg nehmen</span>
+          <span data-opt-consequence>Feature wird direkt gebaut; ob ein Fork den Cache wirklich hält, zeigt erst der Betrieb.</span>
+        </label>
+        <label data-opt="defer">
+          <input type="radio" name="dm-d-1101" value="defer">
+          <span data-opt-label>Zurückstellen bis #1100 geklärt ist</span>
+          <span data-opt-consequence>Kein Code, keine Messung.</span>
+        </label>
+      </div>
+      <textarea data-comment="d-1101-note" placeholder="Notiz (optional)"></textarea>
+      <input type="hidden" name="dm-d-1101-none" value="">
+      <input type="hidden" name="dm-d-1101-hes" value="">
+      <input type="hidden" name="dm-d-1101-touched" value="">
+      <input type="hidden" name="dm-d-1101-issue" value="">
+      <input type="hidden" name="dm-d-1101-epic" value="">
+      <div data-alevel="3" data-title="#1101 Cache-Keepalive">
+        <div data-slot="short"><div data-viz="kpi" data-viz-spec='{"value":"0","unit":"Fork-Messungen","label":"von 17 Spike-Zeilen"}'></div></div>
+        <div data-slot="long">
+          <div data-viz="bars" data-viz-spec='{"items":[{"label":"Pause 53–59 min (6 Zeilen)","value":98},{"label":"Pause ≥ 60 min (11 Zeilen)","value":30}],"unit":"% aus Cache"}'></div>
+          <p>Das passt zu einer 1-h-TTL, beweist aber nicht, dass ein Fork bei ~55 min den Eintrag verlängert. <code>five_hour</code> ist in jeder Zeile <code>null</code>, die 5-h-Delta-Regel ist also auch ungeprüft.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="d-1103" data-nav-label="#1103 Concept per Mod-Timer" data-decision="d-1103" data-decision-mode="single"
+             data-label="#1103 Concept-Timer" data-rec="build-probe"
+             data-rec-why="Die Probe ist klein und unbeaufsichtigt baubar; danach reicht ein Lauf von dir, um den Watcher-Pfad zu ersetzen oder zu behalten."
+             data-applies-to="#1103 · hooks/mods, concept-watch" data-finding="f-1103" data-no-example="Ein Weck-Mechanismus, nichts Sichtbares">
+      <p data-applies>Gilt für: #1103 · hooks/mods, concept-watch</p>
+      <p data-situation>Ob <code>$.clock</code> + <code>$.prompt.submit</code> eine untätige Session weckt, zeigt nur eine Live-Session. Die Engine-Tests prüfen nur Aufruf-Formen.</p>
+      <h3 data-question>Wie geht es mit den Concept-Timern weiter?</h3>
+      <div data-options>
+        <label data-opt="build-probe" data-recommended>
+          <input type="radio" name="dm-d-1103" value="build-probe" checked>
+          <span data-opt-label>Probe bauen, du lässt sie einmal laufen</span>
+          <span data-opt-consequence>Run baut /mods-spike-wake + reine Fälligkeits-Lib + Protokoll; concept-watch.js bleibt unverändert.</span>
+        </label>
+        <label data-opt="wait">
+          <input type="radio" name="dm-d-1103" value="wait">
+          <span data-opt-label>Warten, bis #1100 geklärt ist</span>
+          <span data-opt-consequence>Kein Code; der Watcher-Pfad bleibt der einzige.</span>
+        </label>
+        <label data-opt="drop">
+          <input type="radio" name="dm-d-1103" value="drop">
+          <span data-opt-label>Verwerfen, beim Watcher bleiben</span>
+          <span data-opt-consequence>Issue wird geschlossen; WAKER_MISSING / STATE_GONE bleiben ein Thema.</span>
+        </label>
+      </div>
+      <textarea data-comment="d-1103-note" placeholder="Notiz (optional)"></textarea>
+      <input type="hidden" name="dm-d-1103-none" value="">
+      <input type="hidden" name="dm-d-1103-hes" value="">
+      <input type="hidden" name="dm-d-1103-touched" value="">
+      <input type="hidden" name="dm-d-1103-issue" value="">
+      <input type="hidden" name="dm-d-1103-epic" value="">
+      <div data-alevel="3" data-title="#1103 Concept-Timer">
+        <div data-slot="short"><p>Unbeaufsichtigt prüfbar ist nur die Idempotenz der Timer, nicht das Wecken.</p></div>
+        <div data-slot="long">
+          <p>Die Probe würde einen Timer setzen, nach Ablauf einen Marker-Prompt senden und protokollieren: gefeuert, gesendet, Turn gestartet, Session untätig oder beschäftigt. Ein grüner Stub-Test darf nie als Beleg für das Wecken gelten.</p>
+          <p>Offen bleibt außerdem ein Handshake, damit Mod-Timer und Watcher nie beide wecken (Red-Team-Befund 3 in mods.md).</p>
+        </div>
+      </div>
+    </section>
+  </section>
+
+  <section id="t-produkt" data-topic data-nav-label="Produktfragen">
+    <div data-alevel="2" data-title="Produktfragen">
+      <div data-slot="short"><p>Drei Issues brauchen eine Richtung von dir, bevor der Run baut.</p></div>
+      <div data-slot="long">
+        <p>#1102 (Titel aus der Mod), #1105 (Recap bei Rückkehr) und #1106 (große Pastes auslagern) sind keine reinen Spikes: hier fehlt eine Produktentscheidung. Bei #1106 hat der Run die Engine-API inzwischen geprüft.</p>
+      </div>
+    </div>
+
+    <section id="d-1102" data-nav-label="#1102 Titel aus der Mod" data-decision="d-1102" data-decision-mode="single"
+             data-label="#1102 Session-Titel per Mod" data-rec="split"
+             data-rec-why="Teil A hat Wert auch ohne Spike (Paritäts-Fixtures), und nichts davon nimmt den Hooks das Titel-Schreiben weg."
+             data-applies-to="#1102 · prompt.flow.title-work, lib/session-title" data-finding="f-1102" data-no-example="Interne Titel-Logik, kein neues UI">
+      <p data-applies>Gilt für: #1102 · prompt.flow.title-work, lib/session-title</p>
+      <p data-situation>Die Mod-API hat keine dokumentierte Umbenennen-Funktion. Ob ein Mod-Rename den <code>custom-title</code>-Eintrag schreibt, den drei Leser brauchen, zeigt nur Spike 3 am Desktop.</p>
+      <h3 data-question>Wie wird #1102 geschnitten?</h3>
+      <div data-options>
+        <label data-opt="split" data-recommended>
+          <input type="radio" name="dm-d-1102" value="split" checked>
+          <span data-opt-label>Teilen: Teil A jetzt, Teil B nach dem Spike</span>
+          <span data-opt-consequence>A = Titel-Berechnung als reine Funktion + Paritäts-Fixtures + ungekoppelter Stand-down-Marker.</span>
+        </label>
+        <label data-opt="wait">
+          <input type="radio" name="dm-d-1102" value="wait">
+          <span data-opt-label>Ganz auf Spike 3 warten</span>
+          <span data-opt-consequence>Kein Code, bis du den Rename am Desktop geprüft hast.</span>
+        </label>
+        <label data-opt="reject">
+          <input type="radio" name="dm-d-1102" value="reject">
+          <span data-opt-label>Verwerfen, Hooks behalten den Titel</span>
+          <span data-opt-consequence>Polling-Prozess und Modell-Aufruf pro Turn bleiben.</span>
+        </label>
+      </div>
+      <textarea data-comment="d-1102-note" placeholder="Notiz (optional)"></textarea>
+      <input type="hidden" name="dm-d-1102-none" value="">
+      <input type="hidden" name="dm-d-1102-hes" value="">
+      <input type="hidden" name="dm-d-1102-touched" value="">
+      <input type="hidden" name="dm-d-1102-issue" value="">
+      <input type="hidden" name="dm-d-1102-epic" value="">
+      <div data-alevel="3" data-title="#1102 Session-Titel per Mod">
+        <div data-slot="short"><p>Einziger bekannter Schreiber ist heute das App-Tool <code>set_session_title</code>.</p></div>
+        <div data-slot="long">
+          <p>Es hängt einen <code>custom-title</code>-Eintrag an, gespiegelt als <code>agent-name</code> (<code>lib/session-title.js</code>). Eine Mod kann dieses Tool nicht aufrufen. Ein verdrahteter Stand-down-Marker könnte eine Session ganz ohne Titel-Schreiber lassen; Teil A verdrahtet deshalb nichts.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="d-1105" data-nav-label="#1105 Recap bei Rückkehr" data-decision="d-1105" data-decision-mode="single"
+             data-label="#1105 Rückkehr-Recap" data-rec="session-start-gap"
+             data-rec-why="session.start ist das einzige Ereignis vor dem ersten Tippen; ein Recap nach dem Tippen käme zu spät."
+             data-applies-to="#1105 · hooks/mods" data-finding="f-1105" data-no-example="Auslöser-Frage; das Recap-Aussehen ist nicht Teil der Entscheidung">
+      <p data-applies>Gilt für: #1105 · hooks/mods</p>
+      <p data-situation>Die Mod-API kennt kein Fokus- oder Leerlauf-Ereignis, nur <code>session.start</code>, <code>turn.start</code> und <code>prompt.submit</code>. Bei <code>turn.start</code> hast du schon getippt.</p>
+      <h3 data-question>Wann gilt eine Session als „zurückgekehrt“?</h3>
+      <div data-options>
+        <label data-opt="session-start-gap" data-recommended>
+          <input type="radio" name="dm-d-1105" value="session-start-gap" checked>
+          <span data-opt-label>Beim Session-Start nach einer Lücke</span>
+          <span data-opt-consequence>Warmer Cache (&lt; 55 min) → ein Fork-Recap, sonst der Text der letzten Card; braucht einen neuen State-Key.</span>
+        </label>
+        <label data-opt="band-button">
+          <input type="radio" name="dm-d-1105" value="band-button">
+          <span data-opt-label>Nur ein Recap-Knopf im Band</span>
+          <span data-opt-consequence>Kein Auslöser nötig; du holst das Recap selbst, wann du willst.</span>
+        </label>
+        <label data-opt="defer">
+          <input type="radio" name="dm-d-1105" value="defer">
+          <span data-opt-label>Warten auf ein echtes Rückkehr-Ereignis</span>
+          <span data-opt-consequence>Issue bleibt offen, bis die Engine eines anbietet.</span>
+        </label>
+      </div>
+      <textarea data-comment="d-1105-note" placeholder="Notiz (optional)"></textarea>
+      <input type="hidden" name="dm-d-1105-none" value="">
+      <input type="hidden" name="dm-d-1105-hes" value="">
+      <input type="hidden" name="dm-d-1105-touched" value="">
+      <input type="hidden" name="dm-d-1105-issue" value="">
+      <input type="hidden" name="dm-d-1105-epic" value="">
+      <div data-alevel="3" data-title="#1105 Rückkehr-Recap">
+        <div data-slot="short"><p>Der warme Pfad ist dünn belegt: genau eine passive Messung (59 min, 98,3 %).</p></div>
+        <div data-slot="long">
+          <p>Für den kalten Pfad fehlt Material: das Atom <code>lastCard</code> hält nur <code>{title, at}</code>, die volle Card wird beim nächsten Prompt gelöscht. Ein neuer State-Key muss in <code>types/index.d.ts</code> stehen, sonst lehnt <code>claude plugin validate</code> ihn ab.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="d-1106" data-nav-label="#1106 Große Pastes auslagern" data-decision="d-1106" data-decision-mode="single"
+             data-label="#1106 Paste-Redirect" data-rec="6b-next"
+             data-rec-why="Die Engine-Typen bestätigen den Rewrite-Weg, die Lib (6a) ist schon gelandet; 6c braucht ein eigenes Design."
+             data-applies-to="#1106 · hooks/mods, paste-redirect, pre.tokens.guard" data-finding="f-1106" data-no-example="Mechanismus-Frage; die Auslagerung zeigt kein neues UI">
+      <p data-applies>Gilt für: #1106 · hooks/mods, paste-redirect, pre.tokens.guard</p>
+      <p data-situation>Geklärt: <code>prompt.submit</code> kann den Text per <code>next({...e, text})</code> ersetzen, <code>tool.call</code> kann nach <code>await next(e)</code> das Ergebnis ersetzen. Offen ist nur die Prüfung im Desktop.</p>
+      <h3 data-question>Was baut der nächste Run für #1106?</h3>
+      <div data-options>
+        <label data-opt="6b-next" data-recommended>
+          <input type="radio" name="dm-d-1106" value="6b-next" checked>
+          <span data-opt-label>Paste-Rewrite (6b) bauen, 6c abspalten</span>
+          <span data-opt-consequence>Pastes ≥ 8k Tokens → Datei + Kopf/Ende, alpha-gated; Tool-Output wird ein eigenes Issue.</span>
+        </label>
+        <label data-opt="both">
+          <input type="radio" name="dm-d-1106" value="both">
+          <span data-opt-label>Pastes und Tool-Output zusammen bauen</span>
+          <span data-opt-consequence>Ein größerer Schritt; 6c muss sich mit pre.tokens.guard abstimmen.</span>
+        </label>
+        <label data-opt="defer">
+          <input type="radio" name="dm-d-1106" value="defer">
+          <span data-opt-label>Warten, bis der Desktop geprüft ist</span>
+          <span data-opt-consequence>Die Lib bleibt ohne Aufrufer.</span>
+        </label>
+      </div>
+      <textarea data-comment="d-1106-note" placeholder="Notiz (optional)"></textarea>
+      <input type="hidden" name="dm-d-1106-none" value="">
+      <input type="hidden" name="dm-d-1106-hes" value="">
+      <input type="hidden" name="dm-d-1106-touched" value="">
+      <input type="hidden" name="dm-d-1106-issue" value="">
+      <input type="hidden" name="dm-d-1106-epic" value="">
+      <div data-alevel="3" data-title="#1106 Paste-Redirect">
+        <div data-slot="short"><div data-viz="kpi" data-viz-spec='{"value":"≈ 360k → 15k","unit":"Token-Äquivalente","label":"30k-Log über 200 Schritte"}'></div></div>
+        <div data-slot="long">
+          <p>Ausnahmen stehen schon in der Lib: <code>/do-run</code>-, <code>AUTOSTART</code>- und <code>&lt;command-name&gt;</code>-Prompts bleiben unverändert, weil <code>ss.run.task</code> und <code>prompt.run.contract</code> den Text lesen. Risiko: ein Auszug kann den fehlschlagenden Test verstecken (Red-Team-Befund 7); das Original bleibt deshalb immer als Datei lesbar.</p>
+        </div>
+      </div>
+    </section>
+  </section>
+</section>
