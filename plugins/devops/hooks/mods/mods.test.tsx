@@ -23,6 +23,20 @@ import {
   isHintCard,
   hygieneFrom,
   hygieneLine,
+  apiFrom,
+  benefitFrom,
+  benefitIsOfCall,
+  mcpDown,
+  compactTokens,
+  echoText,
+  hooksSeen,
+  infoHeadline,
+  infoRows,
+  isActive,
+  overheadFrom,
+  parseJsonl,
+  shipsFrom,
+  statusText,
   isInactiveUnmerged,
   lastLine,
   learnCause,
@@ -52,7 +66,7 @@ function engine(on: any, opts: { pin?: string; files?: Files; agents?: unknown[]
     '/.claude/plugins/.channels.json': JSON.stringify({ dotclaude: opts.pin ?? 'alpha' }),
     ...(opts.files || {}),
   }
-  const seen = { toasts: [] as string[], commands: [] as string[], writes: [] as { path: string; text: string }[], prompts: [] as string[], status: [] as (string | undefined)[], opened: [] as string[] }
+  const seen = { toasts: [] as string[], commands: [] as string[], writes: [] as { path: string; text: string }[], prompts: [] as string[], status: [] as (string | undefined)[], opened: [] as string[], hints: [] as Array<{ tail?: string }> }
   let clock = NOW
   on('fs.read', (_: unknown, e: { path: string }) => {
     const p = String(e.path).replace(/\\/g, '/')
@@ -86,6 +100,7 @@ function engine(on: any, opts: { pin?: string; files?: Files; agents?: unknown[]
   on('agent.list', () => ({ value: opts.agents ?? [] }))
   // The engine's own drawing beneath the plugin.
   on('ui.render', ($: any, e: any) => {
+    if (e.component === 'PromptHint') seen.hints.push(e.props)
     const { Text } = $.ui.resolve(e)
     return <Text>engine</Text>
   })
@@ -94,7 +109,7 @@ function engine(on: any, opts: { pin?: string; files?: Files; agents?: unknown[]
     seen.prompts.push(e.text)
     return { text: e.text }
   })
-  return { seen, tick: (ms: number) => { clock += ms } }
+  return { seen, files, tick: (ms: number) => { clock += ms } }
 }
 
 /** A marker if the mounted band shows `word` anywhere (as Text, or as the alt of a card-text image), else undefined. */
@@ -177,11 +192,12 @@ test('gate off (stable pin): no command, nothing drawn, events pass through', as
   }
 })
 
-test('gate on: the commands are registered and the hygiene count is pinned in the status line', async ($, on) => {
+test('gate on: the commands are registered; the status line carries the state, never the hygiene count', async ($, on) => {
   const { seen } = engine(on, { files: { '/.claude/orphan-report.json': ORPHAN_REPORT } })
   await $.session.start({ cwd: 'P:/Projects/demo/.claude/worktrees/x', surface: 'desktop', isInteractive: true })
-  expect(seen.commands).toEqual(['devops-agents', 'devops-ship', 'mods-spike-fork'])
-  expect(seen.status.at(-1)).toBe('devops: 2 open branches · 1 dirty worktree')
+  expect(seen.commands).toEqual(['devops-agents', 'devops-ship', 'mods-spike-fork', 'devops'])
+  expect(seen.status.at(-1)).toBe('🟢 active')
+  expect(seen.status.join('|')).not.toMatch(/branch|worktree/)
 })
 
 test('agent pane lists a subagent with type, model, elapsed and status, on every surface', async ($, on) => {
@@ -270,7 +286,9 @@ test('hygiene ignores the worktree this session works in; zero counts are left o
   })
   const { seen } = engine(on, { files: { '/.claude/orphan-report.json': report } })
   await $.session.start({ cwd: 'P:/Projects/demo/.claude/worktrees/mine', surface: 'desktop', isInteractive: true })
-  expect(seen.status.at(-1)).toBe('devops: 1 open branch')
+  // The count feeds the band's cleanup block only; the status line never names it.
+  expect(hygieneLine(hygieneFrom(JSON.parse(report), 'P:/Projects/demo/.claude/worktrees/mine', NOW), true)).toBe('devops: 1 open branch')
+  expect(seen.status.at(-1)).toBe('🟢 active')
 })
 
 test('toasts: permission request, long subagent, SessionStart notices (hook text unchanged)', async ($, on) => {
@@ -728,7 +746,7 @@ test('B15 locales: one table, en de es fr pt ja zh, chosen by the Claude Code la
   expect(tr('de', 'ctx')).toBe('Kontext')
   expect(tr('en', 'ruleCount', { n: 62, t: 50 })).toBe('Trigger: 62 leftovers, more than 50')
   // Every string exists, non-empty and distinct from the placeholder, in all seven languages.
-  const keys: StrKey[] = ['ctx', 'compact', 'cleanupBtn', 'junk', 'last', 'rowAgent', 'rowCopies', 'rowBranches', 'rowBroken', 'ruleInactive', 'ruleCount', 'working', 'ringAlt', 'stBranch1', 'stBranchN', 'stDirty1', 'stDirtyN', 'stCopy1', 'stCopyN', 'asOf', 'toastPlanned', 'toastDone', 'toastFailed', 'toastLearn', 'permission', 'finishedAfter', 'bgCommand', 'paneIdle', 'panePlanning', 'paneApplying', 'panePlanned', 'paneDone', 'paneFailed', 'btnApply', 'btnDiscard', 'btnClose', 'btnPlan', 'btnReview', 'runPlanning', 'runApplying', 'learnOffer', 'learnBtn', 'runBusy']
+  const keys: StrKey[] = ['stActive', 'stInactive', 'stNoHooks', 'stNoMcp', 'echoNarrow1', 'echoNarrow2', 'echoLocal', 'infoHead', 'infoHeadNote', 'infoNarrowed', 'infoShipped', 'infoApi', 'infoGuards', 'infoOwn', 'noteMeasuredSince', 'noteMeasured7', 'noteCounted7', 'infoFoot', 'infoEmpty', 'ctx', 'compact', 'cleanupBtn', 'junk', 'last', 'rowAgent', 'rowCopies', 'rowBranches', 'rowBroken', 'ruleInactive', 'ruleCount', 'working', 'ringAlt', 'stBranch1', 'stBranchN', 'stDirty1', 'stDirtyN', 'stCopy1', 'stCopyN', 'asOf', 'toastPlanned', 'toastDone', 'toastFailed', 'toastLearn', 'permission', 'finishedAfter', 'bgCommand', 'paneIdle', 'panePlanning', 'paneApplying', 'panePlanned', 'paneDone', 'paneFailed', 'btnApply', 'btnDiscard', 'btnClose', 'btnPlan', 'btnReview', 'runPlanning', 'runApplying', 'learnOffer', 'learnBtn', 'runBusy']
   for (const loc of LOCALES) for (const k of keys) expect(tr(loc, k, { n: 1, t: 1, p: 1, h: 1, what: 'x', s: 'x', runs: 2, cause: 'c' })).toMatch(/\S/)
   // No placeholder is left unfilled in any language.
   for (const loc of LOCALES) for (const k of keys) expect(tr(loc, k, { n: 1, t: 1, p: 1, h: 1, what: 'x', s: 'x', runs: 2, cause: 'c' })).not.toMatch(/\{\w+\}/)
@@ -1012,7 +1030,7 @@ test('B15 the band follows the Claude Code language setting: German band, status
   on('classic.Notification', () => ({}))
   on('tool.call', () => ({ result: {}, text: CARD_RESULT }))
   await $.session.start({ cwd: REPO, surface: 'desktop', isInteractive: true })
-  expect(seen.status.at(-1)).toBe('devops: 2 offene Branches · 1 unsauberer Worktree')
+  expect(seen.status.at(-1)).toBe('🟢 aktiv')
   await $.session.measure(MEASURE as any)
   await $.tool.call({ tool: CARD_TOOL, summary: 'x' } as any)
   const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
@@ -1027,7 +1045,7 @@ test('B15 the band follows the Claude Code language setting: German band, status
 test('B15 the language falls back to English for an unknown setting', async ($, on) => {
   const { seen } = engine(on, { files: { '/.claude/orphan-report.json': ORPHAN_REPORT, '/.claude/settings.json': JSON.stringify({ language: 'klingon' }) } })
   await $.session.start({ cwd: REPO, surface: 'desktop', isInteractive: true })
-  expect(seen.status.at(-1)).toBe('devops: 2 open branches · 1 dirty worktree')
+  expect(seen.status.at(-1)).toBe('🟢 active')
 })
 
 test('B12 the threshold is read from the devops config (project over global, default 50)', async ($, on) => {
@@ -1442,4 +1460,309 @@ test('batch helpers: drop reason, writer output, mode view, pre-filter', () => {
   expect(batchMaybeCollectable({ text: 'hello', isMeta: true })).toBe(false)
   expect(batchMaybeCollectable({ text: 'hello', command: { name: 'x', args: '' } })).toBe(false)
   for (const loc of LOCALES) expect(tr(loc, 'toastNote', { n: 3 })).toMatch(/3/)
+})
+
+// --- Status element under the prompt + info card (concept 20261115-2350-devops-status) ---
+
+const DAY = 86_400_000
+const iso = (ms: number) => new Date(ms).toISOString()
+const guardRow = (op: string, estTokens: number, at: number, extra: Record<string, unknown> = {}) =>
+  JSON.stringify({ v: 1, ts: iso(at), source: 'token-guard', op, estimate: op !== 'narrowed', estTokens, tool: 'Grep', ...extra })
+const SAVINGS = [
+  guardRow('blocked', 50000, NOW - 30 * DAY), // older than a week: only the log's first day
+  guardRow('blocked', 10000, NOW - 3 * DAY),
+  guardRow('released', 10000, NOW - 3 * DAY + 100), // the identical call went ahead: saved nothing
+  guardRow('blocked', 10000, NOW - 2 * DAY),
+  guardRow('blocked', 10000, NOW - DAY),
+  guardRow('narrowed', 78000, NOW - DAY + 500),
+  '{ a cut line',
+].join('\n')
+const DAILY = JSON.stringify({
+  v: 1,
+  days: {
+    '2026-10-01': { 'pre.tokens.guard|PreToolUse|Grep': { runs: 9, chars: 80000, out: { ok: 9, block: 9 } } },
+    '2026-11-09': {
+      'pre.tokens.guard|PreToolUse|Grep': { runs: 10, chars: 4000, out: { ok: 8, block: 2 } },
+      'dispatch:PreToolUse|PreToolUse|Grep': { runs: 10, chars: 9999, out: { block: 2 } },
+    },
+    '2026-11-10': { 'ss.knowledge.index|SessionStart|': { runs: 1, chars: 4000, out: { output: 1 } } },
+  },
+})
+const API_ROWS = [
+  JSON.stringify({ ts: iso(NOW - DAY), tag: 'scout', usd: 1.5, rc: 0 }),
+  JSON.stringify({ ts: iso(NOW - DAY), tag: 'scout', usd: 9, rc: 75 }),
+  JSON.stringify({ ts: iso(NOW - 20 * DAY), tag: 'scout', usd: 9, rc: 0 }),
+].join('\n')
+const SHIP_ROWS = [
+  JSON.stringify({ ts: iso(NOW - DAY), repo: 'r', branch: 'a', tool: 'ship_release', outcome: 'success', repeat: 1 }),
+  JSON.stringify({ ts: iso(NOW - DAY), repo: 'r', branch: 'a', tool: 'ship_release', outcome: 'success', repeat: 2 }),
+  JSON.stringify({ ts: iso(NOW - DAY), repo: 'r', branch: 'b', tool: 'ship_release', outcome: 'success' }),
+  JSON.stringify({ ts: iso(NOW - DAY), repo: 'r', branch: 'c', tool: 'ship_release', outcome: 'error' }),
+  JSON.stringify({ ts: iso(NOW - DAY), repo: 'r', branch: 'a', tool: 'ship_build', outcome: 'success', testsReused: true }),
+].join('\n')
+const LOG_FILES = {
+  '/.claude/devops-savings.jsonl': SAVINGS,
+  '/.claude/devops-hook-telemetry-daily.json': DAILY,
+  '/.claude/api-credit-usage.jsonl': API_ROWS,
+  '/.claude/ship-timings.jsonl': SHIP_ROWS,
+  '/.claude-plugin/plugin.json': JSON.stringify({ name: 'devops', version: '9.9.9' }),
+}
+const HINT = { plugin: 'devops', component: 'PromptHint', props: { isDraft: false, isWorking: false, hint: '? for shortcuts' } } as const
+
+test('status figures: net of released blocks, measured narrowing, own consumption, credit, ships (pure)', () => {
+  const b = benefitFrom(parseJsonl(SAVINGS), NOW)
+  expect(b).toMatchObject({ net7: 20000, blocks7: 3, released7: 1, narrowed: 1, narrowedTokens: 78000, since: NOW - 30 * DAY })
+  expect(b.last).toEqual({ kind: 'narrowed', tokens: 78000, at: NOW - DAY + 500 })
+  // More released than blocked inside the window (the block fell out of it): never a negative saving.
+  expect(benefitFrom(parseJsonl(guardRow('released', 10000, NOW - DAY)), NOW).net7).toBe(0)
+  expect(benefitFrom([], NOW)).toMatchObject({ net7: 0, since: null, last: null })
+  // The rollup: 7 UTC days, the dispatcher's own rows left out, characters ÷ 4.
+  expect(overheadFrom(JSON.parse(DAILY), NOW)).toEqual({ ownTokens7: 2000, guardBlocks7: 2 })
+  expect(overheadFrom(null, NOW)).toBeNull()
+  expect(apiFrom(parseJsonl(API_ROWS), NOW)).toEqual({ usd7: 1.5, runs7: 1 })
+  expect(shipsFrom(parseJsonl(SHIP_ROWS), NOW)).toEqual({ branches7: 2, reused7: 1 })
+  expect(compactTokens(541200, 'de')).toBe('541 k')
+  expect(compactTokens(4967765, 'de')).toBe('5,0 M')
+  expect(compactTokens(4967765, 'en')).toBe('5.0 M')
+  expect(compactTokens(950)).toBe('950')
+  const data = { benefit: b, overhead: overheadFrom(JSON.parse(DAILY), NOW), api: apiFrom(parseJsonl(API_ROWS), NOW), ships: shipsFrom(parseJsonl(SHIP_ROWS), NOW), version: '9.9.9', at: NOW }
+  // The headline is the estimate and says so; the credit is a row, not the headline.
+  expect(infoHeadline(data, 'de')).toMatchObject({ value: '≈ 20 k', label: 'Tokens aus deinem Kontext ferngehalten', note: 'geschätzt · netto · 7 Tage' })
+  expect(infoRows(data, 'de').map(r => `${r.value} ${r.label} (${r.note})`)).toEqual([
+    '1 Suchen eingegrenzt · bis zu 78 k Tokens (gemessen · seit 11.10.)',
+    '2 Branches ausgeliefert · 1 Testläufe wiederverwendet (gemessen · 7 Tage)',
+    '1,50 $ aufs API-Guthaben statt aufs Abo · 1 Läufe (gemessen · 7 Tage)',
+    '2 Eingriffe der Schutz-Hooks (gezählt · 7 Tage)',
+    '≈ 2 k Tokens Eigenverbrauch der Hooks (gemessen · 7 Tage)',
+  ])
+  // No credit runs, no ship log: those rows are simply absent.
+  expect(infoRows({ ...data, api: { usd7: 0, runs7: 0 }, ships: null }, 'en').map(r => r.key)).toEqual(['info-narrowed', 'info-guards', 'info-own'])
+})
+
+test('status state: active unless the hooks or the MCP server are not running; the benefit reads for 90 s (pure)', () => {
+  const ok = { hooks: true, mcp: true, misses: 0 }
+  expect(isActive(ok)).toBe(true)
+  expect(isActive(null)).toBe(true) // unknown is never "not active"
+  expect(statusText(ok, null, NOW, 'de')).toBe('🟢 aktiv')
+  expect(statusText({ ...ok, mcp: false }, null, NOW, 'de')).toBe('🔴 nicht aktiv · MCP-Server nicht verbunden')
+  expect(statusText({ hooks: false, mcp: false, misses: 5 }, null, NOW, 'en')).toBe('🔴 not active · hooks are not running · MCP server not connected')
+  // Without one fresh record a stale telemetry file says nothing (telemetry switched off): no miss is counted.
+  expect(hooksSeen(ok, false)).toBe(ok)
+  // Once proven: four missed records in a row are not enough, the fifth is; one fresh record clears it.
+  const proven = hooksSeen(ok, true)
+  expect(proven).toEqual({ hooks: true, mcp: true, misses: 0, proven: true })
+  let h = proven
+  for (let i = 0; i < 4; i++) h = hooksSeen(h, false)
+  expect(h.hooks).toBe(true)
+  h = hooksSeen(h, false)
+  expect(h).toEqual({ hooks: false, mcp: true, misses: 5, proven: true })
+  expect(hooksSeen(h, true)).toEqual({ hooks: true, mcp: true, misses: 0, proven: true })
+  expect(hooksSeen(proven, true)).toBe(proven) // nothing changed: the same value, no redraw
+  // A name the session does not know is no verdict on the server; every other refusal is.
+  expect(mcpDown('unlisted')).toBe(false)
+  expect(['unapproved', 'disabled', 'policy', 'auth', 'failed'].map(mcpDown)).toEqual([true, true, true, true, true])
+  // Only a line written during the call that just ended is announced.
+  expect(benefitIsOfCall(NOW, NOW)).toBe(true)
+  expect(benefitIsOfCall(NOW - 1500, NOW)).toBe(true)
+  expect(benefitIsOfCall(NOW - 600_000, NOW)).toBe(false)
+  const e = { kind: 'narrowed' as const, tokens: 78000, at: 2000, shownAt: NOW }
+  expect(echoText(e, NOW + 1000, 'de')).toBe('Zack: bis zu 78 k Tokens gespart, Suche eingegrenzt.')
+  expect(echoText({ ...e, at: 3000 }, NOW + 1000, 'de')).toBe('Bis zu 78 k Tokens gar nicht erst geladen. Gern geschehen.')
+  expect(echoText({ ...e, kind: 'delegated', tokens: 1200 }, NOW, 'en')).toBe('1 k tokens written by the local model, not on your plan.')
+  expect(echoText(e, NOW + 90_000, 'de')).toBe('')
+  expect(statusText(ok, e, NOW + 1000, 'de')).toBe('🟢 Zack: bis zu 78 k Tokens gespart, Suche eingegrenzt.')
+  expect(statusText(ok, e, NOW + 90_000, 'de')).toBe('🟢 aktiv')
+})
+
+test('under the prompt: "● devops" beside the engine hint; a press opens the info card in the band, a second one closes it; no prompt, no write', async ($, on) => {
+  const { seen } = engine(on, { files: LOG_FILES })
+  const forks: unknown[] = []
+  on('model.fork', (_: unknown, e: unknown) => {
+    forks.push(e)
+    return { value: { isAnswered: false } }
+  })
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  expect(seen.status.at(-1)).toBe('🟢 active') // until the line under the prompt is drawn
+  const hint = await $.ui.mount({ ...HINT, surface: 'desktop' })
+  const row = await hint.find({ key: 'devops-hint' })
+  expect(JSON.stringify(row)).toMatch(/engine/) // the engine's own hint stays in the row
+  const dot = await hint.find({ key: 'devops-status' })
+  expect(JSON.stringify(dot)).toMatch(/#7bc98f/) // the green dot of the mock's chip
+  expect(JSON.stringify(dot)).toMatch(/devops/)
+  expect(await hint.find({ type: 'Text', text: /tokens|not active/ })).toBeUndefined() // quiet: no benefit is fresh
+  // Closed: nothing of the card is in the band.
+  let band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await band.find({ key: 'devops-info' })).toBeUndefined()
+  await band.unmount()
+  await hint.press({ key: 'devops-status' })
+  band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  const card = await band.find({ key: 'devops-info' })
+  expect(card).toBeDefined()
+  const text = JSON.stringify(card)
+  expect(text).toMatch(/≈ 20 k/) // the headline: the net estimate
+  expect(text).toMatch(/estimate · net · 7 days/)
+  expect(text).toMatch(/searches narrowed · up to 78 k tokens/)
+  expect(text).toMatch(/branches shipped · 1 test runs reused/)
+  expect(text).toMatch(/on API credit instead of your plan · 1 runs/)
+  expect(text).toMatch(/guard interventions/)
+  expect(text).toMatch(/≈ 2 k/)
+  expect(text).toMatch(/From local logs · no model call/)
+  expect(text).toMatch(/v9\.9\.9/)
+  expect(text).not.toMatch(/leftover|worktree|open branch/) // no cleanup figures in the card
+  // The card is the band's first row, left: no chip in the band's right rail.
+  expect(await band.find({ key: 'devops-info-row' })).toBeDefined()
+  await band.unmount()
+  await hint.press({ key: 'devops-status' })
+  band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await band.find({ key: 'devops-info' })).toBeUndefined()
+  await band.unmount()
+  await hint.unmount()
+  // Opening costs nothing: no prompt, no model call, no file written.
+  expect(seen.prompts).toEqual([])
+  expect(forks).toEqual([])
+  expect(seen.writes).toEqual([])
+})
+
+test('/devops opens and closes the same card with a one-line answer; the terminal hint carries the state as its tail', async ($, on) => {
+  const { seen } = engine(on, { files: LOG_FILES })
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  const opened = await $.command.run({ command: 'devops' })
+  expect(opened.text).toBe('devops info opened above the prompt.')
+  const band = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect(JSON.stringify(await band.find({ key: 'devops-info' }))).toMatch(/≈ 20 k/)
+  await band.unmount()
+  expect((await $.command.run({ command: 'devops' })).text).toBe('devops info closed.')
+  const hint = await $.ui.mount({ ...HINT, surface: 'terminal' })
+  expect(seen.hints.at(-1)?.tail).toBe('● devops')
+  await hint.unmount()
+})
+
+test('the fallback status line goes once the line under the prompt is drawn, at the next turn start at the latest', async ($, on) => {
+  const { seen } = engine(on, { files: LOG_FILES })
+  on('turn.start', () => ({ turnId: 't' }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  expect(seen.status.at(-1)).toBe('🟢 active')
+  const hint = await $.ui.mount({ ...HINT, surface: 'desktop' })
+  expect(await hint.find({ key: 'devops-status' })).toBeDefined()
+  // Nothing changed in the plugin's state, so no other refresh would come: the turn start drops the repeat.
+  await $.turn.start({ text: 'go', turnId: 't1' } as any)
+  expect(seen.status.at(-1)).toBeUndefined()
+  await hint.unmount()
+  // A new session starts without the line: the fallback text is back until it is drawn again.
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  expect(seen.status.at(-1)).toBe('🟢 active')
+})
+
+test('last benefit: a new narrowed line after a guarded tool call reads beside the dot, then the line goes quiet', async ($, on) => {
+  const { seen, files, tick } = engine(on, { files: LOG_FILES })
+  let savingsMtime = 1
+  on('fs.stat', (_: unknown, e: { path: string }) => {
+    const p = String(e.path).replace(/\\/g, '/')
+    if (p.endsWith('/.claude/devops-savings.jsonl')) return { value: { kind: 'file', size: 1, mtimeMs: savingsMtime, isLink: false } }
+    if (p.endsWith('/.claude/devops-hook-telemetry.jsonl')) return { value: { kind: 'file', size: 1, mtimeMs: NOW + 10 * DAY, isLink: false } }
+    throw new Error(`ENOENT: ${p}`)
+  })
+  on('tool.call', () => ({ result: {}, text: 'ok' }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  // What the log held at the start is old news: nothing is announced.
+  await $.tool.call({ tool: 'Grep', pattern: 'x' } as any)
+  expect(seen.status.at(-1)).toBe('🟢 active')
+  // A line another session wrote ten minutes ago, found late: noted, never announced.
+  files['/.claude/devops-savings.jsonl'] = `${SAVINGS}\n${guardRow('narrowed', 99000, NOW - 600_000)}`
+  savingsMtime = 2
+  await $.tool.call({ tool: 'Edit', file_path: 'a.txt' } as any)
+  expect(seen.status.at(-1)).toBe('🟢 active')
+  // The guard logs a narrowed search during this call: the grown file is noticed right after it.
+  files['/.claude/devops-savings.jsonl'] += `\n${guardRow('narrowed', 42000, NOW)}`
+  savingsMtime = 3
+  await $.tool.call({ tool: 'Grep', pattern: 'x', path: 'src' } as any)
+  expect(seen.status.at(-1)).toMatch(/^🟢 .*42 k tokens/)
+  let hint = await $.ui.mount({ ...HINT, surface: 'desktop' })
+  expect((await hint.find({ type: 'Text', text: /42 k tokens/ }))?.text).toMatch(/^(Boom: up to 42 k tokens saved, search narrowed.|Up to 42 k tokens never loaded. You are welcome.)$/)
+  await hint.unmount()
+  // 90 s later the next call clears it; the line under the prompt is drawn, so the plain status line is gone too.
+  tick(91_000)
+  await $.tool.call({ tool: 'Read', file_path: 'a.txt' } as any)
+  hint = await $.ui.mount({ ...HINT, surface: 'desktop' })
+  expect(await hint.find({ type: 'Text', text: /tokens|not active/ })).toBeUndefined()
+  await hint.unmount()
+  expect(seen.status.at(-1)).toBeUndefined()
+  expect(seen.prompts).toEqual([])
+})
+
+test('not active: a disconnected MCP server turns the dot red and names the reason', async ($, on) => {
+  const { seen } = engine(on, { files: LOG_FILES })
+  on('mcp.connect', () => ({ value: { isConnected: false, reason: 'failed', message: 'The server failed to start.' } }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  expect(seen.status.at(-1)).toBe('🔴 not active · MCP server not connected')
+  const hint = await $.ui.mount({ ...HINT, surface: 'desktop' })
+  expect(JSON.stringify(await hint.find({ key: 'devops-status' }))).toMatch(/#e07a7a/)
+  expect((await hint.find({ type: 'Text', text: /not active/ }))?.text).toBe('not active · MCP server not connected')
+  await hint.unmount()
+})
+
+test('MCP check: an unknown server name is no verdict (stays green); a red dot is asked again after a tool call and recovers', async ($, on) => {
+  const { seen } = engine(on, { files: LOG_FILES })
+  let answer: Record<string, unknown> = { isConnected: false, reason: 'unlisted', message: 'No server of that name.' }
+  on('mcp.connect', () => ({ value: answer }))
+  on('tool.call', () => ({ result: {}, text: 'ok' }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  expect(seen.status.at(-1)).toBe('🟢 active')
+  // The server is still starting when the session begins: red, then connected a moment later.
+  answer = { isConnected: false, reason: 'failed', message: 'Still starting.' }
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  expect(seen.status.at(-1)).toBe('🔴 not active · MCP server not connected')
+  answer = { isConnected: true, server: 'plugin:devops:dotclaude' }
+  await $.tool.call({ tool: 'Edit', file_path: 'a.txt' } as any)
+  expect(seen.status.at(-1)).toBe('🟢 active')
+})
+
+test('hook telemetry switched off (the file is never fresh): no number of tool calls turns the dot red', async ($, on) => {
+  const { seen } = engine(on, { files: LOG_FILES })
+  on('fs.stat', (_: unknown, e: { path: string }) => {
+    const p = String(e.path).replace(/\\/g, '/')
+    if (p.endsWith('/.claude/devops-hook-telemetry.jsonl')) return { value: { kind: 'file', size: 1, mtimeMs: NOW - 30 * DAY, isLink: false } }
+    throw new Error(`ENOENT: ${p}`)
+  })
+  on('tool.call', () => ({ result: {}, text: 'ok' }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  for (let i = 0; i < 8; i++) await $.tool.call({ tool: 'Edit', file_path: 'a.txt' } as any)
+  expect(seen.status.join('|')).not.toMatch(/🔴/)
+  expect(seen.status.at(-1)).toBe('🟢 active')
+})
+
+test('not active: five tool calls in a row without a hook telemetry record; a fresh record makes it active again', async ($, on) => {
+  const { seen } = engine(on, { files: LOG_FILES })
+  let telemetryMtime = NOW // the first call proves the hooks write telemetry …
+  let calls = 0
+  on('fs.stat', (_: unknown, e: { path: string }) => {
+    const p = String(e.path).replace(/\\/g, '/')
+    if (p.endsWith('/.claude/devops-hook-telemetry.jsonl')) return { value: { kind: 'file', size: 1, mtimeMs: telemetryMtime, isLink: false } }
+    throw new Error(`ENOENT: ${p}`)
+  })
+  on('tool.call', () => {
+    calls++
+    return { result: {}, text: 'ok' }
+  })
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.tool.call({ tool: 'Edit', file_path: 'a.txt' } as any)
+  telemetryMtime = NOW - 60_000 // … then they stop
+  for (let i = 0; i < 4; i++) await $.tool.call({ tool: 'Edit', file_path: 'a.txt' } as any)
+  expect(seen.status.at(-1)).toBe('🟢 active')
+  await $.tool.call({ tool: 'Edit', file_path: 'a.txt' } as any)
+  expect(seen.status.at(-1)).toBe('🔴 not active · hooks are not running')
+  expect(calls).toBe(6) // every call still ran: the display never holds a tool call back
+  telemetryMtime = NOW
+  await $.tool.call({ tool: 'Edit', file_path: 'a.txt' } as any)
+  expect(seen.status.at(-1)).toBe('🟢 active')
+})
+
+test('gate off: nothing under the prompt, no /devops, the engine hint untouched', async ($, on) => {
+  const { seen } = engine(on, { pin: 'stable', files: LOG_FILES })
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  const hint = await $.ui.mount({ ...HINT, surface: 'desktop' })
+  expect(await hint.find({ key: 'devops-status' })).toBeUndefined()
+  await hint.unmount()
+  expect(seen.commands).toEqual([])
+  expect(seen.status).toEqual([])
 })

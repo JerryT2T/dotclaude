@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.379.0] — 2026-11-16
+
+### Added
+- mods (alpha, Desktop): a clickable „● devops“ under the prompt shows whether the plugin is working: green when active, red only when the hooks stopped running or the MCP server is not connected. A click or `/devops` opens an info card above the prompt with the estimated net savings of the last 7 days, narrowed searches, shipped branches, API credit, guard blocks and the hooks' own output, read from the local logs without a model call. The newest benefit shows next to the dot for 90 seconds.
+
+### Changed
+- mods: the status line no longer lists open branches, dirty worktrees and safety copies; the cleanup hint at session start stays.
+
+### Fixed
+- mods: `devops.settled` is declared in the state contract, so `claude plugin validate` passes again.
+
 ## [0.378.0] — 2026-11-15
 
 ### Added
