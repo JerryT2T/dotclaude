@@ -123,7 +123,8 @@ describe("ss.knowledge.index — always-on policy injection", () => {
     const ctx = buildContext(PLUGIN_ROOT);
     const root = PLUGIN_ROOT.replace(/\\/g, "/");
     expect(ctx).toContain(`[devops] {PLUGIN_ROOT} = ${root} `);
-    expect(ctx).toContain(`${root}/deep-knowledge/pre-mortem.md`);
+    // No example path in the line: the root is spelled once there (the index pointer names it a second time).
+    expect(ctx.split("\n")[0].split(root).length - 1).toBe(1);
     expect(ctx).toContain("$CLAUDE_PLUGIN_ROOT is NOT set in the Bash tool");
     expect(ctx).toContain("Never search the filesystem");
     // The very first line — it must survive any cut.
