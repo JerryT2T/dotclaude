@@ -58,12 +58,12 @@ function widgetTranscript(dir, ...textsAfter) {
 
 // Async spawn, never spawnSync: a sync child blocks the vitest worker's event
 // loop and fails a loaded full run with "Timeout calling onTaskUpdate".
-function stop(dir, transcriptPath, extra = {}) {
+function stop(dir, transcriptPath, extra = {}, env = {}) {
   const tmp = dir + "-tmp";
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [STOP_HOOK], {
       cwd: dir,
-      env: { ...process.env, TMPDIR: tmp, TEMP: tmp, TMP: tmp },
+      env: { ...process.env, TMPDIR: tmp, TEMP: tmp, TMP: tmp, ...env },
     });
     let out = "";
     child.stdout.setEncoding("utf8");
@@ -82,6 +82,26 @@ describe("stop.flow.guard — a rendered card must also be relayed (#449)", () =
       setFlag(dir, "card-rendered");
       const out = await stop(dir, transcript(dir, `### **${MARKER} Card relay guarded ${MARKER}**\n\n---`));
       expect(out.trim()).toBe("");
+    } finally { cleanup(dir); }
+  });
+
+  // A Stop block is JSON on stdout with exit 0: only the named gate tells the
+  // report which block it was (the block is the expensive outcome, an extra turn).
+  test("a block names its gate on the hook telemetry record", async () => {
+    const dir = project();
+    try {
+      setFlag(dir, "work-happened");
+      setFlag(dir, "card-rendered");
+      const tel = path.join(dir + "-tmp", "tel.jsonl");
+      const out = await stop(dir, transcript(dir, "Done, everything is in place."), {}, { DEVOPS_HOOK_TELEMETRY: tel });
+      expect(JSON.parse(out).decision).toBe("block");
+      const end = fs.readFileSync(tel, "utf8").trim().split("\n").map((l) => JSON.parse(l)).find((r) => r.phase === "end");
+      expect(end).toMatchObject({ hook: "stop.flow.guard", outcome: "output", detail: ["card-not-relayed"] });
+      // A passing run names nothing.
+      fs.rmSync(tel);
+      await stop(dir, transcript(dir, `### **${MARKER} Card relay guarded ${MARKER}**\n\n---`), {}, { DEVOPS_HOOK_TELEMETRY: tel });
+      const passed = fs.readFileSync(tel, "utf8").trim().split("\n").map((l) => JSON.parse(l)).find((r) => r.phase === "end");
+      expect(passed.detail).toBeUndefined();
     } finally { cleanup(dir); }
   });
 

@@ -31,6 +31,19 @@ describe("hook-telemetry-report", () => {
     expect(renderTable(rows, 30)).toContain("out-tok");
   });
 
+  test("named decisions (the stop guard's blocking gates) are summed per hook and listed most frequent first", () => {
+    const { file } = setup();
+    const now = Date.now();
+    const end = (detail) => JSON.stringify({ ts: now, id: "i", hook: "stop.flow.guard", phase: "end", event: "Stop", ms: 10, outcome: "output", chars: 1400, detail });
+    fs.appendFileSync(file, `\n${[end(["pending-missing"]), end(["card-missing"]), end(["card-missing", "pending-missing"]), end(["card-missing"])].join("\n")}`);
+    const rows = buildReport(file, { days: 30 });
+    const guard = rows.find((r) => r.hook === "stop.flow.guard");
+    expect(guard.detail).toEqual({ "card-missing": 3, "pending-missing": 2 });
+    expect(rows.find((r) => r.hook === "big").detail).toBeUndefined();
+    const text = renderTable(rows, 30);
+    expect(text).toMatch(/stop\.flow\.guard: what it decided[^\n]*\n {2}card-missing {5}3\n {2}pending-missing {2}2/);
+  });
+
   test("CLI --json prints parseable rows", () => {
     const { file } = setup();
     const r = spawnSync(process.execPath, [SCRIPT, "--json", "--file", file], { encoding: "utf8" });

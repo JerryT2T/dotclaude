@@ -1,7 +1,7 @@
 'use strict';
 /**
  * @module hook-telemetry
- * @version 0.3.0
+ * @version 0.4.0
  * @plugin devops
  * @description Fail-safe hook telemetry. Silent hooks never show up in a
  *   transcript, so an audit of hook cost and timeouts was blind for them.
@@ -16,6 +16,11 @@
  *   outcome: ok (no output) | output (stdout written) | block (exit 2) |
  *   error (other non-zero exit). A start without an end = the process was
  *   killed (hook timeout). event/tool come from parseHookInput via note().
+ *   A hook may name what it decided with detail() (stop.flow.guard: the gate
+ *   that blocked, e.g. `card-missing`): the end record then carries
+ *   `detail: [..]` and the rollup counts each name per day in `detail`. A Stop
+ *   block is JSON on stdout with exit 0, so its outcome reads `output`; the
+ *   detail names are what tells the blocks apart.
  *
  *   Dispatcher (hooks/dispatch/dispatch.js): every module runs in a worker
  *   thread of one process; its run id comes from the dispatcher
@@ -53,7 +58,11 @@ const DIR_EVENT = {
   'pre-tool-use': 'PreToolUse', 'post-tool-use': 'PostToolUse', 'session-start': 'SessionStart', stop: 'Stop',
   'user-prompt-submit': 'UserPromptSubmit', prompt: 'UserPromptSubmit',
 };
-const state = { on: false, id: null, hook: '', event: '', tool: '', t0: 0, chars: 0 };
+const state = { on: false, id: null, hook: '', event: '', tool: '', t0: 0, chars: 0, detail: [] };
+// Detail names: short kebab-case ids, a handful per run, a bounded set per rollup entry.
+const DETAIL_RE = /^[a-z][a-z0-9-]{0,39}$/;
+const MAX_DETAIL = 8;
+const MAX_DETAIL_KEYS = 40;
 
 function filePath() {
   const env = process.env.DEVOPS_HOOK_TELEMETRY;
@@ -91,6 +100,13 @@ function bucketOf(ms) {
   return i;
 }
 
+/** Count `n` more of detail `name` in a rollup entry's detail map; invalid names and overflow keys are dropped. */
+function addDetail(map, name, n) {
+  if (typeof name !== 'string' || !DETAIL_RE.test(name) || !(n > 0)) return;
+  if (!(name in map) && Object.keys(map).length >= MAX_DETAIL_KEYS) return;
+  map[name] = (map[name] || 0) + n;
+}
+
 /** Add the end records of raw `text` into `days` (mutates). Starts are ignored. */
 function aggregateText(text, days) {
   for (const line of text.split('\n')) {
@@ -107,6 +123,10 @@ function aggregateText(text, days) {
     const o = OUTCOMES.includes(r.outcome) ? r.outcome : 'error';
     e.out[o] = (e.out[o] || 0) + 1;
     if (typeof r.ms === 'number' && r.ms >= 0) e.ms[bucketOf(r.ms)]++;
+    if (Array.isArray(r.detail)) {
+      const dm = e.detail || (e.detail = {});
+      for (const name of r.detail.slice(0, MAX_DETAIL)) addDetail(dm, name, 1);
+    }
   }
   return days;
 }
@@ -121,6 +141,10 @@ function mergeDays(a, b) {
       t.chars += e.chars || 0;
       for (const [o, n] of Object.entries(e.out || {})) t.out[o] = (t.out[o] || 0) + n;
       (e.ms || []).forEach((n, i) => { if (i < t.ms.length) t.ms[i] += n; });
+      if (e.detail && typeof e.detail === 'object') {
+        const dm = t.detail || (t.detail = {});
+        for (const [name, n] of Object.entries(e.detail)) addDetail(dm, name, n);
+      }
     }
   }
   return a;
@@ -210,6 +234,17 @@ function note(hook) {
   if (typeof hook.tool_name === 'string') state.tool = hook.tool_name;
 }
 
+/**
+ * Name what this run decided (stop.flow.guard: the gates that blocked). One
+ * name or a list; lands on this run's end record and is counted in the rollup.
+ */
+function detail(names) {
+  if (!state.on) return;
+  for (const name of [].concat(names || [])) {
+    if (typeof name === 'string' && DETAIL_RE.test(name) && state.detail.length < MAX_DETAIL && !state.detail.includes(name)) state.detail.push(name);
+  }
+}
+
 /** Rename this run's hook (the dispatcher: `dispatch:<Event>`). */
 function setHook(name) {
   if (typeof name === 'string' && name) state.hook = name;
@@ -253,6 +288,7 @@ function start() {
         append(file, {
           ts: Date.now(), id: state.id, hook: state.hook, phase: 'end', event: state.event, tool: state.tool,
           ms: Date.now() - state.t0, outcome, chars: state.chars,
+          ...(state.detail.length ? { detail: state.detail } : {}),
         });
       } catch { /* telemetry never disturbs a hook */ }
     });
@@ -303,6 +339,6 @@ function killRates(file, { window = 200, graceMs = 120000, now = Date.now(), tai
 }
 
 module.exports = {
-  start, note, setHook, record, killRates, filePath, MAX_BYTES,
+  start, note, detail, setHook, record, killRates, filePath, MAX_BYTES,
   rollupPath, loadRollup, aggregateText, mergeDays, percentile, foldPending, BUCKETS, KEEP_DAYS,
 };

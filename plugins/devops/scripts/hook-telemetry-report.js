@@ -6,6 +6,8 @@
  * Usage: node scripts/hook-telemetry-report.js [--days 30] [--json] [--file <raw.jsonl>]
  * Per hook: runs, blocks, output tokens (~chars/4), p50/p95 ms (histogram
  * bucket upper bound), sorted by output tokens. `--json` prints an array.
+ * Hooks that name what they decided (stop.flow.guard: the gate that blocked)
+ * get a second table: each name with its count, most frequent first.
  */
 
 'use strict';
@@ -24,7 +26,7 @@ function pendingText(file) {
   return text;
 }
 
-/** @returns {Array<{hook,runs,blocks,errors,timeouts,chars,tokens,p50,p95}>} sorted by tokens desc */
+/** @returns {Array<{hook,runs,blocks,errors,timeouts,chars,tokens,p50,p95,detail?}>} sorted by tokens desc */
 function buildReport(file, { days = 30, now = Date.now() } = {}) {
   const roll = tel.loadRollup(file);
   tel.mergeDays(roll.days, tel.aggregateText(pendingText(file), {}));
@@ -40,6 +42,10 @@ function buildReport(file, { days = 30, now = Date.now() } = {}) {
       t.errors += e.out.error || 0;
       t.timeouts += (e.out.timeout || 0) + (e.out.skipped || 0);
       t.chars += e.chars;
+      for (const [name, n] of Object.entries(e.detail || {})) {
+        if (!t.detail) t.detail = {};
+        t.detail[name] = (t.detail[name] || 0) + n;
+      }
       e.ms.forEach((n, i) => { t.ms[i] += n; });
       byHook.set(hook, t);
     }
@@ -54,7 +60,19 @@ function renderTable(rows, days) {
   const body = rows.map((r) => [r.hook, r.runs, r.blocks, r.errors, r.timeouts, r.tokens, r.p50 ?? '-', r.p95 ?? '-'].map(String));
   const w = head.map((h, i) => Math.max(h.length, ...body.map((b) => b[i].length)));
   const line = (cells) => cells.map((c, i) => (i ? c.padStart(w[i]) : c.padEnd(w[i]))).join('  ');
-  return [`Hook telemetry, last ${days} days`, line(head), ...body.map(line)].join('\n');
+  return [`Hook telemetry, last ${days} days`, line(head), ...body.map(line), ...renderDetail(rows)].join('\n');
+}
+
+/** The decisions hooks named (a block may name several gates), most frequent first. */
+function renderDetail(rows) {
+  const out = [];
+  for (const r of rows) {
+    const entries = Object.entries(r.detail || {}).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+    if (!entries.length) continue;
+    const w = Math.max(...entries.map(([name]) => name.length));
+    out.push('', `${r.hook}: what it decided (a block may name several)`, ...entries.map(([name, n]) => `  ${name.padEnd(w)}  ${n}`));
+  }
+  return out;
 }
 
 function main(argv) {
@@ -67,4 +85,4 @@ function main(argv) {
 
 if (require.main === module) main(process.argv.slice(2));
 
-module.exports = { buildReport, renderTable };
+module.exports = { buildReport, renderTable, renderDetail };
