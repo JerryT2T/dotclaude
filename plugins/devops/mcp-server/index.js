@@ -1479,7 +1479,7 @@ const HEADINGS = {
     'ready-files': () => 'Fertig auf der Platte — noch etwas?',
     test: () => 'Erst testen, dann shippen?',
     'test-minimal': () => 'viel Spaß',
-    analysis: () => 'gelesen — umsetzen oder Fragen?',
+    analysis: (c) => (c && c.idle ? 'gelesen — nichts offen.' : 'gelesen — umsetzen oder Fragen?'),
     aborted: (c) => `abgebrochen wegen ${c.reason} — anders versuchen?`,
     fallback: () => 'erledigt — noch etwas?',
     paused: (c) => ({
@@ -1521,7 +1521,7 @@ const HEADINGS = {
     'ready-files': () => 'Done on disk — anything else?',
     test: () => 'Test first, then ship?',
     'test-minimal': () => 'have fun',
-    analysis: () => 'read through — questions?',
+    analysis: (c) => (c && c.idle ? 'read through — nothing open.' : 'read through — questions?'),
     aborted: (c) => `aborted because of ${c.reason} — try differently?`,
     fallback: () => 'done — anything else?',
     paused: (c) => ({
@@ -1977,6 +1977,10 @@ function decisionContext(input, key, delivery, state, lang) {
     // #583: why a paused card stops — heading and context line name it.
     pauseReason: (input.pause && input.pause.reason) || '',
     resetAt: (input.pause && input.pause.resetAt) || '',
+    // #1134: a read-only card with no next step and no open point waits on
+    // nothing — its heading states the outcome instead of asking.
+    idle: input.readOnly === true && !String(input.nextStep || '').trim()
+      && normalizeOpenItems(input.open).length === 0,
   };
 }
 
@@ -3326,7 +3330,7 @@ server.registerTool(
         }).optional(),
       ).describe("CTA placeholders - an OBJECT, e.g. { reason } for aborted, { version } for ship, { description } for test-minimal. A plain string is accepted as { info }."),
       nextStep: z.string().optional().describe("analysis: the ONE step you recommend Claude does next, as the user's instruction ('Bau im Governor eine Summen-Drossel ein.'); the Desktop button sends exactly this text. ship-successful with state.kept: the follow-up on the kept branch."),
-      readOnly: z.boolean().optional().describe("analysis: true when this session is read-only (assignment forbids edits): the card then offers no Umsetzen / Empfehlung-umsetzen button, since nothing can be implemented here. Open-point replies (Nachbessern) stay."),
+      readOnly: z.boolean().optional().describe("analysis: true when this session is read-only (assignment forbids edits): the card then offers no Umsetzen / Empfehlung-umsetzen button, since nothing can be implemented here. Open-point replies (Nachbessern) stay. With no nextStep and no open point the heading states the outcome ('gelesen — nichts offen.') instead of asking — the fit for a pure status relay."),
       userTest: z.preprocess(
         v => typeof v === 'string' ? tryParse(v) : v,
         z.array(z.string()).optional(),
