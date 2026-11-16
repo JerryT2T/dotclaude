@@ -2,7 +2,7 @@
 'use strict';
 /**
  * @hook dispatch
- * @version 0.3.0
+ * @version 0.4.0
  * @event SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, PostToolUseFailure, Stop, SubagentStart, SubagentStop
  * @plugin devops
  * @description One process per hook event. `node dispatch.js <Event>` is the
@@ -56,13 +56,21 @@
  *      never kills the dispatcher while it merges. A module over its budget is
  *      terminated (worker.terminate() also stops a busy loop), one with less
  *      than MIN_START_MS of event budget left is skipped; both contribute
- *      nothing and get a telemetry record. That is exactly what a timed-out
- *      hook was before: Claude Code treats a killed hook as a non-blocking
- *      error, so EVERY gate fails open on a timeout today — `onFailure` in
- *      the manifest is not a Claude Code field (absent from the 2.1.270
- *      binary) and stays plugin metadata. A module that crashes or exits 1
- *      fails open the same way (its JSON stdout is still honoured, as Claude
- *      Code does).
+ *      nothing and get a telemetry record. A module that crashes or exits 1
+ *      contributes nothing either (its JSON stdout is still honoured, as
+ *      Claude Code does). So a module fails OPEN by default.
+ *
+ *      Fail-closed guards — a PreToolUse module the manifest marks
+ *      `"onFailure": "block"` is a gate whose verdict the call needs: when it
+ *      is terminated, skipped or ends with an error code and no JSON reply,
+ *      the dispatcher holds the call back (exit 2 with the reason) instead of
+ *      letting it through unchecked. DEVOPS_GUARD_FAIL_OPEN=1 restores
+ *      fail-open for a broken guard. The dispatcher reads the field itself:
+ *      Claude Code's own `onFailure: "block"` (2.1.295) is NOT set on the
+ *      dispatcher entry in hooks.json, because it counts every exit code
+ *      other than 0 and 2 as a failure — one advisory module exiting 1, or
+ *      the deliberate hard exit after a stuck thread, would then block every
+ *      tool call.
  *
  *      A budget holds even for a thread stuck in a synchronous spawn: the worker
  *      caps those at its deadline (worker-boot.js), and past TERMINATE_GRACE_MS
@@ -94,7 +102,7 @@ const path = require('path');
 const fs = require('fs');
 
 const { matches, queryFor } = require('./matcher');
-const { mergeResults } = require('./merge');
+const { mergeResults, parseJson } = require('./merge');
 
 const HOOKS_DIR = path.resolve(__dirname, '..');
 const PLUGIN_ROOT = path.resolve(HOOKS_DIR, '..');
@@ -209,6 +217,35 @@ function passesCommandFilter(mod, payload) {
 function selectModules(manifest, event, payload, pluginRoot = PLUGIN_ROOT, opts = {}) {
   const query = queryFor(event, payload);
   return laneModules(manifest, event, pluginRoot, opts).filter((m) => matches(query, m.matcher) && passesCommandFilter(m, payload));
+}
+
+/** True when fail-closed guards are switched back to fail-open (a broken guard, debugging). */
+function guardFailOpen(env = process.env) {
+  return /^(1|true|on|yes)$/i.test(String(env.DEVOPS_GUARD_FAIL_OPEN || ''));
+}
+
+/** Why a guard's run gave no verdict, or '' when it did. */
+function guardFailure(r) {
+  if (!r) return 'did not run';
+  if (r.timedOut) return 'ran out of time';
+  if (r.skipped) return 'had no time budget left';
+  const code = r.code || 0;
+  if (code !== 0 && code !== 2 && !parseJson(r.stdout)) return 'crashed';
+  return '';
+}
+
+/**
+ * The result the merge sees for `mod`: its own, or — for a PreToolUse module
+ * marked `onFailure: "block"` that gave no verdict — a block.
+ */
+function failClosed(event, mod, r) {
+  if (event !== 'PreToolUse' || !mod || mod.onFailure !== 'block' || guardFailOpen()) return r;
+  const why = guardFailure(r);
+  if (!why) return r;
+  const stderr = `[devops] ${mod.name} guards this call and ${why}, so the call is held back rather than let through unchecked. ` +
+    'Send the same call once more. Held back again: stop and tell the user that this guard is failing ' +
+    '(machine under load, or a defect in the hook); DEVOPS_GUARD_FAIL_OPEN=1 in the environment of Claude Code lets such calls through again.\n';
+  return { ...(r || { name: mod.name, ms: 0 }), code: 2, stdout: '', stderr, timedOut: false, skipped: false, failClosed: why };
 }
 
 function collect(stream, sink) {
@@ -376,7 +413,7 @@ async function runEvent(o) {
   };
   await Promise.all(lanes.map(runLane));
   await Promise.all(procRuns);
-  const merged = mergeResults(o.event, results);
+  const merged = mergeResults(o.event, results.map((r, i) => failClosed(o.event, o.modules[i], r)));
   // Alpha `token-log` (#1002): what each module handed the model, written to
   // a local file only. Gated, silent, never changes the merged result.
   try {
@@ -438,6 +475,6 @@ if (require.main === module) {
 }
 
 module.exports = {
-  moduleFile, loadManifest, loadLanes, laneGroups, eventModules, laneModules, eventBudgetS, selectModules, runEvent, dispatchDisabled, hardExitStdout,
+  moduleFile, loadManifest, loadLanes, laneGroups, eventModules, laneModules, eventBudgetS, selectModules, runEvent, dispatchDisabled, hardExitStdout, guardFailOpen, guardFailure, failClosed,
   DEFAULT_TIMEOUT_S, FAST_DEFAULT_TIMEOUT_S, HEADROOM_S, MIN_START_MS, TERMINATE_GRACE_MS, MANIFEST,
 };

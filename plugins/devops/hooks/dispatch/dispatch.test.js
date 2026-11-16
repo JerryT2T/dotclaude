@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 
 const require = createRequire(import.meta.url);
-const { runEvent, laneGroups, dispatchDisabled, selectModules, hardExitStdout } = require("./dispatch.js");
+const { runEvent, laneGroups, dispatchDisabled, selectModules, hardExitStdout, guardFailOpen } = require("./dispatch.js");
 
 let dir;
 const FIXTURES = {
@@ -146,6 +146,68 @@ describe("dispatcher runs modules in worker threads like separate processes", ()
     expect(dispatchDisabled({ DEVOPS_HOOK_DISPATCH: "0" })).toBe(true);
     expect(dispatchDisabled({ DEVOPS_HOOK_DISPATCH: "off" })).toBe(true);
     expect(dispatchDisabled({})).toBe(false);
+  });
+});
+
+describe("fail-closed guards: a module marked onFailure block that gives no verdict holds the call back", () => {
+  const guard = (name, o = {}) => mod(name, { onFailure: "block", ...o });
+
+  test("killed at its budget: the call is held back and the reason names the guard", async () => {
+    const r = await run([guard("spin.js", { timeoutS: 1 }), mod("ctx.js")]);
+    expect(r.code).toBe(2);
+    expect(r.stderr).toMatch(/^\[devops\] spin guards this call and ran out of time/);
+    expect(r.stderr).toMatch(/DEVOPS_GUARD_FAIL_OPEN=1/);
+    expect(r.results[0].timedOut).toBe(true);
+    expect(JSON.parse(r.stdout).hookSpecificOutput.additionalContext).toBe("ctx:Bash");
+  });
+
+  test("crashed: held back, while the same module without the mark still fails open", async () => {
+    const closed = await run([guard("throw.js"), mod("ctx.js")]);
+    expect(closed.code).toBe(2);
+    expect(closed.stderr).toMatch(/throw guards this call and crashed/);
+    expect((await run([mod("throw.js"), mod("ctx.js")])).code).toBe(0);
+  });
+
+  test("skipped for lack of event budget: held back", async () => {
+    const r = await run([mod("spin.js", { timeoutS: 5 }), guard("ctx.js")], { budgetS: 1, lanes: [["spin", "ctx"]] });
+    expect(r.results[1].skipped).toBe(true);
+    expect(r.code).toBe(2);
+    expect(r.stderr).toMatch(/ctx guards this call and had no time budget left/);
+  });
+
+  test("a guard that answered keeps its own verdict, allow or block", async () => {
+    expect((await run([guard("ctx.js")])).code).toBe(0);
+    const blocked = await run([guard("block.js")]);
+    expect(blocked).toMatchObject({ code: 2, stderr: "BLOCKED by fixture\n" });
+  });
+
+  test("only PreToolUse gates a call: on another event the same failure stays open", async () => {
+    const r = await run([guard("spin.js", { timeoutS: 1 })], { event: "PostToolUse" });
+    expect(r.code).toBe(0);
+  });
+
+  test("the opt-out process model holds the call back the same way", async () => {
+    const r = await run([guard("spin.js", { timeoutS: 1 })], { processMode: true });
+    expect(r.code).toBe(2);
+    expect(r.stderr).toMatch(/spin guards this call and ran out of time/);
+  });
+
+  test("DEVOPS_GUARD_FAIL_OPEN=1 lets the call through again", async () => {
+    expect(guardFailOpen({ DEVOPS_GUARD_FAIL_OPEN: "1" })).toBe(true);
+    expect(guardFailOpen({})).toBe(false);
+    process.env.DEVOPS_GUARD_FAIL_OPEN = "1";
+    try {
+      expect((await run([guard("spin.js", { timeoutS: 1 })])).code).toBe(0);
+    } finally {
+      delete process.env.DEVOPS_GUARD_FAIL_OPEN;
+    }
+  });
+
+  test("the manifest marks exactly the four gates whose verdict a call needs", () => {
+    const manifest = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, "manifest.json"), "utf8"));
+    const marked = Object.entries(manifest.hooks).flatMap(([event, groups]) => groups.flatMap((g) => g.hooks)
+      .filter((h) => h.onFailure === "block").map((h) => `${event}:${/([\w.-]+)\.js/.exec(h.command)[1]}`));
+    expect(marked.sort()).toEqual(["PreToolUse:pre.cleanup.gate", "PreToolUse:pre.main.guard", "PreToolUse:pre.run.contract", "PreToolUse:pre.ship.guard"]);
   });
 });
 

@@ -68,6 +68,20 @@ describe("startSessionInput — the new session shows ⏳ from its first moment"
     ]) expect(ask.startSessionInput(input), JSON.stringify(input)).toBeNull();
   });
 
+  // Claude Code 2.1.300 validates a hook's updatedInput like the model's own
+  // input: an unknown key is dropped, an input the tool rejects denies the
+  // call. `title` and `name` are properties of mcp__ccd_session__start_session
+  // (schema read 2026-11-16: name is [a-z0-9-], at most 24 characters).
+  test("the rewritten input adds nothing but a schema-conform name", () => {
+    const long = { ...base, title: "Rebuild the Whole Billing Export & its 3 Reports, again" };
+    for (const input of [base, long]) {
+      const out = ask.startSessionInput(input);
+      expect(Object.keys(out).filter((k) => !(k in input))).toEqual(["name"]);
+      expect(out.name).toMatch(/^[a-z0-9]([a-z0-9-]{0,22}[a-z0-9])?$/);
+      expect(typeof out.title).toBe("string");
+    }
+  });
+
   test("a title without latin letters leaves the name to the app", () => {
     expect(ask.startSessionInput({ ...base, title: "⏱" }).name).toBeUndefined();
   });
