@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.380.0] — 2026-11-16
+## [0.381.0] — 2026-11-16
 
 ### Added
 - auto-concept / do-batch: a do-batch hand-off whose open decisions span unrelated surfaces opens a staged concept, one Etappe per surface; the hand-off names the split in a `Flächen:` line; new eval case `do-batch-unrelated-surfaces` (#1131)
