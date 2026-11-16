@@ -498,7 +498,12 @@ function lastUserEntryIsSideSession(transcriptContent) {
   return isSideSessionTurn(lastUserEntryText(transcriptContent));
 }
 
-/** The text of the last user-role transcript entry ('' when none). */
+/**
+ * The text of the turn's prompt entry — the last user-role entry the user (or a
+ * hook on their behalf) wrote ('' when none). Tool-result-only and `isMeta`
+ * entries are skipped, so a note turn that made tool calls still reads as one
+ * (#1133) — the same walk-back `editsThisTurn` uses.
+ */
 function lastUserEntryText(transcriptContent) {
   if (!transcriptContent) return '';
   const lines = transcriptContent.split('\n');
@@ -507,7 +512,7 @@ function lastUserEntryText(transcriptContent) {
     if (!raw) continue;
     let entry;
     try { entry = JSON.parse(raw); } catch { continue; }
-    if (entry.type !== 'user') continue;
+    if (entry.type !== 'user' || !isPromptEntry(entry)) continue;
     const content = entry.message && entry.message.content;
     let text = '';
     if (typeof content === 'string') {
