@@ -19,3 +19,8 @@ function findByEmail(db, email) {
 }
 module.exports = { findByEmail };
 JS
+# The owner's machine may route read-only review agents to the API credit
+# (apiCredit.enabled): that runs the review as a script, not as a subagent, and
+# the SubagentStart line this case is about never fires. Switch it off here.
+mkdir -p .claude
+printf '{ "apiCredit": { "enabled": false } }\n' > .claude/devops-config.json

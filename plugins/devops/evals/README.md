@@ -247,7 +247,11 @@ Two things about how the graders are written:
   the doc is read at that path, no `find` over a drive or home directory and
   no Glob hunt for the file name (subagent calls included). It guards the
   wording of `pluginRootLine` (`hooks/lib/plugin-root.js`), which every
-  session and subagent start pays for.
+  session and subagent start pays for. The scaffold switches
+  `apiCredit.enabled` off through a project `devops-config.json`: with it on,
+  the review runs as `claude-api-agent.js` and no subagent starts. Measured
+  2026-11-16, one run each: the line with the root spelled twice (A) and
+  once (B) both pass 4/4.
 - Role-agent graders exclude spawns whose input mentions the completion
   card: without Bash the Stop hook's offline card render is delegated to
   whichever agent has a shell — `devops:core` was observed doing it.
