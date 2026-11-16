@@ -52,7 +52,10 @@ function scriptPath(file, root = pluginRoot()) {
 }
 
 /**
- * The context line that resolves `{PLUGIN_ROOT}` for the model.
+ * The context line that resolves `{PLUGIN_ROOT}` for the model. Every session
+ * and every subagent start carries it, so it names the root once and no
+ * example path (about a third shorter; evals/delegation/subagent-reads-plugin-doc
+ * pins that a subagent still opens a plugin doc at the root without a crawl).
  * @param {string} [root]
  * @returns {string}
  */
@@ -60,9 +63,9 @@ function pluginRootLine(root = pluginRoot()) {
   const r = toSlash(root).replace(/\/+$/, '');
   return (
     `[devops] {PLUGIN_ROOT} = ${r} (the installed devops plugin). ` +
-    `Every \`{PLUGIN_ROOT}/…\` path in plugin skills, agents and docs is under it, ` +
-    `e.g. ${r}/deep-knowledge/pre-mortem.md. $CLAUDE_PLUGIN_ROOT is NOT set in the Bash tool: use this literal path. ` +
-    'Never search the filesystem (find /, a drive root, or the home directory) for plugin files.'
+    `Every \`{PLUGIN_ROOT}/…\` path in plugin skills, agents and docs is under it; ` +
+    '$CLAUDE_PLUGIN_ROOT is NOT set in the Bash tool, so use this literal path. ' +
+    'Never search the filesystem for plugin files.'
   );
 }
 

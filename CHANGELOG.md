@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.380.0] — 2026-11-16
+
+### Added
+- Hook telemetry: `stop.flow.guard` names the gate that blocked a turn end (`card-missing`, `pending-missing`, `validation-gaps`, …). The daily rollup counts each name and `scripts/hook-telemetry-report.js` lists them per hook, so the most frequent cause of an extra turn is visible.
+- Evals: `delegation/subagent-reads-plugin-doc` pins that a subagent opens a plugin doc at the plugin root without searching the filesystem.
+
+### Changed
+- The `{PLUGIN_ROOT}` context line at session start and at every subagent start names the root once and is about a third shorter.
+
 ## [0.379.0] — 2026-11-16
 
 ### Added
