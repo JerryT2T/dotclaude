@@ -36,6 +36,18 @@
           "e506f3697dd3"
         ]
       }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/step1-templates.md›Etappen (stages)›when mandatory": [
+      {
+        "ship": "claude/hook-overhead-7c2e",
+        "by": "user (audit report close-out, finding oq-stages-direct chosen \"Jetzt umsetzen\")",
+        "value": "mandatory for every start whose topics are unrelated (direct prompt, do-batch, another skill); the #1136 do-batch exception is now one case of that rule",
+        "decided": true,
+        "at": "2026-11-16T23:39:58.743Z",
+        "hunks": [
+          "00e6ac570581"
+        ]
+      }
     ]
   }
 }
