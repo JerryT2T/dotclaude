@@ -218,6 +218,8 @@ const MCP_RECHECK_MS = 5 * 60_000
 const INFO_WIDTH = 64
 // The line under the prompt was drawn on this surface: the plain status line would only repeat it.
 let hintDrawn = false
+// The plain status line was cleared after the line under the prompt appeared (a render hook cannot clear it itself).
+let statusCleared = false
 let savingsMtime = -1
 let mcpCheckedAt = 0
 let echoTimer: { cancel: () => void } | null = null
@@ -236,8 +238,10 @@ async function readText($: EngineInterface, path: string): Promise<string | null
 async function refreshStatus($: EngineInterface): Promise<void> {
   if (hintDrawn) {
     $.ui.status(undefined)
+    statusCleared = true
     return
   }
+  statusCleared = false
   const loc = (await sharedNow($)).loc
   $.ui.status(statusText(await read($, health), (await read($, echo)).last, await $.clock.now(), loc))
 }
@@ -869,6 +873,8 @@ export const register: Register = on => {
       })
       // Status element: a server that died mid-session shows at the next turn, asked at most every few minutes.
       if (now - mcpCheckedAt >= MCP_RECHECK_MS) await checkMcp($).catch(() => undefined)
+      // The line under the prompt is on screen but the fallback text still is too: drop it now at the latest.
+      if (hintDrawn && !statusCleared) await refreshStatus($).catch(() => undefined)
     }
     return started
   }).catch(($, e, next) => next(e)) // display and measuring only: never changes the turn
@@ -1202,7 +1208,16 @@ export const register: Register = on => {
     const said = echoText((await read($, echo)).last, await $.clock.now(), loc)
     const ok = isActive(state)
     const note = ok ? said : `${tr(loc, 'stInactive')} · ${inactiveReason(state, loc)}`
-    hintDrawn = true
+    if (!hintDrawn) {
+      hintDrawn = true
+      // The fallback status line would now repeat this line. Drawing may not clear it, so a timer does,
+      // and the next turn start does when no timer is to be had.
+      try {
+        $.clock.after(0, () => void refreshStatus($).catch(() => undefined))
+      } catch {
+        /* cleared at the next turn start */
+      }
+    }
     if (e.surface === 'terminal') {
       const tail = [e.props.tail, `${ok ? '●' : '○'} devops${note ? ` · ${note}` : ''}`].filter(Boolean).join(' · ')
       return next({ ...e, props: { ...e.props, tail } })

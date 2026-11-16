@@ -1637,6 +1637,22 @@ test('/devops opens and closes the same card with a one-line answer; the termina
   await hint.unmount()
 })
 
+test('the fallback status line goes once the line under the prompt is drawn, at the next turn start at the latest', async ($, on) => {
+  const { seen } = engine(on, { files: LOG_FILES })
+  on('turn.start', () => ({ turnId: 't' }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  expect(seen.status.at(-1)).toBe('🟢 active')
+  const hint = await $.ui.mount({ ...HINT, surface: 'desktop' })
+  expect(await hint.find({ key: 'devops-status' })).toBeDefined()
+  // Nothing changed in the plugin's state, so no other refresh would come: the turn start drops the repeat.
+  await $.turn.start({ text: 'go', turnId: 't1' } as any)
+  expect(seen.status.at(-1)).toBeUndefined()
+  await hint.unmount()
+  // A new session starts without the line: the fallback text is back until it is drawn again.
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  expect(seen.status.at(-1)).toBe('🟢 active')
+})
+
 test('last benefit: a new narrowed line after a guarded tool call reads beside the dot, then the line goes quiet', async ($, on) => {
   const { seen, files, tick } = engine(on, { files: LOG_FILES })
   let savingsMtime = 1
