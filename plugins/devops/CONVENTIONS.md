@@ -130,8 +130,11 @@ Rules inside the dispatcher:
   (error code, no JSON reply), the dispatcher holds the call back with the
   reason instead of letting it through. `DEVOPS_GUARD_FAIL_OPEN=1` switches
   that off. Only for real gates: such a hook that breaks blocks every call it
-  matches. Claude Code's own `onFailure` (2.1.295) stays unset on the
-  dispatcher entries — it would turn any module's exit 1 into a block.
+  matches. The generated hooks.json entry of a lane with such a guard also
+  carries Claude Code's own `onFailure: "block"` (2.1.295): a dispatcher that
+  cannot start, is killed at its timeout or dies holds the call back. On that
+  lane the dispatcher answers only with exit 0 or 2, never with a module's
+  exit 1 (Claude Code would block on it).
 - **Telemetry.** Each hook keeps its start/end records in
   `devops-hook-telemetry.jsonl`; the dispatcher adds `dispatch:<Event>` and
   `outcome: "timeout" | "skipped"` end records.

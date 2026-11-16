@@ -8,6 +8,6 @@
   },
   "types": "./types/index.d.ts",
   "engines": {
-    "claude-code": ">=2.1.289"
+    "claude-code": ">=2.1.295"
   }
 }

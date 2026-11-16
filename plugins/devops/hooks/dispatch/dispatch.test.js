@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 
 const require = createRequire(import.meta.url);
-const { runEvent, laneGroups, dispatchDisabled, selectModules, hardExitStdout, guardFailOpen } = require("./dispatch.js");
+const { runEvent, laneGroups, dispatchDisabled, selectModules, hardExitStdout, guardFailOpen, guardedLane, finalReply } = require("./dispatch.js");
 
 let dir;
 const FIXTURES = {
@@ -208,6 +208,46 @@ describe("fail-closed guards: a module marked onFailure block that gives no verd
     const marked = Object.entries(manifest.hooks).flatMap(([event, groups]) => groups.flatMap((g) => g.hooks)
       .filter((h) => h.onFailure === "block").map((h) => `${event}:${/([\w.-]+)\.js/.exec(h.command)[1]}`));
     expect(marked.sort()).toEqual(["PreToolUse:pre.cleanup.gate", "PreToolUse:pre.main.guard", "PreToolUse:pre.run.contract", "PreToolUse:pre.ship.guard"]);
+  });
+});
+
+describe("a guarded lane answers Claude Code's onFailure block only with exit 0 or 2", () => {
+  const { build, guardedCommand } = require("./build-hooks-json.js");
+  const manifest = () => JSON.parse(fs.readFileSync(path.join(import.meta.dirname, "manifest.json"), "utf8"));
+
+  test("only the main PreToolUse entry carries onFailure block and the way out", () => {
+    const hooks = build(manifest()).hooks;
+    const marked = Object.entries(hooks).flatMap(([event, groups]) => groups.flatMap((g) => g.hooks)
+      .filter((h) => h.onFailure === "block").map((h) => `${event}:${h.command.includes("--fast") ? "fast" : "main"}`));
+    expect(marked).toEqual(["PreToolUse:main"]);
+    const entry = hooks.PreToolUse[0].hooks[0];
+    expect(entry.command).toBe(guardedCommand("PreToolUse"));
+    expect(entry.command).toMatch(/dispatch\.js" PreToolUse \|\| \{ rc=\$\?; \[ "\$rc" != 2 \] && \[ -n "\$DEVOPS_GUARD_FAIL_OPEN" \] && exit 0; exit \$rc; \}$/);
+  });
+
+  test("the lane is guarded exactly when a module of its main roster is a fail-closed guard", () => {
+    expect(guardedLane([{ name: "a" }, { name: "g", onFailure: "block" }])).toBe(true);
+    expect(guardedLane([{ name: "a" }])).toBe(false);
+    expect(guardedLane([{ name: "g", onFailure: "block" }], true)).toBe(false);
+  });
+
+  test("a module's exit 1 is no failure of the dispatcher: 0 on a guarded lane, kept elsewhere", () => {
+    expect(finalReply({ code: 1, stdout: '{"systemMessage":"m"}\n', guarded: true })).toEqual({ code: 0, stdout: '{"systemMessage":"m"}\n' });
+    expect(finalReply({ code: 1, stdout: "", guarded: false })).toEqual({ code: 1, stdout: "" });
+    expect(finalReply({ code: 2, stdout: "", guarded: true }).code).toBe(2);
+    expect(finalReply({ code: 0, stdout: "plain", guarded: true })).toEqual({ code: 0, stdout: "plain" });
+  });
+
+  test("stdout that looks like JSON but is none never reaches Claude Code on a guarded lane", () => {
+    expect(finalReply({ code: 0, stdout: '{"systemMessage": oops', guarded: true })).toEqual({ code: 0, stdout: "" });
+    expect(finalReply({ code: 0, stdout: '{"systemMessage": oops', guarded: false }).stdout).toBe('{"systemMessage": oops');
+  });
+
+  test("a crashing module alone ends the real PreToolUse reply with 0, a crashing guard with 2", async () => {
+    const open = await run([mod("throw.js")]);
+    expect(finalReply({ ...open, guarded: true }).code).toBe(0);
+    const closed = await run([mod("throw.js", { onFailure: "block" })]);
+    expect(finalReply({ ...closed, guarded: true }).code).toBe(2);
   });
 });
 

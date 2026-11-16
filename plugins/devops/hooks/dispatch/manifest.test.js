@@ -38,7 +38,10 @@ describe("hooks.json is generated from the dispatcher manifest", () => {
       expect(disp.length, event).toBe(1);
       const t = disp[0].hooks[0].timeout;
       for (const m of dispatched) expect(t, `${event}/${m.name}`).toBeGreaterThanOrEqual(m.timeoutS + build.HEADROOM_S);
-      expect(disp[0].hooks[0].command).toBe(build.dispatcherCommand(event));
+      // A lane with a fail-closed guard carries Claude Code's onFailure and the way out of it.
+      const guarded = dispatched.some((m) => m.onFailure === "block");
+      expect(disp[0].hooks[0].command).toBe(guarded ? build.guardedCommand(event) : build.dispatcherCommand(event));
+      expect(disp[0].hooks[0].onFailure, event).toBe(guarded ? "block" : undefined);
     }
   });
 

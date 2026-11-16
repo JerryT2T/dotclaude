@@ -65,12 +65,19 @@
  *      is terminated, skipped or ends with an error code and no JSON reply,
  *      the dispatcher holds the call back (exit 2 with the reason) instead of
  *      letting it through unchecked. DEVOPS_GUARD_FAIL_OPEN=1 restores
- *      fail-open for a broken guard. The dispatcher reads the field itself:
- *      Claude Code's own `onFailure: "block"` (2.1.295) is NOT set on the
- *      dispatcher entry in hooks.json, because it counts every exit code
- *      other than 0 and 2 as a failure — one advisory module exiting 1, or
- *      the deliberate hard exit after a stuck thread, would then block every
- *      tool call.
+ *      fail-open for a broken guard.
+ *
+ *      Above that, the hooks.json entry of a lane with such a guard carries
+ *      Claude Code's own `onFailure: "block"` (2.1.295, build-hooks-json.js):
+ *      a dispatcher that cannot start, is killed at its timeout or dies
+ *      holds the call back too. Claude Code counts every exit code other
+ *      than 0 and 2 as such a failure, so on that lane the dispatcher's own
+ *      decision is only ever 0 or 2 (finalReply): a module's exit 1 stays a
+ *      non-blocking error. Two paths remain where an advisory module can
+ *      hold a call back once: the hard exit after a stuck thread, and the
+ *      entry's timeout. DEVOPS_GUARD_FAIL_OPEN also switches the exit-code
+ *      half of this off (in the entry's shell command); a timeout cannot be
+ *      switched off.
  *
  *      A budget holds even for a thread stuck in a synchronous spawn: the worker
  *      caps those at its deadline (worker-boot.js), and past TERMINATE_GRACE_MS
@@ -454,27 +461,55 @@ async function main() {
   const modules = selectModules(manifest, event, payload, PLUGIN_ROOT, { fast });
   if (!modules.length) return { code: 0, stdout: '', stderr: '' };
   const lanes = loadLanes();
-  return runEvent({ event, raw, payload, modules, budgetS: eventBudgetS(all), startedAt, processMode: dispatchDisabled(), tele, lanes: lanes ? lanes[laneKey] : undefined });
+  const r = await runEvent({ event, raw, payload, modules, budgetS: eventBudgetS(all), startedAt, processMode: dispatchDisabled(), tele, lanes: lanes ? lanes[laneKey] : undefined });
+  return { ...r, guarded: guardedLane(all, fast) };
+}
+
+/**
+ * True for a lane whose hooks.json entry carries Claude Code's
+ * `onFailure: "block"` (build-hooks-json.js sets it by the same rule): the
+ * main lane of an event with at least one fail-closed guard.
+ */
+function guardedLane(modules, fast = false) {
+  return !fast && modules.some((m) => m.onFailure === 'block');
+}
+
+/**
+ * What the process answers with. On a guarded lane Claude Code blocks the
+ * call on every exit code other than 0 and 2 and on JSON it cannot parse, so
+ * there a decision of the dispatcher is only ever 0 or 2 (a module's exit 1
+ * stays a non-blocking error: its JSON is honoured, the call goes on), and
+ * stdout that looks like JSON but is none is dropped.
+ */
+function finalReply(r) {
+  const code = r.code || 0;
+  const stdout = r.stdout || '';
+  if (!r.guarded) return { code, stdout };
+  const broken = String(stdout).trim().startsWith('{') && !parseJson(stdout);
+  return { code: code === 2 ? 2 : 0, stdout: broken ? '' : stdout };
 }
 
 if (require.main === module) {
   require('../lib/plugin-guard'); // exits 0 when the plugin is off for this project
   main().then((r) => {
+    const out = finalReply(r);
     // A block outranks a clean exit: only a reply without one may end hard.
-    const hard = !r.code && (r.results || []).some((x) => x && x.stuck);
+    const hard = !out.code && (r.results || []).some((x) => x && x.stuck);
     const kill = () => process.kill(process.pid, 'SIGKILL');
     if (r.stderr) process.stderr.write(r.stderr);
-    const stdout = hard ? hardExitStdout(process.argv[2], r.stdout) : r.stdout;
+    // A hard end is no exit 0: on a guarded lane Claude Code holds the call back for it.
+    if (hard && r.guarded) process.stderr.write('[devops] a hook module is stuck in a call that cannot be ended, so the dispatcher ends hard and this call is held back once. Send the same call again.\n');
+    const stdout = hard ? hardExitStdout(process.argv[2], out.stdout) : out.stdout;
     if (stdout) process.stdout.write(stdout, () => { if (hard) kill(); });
     else if (hard) kill();
     // exitCode, not exit(): the process ends once both pipes drained; the
     // unref'd timer only fires if a stray handle keeps the loop alive
-    process.exitCode = r.code || 0;
-    setTimeout(() => { if (hard) kill(); else process.exit(r.code || 0); }, 2000).unref();
-  }, () => { process.exitCode = 0; }); // the dispatcher itself fails open
+    process.exitCode = out.code;
+    setTimeout(() => { if (hard) kill(); else process.exit(out.code); }, 2000).unref();
+  }, () => { process.exitCode = 0; }); // the dispatcher fails open on an error of its own
 }
 
 module.exports = {
-  moduleFile, loadManifest, loadLanes, laneGroups, eventModules, laneModules, eventBudgetS, selectModules, runEvent, dispatchDisabled, hardExitStdout, guardFailOpen, guardFailure, failClosed,
+  moduleFile, loadManifest, loadLanes, laneGroups, eventModules, laneModules, eventBudgetS, selectModules, runEvent, dispatchDisabled, hardExitStdout, guardFailOpen, guardFailure, failClosed, guardedLane, finalReply,
   DEFAULT_TIMEOUT_S, FAST_DEFAULT_TIMEOUT_S, HEADROOM_S, MIN_START_MS, TERMINATE_GRACE_MS, MANIFEST,
 };

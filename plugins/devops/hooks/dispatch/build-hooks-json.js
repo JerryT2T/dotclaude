@@ -44,10 +44,24 @@ function dispatcherCommand(event, fast = false) {
   return failOpen(`node "\${CLAUDE_PLUGIN_ROOT}/hooks/dispatch/dispatch.js" ${event}${fast ? ' --fast' : ''}`);
 }
 
+/**
+ * The command of a guarded lane (one that runs a fail-closed guard): Claude
+ * Code's `onFailure: "block"` (2.1.295) holds the call back when this command
+ * cannot start, is killed at its timeout or ends with a code other than 0 or
+ * 2. DEVOPS_GUARD_FAIL_OPEN (any value) is the way out for a broken
+ * dispatcher: the shell then turns every such code into 0.
+ */
+function guardedCommand(event) {
+  return failOpen(`node "\${CLAUDE_PLUGIN_ROOT}/hooks/dispatch/dispatch.js" ${event} || { rc=$?; [ "$rc" != 2 ] && [ -n "$DEVOPS_GUARD_FAIL_OPEN" ] && exit 0; exit $rc; }`);
+}
+
 /** One dispatcher entry: the union of its modules' matchers, budget + headroom. */
 function dispatcherEntry(event, mods, fast) {
   const budget = mods.reduce((m, d) => Math.max(m, d.timeout), 0);
-  const entry = { hooks: [{ type: 'command', command: dispatcherCommand(event, fast), timeout: budget + HEADROOM_S }] };
+  const guarded = !fast && mods.some((d) => d.onFailure === 'block');
+  const hook = { type: 'command', command: guarded ? guardedCommand(event) : dispatcherCommand(event, fast), timeout: budget + HEADROOM_S };
+  if (guarded) hook.onFailure = 'block';
+  const entry = { hooks: [hook] };
   const matcher = unionMatcher(mods.map((d) => d.matcher));
   if (matcher) entry.matcher = matcher;
   return entry;
@@ -67,7 +81,7 @@ function build(manifest) {
         if (h.dispatch === false) continue;
         const isFast = h.dispatch === 'fast';
         const timeout = typeof h.timeout === 'number' && h.timeout > 0 ? h.timeout : (isFast ? FAST_DEFAULT_TIMEOUT_S : DEFAULT_TIMEOUT_S);
-        (isFast ? fast : dispatched).push({ matcher: g.matcher, timeout });
+        (isFast ? fast : dispatched).push({ matcher: g.matcher, timeout, onFailure: h.onFailure });
       }
     }
     const entries = [];
@@ -155,5 +169,5 @@ if (require.main === module) {
 }
 
 module.exports = {
-  build, serialize, expectedText, expectedLanesText, dispatcherCommand, failOpen, NODE_MISSING_MSG, HOOKS_JSON, LANES_JSON, MANIFEST, DEFAULT_TIMEOUT_S, HEADROOM_S,
+  build, serialize, expectedText, expectedLanesText, dispatcherCommand, guardedCommand, failOpen, NODE_MISSING_MSG, HOOKS_JSON, LANES_JSON, MANIFEST, DEFAULT_TIMEOUT_S, HEADROOM_S,
 };
