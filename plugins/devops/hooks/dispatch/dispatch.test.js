@@ -5,7 +5,8 @@ import os from "node:os";
 import path from "node:path";
 
 const require = createRequire(import.meta.url);
-const { runEvent, laneGroups, dispatchDisabled, selectModules, hardExitStdout, guardFailOpen, guardedLane, finalReply } = require("./dispatch.js");
+const { runEvent, laneGroups, dispatchDisabled, selectModules, hardExitStdout, guardFailOpen, guardedLane, finalReply, unchecked } = require("./dispatch.js");
+const { spawnSync } = require("node:child_process");
 
 let dir;
 const FIXTURES = {
@@ -242,6 +243,34 @@ describe("a guarded lane answers Claude Code's onFailure block only with exit 0 
     expect(finalReply({ code: 0, stdout: '{"systemMessage": oops', guarded: true })).toEqual({ code: 0, stdout: "" });
     expect(finalReply({ code: 0, stdout: '{"systemMessage": oops', guarded: false }).stdout).toBe('{"systemMessage": oops');
   });
+
+  test("a dispatcher that cannot check a call holds it back on the guards' lane only", () => {
+    const held = unchecked("PreToolUse", false, "the hook manifest could not be read", {});
+    expect(held.code).toBe(2);
+    expect(held.stderr).toMatch(/^\[devops\] the hook manifest could not be read, so no guard could check this call/);
+    expect(unchecked("PreToolUse", true, "x", {})).toEqual({ code: 0, stdout: "", stderr: "" });
+    expect(unchecked("PostToolUse", false, "x", {}).code).toBe(0);
+    expect(unchecked("PreToolUse", false, "x", { DEVOPS_GUARD_FAIL_OPEN: "1" }).code).toBe(0);
+  });
+
+  test("the real process: an unreadable manifest ends a PreToolUse call with exit 2, another event with 0", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "dispatch-nomanifest-"));
+    try {
+      const hooks = path.join(root, "hooks");
+      fs.cpSync(path.join(import.meta.dirname, ".."), hooks, { recursive: true, filter: (src) => !/node_modules|\.test\.[jt]sx?$|[\\/]mods([\\/]|$)/.test(src) });
+      fs.writeFileSync(path.join(hooks, "dispatch", "manifest.json"), "{ not json");
+      const go = (event, env = {}) => spawnSync(process.execPath, [path.join(hooks, "dispatch", "dispatch.js"), event], {
+        input: payload, encoding: "utf8", windowsHide: true, env: { ...process.env, DEVOPS_GUARD_FAIL_OPEN: "", ...env },
+      });
+      const pre = go("PreToolUse");
+      expect(pre.status).toBe(2);
+      expect(pre.stderr).toMatch(/hook manifest could not be read/);
+      expect(go("PostToolUse").status).toBe(0);
+      expect(go("PreToolUse", { DEVOPS_GUARD_FAIL_OPEN: "1" }).status).toBe(0);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  }, 30_000);
 
   test("a crashing module alone ends the real PreToolUse reply with 0, a crashing guard with 2", async () => {
     const open = await run([mod("throw.js")]);

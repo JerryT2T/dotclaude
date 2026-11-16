@@ -455,7 +455,7 @@ async function main() {
   // read a field from it, and most would throw on `hook.tool_name` — fail open here.
   if (payload === null && /^(?:null|true|false|-?\d[\d.eE+-]*|\[[\s\S]*\]|"[\s\S]*")$/.test(String(raw || '').replace(/^\uFEFF/, '').trim())) return { code: 0, stdout: '', stderr: '' };
   let manifest;
-  try { manifest = loadManifest(); } catch { return { code: 0, stdout: '', stderr: '' }; }
+  try { manifest = loadManifest(); } catch { return unchecked(event, fast, 'the hook manifest could not be read'); }
   const all = laneModules(manifest, event, PLUGIN_ROOT, { fast });
   if (!all.length) return { code: 0, stdout: '', stderr: '' };
   const modules = selectModules(manifest, event, payload, PLUGIN_ROOT, { fast });
@@ -463,6 +463,23 @@ async function main() {
   const lanes = loadLanes();
   const r = await runEvent({ event, raw, payload, modules, budgetS: eventBudgetS(all), startedAt, processMode: dispatchDisabled(), tele, lanes: lanes ? lanes[laneKey] : undefined });
   return { ...r, guarded: guardedLane(all, fast) };
+}
+
+/**
+ * The reply when the dispatcher itself cannot check a call (no readable
+ * manifest, an error of its own): on the PreToolUse main lane, where the
+ * fail-closed guards live, the call is held back; every other lane and
+ * DEVOPS_GUARD_FAIL_OPEN let it through as before.
+ */
+function unchecked(event, fast, why, env = process.env) {
+  if (event !== 'PreToolUse' || fast || guardFailOpen(env)) return { code: 0, stdout: '', stderr: '' };
+  return {
+    code: 2,
+    stdout: '',
+    stderr: `[devops] ${why}, so no guard could check this call and it is held back. Send the same call once more. ` +
+      'Held back again: stop and tell the user that the devops hooks are broken (a half-finished plugin update, or a defect); ' +
+      'DEVOPS_GUARD_FAIL_OPEN=1 in the environment of Claude Code lets calls through again.\n',
+  };
 }
 
 /**
@@ -485,6 +502,7 @@ function finalReply(r) {
   const code = r.code || 0;
   const stdout = r.stdout || '';
   if (!r.guarded) return { code, stdout };
+  // Only `{`-led text is read as JSON; anything else is plain text, which is no failure for Claude Code.
   const broken = String(stdout).trim().startsWith('{') && !parseJson(stdout);
   return { code: code === 2 ? 2 : 0, stdout: broken ? '' : stdout };
 }
@@ -506,10 +524,15 @@ if (require.main === module) {
     // unref'd timer only fires if a stray handle keeps the loop alive
     process.exitCode = out.code;
     setTimeout(() => { if (hard) kill(); else process.exit(out.code); }, 2000).unref();
-  }, () => { process.exitCode = 0; }); // the dispatcher fails open on an error of its own
+  }, () => {
+    // an error of the dispatcher's own: open everywhere but on the guards' lane
+    const r = unchecked(String(process.argv[2] || ''), process.argv.includes('--fast'), 'the hook dispatcher failed');
+    if (r.stderr) process.stderr.write(r.stderr);
+    process.exitCode = r.code;
+  });
 }
 
 module.exports = {
-  moduleFile, loadManifest, loadLanes, laneGroups, eventModules, laneModules, eventBudgetS, selectModules, runEvent, dispatchDisabled, hardExitStdout, guardFailOpen, guardFailure, failClosed, guardedLane, finalReply,
+  moduleFile, loadManifest, loadLanes, laneGroups, eventModules, laneModules, eventBudgetS, selectModules, runEvent, dispatchDisabled, hardExitStdout, guardFailOpen, guardFailure, failClosed, guardedLane, finalReply, unchecked,
   DEFAULT_TIMEOUT_S, FAST_DEFAULT_TIMEOUT_S, HEADROOM_S, MIN_START_MS, TERMINATE_GRACE_MS, MANIFEST,
 };
