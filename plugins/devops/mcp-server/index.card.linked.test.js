@@ -128,3 +128,26 @@ describe("hand-off to an existing session (#1085)", () => {
     expect(r.buttons).not.toContain("Session öffnen");
   }, 30000);
 });
+
+// #1134: a read-only relay with nothing pending states the outcome, no question.
+describe("read-only analysis heading (#1134)", () => {
+  test("readOnly, no nextStep, no open points → no question, de and en", () => {
+    const de = render({ variant: "analysis", readOnly: true, answer: "Alles geshippt.", session_id: "ro-1" });
+    expect(de.heading).not.toMatch(/umsetzen oder Fragen/);
+    expect(de.heading).not.toContain("?");
+    expect(de.heading).toContain("nichts offen");
+    const en = render({ variant: "analysis", readOnly: true, lang: "en", answer: "All shipped.", session_id: "ro-2" });
+    expect(en.heading).not.toMatch(/questions/);
+    expect(en.heading).not.toContain("?");
+  }, 30000);
+
+  test("readOnly with a nextStep or an open point keeps the question", () => {
+    expect(render({ variant: "analysis", readOnly: true, nextStep: "Bau X.", answer: "a", session_id: "ro-3" }).heading).toContain("?");
+    expect(render({ variant: "analysis", answer: "a", session_id: "ro-4" }).heading).toMatch(/umsetzen oder Fragen\?/);
+  }, 30000);
+
+  test("a relay of a shipped linked session reads as released, without a question mark", () => {
+    const r = render({ variant: "analysis", readOnly: true, answer: "Doku ist geshippt.", session_id: "ro-5", linked: [L("Doku", "shipped")] });
+    expect(r.heading).not.toContain("?");
+  }, 30000);
+});

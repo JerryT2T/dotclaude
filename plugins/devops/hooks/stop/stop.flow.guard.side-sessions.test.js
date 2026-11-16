@@ -22,13 +22,17 @@ function project() {
 function cleanup(dir) {
   for (const d of [dir, dir + "-tmp"]) { try { fs.rmSync(d, { recursive: true, force: true }); } catch { /* best-effort */ } }
 }
-function transcript(dir, title, report, { marker = "[devops:handoff]" } = {}) {
+function transcript(dir, title, report, { marker = "[devops:handoff]", toolCall = null } = {}) {
   const p = path.join(dir, "transcript.jsonl");
   const lines = [
     { type: "user", message: { role: "user", content: "mach das" } },
     { type: "assistant", message: { role: "assistant", content: [{ type: "tool_use", id: "t1", name: "mcp__ccd_session__start_session", input: { title: "Doku", prompt: "Brief " + marker } }] } },
     { type: "user", message: { role: "user", content: [{ type: "tool_result", tool_use_id: "t1", content: [{ type: "text", text: `Started session "Doku" (session_id: ${ID}, name: x). It runs on its own.` }] }] } },
     { type: "user", message: { role: "user", content: NOTE(report) } },
+    ...(toolCall ? [
+      { type: "assistant", message: { role: "assistant", content: [{ type: "tool_use", id: "t2", name: toolCall.name, input: toolCall.input || {} }] } },
+      { type: "user", message: { role: "user", content: [{ type: "tool_result", tool_use_id: "t2", content: "ok" }] } },
+    ] : []),
     { type: "assistant", message: { role: "assistant", content: [{ type: "text", text: "Ok." }] } },
     { type: "custom-title", customTitle: title, sessionId: SESSION },
   ];
@@ -76,6 +80,23 @@ describe("stop.flow.guard — side-session note turns", () => {
         { type: "custom-title", customTitle: "⏳ Refactor", sessionId: SESSION },
       ].map((l) => JSON.stringify(l)).join("\n") + "\n");
       expect(await stop(dir, { transcript_path: p })).toContain("Interrupted");
+    } finally { cleanup(dir); }
+  });
+
+  // #1133: a tool call in the note turn must not cost the exemption.
+  test("note turn that made a read-only tool call: no card demanded", async () => {
+    const dir = project();
+    try {
+      const out = await stop(dir, { transcript_path: transcript(dir, "⏳ ➜ 🔗 Linked ┃ Refactor", "", { toolCall: { name: "ToolSearch", input: { query: "select:x" } } }) });
+      expect(out).not.toContain("Completion card required");
+    } finally { cleanup(dir); }
+  });
+
+  test("note turn that edited a file is not exempt (the guard blocks)", async () => {
+    const dir = project();
+    try {
+      const out = await stop(dir, { transcript_path: transcript(dir, "⏳ ➜ 🔗 Linked ┃ Refactor", "fertig", { toolCall: { name: "Edit", input: { file_path: path.join(dir, "a.js"), old_string: "a", new_string: "b" } } }) });
+      expect(JSON.parse(out).decision).toBe("block");
     } finally { cleanup(dir); }
   });
 });

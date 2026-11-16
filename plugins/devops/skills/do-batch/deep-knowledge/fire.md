@@ -163,8 +163,17 @@ Bündel:
      Befunde: <file:line facts, approach, traps from 4.3 | —>
   B2 …
 Konflikte / nicht machbar: <each one named, with the default taken or "offen">
-Offene Entscheidungen: <auto-concept only — the forks that made 4.6 route here>
+Offene Entscheidungen: <auto-concept only — the forks that made 4.6 route here, each tagged with its bundle (B1 …)>
+Flächen: <auto-concept only — getrennt: B1, B3 | B2 | B4 — bundles whose open decisions share no file and no design question, one group per surface; "eine" when they belong together>
 ```
+
+**Unrelated surfaces → name the split (#1131).** When the open decisions
+span two or more bundles that share no file and no design question (a
+gallery, a login page and an admin upload), the `Flächen:` line groups the
+bundles per surface. auto-concept turns each group into its own Etappe
+instead of mixing diametrically different topics as sub-pages of one round.
+Closely related surfaces (one screen family, variants of one component)
+stay one group.
 
 - **do-run** skips its question 1 ("Was?") on `--from=do-batch` — the answer
   is "Prompt umsetzen", with this plan as the prompt — and asks its remaining

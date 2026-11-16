@@ -19,6 +19,7 @@ import {
   isLoopbackHttpUrl,
   safeSessionId,
   APP_START_BUTTON,
+  wrapUpArgs,
 } from "./card-widget.js";
 
 const desktop = { CLAUDE_CODE_ENTRYPOINT: "claude-desktop" };
@@ -903,11 +904,12 @@ describe("cardWidgetInstruction", () => {
   });
 
   // #885: wrap_up's "write your closing message now" put a recap under the card.
-  test("names the wrap_up ordering: before the card, never after, card replaces the closing message", () => {
+  // #1132: wrap_up runs after the render (every gate passed), before the widget, with the card's decision.
+  test("names the wrap_up ordering: after the render, before the widget, never after; card replaces the closing message", () => {
     const text = cardWidgetInstruction(baseModel(), "", desktop);
-    expect(text).toMatch(/mcp__ccd_turn__wrap_up .*runs BEFORE render_completion_card, in an earlier message/);
-    expect(text).toMatch(/never alongside or after the widget/);
-    expect(text).toMatch(/stop\/check background tasks before the render/);
+    expect(text).toMatch(/mcp__ccd_turn__wrap_up .*runs ONCE, NOW — after this render, in its own message before the widget, never after it/);
+    expect(text).toContain('WRAP_UP_ARGS {"ask":"Shippen?","actions":[{"label":"ship"}]}');
+    expect(text).toMatch(/Stop\/check background tasks before the render/);
     expect(text).toMatch(/REPLACES wrap_up's "write your closing message now"/);
     expect(text).toMatch(/side sessions/);
   });
@@ -1039,5 +1041,41 @@ describe("AUD-032/033/034/037 widget fixes", () => {
     const en = cardWidgetHtml(baseModel({ lang: "en", resultLines: ["Page: http://localhost:5173/"] }), "");
     expect(en).toContain("Enter opens it directly, without Claude — costs no tokens.");
     expect(en).not.toContain("without a turn");
+  });
+});
+
+// #1132: the Desktop next-step box carries the card's own decision.
+describe("wrapUpArgs", () => {
+  test("ready card → ask from the heading, Ship as the reply", () => {
+    expect(wrapUpArgs(baseModel())).toEqual({ ask: "Shippen?", actions: [{ label: "ship" }] });
+  });
+
+  test("ready card with open points → Ship first, then the conclude button", () => {
+    const a = wrapUpArgs(baseModel({ replies: ["Doku ergänzen."] }));
+    expect(a.actions[0]).toEqual({ label: "ship" });
+    expect(a.actions).toHaveLength(2);
+    expect(a.actions[1].label.length).toBeLessThanOrEqual(24);
+  });
+
+  test("ship-successful with promotion → promote beta first, promote stable second", () => {
+    const a = wrapUpArgs(baseModel({ variant: "ship-successful", key: "ship-successful", buttonsKey: "ship-successful", promoteVersion: "0.379.0", heading: "👉 🚀 Released Alpha — v0.379.0 — nach Beta?" }));
+    expect(a.actions.map((x) => x.label)).toEqual(["promote beta 0.379.0", "promote stable 0.379.0"]);
+    expect(a.ask).toBe("v0.379.0 — nach Beta?");
+  });
+
+  test("a card with nothing to click → recap only (empty args)", () => {
+    expect(wrapUpArgs(baseModel({ buttonsKey: null }))).toEqual({});
+    expect(wrapUpArgs(baseModel({ buttonsKey: "ship-successful-plain" }))).toEqual({});
+    expect(wrapUpArgs(baseModel({ variant: "test-minimal" }))).toEqual({});
+    const text = cardWidgetInstruction(baseModel({ buttonsKey: null }), "", desktop);
+    expect(text).toMatch(/offers no decision: pass the `recap` alone/);
+    expect(text).not.toContain("WRAP_UP_ARGS");
+  });
+
+  test("long prompts fall back to the button label; ask stays within 100 chars", () => {
+    const a = wrapUpArgs(baseModel({ buttonsKey: "ready-red", heading: "👉 🔴 Ready — " + "x".repeat(150) + "?" }));
+    expect(a.actions[0]).toEqual({ label: "Fix" });
+    expect(a.ask.length).toBeLessThanOrEqual(100);
+    expect(a.ask.endsWith("?")).toBe(true);
   });
 });

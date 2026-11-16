@@ -1027,7 +1027,7 @@ function turnEndLines(hook, toolName) {
   try { turnState.set(hook.session_id, TURN_END_KEY, id); } catch { /* best effort — may repeat once */ }
   const call = `mcp__plugin_devops_dotclaude__render_completion_card (session_id:"${hook.session_id || ''}", cwd:"${hook.cwd || ''}")`;
   return [signal === 'wrap_up'
-    ? `[completion-flow] Turn ending: the completion card IS the closing message — ${call} now, show it, nothing after it.`
+    ? `[completion-flow] Turn ending: the completion card IS the closing message — ${call} now; its result names the WRAP_UP_ARGS (the card's decision) for one more mcp__ccd_turn__wrap_up before the widget (#1132), then show it, nothing after it.`
     : `[completion-flow] Last plan step done: no work left → end with ${call} now (no closing text).`];
 }
 
