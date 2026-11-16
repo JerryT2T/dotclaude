@@ -80,7 +80,8 @@ Desktop app the user does not see it. Write it to a script (self-elevating
 `SendUserFile`.
 
 Card placement (last output, nothing after it, the answer in the card's
-`answer` field, `wrap_up` and background tasks before it) is owned by the
+`answer` field, background tasks before it, `wrap_up` between the render and
+the widget with the card's own `WRAP_UP_ARGS`) is owned by the
 `render_completion_card` tool description — follow it, also in a side session.
 Quiet adds: a turn without a card answers in plain text as its last output;
 reply to the app's "[Your previous response had no visible output…]" nudge with

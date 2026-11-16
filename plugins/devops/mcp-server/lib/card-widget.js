@@ -305,6 +305,68 @@ export function buttonsFor(buttonsKey, lang = "de", opts = {}) {
   return buttons;
 }
 
+/** mcp__ccd_turn__wrap_up limits (the app's tool schema). */
+const WRAP_ASK_MAX = 100;
+const WRAP_LABEL_MAX = 24;
+
+/**
+ * The `ask` + `actions` for mcp__ccd_turn__wrap_up, derived from the card's
+ * own decision (#1132): the heading's question becomes `ask`, the card's
+ * primary button and one alternative become reply buttons, so the Desktop
+ * next-step box shows the same decision as the widget (and over Remote
+ * Control, where the widget scrolls away). A reply button sends its label,
+ * so the label is the button's prompt when that fits (`ship`,
+ * `promote beta 0.379.0`), else the button's own label. A card that offers
+ * nothing to click yields `{}` — recap only, the app draws no box.
+ *
+ * @param {object} model built by index.js#buildCardModel
+ * @returns {{ ask?: string, actions?: { label: string }[] }}
+ */
+export function wrapUpArgs(model) {
+  if (!model || model.variant === "test-minimal") return {};
+  const lang = model.lang === "en" ? "en" : "de";
+  const buttons = buttonsFor(model.buttonsKey, lang, { custom: model.customButtons, extra: model.extraButtons, version: model.promoteVersion, replies: model.replies, noShip: model.noShip, guideHandoff: model.guideHandoff, appStart: model.appStart, nextStep: model.nextStep, readOnly: model.readOnly });
+  if (!buttons.length) return {};
+  const ordered = [...buttons.filter((a) => a.primary), ...buttons.filter((a) => !a.primary)];
+  const labelOf = (a) => {
+    const p = String(a.prompt || "").trim();
+    const l = String(a.label || "").trim();
+    const pick = p && p.length <= WRAP_LABEL_MAX && !p.includes("\n") ? p : l;
+    return pick.length > WRAP_LABEL_MAX ? pick.slice(0, WRAP_LABEL_MAX - 1) + "…" : pick;
+  };
+  const actions = [];
+  for (const a of ordered) {
+    const label = labelOf(a);
+    if (label && !actions.some((x) => x.label === label)) actions.push({ label });
+    if (actions.length === 2) break;
+  }
+  if (!actions.length) return {};
+  // The heading minus its state glyphs and outcome word: "Fertig — shippen?".
+  const heading = String(model.heading || "")
+    .replace(/^(?:[^\p{L}\p{N}]+\s*)+/u, "")
+    .replace(/^[^—]*—\s*/, (m) => (/\?/.test(m) ? m : ""))
+    .trim();
+  let ask = /\?\s*$/.test(heading) ? heading : (heading ? heading.replace(/[.!]?\s*$/, "") + "?" : actions[0].label + "?");
+  if (ask.length > WRAP_ASK_MAX) ask = ask.slice(0, WRAP_ASK_MAX - 2) + "…?";
+  return { ask, actions };
+}
+
+/**
+ * The wrap_up step of the CARD WIDGET block (#1132): the block only exists
+ * once the render passed every gate, so mcp__ccd_turn__wrap_up runs ONCE,
+ * here — after the render, before the widget — carrying the card's own
+ * decision, and a pregate rejection can no longer strand an earlier wrap_up.
+ */
+function wrapUpLine(model) {
+  const args = wrapUpArgs(model);
+  const has = args.ask && args.actions && args.actions.length;
+  return "mcp__ccd_turn__wrap_up (if the app offers it) runs ONCE, NOW — after this render, in its own message before the widget, never after it; " +
+    (has
+      ? "pass exactly these fields plus your own 2–3 sentence `recap`: WRAP_UP_ARGS " + JSON.stringify(args) + " (the card's decision, so the next-step box shows it; no other ask or buttons). "
+      : "this card offers no decision: pass the `recap` alone (no ask, no actions). ") +
+    "A wrap_up earlier in this turn does not count — call it again here. ";
+}
+
 /** A ship button's prompt ("ship", "Ship trotzdem …"). */
 function isShipPrompt(prompt) {
   return /^ship\b/i.test(String(prompt || ""));
@@ -697,8 +759,8 @@ export function cardWidgetInstruction(model, repoUrl, env = process.env, { widge
     "call mcp__visualize__show_widget with title \"completion_card_body\", " +
     "loading_messages [\"Card wird geladen\"], widget_code = EXACTLY the block below (verbatim). " +
     "No text after it; reply nothing to the app's one \"no visible output\" nudge.\n" +
-    "mcp__ccd_turn__wrap_up (if the app requires it) runs BEFORE render_completion_card, in an earlier message — never alongside or after the widget; " +
-    "stop/check background tasks before the render too, no tool call after the widget. The widget REPLACES wrap_up's \"write your closing message now\" " +
+    wrapUpLine(model) +
+    "Stop/check background tasks before the render, no tool call after the widget. The widget REPLACES wrap_up's \"write your closing message now\" " +
     "(also in side sessions: the wrap_up recap already reaches the parent) — no closing message, no recap under it.\n" +
     "The answer to the user's question belongs in render_completion_card's `answer` field (#757) — drawn inside this widget; " +
     "prose before the widget can be collapsed by the app; no recap of the card.\n" +

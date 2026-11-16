@@ -3254,7 +3254,7 @@ server.registerTool(
       "On the Desktop app the result carries a CARD WIDGET block instead: that " +
       "show_widget call IS the card — mandatory, the LAST action of the turn, no text after it, " +
       "and the app's one no-output nudge that follows gets an empty reply; " +
-      "mcp__ccd_turn__wrap_up goes BEFORE the render in an earlier message, never after the card; background tasks are stopped/checked before it — " +
+      "mcp__ccd_turn__wrap_up goes AFTER this render and BEFORE the widget, once, with the WRAP_UP_ARGS the CARD WIDGET block names (the card's own decision, #1132) — never after the card; background tasks are stopped/checked before the render — " +
       "the card replaces wrap_up's closing message (side sessions too), nothing follows it; " +
       "the visible title line is only for a failed call. " +
       "WHEN: call it once ALL work is done, as the first action of the closing step; pass " +
