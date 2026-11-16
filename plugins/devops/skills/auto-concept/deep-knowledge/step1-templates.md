@@ -172,9 +172,21 @@ with an overview table carrying a recommendation column and jump links
    **Etappen (stages) — optional.** In round 1 propose Etappen (e.g. use cases →
    structure → design → animation) only when content, UX or visual dependencies
    make that sensible (a later stage depends on the answers of an earlier one).
-   Never mandatory: a concept without Etappen stays valid, and the user may merge
-   stages. One exception: a do-batch start whose open decisions span unrelated
-   surfaces declares one Etappe per surface (§ Step 0.5 — Started from do-batch).
+   For such dependent stages they are never mandatory: a concept without
+   Etappen stays valid, and the user may merge stages.
+
+   **Unrelated topics → Etappen, always.** A concept whose request or open
+   decisions span two or more topics that have nothing to do with each other
+   declares **one Etappe per topic group** in round 1 and works them through
+   one after another, whatever started it — a direct prompt, a do-batch
+   hand-off, another skill — and whatever its mode (design, decision, mixed).
+   Never one round that mixes them. Topics are unrelated when no answer in one
+   changes an option in another: no shared file, screen family or question.
+   Closely related topics (one screen family, variants of one component, one
+   decision with its sub-questions) stay in one round. For a do-batch start the
+   groups come from the hand-off (§ Step 0.5 — Started from do-batch); for
+   every other start derive them from the request. The order is a reading
+   order, not a dependency, and the implement order at the end stays ONE.
 
    *Declaring them:* `page.json` gets `"stages": [{ "id": "A", "name": "Use Cases" }, …]`
    (or `concept-build.js init … --stages "A:Use Cases,B:Struktur"`) — 1 to 7 entries, ids

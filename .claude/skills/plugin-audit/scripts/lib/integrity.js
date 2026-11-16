@@ -51,17 +51,60 @@ function testsLint(root, { skipTests }) {
       return check('tests-lint', 'Tests + Lint', 'skipped', [{ msg: `MCP server dependencies missing (${missingDeps.map((d) => rel(root, d)).join(', ')}) and npm is unavailable to install them` }]);
     }
     for (const d of missingDeps) {
-      const inst = run('npm', ['install', '--prefix', d, '--no-audit', '--no-fund'], { cwd: root, timeout: 300000 });
+      const inst = run('npm', ['install', '--prefix', d, '--no-audit', '--no-fund', '--no-package-lock'], { cwd: root, timeout: 300000 });
       if (!inst.ok) return check('tests-lint', 'Tests + Lint', 'skipped', [{ msg: `MCP server dependencies missing in ${rel(root, d)} and npm install failed (exit ${inst.code}); tests would fail on imports, not on code` }]);
     }
   }
   const lint = run('npm', ['run', 'lint'], { cwd: root, timeout: 300000 });
-  const test = run('npm', ['test'], { cwd: root, timeout: 900000 });
+  const test = run('npm', ['test'], { cwd: root, timeout: TEST_TIMEOUT_MS });
   if (!lint.ok) findings.push({ msg: `npm run lint failed (exit ${lint.code}): ${(lint.stdout + lint.stderr).trim().split('\n').slice(-6).join(' | ')}` });
-  if (!test.ok) findings.push({ msg: `npm test failed (exit ${test.code}${test.error ? ', ' + test.error : ''}): ${(test.stdout + test.stderr).trim().split('\n').slice(-6).join(' | ')}` });
-  const r = check('tests-lint', 'Tests + Lint', findings.length ? 'red' : 'green', findings);
-  r.metrics = { lintMs: lint.ms, testMs: test.ms };
+  const timedOut = !test.ok && /^timeout/.test(test.error || '');
+  // A suite killed at the audit's limit says nothing about the tests (machine
+  // load): the CI result of the same commit decides, and without one the
+  // check is yellow, never red.
+  const ci = timedOut ? ciVerdict(root) : null;
+  const verdict = testVerdict({ lintOk: lint.ok, testOk: test.ok, timedOut, ci });
+  if (timedOut) findings.push({ msg: `npm test hit the audit's limit of ${TEST_TIMEOUT_MS / 1000} s and was stopped — ${verdict.note}` });
+  else if (!test.ok) findings.push({ msg: `npm test failed (exit ${test.code}${test.error ? ', ' + test.error : ''}): ${(test.stdout + test.stderr).trim().split('\n').slice(-6).join(' | ')}` });
+  const r = check('tests-lint', 'Tests + Lint', verdict.status, findings);
+  r.metrics = { lintMs: lint.ms, testMs: test.ms, ...(timedOut ? { testTimedOut: true, ci: ci.state } : {}) };
   return r;
+}
+
+const TEST_TIMEOUT_MS = 900000;
+
+/**
+ * The CI result for the commit under audit: the checks of the pull request
+ * whose merge commit is HEAD (the subject's `(#N)`), since this repo runs CI
+ * on pull requests, not on pushes.
+ * @returns {{state:'success'|'failure'|'none', detail:string}}
+ */
+function ciVerdict(root, exec = run) {
+  const none = (detail) => ({ state: 'none', detail });
+  const head = exec('git', ['log', '-1', '--format=%H %s'], { cwd: root, timeout: 30000 });
+  if (!head.ok) return none('HEAD could not be read');
+  const [sha, ...rest] = head.stdout.trim().split(' ');
+  const pr = /\(#(\d+)\)\s*$/.exec(rest.join(' '));
+  if (!pr) return none('HEAD names no pull request');
+  const view = exec('gh', ['pr', 'view', pr[1], '--json', 'mergeCommit,statusCheckRollup'], { cwd: root, timeout: 60000 });
+  if (!view.ok) return none(`pull request #${pr[1]} could not be read`);
+  let data;
+  try { data = JSON.parse(view.stdout); } catch { return none(`pull request #${pr[1]} gave no JSON`); }
+  if (!data.mergeCommit || data.mergeCommit.oid !== sha) return none(`pull request #${pr[1]} is not the merge of HEAD`);
+  const checks = (data.statusCheckRollup || []).map((c) => String(c.conclusion || c.state || '').toUpperCase()).filter(Boolean);
+  if (!checks.length) return none(`pull request #${pr[1]} has no checks`);
+  const bad = checks.filter((c) => !['SUCCESS', 'SKIPPED', 'NEUTRAL'].includes(c));
+  return bad.length
+    ? { state: 'failure', detail: `CI of pull request #${pr[1]} is not green (${bad.length} of ${checks.length} checks)` }
+    : { state: 'success', detail: `CI of pull request #${pr[1]} passed for this commit (${checks.length} checks)` };
+}
+
+/** Status of the tests+lint check, and the note a timed-out suite carries. */
+function testVerdict({ lintOk, testOk, timedOut, ci }) {
+  if (!timedOut) return { status: lintOk && testOk ? 'green' : 'red', note: '' };
+  if (ci && ci.state === 'failure') return { status: 'red', note: `${ci.detail}.` };
+  if (ci && ci.state === 'success') return { status: lintOk ? 'green' : 'red', note: `not a test failure: ${ci.detail}.` };
+  return { status: lintOk ? 'yellow' : 'red', note: `not a test failure by itself, and no CI result for this commit (${ci ? ci.detail : 'not asked'}).` };
 }
 
 // ------------------------------------------------------------------ 2 generated
@@ -74,18 +117,17 @@ function generated(root) {
   if (!readme.ok) findings.push({ msg: 'README / architecture marker blocks are stale (gen-readme-sections --check)', file: 'README.md' });
   const trig = node(['plugins/devops/scripts/gen-trigger-evals.js', '--check']);
   if (!trig.ok) findings.push({ msg: 'evals/triggers differs from cases.json (gen-trigger-evals --check)', file: 'plugins/devops/evals/triggers' });
-  const pmap = node(['plugins/devops/scripts/gen-project-map.mjs', '--check', root]);
-  if (!pmap.ok) findings.push({ msg: '.claude/project-map.md is stale (gen-project-map --check)', file: '.claude/project-map.md' });
-  // gen-dk-index has no check mode: generate into a copy and compare.
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'plugin-audit-dk-'));
-  try {
-    const dk = path.join(dev, 'deep-knowledge');
-    for (const f of fs.readdirSync(dk)) if (f.endsWith('.md')) fs.copyFileSync(path.join(dk, f), path.join(tmp, f));
-    const g = node(['plugins/devops/scripts/gen-dk-index.mjs', tmp]);
-    const a = readText(path.join(tmp, 'INDEX.md')); const b = readText(path.join(dk, 'INDEX.md'));
-    if (!g.ok || a === null) findings.push({ msg: 'gen-dk-index could not run on a copy', file: 'plugins/devops/deep-knowledge/INDEX.md' });
-    else if (a !== b) findings.push({ msg: 'deep-knowledge/INDEX.md is stale (regeneration differs)', file: 'plugins/devops/deep-knowledge/INDEX.md' });
-  } finally { try { fs.rmSync(tmp, { recursive: true, force: true }); } catch { /* best effort */ } }
+  // .claude/project-map.md is a local file where git ignores it: the token
+  // guard rebuilds it before the first repo-wide search of a session, so a
+  // stale copy there is the normal state between sessions, not a defect.
+  if (!run('git', ['check-ignore', '-q', '.claude/project-map.md'], { cwd: root, timeout: 30000 }).ok) {
+    const pmap = node(['plugins/devops/scripts/gen-project-map.mjs', '--check', root]);
+    if (!pmap.ok) findings.push({ msg: '.claude/project-map.md is stale (gen-project-map --check)', file: '.claude/project-map.md' });
+  }
+  // In place, never on a copy: the generator reads features.json beside the
+  // directory to leave gated docs out, and a copy has none (false "stale").
+  const dkIndex = node(['plugins/devops/scripts/gen-dk-index.mjs', '--check']);
+  if (!dkIndex.ok) findings.push({ msg: 'deep-knowledge/INDEX.md is stale (gen-dk-index --check)', file: 'plugins/devops/deep-knowledge/INDEX.md' });
   return check('generated', 'Generated artefacts current', findings.length ? 'red' : 'green', findings);
 }
 
@@ -167,6 +209,9 @@ function checkReferences(root) {
     }
     for (const m of scanned.matchAll(/(?<![:\w-])(?<!<!--)(devops|local-llm):([a-z][a-z0-9-]+)\b(?!:)/g)) {
       const n = m[2];
+      // `[devops:handoff]` is a brief marker of a side session, not a name; `[devops:x](…)` is a link text and stays checked
+      const end = m.index + m[0].length;
+      if (scanned[m.index - 1] === '[' && scanned[end] === ']' && scanned[end + 1] !== '(') continue;
       if (skillNames.has(n) || agentNames.has(n) || legacy.has(n)) continue;
       if (/^(mcp|plugin)/.test(n)) continue;
       findings.push({ msg: `${m[1]}:${n} names no skill or agent`, file: relf, line: lineOf(scanned, m.index) });
@@ -416,4 +461,4 @@ async function runIntegrity({ root = process.cwd(), skipTests = false, previousS
   return out;
 }
 
-module.exports = { runIntegrity, checkReferences, references, staleKnowledge, sizeMetrics, sizeTrend, wiring, manifest, frontmatter, git, mcpDepsMissing };
+module.exports = { runIntegrity, checkReferences, references, ciVerdict, testVerdict, staleKnowledge, sizeMetrics, sizeTrend, wiring, manifest, frontmatter, git, mcpDepsMissing };

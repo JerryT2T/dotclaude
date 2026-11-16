@@ -38,6 +38,15 @@
         "hooks/lib/token-log.js"
       ]
     },
+    "bash-output-filter": {
+      "minChannel": "alpha",
+      "summary": "Rewrites plain test/build/lint commands so only the summary and the failure lines reach the context; the full output goes to a file (bypassPermissions only)",
+      "docs": [],
+      "scripts": [
+        "scripts/run-filtered.js",
+        "hooks/pre-tool-use/pre.bash.output-filter.js"
+      ]
+    },
     "claude-mods": {
       "minChannel": "alpha",
       "summary": "Display-only Claude Code mods: agent pane, budget and context band, ship/CI pane, branch-hygiene status, notice toasts, and the fork-cache spike command",

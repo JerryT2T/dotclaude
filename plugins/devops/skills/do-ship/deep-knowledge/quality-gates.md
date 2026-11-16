@@ -116,7 +116,7 @@ artifacts). Same source = same hash. Used for:
 ## Early CI-quota probe (before the test scope is chosen)
 
 Exhausted GitHub Actions minutes are detected up front, not after a 10-minute
-wait. `lib/ci-quota-probe.js` (`probeCiQuota`) runs as the first stage of
+wait. `mcp-server/ship/lib/ci-quota-probe.js` (`probeCiQuota`) runs as the first stage of
 `ship_run` after preflight, before `ship_build` picks its test scope:
 
 - It reads the repo's newest workflow runs (`actions/runs?per_page=5`), their

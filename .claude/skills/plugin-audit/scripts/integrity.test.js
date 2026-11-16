@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 
 const require = createRequire(import.meta.url);
-const { checkReferences, sizeTrend, wiring, mcpDepsMissing } = require('./lib/integrity.js');
+const { checkReferences, sizeTrend, wiring, mcpDepsMissing, ciVerdict, testVerdict } = require('./lib/integrity.js');
 const { hookCommandPath } = require('./lib/util.js');
 const { frontmatter, mcpToolsOfSource } = require('./lib/footprint.js');
 
@@ -46,6 +46,40 @@ describe('plugin-audit integrity', () => {
     expect(f.file).toBe('plugins/devops/deep-knowledge/a.md');
     expect(f.line).toBe(2);
     fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  it('a bracketed brief marker is not a name, a bracketed link text still is', () => {
+    const root = tree({
+      'plugins/devops/skills/foo/SKILL.md': '---\nname: foo\ndescription: x\n---\n',
+      'plugins/devops/deep-knowledge/a.md': [
+        'the brief carries `[devops:handoff]` or [devops:deliver] and then',
+        'a link [devops:ghost-link](a.md) and a bare devops:ghost-bare',
+      ].join('\n'),
+    });
+    const msgs = checkReferences(root).map((f) => f.msg);
+    expect(msgs).toEqual(['devops:ghost-link names no skill or agent', 'devops:ghost-bare names no skill or agent']);
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  it('a test run stopped at the limit takes the CI result of the same commit, and is never red by itself', () => {
+    const ok = (stdout) => ({ ok: true, stdout });
+    const gh = (rollup, oid = 'abc123') => (cmd) => (cmd === 'git'
+      ? ok('abc123 feat: something (#42)\n')
+      : ok(JSON.stringify({ mergeCommit: { oid }, statusCheckRollup: rollup })));
+    expect(ciVerdict('.', gh([{ conclusion: 'SUCCESS' }, { conclusion: 'SKIPPED' }]))).toMatchObject({ state: 'success' });
+    expect(ciVerdict('.', gh([{ conclusion: 'SUCCESS' }, { conclusion: 'FAILURE' }]))).toMatchObject({ state: 'failure' });
+    expect(ciVerdict('.', gh([{ conclusion: 'SUCCESS' }], 'other'))).toMatchObject({ state: 'none' });
+    expect(ciVerdict('.', gh([]))).toMatchObject({ state: 'none' });
+    expect(ciVerdict('.', () => ok('abc123 chore: no pr here\n'))).toMatchObject({ state: 'none' });
+    expect(ciVerdict('.', (cmd) => (cmd === 'git' ? ok('abc123 x (#7)\n') : { ok: false, stdout: '' }))).toMatchObject({ state: 'none' });
+
+    const timedOut = { lintOk: true, testOk: false, timedOut: true };
+    expect(testVerdict({ ...timedOut, ci: { state: 'success', detail: 'CI passed' } }).status).toBe('green');
+    expect(testVerdict({ ...timedOut, ci: { state: 'failure', detail: 'CI red' } }).status).toBe('red');
+    expect(testVerdict({ ...timedOut, ci: { state: 'none', detail: 'no pr' } })).toMatchObject({ status: 'yellow', note: expect.stringMatching(/not a test failure/) });
+    expect(testVerdict({ ...timedOut, lintOk: false, ci: { state: 'success', detail: 'CI passed' } }).status).toBe('red');
+    expect(testVerdict({ lintOk: true, testOk: false, timedOut: false }).status).toBe('red');
+    expect(testVerdict({ lintOk: true, testOk: true, timedOut: false }).status).toBe('green');
   });
 
   it('size trend flags growth over 10 percent against the previous audit', () => {

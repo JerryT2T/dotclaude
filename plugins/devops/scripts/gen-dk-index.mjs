@@ -1,13 +1,16 @@
 #!/usr/bin/env node
 /**
  * @script gen-dk-index
- * @version 0.1.0
+ * @version 0.2.0
  * @plugin devops
  * @description Generates deep-knowledge/INDEX.md from all .md files in the directory.
  *   Reads the first heading and first description line from each file.
  *   Called automatically by ship_build; can also be run standalone.
  *
- *   Usage: node scripts/gen-dk-index.mjs [deep-knowledge-dir]
+ *   Usage: node scripts/gen-dk-index.mjs [--check] [deep-knowledge-dir]
+ *   --check writes nothing and exits 1 when INDEX.md differs from what would
+ *   be generated. Always run it on the real directory: a copy has no
+ *   features.json beside it, so gated docs would count as missing rows.
  */
 
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -54,7 +57,7 @@ function gatedDocNames(dkDir) {
     .map((p) => p.replace(/^deep-knowledge\//, "")));
 }
 
-function generate(dir) {
+function generate(dir, { check = false } = {}) {
   const dkDir = resolve(dir);
   const gated = gatedDocNames(dkDir);
   const files = readdirSync(dkDir)
@@ -97,6 +100,11 @@ function generate(dir) {
     return false;
   }
 
+  if (check) {
+    console.error("[gen-dk-index] INDEX.md is stale or missing");
+    process.exit(1);
+  }
+
   writeFileSync(outPath, index, "utf8");
   console.error(
     `[gen-dk-index] INDEX.md generated (${files.length} entries)`,
@@ -104,4 +112,5 @@ function generate(dir) {
   return true;
 }
 
-generate(process.argv[2] || DEFAULT_DIR);
+const args = process.argv.slice(2);
+generate(args.find((a) => !a.startsWith("--")) || DEFAULT_DIR, { check: args.includes("--check") });
