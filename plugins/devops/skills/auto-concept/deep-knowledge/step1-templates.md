@@ -32,6 +32,18 @@ decision, both → mixed) — skip the question. Never drop a coverage line:
 the list travels into the page unchanged. Implementation then runs through
 the implement click (`auto-agents`), not through a second do-run.
 
+*Unrelated surfaces → a staged concept (#1131).* When the open decisions span
+two or more unrelated surfaces — the hand-off's `Flächen:` line names
+separate groups, or the bundles with open design decisions share no file and
+no design question — round 1 declares **one Etappe per surface group**
+(§ Etappen below, `stages` in `page.json`, every round section with its
+`data-stage`), never one `data-design-set="topics"` round with the
+different surfaces as sub-pages. Each Etappe runs its own round sequence;
+the A→D order is a reading order, not a dependency. Closely related surfaces
+(one screen family, variants of one component) may still share a round. The
+coverage list, the `Bündel:` section and the single implement order at the
+end travel unchanged — the Etappen split the decisions, not the build.
+
 The mode is decided **once per concept**, not once per iteration. Later
 iterations (Step 5c) still pick their own template through the 1a check —
 the mode only says which templates are in scope. Feedback that pulls the
@@ -161,7 +173,8 @@ with an overview table carrying a recommendation column and jump links
    structure → design → animation) only when content, UX or visual dependencies
    make that sensible (a later stage depends on the answers of an earlier one).
    Never mandatory: a concept without Etappen stays valid, and the user may merge
-   stages.
+   stages. One exception: a do-batch start whose open decisions span unrelated
+   surfaces declares one Etappe per surface (§ Step 0.5 — Started from do-batch).
 
    *Declaring them:* `page.json` gets `"stages": [{ "id": "A", "name": "Use Cases" }, …]`
    (or `concept-build.js init … --stages "A:Use Cases,B:Struktur"`) — 1 to 7 entries, ids
