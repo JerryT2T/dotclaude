@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.380.0] — 2026-11-16
+
+### Added
+- auto-concept / do-batch: a do-batch hand-off whose open decisions span unrelated surfaces opens a staged concept, one Etappe per surface; the hand-off names the split in a `Flächen:` line; new eval case `do-batch-unrelated-surfaces` (#1131)
+
+### Fixed
+- Completion card: the Desktop next-step box now carries the card's own decision — the CARD WIDGET block names `WRAP_UP_ARGS`, and `wrap_up` runs once after the render, before the widget (#1132)
+- Card guard: side-session and task-notification turns keep their card exemption when the turn made a tool call (#1133)
+- Completion card: a read-only status relay with no next step and no open point states the outcome instead of asking "umsetzen oder Fragen?" (#1134)
+
 ## [0.379.0] — 2026-11-16
 
 ### Added
