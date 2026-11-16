@@ -7,7 +7,7 @@ import os from "node:os";
 import path from "node:path";
 
 const require = createRequire(import.meta.url);
-const { killRates, rollupPath, loadRollup, percentile, aggregateText } = require("./hook-telemetry.js");
+const { killRates, rollupPath, loadRollup, percentile, aggregateText, mergeDays } = require("./hook-telemetry.js");
 const LIB = path.dirname(fileURLToPath(import.meta.url));
 let dir;
 let file;
@@ -53,6 +53,16 @@ describe("hook-telemetry", () => {
     const ends = records().filter((r) => r.phase === "end");
     expect(ends.map((r) => [r.hook, r.outcome])).toEqual([["o", "output"], ["b", "block"], ["e", "error"]]);
     expect(ends[0].chars).toBe(5);
+  });
+
+  test("detail(): the names a hook gives land on its end record; invalid and repeated names are dropped", () => {
+    const tel = JSON.stringify(path.join(LIB, "hook-telemetry.js"));
+    runHook("dt.js", {}, `const t=require(${tel});t.detail(['card-missing','Bad Name','card-missing']);t.detail('pending-missing');t.detail(null);`);
+    const end = records().find((r) => r.phase === "end");
+    expect(end.detail).toEqual(["card-missing", "pending-missing"]);
+    fs.rmSync(file);
+    runHook("plain.js", {});
+    expect(records().find((r) => r.phase === "end").detail).toBeUndefined();
   });
 
   test("a disabled plugin writes nothing", () => {
@@ -109,6 +119,22 @@ describe("hook-telemetry", () => {
       expect(e).toMatchObject({ runs: 10, chars: 360, out: { output: 9, block: 1 } });
       expect(percentile(e.ms, 0.5)).toBe(5);
       expect(percentile(e.ms, 0.95)).toBe(1000);
+    });
+
+    test("detail names are counted per day and survive a merge; junk names never enter the rollup", () => {
+      const ts = Date.UTC(2026, 10, 2, 12);
+      const lines = [
+        end(ts, { detail: ["card-missing"] }),
+        end(ts, { detail: ["card-missing", "pending-missing"] }),
+        end(ts, { detail: ["Not A Name", 7] }),
+        end(ts),
+      ];
+      const days = aggregateText(lines.join("\n"), {});
+      expect(days["2026-11-02"]["h|Stop|"].detail).toEqual({ "card-missing": 2, "pending-missing": 1 });
+      const merged = mergeDays({ "2026-11-02": { "h|Stop|": { runs: 1, chars: 0, out: {}, ms: [], detail: { "card-missing": 3 } } } }, days);
+      expect(merged["2026-11-02"]["h|Stop|"].detail).toEqual({ "card-missing": 5, "pending-missing": 1 });
+      // An entry without detail stays without the field (older rollups read unchanged).
+      expect(aggregateText(end(ts), {})["2026-11-02"]["h|Stop|"].detail).toBeUndefined();
     });
 
     test("rotation folds the raw file into the rollup and prunes old days", () => {

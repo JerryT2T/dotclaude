@@ -49,7 +49,10 @@ describe("sub.plugin.root", () => {
     expect(out.hookSpecificOutput.hookEventName).toBe("SubagentStart");
     const ctx = out.hookSpecificOutput.additionalContext;
     expect(ctx).toContain(`{PLUGIN_ROOT} = ${PLUGIN_ROOT} `);
-    expect(ctx).toContain(`${PLUGIN_ROOT}/deep-knowledge/pre-mortem.md`);
+    // The root once, no example path: every subagent start pays for this line
+    // (evals/delegation/subagent-reads-plugin-doc pins that the doc is still found).
+    expect(ctx.split(PLUGIN_ROOT).length - 1).toBe(1);
+    expect(ctx).toContain("use this literal path");
     expect(ctx).toContain("Never search the filesystem");
     expect(ctx).not.toContain("\\");
   });

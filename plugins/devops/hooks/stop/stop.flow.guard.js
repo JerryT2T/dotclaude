@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook stop.flow.guard
- * @version 0.13.0
+ * @version 0.14.0
  * @event Stop
  * @plugin devops
  * @description Per-turn completion card + validation enforcement (the validation
@@ -371,6 +371,7 @@ process.stdin.on('end', () => {
       turnState.set(sessionId, ANSWER_ASKED_FLAG, String(Date.now()));
       decision.action = 'block';
       decision.reason = buildAnswerMissingReason();
+      decision.gates = ['answer-missing'];
       decision.answerBlock = true;
     } catch { /* unwritable marker → no block, never loop */ }
   }
@@ -399,6 +400,7 @@ process.stdin.on('end', () => {
       if (marked) {
         decision.action = 'block';
         decision.reason = interruptReason(next);
+        decision.gates = ['interrupted-title'];
         interruptBlock = true;
       }
     }
@@ -420,6 +422,7 @@ process.stdin.on('end', () => {
       if (reason) {
         decision.action = 'block';
         decision.reason = reason;
+        decision.gates = ['title-mismatch'];
         interruptBlock = true;
       }
     }
@@ -435,6 +438,9 @@ process.stdin.on('end', () => {
       const pluginRoot = process.env.CLAUDE_PLUGIN_ROOT || path.resolve(__dirname, '..', '..');
       reason = `${renderFromFileInstruction(pendingCard, { pluginRoot, cwd: hook.cwd, sessionId })}\n\n${reason}`;
     }
+    // Which gate blocked goes into this run's telemetry record: the block is the
+    // expensive outcome (an extra model turn), and the report counts it per gate.
+    try { require('../lib/hook-telemetry').detail(decision.gates); } catch { /* telemetry is optional */ }
     process.stdout.write(JSON.stringify({
       decision: 'block',
       reason,

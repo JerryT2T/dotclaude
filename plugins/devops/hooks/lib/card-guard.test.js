@@ -200,6 +200,21 @@ describe("decideAction", () => {
     expect(d.reason).toMatch(/VERBATIM/);
   });
 
+  test("a block names its gates; several failing content gates are all named, a pass names none", () => {
+    const one = decideAction({ workHappened: true, cardRendered: false, stopHookActive: false, substantial: false });
+    expect(one.gates).toEqual(["card-missing"]);
+    const two = decideAction({
+      workHappened: true, cardRendered: true, stopHookActive: false, substantial: false,
+      validationPending: true, validationAttested: false,
+      openTasksKnown: true, openTaskNames: ["devops:qax"], pendingAttested: false,
+    });
+    expect(two.action).toBe("block");
+    expect(two.gates).toEqual(["validation-missing", "pending-missing"]);
+    const pass = decideAction({ workHappened: true, cardRendered: true, stopHookActive: false, substantial: false });
+    expect(pass.action).toBe("pass");
+    expect(pass.gates).toBeUndefined();
+  });
+
   test("substantial prose + no card + no work → BLOCK", () => {
     const d = decideAction({
       workHappened: false,

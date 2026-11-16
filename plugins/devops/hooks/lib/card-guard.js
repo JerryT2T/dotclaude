@@ -584,7 +584,8 @@ function lastUserEntryText(transcriptContent) {
  * @param {boolean} [s.widgetCalled]   — show_widget was called this turn; undefined when the
  *                                     transcript could not be read (#451)
  * @returns {{ action: 'block' | 'pass', resetFlags: boolean, reason?: string, exempt?: string,
- *             warning?: string, newCardSignature?: string|null }}
+ *             warning?: string, newCardSignature?: string|null, gates?: string[] }}
+ *   `gates` names every gate a block failed (e.g. `card-missing`, `pending-missing`).
  */
 function decideAction({
   workHappened, cardRendered, stopHookActive, substantial, silent,
@@ -656,7 +657,7 @@ function decideAction({
   // 20-min pause step) keeps the plain exemption.
   if (guideActive && !cardRendered) {
     if (guideLoopLive) {
-      return { action: 'block', resetFlags: false, reason: buildGuideLoopReason() };
+      return { action: 'block', resetFlags: false, reason: buildGuideLoopReason(), gates: ['guide-loop'] };
     }
     return { action: 'pass', resetFlags: true, exempt: 'guide-active' };
   }
@@ -667,6 +668,7 @@ function decideAction({
       action: 'block',
       resetFlags: false, // keep flags so the post-render stop hook sees consistent state
       reason: buildBlockReason(pluginRoot, { completionMcpDown }),
+      gates: ['card-missing'],
     };
   }
 
@@ -681,6 +683,7 @@ function decideAction({
       action: 'block',
       resetFlags: false,
       reason: buildNotRelayedReason(foreignTitle),
+      gates: ['card-not-relayed'],
     };
   }
 
@@ -696,6 +699,7 @@ function decideAction({
       action: 'block',
       resetFlags: false,
       reason: buildWidgetSkippedReason(widgetFile),
+      gates: ['widget-skipped'],
     };
   }
 
@@ -710,6 +714,7 @@ function decideAction({
         action: 'block',
         resetFlags: false,
         reason: buildDuplicateCardReason(),
+        gates: ['duplicate-card'],
       };
     }
   }
@@ -719,6 +724,9 @@ function decideAction({
   // to hide every later one — a card blocked for its title then passed with
   // an undeclared background task or an open requirement gap.
   const failures = [];
+  // One short id per failing gate, in the same order: hook telemetry counts them
+  // (lib/hook-telemetry detail), so the report shows which gate blocks how often.
+  const gates = [];
 
   // Gate 3 — card content quality (design § 5.1 - § 5.3): title status
   // words, result-line count/subject, points count. Only checked once a card
@@ -726,22 +734,23 @@ function decideAction({
   if (cardRendered && cardText) {
     const title = extractCardTitle(cardText);
     const statusWord = titleStatusWordViolation(title);
-    if (statusWord) failures.push(buildTitleStatusWordReason(statusWord));
+    if (statusWord) { failures.push(buildTitleStatusWordReason(statusWord)); gates.push('title-status-word'); }
 
     const resultLines = extractResultLines(cardText);
     const resultViolation = resultLinesViolation(resultLines);
-    if (resultViolation) failures.push(buildResultLinesReason(resultViolation));
+    if (resultViolation) { failures.push(buildResultLinesReason(resultViolation)); gates.push('result-lines'); }
 
     const heading = (cardText.match(/^##\s+.*$/m) || [])[0] || '';
     const points = extractPoints(cardText);
     const pointViolation = pointsViolation(points, heading);
-    if (pointViolation) failures.push(buildPointsReason(pointViolation));
+    if (pointViolation) { failures.push(buildPointsReason(pointViolation)); gates.push('points'); }
   }
 
   // Gate 4 — validation must be attested for a code-change turn. Only checked
   // once a card exists, since the `validation` field is part of the card.
   if (cardRendered && active && validationPending && !validationAttested) {
     failures.push(buildValidationReason());
+    gates.push('validation-missing');
   }
 
   // Gate 4b — a requirement that waits on nobody is Claude's own gap: close
@@ -752,7 +761,7 @@ function decideAction({
     // `pending` is taken at its word instead of declared finished.
     const openTasks = openTasksKnown === false ? null : (openTaskNames || []).length;
     const { gaps } = classify(validationOpen, { openTasks });
-    if (gaps.length > 0) failures.push(buildValidationGapsReason(gaps, openTaskNames || []));
+    if (gaps.length > 0) { failures.push(buildValidationGapsReason(gaps, openTaskNames || [])); gates.push('validation-gaps'); }
   }
 
   // Gate 5 — a card rendered while background subagents / tasks are STILL
@@ -763,13 +772,15 @@ function decideAction({
   const open = openTaskNames || [];
   if (cardRendered && open.length > 0 && !pendingAttested) {
     failures.push(buildPendingReason(open));
+    gates.push('pending-missing');
   } else if (cardRendered && open.length > 0 && trailingText) {
     // The card carried `pending`; the defect is the prose under it (#886).
     failures.push(buildTextAfterCardReason(open));
+    gates.push('text-after-card');
   }
 
   if (failures.length > 0) {
-    return { action: 'block', resetFlags: false, reason: combineReasons(failures) };
+    return { action: 'block', resetFlags: false, reason: combineReasons(failures), gates };
   }
 
   // Line budget (design § 2.4 / § 5.4) — reported, never enforced here.
