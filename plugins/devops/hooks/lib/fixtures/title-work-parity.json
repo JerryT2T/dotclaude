@@ -1,0 +1,1082 @@
+[
+ {
+  "transcript": "none",
+  "title": null,
+  "prompt": "Fix the login button",
+  "out": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__get_session {session_id:\\\"self\\\"} in the first tool batch of this turn; title non-empty and starting with none of ⏳ 👉 🟩 🟥 🟦 🔴 📥 → mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"⏳ ➜ 🤖 Solo ┃ \\\" + title} with the next batch.\\nDeferred → ToolSearch \\\"select:mcp__ccd_session_mgmt__get_session,mcp__ccd_session_mgmt__set_session_title\\\" first. Unavailable or failing: skip silently. Do not mention this to the user.\",\"sessionTitle\":\"⏳ ➜ 🤖 Solo ┃ Fix the login button\"}}"
+ },
+ {
+  "transcript": "none",
+  "title": null,
+  "prompt": "ship it",
+  "out": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__get_session {session_id:\\\"self\\\"} in the first tool batch of this turn; title non-empty and starting with none of ⏳ 👉 🟩 🟥 🟦 🔴 📥 → mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"⏳ ➜ 🚀 Shipping ┃ \\\" + title} with the next batch.\\nDeferred → ToolSearch \\\"select:mcp__ccd_session_mgmt__get_session,mcp__ccd_session_mgmt__set_session_title\\\" first. Unavailable or failing: skip silently. Do not mention this to the user.\",\"sessionTitle\":\"⏳ ➜ 🚀 Shipping ┃ ship it\"}}"
+ },
+ {
+  "transcript": "none",
+  "title": null,
+  "prompt": "arbeite weiter, dann ship",
+  "out": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__get_session {session_id:\\\"self\\\"} in the first tool batch of this turn; title non-empty and starting with none of ⏳ 👉 🟩 🟥 🟦 🔴 📥 → mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"⏳ ➜ 🤖 Solo ┃ \\\" + title} with the next batch.\\nDeferred → ToolSearch \\\"select:mcp__ccd_session_mgmt__get_session,mcp__ccd_session_mgmt__set_session_title\\\" first. Unavailable or failing: skip silently. Do not mention this to the user.\",\"sessionTitle\":\"⏳ ➜ 🤖 Solo ┃ arbeite weiter, dann ship\"}}"
+ },
+ {
+  "transcript": "none",
+  "title": null,
+  "prompt": "<task-notification>done</task-notification>",
+  "out": "[prompt.flow.title-work] New work in this session.\nBefore any other tool call, once, Desktop app only:\n  mcp__ccd_session_mgmt__get_session {session_id:\"self\"} → title.\n  If the title is empty or starts with a known \"<status> ➜ <activity> <Word> ┃ \" prefix (status icon one of ⏳ 👉 🟩 🟥 🟦 🔴; also the older \"<status> ┃ <activity> <Word> \" and \"<status> <activity> <Word> – \" forms, with ⏸️ too), the bare \"⏳ \", or a legacy \"<icon> <Word> – \" (Word: Working, Concept, Batch, Shipping, Shipped, Released, Released Alpha, Released Beta, Released Stable, Promoted Beta, Promoted Stable, Test, Started, Ready, Blocked, Aborted, Analysis, Done, Paused, Paused until restart, Paused until reboot, Paused until limit reset) other than \"⏳ Working – \": do nothing —\n  a mode or a card owns it (this turn is no user prompt — an open concept page keeps its prefix, an outcome stays).\n  Else strip every leading a known \"<status> ➜ <activity> <Word> ┃ \" prefix (status icon one of ⏳ 👉 🟩 🟥 🟦 🔴; also the older \"<status> ┃ <activity> <Word> \" and \"<status> <activity> <Word> – \" forms, with ⏸️ too), the bare \"⏳ \", or a legacy \"<icon> <Word> – \" (Word: Working, Concept, Batch, Shipping, Shipped, Released, Released Alpha, Released Beta, Released Stable, Promoted Beta, Promoted Stable, Test, Started, Ready, Blocked, Aborted, Analysis, Done, Paused, Paused until restart, Paused until reboot, Paused until limit reset) — only those, never free text such as \"Fix Login – \" — and\n  mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title: \"⏳ ➜ 🤖 Solo ┃ \" + <stripped title>}.\nThe generic prefix names no process — the title text stays as it is.\nDeferred is not unavailable: if either tool is only in the deferred-tools list, load both once with\n  ToolSearch \"select:mcp__ccd_session_mgmt__get_session,mcp__ccd_session_mgmt__set_session_title\", then call them.\nIf either tool is truly unavailable (not even deferred) or fails: skip silently — no retry, no note, no fallback.\nDo not mention this to the user."
+ },
+ {
+  "transcript": "none",
+  "title": null,
+  "prompt": "Background (from the session that started this one):\nTask: x",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__get_session {session_id:\"self\"} in the first tool batch of this turn; title non-empty and starting with none of ⏳ 👉 🟩 🟥 🟦 🔴 📥 → mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ \" + title} with the next batch.\nDeferred → ToolSearch \"select:mcp__ccd_session_mgmt__get_session,mcp__ccd_session_mgmt__set_session_title\" first. Unavailable or failing: skip silently. Do not mention this to the user."
+ },
+ {
+  "transcript": "none",
+  "title": null,
+  "prompt": "/do-run backlog",
+  "out": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__get_session {session_id:\\\"self\\\"} in the first tool batch of this turn; title non-empty and starting with none of ⏳ 👉 🟩 🟥 🟦 🔴 📥 → mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"⏳ ➜ 🤖 Solo ┃ \\\" + title} with the next batch.\\nDeferred → ToolSearch \\\"select:mcp__ccd_session_mgmt__get_session,mcp__ccd_session_mgmt__set_session_title\\\" first. Unavailable or failing: skip silently. Do not mention this to the user.\",\"sessionTitle\":\"⏳ ➜ 🤖 Solo ┃ /do-run backlog\"}}"
+ },
+ {
+  "transcript": "none",
+  "title": "",
+  "prompt": "Fix the login button",
+  "out": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__get_session {session_id:\\\"self\\\"} in the first tool batch of this turn; title non-empty and starting with none of ⏳ 👉 🟩 🟥 🟦 🔴 📥 → mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"⏳ ➜ 🤖 Solo ┃ \\\" + title} with the next batch.\\nDeferred → ToolSearch \\\"select:mcp__ccd_session_mgmt__get_session,mcp__ccd_session_mgmt__set_session_title\\\" first. Unavailable or failing: skip silently. Do not mention this to the user.\",\"sessionTitle\":\"⏳ ➜ 🤖 Solo ┃ Fix the login button\"}}"
+ },
+ {
+  "transcript": "none",
+  "title": "",
+  "prompt": "ship it",
+  "out": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__get_session {session_id:\\\"self\\\"} in the first tool batch of this turn; title non-empty and starting with none of ⏳ 👉 🟩 🟥 🟦 🔴 📥 → mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"⏳ ➜ 🚀 Shipping ┃ \\\" + title} with the next batch.\\nDeferred → ToolSearch \\\"select:mcp__ccd_session_mgmt__get_session,mcp__ccd_session_mgmt__set_session_title\\\" first. Unavailable or failing: skip silently. Do not mention this to the user.\",\"sessionTitle\":\"⏳ ➜ 🚀 Shipping ┃ ship it\"}}"
+ },
+ {
+  "transcript": "none",
+  "title": "",
+  "prompt": "arbeite weiter, dann ship",
+  "out": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__get_session {session_id:\\\"self\\\"} in the first tool batch of this turn; title non-empty and starting with none of ⏳ 👉 🟩 🟥 🟦 🔴 📥 → mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"⏳ ➜ 🤖 Solo ┃ \\\" + title} with the next batch.\\nDeferred → ToolSearch \\\"select:mcp__ccd_session_mgmt__get_session,mcp__ccd_session_mgmt__set_session_title\\\" first. Unavailable or failing: skip silently. Do not mention this to the user.\",\"sessionTitle\":\"⏳ ➜ 🤖 Solo ┃ arbeite weiter, dann ship\"}}"
+ },
+ {
+  "transcript": "none",
+  "title": "",
+  "prompt": "<task-notification>done</task-notification>",
+  "out": "[prompt.flow.title-work] New work in this session.\nBefore any other tool call, once, Desktop app only:\n  mcp__ccd_session_mgmt__get_session {session_id:\"self\"} → title.\n  If the title is empty or starts with a known \"<status> ➜ <activity> <Word> ┃ \" prefix (status icon one of ⏳ 👉 🟩 🟥 🟦 🔴; also the older \"<status> ┃ <activity> <Word> \" and \"<status> <activity> <Word> – \" forms, with ⏸️ too), the bare \"⏳ \", or a legacy \"<icon> <Word> – \" (Word: Working, Concept, Batch, Shipping, Shipped, Released, Released Alpha, Released Beta, Released Stable, Promoted Beta, Promoted Stable, Test, Started, Ready, Blocked, Aborted, Analysis, Done, Paused, Paused until restart, Paused until reboot, Paused until limit reset) other than \"⏳ Working – \": do nothing —\n  a mode or a card owns it (this turn is no user prompt — an open concept page keeps its prefix, an outcome stays).\n  Else strip every leading a known \"<status> ➜ <activity> <Word> ┃ \" prefix (status icon one of ⏳ 👉 🟩 🟥 🟦 🔴; also the older \"<status> ┃ <activity> <Word> \" and \"<status> <activity> <Word> – \" forms, with ⏸️ too), the bare \"⏳ \", or a legacy \"<icon> <Word> – \" (Word: Working, Concept, Batch, Shipping, Shipped, Released, Released Alpha, Released Beta, Released Stable, Promoted Beta, Promoted Stable, Test, Started, Ready, Blocked, Aborted, Analysis, Done, Paused, Paused until restart, Paused until reboot, Paused until limit reset) — only those, never free text such as \"Fix Login – \" — and\n  mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title: \"⏳ ➜ 🤖 Solo ┃ \" + <stripped title>}.\nThe generic prefix names no process — the title text stays as it is.\nDeferred is not unavailable: if either tool is only in the deferred-tools list, load both once with\n  ToolSearch \"select:mcp__ccd_session_mgmt__get_session,mcp__ccd_session_mgmt__set_session_title\", then call them.\nIf either tool is truly unavailable (not even deferred) or fails: skip silently — no retry, no note, no fallback.\nDo not mention this to the user."
+ },
+ {
+  "transcript": "none",
+  "title": "",
+  "prompt": "Background (from the session that started this one):\nTask: x",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__get_session {session_id:\"self\"} in the first tool batch of this turn; title non-empty and starting with none of ⏳ 👉 🟩 🟥 🟦 🔴 📥 → mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ \" + title} with the next batch.\nDeferred → ToolSearch \"select:mcp__ccd_session_mgmt__get_session,mcp__ccd_session_mgmt__set_session_title\" first. Unavailable or failing: skip silently. Do not mention this to the user."
+ },
+ {
+  "transcript": "none",
+  "title": "",
+  "prompt": "/do-run backlog",
+  "out": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__get_session {session_id:\\\"self\\\"} in the first tool batch of this turn; title non-empty and starting with none of ⏳ 👉 🟩 🟥 🟦 🔴 📥 → mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"⏳ ➜ 🤖 Solo ┃ \\\" + title} with the next batch.\\nDeferred → ToolSearch \\\"select:mcp__ccd_session_mgmt__get_session,mcp__ccd_session_mgmt__set_session_title\\\" first. Unavailable or failing: skip silently. Do not mention this to the user.\",\"sessionTitle\":\"⏳ ➜ 🤖 Solo ┃ /do-run backlog\"}}"
+ },
+ {
+  "transcript": "none",
+  "title": "Fix login bug",
+  "prompt": "Fix the login button",
+  "out": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"⏳ ➜ 🤖 Solo ┃ Fix login bug\\\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\\nOnly deferred → ToolSearch \\\"select:mcp__ccd_session_mgmt__set_session_title\\\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"👉 ➜ ❓ Question ┃ Fix login bug\\\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\\nDo not mention this to the user.\",\"sessionTitle\":\"⏳ ➜ 🤖 Solo ┃ Fix login bug\"}}"
+ },
+ {
+  "transcript": "none",
+  "title": "Fix login bug",
+  "prompt": "ship it",
+  "out": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"⏳ ➜ 🚀 Shipping ┃ Fix login bug\\\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\\nOnly deferred → ToolSearch \\\"select:mcp__ccd_session_mgmt__set_session_title\\\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"👉 ➜ ❓ Question ┃ Fix login bug\\\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\\nThis is do-ship Pre-Step C done early.\\nDo not mention this to the user.\",\"sessionTitle\":\"⏳ ➜ 🚀 Shipping ┃ Fix login bug\"}}"
+ },
+ {
+  "transcript": "none",
+  "title": "Fix login bug",
+  "prompt": "arbeite weiter, dann ship",
+  "out": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"⏳ ➜ 🤖 Solo ┃ Fix login bug\\\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\\nOnly deferred → ToolSearch \\\"select:mcp__ccd_session_mgmt__set_session_title\\\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"👉 ➜ ❓ Question ┃ Fix login bug\\\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\\nDo not mention this to the user.\",\"sessionTitle\":\"⏳ ➜ 🤖 Solo ┃ Fix login bug\"}}"
+ },
+ {
+  "transcript": "none",
+  "title": "Fix login bug",
+  "prompt": "<task-notification>done</task-notification>",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ Fix login bug\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ Fix login bug\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nDo not mention this to the user."
+ },
+ {
+  "transcript": "none",
+  "title": "Fix login bug",
+  "prompt": "Background (from the session that started this one):\nTask: x",
+  "out": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"⏳ ➜ 🤖 Solo ┃ Fix login bug\\\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\\nOnly deferred → ToolSearch \\\"select:mcp__ccd_session_mgmt__set_session_title\\\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"👉 ➜ ❓ Question ┃ Fix login bug\\\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\\nDo not mention this to the user.\",\"sessionTitle\":\"⏳ ➜ 🤖 Solo ┃ Fix login bug\"}}"
+ },
+ {
+  "transcript": "none",
+  "title": "Fix login bug",
+  "prompt": "/do-run backlog",
+  "out": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"⏳ ➜ 🤖 Solo ┃ Fix login bug\\\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\\nOnly deferred → ToolSearch \\\"select:mcp__ccd_session_mgmt__set_session_title\\\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"👉 ➜ ❓ Question ┃ Fix login bug\\\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\\nDo not mention this to the user.\",\"sessionTitle\":\"⏳ ➜ 🤖 Solo ┃ Fix login bug\"}}"
+ },
+ {
+  "transcript": "none",
+  "title": "⏳ ➜ 🤖 Solo ┃ Fix login bug",
+  "prompt": "Fix the login button",
+  "out": ""
+ },
+ {
+  "transcript": "none",
+  "title": "⏳ ➜ 🤖 Solo ┃ Fix login bug",
+  "prompt": "ship it",
+  "out": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"⏳ ➜ 🚀 Shipping ┃ Fix login bug\\\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\\nOnly deferred → ToolSearch \\\"select:mcp__ccd_session_mgmt__set_session_title\\\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"👉 ➜ ❓ Question ┃ Fix login bug\\\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\\nThis is do-ship Pre-Step C done early.\\nDo not mention this to the user.\",\"sessionTitle\":\"⏳ ➜ 🚀 Shipping ┃ Fix login bug\"}}"
+ },
+ {
+  "transcript": "none",
+  "title": "⏳ ➜ 🤖 Solo ┃ Fix login bug",
+  "prompt": "arbeite weiter, dann ship",
+  "out": ""
+ },
+ {
+  "transcript": "none",
+  "title": "⏳ ➜ 🤖 Solo ┃ Fix login bug",
+  "prompt": "<task-notification>done</task-notification>",
+  "out": ""
+ },
+ {
+  "transcript": "none",
+  "title": "⏳ ➜ 🤖 Solo ┃ Fix login bug",
+  "prompt": "Background (from the session that started this one):\nTask: x",
+  "out": ""
+ },
+ {
+  "transcript": "none",
+  "title": "⏳ ➜ 🤖 Solo ┃ Fix login bug",
+  "prompt": "/do-run backlog",
+  "out": ""
+ },
+ {
+  "transcript": "none",
+  "title": "🟩 ➜ 🚀 Released ┃ v0.1.0 notes",
+  "prompt": "Fix the login button",
+  "out": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"⏳ ➜ 🤖 Solo ┃ 🟩 ➜ 🚀 Released ┃ v0.1.0 notes\\\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\\nOnly deferred → ToolSearch \\\"select:mcp__ccd_session_mgmt__set_session_title\\\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"👉 ➜ ❓ Question ┃ 🟩 ➜ 🚀 Released ┃ v0.1.0 notes\\\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\\nDo not mention this to the user.\",\"sessionTitle\":\"⏳ ➜ 🤖 Solo ┃ 🟩 ➜ 🚀 Released ┃ v0.1.0 notes\"}}"
+ },
+ {
+  "transcript": "none",
+  "title": "🟩 ➜ 🚀 Released ┃ v0.1.0 notes",
+  "prompt": "ship it",
+  "out": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"⏳ ➜ 🚀 Shipping ┃ 🟩 ➜ 🚀 Released ┃ v0.1.0 notes\\\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\\nOnly deferred → ToolSearch \\\"select:mcp__ccd_session_mgmt__set_session_title\\\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"👉 ➜ ❓ Question ┃ 🟩 ➜ 🚀 Released ┃ v0.1.0 notes\\\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\\nThis is do-ship Pre-Step C done early.\\nDo not mention this to the user.\",\"sessionTitle\":\"⏳ ➜ 🚀 Shipping ┃ 🟩 ➜ 🚀 Released ┃ v0.1.0 notes\"}}"
+ },
+ {
+  "transcript": "none",
+  "title": "🟩 ➜ 🚀 Released ┃ v0.1.0 notes",
+  "prompt": "arbeite weiter, dann ship",
+  "out": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"⏳ ➜ 🤖 Solo ┃ 🟩 ➜ 🚀 Released ┃ v0.1.0 notes\\\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\\nOnly deferred → ToolSearch \\\"select:mcp__ccd_session_mgmt__set_session_title\\\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"👉 ➜ ❓ Question ┃ 🟩 ➜ 🚀 Released ┃ v0.1.0 notes\\\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\\nDo not mention this to the user.\",\"sessionTitle\":\"⏳ ➜ 🤖 Solo ┃ 🟩 ➜ 🚀 Released ┃ v0.1.0 notes\"}}"
+ },
+ {
+  "transcript": "none",
+  "title": "🟩 ➜ 🚀 Released ┃ v0.1.0 notes",
+  "prompt": "<task-notification>done</task-notification>",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ 🟩 ➜ 🚀 Released ┃ v0.1.0 notes\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ 🟩 ➜ 🚀 Released ┃ v0.1.0 notes\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nDo not mention this to the user."
+ },
+ {
+  "transcript": "none",
+  "title": "🟩 ➜ 🚀 Released ┃ v0.1.0 notes",
+  "prompt": "Background (from the session that started this one):\nTask: x",
+  "out": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"⏳ ➜ 🤖 Solo ┃ 🟩 ➜ 🚀 Released ┃ v0.1.0 notes\\\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\\nOnly deferred → ToolSearch \\\"select:mcp__ccd_session_mgmt__set_session_title\\\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"👉 ➜ ❓ Question ┃ 🟩 ➜ 🚀 Released ┃ v0.1.0 notes\\\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\\nDo not mention this to the user.\",\"sessionTitle\":\"⏳ ➜ 🤖 Solo ┃ 🟩 ➜ 🚀 Released ┃ v0.1.0 notes\"}}"
+ },
+ {
+  "transcript": "none",
+  "title": "🟩 ➜ 🚀 Released ┃ v0.1.0 notes",
+  "prompt": "/do-run backlog",
+  "out": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"⏳ ➜ 🤖 Solo ┃ 🟩 ➜ 🚀 Released ┃ v0.1.0 notes\\\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\\nOnly deferred → ToolSearch \\\"select:mcp__ccd_session_mgmt__set_session_title\\\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"👉 ➜ ❓ Question ┃ 🟩 ➜ 🚀 Released ┃ v0.1.0 notes\\\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\\nDo not mention this to the user.\",\"sessionTitle\":\"⏳ ➜ 🤖 Solo ┃ 🟩 ➜ 🚀 Released ┃ v0.1.0 notes\"}}"
+ },
+ {
+  "transcript": "none",
+  "title": "👉 ➜ 🧭 Concept ┃ Billing page",
+  "prompt": "Fix the login button",
+  "out": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"⏳ ➜ 🤖 Solo ┃ Billing page\\\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\\nOnly deferred → ToolSearch \\\"select:mcp__ccd_session_mgmt__set_session_title\\\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"👉 ➜ ❓ Question ┃ Billing page\\\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\\nThe concept prefix yields (Claude works now); if the concept page stays open after this turn, its completion card (concept field + cwd) sets it again.\\nDo not mention this to the user.\",\"sessionTitle\":\"⏳ ➜ 🤖 Solo ┃ Billing page\"}}"
+ },
+ {
+  "transcript": "none",
+  "title": "👉 ➜ 🧭 Concept ┃ Billing page",
+  "prompt": "ship it",
+  "out": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"⏳ ➜ 🚀 Shipping ┃ Billing page\\\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\\nOnly deferred → ToolSearch \\\"select:mcp__ccd_session_mgmt__set_session_title\\\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"👉 ➜ ❓ Question ┃ Billing page\\\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\\nThis is do-ship Pre-Step C done early.\\nThe concept prefix yields (Claude works now); if the concept page stays open after this turn, its completion card (concept field + cwd) sets it again.\\nDo not mention this to the user.\",\"sessionTitle\":\"⏳ ➜ 🚀 Shipping ┃ Billing page\"}}"
+ },
+ {
+  "transcript": "none",
+  "title": "👉 ➜ 🧭 Concept ┃ Billing page",
+  "prompt": "arbeite weiter, dann ship",
+  "out": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"⏳ ➜ 🤖 Solo ┃ Billing page\\\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\\nOnly deferred → ToolSearch \\\"select:mcp__ccd_session_mgmt__set_session_title\\\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"👉 ➜ ❓ Question ┃ Billing page\\\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\\nThe concept prefix yields (Claude works now); if the concept page stays open after this turn, its completion card (concept field + cwd) sets it again.\\nDo not mention this to the user.\",\"sessionTitle\":\"⏳ ➜ 🤖 Solo ┃ Billing page\"}}"
+ },
+ {
+  "transcript": "none",
+  "title": "👉 ➜ 🧭 Concept ┃ Billing page",
+  "prompt": "<task-notification>done</task-notification>",
+  "out": ""
+ },
+ {
+  "transcript": "none",
+  "title": "👉 ➜ 🧭 Concept ┃ Billing page",
+  "prompt": "Background (from the session that started this one):\nTask: x",
+  "out": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"⏳ ➜ 🤖 Solo ┃ Billing page\\\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\\nOnly deferred → ToolSearch \\\"select:mcp__ccd_session_mgmt__set_session_title\\\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"👉 ➜ ❓ Question ┃ Billing page\\\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\\nThe concept prefix yields (Claude works now); if the concept page stays open after this turn, its completion card (concept field + cwd) sets it again.\\nDo not mention this to the user.\",\"sessionTitle\":\"⏳ ➜ 🤖 Solo ┃ Billing page\"}}"
+ },
+ {
+  "transcript": "none",
+  "title": "👉 ➜ 🧭 Concept ┃ Billing page",
+  "prompt": "/do-run backlog",
+  "out": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"⏳ ➜ 🤖 Solo ┃ Billing page\\\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\\nOnly deferred → ToolSearch \\\"select:mcp__ccd_session_mgmt__set_session_title\\\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"👉 ➜ ❓ Question ┃ Billing page\\\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\\nThe concept prefix yields (Claude works now); if the concept page stays open after this turn, its completion card (concept field + cwd) sets it again.\\nDo not mention this to the user.\",\"sessionTitle\":\"⏳ ➜ 🤖 Solo ┃ Billing page\"}}"
+ },
+ {
+  "transcript": "none",
+  "title": "⏳ ➜ 🚀 Shipping ┃ Release x",
+  "prompt": "Fix the login button",
+  "out": ""
+ },
+ {
+  "transcript": "none",
+  "title": "⏳ ➜ 🚀 Shipping ┃ Release x",
+  "prompt": "ship it",
+  "out": ""
+ },
+ {
+  "transcript": "none",
+  "title": "⏳ ➜ 🚀 Shipping ┃ Release x",
+  "prompt": "arbeite weiter, dann ship",
+  "out": ""
+ },
+ {
+  "transcript": "none",
+  "title": "⏳ ➜ 🚀 Shipping ┃ Release x",
+  "prompt": "<task-notification>done</task-notification>",
+  "out": ""
+ },
+ {
+  "transcript": "none",
+  "title": "⏳ ➜ 🚀 Shipping ┃ Release x",
+  "prompt": "Background (from the session that started this one):\nTask: x",
+  "out": ""
+ },
+ {
+  "transcript": "none",
+  "title": "⏳ ➜ 🚀 Shipping ┃ Release x",
+  "prompt": "/do-run backlog",
+  "out": ""
+ },
+ {
+  "transcript": "none",
+  "title": "👉 ➜ 📚 Batch ┃ Sammeln",
+  "prompt": "Fix the login button",
+  "out": ""
+ },
+ {
+  "transcript": "none",
+  "title": "👉 ➜ 📚 Batch ┃ Sammeln",
+  "prompt": "ship it",
+  "out": ""
+ },
+ {
+  "transcript": "none",
+  "title": "👉 ➜ 📚 Batch ┃ Sammeln",
+  "prompt": "arbeite weiter, dann ship",
+  "out": ""
+ },
+ {
+  "transcript": "none",
+  "title": "👉 ➜ 📚 Batch ┃ Sammeln",
+  "prompt": "<task-notification>done</task-notification>",
+  "out": ""
+ },
+ {
+  "transcript": "none",
+  "title": "👉 ➜ 📚 Batch ┃ Sammeln",
+  "prompt": "Background (from the session that started this one):\nTask: x",
+  "out": ""
+ },
+ {
+  "transcript": "none",
+  "title": "👉 ➜ 📚 Batch ┃ Sammeln",
+  "prompt": "/do-run backlog",
+  "out": ""
+ },
+ {
+  "transcript": "none",
+  "title": "⏳ Working – old style",
+  "prompt": "Fix the login button",
+  "out": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"⏳ ➜ 🤖 Solo ┃ old style\\\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\\nOnly deferred → ToolSearch \\\"select:mcp__ccd_session_mgmt__set_session_title\\\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"👉 ➜ ❓ Question ┃ old style\\\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\\nDo not mention this to the user.\",\"sessionTitle\":\"⏳ ➜ 🤖 Solo ┃ old style\"}}"
+ },
+ {
+  "transcript": "none",
+  "title": "⏳ Working – old style",
+  "prompt": "ship it",
+  "out": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"⏳ ➜ 🚀 Shipping ┃ old style\\\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\\nOnly deferred → ToolSearch \\\"select:mcp__ccd_session_mgmt__set_session_title\\\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"👉 ➜ ❓ Question ┃ old style\\\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\\nThis is do-ship Pre-Step C done early.\\nDo not mention this to the user.\",\"sessionTitle\":\"⏳ ➜ 🚀 Shipping ┃ old style\"}}"
+ },
+ {
+  "transcript": "none",
+  "title": "⏳ Working – old style",
+  "prompt": "arbeite weiter, dann ship",
+  "out": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"⏳ ➜ 🤖 Solo ┃ old style\\\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\\nOnly deferred → ToolSearch \\\"select:mcp__ccd_session_mgmt__set_session_title\\\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"👉 ➜ ❓ Question ┃ old style\\\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\\nDo not mention this to the user.\",\"sessionTitle\":\"⏳ ➜ 🤖 Solo ┃ old style\"}}"
+ },
+ {
+  "transcript": "none",
+  "title": "⏳ Working – old style",
+  "prompt": "<task-notification>done</task-notification>",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ old style\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ old style\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nDo not mention this to the user."
+ },
+ {
+  "transcript": "none",
+  "title": "⏳ Working – old style",
+  "prompt": "Background (from the session that started this one):\nTask: x",
+  "out": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"⏳ ➜ 🤖 Solo ┃ old style\\\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\\nOnly deferred → ToolSearch \\\"select:mcp__ccd_session_mgmt__set_session_title\\\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"👉 ➜ ❓ Question ┃ old style\\\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\\nDo not mention this to the user.\",\"sessionTitle\":\"⏳ ➜ 🤖 Solo ┃ old style\"}}"
+ },
+ {
+  "transcript": "none",
+  "title": "⏳ Working – old style",
+  "prompt": "/do-run backlog",
+  "out": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"⏳ ➜ 🤖 Solo ┃ old style\\\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\\nOnly deferred → ToolSearch \\\"select:mcp__ccd_session_mgmt__set_session_title\\\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"👉 ➜ ❓ Question ┃ old style\\\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\\nDo not mention this to the user.\",\"sessionTitle\":\"⏳ ➜ 🤖 Solo ┃ old style\"}}"
+ },
+ {
+  "transcript": "none",
+  "title": "🟦 ➜ ✋ Paused ┃ Mods run",
+  "prompt": "Fix the login button",
+  "out": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"⏳ ➜ 🤖 Solo ┃ Mods run\\\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\\nOnly deferred → ToolSearch \\\"select:mcp__ccd_session_mgmt__set_session_title\\\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"👉 ➜ ❓ Question ┃ Mods run\\\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\\nDo not mention this to the user.\",\"sessionTitle\":\"⏳ ➜ 🤖 Solo ┃ Mods run\"}}"
+ },
+ {
+  "transcript": "none",
+  "title": "🟦 ➜ ✋ Paused ┃ Mods run",
+  "prompt": "ship it",
+  "out": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"⏳ ➜ 🚀 Shipping ┃ Mods run\\\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\\nOnly deferred → ToolSearch \\\"select:mcp__ccd_session_mgmt__set_session_title\\\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"👉 ➜ ❓ Question ┃ Mods run\\\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\\nThis is do-ship Pre-Step C done early.\\nDo not mention this to the user.\",\"sessionTitle\":\"⏳ ➜ 🚀 Shipping ┃ Mods run\"}}"
+ },
+ {
+  "transcript": "none",
+  "title": "🟦 ➜ ✋ Paused ┃ Mods run",
+  "prompt": "arbeite weiter, dann ship",
+  "out": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"⏳ ➜ 🤖 Solo ┃ Mods run\\\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\\nOnly deferred → ToolSearch \\\"select:mcp__ccd_session_mgmt__set_session_title\\\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"👉 ➜ ❓ Question ┃ Mods run\\\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\\nDo not mention this to the user.\",\"sessionTitle\":\"⏳ ➜ 🤖 Solo ┃ Mods run\"}}"
+ },
+ {
+  "transcript": "none",
+  "title": "🟦 ➜ ✋ Paused ┃ Mods run",
+  "prompt": "<task-notification>done</task-notification>",
+  "out": ""
+ },
+ {
+  "transcript": "none",
+  "title": "🟦 ➜ ✋ Paused ┃ Mods run",
+  "prompt": "Background (from the session that started this one):\nTask: x",
+  "out": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"⏳ ➜ 🤖 Solo ┃ Mods run\\\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\\nOnly deferred → ToolSearch \\\"select:mcp__ccd_session_mgmt__set_session_title\\\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"👉 ➜ ❓ Question ┃ Mods run\\\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\\nDo not mention this to the user.\",\"sessionTitle\":\"⏳ ➜ 🤖 Solo ┃ Mods run\"}}"
+ },
+ {
+  "transcript": "none",
+  "title": "🟦 ➜ ✋ Paused ┃ Mods run",
+  "prompt": "/do-run backlog",
+  "out": "{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"⏳ ➜ 🤖 Solo ┃ Mods run\\\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\\nOnly deferred → ToolSearch \\\"select:mcp__ccd_session_mgmt__set_session_title\\\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\\\"self\\\", title:\\\"👉 ➜ ❓ Question ┃ Mods run\\\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\\nDo not mention this to the user.\",\"sessionTitle\":\"⏳ ➜ 🤖 Solo ┃ Mods run\"}}"
+ },
+ {
+  "transcript": "fresh",
+  "title": null,
+  "prompt": "Fix the login button",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__get_session {session_id:\"self\"} in the first tool batch of this turn; title non-empty and starting with none of ⏳ 👉 🟩 🟥 🟦 🔴 📥 → mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ \" + title} with the next batch.\nDeferred → ToolSearch \"select:mcp__ccd_session_mgmt__get_session,mcp__ccd_session_mgmt__set_session_title\" first. Unavailable or failing: skip silently. Do not mention this to the user."
+ },
+ {
+  "transcript": "fresh",
+  "title": null,
+  "prompt": "ship it",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__get_session {session_id:\"self\"} in the first tool batch of this turn; title non-empty and starting with none of ⏳ 👉 🟩 🟥 🟦 🔴 📥 → mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🚀 Shipping ┃ \" + title} with the next batch.\nDeferred → ToolSearch \"select:mcp__ccd_session_mgmt__get_session,mcp__ccd_session_mgmt__set_session_title\" first. Unavailable or failing: skip silently. Do not mention this to the user."
+ },
+ {
+  "transcript": "fresh",
+  "title": null,
+  "prompt": "arbeite weiter, dann ship",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__get_session {session_id:\"self\"} in the first tool batch of this turn; title non-empty and starting with none of ⏳ 👉 🟩 🟥 🟦 🔴 📥 → mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ \" + title} with the next batch.\nDeferred → ToolSearch \"select:mcp__ccd_session_mgmt__get_session,mcp__ccd_session_mgmt__set_session_title\" first. Unavailable or failing: skip silently. Do not mention this to the user."
+ },
+ {
+  "transcript": "fresh",
+  "title": null,
+  "prompt": "<task-notification>done</task-notification>",
+  "out": "[prompt.flow.title-work] New work in this session.\nBefore any other tool call, once, Desktop app only:\n  mcp__ccd_session_mgmt__get_session {session_id:\"self\"} → title.\n  If the title is empty or starts with a known \"<status> ➜ <activity> <Word> ┃ \" prefix (status icon one of ⏳ 👉 🟩 🟥 🟦 🔴; also the older \"<status> ┃ <activity> <Word> \" and \"<status> <activity> <Word> – \" forms, with ⏸️ too), the bare \"⏳ \", or a legacy \"<icon> <Word> – \" (Word: Working, Concept, Batch, Shipping, Shipped, Released, Released Alpha, Released Beta, Released Stable, Promoted Beta, Promoted Stable, Test, Started, Ready, Blocked, Aborted, Analysis, Done, Paused, Paused until restart, Paused until reboot, Paused until limit reset) other than \"⏳ Working – \": do nothing —\n  a mode or a card owns it (this turn is no user prompt — an open concept page keeps its prefix, an outcome stays).\n  Else strip every leading a known \"<status> ➜ <activity> <Word> ┃ \" prefix (status icon one of ⏳ 👉 🟩 🟥 🟦 🔴; also the older \"<status> ┃ <activity> <Word> \" and \"<status> <activity> <Word> – \" forms, with ⏸️ too), the bare \"⏳ \", or a legacy \"<icon> <Word> – \" (Word: Working, Concept, Batch, Shipping, Shipped, Released, Released Alpha, Released Beta, Released Stable, Promoted Beta, Promoted Stable, Test, Started, Ready, Blocked, Aborted, Analysis, Done, Paused, Paused until restart, Paused until reboot, Paused until limit reset) — only those, never free text such as \"Fix Login – \" — and\n  mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title: \"⏳ ➜ 🤖 Solo ┃ \" + <stripped title>}.\nThe generic prefix names no process — the title text stays as it is.\nDeferred is not unavailable: if either tool is only in the deferred-tools list, load both once with\n  ToolSearch \"select:mcp__ccd_session_mgmt__get_session,mcp__ccd_session_mgmt__set_session_title\", then call them.\nIf either tool is truly unavailable (not even deferred) or fails: skip silently — no retry, no note, no fallback.\nDo not mention this to the user."
+ },
+ {
+  "transcript": "fresh",
+  "title": null,
+  "prompt": "Background (from the session that started this one):\nTask: x",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__get_session {session_id:\"self\"} in the first tool batch of this turn; title non-empty and starting with none of ⏳ 👉 🟩 🟥 🟦 🔴 📥 → mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ \" + title} with the next batch.\nDeferred → ToolSearch \"select:mcp__ccd_session_mgmt__get_session,mcp__ccd_session_mgmt__set_session_title\" first. Unavailable or failing: skip silently. Do not mention this to the user."
+ },
+ {
+  "transcript": "fresh",
+  "title": null,
+  "prompt": "/do-run backlog",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__get_session {session_id:\"self\"} in the first tool batch of this turn; title non-empty and starting with none of ⏳ 👉 🟩 🟥 🟦 🔴 📥 → mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ \" + title} with the next batch.\nDeferred → ToolSearch \"select:mcp__ccd_session_mgmt__get_session,mcp__ccd_session_mgmt__set_session_title\" first. Unavailable or failing: skip silently. Do not mention this to the user."
+ },
+ {
+  "transcript": "fresh",
+  "title": "",
+  "prompt": "Fix the login button",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__get_session {session_id:\"self\"} in the first tool batch of this turn; title non-empty and starting with none of ⏳ 👉 🟩 🟥 🟦 🔴 📥 → mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ \" + title} with the next batch.\nDeferred → ToolSearch \"select:mcp__ccd_session_mgmt__get_session,mcp__ccd_session_mgmt__set_session_title\" first. Unavailable or failing: skip silently. Do not mention this to the user."
+ },
+ {
+  "transcript": "fresh",
+  "title": "",
+  "prompt": "ship it",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__get_session {session_id:\"self\"} in the first tool batch of this turn; title non-empty and starting with none of ⏳ 👉 🟩 🟥 🟦 🔴 📥 → mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🚀 Shipping ┃ \" + title} with the next batch.\nDeferred → ToolSearch \"select:mcp__ccd_session_mgmt__get_session,mcp__ccd_session_mgmt__set_session_title\" first. Unavailable or failing: skip silently. Do not mention this to the user."
+ },
+ {
+  "transcript": "fresh",
+  "title": "",
+  "prompt": "arbeite weiter, dann ship",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__get_session {session_id:\"self\"} in the first tool batch of this turn; title non-empty and starting with none of ⏳ 👉 🟩 🟥 🟦 🔴 📥 → mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ \" + title} with the next batch.\nDeferred → ToolSearch \"select:mcp__ccd_session_mgmt__get_session,mcp__ccd_session_mgmt__set_session_title\" first. Unavailable or failing: skip silently. Do not mention this to the user."
+ },
+ {
+  "transcript": "fresh",
+  "title": "",
+  "prompt": "<task-notification>done</task-notification>",
+  "out": "[prompt.flow.title-work] New work in this session.\nBefore any other tool call, once, Desktop app only:\n  mcp__ccd_session_mgmt__get_session {session_id:\"self\"} → title.\n  If the title is empty or starts with a known \"<status> ➜ <activity> <Word> ┃ \" prefix (status icon one of ⏳ 👉 🟩 🟥 🟦 🔴; also the older \"<status> ┃ <activity> <Word> \" and \"<status> <activity> <Word> – \" forms, with ⏸️ too), the bare \"⏳ \", or a legacy \"<icon> <Word> – \" (Word: Working, Concept, Batch, Shipping, Shipped, Released, Released Alpha, Released Beta, Released Stable, Promoted Beta, Promoted Stable, Test, Started, Ready, Blocked, Aborted, Analysis, Done, Paused, Paused until restart, Paused until reboot, Paused until limit reset) other than \"⏳ Working – \": do nothing —\n  a mode or a card owns it (this turn is no user prompt — an open concept page keeps its prefix, an outcome stays).\n  Else strip every leading a known \"<status> ➜ <activity> <Word> ┃ \" prefix (status icon one of ⏳ 👉 🟩 🟥 🟦 🔴; also the older \"<status> ┃ <activity> <Word> \" and \"<status> <activity> <Word> – \" forms, with ⏸️ too), the bare \"⏳ \", or a legacy \"<icon> <Word> – \" (Word: Working, Concept, Batch, Shipping, Shipped, Released, Released Alpha, Released Beta, Released Stable, Promoted Beta, Promoted Stable, Test, Started, Ready, Blocked, Aborted, Analysis, Done, Paused, Paused until restart, Paused until reboot, Paused until limit reset) — only those, never free text such as \"Fix Login – \" — and\n  mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title: \"⏳ ➜ 🤖 Solo ┃ \" + <stripped title>}.\nThe generic prefix names no process — the title text stays as it is.\nDeferred is not unavailable: if either tool is only in the deferred-tools list, load both once with\n  ToolSearch \"select:mcp__ccd_session_mgmt__get_session,mcp__ccd_session_mgmt__set_session_title\", then call them.\nIf either tool is truly unavailable (not even deferred) or fails: skip silently — no retry, no note, no fallback.\nDo not mention this to the user."
+ },
+ {
+  "transcript": "fresh",
+  "title": "",
+  "prompt": "Background (from the session that started this one):\nTask: x",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__get_session {session_id:\"self\"} in the first tool batch of this turn; title non-empty and starting with none of ⏳ 👉 🟩 🟥 🟦 🔴 📥 → mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ \" + title} with the next batch.\nDeferred → ToolSearch \"select:mcp__ccd_session_mgmt__get_session,mcp__ccd_session_mgmt__set_session_title\" first. Unavailable or failing: skip silently. Do not mention this to the user."
+ },
+ {
+  "transcript": "fresh",
+  "title": "",
+  "prompt": "/do-run backlog",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__get_session {session_id:\"self\"} in the first tool batch of this turn; title non-empty and starting with none of ⏳ 👉 🟩 🟥 🟦 🔴 📥 → mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ \" + title} with the next batch.\nDeferred → ToolSearch \"select:mcp__ccd_session_mgmt__get_session,mcp__ccd_session_mgmt__set_session_title\" first. Unavailable or failing: skip silently. Do not mention this to the user."
+ },
+ {
+  "transcript": "fresh",
+  "title": "Fix login bug",
+  "prompt": "Fix the login button",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ Fix login bug\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ Fix login bug\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nDo not mention this to the user."
+ },
+ {
+  "transcript": "fresh",
+  "title": "Fix login bug",
+  "prompt": "ship it",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🚀 Shipping ┃ Fix login bug\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ Fix login bug\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nThis is do-ship Pre-Step C done early.\nDo not mention this to the user."
+ },
+ {
+  "transcript": "fresh",
+  "title": "Fix login bug",
+  "prompt": "arbeite weiter, dann ship",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ Fix login bug\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ Fix login bug\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nDo not mention this to the user."
+ },
+ {
+  "transcript": "fresh",
+  "title": "Fix login bug",
+  "prompt": "<task-notification>done</task-notification>",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ Fix login bug\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ Fix login bug\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nDo not mention this to the user."
+ },
+ {
+  "transcript": "fresh",
+  "title": "Fix login bug",
+  "prompt": "Background (from the session that started this one):\nTask: x",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ Fix login bug\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ Fix login bug\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nDo not mention this to the user."
+ },
+ {
+  "transcript": "fresh",
+  "title": "Fix login bug",
+  "prompt": "/do-run backlog",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ Fix login bug\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ Fix login bug\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nDo not mention this to the user."
+ },
+ {
+  "transcript": "fresh",
+  "title": "⏳ ➜ 🤖 Solo ┃ Fix login bug",
+  "prompt": "Fix the login button",
+  "out": ""
+ },
+ {
+  "transcript": "fresh",
+  "title": "⏳ ➜ 🤖 Solo ┃ Fix login bug",
+  "prompt": "ship it",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🚀 Shipping ┃ Fix login bug\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ Fix login bug\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nThis is do-ship Pre-Step C done early.\nDo not mention this to the user."
+ },
+ {
+  "transcript": "fresh",
+  "title": "⏳ ➜ 🤖 Solo ┃ Fix login bug",
+  "prompt": "arbeite weiter, dann ship",
+  "out": ""
+ },
+ {
+  "transcript": "fresh",
+  "title": "⏳ ➜ 🤖 Solo ┃ Fix login bug",
+  "prompt": "<task-notification>done</task-notification>",
+  "out": ""
+ },
+ {
+  "transcript": "fresh",
+  "title": "⏳ ➜ 🤖 Solo ┃ Fix login bug",
+  "prompt": "Background (from the session that started this one):\nTask: x",
+  "out": ""
+ },
+ {
+  "transcript": "fresh",
+  "title": "⏳ ➜ 🤖 Solo ┃ Fix login bug",
+  "prompt": "/do-run backlog",
+  "out": ""
+ },
+ {
+  "transcript": "fresh",
+  "title": "🟩 ➜ 🚀 Released ┃ v0.1.0 notes",
+  "prompt": "Fix the login button",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ 🟩 ➜ 🚀 Released ┃ v0.1.0 notes\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ 🟩 ➜ 🚀 Released ┃ v0.1.0 notes\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nDo not mention this to the user."
+ },
+ {
+  "transcript": "fresh",
+  "title": "🟩 ➜ 🚀 Released ┃ v0.1.0 notes",
+  "prompt": "ship it",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🚀 Shipping ┃ 🟩 ➜ 🚀 Released ┃ v0.1.0 notes\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ 🟩 ➜ 🚀 Released ┃ v0.1.0 notes\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nThis is do-ship Pre-Step C done early.\nDo not mention this to the user."
+ },
+ {
+  "transcript": "fresh",
+  "title": "🟩 ➜ 🚀 Released ┃ v0.1.0 notes",
+  "prompt": "arbeite weiter, dann ship",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ 🟩 ➜ 🚀 Released ┃ v0.1.0 notes\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ 🟩 ➜ 🚀 Released ┃ v0.1.0 notes\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nDo not mention this to the user."
+ },
+ {
+  "transcript": "fresh",
+  "title": "🟩 ➜ 🚀 Released ┃ v0.1.0 notes",
+  "prompt": "<task-notification>done</task-notification>",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ 🟩 ➜ 🚀 Released ┃ v0.1.0 notes\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ 🟩 ➜ 🚀 Released ┃ v0.1.0 notes\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nDo not mention this to the user."
+ },
+ {
+  "transcript": "fresh",
+  "title": "🟩 ➜ 🚀 Released ┃ v0.1.0 notes",
+  "prompt": "Background (from the session that started this one):\nTask: x",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ 🟩 ➜ 🚀 Released ┃ v0.1.0 notes\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ 🟩 ➜ 🚀 Released ┃ v0.1.0 notes\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nDo not mention this to the user."
+ },
+ {
+  "transcript": "fresh",
+  "title": "🟩 ➜ 🚀 Released ┃ v0.1.0 notes",
+  "prompt": "/do-run backlog",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ 🟩 ➜ 🚀 Released ┃ v0.1.0 notes\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ 🟩 ➜ 🚀 Released ┃ v0.1.0 notes\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nDo not mention this to the user."
+ },
+ {
+  "transcript": "fresh",
+  "title": "👉 ➜ 🧭 Concept ┃ Billing page",
+  "prompt": "Fix the login button",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ Billing page\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ Billing page\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nThe concept prefix yields (Claude works now); if the concept page stays open after this turn, its completion card (concept field + cwd) sets it again.\nDo not mention this to the user."
+ },
+ {
+  "transcript": "fresh",
+  "title": "👉 ➜ 🧭 Concept ┃ Billing page",
+  "prompt": "ship it",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🚀 Shipping ┃ Billing page\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ Billing page\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nThis is do-ship Pre-Step C done early.\nThe concept prefix yields (Claude works now); if the concept page stays open after this turn, its completion card (concept field + cwd) sets it again.\nDo not mention this to the user."
+ },
+ {
+  "transcript": "fresh",
+  "title": "👉 ➜ 🧭 Concept ┃ Billing page",
+  "prompt": "arbeite weiter, dann ship",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ Billing page\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ Billing page\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nThe concept prefix yields (Claude works now); if the concept page stays open after this turn, its completion card (concept field + cwd) sets it again.\nDo not mention this to the user."
+ },
+ {
+  "transcript": "fresh",
+  "title": "👉 ➜ 🧭 Concept ┃ Billing page",
+  "prompt": "<task-notification>done</task-notification>",
+  "out": ""
+ },
+ {
+  "transcript": "fresh",
+  "title": "👉 ➜ 🧭 Concept ┃ Billing page",
+  "prompt": "Background (from the session that started this one):\nTask: x",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ Billing page\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ Billing page\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nThe concept prefix yields (Claude works now); if the concept page stays open after this turn, its completion card (concept field + cwd) sets it again.\nDo not mention this to the user."
+ },
+ {
+  "transcript": "fresh",
+  "title": "👉 ➜ 🧭 Concept ┃ Billing page",
+  "prompt": "/do-run backlog",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ Billing page\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ Billing page\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nThe concept prefix yields (Claude works now); if the concept page stays open after this turn, its completion card (concept field + cwd) sets it again.\nDo not mention this to the user."
+ },
+ {
+  "transcript": "fresh",
+  "title": "⏳ ➜ 🚀 Shipping ┃ Release x",
+  "prompt": "Fix the login button",
+  "out": ""
+ },
+ {
+  "transcript": "fresh",
+  "title": "⏳ ➜ 🚀 Shipping ┃ Release x",
+  "prompt": "ship it",
+  "out": ""
+ },
+ {
+  "transcript": "fresh",
+  "title": "⏳ ➜ 🚀 Shipping ┃ Release x",
+  "prompt": "arbeite weiter, dann ship",
+  "out": ""
+ },
+ {
+  "transcript": "fresh",
+  "title": "⏳ ➜ 🚀 Shipping ┃ Release x",
+  "prompt": "<task-notification>done</task-notification>",
+  "out": ""
+ },
+ {
+  "transcript": "fresh",
+  "title": "⏳ ➜ 🚀 Shipping ┃ Release x",
+  "prompt": "Background (from the session that started this one):\nTask: x",
+  "out": ""
+ },
+ {
+  "transcript": "fresh",
+  "title": "⏳ ➜ 🚀 Shipping ┃ Release x",
+  "prompt": "/do-run backlog",
+  "out": ""
+ },
+ {
+  "transcript": "fresh",
+  "title": "👉 ➜ 📚 Batch ┃ Sammeln",
+  "prompt": "Fix the login button",
+  "out": ""
+ },
+ {
+  "transcript": "fresh",
+  "title": "👉 ➜ 📚 Batch ┃ Sammeln",
+  "prompt": "ship it",
+  "out": ""
+ },
+ {
+  "transcript": "fresh",
+  "title": "👉 ➜ 📚 Batch ┃ Sammeln",
+  "prompt": "arbeite weiter, dann ship",
+  "out": ""
+ },
+ {
+  "transcript": "fresh",
+  "title": "👉 ➜ 📚 Batch ┃ Sammeln",
+  "prompt": "<task-notification>done</task-notification>",
+  "out": ""
+ },
+ {
+  "transcript": "fresh",
+  "title": "👉 ➜ 📚 Batch ┃ Sammeln",
+  "prompt": "Background (from the session that started this one):\nTask: x",
+  "out": ""
+ },
+ {
+  "transcript": "fresh",
+  "title": "👉 ➜ 📚 Batch ┃ Sammeln",
+  "prompt": "/do-run backlog",
+  "out": ""
+ },
+ {
+  "transcript": "fresh",
+  "title": "⏳ Working – old style",
+  "prompt": "Fix the login button",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ old style\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ old style\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nDo not mention this to the user."
+ },
+ {
+  "transcript": "fresh",
+  "title": "⏳ Working – old style",
+  "prompt": "ship it",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🚀 Shipping ┃ old style\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ old style\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nThis is do-ship Pre-Step C done early.\nDo not mention this to the user."
+ },
+ {
+  "transcript": "fresh",
+  "title": "⏳ Working – old style",
+  "prompt": "arbeite weiter, dann ship",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ old style\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ old style\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nDo not mention this to the user."
+ },
+ {
+  "transcript": "fresh",
+  "title": "⏳ Working – old style",
+  "prompt": "<task-notification>done</task-notification>",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ old style\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ old style\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nDo not mention this to the user."
+ },
+ {
+  "transcript": "fresh",
+  "title": "⏳ Working – old style",
+  "prompt": "Background (from the session that started this one):\nTask: x",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ old style\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ old style\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nDo not mention this to the user."
+ },
+ {
+  "transcript": "fresh",
+  "title": "⏳ Working – old style",
+  "prompt": "/do-run backlog",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ old style\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ old style\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nDo not mention this to the user."
+ },
+ {
+  "transcript": "fresh",
+  "title": "🟦 ➜ ✋ Paused ┃ Mods run",
+  "prompt": "Fix the login button",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ Mods run\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ Mods run\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nDo not mention this to the user."
+ },
+ {
+  "transcript": "fresh",
+  "title": "🟦 ➜ ✋ Paused ┃ Mods run",
+  "prompt": "ship it",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🚀 Shipping ┃ Mods run\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ Mods run\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nThis is do-ship Pre-Step C done early.\nDo not mention this to the user."
+ },
+ {
+  "transcript": "fresh",
+  "title": "🟦 ➜ ✋ Paused ┃ Mods run",
+  "prompt": "arbeite weiter, dann ship",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ Mods run\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ Mods run\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nDo not mention this to the user."
+ },
+ {
+  "transcript": "fresh",
+  "title": "🟦 ➜ ✋ Paused ┃ Mods run",
+  "prompt": "<task-notification>done</task-notification>",
+  "out": ""
+ },
+ {
+  "transcript": "fresh",
+  "title": "🟦 ➜ ✋ Paused ┃ Mods run",
+  "prompt": "Background (from the session that started this one):\nTask: x",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ Mods run\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ Mods run\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nDo not mention this to the user."
+ },
+ {
+  "transcript": "fresh",
+  "title": "🟦 ➜ ✋ Paused ┃ Mods run",
+  "prompt": "/do-run backlog",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ Mods run\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ Mods run\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nDo not mention this to the user."
+ },
+ {
+  "transcript": "long",
+  "title": null,
+  "prompt": "Fix the login button",
+  "out": "[prompt.flow.title-work] New work in this session.\nBefore any other tool call, once, Desktop app only:\n  mcp__ccd_session_mgmt__get_session {session_id:\"self\"} → title.\n  If the title is empty or starts with \"👉 ➜ 📚 Batch ┃ \" (or the legacy \"📥 Batch – \" / \"👉 📥 Batch – \"): do nothing — batch mode owns it.\n  Else if it already starts with \"⏳ ➜ 🚀 Shipping ┃ \" (or the legacy \"🚀 Shipping – \"): do nothing — a ship is running and the\n  hourglass is only the fallback for work that is no named process.\n  Else if it starts with any other \"⏳ ➜ <activity> <Word> ┃ \" prefix (a running named process): do nothing.\n  Else if it already starts with \"⏳ ➜ 🤖 Solo ┃ \" (or a bare \"⏳ <title>\") and NOT \"⏳ Working – \": do nothing.\n  Else strip every leading a known \"<status> ➜ <activity> <Word> ┃ \" prefix (status icon one of ⏳ 👉 🟩 🟥 🟦 🔴; also the older \"<status> ┃ <activity> <Word> \" and \"<status> <activity> <Word> – \" forms, with ⏸️ too), the bare \"⏳ \", or a legacy \"<icon> <Word> – \" (Word: Working, Concept, Batch, Shipping, Shipped, Released, Released Alpha, Released Beta, Released Stable, Promoted Beta, Promoted Stable, Test, Started, Ready, Blocked, Aborted, Analysis, Done, Paused, Paused until restart, Paused until reboot, Paused until limit reset) — only those, never free text such as \"Fix Login – \" — and\n  mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title: \"⏳ ➜ 🤖 Solo ┃ \" + <stripped title>}.\nThe generic prefix names no process — the title text stays as it is.\nA \"👉 ➜ 🧭 Concept ┃ \" title yields too: it means the page waits for the user, and now Claude works.\nIf a concept page stays open after this turn, end the turn with its completion card (concept field + cwd) — that card sets the concept prefix again.\nDeferred is not unavailable: if either tool is only in the deferred-tools list, load both once with\n  ToolSearch \"select:mcp__ccd_session_mgmt__get_session,mcp__ccd_session_mgmt__set_session_title\", then call them.\nIf either tool is truly unavailable (not even deferred) or fails: skip silently — no retry, no note, no fallback.\nDo not mention this to the user."
+ },
+ {
+  "transcript": "long",
+  "title": null,
+  "prompt": "ship it",
+  "out": "[prompt.flow.title-work] New work in this session — a ship.\nBefore any other tool call, once, Desktop app only:\n  mcp__ccd_session_mgmt__get_session {session_id:\"self\"} → title.\n  If the title is empty or starts with \"👉 ➜ 📚 Batch ┃ \" (or the legacy \"📥 Batch – \" / \"👉 📥 Batch – \"): do nothing — batch mode owns it.\n  Else if it already starts with \"⏳ ➜ 🚀 Shipping ┃ \": do nothing — the ship is already marked.\n  Else strip every leading a known \"<status> ➜ <activity> <Word> ┃ \" prefix (status icon one of ⏳ 👉 🟩 🟥 🟦 🔴; also the older \"<status> ┃ <activity> <Word> \" and \"<status> <activity> <Word> – \" forms, with ⏸️ too), the bare \"⏳ \", or a legacy \"<icon> <Word> – \" (Word: Working, Concept, Batch, Shipping, Shipped, Released, Released Alpha, Released Beta, Released Stable, Promoted Beta, Promoted Stable, Test, Started, Ready, Blocked, Aborted, Analysis, Done, Paused, Paused until restart, Paused until reboot, Paused until limit reset) — only those, never free text such as \"Fix Login – \" — and\n  mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title: \"⏳ ➜ 🚀 Shipping ┃ \" + <stripped title>}.\nThe word is exactly \"Shipping\" — this is the do-ship skill's Pre-Step C done early; the skill finds the title marked and leaves it.\nA \"👉 ➜ 🧭 Concept ┃ \" title yields too: it means the page waits for the user, and now Claude works.\nIf a concept page stays open after this turn, end the turn with its completion card (concept field + cwd) — that card sets the concept prefix again.\nDeferred is not unavailable: if either tool is only in the deferred-tools list, load both once with\n  ToolSearch \"select:mcp__ccd_session_mgmt__get_session,mcp__ccd_session_mgmt__set_session_title\", then call them.\nIf either tool is truly unavailable (not even deferred) or fails: skip silently — no retry, no note, no fallback.\nDo not mention this to the user."
+ },
+ {
+  "transcript": "long",
+  "title": null,
+  "prompt": "arbeite weiter, dann ship",
+  "out": "[prompt.flow.title-work] New work in this session.\nBefore any other tool call, once, Desktop app only:\n  mcp__ccd_session_mgmt__get_session {session_id:\"self\"} → title.\n  If the title is empty or starts with \"👉 ➜ 📚 Batch ┃ \" (or the legacy \"📥 Batch – \" / \"👉 📥 Batch – \"): do nothing — batch mode owns it.\n  Else if it already starts with \"⏳ ➜ 🚀 Shipping ┃ \" (or the legacy \"🚀 Shipping – \"): do nothing — a ship is running and the\n  hourglass is only the fallback for work that is no named process.\n  Else if it starts with any other \"⏳ ➜ <activity> <Word> ┃ \" prefix (a running named process): do nothing.\n  Else if it already starts with \"⏳ ➜ 🤖 Solo ┃ \" (or a bare \"⏳ <title>\") and NOT \"⏳ Working – \": do nothing.\n  Else strip every leading a known \"<status> ➜ <activity> <Word> ┃ \" prefix (status icon one of ⏳ 👉 🟩 🟥 🟦 🔴; also the older \"<status> ┃ <activity> <Word> \" and \"<status> <activity> <Word> – \" forms, with ⏸️ too), the bare \"⏳ \", or a legacy \"<icon> <Word> – \" (Word: Working, Concept, Batch, Shipping, Shipped, Released, Released Alpha, Released Beta, Released Stable, Promoted Beta, Promoted Stable, Test, Started, Ready, Blocked, Aborted, Analysis, Done, Paused, Paused until restart, Paused until reboot, Paused until limit reset) — only those, never free text such as \"Fix Login – \" — and\n  mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title: \"⏳ ➜ 🤖 Solo ┃ \" + <stripped title>}.\nThe generic prefix names no process — the title text stays as it is.\nA \"👉 ➜ 🧭 Concept ┃ \" title yields too: it means the page waits for the user, and now Claude works.\nIf a concept page stays open after this turn, end the turn with its completion card (concept field + cwd) — that card sets the concept prefix again.\nDeferred is not unavailable: if either tool is only in the deferred-tools list, load both once with\n  ToolSearch \"select:mcp__ccd_session_mgmt__get_session,mcp__ccd_session_mgmt__set_session_title\", then call them.\nIf either tool is truly unavailable (not even deferred) or fails: skip silently — no retry, no note, no fallback.\nDo not mention this to the user."
+ },
+ {
+  "transcript": "long",
+  "title": null,
+  "prompt": "<task-notification>done</task-notification>",
+  "out": "[prompt.flow.title-work] New work in this session.\nBefore any other tool call, once, Desktop app only:\n  mcp__ccd_session_mgmt__get_session {session_id:\"self\"} → title.\n  If the title is empty or starts with a known \"<status> ➜ <activity> <Word> ┃ \" prefix (status icon one of ⏳ 👉 🟩 🟥 🟦 🔴; also the older \"<status> ┃ <activity> <Word> \" and \"<status> <activity> <Word> – \" forms, with ⏸️ too), the bare \"⏳ \", or a legacy \"<icon> <Word> – \" (Word: Working, Concept, Batch, Shipping, Shipped, Released, Released Alpha, Released Beta, Released Stable, Promoted Beta, Promoted Stable, Test, Started, Ready, Blocked, Aborted, Analysis, Done, Paused, Paused until restart, Paused until reboot, Paused until limit reset) other than \"⏳ Working – \": do nothing —\n  a mode or a card owns it (this turn is no user prompt — an open concept page keeps its prefix, an outcome stays).\n  Else strip every leading a known \"<status> ➜ <activity> <Word> ┃ \" prefix (status icon one of ⏳ 👉 🟩 🟥 🟦 🔴; also the older \"<status> ┃ <activity> <Word> \" and \"<status> <activity> <Word> – \" forms, with ⏸️ too), the bare \"⏳ \", or a legacy \"<icon> <Word> – \" (Word: Working, Concept, Batch, Shipping, Shipped, Released, Released Alpha, Released Beta, Released Stable, Promoted Beta, Promoted Stable, Test, Started, Ready, Blocked, Aborted, Analysis, Done, Paused, Paused until restart, Paused until reboot, Paused until limit reset) — only those, never free text such as \"Fix Login – \" — and\n  mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title: \"⏳ ➜ 🤖 Solo ┃ \" + <stripped title>}.\nThe generic prefix names no process — the title text stays as it is.\nDeferred is not unavailable: if either tool is only in the deferred-tools list, load both once with\n  ToolSearch \"select:mcp__ccd_session_mgmt__get_session,mcp__ccd_session_mgmt__set_session_title\", then call them.\nIf either tool is truly unavailable (not even deferred) or fails: skip silently — no retry, no note, no fallback.\nDo not mention this to the user."
+ },
+ {
+  "transcript": "long",
+  "title": null,
+  "prompt": "Background (from the session that started this one):\nTask: x",
+  "out": "[prompt.flow.title-work] New work in this session.\nBefore any other tool call, once, Desktop app only:\n  mcp__ccd_session_mgmt__get_session {session_id:\"self\"} → title.\n  If the title is empty or starts with \"👉 ➜ 📚 Batch ┃ \" (or the legacy \"📥 Batch – \" / \"👉 📥 Batch – \"): do nothing — batch mode owns it.\n  Else if it already starts with \"⏳ ➜ 🚀 Shipping ┃ \" (or the legacy \"🚀 Shipping – \"): do nothing — a ship is running and the\n  hourglass is only the fallback for work that is no named process.\n  Else if it starts with any other \"⏳ ➜ <activity> <Word> ┃ \" prefix (a running named process): do nothing.\n  Else if it already starts with \"⏳ ➜ 🤖 Solo ┃ \" (or a bare \"⏳ <title>\") and NOT \"⏳ Working – \": do nothing.\n  Else strip every leading a known \"<status> ➜ <activity> <Word> ┃ \" prefix (status icon one of ⏳ 👉 🟩 🟥 🟦 🔴; also the older \"<status> ┃ <activity> <Word> \" and \"<status> <activity> <Word> – \" forms, with ⏸️ too), the bare \"⏳ \", or a legacy \"<icon> <Word> – \" (Word: Working, Concept, Batch, Shipping, Shipped, Released, Released Alpha, Released Beta, Released Stable, Promoted Beta, Promoted Stable, Test, Started, Ready, Blocked, Aborted, Analysis, Done, Paused, Paused until restart, Paused until reboot, Paused until limit reset) — only those, never free text such as \"Fix Login – \" — and\n  mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title: \"⏳ ➜ 🤖 Solo ┃ \" + <stripped title>}.\nThe generic prefix names no process — the title text stays as it is.\nA \"👉 ➜ 🧭 Concept ┃ \" title yields too: it means the page waits for the user, and now Claude works.\nIf a concept page stays open after this turn, end the turn with its completion card (concept field + cwd) — that card sets the concept prefix again.\nDeferred is not unavailable: if either tool is only in the deferred-tools list, load both once with\n  ToolSearch \"select:mcp__ccd_session_mgmt__get_session,mcp__ccd_session_mgmt__set_session_title\", then call them.\nIf either tool is truly unavailable (not even deferred) or fails: skip silently — no retry, no note, no fallback.\nDo not mention this to the user."
+ },
+ {
+  "transcript": "long",
+  "title": null,
+  "prompt": "/do-run backlog",
+  "out": "[prompt.flow.title-work] New work in this session.\nBefore any other tool call, once, Desktop app only:\n  mcp__ccd_session_mgmt__get_session {session_id:\"self\"} → title.\n  If the title is empty or starts with \"👉 ➜ 📚 Batch ┃ \" (or the legacy \"📥 Batch – \" / \"👉 📥 Batch – \"): do nothing — batch mode owns it.\n  Else if it already starts with \"⏳ ➜ 🚀 Shipping ┃ \" (or the legacy \"🚀 Shipping – \"): do nothing — a ship is running and the\n  hourglass is only the fallback for work that is no named process.\n  Else if it starts with any other \"⏳ ➜ <activity> <Word> ┃ \" prefix (a running named process): do nothing.\n  Else if it already starts with \"⏳ ➜ 🤖 Solo ┃ \" (or a bare \"⏳ <title>\") and NOT \"⏳ Working – \": do nothing.\n  Else strip every leading a known \"<status> ➜ <activity> <Word> ┃ \" prefix (status icon one of ⏳ 👉 🟩 🟥 🟦 🔴; also the older \"<status> ┃ <activity> <Word> \" and \"<status> <activity> <Word> – \" forms, with ⏸️ too), the bare \"⏳ \", or a legacy \"<icon> <Word> – \" (Word: Working, Concept, Batch, Shipping, Shipped, Released, Released Alpha, Released Beta, Released Stable, Promoted Beta, Promoted Stable, Test, Started, Ready, Blocked, Aborted, Analysis, Done, Paused, Paused until restart, Paused until reboot, Paused until limit reset) — only those, never free text such as \"Fix Login – \" — and\n  mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title: \"⏳ ➜ 🤖 Solo ┃ \" + <stripped title>}.\nThe generic prefix names no process — the title text stays as it is.\nA \"👉 ➜ 🧭 Concept ┃ \" title yields too: it means the page waits for the user, and now Claude works.\nIf a concept page stays open after this turn, end the turn with its completion card (concept field + cwd) — that card sets the concept prefix again.\nDeferred is not unavailable: if either tool is only in the deferred-tools list, load both once with\n  ToolSearch \"select:mcp__ccd_session_mgmt__get_session,mcp__ccd_session_mgmt__set_session_title\", then call them.\nIf either tool is truly unavailable (not even deferred) or fails: skip silently — no retry, no note, no fallback.\nDo not mention this to the user."
+ },
+ {
+  "transcript": "long",
+  "title": "",
+  "prompt": "Fix the login button",
+  "out": "[prompt.flow.title-work] New work in this session.\nBefore any other tool call, once, Desktop app only:\n  mcp__ccd_session_mgmt__get_session {session_id:\"self\"} → title.\n  If the title is empty or starts with \"👉 ➜ 📚 Batch ┃ \" (or the legacy \"📥 Batch – \" / \"👉 📥 Batch – \"): do nothing — batch mode owns it.\n  Else if it already starts with \"⏳ ➜ 🚀 Shipping ┃ \" (or the legacy \"🚀 Shipping – \"): do nothing — a ship is running and the\n  hourglass is only the fallback for work that is no named process.\n  Else if it starts with any other \"⏳ ➜ <activity> <Word> ┃ \" prefix (a running named process): do nothing.\n  Else if it already starts with \"⏳ ➜ 🤖 Solo ┃ \" (or a bare \"⏳ <title>\") and NOT \"⏳ Working – \": do nothing.\n  Else strip every leading a known \"<status> ➜ <activity> <Word> ┃ \" prefix (status icon one of ⏳ 👉 🟩 🟥 🟦 🔴; also the older \"<status> ┃ <activity> <Word> \" and \"<status> <activity> <Word> – \" forms, with ⏸️ too), the bare \"⏳ \", or a legacy \"<icon> <Word> – \" (Word: Working, Concept, Batch, Shipping, Shipped, Released, Released Alpha, Released Beta, Released Stable, Promoted Beta, Promoted Stable, Test, Started, Ready, Blocked, Aborted, Analysis, Done, Paused, Paused until restart, Paused until reboot, Paused until limit reset) — only those, never free text such as \"Fix Login – \" — and\n  mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title: \"⏳ ➜ 🤖 Solo ┃ \" + <stripped title>}.\nThe generic prefix names no process — the title text stays as it is.\nA \"👉 ➜ 🧭 Concept ┃ \" title yields too: it means the page waits for the user, and now Claude works.\nIf a concept page stays open after this turn, end the turn with its completion card (concept field + cwd) — that card sets the concept prefix again.\nDeferred is not unavailable: if either tool is only in the deferred-tools list, load both once with\n  ToolSearch \"select:mcp__ccd_session_mgmt__get_session,mcp__ccd_session_mgmt__set_session_title\", then call them.\nIf either tool is truly unavailable (not even deferred) or fails: skip silently — no retry, no note, no fallback.\nDo not mention this to the user."
+ },
+ {
+  "transcript": "long",
+  "title": "",
+  "prompt": "ship it",
+  "out": "[prompt.flow.title-work] New work in this session — a ship.\nBefore any other tool call, once, Desktop app only:\n  mcp__ccd_session_mgmt__get_session {session_id:\"self\"} → title.\n  If the title is empty or starts with \"👉 ➜ 📚 Batch ┃ \" (or the legacy \"📥 Batch – \" / \"👉 📥 Batch – \"): do nothing — batch mode owns it.\n  Else if it already starts with \"⏳ ➜ 🚀 Shipping ┃ \": do nothing — the ship is already marked.\n  Else strip every leading a known \"<status> ➜ <activity> <Word> ┃ \" prefix (status icon one of ⏳ 👉 🟩 🟥 🟦 🔴; also the older \"<status> ┃ <activity> <Word> \" and \"<status> <activity> <Word> – \" forms, with ⏸️ too), the bare \"⏳ \", or a legacy \"<icon> <Word> – \" (Word: Working, Concept, Batch, Shipping, Shipped, Released, Released Alpha, Released Beta, Released Stable, Promoted Beta, Promoted Stable, Test, Started, Ready, Blocked, Aborted, Analysis, Done, Paused, Paused until restart, Paused until reboot, Paused until limit reset) — only those, never free text such as \"Fix Login – \" — and\n  mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title: \"⏳ ➜ 🚀 Shipping ┃ \" + <stripped title>}.\nThe word is exactly \"Shipping\" — this is the do-ship skill's Pre-Step C done early; the skill finds the title marked and leaves it.\nA \"👉 ➜ 🧭 Concept ┃ \" title yields too: it means the page waits for the user, and now Claude works.\nIf a concept page stays open after this turn, end the turn with its completion card (concept field + cwd) — that card sets the concept prefix again.\nDeferred is not unavailable: if either tool is only in the deferred-tools list, load both once with\n  ToolSearch \"select:mcp__ccd_session_mgmt__get_session,mcp__ccd_session_mgmt__set_session_title\", then call them.\nIf either tool is truly unavailable (not even deferred) or fails: skip silently — no retry, no note, no fallback.\nDo not mention this to the user."
+ },
+ {
+  "transcript": "long",
+  "title": "",
+  "prompt": "arbeite weiter, dann ship",
+  "out": "[prompt.flow.title-work] New work in this session.\nBefore any other tool call, once, Desktop app only:\n  mcp__ccd_session_mgmt__get_session {session_id:\"self\"} → title.\n  If the title is empty or starts with \"👉 ➜ 📚 Batch ┃ \" (or the legacy \"📥 Batch – \" / \"👉 📥 Batch – \"): do nothing — batch mode owns it.\n  Else if it already starts with \"⏳ ➜ 🚀 Shipping ┃ \" (or the legacy \"🚀 Shipping – \"): do nothing — a ship is running and the\n  hourglass is only the fallback for work that is no named process.\n  Else if it starts with any other \"⏳ ➜ <activity> <Word> ┃ \" prefix (a running named process): do nothing.\n  Else if it already starts with \"⏳ ➜ 🤖 Solo ┃ \" (or a bare \"⏳ <title>\") and NOT \"⏳ Working – \": do nothing.\n  Else strip every leading a known \"<status> ➜ <activity> <Word> ┃ \" prefix (status icon one of ⏳ 👉 🟩 🟥 🟦 🔴; also the older \"<status> ┃ <activity> <Word> \" and \"<status> <activity> <Word> – \" forms, with ⏸️ too), the bare \"⏳ \", or a legacy \"<icon> <Word> – \" (Word: Working, Concept, Batch, Shipping, Shipped, Released, Released Alpha, Released Beta, Released Stable, Promoted Beta, Promoted Stable, Test, Started, Ready, Blocked, Aborted, Analysis, Done, Paused, Paused until restart, Paused until reboot, Paused until limit reset) — only those, never free text such as \"Fix Login – \" — and\n  mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title: \"⏳ ➜ 🤖 Solo ┃ \" + <stripped title>}.\nThe generic prefix names no process — the title text stays as it is.\nA \"👉 ➜ 🧭 Concept ┃ \" title yields too: it means the page waits for the user, and now Claude works.\nIf a concept page stays open after this turn, end the turn with its completion card (concept field + cwd) — that card sets the concept prefix again.\nDeferred is not unavailable: if either tool is only in the deferred-tools list, load both once with\n  ToolSearch \"select:mcp__ccd_session_mgmt__get_session,mcp__ccd_session_mgmt__set_session_title\", then call them.\nIf either tool is truly unavailable (not even deferred) or fails: skip silently — no retry, no note, no fallback.\nDo not mention this to the user."
+ },
+ {
+  "transcript": "long",
+  "title": "",
+  "prompt": "<task-notification>done</task-notification>",
+  "out": "[prompt.flow.title-work] New work in this session.\nBefore any other tool call, once, Desktop app only:\n  mcp__ccd_session_mgmt__get_session {session_id:\"self\"} → title.\n  If the title is empty or starts with a known \"<status> ➜ <activity> <Word> ┃ \" prefix (status icon one of ⏳ 👉 🟩 🟥 🟦 🔴; also the older \"<status> ┃ <activity> <Word> \" and \"<status> <activity> <Word> – \" forms, with ⏸️ too), the bare \"⏳ \", or a legacy \"<icon> <Word> – \" (Word: Working, Concept, Batch, Shipping, Shipped, Released, Released Alpha, Released Beta, Released Stable, Promoted Beta, Promoted Stable, Test, Started, Ready, Blocked, Aborted, Analysis, Done, Paused, Paused until restart, Paused until reboot, Paused until limit reset) other than \"⏳ Working – \": do nothing —\n  a mode or a card owns it (this turn is no user prompt — an open concept page keeps its prefix, an outcome stays).\n  Else strip every leading a known \"<status> ➜ <activity> <Word> ┃ \" prefix (status icon one of ⏳ 👉 🟩 🟥 🟦 🔴; also the older \"<status> ┃ <activity> <Word> \" and \"<status> <activity> <Word> – \" forms, with ⏸️ too), the bare \"⏳ \", or a legacy \"<icon> <Word> – \" (Word: Working, Concept, Batch, Shipping, Shipped, Released, Released Alpha, Released Beta, Released Stable, Promoted Beta, Promoted Stable, Test, Started, Ready, Blocked, Aborted, Analysis, Done, Paused, Paused until restart, Paused until reboot, Paused until limit reset) — only those, never free text such as \"Fix Login – \" — and\n  mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title: \"⏳ ➜ 🤖 Solo ┃ \" + <stripped title>}.\nThe generic prefix names no process — the title text stays as it is.\nDeferred is not unavailable: if either tool is only in the deferred-tools list, load both once with\n  ToolSearch \"select:mcp__ccd_session_mgmt__get_session,mcp__ccd_session_mgmt__set_session_title\", then call them.\nIf either tool is truly unavailable (not even deferred) or fails: skip silently — no retry, no note, no fallback.\nDo not mention this to the user."
+ },
+ {
+  "transcript": "long",
+  "title": "",
+  "prompt": "Background (from the session that started this one):\nTask: x",
+  "out": "[prompt.flow.title-work] New work in this session.\nBefore any other tool call, once, Desktop app only:\n  mcp__ccd_session_mgmt__get_session {session_id:\"self\"} → title.\n  If the title is empty or starts with \"👉 ➜ 📚 Batch ┃ \" (or the legacy \"📥 Batch – \" / \"👉 📥 Batch – \"): do nothing — batch mode owns it.\n  Else if it already starts with \"⏳ ➜ 🚀 Shipping ┃ \" (or the legacy \"🚀 Shipping – \"): do nothing — a ship is running and the\n  hourglass is only the fallback for work that is no named process.\n  Else if it starts with any other \"⏳ ➜ <activity> <Word> ┃ \" prefix (a running named process): do nothing.\n  Else if it already starts with \"⏳ ➜ 🤖 Solo ┃ \" (or a bare \"⏳ <title>\") and NOT \"⏳ Working – \": do nothing.\n  Else strip every leading a known \"<status> ➜ <activity> <Word> ┃ \" prefix (status icon one of ⏳ 👉 🟩 🟥 🟦 🔴; also the older \"<status> ┃ <activity> <Word> \" and \"<status> <activity> <Word> – \" forms, with ⏸️ too), the bare \"⏳ \", or a legacy \"<icon> <Word> – \" (Word: Working, Concept, Batch, Shipping, Shipped, Released, Released Alpha, Released Beta, Released Stable, Promoted Beta, Promoted Stable, Test, Started, Ready, Blocked, Aborted, Analysis, Done, Paused, Paused until restart, Paused until reboot, Paused until limit reset) — only those, never free text such as \"Fix Login – \" — and\n  mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title: \"⏳ ➜ 🤖 Solo ┃ \" + <stripped title>}.\nThe generic prefix names no process — the title text stays as it is.\nA \"👉 ➜ 🧭 Concept ┃ \" title yields too: it means the page waits for the user, and now Claude works.\nIf a concept page stays open after this turn, end the turn with its completion card (concept field + cwd) — that card sets the concept prefix again.\nDeferred is not unavailable: if either tool is only in the deferred-tools list, load both once with\n  ToolSearch \"select:mcp__ccd_session_mgmt__get_session,mcp__ccd_session_mgmt__set_session_title\", then call them.\nIf either tool is truly unavailable (not even deferred) or fails: skip silently — no retry, no note, no fallback.\nDo not mention this to the user."
+ },
+ {
+  "transcript": "long",
+  "title": "",
+  "prompt": "/do-run backlog",
+  "out": "[prompt.flow.title-work] New work in this session.\nBefore any other tool call, once, Desktop app only:\n  mcp__ccd_session_mgmt__get_session {session_id:\"self\"} → title.\n  If the title is empty or starts with \"👉 ➜ 📚 Batch ┃ \" (or the legacy \"📥 Batch – \" / \"👉 📥 Batch – \"): do nothing — batch mode owns it.\n  Else if it already starts with \"⏳ ➜ 🚀 Shipping ┃ \" (or the legacy \"🚀 Shipping – \"): do nothing — a ship is running and the\n  hourglass is only the fallback for work that is no named process.\n  Else if it starts with any other \"⏳ ➜ <activity> <Word> ┃ \" prefix (a running named process): do nothing.\n  Else if it already starts with \"⏳ ➜ 🤖 Solo ┃ \" (or a bare \"⏳ <title>\") and NOT \"⏳ Working – \": do nothing.\n  Else strip every leading a known \"<status> ➜ <activity> <Word> ┃ \" prefix (status icon one of ⏳ 👉 🟩 🟥 🟦 🔴; also the older \"<status> ┃ <activity> <Word> \" and \"<status> <activity> <Word> – \" forms, with ⏸️ too), the bare \"⏳ \", or a legacy \"<icon> <Word> – \" (Word: Working, Concept, Batch, Shipping, Shipped, Released, Released Alpha, Released Beta, Released Stable, Promoted Beta, Promoted Stable, Test, Started, Ready, Blocked, Aborted, Analysis, Done, Paused, Paused until restart, Paused until reboot, Paused until limit reset) — only those, never free text such as \"Fix Login – \" — and\n  mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title: \"⏳ ➜ 🤖 Solo ┃ \" + <stripped title>}.\nThe generic prefix names no process — the title text stays as it is.\nA \"👉 ➜ 🧭 Concept ┃ \" title yields too: it means the page waits for the user, and now Claude works.\nIf a concept page stays open after this turn, end the turn with its completion card (concept field + cwd) — that card sets the concept prefix again.\nDeferred is not unavailable: if either tool is only in the deferred-tools list, load both once with\n  ToolSearch \"select:mcp__ccd_session_mgmt__get_session,mcp__ccd_session_mgmt__set_session_title\", then call them.\nIf either tool is truly unavailable (not even deferred) or fails: skip silently — no retry, no note, no fallback.\nDo not mention this to the user."
+ },
+ {
+  "transcript": "long",
+  "title": "Fix login bug",
+  "prompt": "Fix the login button",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ Fix login bug\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ Fix login bug\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nDo not mention this to the user."
+ },
+ {
+  "transcript": "long",
+  "title": "Fix login bug",
+  "prompt": "ship it",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🚀 Shipping ┃ Fix login bug\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ Fix login bug\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nThis is do-ship Pre-Step C done early.\nDo not mention this to the user."
+ },
+ {
+  "transcript": "long",
+  "title": "Fix login bug",
+  "prompt": "arbeite weiter, dann ship",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ Fix login bug\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ Fix login bug\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nDo not mention this to the user."
+ },
+ {
+  "transcript": "long",
+  "title": "Fix login bug",
+  "prompt": "<task-notification>done</task-notification>",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ Fix login bug\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ Fix login bug\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nDo not mention this to the user."
+ },
+ {
+  "transcript": "long",
+  "title": "Fix login bug",
+  "prompt": "Background (from the session that started this one):\nTask: x",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ Fix login bug\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ Fix login bug\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nDo not mention this to the user."
+ },
+ {
+  "transcript": "long",
+  "title": "Fix login bug",
+  "prompt": "/do-run backlog",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ Fix login bug\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ Fix login bug\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nDo not mention this to the user."
+ },
+ {
+  "transcript": "long",
+  "title": "⏳ ➜ 🤖 Solo ┃ Fix login bug",
+  "prompt": "Fix the login button",
+  "out": ""
+ },
+ {
+  "transcript": "long",
+  "title": "⏳ ➜ 🤖 Solo ┃ Fix login bug",
+  "prompt": "ship it",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🚀 Shipping ┃ Fix login bug\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ Fix login bug\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nThis is do-ship Pre-Step C done early.\nDo not mention this to the user."
+ },
+ {
+  "transcript": "long",
+  "title": "⏳ ➜ 🤖 Solo ┃ Fix login bug",
+  "prompt": "arbeite weiter, dann ship",
+  "out": ""
+ },
+ {
+  "transcript": "long",
+  "title": "⏳ ➜ 🤖 Solo ┃ Fix login bug",
+  "prompt": "<task-notification>done</task-notification>",
+  "out": ""
+ },
+ {
+  "transcript": "long",
+  "title": "⏳ ➜ 🤖 Solo ┃ Fix login bug",
+  "prompt": "Background (from the session that started this one):\nTask: x",
+  "out": ""
+ },
+ {
+  "transcript": "long",
+  "title": "⏳ ➜ 🤖 Solo ┃ Fix login bug",
+  "prompt": "/do-run backlog",
+  "out": ""
+ },
+ {
+  "transcript": "long",
+  "title": "🟩 ➜ 🚀 Released ┃ v0.1.0 notes",
+  "prompt": "Fix the login button",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ 🟩 ➜ 🚀 Released ┃ v0.1.0 notes\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ 🟩 ➜ 🚀 Released ┃ v0.1.0 notes\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nDo not mention this to the user."
+ },
+ {
+  "transcript": "long",
+  "title": "🟩 ➜ 🚀 Released ┃ v0.1.0 notes",
+  "prompt": "ship it",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🚀 Shipping ┃ 🟩 ➜ 🚀 Released ┃ v0.1.0 notes\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ 🟩 ➜ 🚀 Released ┃ v0.1.0 notes\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nThis is do-ship Pre-Step C done early.\nDo not mention this to the user."
+ },
+ {
+  "transcript": "long",
+  "title": "🟩 ➜ 🚀 Released ┃ v0.1.0 notes",
+  "prompt": "arbeite weiter, dann ship",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ 🟩 ➜ 🚀 Released ┃ v0.1.0 notes\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ 🟩 ➜ 🚀 Released ┃ v0.1.0 notes\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nDo not mention this to the user."
+ },
+ {
+  "transcript": "long",
+  "title": "🟩 ➜ 🚀 Released ┃ v0.1.0 notes",
+  "prompt": "<task-notification>done</task-notification>",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ 🟩 ➜ 🚀 Released ┃ v0.1.0 notes\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ 🟩 ➜ 🚀 Released ┃ v0.1.0 notes\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nDo not mention this to the user."
+ },
+ {
+  "transcript": "long",
+  "title": "🟩 ➜ 🚀 Released ┃ v0.1.0 notes",
+  "prompt": "Background (from the session that started this one):\nTask: x",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ 🟩 ➜ 🚀 Released ┃ v0.1.0 notes\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ 🟩 ➜ 🚀 Released ┃ v0.1.0 notes\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nDo not mention this to the user."
+ },
+ {
+  "transcript": "long",
+  "title": "🟩 ➜ 🚀 Released ┃ v0.1.0 notes",
+  "prompt": "/do-run backlog",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ 🟩 ➜ 🚀 Released ┃ v0.1.0 notes\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ 🟩 ➜ 🚀 Released ┃ v0.1.0 notes\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nDo not mention this to the user."
+ },
+ {
+  "transcript": "long",
+  "title": "👉 ➜ 🧭 Concept ┃ Billing page",
+  "prompt": "Fix the login button",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ Billing page\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ Billing page\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nThe concept prefix yields (Claude works now); if the concept page stays open after this turn, its completion card (concept field + cwd) sets it again.\nDo not mention this to the user."
+ },
+ {
+  "transcript": "long",
+  "title": "👉 ➜ 🧭 Concept ┃ Billing page",
+  "prompt": "ship it",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🚀 Shipping ┃ Billing page\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ Billing page\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nThis is do-ship Pre-Step C done early.\nThe concept prefix yields (Claude works now); if the concept page stays open after this turn, its completion card (concept field + cwd) sets it again.\nDo not mention this to the user."
+ },
+ {
+  "transcript": "long",
+  "title": "👉 ➜ 🧭 Concept ┃ Billing page",
+  "prompt": "arbeite weiter, dann ship",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ Billing page\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ Billing page\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nThe concept prefix yields (Claude works now); if the concept page stays open after this turn, its completion card (concept field + cwd) sets it again.\nDo not mention this to the user."
+ },
+ {
+  "transcript": "long",
+  "title": "👉 ➜ 🧭 Concept ┃ Billing page",
+  "prompt": "<task-notification>done</task-notification>",
+  "out": ""
+ },
+ {
+  "transcript": "long",
+  "title": "👉 ➜ 🧭 Concept ┃ Billing page",
+  "prompt": "Background (from the session that started this one):\nTask: x",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ Billing page\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ Billing page\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nThe concept prefix yields (Claude works now); if the concept page stays open after this turn, its completion card (concept field + cwd) sets it again.\nDo not mention this to the user."
+ },
+ {
+  "transcript": "long",
+  "title": "👉 ➜ 🧭 Concept ┃ Billing page",
+  "prompt": "/do-run backlog",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ Billing page\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ Billing page\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nThe concept prefix yields (Claude works now); if the concept page stays open after this turn, its completion card (concept field + cwd) sets it again.\nDo not mention this to the user."
+ },
+ {
+  "transcript": "long",
+  "title": "⏳ ➜ 🚀 Shipping ┃ Release x",
+  "prompt": "Fix the login button",
+  "out": ""
+ },
+ {
+  "transcript": "long",
+  "title": "⏳ ➜ 🚀 Shipping ┃ Release x",
+  "prompt": "ship it",
+  "out": ""
+ },
+ {
+  "transcript": "long",
+  "title": "⏳ ➜ 🚀 Shipping ┃ Release x",
+  "prompt": "arbeite weiter, dann ship",
+  "out": ""
+ },
+ {
+  "transcript": "long",
+  "title": "⏳ ➜ 🚀 Shipping ┃ Release x",
+  "prompt": "<task-notification>done</task-notification>",
+  "out": ""
+ },
+ {
+  "transcript": "long",
+  "title": "⏳ ➜ 🚀 Shipping ┃ Release x",
+  "prompt": "Background (from the session that started this one):\nTask: x",
+  "out": ""
+ },
+ {
+  "transcript": "long",
+  "title": "⏳ ➜ 🚀 Shipping ┃ Release x",
+  "prompt": "/do-run backlog",
+  "out": ""
+ },
+ {
+  "transcript": "long",
+  "title": "👉 ➜ 📚 Batch ┃ Sammeln",
+  "prompt": "Fix the login button",
+  "out": ""
+ },
+ {
+  "transcript": "long",
+  "title": "👉 ➜ 📚 Batch ┃ Sammeln",
+  "prompt": "ship it",
+  "out": ""
+ },
+ {
+  "transcript": "long",
+  "title": "👉 ➜ 📚 Batch ┃ Sammeln",
+  "prompt": "arbeite weiter, dann ship",
+  "out": ""
+ },
+ {
+  "transcript": "long",
+  "title": "👉 ➜ 📚 Batch ┃ Sammeln",
+  "prompt": "<task-notification>done</task-notification>",
+  "out": ""
+ },
+ {
+  "transcript": "long",
+  "title": "👉 ➜ 📚 Batch ┃ Sammeln",
+  "prompt": "Background (from the session that started this one):\nTask: x",
+  "out": ""
+ },
+ {
+  "transcript": "long",
+  "title": "👉 ➜ 📚 Batch ┃ Sammeln",
+  "prompt": "/do-run backlog",
+  "out": ""
+ },
+ {
+  "transcript": "long",
+  "title": "⏳ Working – old style",
+  "prompt": "Fix the login button",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ old style\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ old style\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nDo not mention this to the user."
+ },
+ {
+  "transcript": "long",
+  "title": "⏳ Working – old style",
+  "prompt": "ship it",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🚀 Shipping ┃ old style\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ old style\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nThis is do-ship Pre-Step C done early.\nDo not mention this to the user."
+ },
+ {
+  "transcript": "long",
+  "title": "⏳ Working – old style",
+  "prompt": "arbeite weiter, dann ship",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ old style\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ old style\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nDo not mention this to the user."
+ },
+ {
+  "transcript": "long",
+  "title": "⏳ Working – old style",
+  "prompt": "<task-notification>done</task-notification>",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ old style\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ old style\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nDo not mention this to the user."
+ },
+ {
+  "transcript": "long",
+  "title": "⏳ Working – old style",
+  "prompt": "Background (from the session that started this one):\nTask: x",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ old style\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ old style\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nDo not mention this to the user."
+ },
+ {
+  "transcript": "long",
+  "title": "⏳ Working – old style",
+  "prompt": "/do-run backlog",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ old style\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ old style\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nDo not mention this to the user."
+ },
+ {
+  "transcript": "long",
+  "title": "🟦 ➜ ✋ Paused ┃ Mods run",
+  "prompt": "Fix the login button",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ Mods run\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ Mods run\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nDo not mention this to the user."
+ },
+ {
+  "transcript": "long",
+  "title": "🟦 ➜ ✋ Paused ┃ Mods run",
+  "prompt": "ship it",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🚀 Shipping ┃ Mods run\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ Mods run\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nThis is do-ship Pre-Step C done early.\nDo not mention this to the user."
+ },
+ {
+  "transcript": "long",
+  "title": "🟦 ➜ ✋ Paused ┃ Mods run",
+  "prompt": "arbeite weiter, dann ship",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ Mods run\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ Mods run\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nDo not mention this to the user."
+ },
+ {
+  "transcript": "long",
+  "title": "🟦 ➜ ✋ Paused ┃ Mods run",
+  "prompt": "<task-notification>done</task-notification>",
+  "out": ""
+ },
+ {
+  "transcript": "long",
+  "title": "🟦 ➜ ✋ Paused ┃ Mods run",
+  "prompt": "Background (from the session that started this one):\nTask: x",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ Mods run\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ Mods run\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nDo not mention this to the user."
+ },
+ {
+  "transcript": "long",
+  "title": "🟦 ➜ ✋ Paused ┃ Mods run",
+  "prompt": "/do-run backlog",
+  "out": "[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"⏳ ➜ 🤖 Solo ┃ Mods run\"} in the SAME message as this turn's first other tool call (parallel — no get_session, no message of its own). No other tool this turn → call it alone.\nOnly deferred → ToolSearch \"select:mcp__ccd_session_mgmt__set_session_title\" in that first batch, the set call in the next. Not even deferred, or it fails: skip silently.\nLater this turn an AskUserQuestion / ExitPlanMode / start_session that waits on the user: mcp__ccd_session_mgmt__set_session_title {session_id:\"self\", title:\"👉 ➜ ❓ Question ┃ Mods run\"} FIRST in that same message (pre.ask.title refuses the call otherwise).\nDo not mention this to the user."
+ }
+]
