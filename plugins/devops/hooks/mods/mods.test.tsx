@@ -2154,6 +2154,136 @@ test('card band: cleanup hints (🧹) and the card’s Aufräumen button are lef
   expect(view.buttons.map(b => b.label)).toEqual(['Promote beta'])
 })
 
+// --- B1 Mod-Band: one count source, the card surviving the app's nudge, idle collect layout, clamps, session marker. ---
+
+const RELEASED_REAL = {
+  v: 1,
+  l: 'de',
+  ti: 'Konten gelöscht, Ursache geklärt',
+  at: '13:04',
+  h: '👉 🚀 Released Alpha — v0.273.1 — nach Beta promoten +2 weitere?',
+  pt: [
+    'Übersetzungs-Tick (translate-orchestrator, alle 10 min) antwortet seit mindestens heute 07:00 Uhr durchgehend mit 546 WORKER_RESOURCE_LIMIT; vier Jobs hängen seit dem 11.11. in „estimating“ — bestand schon vor diesem Ship',
+    '👉 verify-release-token hat im Repo keinen Aufrufer mehr — löschen?',
+    '👉 PostHog: persönlichen API-Key anlegen',
+  ],
+  bt: [
+    { l: 'Promote beta', i: 'up', p: 'promote beta 0.273.1', pr: 1 },
+    { l: 'Promote stable', i: 'up', p: 'promote stable 0.273.1' },
+    { l: 'Nachbessern', i: 'pencil', p: 'Ja, bitte noch alle offenen Punkte angehen.' },
+    { l: 'App starten', i: 'play', p: 'App starten' },
+    { l: 'Web-Guide starten', i: 'globe', p: 'Führ mich per Web-Guide durch PostHog' },
+  ],
+}
+// The live template escapes "<" inside the JSON as \u003c (card-widget.js cardWidgetTemplate).
+const REAL_RESULT =
+  '[CARD WIDGET — DO NOT OUTPUT THIS BLOCK]\n----- widget_code -----\n<div id="dc-card"></div>\n' +
+  `<script type="application/json" id="dc-card-data">${JSON.stringify(RELEASED_REAL).replace(/</g, '\\u003c')}</script>\n` +
+  '----- end widget_code -----'
+
+test("#5: the real Released card survives the app's no-output nudge (meta text) and still spends on a typed prompt", async ($, on) => {
+  engine(on)
+  on('tool.call', () => ({ result: {}, text: REAL_RESULT }))
+  on('turn.start', (_: unknown, e: { turnId: string }) => ({ turnId: e.turnId || 't' }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.tool.call({ tool: CARD_TOOL, summary: 'x' } as any)
+  // The app's nudge arrives as a meta user turn WITH text: it used to clear the card.
+  await $.turn.start({ text: '[Your previous response had no visible output. Please continue.]', isMeta: true, turnId: 't2' } as any)
+  await $.turn.start({ text: '[Your previous response had no visible output. Please continue.]', turnId: 't3' } as any)
+  await $.turn.start({ text: '<task-notification><task-id>x</task-id></task-notification>', turnId: 't4' } as any)
+  let band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await has(band, 'Released Alpha')).toBeDefined()
+  for (let i = 0; i < 5; i++) expect(await band.find({ key: `card-button-${i}` })).toBeDefined()
+  expect(await has(band, 'Zuletzt')).toBeUndefined()
+  await band.unmount()
+  await $.turn.start({ text: 'Führ mich durch PostHog', turnId: 't5' } as any)
+  band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await has(band, 'Released Alpha')).toBeUndefined()
+  await band.unmount()
+})
+
+test('#1: the batch hint card heading shows the live note count, once (no second chip)', async ($, on) => {
+  batchEngine(on, () => WRITER_OK(1))
+  const hint = { ...CARD_DATA, ti: 'Sammelmodus aktiv', h: '👉 📚 Batch — sammelt — 0 Einträge', pt: ['noch keine Notiz'] }
+  on('tool.call', () => ({ result: {}, text: cardText(hint) }))
+  await $.session.start({ cwd: '/repo', surface: 'terminal', isInteractive: true })
+  await $.tool.call({ tool: CARD_TOOL, summary: 'x' } as any)
+  const band = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  if (!(await has(band, 'Batch — sammelt — 2 Einträge'))) throw new Error(JSON.stringify(await band.find({ key: 'band' })).slice(0, 700))
+  expect(await has(band, 'Batch — sammelt — 2 Einträge')).toBeDefined() // batch.md holds 2 notes
+  expect(await has(band, '0 Einträge')).toBeUndefined()
+  expect(await has(band, '📚 Batch · ')).toBeUndefined() // one count source: no second chip
+  await band.unmount()
+})
+
+test('#6: idle collect band: batch chip in the idle row, the expanded breakdown a right-aligned column of rail width', async ($, on) => {
+  batchEngine(on, () => WRITER_OK(1), { '/.claude/orphan-report.json': ORPHAN_REPORT, '/demo/.claude/batch-mode.json': BATCH_MODE, '/demo/.claude/batch.md': BATCH_NOTES })
+  on('session.root', () => ({ value: 'P:/Projects/demo' }))
+  await $.session.start({ cwd: 'P:/Projects/demo', surface: 'desktop', isInteractive: true })
+  await $.session.measure(MEASURE as any)
+  let band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  const idle: any = await band.find({ key: 'idle' })
+  expect(JSON.stringify(idle)).toContain('📚 Batch · 2') // the chip sits inside the idle row, not in a row of its own
+  expect(await band.find({ key: 'cleanup-fold' })).toBeDefined()
+  await band.press({ key: 'cleanup-fold' })
+  await band.unmount()
+  band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  const pop: any = await band.find({ key: 'cleanup-popover' })
+  expect(pop.props.width).toBe(30)
+  expect(pop.props.backgroundColor).toBeTruthy()
+  await band.unmount()
+})
+
+test('#3 band: a long point shows ≤ 120 characters with …, the full text in a hover overlay; a long title one line; terminal ▸ expands', async ($, on) => {
+  engine(on)
+  const long = { ...CARD_DATA, ti: 'T'.repeat(90), pt: ['x'.repeat(40) + ' ' + 'y'.repeat(200)] }
+  on('tool.call', () => ({ result: {}, text: cardText(long) }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.tool.call({ tool: CARD_TOOL, summary: 'x' } as any)
+  let band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  const point: any = await band.find({ key: 'card-point-0' })
+  const shown = { text: String(point.children[1].children[0]) }
+  expect(shown.text.endsWith('…')).toBe(true)
+  expect(shown.text.length).toBeLessThanOrEqual(123)
+  const pop = point.children.find((c: any) => c.type === 'Box')
+  expect(pop.props).toMatchObject({ position: 'absolute', display: 'none' })
+  expect(JSON.stringify(pop)).toContain('y'.repeat(200))
+  const title: any = await band.find({ key: 'card-title-wrap' })
+  expect(JSON.stringify(title)).toContain('…')
+  expect(JSON.stringify(title)).toContain('T'.repeat(90)) // in the hover overlay
+  await band.unmount()
+  band = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect(JSON.stringify(await band.find({ key: 'band' }))).not.toContain('y'.repeat(200))
+  await band.press({ key: 'card-point-more-0' })
+  await band.unmount()
+  band = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect(JSON.stringify(await band.find({ key: 'band' }))).toContain('y'.repeat(200))
+  await band.unmount()
+})
+
+test('#2 marker: the drawing band writes the session marker (throttled to 60 s, merged, 24 h pruned, remoteControl null)', async ($, on) => {
+  const { seen, tick } = engine(on, {
+    files: { '/.claude/devops-band-active.json': JSON.stringify({ sessions: { old: { at: NOW - 25 * 3600_000, remoteControl: false }, other: { at: NOW - 1000, remoteControl: true } } }) },
+  })
+  on('session.id', () => ({ value: 'sess-9' }))
+  on('tool.call', () => ({ result: {}, text: CARD_RESULT }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.tool.call({ tool: CARD_TOOL, summary: 'x' } as any)
+  const writes = () => seen.writes.filter(w => w.path.split(String.fromCharCode(92)).join('/').endsWith('/.claude/devops-band-active.json'))
+  let band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  await band.unmount()
+  const m = JSON.parse(writes()[0].text)
+  expect(Object.keys(m.sessions).sort()).toEqual(['other', 'sess-9'])
+  expect(m.sessions['sess-9']).toEqual({ at: NOW, remoteControl: null })
+  band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  await band.unmount()
+  expect(writes().length).toBe(1) // throttled
+  tick(61_000)
+  band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  await band.unmount()
+  expect(writes().length).toBe(2)
+})
+
 test('archive helpers: offered only on a green card while idle; isError text becomes the reason', () => {
   expect(archiveOffered({ heading: '🟩 🚀 Released Alpha — v1 — fertig.' }, false)).toBe(true)
   expect(archiveOffered({ heading: '🟩 🖥️ System — erledigt — noch etwas?' }, false)).toBe(true)

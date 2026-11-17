@@ -811,6 +811,7 @@ const TABLE = {
   toastNote: ['💾 Note #{n} saved', '💾 Notiz #{n} gespeichert', '💾 Nota #{n} guardada', '💾 Note #{n} enregistrée', '💾 Nota #{n} salva', '💾 メモ #{n} を保存しました', '💾 笔记 #{n} 已保存'],
   bandBatch: ['📚 Batch · {n}', '📚 Batch · {n}', '📚 Batch · {n}', '📚 Batch · {n}', '📚 Batch · {n}', '📚 Batch · {n}', '📚 Batch · {n}'],
   batchGo: ['Go', 'Go', 'Go', 'Go', 'Go', 'Go', 'Go'],
+  batchList: ['Notes', 'Notizen', 'Notas', 'Notes', 'Notas', 'メモ', '笔记'],
   batchOff: ['Off', 'Aus', 'Apagar', 'Arrêter', 'Desligar', '終了', '关闭'],
   batchQueued: ['go queued', 'go eingereiht', 'go en cola', 'go en file', 'go na fila', 'go を予約済み', 'go 已排队'],
   batchStopping: ['ending …', 'beende …', 'terminando …', 'arrêt …', 'encerrando …', '終了中 …', '正在关闭 …'],
@@ -1076,6 +1077,40 @@ export function junkLabel(n: number, loc: Locale): string {
  */
 export function isHintCard(c: { heading: string; points: readonly string[] } | null): boolean {
   return !!c && c.points.length > 0 && /^(?:👉|🟦)\s*📚\s*Batch/u.test(c.heading)
+}
+
+/**
+ * The batch hint card's heading with the live note count: the card froze "0 Einträge" at render time, the
+ * count source is batchView(). null when the heading names no count (another wording): the caller keeps
+ * the band's own batch chip then.
+ */
+export function liveBatchHeading(heading: string, n: number): string | null {
+  const m = heading.match(/\d+(\s+)(Eintrag|Einträge|entry|entries)/u)
+  if (!m) return null
+  const de = m[2] === 'Eintrag' || m[2] === 'Einträge'
+  const word = de ? (n === 1 ? 'Eintrag' : 'Einträge') : n === 1 ? 'entry' : 'entries'
+  return heading.replace(m[0], `${n}${m[1]}${word}`)
+}
+
+/** The app's own no-output nudge and other meta / machine turns: text that is not a typed prompt. */
+export function startsTypedTurn(e: { text?: string; isMeta?: unknown; origin?: { kind?: string } | null }): boolean {
+  const t = (e.text || '').trim()
+  if (!t || e.isMeta === true) return false
+  if (e.origin && e.origin.kind === 'plugin') return false
+  return !/^(?:\[Your previous response had no visible output|<task-notification>|<system-reminder>)/i.test(t)
+}
+
+/** The band's clamps (#3, c120): a CTA point shows at most this many characters (2 lines at normal width), a title one line. */
+// The renderer's 120-character limit counts the point text without its leading status icon + space.
+export const POINT_CLAMP = 123
+export const TITLE_CLAMP = 60
+
+/** `text` cut to `max` characters with "…" (word end where one is near); unchanged when it fits. */
+export function clampText(text: string, max: number): string {
+  if (text.length <= max) return text
+  const cut = text.slice(0, max - 1)
+  const sp = cut.lastIndexOf(' ')
+  return `${(sp > max * 0.6 ? cut.slice(0, sp) : cut).trimEnd()}…`
 }
 
 /** A ship / released / finished card (🟩 heading): the work it reports is shipped. */

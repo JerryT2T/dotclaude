@@ -24,6 +24,12 @@ const { leadingPrefix } = require('./title-scheme');
 
 /** Characters of `<Word> ┃ <topic>` the sidebar shows (see above). */
 const TITLE_BUDGET = 42;
+/**
+ * The topic the MODEL sets itself is at most this long (user decision l20,
+ * 2026-11-17: "20 Zeichen"); pre.title.topic enforces it. TITLE_BUDGET stays the
+ * outer clamp for topics composed by hooks.
+ */
+const TOPIC_MAX = 20;
 /** ` ┃ ` between the word and the topic. */
 const SEPARATOR_WIDTH = 3;
 /** A word-boundary cut may lose at most this many characters. */
@@ -82,4 +88,18 @@ function clampTitle(title) {
   return rest.trim() ? head + clampTopic(word, rest) : title;
 }
 
-module.exports = { TITLE_BUDGET, clampTopic, clampTitle, wordOf };
+/**
+ * The topic of a title with a `<status> ➜ <icon> <Word> ┃ ` head (the text
+ * after the head, trimmed), or null for a title without such a head.
+ *
+ * @param {string|null} title
+ * @returns {string|null}
+ */
+function topicOf(title) {
+  if (typeof title !== 'string') return null;
+  const lead = leadingPrefix(title);
+  if (!lead || !wordOf(lead.prefix)) return null;
+  return title.slice(lead.length).trim();
+}
+
+module.exports = { TITLE_BUDGET, TOPIC_MAX, topicOf, clampTopic, clampTitle, wordOf };

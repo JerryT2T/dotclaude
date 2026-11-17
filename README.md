@@ -1,6 +1,6 @@
 # dotclaude
 
-**Version: 0.386.0**
+**Version: 0.387.0**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
 
@@ -26,7 +26,7 @@ keep git clean, block risky moves and stop context waste.
 - **Runs while you are away** — `/do-run` works off a backlog, a task or the leftover weekly budget, and ships each item
 - **Per-project tuning** — extend any skill with a `reference.md`, no fork
 
-<!--devops:count:hooks-->111<!--/devops:count:hooks--> hooks ·
+<!--devops:count:hooks-->112<!--/devops:count:hooks--> hooks ·
 <!--devops:count:skills-->15<!--/devops:count:skills--> skills ·
 <!--devops:count:agents-->12<!--/devops:count:agents--> agents ·
 ~0.7M tokens/week overhead (1–4 % of a Max plan), paid back 1.5–6× by the
@@ -519,7 +519,7 @@ A different stack: extend the skills per project — see [Customize](#customize)
 </details>
 
 <details>
-<summary><strong>Hooks</strong> — <!--devops:count:hooks-->111<!--/devops:count:hooks--> hooks by lifecycle and by category</summary>
+<summary><strong>Hooks</strong> — <!--devops:count:hooks-->112<!--/devops:count:hooks--> hooks by lifecycle and by category</summary>
 
 ```
 SessionStart  ──>  UserPromptSubmit  ──>  PreToolUse  ──>  PostToolUse  ──>  Stop
@@ -597,6 +597,7 @@ SessionStart  ──>  UserPromptSubmit  ──>  PreToolUse  ──>  PostToolU
 - `pre.readme.standards` — Once per session, before the first substantial write to a README file, points Claude…
 - `pre.mcp.health` — Detects dead or stale MCP servers before tool calls fail cryptically.
 - `pre.session.archive` — Only the post-ship hand-over archives this session (#632).
+- `pre.title.topic` — Enforces the 20-character session-title topic (user decision d-len, 2026-11-17): a se…
 - `pre.ask.title` — Puts `👉 ➜ ❓ Question ┃ ` on the session title BEFORE a call blocks on the user (a qu…
 - `pre.plugin.session` — Refuse once a plugin fix session started from a consumer project before the upstream…
 - `pre.ask.title` — Puts `👉 ➜ ❓ Question ┃ ` on the session title BEFORE a call blocks on the user (a qu…
@@ -710,6 +711,7 @@ SessionStart  ──>  UserPromptSubmit  ──>  PreToolUse  ──>  PostToolU
 - `prompt.flow.silent-turn` *(UserPromptSubmit)*
 - `prompt.flow.title-work` *(UserPromptSubmit)*
 - `prompt.flow.appstart` *(UserPromptSubmit)*
+- `pre.title.topic` *(PreToolUse)*
 - `pre.ask.title` *(PreToolUse, PreToolUse)*
 - `substop.approval.clear` *(SubagentStop)*
 - `perm.approval.flag` *(PermissionRequest)*
@@ -833,7 +835,7 @@ plugins/
 │   ├── .claude-plugin/plugin.json ← Plugin manifest (SemVer, tags v0.x.y)
 │   ├── .mcp.json                  ← MCP servers: completion card, ship, issues
 │   ├── CONVENTIONS.md             ← Naming, versioning, extension rules
-│   ├── hooks/                     ← <!--devops:count:hooks-->111<!--/devops:count:hooks--> hooks (JS) registered in hooks/dispatch/manifest.json
+│   ├── hooks/                     ← <!--devops:count:hooks-->112<!--/devops:count:hooks--> hooks (JS) registered in hooks/dispatch/manifest.json
 │   ├── skills/                    ← <!--devops:count:skills-->15<!--/devops:count:skills--> skill definitions (SKILL.md)
 │   ├── agents/                    ← <!--devops:count:agents-->12<!--/devops:count:agents--> agent definitions
 │   ├── mcp-server/                ← Card renderer + Desktop widget, ship tools, issue matching

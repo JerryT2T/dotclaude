@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook prompt.flow.title-work
- * @version 0.10.0
+ * @version 0.11.0
  * @event UserPromptSubmit
  * @plugin devops
  * @description Marks a session as "being worked on" in the sidebar: on the
@@ -91,8 +91,10 @@
  *     second stage. Never on a later prompt: by then the title is tool-set, the
  *     sidebar would ignore the hook, and the transcript would claim a ⏳ the
  *     sidebar does not show (the next prompt would then skip its rename).
- *     Unknown title: the prompt's first words stand in until the app's summary
- *     replaces them; a sub-session's brief never does (its title comes from
+ *     Unknown title: the hook sets none (0.11.0: the prompt's first words no
+ *     longer stand in) — the model names a topic of at most 20 characters with
+ *     its first set call (lib/title-plan.js topicLine; pre.title.topic enforces
+ *     the length). A sub-session's brief gets no topic line (its title comes from
  *     start_session, see lib/ask-title.js startSessionInput).
  */
 
@@ -121,7 +123,7 @@ const {
 } = require('../lib/session-title');
 // The pure computation (#1102 Part A): instructions, prefixes and the early title.
 const {
-  titlePlan, earlyTitleOf, replyOf, prefixOf, promptTopic, directInstruction, freshInstruction, instruction, questionLine,
+  titlePlan, earlyTitleOf, replyOf, prefixOf, topicLine, directInstruction, freshInstruction, instruction, questionLine,
 } = require('../lib/title-plan');
 
 /** The prefix for this prompt; the ship to resume is read off disk here, the rule is in lib/title-plan.js. */
@@ -219,4 +221,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { earlyTitle, hookReply, promptTopic, currentTitle, freshInstruction, questionLine, ONCE_KEY, WORK_PREFIX, LEGACY_PENDING_PREFIX, LEGACY_PREFIXES, SHIPPING_PREFIX, CONCEPT_PREFIX, BATCH_PREFIX, instruction, directInstruction, titleWorkOutput, prefixFor, shouldMark, releaseTitleWork };
+module.exports = { earlyTitle, hookReply, topicLine, currentTitle, freshInstruction, questionLine, ONCE_KEY, WORK_PREFIX, LEGACY_PENDING_PREFIX, LEGACY_PREFIXES, SHIPPING_PREFIX, CONCEPT_PREFIX, BATCH_PREFIX, instruction, directInstruction, titleWorkOutput, prefixFor, shouldMark, releaseTitleWork };

@@ -86,3 +86,18 @@ describe("builders re-clamp", () => {
     expect(back.match(/…/g)).toHaveLength(1);
   });
 });
+
+describe("topic limit for the model's own topic (d-len l20)", () => {
+  test("TOPIC_MAX is 20", () => {
+    expect(B.TOPIC_MAX).toBe(20);
+  });
+
+  test("topicOf reads the text after the head; a title without a head has none", () => {
+    expect(B.topicOf("⏳ ➜ 🤖 Solo ┃ Fix login")).toBe("Fix login");
+    expect(B.topicOf("⏳ ➜ 🧭 Concept ┃ Feedback zu dotclaude")).toBe("Feedback zu dotclaude");
+    expect(B.topicOf("⏳ ➜ 🤖 Solo ┃ ")).toBe("");
+    expect(B.topicOf("Fix login")).toBeNull();
+    expect(B.topicOf("⏳ Fix login")).toBeNull();
+    expect(B.topicOf(null)).toBeNull();
+  });
+});

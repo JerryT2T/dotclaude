@@ -107,6 +107,11 @@ import {
   STATUS_RED,
   statusText,
   isCardTool,
+  clampText,
+  POINT_CLAMP,
+  TITLE_CLAMP,
+  liveBatchHeading,
+  startsTypedTurn,
   isHintCard,
   isFailedStatus,
   isWatcherCommand,
@@ -214,6 +219,8 @@ function startTicker($: EngineInterface): void {
 const fold = atom({ plugin: 'devops', key: 'fold' } as const, false, { shape: 'fold-1' })
 // A ship / released / finished card is on record: no open work until a new edit or an open plan (B7).
 const settled = atom({ plugin: 'devops', key: 'settled' } as const, false, { shape: 'settled-1' })
+// Terminal: the card points the reader expanded past the clamp (indices; spent with the card).
+const pointsOpen = atom({ plugin: 'devops', key: 'pointsOpen' } as const, [] as number[], { shape: 'points-open-1' })
 const hintsOpen = atom({ plugin: 'devops', key: 'hintsOpen' } as const, false, { shape: 'hints-open-1' })
 // The batch row's note list is expanded (the zero-token stand-in for `/do-batch status`).
 const batchOpen = atom({ plugin: 'devops', key: 'batchOpen' } as const, false, { shape: 'batch-open-1' })
@@ -923,6 +930,31 @@ async function writeLoadMarker($: EngineInterface, surface: string | null, inter
   await $.fs.write(file, `${JSON.stringify({ sessions: [...kept, row] }, null, 1)}\n`)
 }
 
+/** B1 (#2): the band's session marker, read by the card tool to shrink the transcript card. Written while the band draws. */
+const BAND_MARKER = '/.claude/devops-band-active.json'
+const BAND_MARKER_EVERY_MS = 60_000
+const BAND_MARKER_KEEP_MS = 24 * 3600_000
+let bandMarkAt = 0
+async function touchBandMarker($: EngineInterface, now: number): Promise<void> {
+  if (now - bandMarkAt < BAND_MARKER_EVERY_MS) return
+  bandMarkAt = now // before the awaits: a second draw during the write does not write again
+  try {
+    const home = await homeDir($)
+    const sid = await $.session.id().catch(() => '')
+    if (!home || !sid) return
+    const file = home + BAND_MARKER
+    const prev = (await readJson($, file)) as { sessions?: Record<string, { at?: unknown }> } | null
+    const old = prev && prev.sessions && typeof prev.sessions === 'object' ? prev.sessions : {}
+    const sessions: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(old)) if (v && typeof v.at === 'number' && now - v.at < BAND_MARKER_KEEP_MS) sessions[k] = v
+    // The mod API names no Remote Control state (no event field, no $.session member), so it is never known here: null.
+    sessions[sid] = { at: now, remoteControl: null }
+    await $.fs.write(file, `${JSON.stringify({ sessions }, null, 1)}\n`)
+  } catch {
+    /* display only: a marker that cannot be written leaves the full card */
+  }
+}
+
 async function appendSpikeLog($: EngineInterface, row: unknown): Promise<string> {
   const home = await homeDir($)
   if (!home) throw new Error('no home folder')
@@ -943,6 +975,8 @@ async function appendSpikeLog($: EngineInterface, row: unknown): Promise<string>
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     gate = null
+    bandMarkAt = 0
+    batchCache = { at: 0, view: null }
     shared = null
     const started = await next(e)
     if (!(await open($))) return started
@@ -1068,8 +1102,9 @@ export const register: Register = on => {
     const started = await next(e)
     if (e.agentId === undefined && (await open($))) {
       const now = await $.clock.now()
-      if ((e.text || '').trim()) {
+      if (startsTypedTurn(e as { text?: string; isMeta?: unknown; origin?: { kind?: string } | null })) {
         await update($, card, () => null)
+        await update($, pointsOpen, () => [])
         // A queued Go has reached its turn: the row's "go queued" ends, the merge turn takes over.
         await update($, batchPress, p => (p === 'go' ? null : p))
         await update($, progress, () => ({ steps: [], activity: '', startedAt: now }))
@@ -1475,11 +1510,16 @@ export const register: Register = on => {
   // The card's answer and its result lines never show here: they stay inline in the transcript.
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     if (e.props.hasSurvey || !(await open($))) return next(e)
+    await touchBandMarker($, await $.clock.now())
     const sh = await sharedNow($)
     const loc = sh.loc
     const working = e.props.isWorking === true
     const prog = await read($, progress)
-    const c = working ? null : await read($, card)
+    const c0 = working ? null : await read($, card)
+    const bt = await batchView($)
+    // One count source: a batch hint card's heading froze "0 Einträge" at render time; the live batchView() count replaces it.
+    const liveHead = c0 && bt && isHintCard(c0) ? liveBatchHeading(c0.heading, bt.count) : null
+    const c = c0 && liveHead ? { ...c0, heading: liveHead } : c0
     const last = await read($, lastCard)
     const w = working ? workingLine(prog) : null
     const b = await read($, budget)
@@ -1489,13 +1529,13 @@ export const register: Register = on => {
     const run = await read($, cleanup)
     const folded = await read($, fold)
     const hintsUp = await read($, hintsOpen)
+    const opened = await read($, pointsOpen)
     const hintCard = isHintCard(c)
     const hidden = markerHides(sh.marker, (sh.hyg && sh.hyg.repo) || '', sh.sid, (sh.hyg && sh.hyg.reportAt) || 0, now)
     const cv = working || hidden ? null : cleanupView(sh.hyg, sh.threshold)
     const isSettled = await read($, settled)
     const advised = compactAdvised(ring, { concept: sh.work.concept, changes: sh.work.changes, steps: prog.steps.some(s => s.status !== 'completed'), settled: isSettled }, c)
     const idle = !w && !c
-    const bt = await batchView($)
     const inf = await read($, info)
     const infoData = inf.open ? inf.data : null
     const hl = await read($, health)
@@ -1530,14 +1570,15 @@ export const register: Register = on => {
     // Collecting: one persistent row, neutral colour (the confirmation toast carries the event, this the standing state).
     // The count folds the note list open (zero tokens, instead of `/do-batch status`); Go queues the execute marker as the
     // person's prompt, also while a turn runs; Off ends the mode through a script, no turn. Typing go / aus works as before.
+    // A batch hint card shows the live count in its heading (one count source): the row then keeps only list + buttons.
     const batchUp = bt ? await read($, batchOpen) : false
     const pressed = bt ? await read($, batchPress) : null
     const batchEl = bt ? (
       <Box key="batch" flexDirection="column" rowGap={1}>
         <Box key="batch-row" flexDirection="row" alignItems="center" columnGap={1} flexWrap="wrap">
           {bt.count > 0 ? (
-            <Button key="batch-fold" plain label={`${tr(loc, 'bandBatch', { n: bt.count })} ${batchUp ? '▾' : '▸'}`} onPress={() => update($, batchOpen, v => !v)} />
-          ) : (
+            <Button key="batch-fold" plain label={`${liveHead ? tr(loc, 'batchList') : tr(loc, 'bandBatch', { n: bt.count })} ${batchUp ? '▾' : '▸'}`} onPress={() => update($, batchOpen, v => !v)} />
+          ) : liveHead ? null : (
             <Text key="batch-count" {...S.small}>{tr(loc, 'bandBatch', { n: bt.count })}</Text>
           )}
           {pressed ? (
@@ -1670,16 +1711,16 @@ export const register: Register = on => {
       <Text key="budget" dimColor>{budgetLine(b, now)}</Text>
     )
 
-    // --- idle: one slim row ---
+    // --- idle: one slim row; the batch chip sits left, the ring + 🧹 right; the expanded breakdown is its own right-aligned column ---
     if (idle) {
       const text = lastLine(last, loc)
       return (
         <Box key="band" flexDirection="column" rowGap={1}>
           {recapEl}
           {infoEl}
-          {batchEl}
           <Box key="idle" flexDirection="row" alignItems="center" columnGap={2}>
-            <Text key="idle-last" {...S.small}>{text}</Text>
+            {batchEl}
+            {text && <Text key="idle-last" {...S.small}>{text}</Text>}
             <Box flexGrow={1} />
             {ring !== null && (
               <Box key="idle-ring" flexDirection="row" alignItems="center" columnGap={1}>
@@ -1690,7 +1731,14 @@ export const register: Register = on => {
             {cv && <Button key="cleanup-fold" plain label={`🧹 ${cv.n} ${folded ? '▾' : '▸'}`} onPress={toggle} />}
             {compactBtn}
           </Box>
-          {cv && folded && detail}
+          {cv && folded && (
+            <Box key="cleanup-detail-row" flexDirection="row">
+              <Box flexGrow={1} />
+              <Box key="cleanup-popover" flexDirection="column" width={RAIL_WIDTH} paddingX={1} borderStyle="round" borderColor={DIVIDER} backgroundColor={POPOVER_BG}>
+                {detail}
+              </Box>
+            </Box>
+          )}
           {budgetEl}
         </Box>
       )
@@ -1719,19 +1767,44 @@ export const register: Register = on => {
     )
     // Hint cards: a pointer surface (Desktop, editor) shows a round "?" whose hover overlays the hints; touch and the terminal toggle.
     const hoverHints = hintCard && Svg && (e.surface === 'desktop' || e.surface === 'vscode')
-    const pointRows = (list: string[]) =>
-      list.map((p, i) =>
-        desktop ? (
+    // #3: a point shows at most POINT_CLAMP characters (2 lines) with "…"; the full text on hover (Desktop overlay) or behind ▸ (terminal).
+    const pointRows = (list: string[], clamp = true) =>
+      list.map((p, i) => {
+        const shown = clamp ? clampText(p, POINT_CLAMP) : p
+        const cut = shown !== p
+        if (desktop) {
+          return (
+            <Box key={`card-point-${i}`} position="relative" flexDirection="row" columnGap={1}>
+              <Text color={VIOLET} weight="medium">›</Text>
+              <Text {...S.point}>{shown}</Text>
+              {cut && (
+                <Box position="absolute" top={1} left={2} width={HINTS_WIDTH} display="none" hover={{ display: 'flex' }} paddingX={1} borderStyle="round" borderColor={DIVIDER} backgroundColor={POPOVER_BG}>
+                  <Text {...S.point}>{p}</Text>
+                </Box>
+              )}
+            </Box>
+          )
+        }
+        const open = opened.includes(i)
+        return (
           <Box key={`card-point-${i}`} flexDirection="row" columnGap={1}>
-            <Text color={VIOLET} weight="medium">›</Text>
-            <Text {...S.point}>{p}</Text>
+            <Text dimColor>{`› ${cut && !open ? shown : p}`}</Text>
+            {cut && <Button key={`card-point-more-${i}`} plain label={open ? '▾' : '▸'} onPress={() => update($, pointsOpen, v => (v.includes(i) ? v.filter(x => x !== i) : [...v, i]))} />}
           </Box>
-        ) : (
-          <Text key={`card-point-${i}`} dimColor>
-            › {p}
-          </Text>
-        ),
-      )
+        )
+      })
+    // The title: one line with "…", the full title on hover.
+    const titleShown = c && c.title ? clampText(c.title, TITLE_CLAMP) : ''
+    const titleEl = !c || !c.title ? null : desktop && titleShown !== c.title ? (
+      <Box key="card-title-wrap" position="relative">
+        {cardText('card-title', titleShown, 'title')}
+        <Box position="absolute" top={1} left={0} width={HINTS_WIDTH} display="none" hover={{ display: 'flex' }} paddingX={1} borderStyle="round" borderColor={DIVIDER} backgroundColor={POPOVER_BG}>
+          <Text {...S.point}>{c.title}</Text>
+        </Box>
+      </Box>
+    ) : desktop ? (
+      cardText('card-title', c.title, 'title')
+    ) : null
     const hintToggle = !hintCard ? null : hoverHints ? (
       <Box key="hints" position="relative">
         <Svg source={helpSvg()} alt={tr(loc, 'hints')} width={HELP_SIZE} height={HELP_SIZE} />
@@ -1749,7 +1822,7 @@ export const register: Register = on => {
           borderColor={DIVIDER}
           backgroundColor={POPOVER_BG}
         >
-          {pointRows(c!.points)}
+          {pointRows(c!.points, false)}
         </Box>
       </Box>
     ) : (
@@ -1767,7 +1840,7 @@ export const register: Register = on => {
           {workEl}
           {c && (c.title || c.at) && (
             <Box key="card-title" flexDirection="row" justifyContent="space-between" columnGap={2}>
-              <Text {...S.title}>{c.title}</Text>
+              <Text {...S.title}>{titleShown}</Text>
               {c.at && <Text {...S.time}>{c.at}</Text>}
             </Box>
           )}
@@ -1794,7 +1867,7 @@ export const register: Register = on => {
         <Box key="zones" position="relative" flexDirection="row" columnGap={2}>
           <Box key="main" flexDirection="column" flexGrow={1} rowGap={1}>
             {workEl}
-            {c && c.title && cardText('card-title', c.title, 'title')}
+            {titleEl}
             {c && (
               <Box key="card-heading-row" flexDirection="row" alignItems="center" columnGap={1}>
                 {cardText('card-heading', c.heading, 'heading')}
