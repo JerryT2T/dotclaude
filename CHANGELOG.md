@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.386.0] — 2026-11-17
+
+### Added
+- Mods band: a green (🟩) card (shipped, released, finished analysis) offers "🗄 Archivieren" while nothing runs. One click archives the session through the Desktop app's own `archive_session` (via `$.mcp.call`, no model turn). The app's refusals (pinned, still working, busy side session) show as a toast. When the server is unreachable, the request is sent as the person's prompt instead.
+
 ## [0.385.1] — 2026-11-17
 
 ### Fixed
