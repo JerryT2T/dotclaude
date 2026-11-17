@@ -40,12 +40,13 @@
     },
     "claude-mods": {
       "minChannel": "alpha",
-      "summary": "Display-only Claude Code mods: agent pane, budget and context band, ship/CI pane, branch-hygiene status, notice toasts, and the fork-cache spike command",
+      "summary": "Claude Code mods: agent pane, budget and context band, ship/CI pane, branch-hygiene status, notice toasts, return recap, deterministic paste / tool-output redirect, and the fork-cache and wake spike commands",
       "docs": [],
       "scripts": [
         "hooks/mods/index.tsx",
         "hooks/mods/gate.ts",
-        "hooks/session-start/ss.mods.load.js"
+        "hooks/session-start/ss.mods.load.js",
+        "scripts/paste-redirect-write.js"
       ]
     }
   }
