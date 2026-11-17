@@ -155,3 +155,22 @@ describe("linkedPlan - clickable links and the newer release (S1.1, S1.4, S2.4)"
     expect(plan([L("X", "shipped", "handoff", { version: "0.4.0" }), L("Y", "running")], "released", own("0.3.0")).head.id).toBe("linked");
   });
 });
+
+describe("linkedPlan - learned: say where the user stands", () => {
+  test("running handoff says outright that the user has nothing to do", () => {
+    const p = plan([L("Doku", "running")], "fallback");
+    expect(p.lines[0]).toBe("Für dich nichts zu tun — ich mache weiter, sobald sie sich meldet");
+  });
+
+  test("a waiting session never gets the nothing-to-do line", () => {
+    const p = plan([L("Doku", "waiting")], "fallback");
+    expect(p.lines.join(" ")).not.toMatch(/nichts zu tun/);
+  });
+
+  test("archived before it reported: no ⏳ Linked head, a not-shipped line instead", () => {
+    const p = plan([L("Mods", "archived")], "fallback");
+    expect(p.head).toBeNull();
+    expect(p.lines).toContain("„Mods“ wurde archiviert, bevor sie fertig war — nicht geshippt");
+    expect(hasUnfinishedLinked([L("Mods", "archived")])).toBe(false);
+  });
+});
