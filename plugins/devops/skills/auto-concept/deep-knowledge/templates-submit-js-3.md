@@ -1,4 +1,4 @@
-# Concept templates, part 37 of 50: Shared systems — two-button submit JS (continued 3)
+# Concept templates, part 37 of 51: Shared systems — two-button submit JS (continued 3)
 
 ```javascript
 async function submitFinalize(shipRun) {
@@ -30,9 +30,13 @@ async function submitFinalize(shipRun) {
     // embeds them in the frozen tab like any other round's.
     userPins: (typeof window.documentPinsPayload === 'function') ? window.documentPinsPayload(active) : []
   };
+  // A stage report adds {stage, stages, next, final}; while an Etappe stays
+  // open (final:false) it ships nothing and disposes of nothing (§ Etappen).
+  // An untagged report and a concept without Etappen add nothing.
+  if (typeof stageFinalizeFields === 'function') Object.assign(payload, stageFinalizeFields());
 
   setCloseoutFrozen(true);
-  setCloseoutButtonState('running', ship ? 'yes' : 'no');
+  setCloseoutButtonState('running', payload.final === false ? 'stage' : (ship ? 'yes' : 'no'));
 
   const container = document.getElementById('concept-decisions');
   if (container) container.textContent = JSON.stringify(payload);
@@ -175,7 +179,7 @@ async function restoreInFlightCloseout() {
     const live = finalReportSection();
     if (data.iteration != null && String(data.iteration) !== String(live.dataset.iteration)) return;
     setCloseoutFrozen(true);
-    setCloseoutButtonState('running', data.action === 'refine' ? 'fix' : (data.ship && data.ship.run ? 'yes' : 'no'));
+    setCloseoutButtonState('running', data.action === 'refine' ? 'fix' : data.final === false ? 'stage' : (data.ship && data.ship.run ? 'yes' : 'no'));
     // Same veil submitFinalize() put up — a reload must not lift it.
     document.body.classList.add('concept-submitted', 'content-dimmed');
     showContentDimmer();

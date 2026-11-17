@@ -308,20 +308,25 @@ stripping comments, `<script>` / `<style>`, ids, `data-screen` / `data-nav-label
 
 Read from the built page's `#concept-stages` JSON script (`findStageIssues` in `concept-gate.js`).
 A page without that script and without `data-stage` is not affected. Errors are reported through
-`structural`.
+`structural`. Stages come in any order (the user picks the next one) and a stage's rounds need not
+be consecutive; a stage is `open`, `built` (its `data-final-report data-stage="<id>"` round exists),
+`issue` or `dropped` (page.json `stages[i].state`) — the build injects that as `state` per entry.
 
 | # | Rule | Severity |
 |---|------|----------|
 | E1 | `stages-undeclared` — a round carries `data-stage` but the page has no `#concept-stages` (declare `stages` in page.json) | **error (blocks)** |
-| E2 | `stages-malformed` — the script is not JSON with a non-empty `stages` array | **error (blocks)** |
+| E2 | `stages-malformed` — the script is not JSON with a non-empty `stages` array, or an entry's `state` is not `open` \| `built` \| `issue` \| `dropped` (no `state` at all stays valid) | **error (blocks)** |
 | E3 | `stages-too-many` — more than 7 stages | **error (blocks)** |
 | E4 | `stages-ids` — ids are not consecutive capital letters from A | **error (blocks)** |
 | E5 | `stages-name` — a stage name is empty or longer than 24 characters | **error (blocks)** |
-| E6 | `stages-round-untagged` — a round has no `data-stage` although stages exist (the final report and a reality-check round are exempt: they carry none) | **error (blocks)** |
+| E6 | `stages-round-untagged` — a round has no `data-stage` although stages exist (an untagged final report and a reality-check round are exempt; a stage report carries `data-stage`) | **error (blocks)** |
 | E7 | `stages-round-unknown` — `data-stage` names an undeclared stage | **error (blocks)** |
-| E8 | `stages-order` — a round's stage is earlier than a previous round's (stages must be non-decreasing) | **error (blocks)** |
+| E8 | *(retired — `stages-order` is gone: stages may come in any order and a stage's rounds need not be consecutive)* | — |
 | E9 | `stages-current` — `current` differs from the live round's stage | **error (blocks)** |
 | E10 | `stages-title` — concept title longer than 32 characters (panel head limit) | warning |
+| E11 | `stages-built-reopened` — a regular round (no `data-final-report` / `data-review` / `data-reality-check`) with `data-stage="X"` comes after X's final report; a built stage changes only through "Nachbessern" (a `data-review` round stays allowed) | **error (blocks)** |
+| E12 | `stages-report-duplicate` — two final reports carry the same `data-stage` (one per stage) | **error (blocks)** |
+| E13 | `stages-closed` — the live (last) round's stage is `issue` or `dropped` in `#concept-stages` (earlier rounds of that stage are history) | **error (blocks)** |
 
 ## Engine drift on iteration append
 

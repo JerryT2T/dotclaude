@@ -1,4 +1,4 @@
-# Concept templates, part 45 of 50: Template: analysis — styling CSS (Full + Lite)
+# Concept templates, part 45 of 51: Template: analysis — styling CSS (Full + Lite)
 
 ## Styling (Full + Lite)
 

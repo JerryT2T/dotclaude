@@ -1,0 +1,385 @@
+// Etappen in free order (concept 20261117-1305-etappen-einzeln): start any open
+// Etappe from its pane, "Nächste Etappe ›" to the next OPEN one, the implement
+// station in every Etappe, stage final reports named after their Etappe, and
+// the close-out of a stage report ("Offene Etappen", final:false / true).
+// Pages are assembled by concept-build.js from the real engine and run on jsdom.
+import { describe, test, expect } from "vitest";
+import { JSDOM, VirtualConsole } from "jsdom";
+import cb from "../../scripts/concept-build.js";
+
+const STAGES = [
+  { id: "A", name: "Use Cases" },
+  { id: "B", name: "Struktur" },
+  { id: "C", name: "Visuelles Design" },
+];
+
+const round = (n, stage, { baked = false } = {}) => `<section data-iteration="${n}" data-iteration-template="decision"${baked ? " data-baked" : ""}${stage ? ` data-stage="${stage}"` : ""}>
+  <div class="iteration-intro"><h2>Runde ${n}</h2></div>
+  <section id="v${n}" class="variant-card" data-nav-label="Variante ${n}">
+    <div class="variant-evaluation" data-decision="v${n}" data-label="V${n}">
+      <div class="eval-group">
+        <label class="eval-option"><input type="radio" name="eval-v${n}" value="discard"><span class="eval-label">{{variant.discard}}</span></label>
+        <label class="eval-option"><input type="radio" name="eval-v${n}" value="include" checked><span class="eval-label">{{variant.include}}</span></label>
+      </div>
+    </div>
+  </section>
+</section>`;
+const report = (n, stage, { baked = false } = {}) => `<section data-iteration="${n}" data-iteration-template="free" data-final-report${baked ? " data-baked" : ""}${stage ? ` data-stage="${stage}"` : ""}>
+  <h2>Bericht</h2>
+  <details class="fr-fold" data-open-questions><ul>
+    <li data-oq-id="oq-1" data-issue-title="[CHORE] Hint text" data-issue-type="chore" data-route-default="issue" data-oq-origin="found"><span class="oq-label">Hint text</span></li>
+  </ul></details>
+</section>`;
+
+/** rounds: fragment strings in order; stages: page.json stages (state optional). */
+async function page({ rounds, stages = STAGES, locale = "de" }) {
+  const pageJson = { title: "Hub-Navigation", locale, icon: "🧭" };
+  if (stages) pageJson.stages = stages;
+  const res = cb.assemble({ page: pageJson, head: "", fragments: rounds.map((html, i) => ({ n: i + 1, html })), slug: "t" });
+  const posted = [];
+  const errors = [];
+  const virtualConsole = new VirtualConsole();
+  virtualConsole.on("jsdomError", (e) => errors.push(String((e && (e.detail?.message || e.message)) || e)));
+  const dom = new JSDOM(res.html, {
+    runScripts: "dangerously", pretendToBeVisual: true, url: "http://localhost/t.html", virtualConsole,
+    beforeParse(w) {
+      w.__posted = posted;
+      w.fetch = async (url, opts) => {
+        if (opts && opts.method === "POST") posted.push({ url: String(url), body: opts.body ? JSON.parse(opts.body) : null });
+        return { ok: true, status: 200, json: async () => ({ durable: true }), text: async () => "" };
+      };
+      w.__confirms = 0;
+      w.confirm = () => { w.__confirms++; return false; };
+      w.scrollTo = () => {};
+      w.HTMLElement.prototype.scrollIntoView = function () {};
+    },
+  });
+  const { window } = dom;
+  // The engine boots on DOMContentLoaded, which jsdom fires after this tick.
+  for (let i = 0; i < 50 && window.document.readyState !== "complete"; i++) await tick(5);
+  await tick(20);
+  const $ = (s) => window.document.querySelector(s);
+  const $$ = (s) => [...window.document.querySelectorAll(s)];
+  const decisions = () => posted.filter((p) => /\/decisions$/.test(p.url)).map((p) => p.body);
+  const tab = (id) => $(`#stage-tabs .stage-tab[data-stage-id="${id}"]`);
+  return { window, $, $$, res, errors, decisions, tab, last: () => decisions().at(-1) };
+}
+function tick(ms = 0) { return new Promise((r) => setTimeout(r, ms)); }
+
+describe("Etappen free order — stepper, panes, start control", () => {
+  // A baked, B live (rounds 2–3), C not started.
+  const rounds = () => [round(1, "A", { baked: true }), round(2, "B", { baked: true }), round(3, "B")];
+
+  test("the page assembles and shows one tab per Etappe", async () => {
+    const p = await page({ rounds: rounds() });
+    expect(p.res.problems).toEqual([]);
+    expect(p.errors).toEqual([]);
+    expect(p.$$("#stage-tabs .stage-tab").map((t) => t.dataset.stageId)).toEqual(["A", "B", "C"]);
+  });
+
+
+  test("the English page boots without script errors and its startable tab names the action", async () => {
+    const p = await page({ rounds: rounds(), locale: "en" });
+    expect(p.errors).toEqual([]);
+    expect(p.tab("C").dataset.tip).toMatch(/\nClick starts this stage$/);
+    expect(p.tab("A").getAttribute("aria-label")).toMatch(/ · Click: continue with this stage$/);
+    expect(p.$("#submit-implement-btn .jr-ul-txt b").textContent).toBe("Build this stage");
+  });
+
+  test("one click on an open non-live tab without rounds sends next-stage (untouched, no confirm, no pane)", async () => {
+    const p = await page({ rounds: rounds() });
+    const c = p.tab("C");
+    expect(c.dataset.start).toBe("new");
+    expect(c.dataset.tip).toMatch(/\nKlick startet diese Etappe$/);
+    expect(c.getAttribute("aria-label")).toMatch(/ · Klick startet diese Etappe$/);
+    expect(c.hasAttribute("title")).toBe(false);
+    c.click();
+    await tick();
+    expect(p.window.__confirms).toBe(0);
+    expect(p.last()).toMatchObject({ action: "next-stage", stage: "B", next: "C", untouched: true });
+    expect(p.$("#stage-pane").hidden, "no pane opened on the way").toBe(true);
+    expect(p.$("#stage-start"), "the pane start control is gone").toBeNull();
+    expect(p.res.html).not.toMatch(/\.stage-start\b/);
+  });
+
+  test("a tab with earlier rounds starts its Etappe with one click too; Enter does the same", async () => {
+    const p = await page({ rounds: rounds() });
+    const a = p.tab("A");
+    expect(a.dataset.start).toBe("again");
+    expect(a.dataset.tip).toMatch(/\nKlick: mit dieser Etappe weitermachen$/);
+    a.focus();
+    a.dispatchEvent(new p.window.KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    await tick();
+    expect(p.last()).toMatchObject({ action: "next-stage", stage: "B", next: "A" });
+  });
+
+  test("live, built, issue and dropped tabs do not submit; they open the pane", async () => {
+    const stages = [{ id: "A", name: "Use Cases" }, { id: "B", name: "Struktur", state: "issue" },
+      { id: "C", name: "Visuelles Design", state: "dropped" }, { id: "D", name: "Texte" }];
+    const p = await page({ stages, rounds: [round(1, "A", { baked: true }), report(2, "A", { baked: true }), round(3, "D")] });
+    expect(p.res.problems).toEqual([]);
+    expect(["A", "B", "C", "D"].map((id) => p.tab(id).dataset.state)).toEqual(["done", "closed", "closed", "now"]);
+    expect(p.tab("A").dataset.tip).toMatch(/\nGebaut$/);
+    expect(p.tab("B").dataset.tip).toMatch(/Als Issue angelegt/);
+    expect(p.tab("C").dataset.tip).toMatch(/Gestrichen/);
+    expect(["A", "B", "C", "D"].some((id) => p.tab(id).hasAttribute("data-start"))).toBe(false);
+    for (const id of ["A", "B", "C"]) {
+      p.tab(id).click();
+      expect(p.$("#stage-pane").hidden, id).toBe(false);
+    }
+    p.tab("D").click();
+    expect(p.$("#stage-pane").hidden, "the live Etappe shows its own nav").toBe(true);
+    await tick();
+    expect(p.decisions().filter((d) => d && d.action === "next-stage")).toEqual([]);
+    expect(p.$("#stage-pane .stage-ahead")).toBeNull();
+    expect(p.res.html).toMatch(/\.stage-tab\[data-state="closed"\] \.stage-tn \{ text-decoration: line-through/);
+    expect(p.$("#jr-next-stage"), "no other open Etappe").toBeNull();
+  });
+
+  test("a passed-over Etappe stays open and startable", async () => {
+    const p = await page({ rounds: [round(1, "A", { baked: true }), round(2, "C")] });
+    expect(p.tab("B").dataset.state).toBe("ahead");
+    expect(p.tab("A").dataset.state).toBe("open");
+    expect(p.tab("B").dataset.start).toBe("new");
+    expect(p.tab("A").dataset.start).toBe("again");
+  });
+
+  test("frozen view: no tab starts anything, every tab opens its pane with its rounds", async () => {
+    const p = await page({ rounds: rounds() });
+    p.window.showIteration("2");
+    expect(p.tab("A").hasAttribute("data-start")).toBe(false);
+    p.tab("A").click();
+    expect(p.$("#stage-pane").hidden).toBe(false);
+    expect(p.$("#stage-pane .stage-round").textContent).toBe("Runde 1");
+    await tick();
+    expect(p.decisions().filter((d) => d && d.action === "next-stage")).toEqual([]);
+  });
+
+  test("reading path: the live Etappe's 🕘 area lists the rounds of startable Etappen; a jump opens them frozen", async () => {
+    const p = await page({ rounds: rounds() });
+    const wraps = [...p.$$("#stage-cur-older .stage-older-btn")];
+    const other = wraps.find((b) => /Runden anderer Etappen/.test(b.textContent));
+    expect(other, "disclosure").toBeTruthy();
+    other.click();
+    const row = other.parentNode.querySelector(".stage-older .stage-round");
+    expect(row.textContent).toBe("A · Runde 1");
+    row.click();
+    expect(p.$('section[data-iteration="1"]').hidden).toBe(false);
+    expect(p.window.document.body.classList.contains("viewing-frozen")).toBe(true);
+    await tick();
+    expect(p.decisions().filter((d) => d && d.action === "next-stage")).toEqual([]);
+  });
+});
+
+describe("Etappen free order — journey row", () => {
+  test("stations stand in a non-last Etappe, implement reads 'Diese Etappe umsetzen' and names the stage", async () => {
+    const p = await page({ rounds: [round(1, "A")] });
+    expect(p.$("#journey #jr-lock")).toBeTruthy();
+    expect(p.$("#journey .jr-impl")).toBeTruthy();
+    expect(p.$("#submit-implement-btn .jr-ul-txt b").textContent).toBe("Diese Etappe umsetzen");
+    p.$("#submit-implement-btn").click();
+    await tick();
+    expect(p.last()).toMatchObject({ action: "implement", stage: "A" });
+  });
+
+  test("'Nächste Etappe ›' targets the next OPEN Etappe and wraps around", async () => {
+    const stages = [{ id: "A", name: "Use Cases" }, { id: "B", name: "Struktur" }, { id: "C", name: "Visuelles Design", state: "dropped" }];
+    const p = await page({ stages, rounds: [round(1, "A", { baked: true }), round(2, "B")] });
+    expect(p.$("#jr-next-stage").dataset.next, "C is dropped → wrap to A").toBe("A");
+    expect(p.$("#jr-next-stage").textContent).toBe("Nächste Etappe ›");
+    p.$("#jr-next-stage").click();
+    return tick().then(() => expect(p.last()).toMatchObject({ action: "next-stage", stage: "B", next: "A" }));
+  });
+
+  test("an unstaged concept keeps today's implement label and payload", async () => {
+    const p = await page({ stages: null, rounds: [round(1, null)] });
+    expect(p.$("#stage-tabs")).toBeNull();
+    expect(p.$("#jr-next-stage")).toBeNull();
+    expect(p.$("#submit-implement-btn .jr-ul-txt b").textContent).toBe("Jetzt umsetzen");
+    p.$("#submit-implement-btn").click();
+    await tick();
+    expect(p.last().action).toBe("implement");
+    expect("stage" in p.last()).toBe(false);
+  });
+});
+
+describe("Etappen free order — stage final reports", () => {
+  test("A(baked) → report A(baked) → round C: tab + head name the Etappe, the report is frozen and reachable", async () => {
+    const p = await page({ rounds: [round(1, "A", { baked: true }), report(2, "A", { baked: true }), round(3, "C")] });
+    expect(p.res.problems).toEqual([]);
+    const repTab = p.$('.iteration-tab[data-iteration="2"]');
+    expect(repTab.textContent.trim()).toBe("🏁 Use Cases");
+    p.tab("A").click();
+    const row = p.$("#stage-pane .stage-report");
+    expect(row.textContent).toBe("🏁 Use Cases");
+    row.click();
+    expect(p.$('section[data-iteration="2"]').hidden).toBe(false);
+    expect(p.window.document.body.classList.contains("viewing-frozen")).toBe(true);
+    expect(p.$("#panel-final-report").style.display).toBe("none");
+    expect(p.$("[data-here-round]").textContent).toBe("🏁 Use Cases · archiviert");
+  });
+
+  test("an untagged final report keeps '🏁 Abschluss'", async () => {
+    const p = await page({ rounds: [round(1, "A", { baked: true }), report(2, null)] });
+    expect(p.$("[data-here-round]").textContent).toBe("🏁 Abschluss");
+  });
+});
+
+describe("Etappen free order — close-out of a live stage report", () => {
+  const live = () => page({ rounds: [round(1, "A", { baked: true }), report(2, "A")] });
+
+  test("B and C open: the block, one go button, no ship, no disposition; default payload final:false", async () => {
+    const p = await live();
+    expect(p.$("[data-here-round]").textContent).toBe("🏁 Use Cases");
+    const group = p.$('[data-closeout-group="stages"]');
+    expect(group.hidden).toBe(false);
+    expect(group.querySelector(".closeout-gh").textContent).toMatch(/^Offene Etappen 2/);
+    const rows = [...group.querySelectorAll("[data-stage-row]")];
+    expect(rows.map((r) => r.dataset.stageRow)).toEqual(["B", "C"]);
+    expect([...rows[0].querySelectorAll(".stage-co-opt span")].map((s) => s.textContent)).toEqual(["nachholen", "als Issue anlegen", "streichen"]);
+    expect([...group.querySelectorAll('input[name="stage-next"]')].map((i) => [i.value, i.checked])).toEqual([["B", true], ["C", false]]);
+    expect(p.$("#closeout-stage-go").hidden).toBe(false);
+    expect(p.$("#closeout-ship").hidden).toBe(true);
+    expect(p.$("#closeout-noship").hidden).toBe(true);
+    expect(p.$("#closeout-sheet").hasAttribute("data-stage-continue")).toBe(true);
+    expect(p.$("#closeout-stage-plan").textContent).toContain("Weiter mit Etappe B · Struktur");
+    p.$("#closeout-stage-go").click();
+    await tick();
+    const body = p.last();
+    expect(body).toMatchObject({
+      action: "finalize", stage: "A", final: false, next: "B",
+      stages: [{ id: "B", route: "open" }, { id: "C", route: "open" }],
+      ship: { run: false }, disposition: null,
+    });
+    expect(p.$("#closeout-stage-go").dataset.finalizeState).toBe("running");
+  });
+
+  test("routing B to issue and C to drop flips to final:true and brings ship + disposition back", async () => {
+    const p = await live();
+    const pick = (name, value) => {
+      const i = p.$(`input[name="${name}"][value="${value}"]`);
+      i.checked = true;
+      i.dispatchEvent(new p.window.Event("change", { bubbles: true }));
+    };
+    pick("stage-route-B", "issue");
+    expect(p.$('input[name="stage-next"]:checked').value, "C is now the first kept one").toBe("C");
+    pick("stage-route-C", "drop");
+    expect(p.$('.stage-co-next').hidden).toBe(true);
+    expect(p.$("#closeout-stage-go").hidden).toBe(true);
+    expect(p.$("#closeout-ship").hidden).toBe(false);
+    expect(p.$("#closeout-noship").hidden).toBe(false);
+    expect(p.$("#closeout-sheet").hasAttribute("data-stage-continue")).toBe(false);
+    expect(p.$("#closeout-stage-plan").textContent).toMatch(/B als Issue · ✕ C gestrichen$/);
+    p.$("#closeout-ship").click();
+    await tick();
+    const body = p.last();
+    expect(body).toMatchObject({
+      action: "finalize", stage: "A", final: true, next: null,
+      stages: [{ id: "B", route: "issue" }, { id: "C", route: "drop" }], ship: { run: true },
+    });
+    expect(body.disposition).toMatchObject({ mode: "discard" });
+  });
+
+  test("'Weiter mit' picks among the kept-open ones", async () => {
+    const p = await live();
+    const c = p.$('input[name="stage-next"][value="C"]');
+    c.checked = true;
+    c.dispatchEvent(new p.window.Event("change", { bubbles: true }));
+    p.$("#closeout-stage-go").click();
+    await tick();
+    expect(p.last()).toMatchObject({ final: false, next: "C" });
+  });
+
+  test("on a live final report no tab starts anything and there is no 'Nächste Etappe ›'", async () => {
+    const p = await live();
+    expect(p.tab("B").hasAttribute("data-start")).toBe(false);
+    p.tab("B").click();
+    expect(p.$("#stage-pane").hidden, "opens the pane").toBe(false);
+    await tick();
+    expect(p.decisions().filter((d) => d && d.action === "next-stage")).toEqual([]);
+    expect(p.$("#jr-next-stage")).toBeNull();
+  });
+
+  test("an untagged report and an unstaged concept submit today's payload keys exactly", async () => {
+    const keys = async (p) => { p.$("#closeout-noship").click(); await tick(); return Object.keys(p.last()).sort(); };
+    const today = ["action", "disposition", "handoffs", "implement", "issues", "iteration", "ship", "submission_id", "submitted", "tests", "userPins"];
+    const untagged = await page({ rounds: [round(1, "A", { baked: true }), report(2, null)] });
+    expect(untagged.$('[data-closeout-group="stages"]')?.hidden ?? true).toBe(true);
+    expect(untagged.$("#closeout-stage-go").hidden).toBe(true);
+    expect(await keys(untagged)).toEqual(today);
+    const plain = await page({ stages: null, rounds: [round(1, null, { baked: true }), report(2, null)] });
+    expect(await keys(plain)).toEqual(today);
+  });
+});
+
+describe("Etappen free order — browser-check fix round (D1–D6)", () => {
+  const rounds = () => [round(1, "A", { baked: true }), round(2, "B", { baked: true }), round(3, "B")];
+
+  test("D1: the staged implement label wraps, is never ellipsised, and carries the full text as tooltip + name", async () => {
+    const p = await page({ rounds: rounds() });
+    const css = p.res.html;
+    expect(css).toMatch(/body\[data-staged\] \.journey \.implement-btn\.jr-fill \{ white-space: normal; \}/);
+    expect(css).toMatch(/body\[data-staged\] \.journey \.jr-ul-txt b \{\s*white-space: normal; overflow: visible; text-overflow: clip;/);
+    expect(css).toMatch(/body\[data-staged\] \.journey \.jr-ul-txt small \{ display: none; \}/);
+    const btn = p.$("#submit-implement-btn");
+    expect(btn.querySelector(".jr-ul-txt b").textContent).toBe("Diese Etappe umsetzen");
+    expect(btn.dataset.tip).toBe("Diese Etappe umsetzen — nur diese Etappe, das Concept bleibt offen");
+    expect(btn.getAttribute("aria-label")).toBe("Diese Etappe umsetzen, nur diese Etappe, das Concept bleibt offen");
+    const en = await page({ rounds: rounds(), locale: "en" });
+    expect(en.$("#submit-implement-btn").getAttribute("aria-label")).toBe("Build this stage, this stage only, the concept stays open");
+  });
+
+  test("D2: startable tabs and 'Nächste Etappe ›' lock while a submit runs and re-arm with the panel", async () => {
+    const p = await page({ rounds: rounds() });
+    const locked = () => [p.tab("A").disabled, p.tab("C").disabled, p.$("#jr-next-stage").disabled];
+    expect(locked()).toEqual([false, false, false]);
+    expect(p.tab("B").disabled, "the live tab is never locked").toBe(false);
+    p.tab("C").click();
+    await tick();
+    expect(p.window.journeyPhase()).toBe("rethinking");
+    expect(locked()).toEqual([true, true, true]);
+    const sent = p.decisions().length;
+    p.tab("A").click();
+    await tick();
+    expect(p.decisions().length, "a locked tab sends nothing").toBe(sent);
+    p.window.restorePanelToReady();
+    expect(locked()).toEqual([false, false, false]);
+  });
+
+  test("D3: passing an untouched round over asks no confirm; the round goes out as it stands", async () => {
+    const p = await page({ rounds: rounds() });
+    p.tab("C").click();
+    await tick();
+    expect(p.window.__confirms).toBe(0);
+    const body = p.last();
+    expect(body).toMatchObject({ submitted: true, action: "next-stage", stage: "B", next: "C", iteration: "3" });
+    // Authored defaults of a passed-over round are no answers: the payload says so.
+    expect(body.untouched).toBe(true);
+  });
+
+  test("D4: the page pill of a live stage report names the Etappe", async () => {
+    const p = await page({ rounds: [round(1, "A", { baked: true }), report(2, "A")] });
+    const header = p.$(".concept-content > header");
+    expect(header, "page header").toBeTruthy();
+    expect(header.dataset.stagePill).toBe("🏁 Use Cases");
+    expect(p.res.html).toMatch(/body\.viewing-final \.concept-content > header\[data-stage-pill\]::before \{ content: attr\(data-stage-pill\); \}/);
+    const plain = await page({ rounds: [round(1, "A", { baked: true }), report(2, null)] });
+    expect(plain.$(".concept-content > header").hasAttribute("data-stage-pill")).toBe(false);
+  });
+
+  test("D5: a closed Etappe without rounds shows only its closed state", async () => {
+    const stages = [{ id: "A", name: "Use Cases" }, { id: "B", name: "Struktur", state: "issue" }, { id: "C", name: "Visuelles Design", state: "dropped" }];
+    const p = await page({ stages, rounds: [round(1, "A")] });
+    expect(p.tab("B").dataset.tip).toBe("Als Issue angelegt");
+    expect(p.tab("C").dataset.tip).toBe("Gestrichen");
+    expect(p.tab("C").getAttribute("aria-label")).not.toMatch(/Noch nicht begonnen/);
+  });
+
+  test("D6: 'open, has rounds' has its own look, distinct from 'ahead' and from 'done'", async () => {
+    const p = await page({ rounds: [round(1, "A", { baked: true }), round(2, "C")] });
+    expect(p.tab("A").dataset.state).toBe("open");
+    expect(p.tab("B").dataset.state).toBe("ahead");
+    expect(p.res.html).toMatch(/\.stage-tab\[data-state="open"\] \.stage-node \{\s*color: var\(--text-color/);
+    expect(p.res.html).toMatch(/\.stage-tab\[data-state="ahead"\] \.stage-node \{ border-style: dashed; opacity: 0\.6; \}/);
+  });
+});

@@ -1,4 +1,4 @@
-# Concept templates, part 04 of 50: Panel chrome — page-level JS
+# Concept templates, part 04 of 51: Panel chrome — page-level JS
 
 
 ```javascript

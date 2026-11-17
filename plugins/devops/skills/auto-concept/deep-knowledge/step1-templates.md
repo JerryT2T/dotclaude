@@ -41,8 +41,9 @@ every round section with its `data-stage`), never one `data-design-set="topics"`
 different surfaces as sub-pages. Each Etappe runs its own round sequence;
 the A→D order is a reading order, not a dependency. Closely related surfaces
 (one screen family, variants of one component) may still share a round. The
-coverage list, the `Bündel:` section and the single implement order at the
-end travel unchanged — the Etappen split the decisions, not the build.
+coverage list and the `Bündel:` section travel unchanged; each Etappe's
+implement click builds the bundles of its surface group, and the last
+close-out ships them together (`step5-stages.md`).
 
 ### Count preferences — recommendations, not instructions
 
@@ -175,12 +176,13 @@ with an overview table carrying a recommendation column and jump links
    (or `concept-build.js init … --stages "A:Use Cases,B:Struktur"`) — 1 to 7 entries, ids
    consecutive capitals A–G, name at most 24 characters. Optional `"icon": "🧭"` (emoji before
    the concept name in the ☰ panel head, default 🧭); the concept name is `page.json.title`, at
-   most 32 characters. Every round section of a staged concept carries `data-stage="<id>"` (the
-   final report and a reality-check round carry none and stay in the live Etappe); the
-   rounds of one stage are consecutive and stages advance in order (the gate checks this, see
-   validation-gate.md § Etappen). The build injects them as `<script type="application/json"
-   id="concept-stages">` — never write that script by hand. In the LAST stage there is no
-   "Nächste Etappe"; the implement step is offered again.
+   most 32 characters. Every round section of a staged concept carries `data-stage="<id>"` — a
+   final report that of the Etappe it closes; a reality-check round carries none and stays in
+   the live Etappe. Stages may be worked in any order until they are built (the gate rules:
+   validation-gate.md § Etappen). The build injects them, with each stage's state, as `<script
+   type="application/json" id="concept-stages">` — never write that script by hand. Every
+   Etappe offers the implement step; "Nächste Etappe" shows while another one is open
+   (`step5-stages.md`).
 
    *Layout:* Claude arranges stages horizontally (tabs), vertically or combined per concept —
    whatever overwhelms the user least — and at the end always offers the most complete overview

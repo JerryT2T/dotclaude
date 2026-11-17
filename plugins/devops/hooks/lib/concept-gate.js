@@ -1287,7 +1287,8 @@ function findStageIssues(html) {
   // The final report and a reality-check round cover the whole concept: they
   // carry no data-stage and belong to the live Etappe (templates-stages-js.md).
   const closing = tag => /\sdata-(?:final-report|reality-check)(?=[\s=>/])/i.test(tag);
-  while ((m = topRe.exec(body)) !== null) rounds.push({ n: m[2], tag: m[0], at: m.index, stage: attrOf(m[0], 'data-stage'), closing: closing(m[0]) });
+  const flag = (tag, name) => new RegExp(`\\sdata-${name}(?=[\\s=>/])`, 'i').test(tag);
+  while ((m = topRe.exec(body)) !== null) rounds.push({ n: m[2], tag: m[0], at: m.index, stage: attrOf(m[0], 'data-stage'), closing: closing(m[0]), finalReport: flag(m[0], 'final-report'), review: flag(m[0], 'review'), reality: flag(m[0], 'reality-check') });
   if (!sm) {
     const stray = rounds.find(r => r.stage);
     if (stray) errors.push({ kind: 'stages-undeclared', at: stray.at, why: `iteration ${stray.n} carries data-stage="${stray.stage}" but the page has no #concept-stages script — declare "stages" in page.json (step1-templates.md § 1a · Design iteration authoring, Declaring them)` });
@@ -1311,19 +1312,35 @@ function findStageIssues(html) {
     if (!name) errors.push({ kind: 'stages-name', at: sm.index, why: `stage "${s && s.id}" has no name` });
     else if ([...name].length > 24) errors.push({ kind: 'stages-name', at: sm.index, why: `stage "${s.id}" name is ${[...name].length} chars — at most 24 ("${name}")` });
   });
-  let last = -1;
+  // Stage state (open | built | issue | dropped). An older page has none: valid.
+  const STATES = ['open', 'built', 'issue', 'dropped'];
+  const stateOf = {};
+  stages.forEach(s => {
+    if (!s || s.state === undefined) return;
+    if (!STATES.includes(s.state)) errors.push({ kind: 'stages-malformed', at: sm.index, why: `stage "${s.id}" has state ${JSON.stringify(s.state)} — one of ${STATES.join(' | ')}` });
+    else stateOf[String(s.id)] = s.state;
+  });
+  // Stages may come in any order and a stage's rounds need not be consecutive.
+  const reported = new Set();
   for (const r of rounds) {
     if (!r.stage && r.closing) continue;
     if (!r.stage) { errors.push({ kind: 'stages-round-untagged', at: r.at, why: `iteration ${r.n} has no data-stage — every round of a staged concept carries one` }); continue; }
     const idx = ids.indexOf(r.stage);
     if (idx < 0) { errors.push({ kind: 'stages-round-unknown', at: r.at, why: `iteration ${r.n}: data-stage="${r.stage}" is not a declared stage (${ids.join(', ')})` }); continue; }
-    if (idx < last) errors.push({ kind: 'stages-order', at: r.at, why: `iteration ${r.n}: stage ${r.stage} comes after a later stage — stages advance in order` });
-    last = Math.max(last, idx);
+    if (r.finalReport) {
+      if (reported.has(r.stage)) errors.push({ kind: 'stages-report-duplicate', at: r.at, why: `iteration ${r.n}: stage ${r.stage} already has a final report — one per stage` });
+      reported.add(r.stage);
+    } else if (!r.review && !r.reality && reported.has(r.stage)) {
+      errors.push({ kind: 'stages-built-reopened', at: r.at, why: `iteration ${r.n}: stage ${r.stage} is built (it has a final report) — a built stage gets no new round; changes go through "Nachbessern" on its report` });
+    }
   }
   // An untagged closing round keeps the Etappe of the last staged round.
   const liveRound = [...rounds].reverse().find(r => r.stage || !r.closing);
   if (liveRound && liveRound.stage && data.current && data.current !== liveRound.stage) {
     errors.push({ kind: 'stages-current', at: sm.index, why: `#concept-stages current="${data.current}" but the live round ${liveRound.n} is stage ${liveRound.stage}` });
+  }
+  if (liveRound && liveRound.stage && (stateOf[liveRound.stage] === 'issue' || stateOf[liveRound.stage] === 'dropped')) {
+    errors.push({ kind: 'stages-closed', at: liveRound.at, why: `the live round ${liveRound.n} is stage ${liveRound.stage}, which is ${stateOf[liveRound.stage] === 'issue' ? 'routed to an issue' : 'dropped'} — a closed stage cannot be started` });
   }
   if (typeof data.title === 'string' && [...data.title].length > 32) {
     warnings.push({ kind: 'stages-title', at: sm.index, why: `concept title is ${[...data.title].length} chars — the panel head fits 32; shorten page.json "title"` });
@@ -1408,16 +1425,37 @@ function buildBlockReason(filePath, missing, forbidden, structural, mapping, ove
     'becomes the variants of THIS round (one design per take of that element) and is refined on its own; a',
     'later round zooms back out to the main variants (P34).',
   ];
-  if (subpage.length && subpage.length === structural.length && !missing.length && !forbidden.length && !mapping.length && !overlap.length && !stale.length && !collisions.length && !finalReport.length && !analysis.length) {
-    const lines = [`BLOCKED: a design round in "${name}" varies only a sub-page.`, ''];
-    subpage.forEach(i => lines.push(`  - ${i.kind}: ${i.why}`));
-    lines.push(...subpageHint);
+  // Etappen errors are no <style>/<script> breakage: they get their own
+  // heading and fix hint instead of the structural one (which sends the
+  // author looking for a nested <style>).
+  const stages = structural.filter(i => String(i.kind).startsWith('stages-'));
+  const stagesHint = [
+    '',
+    'Etappen are declared in page.json ("stages": ids are the letters A, B, C … in the order they are listed,',
+    'at most 7, names up to 24 characters; the letters only name them, they set no working order).',
+    'Every round section carries data-stage="<id>" — the final report and a reality-check round carry',
+    'none unless it is a stage report — and stages come in any order, but a built stage (one with a final',
+    'report) gets no new round and a stage routed to an issue or dropped is not started. Fix the round',
+    'fragment or page.json and build again; the build recomputes `current` and each stage state. See validation-gate.md § Etappen (stages) and step1-templates.md § 1a · Design',
+    'iteration authoring, Declaring them.',
+  ];
+  const item = i => `  - ${i.kind}: ${i.why}`;
+  structural = structural.filter(i => i.kind !== 'design-round-subpage-only' && !String(i.kind).startsWith('stages-'));
+  const nothingElse = !structural.length && !missing.length && !forbidden.length && !mapping.length && !overlap.length && !stale.length && !collisions.length && !finalReport.length && !analysis.length;
+  if (nothingElse && (stages.length || subpage.length)) {
+    const lines = [];
+    if (stages.length) lines.push(`BLOCKED: the Etappen (stages) of "${name}" break their rules.`, '', ...stages.map(item), ...stagesHint);
+    if (subpage.length) {
+      lines.push(...(lines.length ? ['', 'A design round varies only a sub-page (P34):'] : [`BLOCKED: a design round in "${name}" varies only a sub-page.`, '']));
+      lines.push(...subpage.map(item), ...subpageHint);
+    }
     lines.push('The rest of the page passed — re-write the file and open it once this gate passes.');
     return lines.join('\n');
   }
-  structural = structural.filter(i => i.kind !== 'design-round-subpage-only');
-  const out = buildBlockReasonInner(name, missing, forbidden, structural, mapping, overlap, stale, collisions, finalReport, analysis);
-  return subpage.length ? [out, '', 'A design round varies only a sub-page (P34):', ...subpage.map(i => `  - ${i.kind}: ${i.why}`), ...subpageHint].join('\n') : out;
+  const out = [buildBlockReasonInner(name, missing, forbidden, structural, mapping, overlap, stale, collisions, finalReport, analysis)];
+  if (stages.length) out.push('', 'The Etappen (stages) break their rules:', ...stages.map(item), ...stagesHint);
+  if (subpage.length) out.push('', 'A design round varies only a sub-page (P34):', ...subpage.map(item), ...subpageHint);
+  return out.join('\n');
 }
 
 function buildBlockReasonInner(name, missing, forbidden, structural, mapping, overlap, stale, collisions, finalReport, analysis) {

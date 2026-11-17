@@ -1180,6 +1180,22 @@ describe("findStageIssues (Etappen)", () => {
   test("no script and no data-stage = no concern", () => {
     expect(findStageIssues(`<main>${sec(1)}</main>`)).toEqual({ errors: [], warnings: [] });
   });
+  // A stage error used to print under "Broken <style> / <script> structure"
+  // with the paste-into-chat boilerplate — neither fits (2026-11-17).
+  test("stage errors get their own block reason, not the <style>/<script> one", () => {
+    const errs = findStageIssues(page(ok, [sec(1, "A"), sec(2)])).errors;
+    const only = buildBlockReason("docs/concepts/x.html", [], [], errs);
+    expect(only).toMatch(/^BLOCKED: the Etappen \(stages\) of "x\.html" break their rules\./);
+    expect(only).toMatch(/stages-round-untagged/);
+    expect(only).toMatch(/page\.json/);
+    expect(only).not.toMatch(/Broken <style>/);
+    expect(only).not.toMatch(/paste it/);
+    // Together with a real structural break both headings appear, each with its own items.
+    const mixed = buildBlockReason("docs/concepts/x.html", [], [], [{ kind: "nested-style", why: "w" }, ...errs]);
+    expect(mixed).toMatch(/Broken <style> \/ <script> structure[^\n]*\n {2}- nested-style/);
+    expect(mixed).toMatch(/The Etappen \(stages\) break their rules:\n {2}- stages-round-untagged/);
+  });
+
   // The final report and a reality check cover every Etappe: no data-stage,
   // and `current` stays on the last staged round (measured 2026-11-17: the
   // report of a staged concept was blocked as stages-round-untagged).
@@ -1204,8 +1220,37 @@ describe("findStageIssues (Etappen)", () => {
   test("round without or with unknown data-stage, order going backwards, wrong current", () => {
     expect(kinds(page(ok, [sec(1, "A"), sec(2)]))).toContain("stages-round-untagged");
     expect(kinds(page(ok, [sec(1, "Z")]))).toContain("stages-round-unknown");
-    expect(kinds(page(ok, [sec(1, "B"), sec(2, "A")]))).toContain("stages-order");
     expect(kinds(page({ ...ok, current: "A" }, [sec(1, "A"), sec(2, "B")]))).toContain("stages-current");
+  });
+
+  // Etappen einzeln: any order, a built stage stays built, a closed stage is not started.
+  const rep = (n, stage, extra = "") => `<section data-iteration="${n}" data-iteration-template="free" data-final-report${stage ? ` data-stage="${stage}"` : ""}${extra}><p>x</p></section>`;
+  const three = { stages: [{ id: "A", name: "a" }, { id: "B", name: "b" }, { id: "C", name: "c" }], current: "C", icon: "x", title: "T" };
+  test("stages in any order and non-consecutive rounds of one stage pass (E8 is gone)", () => {
+    expect(kinds(page({ ...ok, current: "A" }, [sec(1, "B"), sec(2, "A")]))).toEqual([]);
+    expect(kinds(page({ ...ok, current: "A" }, [sec(1, "B"), sec(2, "A"), sec(3, "B"), sec(4, "A")]))).toEqual([]);
+  });
+  test("stages-built-reopened: a regular round after its stage's final report blocks; other stages and a review round do not", () => {
+    expect(kinds(page({ ...three, current: "C" }, [sec(1, "A"), rep(2, "A"), sec(3, "C")]))).toEqual([]);
+    expect(kinds(page({ ...three, current: "A" }, [sec(1, "A"), rep(2, "A"), sec(3, "A")]))).toEqual(["stages-built-reopened"]);
+    expect(kinds(page({ ...three, current: "A" }, [sec(1, "A"), rep(2, "A"), `<section data-iteration="3" data-iteration-template="free" data-review data-stage="A"><p>x</p></section>`]))).toEqual([]);
+  });
+  test("stages-report-duplicate: two final reports for one stage block", () => {
+    expect(kinds(page({ ...three, current: "A" }, [sec(1, "A"), rep(2, "A"), rep(3, "A")]))).toEqual(["stages-report-duplicate"]);
+    expect(kinds(page({ ...three, current: "B" }, [sec(1, "A"), rep(2, "A"), sec(3, "B"), rep(4, "B")]))).toEqual([]);
+  });
+  test("stage state: valid values pass, others block as stages-malformed, none stays valid", () => {
+    const withState = state => ({ ...ok, current: "A", stages: [{ id: "A", name: "a" }, { id: "B", name: "b", state }] });
+    for (const s of ["open", "built", "issue", "dropped"]) expect(kinds(page(withState(s), [sec(1, "A")]))).toEqual([]);
+    const bad = findStageIssues(page(withState("later"), [sec(1, "A")])).errors;
+    expect(bad.map(e => e.kind)).toEqual(["stages-malformed"]);
+    expect(bad[0].why).toMatch(/"later"/);
+  });
+  test("stages-closed: the live round in an issue / dropped stage blocks, history does not", () => {
+    const closed = (state, current) => ({ ...ok, current, stages: [{ id: "A", name: "a", state }, { id: "B", name: "b" }] });
+    expect(kinds(page(closed("dropped", "A"), [sec(1, "A")]))).toEqual(["stages-closed"]);
+    expect(kinds(page(closed("issue", "A"), [sec(1, "A")]))).toEqual(["stages-closed"]);
+    expect(kinds(page(closed("dropped", "B"), [sec(1, "A"), sec(2, "B")]))).toEqual([]);
   });
   test("a title beyond 32 chars only warns", () => {
     const r = findStageIssues(page({ ...ok, title: "x".repeat(33) }, [sec(1, "A"), sec(2, "B")]));

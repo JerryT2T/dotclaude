@@ -223,18 +223,24 @@ never re-run a completed step. The checkpoint records what the previous run
 
 ## 5b · next-stage
 
-Payload: `action:"next-stage"`, `stage:"B"` (the stage just worked), `next:"C"`. It behaves
-like `iterate` — concept page only, **no code, files or external systems change** — with one
-difference: the next round belongs to the next stage.
+Payload: `action:"next-stage"`, `stage:"B"` (the live stage), `next:"D"` — any Etappe whose
+state is `open` and that is not the live one (states: `step5-stages.md`). The user picks it in
+the ☰ panel: one click on that Etappe's tab in the Leiste, or "Nächste Etappe ›" (the next open
+Etappe in list order). It behaves like `iterate` — concept page only, **no code, files or
+external systems change** — with one difference: the next round belongs to `next`.
 
 1. Run iterate steps 3–5 above (reality-check baseline, mappings, ad-hoc items), bake the
-   submitted round as usual.
-2. Write the next round fragment with `data-stage="<next>"` (the payload's `next`); all later
-   rounds stay in that stage until the user advances again. Refuse a `next` that is not the
-   stage directly after `stage` in `page.json.stages`.
-3. `concept-build.js build` — it recomputes `current` in the injected `#concept-stages` from the
-   live round's `data-stage`, so nothing else needs updating. (`page.json` keeps only the
-   stage list; do not store a separate "current".)
+   submitted round as usual. `untouched: true` = the user passed the live Etappe over without
+   one change: its preselected options are Claude's recommendations, not answers. Decide
+   nothing from them; when that Etappe is reopened, its next round asks them again.
+2. Write the next round fragment with `data-stage="<next>"`; all later rounds stay in that
+   stage until the user moves again. An Etappe that already has rounds is reopened this way:
+   its new round continues from ITS newest round (read that fragment), not from the round
+   just submitted. Refuse a `next` that is built, closed (`issue` / `dropped`) or undeclared:
+   the gate blocks such a round, so answer in a round of the live stage and say why.
+3. `concept-build.js build` — it recomputes `current` and every stage's `state` in the
+   injected `#concept-stages`, so nothing else needs updating. (`page.json` keeps the stage
+   list and a closed stage's `state`; do not store a separate "current".)
 4. Then the usual 5c tail: `/reload` before `/reset` (the server counts `next-stage` as a
    reload-required action, like `iterate`).
 
@@ -290,7 +296,9 @@ difference: the next round belongs to the next stage.
      round it comes from), and a checklist with one line per accepted item.
      Agents get this file path plus the checklist lines they own — never a
      summary of it. A design implement's parity checklist (below) is the
-     checklist of this file, not a second list.
+     checklist of this file, not a second list. On a staged concept the
+     brief is `briefs/implement-<id>.md`, built from that Etappe's baked
+     rounds only (`step5-stages.md`).
    - **Every checklist line carries its source quote (#1110).** The quote
      sits next to the line, word for word, and the acceptance of that line is
      judged against the quote, not against the line. On a conflict the quote wins. A quote

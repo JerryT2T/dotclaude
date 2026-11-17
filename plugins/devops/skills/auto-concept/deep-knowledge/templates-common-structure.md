@@ -1,4 +1,4 @@
-# Concept templates, part 02 of 50: Shared systems — common structure (all templates)
+# Concept templates, part 02 of 51: Shared systems — common structure (all templates)
 
 ## Common Structure (all templates)
 
@@ -343,6 +343,9 @@
           <div class="closeout-foot">
             <div class="closeout-claude">
               <p class="closeout-plan" id="closeout-plan" hidden></p>
+              <!-- Stage report only (§ Etappen): what "Etappe abschließen und
+                   weiter" does — next Etappe, new issues, dropped ones. -->
+              <p class="closeout-plan" id="closeout-stage-plan" hidden></p>
               <!-- The disposition as one line with its default; "ändern"
                    opens the radios + moveTo inline (toggleDisposeEdit()). -->
               <div class="closeout-dispose-line">
@@ -394,7 +397,21 @@
                             — both + "· wird zwischengespeichert" offline
                    running  the clicked one: "⏳ Wird abgearbeitet …", the other hides
                    stalled  the clicked one: "⚠ Übermittelt · keine Antwort mehr" + hint
-                   done     both hide; #closeout-close "✓ Concept abgeschlossen · schließen" -->
+                   done     both hide; #closeout-close "✓ Concept abgeschlossen · schließen"
+                 A stage report with an Etappe kept open shows ONLY
+                 #closeout-stage-go instead of the two (finalize, final:false;
+                 stageCloseoutOffers(), § Etappen). -->
+            <button type="button" id="closeout-stage-go" class="closeout-go closeout-stage-go" data-closeout-go="stage" hidden
+                    data-icon="🏁"
+                    data-label="{{stage.co_go}}"
+                    data-label-offline="{{final.closeout_go_offline}}"
+                    data-label-running="{{final.closeout_running}}"
+                    data-label-stalled="{{final.closeout_stalled_short}}"
+                    data-title-ready="{{stage.co_go_hint}}"
+                    data-tip="{{stage.co_go_hint}}">
+              <span aria-hidden="true" data-closeout-btn-icon>🏁</span>
+              <span data-closeout-btn-label>{{stage.co_go}}</span>
+            </button>
             <button type="button" id="closeout-ship" class="implement-btn closeout-go" data-closeout-go="yes"
                     data-icon="🏁🚀"
                     data-label="{{final.closeout_ship_go}}"

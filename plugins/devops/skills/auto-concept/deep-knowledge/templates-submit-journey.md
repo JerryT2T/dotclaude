@@ -1,4 +1,4 @@
-# Concept templates, part 38 of 50: Shared systems — journey row, panel state reset, submit progress
+# Concept templates, part 38 of 51: Shared systems — journey row, panel state reset, submit progress
 
 ## Journey row
 
@@ -235,6 +235,8 @@ function renderJourney() {
   const row = document.getElementById('journey');
   const phase = journeyPhase();
   document.body.dataset.journey = phase;
+  // The Etappen start controls lock and re-arm with the submit buttons (§ Etappen).
+  if (typeof syncStageControls === 'function') syncStageControls(phase);
   if (!row) return phase;
   row.dataset.phase = phase;
   const on = (sel, yes) => { const n = row.querySelector(sel); if (n) { if (yes) n.dataset.on = ''; else delete n.dataset.on; } };

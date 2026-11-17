@@ -1,4 +1,4 @@
-# Concept templates, part 35 of 50: Shared systems — two-button submit JS
+# Concept templates, part 35 of 51: Shared systems — two-button submit JS
 
 ### JS
 
@@ -51,7 +51,10 @@ async function submitWithAction(action, extra) {
   // its button already sits behind its own second step (the journey's 🔒
   // unlock, the split button's caret menu), and accepting every
   // recommendation unchanged is a normal implement order, not an accident.
-  if (!_userInteracted && action !== 'implement') {
+  // next-stage never asks either: passing an Etappe over without answers is
+  // the point of the click (its start control / "Nächste Etappe ›" is the
+  // one deliberate step).
+  if (!_userInteracted && action !== 'implement' && action !== 'next-stage') {
     if (!window.confirm('{{panel.empty_iterate_confirm}}')) return;
   }
 
@@ -64,6 +67,10 @@ async function submitWithAction(action, extra) {
     data = collectDecisions(action);
     // next-stage carries {stage, next} (§ Etappen); merged after the collector.
     if (extra && typeof extra === 'object') Object.assign(data, extra);
+    // Passed over without one change: authored defaults are no answers.
+    if (action === 'next-stage' && !_userInteracted) data.untouched = true;
+    // A staged concept builds one Etappe at a time: implement names it.
+    if (action === 'implement' && typeof stageImplementFields === 'function') Object.assign(data, stageImplementFields());
   } catch (e) {
     _submitInFlight = false;
     console.error('collectDecisions failed', e);

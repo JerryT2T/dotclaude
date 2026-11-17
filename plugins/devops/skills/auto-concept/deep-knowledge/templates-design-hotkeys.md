@@ -1,4 +1,4 @@
-# Concept templates, part 19 of 50: Template: design — hotkey overlay, Space and nudges
+# Concept templates, part 19 of 51: Template: design — hotkey overlay, Space and nudges
 
 ## Hotkey overlay, Space and nudges — `wireChromeHotkeys()`
 

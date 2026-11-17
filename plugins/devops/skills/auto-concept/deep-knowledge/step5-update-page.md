@@ -150,7 +150,9 @@ lives in the single built `{date}-{slug}.html` and its source folder
 2. Write `rounds/{N+1}.html` holding
    `<section data-iteration="{N+1}" data-iteration-template="free" data-final-report>`.
    The session writes it itself, because the implementation is in its
-   context. The build makes it the live round. The `data-final-report` flag switches the panel to
+   context. On a staged concept the report of ONE Etappe also carries
+   `data-stage="<id>"` (`step5-stages.md`); the report that closes the whole
+   concept carries none. The build makes it the live round. The `data-final-report` flag switches the panel to
    `panel-final-report` mode (no iterate/implement buttons — see
    `deep-knowledge/templates-final-report.md` § Final Report Panel). The template is
    **always `free`** and is never omitted: a report is a document,
@@ -205,7 +207,9 @@ lives in the single built `{date}-{slug}.html` and its source folder
    **tab label `iteration.final_tab`** (locale: "Abschlussbericht" /
    "Final report"), never "{{iteration.tab}} N+1", with `aria-selected="true"` and
    `data-final-report` so the tab-bar JS can style it distinctly. A second
-   final report, or one that is not the last round, blocks the build.
+   untagged final report, or an untagged one that is not the last round,
+   blocks the build; a stage report (`data-stage`) may be followed by the
+   rounds of other Etappen, one report per Etappe.
 5. `submitted: false` in `#concept-decisions` and the body class come fresh
    from the build. The submit-button reset is irrelevant because the
    final-report panel doesn't surface iterate/implement at all.
