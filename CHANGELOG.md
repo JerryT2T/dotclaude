@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.384.0] — 2026-11-17
+
+### Added
+- Claude Mods (alpha, feature `claude-mods`): a return recap in the band after a pause — one cache-reading fork while the cache is warm, else the last completion card's text, shown once (#1105).
+- Claude Mods: large typed pastes and large Bash outputs reach the conversation as a deterministic head + tail + path to the byte-exact original; test, git, gh and CI commands and slash-command / machine prompts are exempt (#1106).
+- Claude Mods: `/mods-spike-wake` and reload-safe wake timers kept in `$.state`; a cache keep-alive policy (pure, tested per limit, not wired yet) (#1103, #1101).
+
+### Changed
+- `pre.tokens.guard` 0.18.0 marks every released retry, so the tool-output redirect keeps that output whole (#1106).
+- `prompt.flow.title-work` 0.10.0 computes its answer in the pure `hooks/lib/title-plan.js` (output byte-identical, 180 parity fixtures); new unwired stand-down marker `hooks/lib/mod-standdown.js` (#1102).
+
+### Docs
+- `docs/dev/mods.md`: spike results on engine 2.1.325 — Desktop mod load passes (#1100), no mod-side title API (#1102 Part B rejected), timer wake idle + busy (#1103), fork reads 100 % from cache after ~54 min (#1101).
+
 ## [0.383.0] — 2026-11-17
 
 ### Added
