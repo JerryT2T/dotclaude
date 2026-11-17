@@ -176,6 +176,7 @@ const POPOVER_BG = '#262626'
 let ticker: { cancel: () => void } | null = null
 // #1103 / Spike 4: the armed wake timers of this module instance; the due times themselves live in $.state.
 const wakeTimers = new Map<string, { cancel: () => void }>()
+let wakeSeq = 0
 const wake = atom({ plugin: 'devops', key: 'wake' } as const, [] as WakeDue[], { shape: 'wake-1' })
 
 /** Keeps the Agents pane's elapsed times live: a timer that bumps `tick` while any subagent runs, and stops itself after. */
@@ -485,10 +486,24 @@ async function fileBatchNote(
 }
 
 /** #1105: decide and store the return recap. The gap comes from the engine (resume) or the last main turn's end. */
+let recapRunning = false
+
 async function showRecap($: EngineInterface, secondsSinceLastResponse: unknown): Promise<void> {
+  // Once per return: a recap still on screen, or one being made, is never made again (no second fork).
+  if (recapRunning) return
+  recapRunning = true
+  try {
+    await makeRecap($, secondsSinceLastResponse)
+  } finally {
+    recapRunning = false
+  }
+}
+
+async function makeRecap($: EngineInterface, secondsSinceLastResponse: unknown): Promise<void> {
   const now = await $.clock.now()
   const gap = recapGap(secondsSinceLastResponse, (await read($, spike)).lastMainEnd, now)
   const stored = await read($, recap)
+  if (stored.shown) return
   const plan = recapPlan(gap, !!(stored.card && stored.card.text))
   if (plan === 'none') return
   let text = ''
@@ -1044,7 +1059,9 @@ export const register: Register = on => {
     const stdout = gateOpen ? outputMaybeRedirect(tool, result) : null
     if (stdout !== null && result && 'result' in result && result.result) {
       const cut = await redirectText($, 'output', stdout, String((e as { command?: unknown }).command || ''))
-      if (cut) return { result: { ...(result.result as Record<string, unknown>), stdout: cut } } as typeof result
+      // The hooks beneath may have attached `context` (a PostToolUse reminder): it rides along unchanged.
+      const context = (result as { context?: readonly string[] }).context
+      if (cut) return { result: { ...(result.result as Record<string, unknown>), stdout: cut }, ...(context ? { context } : {}) } as typeof result
     }
     return result
   }).catch(($, e, next) => next(e)) // display only: a failure never changes the tool call
@@ -1178,7 +1195,8 @@ export const register: Register = on => {
     const ms = wakeDelayMs((e as { args?: string }).args || '')
     if (ms === null) return { text: 'Usage: /mods-spike-wake [minutes, 0.1-360]' }
     const now = await $.clock.now()
-    const id = `w${now}`
+    // Unique within the session even for two commands in the same millisecond.
+    const id = `w${now}-${(await read($, wake)).length}-${++wakeSeq}`
     const tag = `after ${Math.round(ms / 100) / 10} s`
     await update($, wake, list => scheduleWake(list, id, now + ms, tag))
     armWake($, id, ms)

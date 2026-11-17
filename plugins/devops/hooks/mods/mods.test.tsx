@@ -2030,3 +2030,42 @@ test('keepalive: break-even H/39, read share and the self-disable rule', () => {
   expect(disablesAfter(0.94)).toBe(true)
   expect(disablesAfter(null)).toBe(true)
 })
+
+// ── Codex review of the batch (2026-11-17): regressions ─────────────────────────────────────────────────────────────
+test('redirect 6c: the context the hooks beneath attached rides along with the excerpt', async ($, on) => {
+  redirectEngine(on, () => REDIRECT_OK)
+  on('tool.call', () => ({ result: { stdout: BIG, stderr: '', interrupted: false }, text: BIG, context: ['reminder from a PostToolUse hook'] }))
+  await $.session.start({ cwd: '/repo', surface: 'desktop', isInteractive: true })
+  const r = (await $.tool.call({ tool: 'Bash', command: 'cat big.log' } as any)) as any
+  expect(r.result.stdout).toBe(EXCERPT)
+  expect(r.context).toEqual(['reminder from a PostToolUse hook'])
+})
+
+test('recap: a second SessionStart of the same return makes no second fork and keeps the recap', async ($, on) => {
+  let n = 0
+  const { forks } = recapEngine(on, () => ({ value: { isAnswered: true, text: `Stand ${++n}`, usage: {} } }))
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await $.classic.SessionStart({ source: 'resume', seconds_since_last_response: 1800 } as any)
+  await $.classic.SessionStart({ source: 'resume', seconds_since_last_response: 1800 } as any)
+  await settle($)
+  await $.classic.SessionStart({ source: 'resume', seconds_since_last_response: 1800 } as any)
+  await settle($)
+  expect(forks.length).toBe(1)
+  const band = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect(await has(band, 'Stand 1')).toBe('Stand 1')
+  await band.unmount()
+})
+
+test('wake: two commands in the same millisecond keep two entries and fire twice', async ($, on) => {
+  const { seen } = engine(on)
+  const timers: Array<{ ms: number; fn: () => void }> = []
+  on('clock.after', (_: unknown, e: { ms: number }) => new Promise(resolve => timers.push({ ms: e.ms, fn: () => resolve({ value: undefined }) })))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.command.run({ command: 'mods-spike-wake', args: '0.5' } as any)
+  await $.command.run({ command: 'mods-spike-wake', args: '1' } as any)
+  expect(timers.map(t => t.ms)).toEqual([30_000, 60_000])
+  timers[0].fn()
+  timers[1].fn()
+  for (let i = 0; i < 5000 && seen.prompts.length < 2; i++) await Promise.resolve()
+  expect(seen.prompts.length).toBe(2)
+})
