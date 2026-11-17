@@ -880,3 +880,93 @@ describe("reopenCommand", () => {
     expect(reopenCommand("u", "linux")).toEqual({ cmd: "xdg-open", args: ["u"] });
   });
 });
+
+// A finalize keeps its submission pending until the close-out's /reset, which
+// is ~15 minutes of follow-ups and ship later. A waker re-armed for that run
+// used to exit PENDING_SUBMISSION for the SAME version on its first poll, so a
+// "Nachbessern" sent meanwhile found nobody waiting.
+describe("run — waker re-armed during a close-out (--hold-version)", () => {
+  function watcher({ responses = [], holdVersion = 0 } = {}) {
+    const calls = [];
+    const beats = [];
+    let clock = 1_000_000;
+    let exit = null;
+    const opts = { mode: "watch", port: 8883, state: "/proj/.claude/concept-active.json", ...DEFAULTS, holdVersion };
+    const p = run(opts, {
+      exists: () => true,
+      sleep: async (ms) => { clock += ms; },
+      now: () => clock,
+      checkState: () => "ok",
+      readState: () => ({ port: 8883, html_path: "docs/concepts/x.html" }),
+      readBeat: () => null,
+      writeBeat: (_s, _p, b) => { beats.push(b); },
+      reopen: (url) => { calls.push({ reopen: url }); },
+      request: async (_port, reqPath, method) => {
+        calls.push({ reqPath: reqPath.replace(/\?.*$/, ""), method });
+        const next = responses.shift();
+        return typeof next === "function" ? next(clock) : (next ?? { ok: false, body: "" });
+      },
+      emit: (reason, detail = "") => { exit = reason + detail; return reason; },
+    });
+    return { done: p.then(() => exit), calls, beats, polls: () => calls.filter(c => c.reqPath === "/pending").length };
+  }
+  const pend = (version, action = "finalize", extra = {}) => ({ ok: true, body: JSON.stringify({ pending: true, version, action, browser_ts: 1, ...extra }) });
+  const idle = { ok: true, body: JSON.stringify({ pending: false, version: 2, action: "", browser_ts: 1 }) };
+
+  test("parseArgs reads --hold-version; validate rejects a negative or fractional one", () => {
+    const o = parseArgs(["--mode", "watch", "--port", "8883", "--state", "/s/concept-active.json", "--hold-version", "2"]);
+    expect(o.holdVersion).toBe(2);
+    expect(validate(o)).toBeNull();
+    expect(DEFAULTS.holdVersion).toBe(0);
+    expect(validate({ ...o, holdVersion: -1 })).toBeTruthy();
+    expect(validate({ ...o, holdVersion: 1.5 })).toBeTruthy();
+  });
+
+  test("without the hold a re-armed waker exits for the version being processed (the bug)", async () => {
+    const w = watcher({ responses: [pend(2)] });
+    await expect(w.done).resolves.toBe("PENDING_SUBMISSION version=2 action=finalize");
+    expect(w.polls()).toBe(1);
+  });
+
+  test("the held version does not wake; a newer submission does", async () => {
+    const w = watcher({ holdVersion: 2, responses: [pend(2), pend(2), pend(2), pend(3, "refine")] });
+    await expect(w.done).resolves.toBe("PENDING_SUBMISSION version=3 action=refine");
+    expect(w.polls()).toBe(4);
+  });
+
+  test("after the close-out's /reset it watches on like any waker", async () => {
+    const w = watcher({ holdVersion: 2, responses: [pend(2), idle, idle, pend(3, "iterate")] });
+    await expect(w.done).resolves.toBe("PENDING_SUBMISSION version=3 action=iterate");
+    expect(w.polls()).toBe(4);
+  });
+
+  test("the hold names ONE version: another pending version wakes at once", async () => {
+    const w = watcher({ holdVersion: 5, responses: [pend(2)] });
+    await expect(w.done).resolves.toBe("PENDING_SUBMISSION version=2 action=finalize");
+  });
+
+  test("the held version is stamped as woken, so the pulser's safety net stays quiet for it", async () => {
+    const w = watcher({ holdVersion: 2, responses: [pend(2), pend(2), pend(3)] });
+    await w.done;
+    // First beat of the loop knows nothing yet; from the first held poll on it carries 2.
+    expect(w.beats[0].woke_version).toBeNull();
+    expect(w.beats.slice(1, -1).every(b => b.woke_version === 2)).toBe(true);
+    expect(w.beats.at(-1).woke_version).toBe(3);
+  });
+
+  test("no page reopen while the close-out runs, even after the last tab said /bye", async () => {
+    // Closed verdict on every poll: no tab registered, a /bye after the last
+    // poll, older than BYE_GRACE_MS. Outside a hold this reopens the page once.
+    const closed = (version) => (clock) => pend(version, "finalize", { browser_ts: 1, browser_tabs: 0, browser_bye_ts: clock - BYE_GRACE_MS - 1 });
+    const held = watcher({ holdVersion: 2, responses: [closed(2), closed(2), closed(2), closed(2), pend(3)] });
+    await held.done;
+    expect(held.calls.filter(c => c.reopen)).toHaveLength(0);
+  });
+
+  test("an older waker still yields to a younger one while holding (no double watch)", async () => {
+    const younger = `${1_000_000 + 5000}-222`;
+    const echo = () => pend(2, "finalize", { prev_waker: younger });
+    const w = watcher({ holdVersion: 2, responses: [pend(2), echo(), echo(), echo()] });
+    await expect(w.done).resolves.toBe("DUPLICATE_WAKER");
+  });
+});
