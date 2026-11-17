@@ -754,9 +754,20 @@ export function cardWidgetMinimal(model) {
   const head = String(model.heading || "").trim();
   if (!head) return "";
   const lang = model.lang === "en" ? "en" : "de";
+  // The decision only (heading + button prompts): prompt.ship.detect reads it from the
+  // show_widget call to recognise a bare "ja" as the answer to this card.
+  let bt = [];
+  try {
+    const d = cardWidgetData(model, "");
+    bt = (Array.isArray(d.bt) ? d.bt : []).map(b => ({ p: (b && b.p) || "" })).filter(b => b.p);
+  } catch {
+    bt = [];
+  }
+  const decision = JSON.stringify({ h: head, bt }).replace(/</g, `${BACKSLASH}u003c`);
   return [
     summaryHtml(lang),
     `${answerBlock(model)}<div id="dc-card"><p class="card-head" style="margin:0;font-size:14px;font-weight:500">${escapeHtml(head)}</p></div>`,
+    `<script type="application/json" id="dc-card-data">${decision}</script>`,
   ].join("\n");
 }
 

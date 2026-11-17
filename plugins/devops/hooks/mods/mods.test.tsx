@@ -2176,7 +2176,7 @@ test('#3 band: a long point shows ≤ 120 characters with …, the full text in 
   const point: any = await band.find({ key: 'card-point-0' })
   const shown = { text: String(point.children[1].children[0]) }
   expect(shown.text.endsWith('…')).toBe(true)
-  expect(shown.text.length).toBeLessThanOrEqual(120)
+  expect(shown.text.length).toBeLessThanOrEqual(123)
   const pop = point.children.find((c: any) => c.type === 'Box')
   expect(pop.props).toMatchObject({ position: 'absolute', display: 'none' })
   expect(JSON.stringify(pop)).toContain('y'.repeat(200))

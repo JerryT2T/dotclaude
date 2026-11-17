@@ -106,8 +106,11 @@ describe("minimal widget while the band carries the card (d-level, d-detect)", (
     expect(widget).toContain("dc-answer");
     expect(widget).toContain('id="dc-card"');
     expect(widget).toContain('class="card-head"');
-    expect(widget).not.toContain("dc-card-data");
-    expect(widget).not.toContain("<script");
+    // only the decision (heading + button prompts) for prompt.ship.detect: no points, no executable script
+    const wd = JSON.parse(widget.match(/id="dc-card-data">([\s\S]*?)<\/script>/)[1]);
+    expect(Object.keys(wd).sort()).toEqual(["bt", "h"]);
+    expect(wd.bt.every(b => Object.keys(b).join() === "p")).toBe(true);
+    expect(widget).not.toMatch(/<script(?![^>]*application\/json)/);
     // band contract: the first dc-card-data in the result text parses with points + buttons
     const m = text.match(/<script type="application\/json" id="dc-card-data">([\s\S]*?)<\/script>/);
     expect(m).toBeTruthy();

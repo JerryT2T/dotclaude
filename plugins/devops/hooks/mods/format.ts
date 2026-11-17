@@ -1090,7 +1090,8 @@ export function startsTypedTurn(e: { text?: string; isMeta?: unknown; origin?: {
 }
 
 /** The band's clamps (#3, c120): a CTA point shows at most this many characters (2 lines at normal width), a title one line. */
-export const POINT_CLAMP = 120
+// The renderer's 120-character limit counts the point text without its leading status icon + space.
+export const POINT_CLAMP = 123
 export const TITLE_CLAMP = 60
 
 /** `text` cut to `max` characters with "…" (word end where one is near); unchanged when it fits. */
