@@ -87,7 +87,12 @@ the close-out with `final: true` (or no `final` at all) runs A → E in full.
 **Before the long run: relaunch the waker (#1119).** A `finalize` pickup ends the
 waker that woke you, and the implement + ship run that follows is ~15 minutes of
 tool calls in one turn. Re-launch the waker FIRST (`concept-open.js prepare` prints
-the command), before part B starts. Without it a "Nachbessern" submission during
+the command), before part B starts, **with `--hold-version <_version>` appended**
+(the `_version` of this finalize payload): the submission stays pending until
+part D's `/reset`, and a waker without the hold exits `PENDING_SUBMISSION` for
+that same version on its first poll. With the hold it wakes only for a newer
+submission, keeps watching after the `/reset`, and never reopens the page while
+the close-out runs. Without it a "Nachbessern" submission during
 the run finds nobody waiting; the pulser then wakes you with `WAKER_MISSING` and
 hands the heartbeat to a successor, but the session cannot react until its turn
 ends, so a waker is the only thing that picks the submission up in time. Also

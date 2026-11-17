@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @script concept-watch
- * @version 0.6.0
+ * @version 0.7.0
  * @plugin devops
  * @description The concept bridge's two detached watchers, as a script instead
  *   of a shell loop pasted into three documents.
@@ -33,7 +33,10 @@
  *                     - structured exit on a submission —
  *                       `WAKER_EXIT reason=PENDING_SUBMISSION version=N action=…`
  *                       — so the woken Claude reads one line instead of
- *                       re-probing.
+ *                       re-probing;
+ *                     - `--hold-version N`: re-armed while the session still
+ *                       works on submission N (a finalize), it does not exit
+ *                       for N again and wakes only for a different version.
  *                   The cron is a sparse backstop only (every 15 min).
  *
  *   Why a script and not the inline `while true; do … sleep 20; done` loops
@@ -118,6 +121,13 @@ const DEFAULTS = {
   // sleeping tab as closed and opened a duplicate. Only the /bye beacon
   // decides now (see BYE_GRACE_MS); the number stays for CLI compatibility.
   liveness: 900,
+  // Watch mode: `--hold-version N` — the session is still working on
+  // submission N (a finalize: follow-ups, then the ship) and re-armed this
+  // waker so that a NEWER submission ("Nachbessern") is picked up meanwhile.
+  // /pending keeps reporting N until the close-out's /reset, so without the
+  // hold a re-armed waker exits PENDING_SUBMISSION for N on its first poll and
+  // nobody watches for the rest of the run. 0 = off (versions start at 1).
+  holdVersion: 0,
 };
 
 // After the last known tab said /bye, wait this long before re-opening: a
@@ -169,6 +179,7 @@ function validate(opts) {
   if (!(opts.liveness >= 0)) return 'liveness must be 0 (off) or a positive number of seconds';
   if (!Number.isInteger(opts.confirm) || opts.confirm < 1) return 'confirm must be a positive integer';
   if (!(opts.deadAfter >= 0)) return 'dead-after must be 0 or a positive number of seconds';
+  if (!Number.isInteger(opts.holdVersion) || opts.holdVersion < 0) return 'hold-version must be 0 (off) or the positive _version being processed';
   return null;
 }
 
@@ -538,14 +549,24 @@ async function run(opts, deps = {}) {
         // evil (Step 5a treats a second wake as stale). Otherwise the OLDER
         // waker yields to the session that re-armed — without /shutdown, the
         // bridge is the younger one's now.
-        if (!body.pending && siblingSeen(body.prev_waker, 'younger')) return emit('DUPLICATE_WAKER');
-        if (body.pending) {
+        // --hold-version: the submission the session is working on is no
+        // news. Only a different (newer) one wakes; until the close-out's
+        // /reset this waker treats the held one like "nothing pending".
+        const held = !!body.pending && opts.holdVersion > 0 && body.version === opts.holdVersion;
+        const pending = !!body.pending && !held;
+        if (!pending && siblingSeen(body.prev_waker, 'younger')) return emit('DUPLICATE_WAKER');
+        if (pending) {
           const version = Number.isInteger(body.version) ? ` version=${body.version}` : '';
           const action = typeof body.action === 'string' && /^[a-z-]+$/.test(body.action) ? ` action=${body.action}` : '';
           if (Number.isInteger(body.version)) { wokeVersion = body.version; beat(); }
           return emit('PENDING_SUBMISSION', version + action);
         }
-        if (opts.liveness > 0) {
+        // The held version stays marked as woken, so the pulser's safety net
+        // does not wake the session for it either if this waker dies.
+        if (held && wokeVersion !== body.version) { wokeVersion = body.version; beat(); }
+        // No page reopen while a close-out runs: a user who closed the tab
+        // after "Abschließen" is done with it.
+        if (opts.liveness > 0 && !held) {
           const seen = Number.isFinite(body.browser_ts) && body.browser_ts > 0 ? body.browser_ts : 0;
           const byeTs = Number.isFinite(body.browser_bye_ts) ? body.browser_bye_ts : 0;
           const closed = body.browser_tabs === 0
@@ -601,7 +622,7 @@ if (require.main === module) {
   const err = validate(opts);
   if (err) {
     process.stderr.write(`concept-watch: ${err}\n`);
-    process.stderr.write('usage: concept-watch.js --mode pulse|watch --port <n> --state <abs path> [--owner <token>] [--interval 20] [--grace 60] [--liveness 900]\n');
+    process.stderr.write('usage: concept-watch.js --mode pulse|watch --port <n> --state <abs path> [--owner <token>] [--interval 20] [--grace 60] [--liveness 900] [--hold-version <n>]\n');
     process.exit(2);
   }
   // A crash must still announce itself as a reason line, not as a stack trace:

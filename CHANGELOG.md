@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.385.1] — 2026-11-17
+
+### Fixed
+- auto-concept: the pickup waker keeps watching during a close-out. Re-armed with `--hold-version <_version>`, it no longer exits for the submission that is being processed, wakes for a newer one ("Nachbessern") at once, and does not reopen the page while the close-out runs.
+
 ## [0.385.0] — 2026-11-17
 
 ### Added
