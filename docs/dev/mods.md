@@ -168,7 +168,12 @@ every step appended to a JSONL log); raw logs in the session-group notes
 | 2 Desktop load (#1100, anthropics/claude-code#105936) | **Pass — not reproduced on 2.1.325.** The installed devops module loaded at this session's start: its row is in `~/.claude/devops-mods-loaded.json` (`sid b6ca49a2…`, 23:20:33Z); the marker file holds 30 Desktop sessions of 2026-11-15/16 the same way. A dev mod written under the session's `dev-mods` folder in bypass mode turned mods on without a prompt; the engine's notice at the next turn: "mods … loaded: they load and reload by themselves as their files change". | Note: at `session.start` the Desktop engine reports `surface: null` and `isInteractive: false` (the surface attaches later), so those two marker fields cannot tell Desktop from headless. No workaround needed; nothing surfaced to alpha users |
 | 3 Title writer (#1102) | **No mod-side title API.** The 2.1.325 types (24 261 lines) have no rename / title noun on `$` (`$.session` = messages, cwd, root, model, turns, id, repo, surfaces, usage, version, compact, send, append, authorize, identity, abort). `$.session.append` takes `user` / `system` text rows only, never a `custom-title` entry. The one title channel is `ClassicResult.sessionTitle` on `classic.UserPromptSubmit` / `classic.SessionStart` — the same `hookSpecificOutput.sessionTitle` command hooks already have, which `prompt.flow.title-work` uses since 0.9.0 and the app adopts only while its title is empty or app-generated | Part B rejected; Part A shipped (below) |
 | 4 Timer wake (#1103) | **Pass, idle, both engines.** Desktop: armed at `turn.complete` 23:25:23.277Z, fired 23:26:53.274Z (90.0 s), `$.prompt.submit` resolved 0.8 s later with `origin {kind: plugin, name: spike-wake}`, and a new turn started. CLI (`claude -p --plugin-dir … --input-format stream-json`): armed 23:49:14.787Z, fired 30.0 s later, submit resolved in 1.2 s, the next `turn.start` carried the prompt. The model reads it wrapped as `The spike-wake plugin sent a message:\n<text>` (so a matcher must use `includes`, not `startsWith`); `turn.start`'s `origin` is null for it. `--max-turns` in `-p` drops the submit (`{drop: "the run reached its --max-turns limit"}`) | Busy case: see the row below |
-| 4 busy | _filled in by the follow-up run below_ | |
+| 4 busy | **Pass: held, then delivered.** Desktop: a timer armed at the wake turn's `turn.start` fired 20 s later (00:07:08.390Z) while that turn was still running; the submit waited and the engine started its turn 1.5 s after the running turn completed (`turn.start` 00:08:35.252Z), never in the middle of one | So a wake never interrupts work; it can arrive late by up to one turn |
+| 1 Fork cache hit (#1101) | **Pass.** One `$.model.fork` (no `effort`; the result reports the session's `medium`) from a `$.clock.after` timer 55 min after the last main turn (armed 00:08:33.707Z, fired 01:03:33.708Z; the last main request ended ≈ 00:09, so ≈ 54 min idle): `cache_read_input_tokens` 428 533, `cache_creation_input_tokens` 0, `input_tokens` 16, `output_tokens` 42 → **read share 1.000** of a 428 488-token context, 3.4 s. Rate limits: the 7-day window read 29 % before and 30 % after (integer percent: one rounding step, not a measured cost); no 5-h reading was reported | Gate ≥ 95 % met → keep-alive may proceed (wiring, band and payoff check are follow-ups). The plan-usage cost of a cached read stays unmeasured at integer resolution — the reason for the per-ping log and the payoff check |
+
+The probe's own JSONL log lost a row twice (two hooks appending within
+milliseconds, read-modify-write); the devops spike log is the capped one-call
+writer, so this is an artefact of the throwaway mod only.
 
 **Watcher / mod handshake (#1103, designed on the passing idle spike; not built yet).**
 `concept-watch.js` stays the source of truth and keeps running in every session.
@@ -181,7 +186,6 @@ the wake; no beat, a stale one, another version → it exits as today. Either wa
 exactly one wake: the mod claims its due entry before it submits, the watcher
 only exits when the mod is not there. A mod that unloads releases the job, so
 the next watcher check takes over within one heartbeat.
-| 1 Fork cache hit (#1101) | _filled in by the follow-up run below_ | |
 
 ## Stage 1 implementation
 
