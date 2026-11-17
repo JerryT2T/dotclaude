@@ -83,6 +83,8 @@ const PLUGIN_STATE = Object.freeze([
   // web-guide's active flag (scripts/guide-active-state.js).
   '.claude/batch-*.md',
   '.claude/auto-guide-active.json',
+  // #1106: originals of large pastes / tool outputs the mod redirected (scripts/paste-redirect-write.js).
+  '.claude/redirects/',
   '.claude/strict-mode.json',
   '.claude/run-contract.json',
   // AUD-016: the store's siblings of the header — the `.lock` mutex, its
