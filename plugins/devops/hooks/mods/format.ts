@@ -660,6 +660,9 @@ const TABLE = {
   ctx: ['Context', 'Kontext', 'Contexto', 'Contexte', 'Contexto', 'コンテキスト', '上下文'],
   compact: ['Compact', 'Kompaktieren', 'Compactar', 'Compacter', 'Compactar', 'コンパクト化', '压缩'],
   cleanupBtn: ['Clean up', 'Aufräumen', 'Limpiar', 'Nettoyer', 'Limpar', '整理する', '清理'],
+  archiveBtn: ['🗄 Archive', '🗄 Archivieren', '🗄 Archivar', '🗄 Archiver', '🗄 Arquivar', '🗄 アーカイブ', '🗄 归档'],
+  archiveRefused: ['Not archived: {why}', 'Nicht archiviert: {why}', 'No archivado: {why}', 'Non archivée : {why}', 'Não arquivada: {why}', 'アーカイブされませんでした: {why}', '未归档：{why}'],
+  archivePrompt: ['Archive this session.', 'Archiviere diese Session.', 'Archiva esta sesión.', 'Archive cette session.', 'Arquive esta sessão.', 'このセッションをアーカイブして。', '归档此会话。'],
   junk: ['{n} leftovers', '{n} Altlasten', '{n} restos', '{n} restes', '{n} restos', '残り {n} 件', '{n} 项遗留'],
   last: ['Last:', 'Zuletzt:', 'Último:', 'Dernier :', 'Último:', '直近:', '最近：'],
   rowAgent: ['Agent worktrees', 'Agent-Worktrees', 'Worktrees de agentes', "Worktrees d'agents", 'Worktrees de agentes', 'エージェントの worktree', '代理 worktree'],
@@ -1071,6 +1074,26 @@ export function isHintCard(c: { heading: string; points: readonly string[] } | n
 /** A ship / released / finished card (🟩 heading): the work it reports is shipped. */
 export function isShippedCard(c: { heading: string } | null): boolean {
   return !!c && /^🟩/u.test(c.heading)
+}
+
+/**
+ * The band offers "Archive" for a green card (shipped, released, finished analysis) while nothing runs.
+ * The press calls the Desktop app's own archive_session through $.mcp.call — no model turn.
+ */
+export function archiveOffered(c: { heading: string } | null, working: boolean): boolean {
+  return !working && isShippedCard(c)
+}
+
+/** archive_session's answer: null = archived; else the app's reason (pinned, still working, …), one line. */
+export function archiveRefusal(res: { isError?: boolean; content?: unknown } | null | undefined): string | null {
+  if (!res || !res.isError) return null
+  const blocks = Array.isArray(res.content) ? res.content : []
+  const text = blocks
+    .map(b => (b && typeof b === 'object' && typeof (b as { text?: unknown }).text === 'string' ? (b as { text: string }).text : ''))
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return (text || 'archive_session failed').slice(0, 160)
 }
 
 // --- The card's type scale as an image (B2): the mod API's Text has size names but no pixel values. ---
