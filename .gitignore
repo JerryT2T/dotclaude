@@ -67,6 +67,7 @@ service-account*.json
 **/.claude/batch.md
 **/.claude/batch-*.md
 **/.claude/auto-guide-active.json
+**/.claude/redirects/
 **/.claude/strict-mode.json
 **/.claude/run-contract.json
 **/.claude/run-contract.json.*
