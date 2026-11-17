@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.384.3] — 2026-11-17
+
+### Fixed
+- Completion card: a side session the user archived before it reported no longer keeps the `⏳ Linked` title; new linked state `archived` with a "not shipped" line.
+- Completion card: a running Linked card now says outright that the user has nothing to do.
+
 ## [0.384.2] — 2026-11-17
 
 ### Fixed
