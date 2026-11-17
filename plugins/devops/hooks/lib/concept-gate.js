@@ -1431,7 +1431,8 @@ function buildBlockReason(filePath, missing, forbidden, structural, mapping, ove
   const stages = structural.filter(i => String(i.kind).startsWith('stages-'));
   const stagesHint = [
     '',
-    'Etappen are declared in page.json ("stages": ids A–G in order, at most 7, names up to 24 characters).',
+    'Etappen are declared in page.json ("stages": ids are the letters A, B, C … in the order they are listed,',
+    'at most 7, names up to 24 characters; the letters only name them, they set no working order).',
     'Every round section carries data-stage="<id>" — the final report and a reality-check round carry',
     'none unless it is a stage report — and stages come in any order, but a built stage (one with a final',
     'report) gets no new round and a stage routed to an issue or dropped is not started. Fix the round',

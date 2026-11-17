@@ -1,4 +1,4 @@
-# Concept templates, part 50 of 51: Shared systems — Etappen: the close-out of a stage report JS
+# Concept templates, part 50 of 51: Shared systems — Etappen: implement station and the close-out of a stage report JS
 
 ## Etappen — stage close-out JS
 
@@ -17,7 +17,44 @@ reload re-arms the defaults. The hooks the close-out sheet calls are all
 `renderCloseout()` → `renderStageCloseout()`, `submitFinalize()` →
 `stageFinalizeFields()`.
 
+The implement station of a staged concept (journey row) also lives here:
+`renderStageImplement()` relabels `#submit-implement-btn` to "Diese Etappe
+umsetzen" (the label wraps to two lines, the sub-line moves into the tooltip
+and the accessible name — templates-stages.md § Journey CSS), and
+`stageImplementFields()` adds `stage` to the implement payload.
+
 ```javascript
+// ── Etappen: the implement station builds THIS Etappe only ──
+function stageImplementFields() {
+  if (!conceptStages().stages.length) return {};
+  const live = _stLive();
+  if (!live || live.hasAttribute('data-final-report')) return {};
+  const st = _stLiveStage();
+  return st ? { stage: st } : {};
+}
+function renderStageImplement() {
+  const btn = document.getElementById('submit-implement-btn');
+  if (!btn) return;
+  const b = btn.querySelector('.jr-ul-txt b');
+  const small = btn.querySelector('.jr-ul-txt small');
+  const staged = conceptStages().stages.length > 0;
+  [[b, '{{stage.implement}}'], [small, '{{stage.implement_sub}}']].forEach(([el, text]) => {
+    if (!el) return;
+    if (el.dataset.unstaged == null) el.dataset.unstaged = el.textContent;
+    el.textContent = staged ? text : el.dataset.unstaged;
+  });
+  // The full label in the tooltip and the accessible name: the visible label
+  // wraps (never cut), the sub-line is hidden in a staged concept.
+  if (btn.dataset.unstagedTip == null) btn.dataset.unstagedTip = btn.dataset.tip || '';
+  if (staged) {
+    btn.dataset.tip = '{{stage.implement}} — {{stage.implement_sub}}';
+    btn.setAttribute('aria-label', '{{stage.implement}}, {{stage.implement_sub}}');
+  } else {
+    if (btn.dataset.unstagedTip) btn.dataset.tip = btn.dataset.unstagedTip; else delete btn.dataset.tip;
+    btn.removeAttribute('aria-label');
+  }
+}
+
 // ── Etappen: stage close-out (the "Offene Etappen" block) ──
 let _stageRoutes = {};      // id → 'open' | 'issue' | 'drop'
 let _stageNextPick = '';

@@ -51,7 +51,10 @@ async function submitWithAction(action, extra) {
   // its button already sits behind its own second step (the journey's 🔒
   // unlock, the split button's caret menu), and accepting every
   // recommendation unchanged is a normal implement order, not an accident.
-  if (!_userInteracted && action !== 'implement') {
+  // next-stage never asks either: passing an Etappe over without answers is
+  // the point of the click (its start control / "Nächste Etappe ›" is the
+  // one deliberate step).
+  if (!_userInteracted && action !== 'implement' && action !== 'next-stage') {
     if (!window.confirm('{{panel.empty_iterate_confirm}}')) return;
   }
 

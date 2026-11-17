@@ -70,7 +70,9 @@ Only with Etappen:
   ("3 Richtungen, eine gewählt" / "3 Themen nacheinander" / "1 Richtung" /
   "n Abschnitte" / "n Entscheidungen, geführt") and "Etappe B · Runde 4" (the
   newest round), or "Noch nicht begonnen" without a round; a built / issue /
-  dropped Etappe adds a line "Gebaut" / "Als Issue angelegt" / "Gestrichen".
+  dropped Etappe adds a line "Gebaut" / "Als Issue angelegt" / "Gestrichen"
+  (without a round that state line is the whole tooltip). The live stage
+  report's page pill reads "🏁 <Etappenname>" too (`header[data-stage-pill]`).
   Scroll-snap per tab, the viewport sized to whole tabs so
   none is cut. ‹ › are plain glyphs in their own gutters beside the row,
   shown on hover or keyboard focus only, and only when the row overflows.
@@ -89,18 +91,24 @@ Only with Etappen:
   Etappe that is not the live one — "Mit dieser Etappe weitermachen" when it
   has rounds, "Etappe starten" when it has none. Click submits
   `submitWithAction('next-stage', {stage: <live>, next: <that id>})` through
-  the normal submit path, so the live round's answers go with it (and the
-  empty-round confirm applies as for any round submit). Never for the live
-  Etappe, a built / issue / dropped one, on a frozen round's view, or while
-  the live round is a final report (there the close-out decides what comes
-  next); disabled while a submit is running (`stageCanStart()`). Two clicks
+  the normal submit path, so the live round's answers go with it. It never
+  asks the empty-round confirm (nor does "Nächste Etappe ›"): passing an
+  Etappe over without answers is one deliberate click, and the untouched
+  round is sent with its fields as they stand (authored defaults, no
+  comments). Never for the live Etappe, a built / issue / dropped one, on a
+  frozen round's view, or while the live round is a final report (there the
+  close-out decides what comes next) (`stageCanStart()`). Both controls are
+  disabled while a submit runs and re-armed with the panel
+  (`syncStageControls()`, called from `renderJourney()` on every phase change). Two clicks
   by design: the tab click only VIEWS an Etappe (browsing its rounds must
   never submit the live round), the labelled button starts it.
 - The head's 🕘 rounds chip leaves the live head (it lives in the tabs);
   a frozen round's head is unchanged.
 - **Journey row**: the 🔒 · 🤖 · 🏁 stations stand in EVERY Etappe; the
-  implement button reads "Diese Etappe umsetzen" / "nur diese Etappe, das
-  Concept bleibt offen" (`renderStageImplement()`) and its payload names the
+  implement button reads "Diese Etappe umsetzen" — wrapping to two lines,
+  never cut; the sub-line "nur diese Etappe, das Concept bleibt offen" lives
+  in its tooltip and accessible name (`renderStageImplement()`,
+  templates-stages-free-js.md) — and its payload names the
   live Etappe (`stageImplementFields()`). "Nächste Etappe ›"
   (`#jr-next-stage`) is an additional quiet pill right above the row while
   another OPEN Etappe exists; it targets the next open Etappe after the live
@@ -179,7 +187,13 @@ body[data-staged]:not(.viewing-frozen) #panel-here-rounds-list { display: none !
   box-shadow: 0 0 8px color-mix(in srgb, var(--accent-color, #58a6ff) 60%, transparent);
 }
 .stage-tab[data-state="now"] .stage-tl { background: var(--accent-color, #58a6ff); }
-.stage-tab[data-state="ahead"] .stage-node { border-style: dashed; }
+.stage-tab[data-state="ahead"] .stage-node { border-style: dashed; opacity: 0.6; }
+/* Open with rounds (passed over): the kind glyph at full strength on a
+   tinted ring — visibly worked on, never the green "built" look. */
+.stage-tab[data-state="open"] .stage-node {
+  color: var(--text-color, #e6edf3);
+  border-color: color-mix(in srgb, var(--accent-color, #58a6ff) 50%, var(--border-color, #30363d));
+}
 /* Issue / dropped: visibly closed — dimmed node, name struck through. */
 .stage-tab[data-state="closed"] .stage-node { opacity: 0.55; border-style: dotted; }
 .stage-tab[data-state="closed"] .stage-tn { text-decoration: line-through; opacity: 0.7; }
@@ -264,6 +278,17 @@ body[data-stage-next] .jr-next-stage:hover { color: var(--text-color, #e6edf3); 
 body[data-stage-next] .jr-next-stage:focus-visible { outline: 2px solid var(--accent-color, #58a6ff); outline-offset: 2px; }
 body[data-stage-next] .jr-next-stage:disabled { opacity: 0.5; cursor: default; }
 body.viewing-frozen .jr-next-stage, body.viewing-final .jr-next-stage { display: none !important; }
+/* "Diese Etappe umsetzen" is the user's own wording: never cut. In a staged
+   concept the label wraps to two lines inside the 38px pill and the
+   sub-line moves into the tooltip / accessible name (renderStageImplement). */
+body[data-staged] .journey .implement-btn.jr-fill { white-space: normal; }
+body[data-staged] .journey .jr-ul-txt b {
+  white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: normal; line-height: 1.12;
+}
+body[data-staged] .journey .jr-ul-txt small { display: none; }
+
+/* Live stage report: the page pill names the Etappe (labelStageReportTabs). */
+body.viewing-final .concept-content > header[data-stage-pill]::before { content: attr(data-stage-pill); }
 
 /* Close-out of a stage report: "Offene Etappen" (templates-stages-free-js.md). */
 .closeout-sheet .stage-co-list { display: flex; flex-direction: column; gap: 0.45rem; }

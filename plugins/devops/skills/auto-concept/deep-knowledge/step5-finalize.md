@@ -9,6 +9,12 @@ update the final-report HTML" below edits that fragment with a targeted
 page is never read or edited. `{{…}}` tokens written into the fragment are
 substituted by the build, but writing the locale VALUE stays correct too.
 
+**Staged concept — read `step5-stages.md` first.** A `finalize` payload
+carrying `final: false` closes out ONE Etappe's report while others stay
+open: parts A, B and E run, the `stages[]` routes are applied, and parts C
+and D below do NOT run — no ship, no disposition, no `/status closed`. Only
+the close-out with `final: true` (or no `final` at all) runs A → E in full.
+
 ## A · Issues
 
 1. Read the `items` array from `issues` — each entry carries

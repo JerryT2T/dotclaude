@@ -294,7 +294,9 @@ external systems change** — with one difference: the next round belongs to `ne
      round it comes from), and a checklist with one line per accepted item.
      Agents get this file path plus the checklist lines they own — never a
      summary of it. A design implement's parity checklist (below) is the
-     checklist of this file, not a second list.
+     checklist of this file, not a second list. On a staged concept the
+     brief is `briefs/implement-<id>.md`, built from that Etappe's baked
+     rounds only (`step5-stages.md`).
    - **Every checklist line carries its source quote (#1110).** The quote
      sits next to the line, word for word, and the acceptance of that line is
      judged against the quote, not against the line. On a conflict the quote wins. A quote

@@ -48,7 +48,8 @@ async function page({ rounds, stages = STAGES, locale = "de" }) {
         if (opts && opts.method === "POST") posted.push({ url: String(url), body: opts.body ? JSON.parse(opts.body) : null });
         return { ok: true, status: 200, json: async () => ({ durable: true }), text: async () => "" };
       };
-      w.confirm = () => true;
+      w.__confirms = 0;
+      w.confirm = () => { w.__confirms++; return false; };
       w.scrollTo = () => {};
       w.HTMLElement.prototype.scrollIntoView = function () {};
     },
@@ -271,5 +272,73 @@ describe("Etappen free order — close-out of a live stage report", () => {
     expect(await keys(untagged)).toEqual(today);
     const plain = await page({ stages: null, rounds: [round(1, null, { baked: true }), report(2, null)] });
     expect(await keys(plain)).toEqual(today);
+  });
+});
+
+describe("Etappen free order — browser-check fix round (D1–D6)", () => {
+  const rounds = () => [round(1, "A", { baked: true }), round(2, "B", { baked: true }), round(3, "B")];
+
+  test("D1: the staged implement label wraps, is never ellipsised, and carries the full text as tooltip + name", async () => {
+    const p = await page({ rounds: rounds() });
+    const css = p.res.html;
+    expect(css).toMatch(/body\[data-staged\] \.journey \.implement-btn\.jr-fill \{ white-space: normal; \}/);
+    expect(css).toMatch(/body\[data-staged\] \.journey \.jr-ul-txt b \{\s*white-space: normal; overflow: visible; text-overflow: clip;/);
+    expect(css).toMatch(/body\[data-staged\] \.journey \.jr-ul-txt small \{ display: none; \}/);
+    const btn = p.$("#submit-implement-btn");
+    expect(btn.querySelector(".jr-ul-txt b").textContent).toBe("Diese Etappe umsetzen");
+    expect(btn.dataset.tip).toBe("Diese Etappe umsetzen — nur diese Etappe, das Concept bleibt offen");
+    expect(btn.getAttribute("aria-label")).toBe("Diese Etappe umsetzen, nur diese Etappe, das Concept bleibt offen");
+    const en = await page({ rounds: rounds(), locale: "en" });
+    expect(en.$("#submit-implement-btn").getAttribute("aria-label")).toBe("Build this stage, this stage only, the concept stays open");
+  });
+
+  test("D2: start control and 'Nächste Etappe ›' lock while a submit runs and re-arm with the panel", async () => {
+    const p = await page({ rounds: rounds() });
+    p.tab("C").click();
+    const start = p.$("#stage-start");
+    const next = p.$("#jr-next-stage");
+    expect([start.disabled, next.disabled]).toEqual([false, false]);
+    start.click();
+    await tick();
+    expect(p.window.journeyPhase()).toBe("rethinking");
+    expect([p.$("#stage-start").disabled, p.$("#jr-next-stage").disabled]).toEqual([true, true]);
+    p.window.restorePanelToReady();
+    expect([p.$("#stage-start").disabled, p.$("#jr-next-stage").disabled]).toEqual([false, false]);
+  });
+
+  test("D3: passing an untouched round over asks no confirm; the round goes out as it stands", async () => {
+    const p = await page({ rounds: rounds() });
+    p.tab("C").click();
+    p.$("#stage-start").click();
+    await tick();
+    expect(p.window.__confirms).toBe(0);
+    const body = p.last();
+    expect(body).toMatchObject({ submitted: true, action: "next-stage", stage: "B", next: "C", iteration: "3" });
+  });
+
+  test("D4: the page pill of a live stage report names the Etappe", async () => {
+    const p = await page({ rounds: [round(1, "A", { baked: true }), report(2, "A")] });
+    const header = p.$(".concept-content > header");
+    expect(header, "page header").toBeTruthy();
+    expect(header.dataset.stagePill).toBe("🏁 Use Cases");
+    expect(p.res.html).toMatch(/body\.viewing-final \.concept-content > header\[data-stage-pill\]::before \{ content: attr\(data-stage-pill\); \}/);
+    const plain = await page({ rounds: [round(1, "A", { baked: true }), report(2, null)] });
+    expect(plain.$(".concept-content > header").hasAttribute("data-stage-pill")).toBe(false);
+  });
+
+  test("D5: a closed Etappe without rounds shows only its closed state", async () => {
+    const stages = [{ id: "A", name: "Use Cases" }, { id: "B", name: "Struktur", state: "issue" }, { id: "C", name: "Visuelles Design", state: "dropped" }];
+    const p = await page({ stages, rounds: [round(1, "A")] });
+    expect(p.tab("B").dataset.tip).toBe("Als Issue angelegt");
+    expect(p.tab("C").dataset.tip).toBe("Gestrichen");
+    expect(p.tab("C").getAttribute("aria-label")).not.toMatch(/Noch nicht begonnen/);
+  });
+
+  test("D6: 'open, has rounds' has its own look, distinct from 'ahead' and from 'done'", async () => {
+    const p = await page({ rounds: [round(1, "A", { baked: true }), round(2, "C")] });
+    expect(p.tab("A").dataset.state).toBe("open");
+    expect(p.tab("B").dataset.state).toBe("ahead");
+    expect(p.res.html).toMatch(/\.stage-tab\[data-state="open"\] \.stage-node \{\s*color: var\(--text-color/);
+    expect(p.res.html).toMatch(/\.stage-tab\[data-state="ahead"\] \.stage-node \{ border-style: dashed; opacity: 0\.6; \}/);
   });
 });

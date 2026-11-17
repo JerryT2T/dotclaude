@@ -170,9 +170,10 @@ function _stNode(stage) {
   if (g) node.appendChild(g);
   node.appendChild(_stEl('span', 'stage-tl', stage.id));
   const state = _stStateLine(stage.id);
-  const tip = (newest
-    ? k.line + '\n' + '{{stage.label}} ' + stage.id + ' · ' + _stRoundLabel(newest)
-    : '{{stage.not_started}}') + (state ? '\n' + state : '');
+  // A closed Etappe without rounds says only its state (never "not started").
+  const tip = newest
+    ? k.line + '\n' + '{{stage.label}} ' + stage.id + ' · ' + _stRoundLabel(newest) + (state ? '\n' + state : '')
+    : (state || '{{stage.not_started}}');
   return { node, tip };
 }
 
@@ -438,9 +439,20 @@ function stageCanStart(id) {
   if (_stStateRaw(id) !== 'open') return false;
   return id !== _stLiveStage();
 }
-function _stBusy() {
-  const phase = typeof journeyPhase === 'function' ? journeyPhase() : 'you';
+function _stBusyPhase(phase) {
   return phase === 'rethinking' || phase === 'finalizing' || phase === 'implementing';
+}
+function _stBusy() {
+  return _stBusyPhase(typeof journeyPhase === 'function' ? journeyPhase() : 'you');
+}
+// Called from renderJourney() on every phase change: the start control and
+// "Nächste Etappe ›" lock while a submit runs and re-arm with the panel.
+function syncStageControls(phase) {
+  const busy = _stBusyPhase(phase);
+  ['stage-start', 'jr-next-stage'].forEach(id => {
+    const b = document.getElementById(id);
+    if (b) b.disabled = busy;
+  });
 }
 // The start control at the top of an open Etappe's pane. It submits the live
 // round (its answers go with it) as next-stage → this Etappe.
@@ -491,31 +503,16 @@ function labelStageReportTabs() {
     tab.textContent = name;
     tab.dataset.tabLabel = name;
   });
+  // The page pill of a LIVE stage report ("🏁 Abschluss" → "🏁 <Etappenname>",
+  // CSS header[data-stage-pill]::before).
+  const liveHead = stageReportHead(_stLive());
+  document.querySelectorAll('.concept-content > header').forEach(h => {
+    if (liveHead) h.dataset.stagePill = liveHead; else delete h.dataset.stagePill;
+  });
   const vis = _stVisibleRound();
   const bar = document.querySelector('#frozen-bar [data-frozen-bar-title]');
   const head = stageReportHead(vis);
   if (bar && head && !(vis && vis.hasAttribute('data-active'))) bar.textContent = head;
-}
-
-// The implement station of a staged concept builds THIS Etappe only.
-function stageImplementFields() {
-  if (!conceptStages().stages.length) return {};
-  const live = _stLive();
-  if (!live || live.hasAttribute('data-final-report')) return {};
-  const st = _stLiveStage();
-  return st ? { stage: st } : {};
-}
-function renderStageImplement() {
-  const btn = document.getElementById('submit-implement-btn');
-  if (!btn) return;
-  const b = btn.querySelector('.jr-ul-txt b');
-  const small = btn.querySelector('.jr-ul-txt small');
-  const staged = conceptStages().stages.length > 0;
-  [[b, '{{stage.implement}}'], [small, '{{stage.implement_sub}}']].forEach(([el, text]) => {
-    if (!el) return;
-    if (el.dataset.unstaged == null) el.dataset.unstaged = el.textContent;
-    el.textContent = staged ? text : el.dataset.unstaged;
-  });
 }
 
 // Journey: the 🔒 · 🤖 · 🏁 stations always stand; "Nächste Etappe ›" sits
@@ -561,7 +558,7 @@ function renderStages() {
   renderRoundRow();
   renderStageTabs();
   renderStageNext();
-  renderStageImplement();
+  if (typeof renderStageImplement === 'function') renderStageImplement();   // templates-stages-free-js.md
 }
 
 (function bootStages() {
