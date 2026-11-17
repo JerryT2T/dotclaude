@@ -2,7 +2,7 @@
      rewrites it on every tab switch. body overflow is set by that function,
      the inline style below is only the first-paint value. -->
 <!DOCTYPE html>
-<html lang="de" data-theme="dark" data-page-version="2026-11-17T12:04:46" data-template="decision">
+<html lang="de" data-theme="dark" data-page-version="2026-11-17T12:04:46" data-template="free">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -5632,7 +5632,16 @@ body[data-staged]:not(.viewing-frozen) #panel-here-rounds-list { display: none !
   box-shadow: 0 0 8px color-mix(in srgb, var(--accent-color, #58a6ff) 60%, transparent);
 }
 .stage-tab[data-state="now"] .stage-tl { background: var(--accent-color, #58a6ff); }
-.stage-tab[data-state="ahead"] .stage-node { border-style: dashed; }
+.stage-tab[data-state="ahead"] .stage-node { border-style: dashed; opacity: 0.6; }
+/* Open with rounds (passed over): the kind glyph at full strength on a
+   tinted ring — visibly worked on, never the green "built" look. */
+.stage-tab[data-state="open"] .stage-node {
+  color: var(--text-color, #e6edf3);
+  border-color: color-mix(in srgb, var(--accent-color, #58a6ff) 50%, var(--border-color, #30363d));
+}
+/* Issue / dropped: visibly closed — dimmed node, name struck through. */
+.stage-tab[data-state="closed"] .stage-node { opacity: 0.55; border-style: dotted; }
+.stage-tab[data-state="closed"] .stage-tn { text-decoration: line-through; opacity: 0.7; }
 .stage-tab[aria-selected="true"] {
   color: var(--text-color, #e6edf3); background: color-mix(in srgb, var(--accent-color, #58a6ff) 13%, transparent);
   border-color: color-mix(in srgb, var(--accent-color, #58a6ff) 45%, transparent);
@@ -5687,21 +5696,71 @@ body[data-staged]:not(.viewing-frozen) #panel-here-rounds-list { display: none !
 .stage-older[hidden] { display: none; }
 .stage-ahead { margin: 0.5rem 0.6rem; font-size: 0.8rem; color: var(--text-secondary, #8b949e); }
 
-/* Journey: "Nächste Etappe ›" takes the 🔒 · 🤖 · 🏁 stations' place. */
-body[data-stage-next] .journey > .jr-impl,
-body[data-stage-next] .journey > .jr-fold,
-body[data-stage-next] .journey > .jr-node,
-body[data-stage-next] .journey > .jr-wire:not(.jr-wire-a) { display: none !important; }
+/* Start control at the top of an open Etappe's pane. */
+.stage-start {
+  display: flex; align-items: center; gap: 0.45rem; width: 100%; box-sizing: border-box; margin: 0 0 0.5rem;
+  padding: 0.45rem 0.7rem; border: 0; border-radius: 8px; font: inherit; font-size: 0.82rem; font-weight: 600;
+  text-align: left; cursor: pointer; color: var(--text-color, #e6edf3);
+  background: color-mix(in srgb, var(--accent-color, #58a6ff) 12%, var(--panel-bg, #161b22));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-color, #58a6ff) 55%, transparent);
+}
+.stage-start:hover { box-shadow: inset 0 0 0 1px var(--accent-color, #58a6ff); }
+.stage-start:focus-visible { outline: 2px solid var(--accent-color, #58a6ff); outline-offset: 2px; }
+.stage-start:disabled { opacity: 0.5; cursor: default; }
+.stage-start-ico { flex: none; font-size: 0.7rem; color: var(--accent-color, #58a6ff); }
+.stage-report::before { display: none; }
+
+/* Journey: the stations always stand; "Nächste Etappe ›" is a quiet pill
+   right above the row, only while another open Etappe exists. */
 .jr-next-stage { display: none; }
 body[data-stage-next] .jr-next-stage {
-  display: flex; align-items: center; flex: none; height: 36px; padding: 0 10px; border: 0; border-radius: 999px;
+  display: flex; align-items: center; width: fit-content; margin: 0 0 0.4rem auto; height: 26px; padding: 0 10px; border: 0; border-radius: 999px;
   white-space: nowrap; font: inherit; font-size: 0.72rem; font-weight: 600; cursor: pointer;
-  color: var(--text-color, #e6edf3); background: color-mix(in srgb, var(--text-color, #c9d1d9) 7%, var(--panel-bg, #161b22));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-color, #58a6ff) 55%, transparent), 0 2px 8px rgba(0, 0, 0, 0.3);
+  color: var(--text-secondary, #8b949e); background: none;
+  box-shadow: inset 0 0 0 1px var(--border-color, #30363d);
 }
-body[data-stage-next] .jr-next-stage:hover { box-shadow: inset 0 0 0 1px var(--accent-color, #58a6ff), 0 2px 8px rgba(0, 0, 0, 0.3); }
+body[data-stage-next] .jr-next-stage:hover { color: var(--text-color, #e6edf3); box-shadow: inset 0 0 0 1px var(--accent-color, #58a6ff); }
 body[data-stage-next] .jr-next-stage:focus-visible { outline: 2px solid var(--accent-color, #58a6ff); outline-offset: 2px; }
 body[data-stage-next] .jr-next-stage:disabled { opacity: 0.5; cursor: default; }
+body.viewing-frozen .jr-next-stage, body.viewing-final .jr-next-stage { display: none !important; }
+/* "Diese Etappe umsetzen" is the user's own wording: never cut. In a staged
+   concept the label wraps to two lines inside the 38px pill and the
+   sub-line moves into the tooltip / accessible name (renderStageImplement). */
+body[data-staged] .journey .implement-btn.jr-fill { white-space: normal; }
+body[data-staged] .journey .jr-ul-txt b {
+  white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: normal; line-height: 1.12;
+}
+body[data-staged] .journey .jr-ul-txt small { display: none; }
+
+/* Live stage report: the page pill names the Etappe (labelStageReportTabs). */
+body.viewing-final .concept-content > header[data-stage-pill]::before { content: attr(data-stage-pill); }
+
+/* Close-out of a stage report: "Offene Etappen" (templates-stages-free-js.md). */
+.closeout-sheet .stage-co-list { display: flex; flex-direction: column; gap: 0.45rem; }
+.closeout-sheet .stage-co-row, .closeout-sheet .stage-co-next { display: flex; flex-direction: column; gap: 0.25rem; }
+.closeout-sheet .stage-co-next { margin-top: 0.6rem; }
+.closeout-sheet .stage-co-name { font-size: 0.8rem; color: var(--text-color, #c9d1d9); }
+.closeout-sheet .stage-co-row[data-route="drop"] .stage-co-name { text-decoration: line-through; opacity: 0.6; }
+.closeout-sheet .stage-co-opts { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.closeout-sheet .stage-co-opt { position: relative; display: inline-flex; cursor: pointer; }
+.closeout-sheet .stage-co-opt input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; }
+.closeout-sheet .stage-co-opt span {
+  padding: 2px 9px; border-radius: 999px; font-size: 0.72rem; font-weight: 600;
+  border: 1px solid var(--border-color, #30363d); color: var(--text-secondary, #8b949e);
+}
+.closeout-sheet .stage-co-opt:hover span { color: var(--text-color, #c9d1d9); }
+.closeout-sheet .stage-co-opt input:checked + span {
+  color: var(--accent-color, #58a6ff); border-color: var(--accent-color, #58a6ff);
+  background: color-mix(in srgb, var(--accent-color, #58a6ff) 12%, transparent);
+}
+.closeout-sheet .stage-co-opt input:focus-visible + span { outline: 2px solid var(--accent-color, #58a6ff); outline-offset: 1px; }
+.closeout-sheet .stage-co-opt input:disabled + span { opacity: 0.55; cursor: default; }
+.closeout-sheet[data-stage-continue] .closeout-dispose-line,
+.closeout-sheet[data-stage-continue] #panel-dispose-concept { display: none !important; }
+.closeout-sheet #closeout-stage-go {
+  color: #fff; background: var(--accent-color, #58a6ff); border: 1px solid var(--accent-color, #58a6ff);
+}
+.closeout-sheet #closeout-stage-go:hover { background: color-mix(in srgb, var(--accent-color, #58a6ff) 85%, var(--text-color, #c9d1d9)); }
 
 /* --- Voice input (all templates) --- */
 /* Same look as the 📎 beside it: one button family. */
@@ -5772,7 +5831,8 @@ html .feedback-dock .feedback-section textarea[data-attachable] { padding-right:
       </header>
       <style>html[data-template="design"] [data-page-header] { display: none; }</style>
       <main>
-<section data-iteration="1" data-iteration-template="decision" data-analysis="full" data-active id="iter-1">
+<section data-iteration="1" data-iteration-template="decision" data-analysis="full" data-baked id="iter-1" hidden>
+  <script type="application/json" data-frozen-feedback>{"general":{"text":"","attachments":[]}}</script>
 
   <section id="briefing" data-analysis-briefing data-nav-label="Briefing">
     <p data-briefing-what>Etappen laufen strikt der Reihe nach. Vier feste Sperren sorgen dafür, dass bei drei Themen das erste erst gebaut wird, wenn auch das dritte entschieden ist.</p>
@@ -5808,27 +5868,27 @@ html .feedback-dock .feedback-section textarea[data-attachable] { padding-right:
       <p data-stakes>Ob du ein dringendes Thema vorziehen und ein unklares liegen lassen kannst.</p>
       <div data-options>
         <label data-opt="free" data-recommended>
-          <input type="radio" name="dm-d-next" value="free" checked>
+          <input type="radio" name="dm-d-next" value="free" checked disabled>
           <span data-opt-label>Jede offene Etappe direkt öffnen</span>
           <span data-opt-consequence>Ein Klick auf die Etappe in der Leiste startet ihre nächste Runde; die Reihenfolge ergibt sich aus deinen Klicks.</span>
         </label>
         <label data-opt="skip">
-          <input type="radio" name="dm-d-next" value="skip">
+          <input type="radio" name="dm-d-next" value="skip" disabled>
           <span data-opt-label>Nur die nächste überspringen</span>
           <span data-opt-consequence>Ein Knopf „Überspringen“ neben „Nächste Etappe“; vorziehen geht nur Schritt für Schritt.</span>
         </label>
         <label data-opt="plan">
-          <input type="radio" name="dm-d-next" value="plan">
+          <input type="radio" name="dm-d-next" value="plan" disabled>
           <span data-opt-label>Reihenfolge einmal in Runde 1 festlegen</span>
           <span data-opt-consequence>Du sortierst die Etappen am Anfang; danach läuft es strikt wie bisher.</span>
         </label>
       </div>
-      <textarea data-comment="d-next-note" placeholder="Notiz (optional)"></textarea>
-      <input type="hidden" name="dm-d-next-none" value="">
-      <input type="hidden" name="dm-d-next-hes" value="">
-      <input type="hidden" name="dm-d-next-touched" value="">
-      <input type="hidden" name="dm-d-next-issue" value="">
-      <input type="hidden" name="dm-d-next-epic" value="">
+      <textarea data-comment="d-next-note" placeholder="Notiz (optional)" readonly disabled></textarea>
+      <input type="hidden" name="dm-d-next-none" value="" disabled>
+      <input type="hidden" name="dm-d-next-hes" value="{&quot;ms&quot;:25571,&quot;revisits&quot;:0,&quot;median&quot;:32338}" disabled>
+      <input type="hidden" name="dm-d-next-touched" value="1" disabled>
+      <input type="hidden" name="dm-d-next-issue" value="" disabled>
+      <input type="hidden" name="dm-d-next-epic" value="" disabled>
       <div data-alevel="3" data-title="Nächste Etappe wählen">
         <div data-slot="short"><p>Eine spätere Etappe lässt sich in der Leiste nur ansehen.</p></div>
         <div data-slot="long">
@@ -5855,27 +5915,27 @@ Klick auf C startet C. B bleibt offen.</pre></div>
       <p data-stakes>Ob ein ausgelassenes Thema später wieder auftaucht oder verloren geht.</p>
       <div data-options>
         <label data-opt="open" data-recommended>
-          <input type="radio" name="dm-d-skipped" value="open" checked>
+          <input type="radio" name="dm-d-skipped" value="open" checked disabled>
           <span data-opt-label>Offen halten und am Ende einmal fragen</span>
           <span data-opt-consequence>Sie bleibt in der Leiste wählbar; der Abschluss fragt je offener Etappe: nachholen, als Issue anlegen oder streichen.</span>
         </label>
         <label data-opt="issue">
-          <input type="radio" name="dm-d-skipped" value="issue">
+          <input type="radio" name="dm-d-skipped" value="issue" disabled>
           <span data-opt-label>Sofort als Issue anlegen</span>
           <span data-opt-consequence>Das Thema wandert in den Backlog und verlässt das Concept.</span>
         </label>
         <label data-opt="drop">
-          <input type="radio" name="dm-d-skipped" value="drop">
+          <input type="radio" name="dm-d-skipped" value="drop" disabled>
           <span data-opt-label>Als gestrichen markieren</span>
           <span data-opt-consequence>Sie wird durchgestrichen und fehlt im Auftrag; ein Klick holt sie zurück.</span>
         </label>
       </div>
-      <textarea data-comment="d-skipped-note" placeholder="Notiz (optional)"></textarea>
-      <input type="hidden" name="dm-d-skipped-none" value="">
-      <input type="hidden" name="dm-d-skipped-hes" value="">
-      <input type="hidden" name="dm-d-skipped-touched" value="">
-      <input type="hidden" name="dm-d-skipped-issue" value="">
-      <input type="hidden" name="dm-d-skipped-epic" value="">
+      <textarea data-comment="d-skipped-note" placeholder="Notiz (optional)" readonly disabled></textarea>
+      <input type="hidden" name="dm-d-skipped-none" value="" disabled>
+      <input type="hidden" name="dm-d-skipped-hes" value="{&quot;ms&quot;:22682,&quot;revisits&quot;:0,&quot;median&quot;:32338}" disabled>
+      <input type="hidden" name="dm-d-skipped-touched" value="1" disabled>
+      <input type="hidden" name="dm-d-skipped-issue" value="" disabled>
+      <input type="hidden" name="dm-d-skipped-epic" value="" disabled>
       <div data-alevel="3" data-title="Ausgelassene Etappe">
         <div data-slot="short"><p>Eine Etappe kennt nur zwei Zustände: erreicht oder noch nicht erreicht.</p></div>
         <div data-slot="long">
@@ -5901,27 +5961,27 @@ Offen: B Login   ○ nachholen   ○ als Issue   ○ streichen</pre></div>
       <p data-stakes>Ob Korrekturen bei ihrem Thema stehen oder zwischen fremden Entscheidungen.</p>
       <div data-options>
         <label data-opt="until-built" data-recommended>
-          <input type="radio" name="dm-d-back" value="until-built" checked>
+          <input type="radio" name="dm-d-back" value="until-built" checked disabled>
           <span data-opt-label>Wieder öffnen, solange sie nicht gebaut ist</span>
           <span data-opt-consequence>Die Etappe bekommt eine neue Runde; nach dem Bauen läuft eine Änderung über „Nachbessern“.</span>
         </label>
         <label data-opt="always">
-          <input type="radio" name="dm-d-back" value="always">
+          <input type="radio" name="dm-d-back" value="always" disabled>
           <span data-opt-label>Jederzeit wieder öffnen</span>
           <span data-opt-consequence>Auch eine gebaute Etappe öffnet wieder; Concept und Code können dann auseinanderlaufen.</span>
         </label>
         <label data-opt="never">
-          <input type="radio" name="dm-d-back" value="never">
+          <input type="radio" name="dm-d-back" value="never" disabled>
           <span data-opt-label>Geschlossen lassen</span>
           <span data-opt-consequence>Wie bisher: Die Korrektur wird ein eigener Abschnitt in der laufenden Etappe.</span>
         </label>
       </div>
-      <textarea data-comment="d-back-note" placeholder="Notiz (optional)"></textarea>
-      <input type="hidden" name="dm-d-back-none" value="">
-      <input type="hidden" name="dm-d-back-hes" value="">
-      <input type="hidden" name="dm-d-back-touched" value="">
-      <input type="hidden" name="dm-d-back-issue" value="">
-      <input type="hidden" name="dm-d-back-epic" value="">
+      <textarea data-comment="d-back-note" placeholder="Notiz (optional)" readonly disabled></textarea>
+      <input type="hidden" name="dm-d-back-none" value="" disabled>
+      <input type="hidden" name="dm-d-back-hes" value="{&quot;ms&quot;:10169,&quot;revisits&quot;:0,&quot;median&quot;:32338}" disabled>
+      <input type="hidden" name="dm-d-back-touched" value="1" disabled>
+      <input type="hidden" name="dm-d-back-issue" value="" disabled>
+      <input type="hidden" name="dm-d-back-epic" value="" disabled>
       <div data-alevel="3" data-title="Etappe wieder öffnen">
         <div data-slot="short"><p>Die Runden einer Etappe müssen heute direkt aufeinander folgen.</p></div>
         <div data-slot="long">
@@ -5957,27 +6017,27 @@ Runde 6 · Etappe C Upload</pre></div>
       <p data-stakes>Wie früh ein fertig entschiedenes Thema gebaut ist.</p>
       <div data-options>
         <label data-opt="each" data-recommended>
-          <input type="radio" name="dm-d-build" value="each" checked>
+          <input type="radio" name="dm-d-build" value="each" checked disabled>
           <span data-opt-label>Jede Etappe für sich bauen</span>
           <span data-opt-consequence>„Diese Etappe umsetzen“ steht in jeder Etappe; das Concept bleibt offen und geht mit den übrigen weiter.</span>
         </label>
         <label data-opt="pick">
-          <input type="radio" name="dm-d-build" value="pick">
+          <input type="radio" name="dm-d-build" value="pick" disabled>
           <span data-opt-label>Gesammelt bauen, mit Auswahl der Etappen</span>
           <span data-opt-consequence>Ein Auftrag am Ende mit Häkchen je Etappe; Thema 1 wartet weiter auf die anderen.</span>
         </label>
         <label data-opt="both">
-          <input type="radio" name="dm-d-build" value="both">
+          <input type="radio" name="dm-d-build" value="both" disabled>
           <span data-opt-label>Beide Wege anbieten</span>
           <span data-opt-consequence>Je Etappe einzeln oder mehrere entschiedene zusammen; ein Knopf mehr im Panel.</span>
         </label>
       </div>
-      <textarea data-comment="d-build-note" placeholder="Notiz (optional)"></textarea>
-      <input type="hidden" name="dm-d-build-none" value="">
-      <input type="hidden" name="dm-d-build-hes" value="">
-      <input type="hidden" name="dm-d-build-touched" value="">
-      <input type="hidden" name="dm-d-build-issue" value="">
-      <input type="hidden" name="dm-d-build-epic" value="">
+      <textarea data-comment="d-build-note" placeholder="Notiz (optional)" readonly disabled></textarea>
+      <input type="hidden" name="dm-d-build-none" value="" disabled>
+      <input type="hidden" name="dm-d-build-hes" value="{&quot;ms&quot;:47951,&quot;revisits&quot;:5,&quot;median&quot;:32338}" disabled>
+      <input type="hidden" name="dm-d-build-touched" value="1" disabled>
+      <input type="hidden" name="dm-d-build-issue" value="" disabled>
+      <input type="hidden" name="dm-d-build-epic" value="" disabled>
       <div data-alevel="3" data-title="Etappen umsetzen">
         <div data-slot="short"><div data-viz="kpi" data-viz-spec='{"value":"2","unit":"Etappen Wartezeit","label":"für das erste von drei Themen"}'></div></div>
         <div data-slot="long">
@@ -6002,27 +6062,27 @@ Nachher (je Etappe)
       <p data-stakes>Wie viel du nach jeder Etappe lesen und beantworten musst.</p>
       <div data-options>
         <label data-opt="interim" data-recommended>
-          <input type="radio" name="dm-d-report" value="interim" checked>
+          <input type="radio" name="dm-d-report" value="interim" disabled>
           <span data-opt-label>Kurzer Baubericht je Etappe, ein Abschluss</span>
           <span data-opt-consequence>Nach jedem Bauen eine knappe Runde: was geändert und geprüft ist. Funde, Tests und Aufräumen fragt nur der eine Abschluss.</span>
         </label>
         <label data-opt="full">
-          <input type="radio" name="dm-d-report" value="full">
+          <input type="radio" name="dm-d-report" value="full" checked disabled>
           <span data-opt-label>Voller Abschluss nach jeder Etappe</span>
           <span data-opt-consequence>Jede Etappe endet mit eigener Abschluss-Seite samt Funden und Tests; bei drei Themen dreimal.</span>
         </label>
         <label data-opt="end">
-          <input type="radio" name="dm-d-report" value="end">
+          <input type="radio" name="dm-d-report" value="end" disabled>
           <span data-opt-label>Nur ein Bericht ganz am Schluss</span>
           <span data-opt-consequence>Dazwischen siehst du nur die Karte im Chat.</span>
         </label>
       </div>
-      <textarea data-comment="d-report-note" placeholder="Notiz (optional)"></textarea>
-      <input type="hidden" name="dm-d-report-none" value="">
-      <input type="hidden" name="dm-d-report-hes" value="">
-      <input type="hidden" name="dm-d-report-touched" value="">
-      <input type="hidden" name="dm-d-report-issue" value="">
-      <input type="hidden" name="dm-d-report-epic" value="">
+      <textarea data-comment="d-report-note" placeholder="Notiz (optional)" readonly disabled>aber nicht drei websites, sondenr in einer websites mit drei seiten!</textarea>
+      <input type="hidden" name="dm-d-report-none" value="" disabled>
+      <input type="hidden" name="dm-d-report-hes" value="{&quot;ms&quot;:49507,&quot;revisits&quot;:6,&quot;median&quot;:32338}" disabled>
+      <input type="hidden" name="dm-d-report-touched" value="1" disabled>
+      <input type="hidden" name="dm-d-report-issue" value="" disabled>
+      <input type="hidden" name="dm-d-report-epic" value="" disabled>
       <div data-alevel="3" data-title="Bericht nach dem Bauen">
         <div data-slot="short"><p>Der Build lässt genau einen Abschlussbericht zu, und nur als letzte Runde.</p></div>
         <div data-slot="long">
@@ -6047,27 +6107,27 @@ Runde 5 · B   🛠 B gebaut   🏁 Abschluss</pre></div>
       <p data-stakes>Wie klein ein Pull Request ist und ob ein Thema die anderen aufhält.</p>
       <div data-options>
         <label data-opt="per-stage" data-recommended>
-          <input type="radio" name="dm-d-ship" value="per-stage" checked>
+          <input type="radio" name="dm-d-ship" value="per-stage" disabled>
           <span data-opt-label>Je Etappe ein eigener Ship, auf meinen Klick</span>
           <span data-opt-consequence>Der Baubericht bietet „Ship“ an; jede Etappe wird ein eigener Pull Request mit eigener Version.</span>
         </label>
         <label data-opt="once">
-          <input type="radio" name="dm-d-ship" value="once">
+          <input type="radio" name="dm-d-ship" value="once" checked disabled>
           <span data-opt-label>Alles zusammen im Abschluss</span>
           <span data-opt-consequence>Ein Pull Request, eine Version; nichts erreicht main, bevor das letzte Thema fertig ist.</span>
         </label>
         <label data-opt="auto">
-          <input type="radio" name="dm-d-ship" value="auto">
+          <input type="radio" name="dm-d-ship" value="auto" disabled>
           <span data-opt-label>Je Etappe automatisch nach dem Bauen</span>
           <span data-opt-consequence>Kein Klick nötig; ein Ship läuft auch, wenn du das Ergebnis noch nicht gesehen hast.</span>
         </label>
       </div>
-      <textarea data-comment="d-ship-note" placeholder="Notiz (optional)"></textarea>
-      <input type="hidden" name="dm-d-ship-none" value="">
-      <input type="hidden" name="dm-d-ship-hes" value="">
-      <input type="hidden" name="dm-d-ship-touched" value="">
-      <input type="hidden" name="dm-d-ship-issue" value="">
-      <input type="hidden" name="dm-d-ship-epic" value="">
+      <textarea data-comment="d-ship-note" placeholder="Notiz (optional)" readonly disabled></textarea>
+      <input type="hidden" name="dm-d-ship-none" value="" disabled>
+      <input type="hidden" name="dm-d-ship-hes" value="{&quot;ms&quot;:39104,&quot;revisits&quot;:0,&quot;median&quot;:32338}" disabled>
+      <input type="hidden" name="dm-d-ship-touched" value="1" disabled>
+      <input type="hidden" name="dm-d-ship-issue" value="" disabled>
+      <input type="hidden" name="dm-d-ship-epic" value="" disabled>
       <div data-alevel="3" data-title="Ausliefern">
         <div data-slot="short"><p>Ein Concept kennt genau einen Ship, im Abschluss.</p></div>
         <div data-slot="long">
@@ -6082,6 +6142,91 @@ PR „Upload“    eigene Version
 PR „Login“     eigene Version</pre></div>
       </div>
     </section>
+  </section>
+</section>
+
+<section data-iteration="2" data-iteration-template="free" data-final-report id="iter-2" data-active>
+  <p class="fr-sentence">Etappen lassen sich jetzt in beliebiger Reihenfolge starten, einzeln umsetzen und einzeln abschließen – auf einer Seite, ausgeliefert wird einmal am Ende.</p>
+
+  <div class="fr-main">
+    <div class="fr-results">
+      <p class="fr-label">Was kam raus</p>
+      <ul class="fr-wins">
+        <li><span class="fr-win-icon" aria-hidden="true">🧭</span><span><b>Jede offene Etappe</b> lässt sich starten, auch außer der Reihe.</span></li>
+        <li><span class="fr-win-icon" aria-hidden="true">🔓</span><span><b>„Diese Etappe umsetzen“</b> steht in jeder Etappe, das Concept bleibt offen.</span></li>
+        <li><span class="fr-win-icon" aria-hidden="true">🏁</span><span><b>Ein Abschluss je Etappe</b> auf derselben Seite, ausgeliefert wird einmal.</span></li>
+      </ul>
+    </div>
+    <div class="fr-ba" data-label-before="Vorher" data-label-after="Nachher">
+      <figure class="fr-shot"><img src="20261117-1305-etappen-einzeln/shots/before.png" alt=""><figcaption>Nur der Reihe nach, Umsetzen erst am Ende</figcaption></figure>
+      <figure class="fr-shot"><img src="20261117-1305-etappen-einzeln/shots/after.png" alt=""><figcaption>Jede offene Etappe starten und einzeln umsetzen</figcaption></figure>
+    </div>
+  </div>
+
+  <div class="fr-holds">
+    <p class="fr-label">Was es aushält<small>Balken = wie weit die Anforderung erfüllt ist</small></p>
+    <div class="fr-meters">
+      <div class="fr-meter" data-grade="full" style="--fr-fill: 100%" data-tip="Alle 1379 Tests der Concept-Seiten, der Seitenprüfung und des Builds laufen grün; Anforderung: kein roter Test (geschätzt).">
+        <span class="fr-meter-name">🧱 Stabilität</span>
+        <div class="fr-meter-bar" aria-hidden="true"></div>
+        <b class="fr-meter-value">1379 grün</b>
+      </div>
+      <div class="fr-meter" data-grade="full" style="--fr-fill: 100%" data-tip="Concepts ohne Etappen und Etappen der Reihe nach verhalten sich wie vorher, im Browser nachgeprüft; Anforderung: nichts Bestehendes ändert sich (geschätzt).">
+        <span class="fr-meter-name">🔁 Kompatibilität</span>
+        <div class="fr-meter-bar" aria-hidden="true"></div>
+        <b class="fr-meter-value">unverändert</b>
+      </div>
+      <div class="fr-meter" data-grade="open" style="--fr-fill: 0%" data-tip="Tastatur-Fokus, Tooltips und das helle Design der neuen Knöpfe hat noch niemand angesehen; Anforderung: alles per Tastatur erreichbar und lesbar (geschätzt).">
+        <span class="fr-meter-name">♿ Barrierefreiheit</span>
+        <div class="fr-meter-bar" aria-hidden="true"></div>
+        <b class="fr-meter-value">ungeprüft</b>
+      </div>
+    </div>
+  </div>
+
+  <div class="fr-depth" tabindex="0" data-tip="4 / 6 · ✓ Code-Check · ✓ Trockentest · ✓ Zusammenspiel · ✓ Lokal durchgespielt · ○ Live vertestet · ◌ Von dir abgenommen">
+    <span class="fr-depth-done">✓ Zuletzt bestanden: <b>Lokal durchgespielt</b></span>
+    <span class="fr-depth-next">○ Noch nicht gemacht: <b>Live vertestet</b></span>
+  </div>
+
+  <div class="fr-folds">
+  <details class="fr-fold" data-open-questions>
+    <summary>🔍 1 Funde unterwegs</summary>
+    <ul class="fr-funde">
+      <li data-oq-id="oq-one-click-start"
+          data-issue-title="[FEATURE] Start an Etappe with one click on its tab"
+          data-issue-type="feature"
+          data-issue-body="Concept etappen-einzeln, round 1, decision d-next: the user chose 'Jede offene Etappe direkt öffnen — Ein Klick auf die Etappe in der Leiste startet ihre nächste Runde'. Built as two clicks: the tab opens that Etappe's pane (its earlier rounds stay readable), the button 'Etappe starten' / 'Mit dieser Etappe weitermachen' at the top of the pane submits next-stage. Reason: a start submits the live round, so a one-click start would send the user's answers when they only wanted to look at another Etappe. To build the one-click version: make the tab click of an open, non-live Etappe call the start (templates-stages-js.md, _stStartControl / stage tab click handler) and give viewing its rounds another entry (e.g. the round chips), then update stages-free.test.js and templates-stages.md."
+          data-oq-origin="shortfall"
+          data-route-default="ignore"
+          data-route-reason="sicherer">
+        <span class="oq-label">Etappenstart: zwei Klicks</span>
+        <dl class="fr-fkv">
+          <dt>Was</dt><dd>Nicht wie gewählt umgesetzt: Der Klick auf die Etappe zeigt ihre Runden, erst „Etappe starten“ darüber schickt ab – weil ein Start deine laufende Runde absendet.</dd>
+          <dt>Wo</dt><dd>Etappen-Leiste im ☰-Menü</dd>
+          <dt>Warum vorbelegt</dt><dd>✕ Weglassen – mit einem Klick würde schon das Nachsehen in einer anderen Etappe deine Antworten absenden.</dd>
+        </dl>
+      </li>
+    </ul>
+  </details>
+
+  <details class="fr-fold">
+    <summary>🛠 Für Entwickler</summary>
+    <ul class="fr-dev">
+      <li>Commits <code>f783ab62</code>, <code>ebff6c50</code>, <code>b0397192</code>, <code>38b228d3</code> · Bereiche: Engine, Seitenprüfung, Build, Bridge</li>
+      <li><code>templates-stages-js.md</code>, <code>concept-gate.js</code>, <code>concept-build.js</code></li>
+      <li>Tests: 1379 grün · unabhängige Prüfung im echten Browser: C2–C14 erfüllt, C1 mit zwei Klicks (s. Funde)</li>
+      <li>Nach der Prüfung nachgebessert: abgeschnittene Beschriftung, Knöpfe beim Absenden, falsche Rückfrage, Etappen-Name im Bericht</li>
+      <li>Neu im Payload: <code>untouched</code> – eine unberührt übersprungene Runde gilt nicht als beantwortet</li>
+    </ul>
+  </details>
+  </div>
+
+  <section data-tests hidden aria-label="Du testest">
+    <ul>
+      <li data-todo-id="t-real-concept" data-crit="mid" data-guide="">Etappen-Knöpfe im nächsten Concept ansehen</li>
+      <li data-todo-id="t-light-hover" data-crit="low" data-guide="">Helles Design und Tooltips der Leiste prüfen</li>
+    </ul>
   </section>
 </section>
 </main>
@@ -6295,7 +6440,8 @@ PR „Login“     eigene Version</pre></div>
       </div>
       <div class="panel-nav-scroll">
       <nav class="iteration-tabs" role="tablist" aria-label="Runden">
-<button class="iteration-tab" role="tab" data-iteration="1" aria-selected="true" aria-controls="iter-1">Runde 1</button>
+<button class="iteration-tab" role="tab" data-iteration="1" aria-selected="false" aria-controls="iter-1">Runde 1</button>
+<button class="iteration-tab" role="tab" data-final-report data-iteration="2" aria-selected="true" aria-controls="iter-2">Abschlussbericht</button>
 </nav>
       <!-- #section-nav also lives on the design skeleton: a free/decision round
            on a design concept (the final report is always free) renders its TOC
@@ -6471,6 +6617,9 @@ PR „Login“     eigene Version</pre></div>
           <div class="closeout-foot">
             <div class="closeout-claude">
               <p class="closeout-plan" id="closeout-plan" hidden></p>
+              <!-- Stage report only (§ Etappen): what "Etappe abschließen und
+                   weiter" does — next Etappe, new issues, dropped ones. -->
+              <p class="closeout-plan" id="closeout-stage-plan" hidden></p>
               <!-- The disposition as one line with its default; "ändern"
                    opens the radios + moveTo inline (toggleDisposeEdit()). -->
               <div class="closeout-dispose-line">
@@ -6522,7 +6671,21 @@ PR „Login“     eigene Version</pre></div>
                             — both + "· wird zwischengespeichert" offline
                    running  the clicked one: "⏳ Wird abgearbeitet …", the other hides
                    stalled  the clicked one: "⚠ Übermittelt · keine Antwort mehr" + hint
-                   done     both hide; #closeout-close "✓ Concept abgeschlossen · schließen" -->
+                   done     both hide; #closeout-close "✓ Concept abgeschlossen · schließen"
+                 A stage report with an Etappe kept open shows ONLY
+                 #closeout-stage-go instead of the two (finalize, final:false;
+                 stageCloseoutOffers(), § Etappen). -->
+            <button type="button" id="closeout-stage-go" class="closeout-go closeout-stage-go" data-closeout-go="stage" hidden
+                    data-icon="🏁"
+                    data-label="Etappe abschließen und weiter"
+                    data-label-offline="· wird zwischengespeichert"
+                    data-label-running="Wird abgearbeitet …"
+                    data-label-stalled="Übermittelt · keine Antwort mehr"
+                    data-title-ready="Schließt diese Etappe ohne Release ab; das Concept geht mit der gewählten Etappe weiter. Ausgeliefert wird alles Gebaute einmal, wenn keine Etappe mehr offen ist."
+                    data-tip="Schließt diese Etappe ohne Release ab; das Concept geht mit der gewählten Etappe weiter. Ausgeliefert wird alles Gebaute einmal, wenn keine Etappe mehr offen ist.">
+              <span aria-hidden="true" data-closeout-btn-icon>🏁</span>
+              <span data-closeout-btn-label>Etappe abschließen und weiter</span>
+            </button>
             <button type="button" id="closeout-ship" class="implement-btn closeout-go" data-closeout-go="yes"
                     data-icon="🏁🚀"
                     data-label="Abschließen & shippen"
@@ -16537,7 +16700,10 @@ async function submitWithAction(action, extra) {
   // its button already sits behind its own second step (the journey's 🔒
   // unlock, the split button's caret menu), and accepting every
   // recommendation unchanged is a normal implement order, not an accident.
-  if (!_userInteracted && action !== 'implement') {
+  // next-stage never asks either: passing an Etappe over without answers is
+  // the point of the click (its start control / "Nächste Etappe ›" is the
+  // one deliberate step).
+  if (!_userInteracted && action !== 'implement' && action !== 'next-stage') {
     if (!window.confirm('Du hast nichts geändert. Trotzdem "Zur nächsten Runde" absenden?')) return;
   }
 
@@ -16550,6 +16716,10 @@ async function submitWithAction(action, extra) {
     data = collectDecisions(action);
     // next-stage carries {stage, next} (§ Etappen); merged after the collector.
     if (extra && typeof extra === 'object') Object.assign(data, extra);
+    // Passed over without one change: authored defaults are no answers.
+    if (action === 'next-stage' && !_userInteracted) data.untouched = true;
+    // A staged concept builds one Etappe at a time: implement names it.
+    if (action === 'implement' && typeof stageImplementFields === 'function') Object.assign(data, stageImplementFields());
   } catch (e) {
     _submitInFlight = false;
     console.error('collectDecisions failed', e);
@@ -17373,13 +17543,19 @@ function toggleDisposeEdit(open) {
 function closeoutGoButtons() {
   return Array.from(document.querySelectorAll('#closeout-sheet [data-closeout-go]'));
 }
+// Which go buttons the sheet offers. A stage report with an Etappe kept open
+// offers "Etappe abschließen und weiter" instead of the two ship buttons
+// (§ Etappen, stageCloseoutOffers); everywhere else that button never shows.
+function closeoutGoOffered(go) {
+  return typeof stageCloseoutOffers === 'function' ? stageCloseoutOffers(go) : go !== 'stage';
+}
 function updateCloseoutButton() {
   const sheet = document.getElementById('closeout-sheet');
   if (!sheet || sheet.dataset.finalizeState) return;
   const conn = document.getElementById('connection-status');
   const offline = !!conn && conn.dataset.state === 'disconnected';
   closeoutGoButtons().forEach(btn => {
-    btn.hidden = false;
+    btn.hidden = !closeoutGoOffered(btn.dataset.closeoutGo);
     delete btn.dataset.finalizeState;
     const label = btn.querySelector('[data-closeout-btn-label]');
     const icon = btn.querySelector('[data-closeout-btn-icon]');
@@ -17471,6 +17647,8 @@ function renderCloseout() {
   if (empty) empty.hidden = closed || decided + todos > 0;
   renderCloseoutPlan();
   renderDisposeLine();
+  // Stage report: the "Offene Etappen" block and its plan line (§ Etappen).
+  if (typeof renderStageCloseout === 'function') renderStageCloseout(closed);
   if (closed) {
     setCloseoutButtonState('done');
     return;
@@ -17563,9 +17741,13 @@ async function submitFinalize(shipRun) {
     // embeds them in the frozen tab like any other round's.
     userPins: (typeof window.documentPinsPayload === 'function') ? window.documentPinsPayload(active) : []
   };
+  // A stage report adds {stage, stages, next, final}; while an Etappe stays
+  // open (final:false) it ships nothing and disposes of nothing (§ Etappen).
+  // An untagged report and a concept without Etappen add nothing.
+  if (typeof stageFinalizeFields === 'function') Object.assign(payload, stageFinalizeFields());
 
   setCloseoutFrozen(true);
-  setCloseoutButtonState('running', ship ? 'yes' : 'no');
+  setCloseoutButtonState('running', payload.final === false ? 'stage' : (ship ? 'yes' : 'no'));
 
   const container = document.getElementById('concept-decisions');
   if (container) container.textContent = JSON.stringify(payload);
@@ -17708,7 +17890,7 @@ async function restoreInFlightCloseout() {
     const live = finalReportSection();
     if (data.iteration != null && String(data.iteration) !== String(live.dataset.iteration)) return;
     setCloseoutFrozen(true);
-    setCloseoutButtonState('running', data.action === 'refine' ? 'fix' : (data.ship && data.ship.run ? 'yes' : 'no'));
+    setCloseoutButtonState('running', data.action === 'refine' ? 'fix' : data.final === false ? 'stage' : (data.ship && data.ship.run ? 'yes' : 'no'));
     // Same veil submitFinalize() put up — a reload must not lift it.
     document.body.classList.add('concept-submitted', 'content-dimmed');
     showContentDimmer();
@@ -18231,6 +18413,8 @@ function renderJourney() {
   const row = document.getElementById('journey');
   const phase = journeyPhase();
   document.body.dataset.journey = phase;
+  // The Etappen start controls lock and re-arm with the submit buttons (§ Etappen).
+  if (typeof syncStageControls === 'function') syncStageControls(phase);
   if (!row) return phase;
   row.dataset.phase = phase;
   const on = (sel, yes) => { const n = row.querySelector(sel); if (n) { if (yes) n.dataset.on = ''; else delete n.dataset.on; } };
@@ -19663,7 +19847,11 @@ function showIteration(n) {
       // ("Übersicht · Runde N" / the "Runde N" row, § Etappen). A frozen
       // round keeps "🧭 Runde N · archiviert" exactly as before.
       const named = !finalTab && isLive && typeof conceptHeadName === 'function' ? conceptHeadName() : '';
-      const phase = finalTab ? '🏁 Abschluss' : (named || '🧭 ' + label);
+      // A stage final report names its Etappe: "🏁 <Etappenname>" (§ Etappen).
+      const shownSec = [...document.querySelectorAll('section[data-iteration]')]
+        .find(sec => String(sec.dataset.iteration) === String(n));
+      const stageHead = finalTab && typeof stageReportHead === 'function' ? stageReportHead(shownSec) : null;
+      const phase = finalTab ? (stageHead || '🏁 Abschluss') : (named || '🧭 ' + label);
       round.dataset.phase = finalTab ? 'final' : (named ? 'concept' : 'round');
       if (named) round.dataset.tip = named; else delete round.dataset.tip;
       round.textContent = phase + (isLive ? '' : ' · archiviert');
@@ -22055,11 +22243,35 @@ function _stStageOf(sec) {
   // the live Etappe.
   return conceptStages().current || '';
 }
+// The stored state (open | built | issue | dropped); an older page without
+// one reads as open.
+const _ST_STATES = ['open', 'built', 'issue', 'dropped'];
+function _stStateRaw(id) {
+  const s = conceptStages().stages.find(x => x.id === id);
+  return s && _ST_STATES.includes(s.state) ? s.state : 'open';
+}
+function _stLiveStage() {
+  return _stStageOf(_stLive()) || conceptStages().current || '';
+}
+// The node's look: done (built) · closed (issue / dropped) · now (the live
+// Etappe) · open (has rounds, passed over) · ahead (no round yet). The list
+// order says nothing about progress any more.
 function _stState(id) {
-  const ids = conceptStages().stages.map(s => s.id);
-  const cur = ids.indexOf(conceptStages().current || _stStageOf(_stLive()));
-  const i = ids.indexOf(id);
-  return i < cur ? 'done' : i === cur ? 'now' : 'ahead';
+  const raw = _stStateRaw(id);
+  if (raw === 'built') return 'done';
+  if (raw === 'issue' || raw === 'dropped') return 'closed';
+  if (id === _stLiveStage()) return 'now';
+  return _stRounds().some(r => r.dataset.stage === id) ? 'open' : 'ahead';
+}
+function _stStateLine(id) {
+  const raw = _stStateRaw(id);
+  return raw === 'built' ? 'Gebaut' : raw === 'issue' ? 'Als Issue angelegt'
+    : raw === 'dropped' ? 'Gestrichen' : '';
+}
+// The stage final report of an Etappe (section[data-final-report][data-stage]).
+function _stReport(id) {
+  return [...document.querySelectorAll('section[data-iteration][data-final-report]')]
+    .find(s => s.dataset.stage === id) || null;
 }
 function _stEl(tag, cls, text) {
   const n = document.createElement(tag);
@@ -22157,9 +22369,11 @@ function _stNode(stage) {
   const g = _stGlyph(k.kind);
   if (g) node.appendChild(g);
   node.appendChild(_stEl('span', 'stage-tl', stage.id));
+  const state = _stStateLine(stage.id);
+  // A closed Etappe without rounds says only its state (never "not started").
   const tip = newest
-    ? k.line + '\n' + 'Etappe ' + stage.id + ' · ' + _stRoundLabel(newest)
-    : 'Beginnt nach der aktuellen Etappe.';
+    ? k.line + '\n' + 'Etappe ' + stage.id + ' · ' + _stRoundLabel(newest) + (state ? '\n' + state : '')
+    : (state || 'Noch nicht begonnen');
   return { node, tip };
 }
 
@@ -22228,13 +22442,14 @@ function renderStageTabs() {
     t.setAttribute('aria-controls', 'stage-pane');
     t.dataset.stageId = s.id;
     t.dataset.state = _stState(s.id);
+    t.dataset.stageState = _stStateRaw(s.id);
     const sel = s.id === _stageSelected;
     t.setAttribute('aria-selected', sel ? 'true' : 'false');
     t.tabIndex = sel ? 0 : -1;
     const nd = _stNode(s);
     t.append(nd.node, _stEl('span', 'stage-tn', s.name || ''));
     t.dataset.tip = nd.tip;
-    t.setAttribute('aria-label', 'Etappe ' + s.id + ' · ' + (s.name || '') + ' · ' + nd.tip.replace('\n', ' · '));
+    t.setAttribute('aria-label', 'Etappe ' + s.id + ' · ' + (s.name || '') + ' · ' + nd.tip.split('\n').join(' · '));
     t.addEventListener('click', () => selectStageTab(s.id));
     list.appendChild(t);
   });
@@ -22382,32 +22597,131 @@ function renderStagePane() {
   const rounds = _stRounds().filter(s => s.dataset.stage === sel);
   pane.replaceChildren();
   curOlder.replaceChildren();
+  const report = _stReport(sel);
   if (sel === visStage) {
     delete scroll.dataset.stageView;
     pane.hidden = true;
     const earlier = rounds.filter(s => visible && Number(s.dataset.iteration) < Number(visible.dataset.iteration));
+    if (report && report !== visible) curOlder.appendChild(_stReportRow(report));
     if (earlier.length) curOlder.appendChild(_stOlder(earlier));
     return;
   }
   scroll.dataset.stageView = 'other';
   pane.hidden = false;
-  if (!rounds.length) {
-    pane.appendChild(_stEl('p', 'stage-ahead', 'Beginnt nach der aktuellen Etappe.'));
-    return;
-  }
+  const start = _stStartControl(sel, rounds.length > 0);
+  if (start) pane.appendChild(start);
+  const stateLine = _stStateLine(sel);
+  if (stateLine && _stStateRaw(sel) !== 'built') pane.appendChild(_stEl('p', 'stage-ahead', stateLine));
+  if (report) pane.appendChild(_stReportRow(report));
+  if (!rounds.length) return;
   const newest = rounds[rounds.length - 1];
   pane.appendChild(_stRoundBlock(newest));
   if (rounds.length > 1) pane.appendChild(_stOlder(rounds.slice(0, -1)));
 }
 
-// Journey: "Nächste Etappe ›" while the live round is not in the last Etappe.
-function renderStageNext() {
-  const d = conceptStages();
+// A built Etappe's own final report: one row, a jump like any round.
+function _stReportRow(sec) {
+  const b = _stEl('button', 'stage-round stage-report', stageReportHead(sec) || '🏁 Abschluss');
+  b.type = 'button';
+  b.dataset.iteration = sec.dataset.iteration;
+  b.addEventListener('click', () => _stJump(sec, null));
+  return b;
+}
+
+// May this Etappe be started from its pane? Only an OPEN Etappe that is not
+// the live one, and only from the live regular round (a frozen view and a
+// live final report never start anything — there the close-out decides).
+function stageCanStart(id) {
+  if (!conceptStages().stages.length) return false;
   const live = _stLive();
+  if (!live || live.hasAttribute('data-final-report')) return false;
+  if (document.body.classList.contains('viewing-frozen')) return false;
+  if (_stStateRaw(id) !== 'open') return false;
+  return id !== _stLiveStage();
+}
+function _stBusyPhase(phase) {
+  return phase === 'rethinking' || phase === 'finalizing' || phase === 'implementing';
+}
+function _stBusy() {
+  return _stBusyPhase(typeof journeyPhase === 'function' ? journeyPhase() : 'you');
+}
+// Called from renderJourney() on every phase change: the start control and
+// "Nächste Etappe ›" lock while a submit runs and re-arm with the panel.
+function syncStageControls(phase) {
+  const busy = _stBusyPhase(phase);
+  ['stage-start', 'jr-next-stage'].forEach(id => {
+    const b = document.getElementById(id);
+    if (b) b.disabled = busy;
+  });
+}
+// The start control at the top of an open Etappe's pane. It submits the live
+// round (its answers go with it) as next-stage → this Etappe.
+function _stStartControl(id, hasRounds) {
+  if (!stageCanStart(id)) return null;
+  const b = _stEl('button', 'stage-start');
+  b.type = 'button';
+  b.id = 'stage-start';
+  b.dataset.next = id;
+  const ico = _stEl('span', 'stage-start-ico', '▶');
+  ico.setAttribute('aria-hidden', 'true');
+  b.append(ico, _stEl('span', '', hasRounds ? 'Mit dieser Etappe weitermachen' : 'Etappe starten'));
+  b.dataset.tip = 'Schickt die Antworten dieser Runde ab und öffnet die nächste Runde in dieser Etappe';
+  b.disabled = _stBusy();
+  b.addEventListener('click', () => {
+    if (!stageCanStart(id) || _stBusy()) return;
+    if (typeof submitWithAction === 'function') submitWithAction('next-stage', { stage: _stLiveStage(), next: id });
+  });
+  return b;
+}
+
+// The next OPEN Etappe after the live one, in list order, wrapping around.
+function stageNextOpen() {
+  const d = conceptStages();
   const ids = d.stages.map(s => s.id);
-  const cur = _stStageOf(live);
+  const cur = _stLiveStage();
   const i = ids.indexOf(cur);
-  const next = (i >= 0 && i < ids.length - 1) ? d.stages[i + 1] : null;
+  for (let k = 1; k <= ids.length; k++) {
+    const s = d.stages[((i < 0 ? -1 : i) + k + ids.length) % ids.length];
+    if (s && s.id !== cur && _stStateRaw(s.id) === 'open') return s;
+  }
+  return null;
+}
+
+// Head + tab of a stage final report: "🏁 <Etappenname>"; an untagged
+// report keeps "🏁 Abschluss" (null here).
+function stageReportHead(sec) {
+  if (!sec || !sec.hasAttribute('data-final-report') || !sec.dataset.stage) return null;
+  const s = conceptStages().stages.find(x => x.id === sec.dataset.stage);
+  return s ? '🏁 ' + (s.name || 'Etappe ' + s.id) : null;
+}
+function labelStageReportTabs() {
+  document.querySelectorAll('.iteration-tab[data-final-report]').forEach(tab => {
+    const sec = [...document.querySelectorAll('section[data-iteration]')]
+      .find(s => String(s.dataset.iteration) === String(tab.dataset.iteration));
+    const name = stageReportHead(sec);
+    if (!name || (sec && sec.hasAttribute('data-tab-label'))) return;
+    tab.textContent = name;
+    tab.dataset.tabLabel = name;
+  });
+  // The page pill of a LIVE stage report ("🏁 Abschluss" → "🏁 <Etappenname>",
+  // CSS header[data-stage-pill]::before).
+  const liveHead = stageReportHead(_stLive());
+  document.querySelectorAll('.concept-content > header').forEach(h => {
+    if (liveHead) h.dataset.stagePill = liveHead; else delete h.dataset.stagePill;
+  });
+  const vis = _stVisibleRound();
+  const bar = document.querySelector('#frozen-bar [data-frozen-bar-title]');
+  const head = stageReportHead(vis);
+  if (bar && head && !(vis && vis.hasAttribute('data-active'))) bar.textContent = head;
+}
+
+// Journey: the 🔒 · 🤖 · 🏁 stations always stand; "Nächste Etappe ›" sits
+// above the row while another OPEN Etappe exists (the next one after the
+// live Etappe in list order, wrapping).
+function renderStageNext() {
+  const live = _stLive();
+  const cur = _stLiveStage();
+  const next = conceptStages().stages.length ? stageNextOpen() : null;
   const isFinal = !!(live && live.hasAttribute('data-final-report'));
   let btn = document.getElementById('jr-next-stage');
   if (!next || isFinal) {
@@ -22428,23 +22742,23 @@ function renderStageNext() {
       const s = btn.dataset.stage;
       if (typeof submitWithAction === 'function') submitWithAction('next-stage', { stage: s, next: n });
     });
-    const wa = row.querySelector('.jr-wire-a');
-    row.insertBefore(btn, wa ? wa.nextSibling : null);
+    row.parentNode.insertBefore(btn, row);
   }
   btn.dataset.stage = cur;
   btn.dataset.next = next.id;
   btn.textContent = 'Nächste Etappe ›';
   btn.dataset.tip = 'Weiter zu Etappe {next} · {name}'.replace('{next}', next.id).replace('{name}', next.name || '');
-  const phase = typeof journeyPhase === 'function' ? journeyPhase() : 'you';
-  btn.disabled = phase === 'rethinking' || phase === 'finalizing' || phase === 'implementing';
+  btn.disabled = _stBusy();
 }
 
 function renderStages() {
   const staged = conceptStages().stages.length > 0;
   if (staged) document.body.dataset.staged = ''; else delete document.body.dataset.staged;
+  if (staged) labelStageReportTabs();
   renderRoundRow();
   renderStageTabs();
   renderStageNext();
+  if (typeof renderStageImplement === 'function') renderStageImplement();   // templates-stages-free-js.md
 }
 
 (function bootStages() {
@@ -22478,6 +22792,201 @@ function renderStages() {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
 })();
+
+// ── Etappen: the implement station builds THIS Etappe only ──
+function stageImplementFields() {
+  if (!conceptStages().stages.length) return {};
+  const live = _stLive();
+  if (!live || live.hasAttribute('data-final-report')) return {};
+  const st = _stLiveStage();
+  return st ? { stage: st } : {};
+}
+function renderStageImplement() {
+  const btn = document.getElementById('submit-implement-btn');
+  if (!btn) return;
+  const b = btn.querySelector('.jr-ul-txt b');
+  const small = btn.querySelector('.jr-ul-txt small');
+  const staged = conceptStages().stages.length > 0;
+  [[b, 'Diese Etappe umsetzen'], [small, 'nur diese Etappe, das Concept bleibt offen']].forEach(([el, text]) => {
+    if (!el) return;
+    if (el.dataset.unstaged == null) el.dataset.unstaged = el.textContent;
+    el.textContent = staged ? text : el.dataset.unstaged;
+  });
+  // The full label in the tooltip and the accessible name: the visible label
+  // wraps (never cut), the sub-line is hidden in a staged concept.
+  if (btn.dataset.unstagedTip == null) btn.dataset.unstagedTip = btn.dataset.tip || '';
+  if (staged) {
+    btn.dataset.tip = 'Diese Etappe umsetzen — nur diese Etappe, das Concept bleibt offen';
+    btn.setAttribute('aria-label', 'Diese Etappe umsetzen, nur diese Etappe, das Concept bleibt offen');
+  } else {
+    if (btn.dataset.unstagedTip) btn.dataset.tip = btn.dataset.unstagedTip; else delete btn.dataset.tip;
+    btn.removeAttribute('aria-label');
+  }
+}
+
+// ── Etappen: stage close-out (the "Offene Etappen" block) ──
+let _stageRoutes = {};      // id → 'open' | 'issue' | 'drop'
+let _stageNextPick = '';
+const STAGE_ROUTES = ['open', 'issue', 'drop'];
+
+// The live final report, when it is a stage report of a staged concept.
+function stageReportSection() {
+  const sec = typeof finalReportSection === 'function' ? finalReportSection() : null;
+  if (!sec || !sec.dataset.stage || !conceptStages().stages.length) return null;
+  return sec;
+}
+// The other Etappen this close-out asks about: every one still open.
+function stageCloseoutOpen() {
+  const rep = stageReportSection();
+  if (!rep) return [];
+  return conceptStages().stages.filter(s => s.id !== rep.dataset.stage && _stStateRaw(s.id) === 'open');
+}
+// What the click will do: {stage, stages:[{id, route}], next, final}, or null
+// for an untagged report / a concept without Etappen.
+function stageCloseoutPlan() {
+  const rep = stageReportSection();
+  if (!rep) return null;
+  const stages = stageCloseoutOpen().map(s => ({
+    id: s.id, route: STAGE_ROUTES.includes(_stageRoutes[s.id]) ? _stageRoutes[s.id] : 'open'
+  }));
+  const kept = stages.filter(r => r.route === 'open').map(r => r.id);
+  const next = kept.includes(_stageNextPick) ? _stageNextPick : (kept[0] || null);
+  return { stage: rep.dataset.stage, stages, next, final: kept.length === 0 };
+}
+function _stageContinues() {
+  const p = stageCloseoutPlan();
+  return !!(p && !p.final);
+}
+function stageCloseoutOffers(go) {
+  const cont = _stageContinues();
+  if (go === 'stage') return cont;
+  if (go === 'yes' || go === 'no') return !cont;
+  return true;
+}
+// The finalize additions. final:false ships nothing (ship.run false) and
+// disposes of nothing (disposition null — the page stays, the session goes on).
+function stageFinalizeFields() {
+  const p = stageCloseoutPlan();
+  if (!p) return {};
+  const f = { stage: p.stage, stages: p.stages, next: p.next, final: p.final };
+  if (!p.final) { f.ship = { run: false }; f.disposition = null; }
+  return f;
+}
+
+function _stageName(id) {
+  const s = conceptStages().stages.find(x => x.id === id);
+  return s ? id + ' · ' + (s.name || '') : id;
+}
+function _stageRadio(name, value, label, checked) {
+  const lab = _stEl('label', 'stage-co-opt');
+  const input = document.createElement('input');
+  input.type = 'radio';
+  input.name = name;
+  input.value = value;
+  input.checked = !!checked;
+  lab.append(input, _stEl('span', '', label));
+  return lab;
+}
+const _STAGE_ROUTE_LABEL = { open: 'nachholen', issue: 'als Issue anlegen', drop: 'streichen' };
+
+function renderStageCloseout(closed) {
+  const sheet = document.getElementById('closeout-sheet');
+  const body = document.getElementById('closeout-body');
+  if (!sheet || !body) return;
+  const plan = closed ? null : stageCloseoutPlan();
+  let group = body.querySelector('[data-closeout-group="stages"]');
+  const line = document.getElementById('closeout-stage-plan');
+  if (!plan || !plan.stages.length) {
+    if (group) group.hidden = true;
+    if (line) line.hidden = true;
+    delete sheet.dataset.stageContinue;
+    return;
+  }
+  if (!group) {
+    group = _stEl('section', 'closeout-group closeout-stages');
+    group.dataset.closeoutGroup = 'stages';
+    const h = _stEl('h3', 'closeout-gh');
+    h.append(document.createTextNode('Offene Etappen '), _stEl('em', ''));
+    h.lastChild.dataset.closeoutCount = '';
+    group.append(h, _stEl('div', 'closeout-list stage-co-list'), _stEl('div', 'stage-co-next'));
+    const empty = document.getElementById('closeout-empty');
+    body.insertBefore(group, empty && empty.parentNode === body ? empty : null);
+  }
+  group.hidden = false;
+  group.querySelector('[data-closeout-count]').textContent = String(plan.stages.length);
+  const focusName = document.activeElement && group.contains(document.activeElement) ? document.activeElement.name : '';
+  // One row per open Etappe: the name, then the three routes as one group.
+  const list = group.querySelector('.stage-co-list');
+  const rowKey = plan.stages.map(r => r.id).join(',');
+  if (list.dataset.key !== rowKey) {
+    list.dataset.key = rowKey;
+    list.replaceChildren();
+    plan.stages.forEach(r => {
+      const row = _stEl('div', 'stage-co-row');
+      row.dataset.stageRow = r.id;
+      const name = _stEl('span', 'stage-co-name', _stageName(r.id));
+      name.id = 'stage-co-name-' + r.id;
+      const opts = _stEl('span', 'stage-co-opts');
+      opts.setAttribute('role', 'radiogroup');
+      opts.setAttribute('aria-labelledby', name.id);
+      STAGE_ROUTES.forEach(v => opts.appendChild(_stageRadio('stage-route-' + r.id, v, _STAGE_ROUTE_LABEL[v], v === r.route)));
+      row.append(name, opts);
+      list.appendChild(row);
+    });
+  }
+  plan.stages.forEach(r => {
+    const row = list.querySelector('[data-stage-row="' + r.id + '"]');
+    if (!row) return;
+    row.dataset.route = r.route;
+    row.querySelectorAll('input').forEach(i => { i.checked = i.value === r.route; });
+  });
+  // "Weiter mit": one choice among the kept-open Etappen.
+  const nextBox = group.querySelector('.stage-co-next');
+  const kept = plan.stages.filter(r => r.route === 'open').map(r => r.id);
+  const nextKey = kept.join(',');
+  if (nextBox.dataset.key !== nextKey) {
+    nextBox.dataset.key = nextKey;
+    nextBox.replaceChildren();
+    if (kept.length) {
+      const lab = _stEl('span', 'stage-co-name', 'Weiter mit');
+      lab.id = 'stage-co-next-label';
+      const opts = _stEl('span', 'stage-co-opts');
+      opts.setAttribute('role', 'radiogroup');
+      opts.setAttribute('aria-labelledby', lab.id);
+      kept.forEach(id => opts.appendChild(_stageRadio('stage-next', id, _stageName(id), id === plan.next)));
+      nextBox.append(lab, opts);
+    }
+  }
+  nextBox.hidden = kept.length === 0;
+  nextBox.querySelectorAll('input').forEach(i => { i.checked = i.value === plan.next; });
+  if (focusName) {
+    const back = group.querySelector('input[name="' + focusName + '"]:checked') || group.querySelector('input[name="' + focusName + '"]');
+    if (back && document.activeElement !== back) back.focus();
+  }
+  // The live plan: which Etappe comes next, which become issues, which go.
+  if (line) {
+    const ids = route => plan.stages.filter(r => r.route === route).map(r => r.id).join(', ');
+    const parts = [];
+    if (plan.next) parts.push('➜ ' + 'Weiter mit Etappe {name}'.replace('{name}', _stageName(plan.next)));
+    if (ids('issue')) parts.push('📌 ' + '{ids} als Issue'.replace('{ids}', ids('issue')));
+    if (ids('drop')) parts.push('✕ ' + '{ids} gestrichen'.replace('{ids}', ids('drop')));
+    if (!plan.final) parts.push('noch nicht shippen');
+    line.textContent = parts.join(' · ');
+    line.hidden = parts.length === 0;
+  }
+  if (plan.final) delete sheet.dataset.stageContinue; else sheet.dataset.stageContinue = '';
+}
+
+// Route / "Weiter mit" changes re-render the block, the plan and the buttons.
+document.addEventListener('change', e => {
+  const t = e.target;
+  if (!t || !t.matches || !t.matches('#closeout-sheet .stage-co-opts input[type="radio"]')) return;
+  if (document.getElementById('closeout-sheet')?.dataset.frozen === 'true') return;
+  if (t.name === 'stage-next') _stageNextPick = t.value;
+  else _stageRoutes[t.name.replace(/^stage-route-/, '')] = t.value;
+  renderStageCloseout(false);
+  if (typeof updateCloseoutButton === 'function') updateCloseoutButton();
+});
 
 // --- Voice input (all templates) ---
 const VOICE_PAUSE_MS = 2000;

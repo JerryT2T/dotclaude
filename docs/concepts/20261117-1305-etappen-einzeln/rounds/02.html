@@ -1,0 +1,84 @@
+<section data-iteration="2" data-iteration-template="free" data-final-report>
+  <p class="fr-sentence">Etappen lassen sich jetzt in beliebiger Reihenfolge starten, einzeln umsetzen und einzeln abschließen – auf einer Seite, ausgeliefert wird einmal am Ende.</p>
+
+  <div class="fr-main">
+    <div class="fr-results">
+      <p class="fr-label">{{final.results}}</p>
+      <ul class="fr-wins">
+        <li><span class="fr-win-icon" aria-hidden="true">🧭</span><span><b>Jede offene Etappe</b> lässt sich starten, auch außer der Reihe.</span></li>
+        <li><span class="fr-win-icon" aria-hidden="true">🔓</span><span><b>„Diese Etappe umsetzen“</b> steht in jeder Etappe, das Concept bleibt offen.</span></li>
+        <li><span class="fr-win-icon" aria-hidden="true">🏁</span><span><b>Ein Abschluss je Etappe</b> auf derselben Seite, ausgeliefert wird einmal.</span></li>
+      </ul>
+    </div>
+    <div class="fr-ba" data-label-before="{{final.before}}" data-label-after="{{final.after}}">
+      <figure class="fr-shot"><img src="20261117-1305-etappen-einzeln/shots/before.png" alt=""><figcaption>Nur der Reihe nach, Umsetzen erst am Ende</figcaption></figure>
+      <figure class="fr-shot"><img src="20261117-1305-etappen-einzeln/shots/after.png" alt=""><figcaption>Jede offene Etappe starten und einzeln umsetzen</figcaption></figure>
+    </div>
+  </div>
+
+  <div class="fr-holds">
+    <p class="fr-label">{{final.holds}}<small>{{final.holds_hint}}</small></p>
+    <div class="fr-meters">
+      <div class="fr-meter" data-grade="full" style="--fr-fill: 100%" data-tip="Alle 1379 Tests der Concept-Seiten, der Seitenprüfung und des Builds laufen grün; Anforderung: kein roter Test (geschätzt).">
+        <span class="fr-meter-name">🧱 Stabilität</span>
+        <div class="fr-meter-bar" aria-hidden="true"></div>
+        <b class="fr-meter-value">1379 grün</b>
+      </div>
+      <div class="fr-meter" data-grade="full" style="--fr-fill: 100%" data-tip="Concepts ohne Etappen und Etappen der Reihe nach verhalten sich wie vorher, im Browser nachgeprüft; Anforderung: nichts Bestehendes ändert sich (geschätzt).">
+        <span class="fr-meter-name">🔁 Kompatibilität</span>
+        <div class="fr-meter-bar" aria-hidden="true"></div>
+        <b class="fr-meter-value">unverändert</b>
+      </div>
+      <div class="fr-meter" data-grade="open" style="--fr-fill: 0%" data-tip="Tastatur-Fokus, Tooltips und das helle Design der neuen Knöpfe hat noch niemand angesehen; Anforderung: alles per Tastatur erreichbar und lesbar (geschätzt).">
+        <span class="fr-meter-name">♿ Barrierefreiheit</span>
+        <div class="fr-meter-bar" aria-hidden="true"></div>
+        <b class="fr-meter-value">ungeprüft</b>
+      </div>
+    </div>
+  </div>
+
+  <div class="fr-depth" tabindex="0" data-tip="4 / 6 · ✓ {{final.level_code}} · ✓ {{final.level_dry}} · ✓ {{final.level_interplay}} · ✓ {{final.level_local}} · ○ {{final.level_live}} · ◌ {{final.level_accept}}">
+    <span class="fr-depth-done">✓ {{final.depth_done}}: <b>{{final.level_local}}</b></span>
+    <span class="fr-depth-next">○ {{final.depth_next}}: <b>{{final.level_live}}</b></span>
+  </div>
+
+  <div class="fr-folds">
+  <details class="fr-fold" data-open-questions>
+    <summary>🔍 1 {{final.funde_fold}}</summary>
+    <ul class="fr-funde">
+      <li data-oq-id="oq-one-click-start"
+          data-issue-title="[FEATURE] Start an Etappe with one click on its tab"
+          data-issue-type="feature"
+          data-issue-body="Concept etappen-einzeln, round 1, decision d-next: the user chose 'Jede offene Etappe direkt öffnen — Ein Klick auf die Etappe in der Leiste startet ihre nächste Runde'. Built as two clicks: the tab opens that Etappe's pane (its earlier rounds stay readable), the button 'Etappe starten' / 'Mit dieser Etappe weitermachen' at the top of the pane submits next-stage. Reason: a start submits the live round, so a one-click start would send the user's answers when they only wanted to look at another Etappe. To build the one-click version: make the tab click of an open, non-live Etappe call the start (templates-stages-js.md, _stStartControl / stage tab click handler) and give viewing its rounds another entry (e.g. the round chips), then update stages-free.test.js and templates-stages.md."
+          data-oq-origin="shortfall"
+          data-route-default="ignore"
+          data-route-reason="sicherer">
+        <span class="oq-label">Etappenstart: zwei Klicks</span>
+        <dl class="fr-fkv">
+          <dt>{{final.fund_what}}</dt><dd>Nicht wie gewählt umgesetzt: Der Klick auf die Etappe zeigt ihre Runden, erst „Etappe starten“ darüber schickt ab – weil ein Start deine laufende Runde absendet.</dd>
+          <dt>{{final.fund_where}}</dt><dd>Etappen-Leiste im ☰-Menü</dd>
+          <dt>{{final.fund_why}}</dt><dd>✕ Weglassen – mit einem Klick würde schon das Nachsehen in einer anderen Etappe deine Antworten absenden.</dd>
+        </dl>
+      </li>
+    </ul>
+  </details>
+
+  <details class="fr-fold">
+    <summary>🛠 {{final.dev_fold}}</summary>
+    <ul class="fr-dev">
+      <li>Commits <code>f783ab62</code>, <code>ebff6c50</code>, <code>b0397192</code>, <code>38b228d3</code> · Bereiche: Engine, Seitenprüfung, Build, Bridge</li>
+      <li><code>templates-stages-js.md</code>, <code>concept-gate.js</code>, <code>concept-build.js</code></li>
+      <li>Tests: 1379 grün · unabhängige Prüfung im echten Browser: C2–C14 erfüllt, C1 mit zwei Klicks (s. Funde)</li>
+      <li>Nach der Prüfung nachgebessert: abgeschnittene Beschriftung, Knöpfe beim Absenden, falsche Rückfrage, Etappen-Name im Bericht</li>
+      <li>Neu im Payload: <code>untouched</code> – eine unberührt übersprungene Runde gilt nicht als beantwortet</li>
+    </ul>
+  </details>
+  </div>
+
+  <section data-tests hidden aria-label="{{final.group_tests}}">
+    <ul>
+      <li data-todo-id="t-real-concept" data-crit="mid" data-guide="">Etappen-Knöpfe im nächsten Concept ansehen</li>
+      <li data-todo-id="t-light-hover" data-crit="low" data-guide="">Helles Design und Tooltips der Leiste prüfen</li>
+    </ul>
+  </section>
+</section>
