@@ -42,7 +42,7 @@ describe("linkedPlan - handoff (S1, S2)", () => {
     expect(done.buttonsKey).toBeNull();
     const part = plan([L("X", "shipped", "handoff", { version: "0.3.0" }), L("Y", "running")], "fallback");
     expect(part.head.id).toBe("linked");
-    expect(part.lines).toEqual(['„X“ geshippt v0.3.0', 'Läuft in: „Y“']);
+    expect(part.lines).toEqual(["Für dich nichts zu tun — ich mache weiter, sobald sie sich meldet", '„X“ geshippt v0.3.0', 'Läuft in: „Y“']);
   });
 
   test("all done with nothing shipped is no Released", () => {
@@ -120,7 +120,7 @@ describe("linkedPlan - independent follow-ups (S5) and helpers", () => {
 describe("linkedPlan - clickable links and the newer release (S1.1, S1.4, S2.4)", () => {
   test("a running handoff session gets the Läuft-in line and a link", () => {
     const p = plan([L("Doku", "running")], "fallback");
-    expect(p.lines).toEqual(["Läuft in: „Doku“"]);
+    expect(p.lines).toEqual(["Für dich nichts zu tun — ich mache weiter, sobald sie sich meldet", "Läuft in: „Doku“"]);
     expect(p.links).toEqual([{ id: "local_Doku", title: "Doku", text: "„Doku“" }]);
   });
   test("waiting: link text is the quoted sidebar title; no id -> no link", () => {
@@ -153,5 +153,24 @@ describe("linkedPlan - clickable links and the newer release (S1.1, S1.4, S2.4)"
   test("no own delivery: side-session heading; a still running sibling blocks it", () => {
     expect(plan([L("X", "shipped", "handoff", { version: "0.4.0" })], "released").head.id).toBe("released-alpha");
     expect(plan([L("X", "shipped", "handoff", { version: "0.4.0" }), L("Y", "running")], "released", own("0.3.0")).head.id).toBe("linked");
+  });
+});
+
+describe("linkedPlan - learned: say where the user stands", () => {
+  test("running handoff says outright that the user has nothing to do", () => {
+    const p = plan([L("Doku", "running")], "fallback");
+    expect(p.lines[0]).toBe("Für dich nichts zu tun — ich mache weiter, sobald sie sich meldet");
+  });
+
+  test("a waiting session never gets the nothing-to-do line", () => {
+    const p = plan([L("Doku", "waiting")], "fallback");
+    expect(p.lines.join(" ")).not.toMatch(/nichts zu tun/);
+  });
+
+  test("archived before it reported: no ⏳ Linked head, a not-shipped line instead", () => {
+    const p = plan([L("Mods", "archived")], "fallback");
+    expect(p.head).toBeNull();
+    expect(p.lines).toContain("„Mods“ wurde archiviert, bevor sie fertig war — nicht geshippt");
+    expect(hasUnfinishedLinked([L("Mods", "archived")])).toBe(false);
   });
 });
