@@ -230,7 +230,9 @@ Etappe in list order). It behaves like `iterate` — concept page only, **no cod
 external systems change** — with one difference: the next round belongs to `next`.
 
 1. Run iterate steps 3–5 above (reality-check baseline, mappings, ad-hoc items), bake the
-   submitted round as usual.
+   submitted round as usual. `untouched: true` = the user passed the live Etappe over without
+   one change: its preselected options are Claude's recommendations, not answers. Decide
+   nothing from them; when that Etappe is reopened, its next round asks them again.
 2. Write the next round fragment with `data-stage="<next>"`; all later rounds stay in that
    stage until the user moves again. An Etappe that already has rounds is reopened this way:
    its new round continues from ITS newest round (read that fragment), not from the round

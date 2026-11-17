@@ -27,7 +27,7 @@ Payloads (all through the normal submit path):
 
 | Action | Payload additions |
 |---|---|
-| `next-stage` | `{stage: "<live>", next: "<any open id ≠ live>"}` |
+| `next-stage` | `{stage: "<live>", next: "<any open id ≠ live>"}`, plus `untouched: true` when the live round was left without one change |
 | `implement` (staged concept, live regular round) | `{stage: "<live>"}` |
 | `finalize` of a stage report | `{stage: "<id>", stages: [{id, route: "open"\|"issue"\|"drop"}], next: "<id>"\|null, final: true\|false}` — `stages` lists the other Etappen still `open`; with `final: false` also `ship: {run: false}` and `disposition: null` |
 | `finalize` of an untagged report / any concept without Etappen | none — today's payload, byte for byte |
@@ -95,7 +95,8 @@ Only with Etappen:
   asks the empty-round confirm (nor does "Nächste Etappe ›"): passing an
   Etappe over without answers is one deliberate click, and the untouched
   round is sent with its fields as they stand (authored defaults, no
-  comments). Never for the live Etappe, a built / issue / dropped one, on a
+  comments) and marked `untouched: true`, so the defaults are not read as
+  answers. Never for the live Etappe, a built / issue / dropped one, on a
   frozen round's view, or while the live round is a final report (there the
   close-out decides what comes next) (`stageCanStart()`). Both controls are
   disabled while a submit runs and re-armed with the panel

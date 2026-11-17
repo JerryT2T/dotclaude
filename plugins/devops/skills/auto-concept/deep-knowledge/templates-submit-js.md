@@ -67,6 +67,8 @@ async function submitWithAction(action, extra) {
     data = collectDecisions(action);
     // next-stage carries {stage, next} (§ Etappen); merged after the collector.
     if (extra && typeof extra === 'object') Object.assign(data, extra);
+    // Passed over without one change: authored defaults are no answers.
+    if (action === 'next-stage' && !_userInteracted) data.untouched = true;
     // A staged concept builds one Etappe at a time: implement names it.
     if (action === 'implement' && typeof stageImplementFields === 'function') Object.assign(data, stageImplementFields());
   } catch (e) {

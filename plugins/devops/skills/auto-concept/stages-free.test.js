@@ -314,6 +314,8 @@ describe("Etappen free order — browser-check fix round (D1–D6)", () => {
     expect(p.window.__confirms).toBe(0);
     const body = p.last();
     expect(body).toMatchObject({ submitted: true, action: "next-stage", stage: "B", next: "C", iteration: "3" });
+    // Authored defaults of a passed-over round are no answers: the payload says so.
+    expect(body.untouched).toBe(true);
   });
 
   test("D4: the page pill of a live stage report names the Etappe", async () => {
