@@ -1,4 +1,18 @@
-import { describe, test, expect } from "vitest";
+import { describe, test, expect, vi } from "vitest";
+
+// index.js boots an MCP server at import time and needs the SDK + zod (not
+// devDependencies; CI has no mcp-server/node_modules) — mock them like
+// index.card.test.js, so the #824 dependency guard never waits for them.
+process.env.DEVOPS_COMPLETION_NO_USAGE = "1";
+vi.mock("./lib/ensure-deps.js", () => ({ ensureDeps: async () => {} }));
+vi.mock("@modelcontextprotocol/sdk/server/mcp.js", () => ({
+  McpServer: class { registerTool() {} async connect() {} },
+}));
+vi.mock("@modelcontextprotocol/sdk/server/stdio.js", () => ({ StdioServerTransport: class {} }));
+vi.mock("zod", () => {
+  const node = new Proxy(() => node, { get: () => () => node });
+  return { z: new Proxy({}, { get: () => () => node }) };
+});
 
 // 2026-11-17 (devops learn): a hygiene hint (ship_hygiene risk / open / openItems,
 // kind "cleanup") is an extra on a finished card — 🧹 instead of 👉, its reply on
