@@ -161,9 +161,9 @@ must see their own language. The locale hint is authoritative.
 | `stage.state_built`            | Built                          | Gebaut |
 | `stage.state_issue`            | Filed as an issue              | Als Issue angelegt |
 | `stage.state_dropped`          | Dropped                        | Gestrichen |
-| `stage.start`                  | Start this stage               | Etappe starten |
-| `stage.start_again`            | Continue with this stage       | Mit dieser Etappe weitermachen |
-| `stage.start_tip`              | Sends the answers of this round and opens the next round in this stage | Schickt die Antworten dieser Runde ab und öffnet die nächste Runde in dieser Etappe |
+| `stage.tab_start`              | Click starts this stage        | Klick startet diese Etappe |
+| `stage.tab_start_again`        | Click: continue with this stage | Klick: mit dieser Etappe weitermachen |
+| `stage.other_rounds`           | Rounds of other stages         | Runden anderer Etappen |
 | `stage.implement`              | Build this stage               | Diese Etappe umsetzen |
 | `stage.implement_sub`          | this stage only, the concept stays open | nur diese Etappe, das Concept bleibt offen |
 | `stage.co_heading`             | Open stages                    | Offene Etappen |

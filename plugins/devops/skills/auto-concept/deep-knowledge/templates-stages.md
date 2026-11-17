@@ -27,7 +27,7 @@ Payloads (all through the normal submit path):
 
 | Action | Payload additions |
 |---|---|
-| `next-stage` | `{stage: "<live>", next: "<any open id ≠ live>"}`, plus `untouched: true` when the live round was left without one change |
+| `next-stage` (one click on an open, non-live Etappe's tab, or "Nächste Etappe ›") | `{stage: "<live>", next: "<any open id ≠ live>"}`, plus `untouched: true` when the live round was left without one change |
 | `implement` (staged concept, live regular round) | `{stage: "<live>"}` |
 | `finalize` of a stage report | `{stage: "<id>", stages: [{id, route: "open"\|"issue"\|"drop"}], next: "<id>"\|null, final: true\|false}` — `stages` lists the other Etappen still `open`; with `final: false` also `ship: {run: false}` and `disposition: null` |
 | `finalize` of an untagged report / any concept without Etappen | none — today's payload, byte for byte |
@@ -76,7 +76,8 @@ Only with Etappen:
   Scroll-snap per tab, the viewport sized to whole tabs so
   none is cut. ‹ › are plain glyphs in their own gutters beside the row,
   shown on hover or keyboard focus only, and only when the row overflows.
-  Roving tabindex: ←/→/Home/End move focus, Enter/Space opens the tab. On
+  Roving tabindex: ←/→/Home/End move focus, Enter/Space act like a click
+  (`activateStageTab()`: start a startable Etappe, else open its pane). On
   every panel open the tab of the visible round's Etappe is selected and
   scrolled into view.
 - **Tab content**: the visible round's Etappe → today's nav (design screen
@@ -87,22 +88,31 @@ Only with Etappen:
   "🏁 <Etappenname>" row (`.stage-report`, a jump like any round; in the
   visible Etappe's 🕘 area when the report is not the round on screen). An
   issue / dropped Etappe shows its state word as one quiet line. No counters.
-- **Start control** (`#stage-start`, ▶): at the top of the pane of an OPEN
-  Etappe that is not the live one — "Mit dieser Etappe weitermachen" when it
-  has rounds, "Etappe starten" when it has none. Click submits
+- **One-click start** (user decision: „Ein Klick auf die Etappe in der
+  Leiste startet ihre nächste Runde“): in the LIVE view (live round is a
+  regular round, no frozen round on screen) a click on the tab of an OPEN
+  Etappe that is not the live one submits
   `submitWithAction('next-stage', {stage: <live>, next: <that id>})` through
-  the normal submit path, so the live round's answers go with it. It never
-  asks the empty-round confirm (nor does "Nächste Etappe ›"): passing an
-  Etappe over without answers is one deliberate click, and the untouched
-  round is sent with its fields as they stand (authored defaults, no
-  comments) and marked `untouched: true`, so the defaults are not read as
-  answers. Never for the live Etappe, a built / issue / dropped one, on a
-  frozen round's view, or while the live round is a final report (there the
-  close-out decides what comes next) (`stageCanStart()`). Both controls are
-  disabled while a submit runs and re-armed with the panel
-  (`syncStageControls()`, called from `renderJourney()` on every phase change). Two clicks
-  by design: the tab click only VIEWS an Etappe (browsing its rounds must
-  never submit the live round), the labelled button starts it.
+  the normal submit path — with or without earlier rounds in that Etappe —
+  so the live round's answers go with it. No pane, no second control, no
+  confirm (nor for "Nächste Etappe ›"): the untouched round is sent with its
+  fields as they stand (authored defaults, no comments) and marked
+  `untouched: true`, so the defaults are not read as answers. Such a tab
+  (`data-start="new" | "again"`) says what the click does BEFORE it: its
+  tooltip and aria-label end with "Klick startet diese Etappe" / "Klick: mit
+  dieser Etappe weitermachen", and a small accent ▶ sits on its node on hover
+  / keyboard focus (always on touch screens). Every other tab opens its pane
+  as before: the live Etappe, a built / issue / dropped one, any tab on a
+  frozen round's view, any tab while the live round is a final report (there
+  "Weiter mit" in the close-out decides) — `stageCanStart()`. The startable
+  tabs and "Nächste Etappe ›" are disabled while a submit runs and re-armed
+  with the panel (`syncStageControls()`, called from `renderJourney()` on
+  every phase change).
+- **Reading a startable Etappe without starting it**: the live Etappe's 🕘
+  area carries a second disclosure "🕘 n Runden anderer Etappen" listing the
+  rounds of every startable Etappe ("C · Runde 2" + TOC, newest first); a
+  jump opens that round frozen, and on a frozen view every tab opens its
+  pane again (with the earlier rounds of that Etappe).
 - The head's 🕘 rounds chip leaves the live head (it lives in the tabs);
   a frozen round's head is unchanged.
 - **Journey row**: the 🔒 · 🤖 · 🏁 stations stand in EVERY Etappe; the
@@ -252,18 +262,20 @@ body[data-staged]:not(.viewing-frozen) #panel-here-rounds-list { display: none !
 .stage-older[hidden] { display: none; }
 .stage-ahead { margin: 0.5rem 0.6rem; font-size: 0.8rem; color: var(--text-secondary, #8b949e); }
 
-/* Start control at the top of an open Etappe's pane. */
-.stage-start {
-  display: flex; align-items: center; gap: 0.45rem; width: 100%; box-sizing: border-box; margin: 0 0 0.5rem;
-  padding: 0.45rem 0.7rem; border: 0; border-radius: 8px; font: inherit; font-size: 0.82rem; font-weight: 600;
-  text-align: left; cursor: pointer; color: var(--text-color, #e6edf3);
-  background: color-mix(in srgb, var(--accent-color, #58a6ff) 12%, var(--panel-bg, #161b22));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-color, #58a6ff) 55%, transparent);
+/* Startable tab (one click starts it): an accent ▶ at the node's top-left,
+   on hover / keyboard focus — always on touch screens, which have no hover.
+   Distinct from the "open, has rounds" ring; disabled while a submit runs. */
+.stage-tab[data-start]::after {
+  content: "▶"; position: absolute; z-index: 2; top: 3px; left: calc(50% - var(--stage-node) / 2 - 7px);
+  font-size: 8px; line-height: 1; color: var(--accent-color, #58a6ff); opacity: 0; transition: opacity 0.15s;
+  pointer-events: none;
 }
-.stage-start:hover { box-shadow: inset 0 0 0 1px var(--accent-color, #58a6ff); }
-.stage-start:focus-visible { outline: 2px solid var(--accent-color, #58a6ff); outline-offset: 2px; }
-.stage-start:disabled { opacity: 0.5; cursor: default; }
-.stage-start-ico { flex: none; font-size: 0.7rem; color: var(--accent-color, #58a6ff); }
+.stage-tab[data-start]:hover::after, .stage-tab[data-start]:focus-visible::after { opacity: 1; }
+.stage-tab[data-start]:hover .stage-node, .stage-tab[data-start]:focus-visible .stage-node {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-color, #58a6ff) 45%, transparent);
+}
+@media (hover: none) { .stage-tab[data-start]::after { opacity: 0.85; } }
+.stage-tab:disabled { cursor: default; opacity: 0.5; }
 .stage-report::before { display: none; }
 
 /* Journey: the stations always stand; "Nächste Etappe ›" is a quiet pill

@@ -77,33 +77,43 @@ describe("Etappen free order — stepper, panes, start control", () => {
     expect(p.$$("#stage-tabs .stage-tab").map((t) => t.dataset.stageId)).toEqual(["A", "B", "C"]);
   });
 
-  test("the English page boots without script errors and uses 'stage' throughout", async () => {
+
+  test("the English page boots without script errors and its startable tab names the action", async () => {
     const p = await page({ rounds: rounds(), locale: "en" });
     expect(p.errors).toEqual([]);
-    p.tab("C").click();
-    expect(p.$("#stage-start").textContent).toContain("Start this stage");
+    expect(p.tab("C").dataset.tip).toMatch(/\nClick starts this stage$/);
+    expect(p.tab("A").getAttribute("aria-label")).toMatch(/ · Click: continue with this stage$/);
     expect(p.$("#submit-implement-btn .jr-ul-txt b").textContent).toBe("Build this stage");
   });
 
-  test("start control only for open, non-live Etappen; its click submits next-stage", async () => {
+  test("one click on an open non-live tab without rounds sends next-stage (untouched, no confirm, no pane)", async () => {
     const p = await page({ rounds: rounds() });
-    p.tab("B").click();
-    expect(p.$("#stage-start"), "no start for the live Etappe").toBeNull();
-    p.tab("A").click();
-    const a = p.$("#stage-pane > .stage-start");
-    expect(a.textContent).toContain("Mit dieser Etappe weitermachen");
-    expect(a.dataset.tip).toBeTruthy();
-    expect(a.hasAttribute("title")).toBe(false);
-    p.tab("C").click();
-    const c = p.$("#stage-pane > .stage-start");
-    expect(c.textContent).toContain("Etappe starten");
-    expect(p.$("#stage-pane").textContent).not.toMatch(/Beginnt nach der aktuellen Etappe/);
+    const c = p.tab("C");
+    expect(c.dataset.start).toBe("new");
+    expect(c.dataset.tip).toMatch(/\nKlick startet diese Etappe$/);
+    expect(c.getAttribute("aria-label")).toMatch(/ · Klick startet diese Etappe$/);
+    expect(c.hasAttribute("title")).toBe(false);
     c.click();
     await tick();
-    expect(p.last()).toMatchObject({ action: "next-stage", stage: "B", next: "C" });
+    expect(p.window.__confirms).toBe(0);
+    expect(p.last()).toMatchObject({ action: "next-stage", stage: "B", next: "C", untouched: true });
+    expect(p.$("#stage-pane").hidden, "no pane opened on the way").toBe(true);
+    expect(p.$("#stage-start"), "the pane start control is gone").toBeNull();
+    expect(p.res.html).not.toMatch(/\.stage-start\b/);
   });
 
-  test("a built, an issue and a dropped Etappe: no start control, their state on the tab", async () => {
+  test("a tab with earlier rounds starts its Etappe with one click too; Enter does the same", async () => {
+    const p = await page({ rounds: rounds() });
+    const a = p.tab("A");
+    expect(a.dataset.start).toBe("again");
+    expect(a.dataset.tip).toMatch(/\nKlick: mit dieser Etappe weitermachen$/);
+    a.focus();
+    a.dispatchEvent(new p.window.KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    await tick();
+    expect(p.last()).toMatchObject({ action: "next-stage", stage: "B", next: "A" });
+  });
+
+  test("live, built, issue and dropped tabs do not submit; they open the pane", async () => {
     const stages = [{ id: "A", name: "Use Cases" }, { id: "B", name: "Struktur", state: "issue" },
       { id: "C", name: "Visuelles Design", state: "dropped" }, { id: "D", name: "Texte" }];
     const p = await page({ stages, rounds: [round(1, "A", { baked: true }), report(2, "A", { baked: true }), round(3, "D")] });
@@ -112,28 +122,52 @@ describe("Etappen free order — stepper, panes, start control", () => {
     expect(p.tab("A").dataset.tip).toMatch(/\nGebaut$/);
     expect(p.tab("B").dataset.tip).toMatch(/Als Issue angelegt/);
     expect(p.tab("C").dataset.tip).toMatch(/Gestrichen/);
+    expect(["A", "B", "C", "D"].some((id) => p.tab(id).hasAttribute("data-start"))).toBe(false);
     for (const id of ["A", "B", "C"]) {
       p.tab(id).click();
-      expect(p.$("#stage-start"), id).toBeNull();
+      expect(p.$("#stage-pane").hidden, id).toBe(false);
     }
-    expect(p.$("#stage-pane .stage-ahead").textContent).toBe("Gestrichen");
+    p.tab("D").click();
+    expect(p.$("#stage-pane").hidden, "the live Etappe shows its own nav").toBe(true);
+    await tick();
+    expect(p.decisions().filter((d) => d && d.action === "next-stage")).toEqual([]);
+    expect(p.$("#stage-pane .stage-ahead")).toBeNull();
     expect(p.res.html).toMatch(/\.stage-tab\[data-state="closed"\] \.stage-tn \{ text-decoration: line-through/);
     expect(p.$("#jr-next-stage"), "no other open Etappe").toBeNull();
   });
 
-  test("a passed-over Etappe stays open and selectable", async () => {
+  test("a passed-over Etappe stays open and startable", async () => {
     const p = await page({ rounds: [round(1, "A", { baked: true }), round(2, "C")] });
     expect(p.tab("B").dataset.state).toBe("ahead");
     expect(p.tab("A").dataset.state).toBe("open");
-    p.tab("B").click();
-    expect(p.$("#stage-start")).toBeTruthy();
+    expect(p.tab("B").dataset.start).toBe("new");
+    expect(p.tab("A").dataset.start).toBe("again");
   });
 
-  test("no start control on a frozen round's view", async () => {
+  test("frozen view: no tab starts anything, every tab opens its pane with its rounds", async () => {
     const p = await page({ rounds: rounds() });
-    p.window.showIteration("1");
-    p.tab("C").click();
-    expect(p.$("#stage-start")).toBeNull();
+    p.window.showIteration("2");
+    expect(p.tab("A").hasAttribute("data-start")).toBe(false);
+    p.tab("A").click();
+    expect(p.$("#stage-pane").hidden).toBe(false);
+    expect(p.$("#stage-pane .stage-round").textContent).toBe("Runde 1");
+    await tick();
+    expect(p.decisions().filter((d) => d && d.action === "next-stage")).toEqual([]);
+  });
+
+  test("reading path: the live Etappe's 🕘 area lists the rounds of startable Etappen; a jump opens them frozen", async () => {
+    const p = await page({ rounds: rounds() });
+    const wraps = [...p.$$("#stage-cur-older .stage-older-btn")];
+    const other = wraps.find((b) => /Runden anderer Etappen/.test(b.textContent));
+    expect(other, "disclosure").toBeTruthy();
+    other.click();
+    const row = other.parentNode.querySelector(".stage-older .stage-round");
+    expect(row.textContent).toBe("A · Runde 1");
+    row.click();
+    expect(p.$('section[data-iteration="1"]').hidden).toBe(false);
+    expect(p.window.document.body.classList.contains("viewing-frozen")).toBe(true);
+    await tick();
+    expect(p.decisions().filter((d) => d && d.action === "next-stage")).toEqual([]);
   });
 });
 
@@ -256,10 +290,13 @@ describe("Etappen free order — close-out of a live stage report", () => {
     expect(p.last()).toMatchObject({ final: false, next: "C" });
   });
 
-  test("no start control and no 'Nächste Etappe ›' on a live final report", async () => {
+  test("on a live final report no tab starts anything and there is no 'Nächste Etappe ›'", async () => {
     const p = await live();
+    expect(p.tab("B").hasAttribute("data-start")).toBe(false);
     p.tab("B").click();
-    expect(p.$("#stage-start")).toBeNull();
+    expect(p.$("#stage-pane").hidden, "opens the pane").toBe(false);
+    await tick();
+    expect(p.decisions().filter((d) => d && d.action === "next-stage")).toEqual([]);
     expect(p.$("#jr-next-stage")).toBeNull();
   });
 
@@ -292,24 +329,26 @@ describe("Etappen free order — browser-check fix round (D1–D6)", () => {
     expect(en.$("#submit-implement-btn").getAttribute("aria-label")).toBe("Build this stage, this stage only, the concept stays open");
   });
 
-  test("D2: start control and 'Nächste Etappe ›' lock while a submit runs and re-arm with the panel", async () => {
+  test("D2: startable tabs and 'Nächste Etappe ›' lock while a submit runs and re-arm with the panel", async () => {
     const p = await page({ rounds: rounds() });
+    const locked = () => [p.tab("A").disabled, p.tab("C").disabled, p.$("#jr-next-stage").disabled];
+    expect(locked()).toEqual([false, false, false]);
+    expect(p.tab("B").disabled, "the live tab is never locked").toBe(false);
     p.tab("C").click();
-    const start = p.$("#stage-start");
-    const next = p.$("#jr-next-stage");
-    expect([start.disabled, next.disabled]).toEqual([false, false]);
-    start.click();
     await tick();
     expect(p.window.journeyPhase()).toBe("rethinking");
-    expect([p.$("#stage-start").disabled, p.$("#jr-next-stage").disabled]).toEqual([true, true]);
+    expect(locked()).toEqual([true, true, true]);
+    const sent = p.decisions().length;
+    p.tab("A").click();
+    await tick();
+    expect(p.decisions().length, "a locked tab sends nothing").toBe(sent);
     p.window.restorePanelToReady();
-    expect([p.$("#stage-start").disabled, p.$("#jr-next-stage").disabled]).toEqual([false, false]);
+    expect(locked()).toEqual([false, false, false]);
   });
 
   test("D3: passing an untouched round over asks no confirm; the round goes out as it stands", async () => {
     const p = await page({ rounds: rounds() });
     p.tab("C").click();
-    p.$("#stage-start").click();
     await tick();
     expect(p.window.__confirms).toBe(0);
     const body = p.last();

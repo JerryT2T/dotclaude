@@ -115,20 +115,24 @@ describe("Etappen — staged concept", () => {
     expect(row.textContent).toBe("iteration.tab 4");
   });
 
-  test("tabs: arrow keys move focus, Enter opens", () => {
-    const p = page({ rounds: STAGED });
+  test("tabs: arrow keys move focus, Enter acts like a click (opens a pane, or starts an open Etappe)", () => {
+    const stages = STAGES.map((s) => (s.id === "A" ? { ...s, state: "built" } : s));
+    const p = page({ rounds: STAGED, stages });
     const tabs = () => p.$$("#stage-tabs .stage-tab");
     tabs()[1].focus();
     const key = (k) => p.window.document.activeElement.dispatchEvent(new p.window.KeyboardEvent("keydown", { key: k, bubbles: true }));
     key("ArrowLeft");
     expect(p.window.document.activeElement.dataset.stageId).toBe("A");
     key("Enter");
-    expect(tabs()[0].getAttribute("aria-selected")).toBe("true");
+    expect(tabs()[0].getAttribute("aria-selected"), "built A: its pane").toBe("true");
     expect(p.$(".panel-nav-scroll").dataset.stageView).toBe("other");
+    tabs()[2].focus();
+    key("Enter");
+    expect(p.window.eval("submitted"), "open C: one key starts it").toEqual([["next-stage", { stage: "B", next: "C" }]]);
   });
 
   test("finished Etappe: newest round's TOC + 🕘 for the earlier ones", () => {
-    const p = page({ rounds: STAGED });
+    const p = page({ rounds: STAGED, stages: STAGES.map((s) => (s.id === "A" ? { ...s, state: "built" } : s)) });
     p.$$("#stage-tabs .stage-tab")[0].click();
     const pane = p.$("#stage-pane");
     expect(pane.hidden).toBe(false);
@@ -149,11 +153,14 @@ describe("Etappen — staged concept", () => {
     expect(p.$('section[data-iteration="1"]').hidden).toBe(false);
   });
 
-  test("an Etappe without rounds shows the start control, not a 'later' line", () => {
+  test("an open Etappe without rounds starts with one click on its tab, no pane, no 'later' line", () => {
     const p = page({ rounds: STAGED });
-    p.$$("#stage-tabs .stage-tab")[2].click();
+    const c = p.$$("#stage-tabs .stage-tab")[2];
+    expect(c.dataset.tip).toBe("stage.not_started\nstage.tab_start");
+    c.click();
+    expect(p.window.eval("submitted")).toEqual([["next-stage", { stage: "B", next: "C" }]]);
+    expect(p.$("#stage-pane").hidden).toBe(true);
     expect(p.$("#stage-pane .stage-ahead")).toBeNull();
-    expect(p.$("#stage-pane > .stage-start").textContent).toContain("stage.start");
   });
 
   test("frozen round keeps today's head", () => {
@@ -198,9 +205,9 @@ describe("Etappen — stepper nodes", () => {
     expect(nodes[0].querySelector("svg path")).toBeTruthy();
     expect(nodes[2].querySelector("svg"), "no round yet: the letter alone").toBeNull();
     expect(nodes.map((n) => n.querySelector(".stage-tl").textContent)).toEqual(["A", "B", "C"]);
-    expect(tabs[0].dataset.tip).toBe("stage.kind_doc\nstage.label A · iteration.tab 2");
+    expect(tabs[0].dataset.tip).toBe("stage.kind_doc\nstage.label A · iteration.tab 2\nstage.tab_start_again");
     expect(tabs[1].dataset.tip).toBe("stage.kind_doc\nstage.label B · iteration.tab 4");
-    expect(tabs[2].dataset.tip).toBe("stage.not_started");
+    expect(tabs[2].dataset.tip).toBe("stage.not_started\nstage.tab_start");
     expect(tabs.some((t) => t.hasAttribute("title"))).toBe(false);
   });
   test("the kind follows the Etappe's newest round: design sets and the analysis flow", () => {

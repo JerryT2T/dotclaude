@@ -259,7 +259,7 @@ See `deep-knowledge/step5-process.md` § 5b · Checkpoint duty. The `/progress` 
    the concept page
 See `deep-knowledge/step5-process.md` § 5b · iterate steps 3–5. Advancing the reality-check baseline, mapping proposals and ad-hoc items, proceeding to 5c.
 
-**`action: "next-stage"` (staged concepts, "Nächste Etappe" or an Etappe's start button):** like iterate — concept page only, no code — but the next round carries the chosen open stage's `data-stage`.
+**`action: "next-stage"` (staged concepts, "Nächste Etappe" or one click on an open Etappe's tab):** like iterate — concept page only, no code — but the next round carries the chosen open stage's `data-stage`.
 See `deep-knowledge/step5-process.md` § 5b · next-stage. Payload fields, any open Etappe as `next`, reopening one, build recomputes `current` and the states.
 See `deep-knowledge/step5-stages.md` § Etappen · build and close out one at a time. Read it before an `implement` or `finalize` on a staged concept: stage states, building one Etappe, its own final report on the same page, the stage close-out (`final: false` goes on, no ship), ONE ship in the last one.
 

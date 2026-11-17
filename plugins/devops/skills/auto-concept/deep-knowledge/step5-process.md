@@ -225,7 +225,7 @@ never re-run a completed step. The checkpoint records what the previous run
 
 Payload: `action:"next-stage"`, `stage:"B"` (the live stage), `next:"D"` — any Etappe whose
 state is `open` and that is not the live one (states: `step5-stages.md`). The user picks it in
-the ☰ panel: the start button in that Etappe's pane, or "Nächste Etappe ›" (the next open
+the ☰ panel: one click on that Etappe's tab in the Leiste, or "Nächste Etappe ›" (the next open
 Etappe in list order). It behaves like `iterate` — concept page only, **no code, files or
 external systems change** — with one difference: the next round belongs to `next`.
 

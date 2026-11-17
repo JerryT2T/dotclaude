@@ -219,7 +219,7 @@ function renderStageTabs() {
       else if (nk === 'ArrowLeft') to = Math.max(0, i - 1);
       else if (e.key === 'Home') to = 0;
       else if (e.key === 'End') to = tabs.length - 1;
-      else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectStageTab(tabs[i].dataset.stageId); return; }
+      else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activateStageTab(tabs[i].dataset.stageId); return; }
       if (to < 0) return;
       e.preventDefault();
       tabs.forEach((t, k) => { t.tabIndex = k === to ? 0 : -1; });
@@ -248,9 +248,17 @@ function renderStageTabs() {
     t.tabIndex = sel ? 0 : -1;
     const nd = _stNode(s);
     t.append(nd.node, _stEl('span', 'stage-tn', s.name || ''));
-    t.dataset.tip = nd.tip;
-    t.setAttribute('aria-label', '{{stage.label}} ' + s.id + ' · ' + (s.name || '') + ' · ' + nd.tip.split('\n').join(' · '));
-    t.addEventListener('click', () => selectStageTab(s.id));
+    // A startable tab says what its click does BEFORE it is clicked.
+    let tip = nd.tip;
+    if (stageCanStart(s.id)) {
+      const again = _stRounds().some(r => r.dataset.stage === s.id);
+      t.dataset.start = again ? 'again' : 'new';
+      tip += '\n' + (again ? '{{stage.tab_start_again}}' : '{{stage.tab_start}}');
+      t.disabled = _stBusy();
+    }
+    t.dataset.tip = tip;
+    t.setAttribute('aria-label', '{{stage.label}} ' + s.id + ' · ' + (s.name || '') + ' · ' + tip.split('\n').join(' · '));
+    t.addEventListener('click', () => activateStageTab(s.id));
     list.appendChild(t);
   });
   layoutStageTabs(row);
@@ -298,6 +306,17 @@ function revealStageTab(tab) {
   else if (r > sc.scrollLeft + sc.clientWidth) sc.scrollLeft = r - sc.clientWidth;
 }
 
+// One click on an OPEN, non-live Etappe in the live view starts its next
+// round (next-stage, the live round's answers go with it). Every other tab
+// only opens its pane.
+function activateStageTab(id) {
+  if (stageCanStart(id)) {
+    if (_stBusy()) return;
+    if (typeof submitWithAction === 'function') submitWithAction('next-stage', { stage: _stLiveStage(), next: id });
+    return;
+  }
+  selectStageTab(id);
+}
 function selectStageTab(id) {
   _stageSelected = id;
   const row = document.getElementById('stage-tabs');
@@ -323,9 +342,9 @@ function _stJump(sec, entryId) {
 }
 // One round: its "Runde N" row + its table of contents (the same entries the
 // section TOC lists: section[id][data-nav-label]).
-function _stRoundBlock(sec) {
+function _stRoundBlock(sec, withStage) {
   const frag = document.createDocumentFragment();
-  const head = _stEl('button', 'stage-round', _stRoundLabel(sec));
+  const head = _stEl('button', 'stage-round', (withStage ? sec.dataset.stage + ' · ' : '') + _stRoundLabel(sec));
   head.type = 'button';
   head.dataset.iteration = sec.dataset.iteration;
   head.addEventListener('click', () => _stJump(sec, null));
@@ -344,7 +363,8 @@ function _stRoundBlock(sec) {
   return frag;
 }
 // 🕘 disclosure for earlier rounds (newest first), not persisted.
-function _stOlder(rounds) {
+// With a label: the rounds of OTHER Etappen, each row named "B · Runde 3".
+function _stOlder(rounds, label) {
   const wrap = _stEl('div', 'stage-older-wrap');
   const btn = _stEl('button', 'stage-older-btn');
   btn.type = 'button';
@@ -355,10 +375,10 @@ function _stOlder(rounds) {
   chip.append(clock, document.createTextNode(' ' + rounds.length));
   const caret = _stEl('span', 'stage-older-caret', '▾');
   caret.setAttribute('aria-hidden', 'true');
-  btn.append(chip, document.createTextNode('{{stage.older}}'), caret);
+  btn.append(chip, document.createTextNode(label || '{{stage.older}}'), caret);
   const list = _stEl('div', 'stage-older');
   list.hidden = true;
-  rounds.slice().reverse().forEach(sec => list.appendChild(_stRoundBlock(sec)));
+  rounds.slice().reverse().forEach(sec => list.appendChild(_stRoundBlock(sec, !!label)));
   btn.addEventListener('click', () => {
     const open = btn.getAttribute('aria-expanded') !== 'true';
     btn.setAttribute('aria-expanded', open ? 'true' : 'false');
@@ -404,12 +424,12 @@ function renderStagePane() {
     const earlier = rounds.filter(s => visible && Number(s.dataset.iteration) < Number(visible.dataset.iteration));
     if (report && report !== visible) curOlder.appendChild(_stReportRow(report));
     if (earlier.length) curOlder.appendChild(_stOlder(earlier));
+    const other = _stOtherOpenRounds();
+    if (other.length) curOlder.appendChild(_stOlder(other, '{{stage.other_rounds}}'));
     return;
   }
   scroll.dataset.stageView = 'other';
   pane.hidden = false;
-  const start = _stStartControl(sel, rounds.length > 0);
-  if (start) pane.appendChild(start);
   const stateLine = _stStateLine(sel);
   if (stateLine && _stStateRaw(sel) !== 'built') pane.appendChild(_stEl('p', 'stage-ahead', stateLine));
   if (report) pane.appendChild(_stReportRow(report));
@@ -428,7 +448,7 @@ function _stReportRow(sec) {
   return b;
 }
 
-// May this Etappe be started from its pane? Only an OPEN Etappe that is not
+// May this Etappe be started by a click on its tab? Only an OPEN Etappe that is not
 // the live one, and only from the live regular round (a frozen view and a
 // live final report never start anything — there the close-out decides).
 function stageCanStart(id) {
@@ -439,39 +459,23 @@ function stageCanStart(id) {
   if (_stStateRaw(id) !== 'open') return false;
   return id !== _stLiveStage();
 }
+// The way to READ a startable Etappe's rounds without starting it: its tab
+// now starts it, so the live Etappe's 🕘 area lists them ("Runden anderer
+// Etappen"); a jump opens the round frozen, where every tab opens its pane.
+function _stOtherOpenRounds() {
+  return _stRounds().filter(r => r.dataset.stage && stageCanStart(r.dataset.stage));
+}
 function _stBusyPhase(phase) {
   return phase === 'rethinking' || phase === 'finalizing' || phase === 'implementing';
 }
 function _stBusy() {
   return _stBusyPhase(typeof journeyPhase === 'function' ? journeyPhase() : 'you');
 }
-// Called from renderJourney() on every phase change: the start control and
+// Called from renderJourney() on every phase change: the startable tabs and
 // "Nächste Etappe ›" lock while a submit runs and re-arm with the panel.
 function syncStageControls(phase) {
   const busy = _stBusyPhase(phase);
-  ['stage-start', 'jr-next-stage'].forEach(id => {
-    const b = document.getElementById(id);
-    if (b) b.disabled = busy;
-  });
-}
-// The start control at the top of an open Etappe's pane. It submits the live
-// round (its answers go with it) as next-stage → this Etappe.
-function _stStartControl(id, hasRounds) {
-  if (!stageCanStart(id)) return null;
-  const b = _stEl('button', 'stage-start');
-  b.type = 'button';
-  b.id = 'stage-start';
-  b.dataset.next = id;
-  const ico = _stEl('span', 'stage-start-ico', '▶');
-  ico.setAttribute('aria-hidden', 'true');
-  b.append(ico, _stEl('span', '', hasRounds ? '{{stage.start_again}}' : '{{stage.start}}'));
-  b.dataset.tip = '{{stage.start_tip}}';
-  b.disabled = _stBusy();
-  b.addEventListener('click', () => {
-    if (!stageCanStart(id) || _stBusy()) return;
-    if (typeof submitWithAction === 'function') submitWithAction('next-stage', { stage: _stLiveStage(), next: id });
-  });
-  return b;
+  document.querySelectorAll('#stage-tabs .stage-tab[data-start], #jr-next-stage').forEach(b => { b.disabled = busy; });
 }
 
 // The next OPEN Etappe after the live one, in list order, wrapping around.
