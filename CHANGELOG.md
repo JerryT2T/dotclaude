@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.384.2] — 2026-11-17
+
+### Fixed
+- Completion card: cleanup hints from ship hygiene (unlanded work, leftover branches) show with 🧹 on a separate "Aufräumen" button — never under "Nachbessern", never as a 👉 your-turn on a finished card.
+- Mods band: leaves cleanup hints to its own Altlasten block instead of naming them twice.
+- `.gitignore`: ignore `.claude/redirects/`.
+
 ## [0.384.1] — 2026-11-17
 
 ### Fixed

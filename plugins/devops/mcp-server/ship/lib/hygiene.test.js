@@ -372,6 +372,8 @@ describe("unlanded work at risk (#573)", () => {
     expect(branches(dir)).toContain("shipped-then-more");
     expect(res.atRisk).toEqual([expect.objectContaining({ kind: "branch", branch: "shipped-then-more", commits: 1 })]);
     expect(res.card.risk.text).toBe("⚠ Nicht gelandete Arbeit ohne PR: shipped-then-more (1 Commit) — pushen und mergen oder bewusst verwerfen");
+    // 2026-11-17: a hygiene hint is a cleanup extra on the card (🧹, Aufräumen), never Nachbessern.
+    expect(res.card.risk.kind).toBe("cleanup");
     expect(cardLines(res, "en").risk.text).toMatch(/^⚠ Unlanded work without a PR: shipped-then-more \(1 commit\)/);
   });
 
@@ -985,6 +987,7 @@ describe("runHygiene — trigger, switches and the nudge", () => {
     expect(first.card.open).toEqual({
       text: "3 Branches/Worktrees liegen herum (Schwelle 2) — »branches aufräumen« räumt Gelandetes selbst weg und fragt nur bei unklaren Branches",
       reply: "Ja, branches aufräumen.",
+      kind: "cleanup",
     });
     const soon = runHygiene({ cwd: dir, trigger: "promote", settings, statePath, now: NOW + DAY, stateKey: dir });
     expect(soon.nudge).toBe(false);
@@ -1015,6 +1018,7 @@ describe("cardLines", () => {
       open: {
         text: "61 Branches/Worktrees liegen herum (Schwelle 50) — »branches aufräumen« räumt Gelandetes selbst weg und fragt nur bei unklaren Branches",
         reply: "Ja, branches aufräumen.",
+        kind: "cleanup",
       },
     });
     expect(cardLines(r, "en").tests.result).toBe("2 branches · 1 worktree removed · 1 skipped");

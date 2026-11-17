@@ -51,6 +51,7 @@ import {
   tr,
   verbatimNotices,
   breakEvenRate,
+  cardFromResult,
   claimWake,
   disablesAfter,
   keepalivePolicy,
@@ -2068,4 +2069,19 @@ test('wake: two commands in the same millisecond keep two entries and fire twice
   timers[1].fn()
   for (let i = 0; i < 5000 && seen.prompts.length < 2; i++) await Promise.resolve()
   expect(seen.prompts.length).toBe(2)
+})
+
+// 2026-11-17 (devops learn): the band's own cleanup block (Altlasten) covers the card's cleanup hints.
+test('card band: cleanup hints (🧹) and the card’s Aufräumen button are left out of the band', () => {
+  const d = {
+    ...CARD_DATA,
+    pt: ['👉 Remote-Branch konnte nicht gelöscht werden', '🧹 ⚠ Nicht gelandete Arbeit ohne PR: claude/x — pushen und mergen oder bewusst verwerfen'],
+    bt: [
+      { l: 'Promote beta', p: 'promote beta 0.384.0', pr: 1, i: 'arrow-up' },
+      { l: 'Aufräumen', p: 'Sichere die nicht gelandete Arbeit: pushen, PR öffnen und mergen.', i: 'trash' },
+    ],
+  }
+  const view = cardFromResult(cardText(d))!
+  expect(view.points).toEqual(['👉 Remote-Branch konnte nicht gelöscht werden'])
+  expect(view.buttons.map(b => b.label)).toEqual(['Promote beta'])
 })
