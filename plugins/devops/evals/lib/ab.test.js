@@ -218,7 +218,7 @@ describe("path_prepend (stub CLIs)", () => {
     const graders = Object.fromEntries(g.loadGraders(c).map((x) => [x.name, x.check]));
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ab-grade-"));
     const run = { parsed: parseStream(""), raw: "", workdir: dir };
-    const stagesScript = '<script type="application/json" id="concept-stages">{}</script>';
+    const stagesScript = (s) => `<script type="application/json" id="concept-stages">${JSON.stringify({ stages: s })}</script>`;
     const put = (root, stages, html) => {
       const base = path.join(root, "docs", "concepts");
       fs.rmSync(path.join(dir, "docs"), { recursive: true, force: true });
@@ -231,19 +231,22 @@ describe("path_prepend (stub CLIs)", () => {
     const grade = () => ["page-built", "three-stages", "rounds-carry-stage", "no-topics-mix"].map((n) => graders[n](run));
 
     expect(grade()).toEqual([false, false, false, true]); // nothing built
-    put(dir, three, `${stagesScript}<section data-iteration="1" data-stage="A"></section>`);
+    put(dir, three, `${stagesScript(three)}<section data-iteration="1" data-stage="A"></section>`);
     expect(grade()).toEqual([true, true, true, true]);
     put(dir, null, '<section data-iteration="1"></section>');
     expect(grade()).toEqual([true, false, false, true]);
     put(dir, null, '<section data-iteration="1"><div data-design-set="topics"></div></section>');
     expect(grade()).toEqual([true, false, false, false]);
-    put(dir, three.slice(0, 2), `${stagesScript}<section data-iteration="1" data-stage="A"></section>`);
+    put(dir, three.slice(0, 2), `${stagesScript(three.slice(0, 2))}<section data-iteration="1" data-stage="A"></section>`);
     expect(grade()).toEqual([true, false, true, true]); // two stages are not three
-    // A topics set inside one Etappe of a staged page is no mix.
-    put(dir, three, `${stagesScript}<section data-iteration="1" data-stage="A"><div data-design-set="topics"></div></section>`);
+    // Two stages for three topics plus a topics round: the mix, although staged.
+    put(dir, three.slice(0, 2), `${stagesScript(three.slice(0, 2))}<section data-iteration="1" data-stage="A"><div data-design-set="topics"></div></section>`);
+    expect(grade()).toEqual([true, false, true, false]);
+    // A topics set inside one Etappe is no mix once every topic has its Etappe.
+    put(dir, three, `${stagesScript(three)}<section data-iteration="1" data-stage="A"><div data-design-set="topics"></div></section>`);
     expect(grade()).toEqual([true, true, true, true]);
     // A page built inside a worktree the session entered counts too.
-    put(path.join(dir, ".claude", "worktrees", "k7"), three, `${stagesScript}<section data-iteration="1" data-stage="A"></section>`);
+    put(path.join(dir, ".claude", "worktrees", "k7"), three, `${stagesScript(three)}<section data-iteration="1" data-stage="A"></section>`);
     expect(grade()).toEqual([true, true, true, true]);
 
     // The counter-case: closely related wishes must stay unstaged.
