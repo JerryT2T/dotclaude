@@ -1,4 +1,4 @@
-# Concept templates, part 49 of 50: Shared systems — Etappen (stages) JS
+# Concept templates, part 49 of 51: Shared systems — Etappen (stages) JS
 
 ## Etappen JS
 
@@ -43,11 +43,35 @@ function _stStageOf(sec) {
   // the live Etappe.
   return conceptStages().current || '';
 }
+// The stored state (open | built | issue | dropped); an older page without
+// one reads as open.
+const _ST_STATES = ['open', 'built', 'issue', 'dropped'];
+function _stStateRaw(id) {
+  const s = conceptStages().stages.find(x => x.id === id);
+  return s && _ST_STATES.includes(s.state) ? s.state : 'open';
+}
+function _stLiveStage() {
+  return _stStageOf(_stLive()) || conceptStages().current || '';
+}
+// The node's look: done (built) · closed (issue / dropped) · now (the live
+// Etappe) · open (has rounds, passed over) · ahead (no round yet). The list
+// order says nothing about progress any more.
 function _stState(id) {
-  const ids = conceptStages().stages.map(s => s.id);
-  const cur = ids.indexOf(conceptStages().current || _stStageOf(_stLive()));
-  const i = ids.indexOf(id);
-  return i < cur ? 'done' : i === cur ? 'now' : 'ahead';
+  const raw = _stStateRaw(id);
+  if (raw === 'built') return 'done';
+  if (raw === 'issue' || raw === 'dropped') return 'closed';
+  if (id === _stLiveStage()) return 'now';
+  return _stRounds().some(r => r.dataset.stage === id) ? 'open' : 'ahead';
+}
+function _stStateLine(id) {
+  const raw = _stStateRaw(id);
+  return raw === 'built' ? '{{stage.state_built}}' : raw === 'issue' ? '{{stage.state_issue}}'
+    : raw === 'dropped' ? '{{stage.state_dropped}}' : '';
+}
+// The stage final report of an Etappe (section[data-final-report][data-stage]).
+function _stReport(id) {
+  return [...document.querySelectorAll('section[data-iteration][data-final-report]')]
+    .find(s => s.dataset.stage === id) || null;
 }
 function _stEl(tag, cls, text) {
   const n = document.createElement(tag);
@@ -145,9 +169,10 @@ function _stNode(stage) {
   const g = _stGlyph(k.kind);
   if (g) node.appendChild(g);
   node.appendChild(_stEl('span', 'stage-tl', stage.id));
-  const tip = newest
+  const state = _stStateLine(stage.id);
+  const tip = (newest
     ? k.line + '\n' + '{{stage.label}} ' + stage.id + ' · ' + _stRoundLabel(newest)
-    : '{{stage.ahead}}';
+    : '{{stage.not_started}}') + (state ? '\n' + state : '');
   return { node, tip };
 }
 
@@ -216,13 +241,14 @@ function renderStageTabs() {
     t.setAttribute('aria-controls', 'stage-pane');
     t.dataset.stageId = s.id;
     t.dataset.state = _stState(s.id);
+    t.dataset.stageState = _stStateRaw(s.id);
     const sel = s.id === _stageSelected;
     t.setAttribute('aria-selected', sel ? 'true' : 'false');
     t.tabIndex = sel ? 0 : -1;
     const nd = _stNode(s);
     t.append(nd.node, _stEl('span', 'stage-tn', s.name || ''));
     t.dataset.tip = nd.tip;
-    t.setAttribute('aria-label', '{{stage.label}} ' + s.id + ' · ' + (s.name || '') + ' · ' + nd.tip.replace('\n', ' · '));
+    t.setAttribute('aria-label', '{{stage.label}} ' + s.id + ' · ' + (s.name || '') + ' · ' + nd.tip.split('\n').join(' · '));
     t.addEventListener('click', () => selectStageTab(s.id));
     list.appendChild(t);
   });
@@ -370,32 +396,135 @@ function renderStagePane() {
   const rounds = _stRounds().filter(s => s.dataset.stage === sel);
   pane.replaceChildren();
   curOlder.replaceChildren();
+  const report = _stReport(sel);
   if (sel === visStage) {
     delete scroll.dataset.stageView;
     pane.hidden = true;
     const earlier = rounds.filter(s => visible && Number(s.dataset.iteration) < Number(visible.dataset.iteration));
+    if (report && report !== visible) curOlder.appendChild(_stReportRow(report));
     if (earlier.length) curOlder.appendChild(_stOlder(earlier));
     return;
   }
   scroll.dataset.stageView = 'other';
   pane.hidden = false;
-  if (!rounds.length) {
-    pane.appendChild(_stEl('p', 'stage-ahead', '{{stage.ahead}}'));
-    return;
-  }
+  const start = _stStartControl(sel, rounds.length > 0);
+  if (start) pane.appendChild(start);
+  const stateLine = _stStateLine(sel);
+  if (stateLine && _stStateRaw(sel) !== 'built') pane.appendChild(_stEl('p', 'stage-ahead', stateLine));
+  if (report) pane.appendChild(_stReportRow(report));
+  if (!rounds.length) return;
   const newest = rounds[rounds.length - 1];
   pane.appendChild(_stRoundBlock(newest));
   if (rounds.length > 1) pane.appendChild(_stOlder(rounds.slice(0, -1)));
 }
 
-// Journey: "Nächste Etappe ›" while the live round is not in the last Etappe.
-function renderStageNext() {
-  const d = conceptStages();
+// A built Etappe's own final report: one row, a jump like any round.
+function _stReportRow(sec) {
+  const b = _stEl('button', 'stage-round stage-report', stageReportHead(sec) || '🏁 {{final.phase}}');
+  b.type = 'button';
+  b.dataset.iteration = sec.dataset.iteration;
+  b.addEventListener('click', () => _stJump(sec, null));
+  return b;
+}
+
+// May this Etappe be started from its pane? Only an OPEN Etappe that is not
+// the live one, and only from the live regular round (a frozen view and a
+// live final report never start anything — there the close-out decides).
+function stageCanStart(id) {
+  if (!conceptStages().stages.length) return false;
   const live = _stLive();
+  if (!live || live.hasAttribute('data-final-report')) return false;
+  if (document.body.classList.contains('viewing-frozen')) return false;
+  if (_stStateRaw(id) !== 'open') return false;
+  return id !== _stLiveStage();
+}
+function _stBusy() {
+  const phase = typeof journeyPhase === 'function' ? journeyPhase() : 'you';
+  return phase === 'rethinking' || phase === 'finalizing' || phase === 'implementing';
+}
+// The start control at the top of an open Etappe's pane. It submits the live
+// round (its answers go with it) as next-stage → this Etappe.
+function _stStartControl(id, hasRounds) {
+  if (!stageCanStart(id)) return null;
+  const b = _stEl('button', 'stage-start');
+  b.type = 'button';
+  b.id = 'stage-start';
+  b.dataset.next = id;
+  const ico = _stEl('span', 'stage-start-ico', '▶');
+  ico.setAttribute('aria-hidden', 'true');
+  b.append(ico, _stEl('span', '', hasRounds ? '{{stage.start_again}}' : '{{stage.start}}'));
+  b.dataset.tip = '{{stage.start_tip}}';
+  b.disabled = _stBusy();
+  b.addEventListener('click', () => {
+    if (!stageCanStart(id) || _stBusy()) return;
+    if (typeof submitWithAction === 'function') submitWithAction('next-stage', { stage: _stLiveStage(), next: id });
+  });
+  return b;
+}
+
+// The next OPEN Etappe after the live one, in list order, wrapping around.
+function stageNextOpen() {
+  const d = conceptStages();
   const ids = d.stages.map(s => s.id);
-  const cur = _stStageOf(live);
+  const cur = _stLiveStage();
   const i = ids.indexOf(cur);
-  const next = (i >= 0 && i < ids.length - 1) ? d.stages[i + 1] : null;
+  for (let k = 1; k <= ids.length; k++) {
+    const s = d.stages[((i < 0 ? -1 : i) + k + ids.length) % ids.length];
+    if (s && s.id !== cur && _stStateRaw(s.id) === 'open') return s;
+  }
+  return null;
+}
+
+// Head + tab of a stage final report: "🏁 <Etappenname>"; an untagged
+// report keeps "🏁 Abschluss" (null here).
+function stageReportHead(sec) {
+  if (!sec || !sec.hasAttribute('data-final-report') || !sec.dataset.stage) return null;
+  const s = conceptStages().stages.find(x => x.id === sec.dataset.stage);
+  return s ? '🏁 ' + (s.name || '{{stage.label}} ' + s.id) : null;
+}
+function labelStageReportTabs() {
+  document.querySelectorAll('.iteration-tab[data-final-report]').forEach(tab => {
+    const sec = [...document.querySelectorAll('section[data-iteration]')]
+      .find(s => String(s.dataset.iteration) === String(tab.dataset.iteration));
+    const name = stageReportHead(sec);
+    if (!name || (sec && sec.hasAttribute('data-tab-label'))) return;
+    tab.textContent = name;
+    tab.dataset.tabLabel = name;
+  });
+  const vis = _stVisibleRound();
+  const bar = document.querySelector('#frozen-bar [data-frozen-bar-title]');
+  const head = stageReportHead(vis);
+  if (bar && head && !(vis && vis.hasAttribute('data-active'))) bar.textContent = head;
+}
+
+// The implement station of a staged concept builds THIS Etappe only.
+function stageImplementFields() {
+  if (!conceptStages().stages.length) return {};
+  const live = _stLive();
+  if (!live || live.hasAttribute('data-final-report')) return {};
+  const st = _stLiveStage();
+  return st ? { stage: st } : {};
+}
+function renderStageImplement() {
+  const btn = document.getElementById('submit-implement-btn');
+  if (!btn) return;
+  const b = btn.querySelector('.jr-ul-txt b');
+  const small = btn.querySelector('.jr-ul-txt small');
+  const staged = conceptStages().stages.length > 0;
+  [[b, '{{stage.implement}}'], [small, '{{stage.implement_sub}}']].forEach(([el, text]) => {
+    if (!el) return;
+    if (el.dataset.unstaged == null) el.dataset.unstaged = el.textContent;
+    el.textContent = staged ? text : el.dataset.unstaged;
+  });
+}
+
+// Journey: the 🔒 · 🤖 · 🏁 stations always stand; "Nächste Etappe ›" sits
+// above the row while another OPEN Etappe exists (the next one after the
+// live Etappe in list order, wrapping).
+function renderStageNext() {
+  const live = _stLive();
+  const cur = _stLiveStage();
+  const next = conceptStages().stages.length ? stageNextOpen() : null;
   const isFinal = !!(live && live.hasAttribute('data-final-report'));
   let btn = document.getElementById('jr-next-stage');
   if (!next || isFinal) {
@@ -416,23 +545,23 @@ function renderStageNext() {
       const s = btn.dataset.stage;
       if (typeof submitWithAction === 'function') submitWithAction('next-stage', { stage: s, next: n });
     });
-    const wa = row.querySelector('.jr-wire-a');
-    row.insertBefore(btn, wa ? wa.nextSibling : null);
+    row.parentNode.insertBefore(btn, row);
   }
   btn.dataset.stage = cur;
   btn.dataset.next = next.id;
   btn.textContent = '{{stage.next}} ›';
   btn.dataset.tip = '{{stage.next_tip}}'.replace('{next}', next.id).replace('{name}', next.name || '');
-  const phase = typeof journeyPhase === 'function' ? journeyPhase() : 'you';
-  btn.disabled = phase === 'rethinking' || phase === 'finalizing' || phase === 'implementing';
+  btn.disabled = _stBusy();
 }
 
 function renderStages() {
   const staged = conceptStages().stages.length > 0;
   if (staged) document.body.dataset.staged = ''; else delete document.body.dataset.staged;
+  if (staged) labelStageReportTabs();
   renderRoundRow();
   renderStageTabs();
   renderStageNext();
+  renderStageImplement();
 }
 
 (function bootStages() {

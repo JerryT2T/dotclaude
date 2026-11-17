@@ -1,4 +1,4 @@
-# Concept templates, part 36 of 50: Shared systems — two-button submit JS (continued 2)
+# Concept templates, part 36 of 51: Shared systems — two-button submit JS (continued 2)
 
 ```javascript
 // Every user-facing string comes from the sheet's data-label-* attributes,
@@ -311,13 +311,19 @@ function toggleDisposeEdit(open) {
 function closeoutGoButtons() {
   return Array.from(document.querySelectorAll('#closeout-sheet [data-closeout-go]'));
 }
+// Which go buttons the sheet offers. A stage report with an Etappe kept open
+// offers "Etappe abschließen und weiter" instead of the two ship buttons
+// (§ Etappen, stageCloseoutOffers); everywhere else that button never shows.
+function closeoutGoOffered(go) {
+  return typeof stageCloseoutOffers === 'function' ? stageCloseoutOffers(go) : go !== 'stage';
+}
 function updateCloseoutButton() {
   const sheet = document.getElementById('closeout-sheet');
   if (!sheet || sheet.dataset.finalizeState) return;
   const conn = document.getElementById('connection-status');
   const offline = !!conn && conn.dataset.state === 'disconnected';
   closeoutGoButtons().forEach(btn => {
-    btn.hidden = false;
+    btn.hidden = !closeoutGoOffered(btn.dataset.closeoutGo);
     delete btn.dataset.finalizeState;
     const label = btn.querySelector('[data-closeout-btn-label]');
     const icon = btn.querySelector('[data-closeout-btn-icon]');
@@ -409,6 +415,8 @@ function renderCloseout() {
   if (empty) empty.hidden = closed || decided + todos > 0;
   renderCloseoutPlan();
   renderDisposeLine();
+  // Stage report: the "Offene Etappen" block and its plan line (§ Etappen).
+  if (typeof renderStageCloseout === 'function') renderStageCloseout(closed);
   if (closed) {
     setCloseoutButtonState('done');
     return;

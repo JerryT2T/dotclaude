@@ -1,4 +1,4 @@
-# Concept templates, part 48 of 50: Shared systems — Etappen (stages): contract, head name, round row, stepper tabs, next-stage — markup and CSS
+# Concept templates, part 48 of 51: Shared systems — Etappen (stages): contract, states, head name, round row, stepper tabs, start control, journey row, stage reports — markup and CSS
 
 ## Etappen (stages)
 
@@ -10,13 +10,37 @@ The engine only READS both — it never derives stages itself. Without the
 script the page is a concept without Etappen and everything below except
 the two all-concept changes is inert.
 
+**Free order, one Etappe at a time.** Each entry carries a `state` the build
+derives: `built` (a stage final report `section[data-final-report][data-stage="<id>"]`
+exists), `issue` / `dropped` (`page.json` `stages[i].state`, written when a
+close-out routed the Etappe away), otherwise `open` — with or without rounds,
+also when it was passed over. A missing `state` (older page) reads as `open`.
+Any OPEN Etappe other than the live one can come next; rounds of one Etappe
+need not be consecutive, and an open Etappe that already has rounds is
+reopened with a new round. A built Etappe is never started again (a change
+goes through "🔧 Nachbessern" on its report). Each Etappe is built on its own
+(implement carries `stage`) and ends with its own final report — a round tab
+of the SAME page. Shipping happens once, in the close-out after which no
+Etappe is left open.
+
+Payloads (all through the normal submit path):
+
+| Action | Payload additions |
+|---|---|
+| `next-stage` | `{stage: "<live>", next: "<any open id ≠ live>"}` |
+| `implement` (staged concept, live regular round) | `{stage: "<live>"}` |
+| `finalize` of a stage report | `{stage: "<id>", stages: [{id, route: "open"\|"issue"\|"drop"}], next: "<id>"\|null, final: true\|false}` — `stages` lists the other Etappen still `open`; with `final: false` also `ship: {run: false}` and `disposition: null` |
+| `finalize` of an untagged report / any concept without Etappen | none — today's payload, byte for byte |
+
 All concepts (with or without Etappen):
 
 - **Panel head** names the concept on the live round: `<icon> <title>`
   (`conceptHeadName()`; icon from `#concept-stages`, default 🧭; title from
   `#concept-stages`, otherwise the page `<title>` without its status glyph),
   full name as app tooltip. A frozen round keeps "🧭 Runde N · archiviert",
-  the final report "🏁 Abschluss" (showIteration, § Iteration Tabs).
+  the final report "🏁 Abschluss" (showIteration, § Iteration Tabs) — a
+  stage report "🏁 <Etappenname>" (`stageReportHead()`), in the head and
+  on its round tab (`labelStageReportTabs()`; an own `data-tab-label` wins).
 - **Round in the nav**: the design overview row reads "Übersicht · Runde N"
   (`.screen-nav-rnd`); a round without a visible overview row gets a plain
   "Runde N" row (`#panel-round-row`) at the top of the scroll box. Both are
@@ -35,13 +59,19 @@ Only with Etappen:
   designs, no set), `one` (one design), `analysis` (`data-analysis="full"`),
   `doc` (decision / free sections); an Etappe without a round yet shows its
   letter instead. The letter otherwise sits as a small badge on the node.
-  The nodes are joined by a 2px connector at their centre height (done →
-  success colour, ahead → border colour), so the row reads as one stepper
-  and needs no more height than a tab. App tooltip, two lines: the kind
+  The nodes are joined by a 2px connector at their centre height (between
+  built / live nodes → success colour, else border colour), so the row reads
+  as one stepper and needs no more height than a tab. The node's look
+  (`data-state`, `_stState()`) follows the Etappe's state, never its place in
+  the list: `done` = built (success fill), `now` = the live Etappe (accent
+  fill), `open` = has rounds, not built (plain), `ahead` = no round yet
+  (dashed), `closed` = issue / dropped (dimmed, name struck through);
+  `data-stage-state` carries the raw state. App tooltip: the kind
   ("3 Richtungen, eine gewählt" / "3 Themen nacheinander" / "1 Richtung" /
   "n Abschnitte" / "n Entscheidungen, geführt") and "Etappe B · Runde 4" (the
-  newest round), or "Beginnt nach der aktuellen Etappe." for an Etappe not
-  reached yet. Scroll-snap per tab, the viewport sized to whole tabs so
+  newest round), or "Noch nicht begonnen" without a round; a built / issue /
+  dropped Etappe adds a line "Gebaut" / "Als Issue angelegt" / "Gestrichen".
+  Scroll-snap per tab, the viewport sized to whole tabs so
   none is cut. ‹ › are plain glyphs in their own gutters beside the row,
   shown on hover or keyboard focus only, and only when the row overflows.
   Roving tabindex: ←/→/Home/End move focus, Enter/Space opens the tab. On
@@ -51,15 +81,47 @@ Only with Etappen:
   nav or section TOC), plus a 🕘 disclosure for that Etappe's earlier rounds.
   Any other Etappe → `#stage-pane`: its NEWEST round as a "Runde N" row and
   that round's TOC (click = jump there), and the 🕘 disclosure listing its
-  earlier rounds the same way. An Etappe not reached yet shows one quiet
-  line. No counters.
+  earlier rounds the same way. A built Etappe's own report sits above as one
+  "🏁 <Etappenname>" row (`.stage-report`, a jump like any round; in the
+  visible Etappe's 🕘 area when the report is not the round on screen). An
+  issue / dropped Etappe shows its state word as one quiet line. No counters.
+- **Start control** (`#stage-start`, ▶): at the top of the pane of an OPEN
+  Etappe that is not the live one — "Mit dieser Etappe weitermachen" when it
+  has rounds, "Etappe starten" when it has none. Click submits
+  `submitWithAction('next-stage', {stage: <live>, next: <that id>})` through
+  the normal submit path, so the live round's answers go with it (and the
+  empty-round confirm applies as for any round submit). Never for the live
+  Etappe, a built / issue / dropped one, on a frozen round's view, or while
+  the live round is a final report (there the close-out decides what comes
+  next); disabled while a submit is running (`stageCanStart()`). Two clicks
+  by design: the tab click only VIEWS an Etappe (browsing its rounds must
+  never submit the live round), the labelled button starts it.
 - The head's 🕘 rounds chip leaves the live head (it lives in the tabs);
   a frozen round's head is unchanged.
-- **Journey row**: while the live round is not in the LAST Etappe,
-  "Nächste Etappe ›" (`#jr-next-stage`) replaces the 🔒 · 🤖 · 🏁 stations;
-  "👉 Zur nächsten Runde" stays. Click submits
-  `submitWithAction('next-stage', {stage, next})` through the normal submit
-  path. In the last Etappe the row is exactly as without Etappen.
+- **Journey row**: the 🔒 · 🤖 · 🏁 stations stand in EVERY Etappe; the
+  implement button reads "Diese Etappe umsetzen" / "nur diese Etappe, das
+  Concept bleibt offen" (`renderStageImplement()`) and its payload names the
+  live Etappe (`stageImplementFields()`). "Nächste Etappe ›"
+  (`#jr-next-stage`) is an additional quiet pill right above the row while
+  another OPEN Etappe exists; it targets the next open Etappe after the live
+  one in list order, wrapping around (`stageNextOpen()`), and submits
+  `next-stage` like the start control. No open Etappe left → no pill.
+
+### Stage reports
+
+A stage final report (`data-final-report data-stage="X"`) is a normal final
+report (Funde, Tests, Hand-offs, Nachbessern, review switch) and a normal
+round tab. Followed by rounds of other Etappen it is a frozen round like any
+other: read-only, reachable from the round tabs and from its Etappe's pane.
+Its close-out sheet, while it is the LIVE round, adds the block "Offene
+Etappen" (templates-stages-free-js.md): per other open Etappe nachholen
+(default) · als Issue anlegen · streichen, and "Weiter mit" among the kept
+ones (default: the first in list order). While one stays open the sheet
+offers only "🏁 Etappe abschließen und weiter" (`#closeout-stage-go`,
+`finalize` with `final: false`) — no ship buttons, no 🧹 disposition — and
+`#closeout-stage-plan` reads out the plan ("➜ Weiter mit Etappe C · … ·
+📌 B als Issue · noch nicht shippen"). Nothing left open → today's full
+close-out (both ship buttons, disposition), `final: true`.
 
 ```css
 /* ── Etappen + round row (§ Etappen) ── */
@@ -118,6 +180,9 @@ body[data-staged]:not(.viewing-frozen) #panel-here-rounds-list { display: none !
 }
 .stage-tab[data-state="now"] .stage-tl { background: var(--accent-color, #58a6ff); }
 .stage-tab[data-state="ahead"] .stage-node { border-style: dashed; }
+/* Issue / dropped: visibly closed — dimmed node, name struck through. */
+.stage-tab[data-state="closed"] .stage-node { opacity: 0.55; border-style: dotted; }
+.stage-tab[data-state="closed"] .stage-tn { text-decoration: line-through; opacity: 0.7; }
 .stage-tab[aria-selected="true"] {
   color: var(--text-color, #e6edf3); background: color-mix(in srgb, var(--accent-color, #58a6ff) 13%, transparent);
   border-color: color-mix(in srgb, var(--accent-color, #58a6ff) 45%, transparent);
@@ -172,19 +237,58 @@ body[data-staged]:not(.viewing-frozen) #panel-here-rounds-list { display: none !
 .stage-older[hidden] { display: none; }
 .stage-ahead { margin: 0.5rem 0.6rem; font-size: 0.8rem; color: var(--text-secondary, #8b949e); }
 
-/* Journey: "Nächste Etappe ›" takes the 🔒 · 🤖 · 🏁 stations' place. */
-body[data-stage-next] .journey > .jr-impl,
-body[data-stage-next] .journey > .jr-fold,
-body[data-stage-next] .journey > .jr-node,
-body[data-stage-next] .journey > .jr-wire:not(.jr-wire-a) { display: none !important; }
+/* Start control at the top of an open Etappe's pane. */
+.stage-start {
+  display: flex; align-items: center; gap: 0.45rem; width: 100%; box-sizing: border-box; margin: 0 0 0.5rem;
+  padding: 0.45rem 0.7rem; border: 0; border-radius: 8px; font: inherit; font-size: 0.82rem; font-weight: 600;
+  text-align: left; cursor: pointer; color: var(--text-color, #e6edf3);
+  background: color-mix(in srgb, var(--accent-color, #58a6ff) 12%, var(--panel-bg, #161b22));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-color, #58a6ff) 55%, transparent);
+}
+.stage-start:hover { box-shadow: inset 0 0 0 1px var(--accent-color, #58a6ff); }
+.stage-start:focus-visible { outline: 2px solid var(--accent-color, #58a6ff); outline-offset: 2px; }
+.stage-start:disabled { opacity: 0.5; cursor: default; }
+.stage-start-ico { flex: none; font-size: 0.7rem; color: var(--accent-color, #58a6ff); }
+.stage-report::before { display: none; }
+
+/* Journey: the stations always stand; "Nächste Etappe ›" is a quiet pill
+   right above the row, only while another open Etappe exists. */
 .jr-next-stage { display: none; }
 body[data-stage-next] .jr-next-stage {
-  display: flex; align-items: center; flex: none; height: 36px; padding: 0 10px; border: 0; border-radius: 999px;
+  display: flex; align-items: center; width: fit-content; margin: 0 0 0.4rem auto; height: 26px; padding: 0 10px; border: 0; border-radius: 999px;
   white-space: nowrap; font: inherit; font-size: 0.72rem; font-weight: 600; cursor: pointer;
-  color: var(--text-color, #e6edf3); background: color-mix(in srgb, var(--text-color, #c9d1d9) 7%, var(--panel-bg, #161b22));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-color, #58a6ff) 55%, transparent), 0 2px 8px rgba(0, 0, 0, 0.3);
+  color: var(--text-secondary, #8b949e); background: none;
+  box-shadow: inset 0 0 0 1px var(--border-color, #30363d);
 }
-body[data-stage-next] .jr-next-stage:hover { box-shadow: inset 0 0 0 1px var(--accent-color, #58a6ff), 0 2px 8px rgba(0, 0, 0, 0.3); }
+body[data-stage-next] .jr-next-stage:hover { color: var(--text-color, #e6edf3); box-shadow: inset 0 0 0 1px var(--accent-color, #58a6ff); }
 body[data-stage-next] .jr-next-stage:focus-visible { outline: 2px solid var(--accent-color, #58a6ff); outline-offset: 2px; }
 body[data-stage-next] .jr-next-stage:disabled { opacity: 0.5; cursor: default; }
+body.viewing-frozen .jr-next-stage, body.viewing-final .jr-next-stage { display: none !important; }
+
+/* Close-out of a stage report: "Offene Etappen" (templates-stages-free-js.md). */
+.closeout-sheet .stage-co-list { display: flex; flex-direction: column; gap: 0.45rem; }
+.closeout-sheet .stage-co-row, .closeout-sheet .stage-co-next { display: flex; flex-direction: column; gap: 0.25rem; }
+.closeout-sheet .stage-co-next { margin-top: 0.6rem; }
+.closeout-sheet .stage-co-name { font-size: 0.8rem; color: var(--text-color, #c9d1d9); }
+.closeout-sheet .stage-co-row[data-route="drop"] .stage-co-name { text-decoration: line-through; opacity: 0.6; }
+.closeout-sheet .stage-co-opts { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.closeout-sheet .stage-co-opt { position: relative; display: inline-flex; cursor: pointer; }
+.closeout-sheet .stage-co-opt input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; }
+.closeout-sheet .stage-co-opt span {
+  padding: 2px 9px; border-radius: 999px; font-size: 0.72rem; font-weight: 600;
+  border: 1px solid var(--border-color, #30363d); color: var(--text-secondary, #8b949e);
+}
+.closeout-sheet .stage-co-opt:hover span { color: var(--text-color, #c9d1d9); }
+.closeout-sheet .stage-co-opt input:checked + span {
+  color: var(--accent-color, #58a6ff); border-color: var(--accent-color, #58a6ff);
+  background: color-mix(in srgb, var(--accent-color, #58a6ff) 12%, transparent);
+}
+.closeout-sheet .stage-co-opt input:focus-visible + span { outline: 2px solid var(--accent-color, #58a6ff); outline-offset: 1px; }
+.closeout-sheet .stage-co-opt input:disabled + span { opacity: 0.55; cursor: default; }
+.closeout-sheet[data-stage-continue] .closeout-dispose-line,
+.closeout-sheet[data-stage-continue] #panel-dispose-concept { display: none !important; }
+.closeout-sheet #closeout-stage-go {
+  color: #fff; background: var(--accent-color, #58a6ff); border: 1px solid var(--accent-color, #58a6ff);
+}
+.closeout-sheet #closeout-stage-go:hover { background: color-mix(in srgb, var(--accent-color, #58a6ff) 85%, var(--text-color, #c9d1d9)); }
 ```

@@ -93,7 +93,8 @@ describe("Etappen — staged concept", () => {
     expect(p.$("#stage-struct"), "the top-left Etappen glyph is gone").toBeNull();
     const tabs = p.$$("#stage-tabs .stage-tab");
     expect(tabs.map((t) => t.dataset.stageId)).toEqual(["A", "B", "C"]);
-    expect(tabs.map((t) => t.dataset.state)).toEqual(["done", "now", "ahead"]);
+    // Free order: A has rounds but is not built → open (not "done"); C has none → ahead.
+    expect(tabs.map((t) => t.dataset.state)).toEqual(["open", "now", "ahead"]);
     expect(tabs[1].getAttribute("aria-selected")).toBe("true");
     expect(tabs[1].tabIndex).toBe(0);
     expect(tabs[0].tabIndex).toBe(-1);
@@ -148,10 +149,11 @@ describe("Etappen — staged concept", () => {
     expect(p.$('section[data-iteration="1"]').hidden).toBe(false);
   });
 
-  test("an Etappe not reached yet shows one quiet line", () => {
+  test("an Etappe without rounds shows the start control, not a 'later' line", () => {
     const p = page({ rounds: STAGED });
     p.$$("#stage-tabs .stage-tab")[2].click();
-    expect(p.$("#stage-pane .stage-ahead").textContent).toBe("stage.ahead");
+    expect(p.$("#stage-pane .stage-ahead")).toBeNull();
+    expect(p.$("#stage-pane > .stage-start").textContent).toContain("stage.start");
   });
 
   test("frozen round keeps today's head", () => {
@@ -162,21 +164,24 @@ describe("Etappen — staged concept", () => {
     expect(p.$$("#stage-tabs .stage-tab")[0].getAttribute("aria-selected"), "the viewed round's Etappe").toBe("true");
   });
 
-  test("Nächste Etappe › replaces 🔒 · 🤖 · 🏁 and submits next-stage", () => {
+  test("Nächste Etappe › sits above the 🔒 · 🤖 · 🏁 stations and submits next-stage", () => {
     const p = page({ rounds: STAGED });
     const btn = p.$("#jr-next-stage");
     expect(btn).toBeTruthy();
     expect(p.window.document.body.hasAttribute("data-stage-next")).toBe(true);
-    expect(btn.previousElementSibling.classList.contains("jr-wire-a")).toBe(true);
+    expect(btn.nextElementSibling.id, "right above the journey row").toBe("journey");
+    expect(p.$("#journey #jr-lock"), "the stations stay").toBeTruthy();
+    expect(md, "no CSS hides the stations any more").not.toMatch(/body\[data-stage-next\] \.journey > \.jr-impl/);
     expect(btn.textContent).toBe("stage.next ›");
     expect(btn.dataset.tip).toBe("stage.next_tip".replace("{next}", "C"));
     btn.click();
     expect(p.window.eval("submitted")).toEqual([["next-stage", { stage: "B", next: "C" }]]);
   });
 
-  test("last Etappe: the journey row is exactly today's", () => {
+  test("no other open Etappe: the journey row is exactly today's", () => {
     const rounds = [{ n: 1, stage: "A" }, { n: 2, stage: "B" }, { n: 3, stage: "C", live: true }];
-    const p = page({ rounds, current: "C" });
+    const stages = STAGES.map((s) => ({ ...s, state: s.id === "C" ? "open" : "dropped" }));
+    const p = page({ rounds, current: "C", stages });
     expect(p.$("#jr-next-stage")).toBeNull();
     expect(p.window.document.body.hasAttribute("data-stage-next")).toBe(false);
     expect(p.$("#jr-lock")).toBeTruthy();
@@ -195,7 +200,7 @@ describe("Etappen — stepper nodes", () => {
     expect(nodes.map((n) => n.querySelector(".stage-tl").textContent)).toEqual(["A", "B", "C"]);
     expect(tabs[0].dataset.tip).toBe("stage.kind_doc\nstage.label A · iteration.tab 2");
     expect(tabs[1].dataset.tip).toBe("stage.kind_doc\nstage.label B · iteration.tab 4");
-    expect(tabs[2].dataset.tip).toBe("stage.ahead");
+    expect(tabs[2].dataset.tip).toBe("stage.not_started");
     expect(tabs.some((t) => t.hasAttribute("title"))).toBe(false);
   });
   test("the kind follows the Etappe's newest round: design sets and the analysis flow", () => {

@@ -1,4 +1,4 @@
-# Concept templates, part 35 of 50: Shared systems — two-button submit JS
+# Concept templates, part 35 of 51: Shared systems — two-button submit JS
 
 ### JS
 
@@ -64,6 +64,8 @@ async function submitWithAction(action, extra) {
     data = collectDecisions(action);
     // next-stage carries {stage, next} (§ Etappen); merged after the collector.
     if (extra && typeof extra === 'object') Object.assign(data, extra);
+    // A staged concept builds one Etappe at a time: implement names it.
+    if (action === 'implement' && typeof stageImplementFields === 'function') Object.assign(data, stageImplementFields());
   } catch (e) {
     _submitInFlight = false;
     console.error('collectDecisions failed', e);

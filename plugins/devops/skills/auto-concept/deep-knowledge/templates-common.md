@@ -1,4 +1,4 @@
-# Concept templates, part 01 of 50: Overview, UI locale
+# Concept templates, part 01 of 51: Overview, UI locale
 
 # Concept HTML Templates
 
@@ -157,7 +157,26 @@ must see their own language. The locale hint is authoritative.
 | `stage.kind_doc`               | {n} sections                   | {n} Abschnitte |
 | `stage.kind_analysis`          | {n} decisions, guided          | {n} Entscheidungen, geführt |
 | `stage.older`                  | Earlier rounds of this stage   | Frühere Runden dieser Etappe |
-| `stage.ahead`                  | Starts after the current stage. | Beginnt nach der aktuellen Etappe. |
+| `stage.not_started`            | Not started yet                | Noch nicht begonnen |
+| `stage.state_built`            | Built                          | Gebaut |
+| `stage.state_issue`            | Filed as an issue              | Als Issue angelegt |
+| `stage.state_dropped`          | Dropped                        | Gestrichen |
+| `stage.start`                  | Start this stage               | Etappe starten |
+| `stage.start_again`            | Continue with this stage       | Mit dieser Etappe weitermachen |
+| `stage.start_tip`              | Sends the answers of this round and opens the next round in this stage | Schickt die Antworten dieser Runde ab und öffnet die nächste Runde in dieser Etappe |
+| `stage.implement`              | Build this stage               | Diese Etappe umsetzen |
+| `stage.implement_sub`          | this stage only, the concept stays open | nur diese Etappe, das Concept bleibt offen |
+| `stage.co_heading`             | Open stages                    | Offene Etappen |
+| `stage.co_open`                | catch up                       | nachholen |
+| `stage.co_issue`               | file as issue                  | als Issue anlegen |
+| `stage.co_drop`                | drop                           | streichen |
+| `stage.co_next`                | Continue with                  | Weiter mit |
+| `stage.co_go`                  | Close stage and continue       | Etappe abschließen und weiter |
+| `stage.co_go_hint`             | Closes this stage without a release; the concept goes on with the chosen stage. Everything built ships once, when no stage is left open. | Schließt diese Etappe ohne Release ab; das Concept geht mit der gewählten Etappe weiter. Ausgeliefert wird alles Gebaute einmal, wenn keine Etappe mehr offen ist. |
+| `stage.co_plan_next`           | Next: stage {name}             | Weiter mit Etappe {name} |
+| `stage.co_plan_issue`          | {ids} as an issue              | {ids} als Issue |
+| `stage.co_plan_drop`           | {ids} dropped                  | {ids} gestrichen |
+| `stage.co_plan_noship`         | not shipped yet                | noch nicht shippen |
 | `stage.prev`                   | Previous stages                | Vorherige Etappen |
 | `stage.more`                   | More stages                    | Weitere Etappen |
 | `reality.headline`             | The default branch moved while this concept was open | Der Default-Branch hat sich bewegt, während dieses Konzept offen war |

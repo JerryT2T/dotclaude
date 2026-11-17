@@ -53,9 +53,12 @@ the payload carries it:
   "issues": { … }, "implement": { … }, "tests": [ … ], "handoffs": [ … ] }
 ```
 
-`route` is `open` (keep it — the default), `issue` or `drop`. `final` is
-`false` while at least one Etappe stays open, and the sheet then offers no
-ship and no disposition.
+`stages[]` lists only the other Etappen that are still `open` (one already
+routed in an earlier close-out is not sent again). `route` is `open` (keep
+it — the default), `issue` or `drop`. `final` is `false` while at least one
+Etappe stays open; the sheet then offers no ship and no disposition and the
+payload carries `ship: { run: false }` and `disposition: null` — `null` is
+"not asked", never the `discard` default.
 
 - **Every finalize:** part A (issues) and part B (follow-ups of this report),
   then the routes: `issue` → one issue for that Etappe through `auto-issue`
@@ -63,11 +66,14 @@ ship and no disposition.
   concept link), then `stages[i].state = "issue"` in `page.json`; `drop` →
   `stages[i].state = "dropped"`. Then part E (tests and hand-offs).
 - **`final: false` — the concept goes on.** No part C, no part D, no Step 6:
-  never ship, stage a disposition or stop the bridge here, whatever else the
-  payload says. Freeze the report like any submitted round, write the next
-  round with `data-stage="<next>"` (its first round, or one that continues
-  from that Etappe's newest round), `build`, `/reload` before `/reset`,
-  re-launch the waker. The round ends with the `concept: waiting` card.
+  never ship, stage a disposition, POST `/status` `closed` or stop the bridge
+  here, whatever else the payload says. Freeze the report like any submitted
+  round (`bake --round N --payload <finalize payload>`, or `--unanswered`
+  when it cannot be baked), write the `page.json` states BEFORE the build,
+  write the next round with `data-stage="<next>"` (its first round, or one
+  that continues from that Etappe's newest round), `build`, `/reload` before
+  `/reset` (the bridge answers `/reset` with 428 until the reload), re-launch
+  the waker. The round ends with the `concept: waiting` card.
 - **`final: true` — nothing stays open.** The close-out of
   `step5-finalize.md` in full, A → B → C → D → E: part C ships ONCE
   everything built in every Etappe (one pull request, one version), then
