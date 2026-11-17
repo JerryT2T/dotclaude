@@ -1408,16 +1408,35 @@ function buildBlockReason(filePath, missing, forbidden, structural, mapping, ove
     'becomes the variants of THIS round (one design per take of that element) and is refined on its own; a',
     'later round zooms back out to the main variants (P34).',
   ];
-  if (subpage.length && subpage.length === structural.length && !missing.length && !forbidden.length && !mapping.length && !overlap.length && !stale.length && !collisions.length && !finalReport.length && !analysis.length) {
-    const lines = [`BLOCKED: a design round in "${name}" varies only a sub-page.`, ''];
-    subpage.forEach(i => lines.push(`  - ${i.kind}: ${i.why}`));
-    lines.push(...subpageHint);
+  // Etappen errors are no <style>/<script> breakage: they get their own
+  // heading and fix hint instead of the structural one (which sends the
+  // author looking for a nested <style>).
+  const stages = structural.filter(i => String(i.kind).startsWith('stages-'));
+  const stagesHint = [
+    '',
+    'Etappen are declared in page.json ("stages": ids A–G in order, at most 7, names up to 24 characters).',
+    'Every round section carries data-stage="<id>" — the final report and a reality-check round carry',
+    'none — and stages only advance. Fix the round fragment or page.json and build again; the build',
+    'recomputes `current`. See validation-gate.md § Etappen (stages) and step1-templates.md § 1a · Design',
+    'iteration authoring, Declaring them.',
+  ];
+  const item = i => `  - ${i.kind}: ${i.why}`;
+  structural = structural.filter(i => i.kind !== 'design-round-subpage-only' && !String(i.kind).startsWith('stages-'));
+  const nothingElse = !structural.length && !missing.length && !forbidden.length && !mapping.length && !overlap.length && !stale.length && !collisions.length && !finalReport.length && !analysis.length;
+  if (nothingElse && (stages.length || subpage.length)) {
+    const lines = [];
+    if (stages.length) lines.push(`BLOCKED: the Etappen (stages) of "${name}" break their rules.`, '', ...stages.map(item), ...stagesHint);
+    if (subpage.length) {
+      lines.push(...(lines.length ? ['', 'A design round varies only a sub-page (P34):'] : [`BLOCKED: a design round in "${name}" varies only a sub-page.`, '']));
+      lines.push(...subpage.map(item), ...subpageHint);
+    }
     lines.push('The rest of the page passed — re-write the file and open it once this gate passes.');
     return lines.join('\n');
   }
-  structural = structural.filter(i => i.kind !== 'design-round-subpage-only');
-  const out = buildBlockReasonInner(name, missing, forbidden, structural, mapping, overlap, stale, collisions, finalReport, analysis);
-  return subpage.length ? [out, '', 'A design round varies only a sub-page (P34):', ...subpage.map(i => `  - ${i.kind}: ${i.why}`), ...subpageHint].join('\n') : out;
+  const out = [buildBlockReasonInner(name, missing, forbidden, structural, mapping, overlap, stale, collisions, finalReport, analysis)];
+  if (stages.length) out.push('', 'The Etappen (stages) break their rules:', ...stages.map(item), ...stagesHint);
+  if (subpage.length) out.push('', 'A design round varies only a sub-page (P34):', ...subpage.map(item), ...subpageHint);
+  return out.join('\n');
 }
 
 function buildBlockReasonInner(name, missing, forbidden, structural, mapping, overlap, stale, collisions, finalReport, analysis) {

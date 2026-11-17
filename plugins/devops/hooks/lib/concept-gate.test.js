@@ -1180,6 +1180,22 @@ describe("findStageIssues (Etappen)", () => {
   test("no script and no data-stage = no concern", () => {
     expect(findStageIssues(`<main>${sec(1)}</main>`)).toEqual({ errors: [], warnings: [] });
   });
+  // A stage error used to print under "Broken <style> / <script> structure"
+  // with the paste-into-chat boilerplate — neither fits (2026-11-17).
+  test("stage errors get their own block reason, not the <style>/<script> one", () => {
+    const errs = findStageIssues(page(ok, [sec(1, "A"), sec(2)])).errors;
+    const only = buildBlockReason("docs/concepts/x.html", [], [], errs);
+    expect(only).toMatch(/^BLOCKED: the Etappen \(stages\) of "x\.html" break their rules\./);
+    expect(only).toMatch(/stages-round-untagged/);
+    expect(only).toMatch(/page\.json/);
+    expect(only).not.toMatch(/Broken <style>/);
+    expect(only).not.toMatch(/paste it/);
+    // Together with a real structural break both headings appear, each with its own items.
+    const mixed = buildBlockReason("docs/concepts/x.html", [], [], [{ kind: "nested-style", why: "w" }, ...errs]);
+    expect(mixed).toMatch(/Broken <style> \/ <script> structure[^\n]*\n {2}- nested-style/);
+    expect(mixed).toMatch(/The Etappen \(stages\) break their rules:\n {2}- stages-round-untagged/);
+  });
+
   // The final report and a reality check cover every Etappe: no data-stage,
   // and `current` stays on the last staged round (measured 2026-11-17: the
   // report of a staged concept was blocked as stages-round-untagged).
