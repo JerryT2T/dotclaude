@@ -1,5 +1,38 @@
 # Changelog
 
+## [0.384.2] — 2026-11-17
+
+### Fixed
+- Completion card: cleanup hints from ship hygiene (unlanded work, leftover branches) show with 🧹 on a separate "Aufräumen" button — never under "Nachbessern", never as a 👉 your-turn on a finished card.
+- Mods band: leaves cleanup hints to its own Altlasten block instead of naming them twice.
+- `.gitignore`: ignore `.claude/redirects/`.
+
+## [0.384.1] — 2026-11-17
+
+### Fixed
+- auto-concept: the final report and a reality-check round of a staged concept pass the page gate without a `data-stage` and stay in the last staged Etappe (the build no longer resets `current` to stage A).
+- evals: the Etappen cases deny the concept bridge, so a run ends and is graded.
+
+### Changed
+- auto-concept: unrelated topics are staged by default, not always — one test for "unrelated", small questions ride along, more than seven groups merge, the user's wish for one round wins. The rule lives in `deep-knowledge/step1-stages.md`.
+
+### Added
+- evals: counter-case `related-topics-one-round` (closely related wishes stay unstaged).
+
+## [0.384.0] — 2026-11-17
+
+### Added
+- Claude Mods (alpha, feature `claude-mods`): a return recap in the band after a pause — one cache-reading fork while the cache is warm, else the last completion card's text, shown once (#1105).
+- Claude Mods: large typed pastes and large Bash outputs reach the conversation as a deterministic head + tail + path to the byte-exact original; test, git, gh and CI commands and slash-command / machine prompts are exempt (#1106).
+- Claude Mods: `/mods-spike-wake` and reload-safe wake timers kept in `$.state`; a cache keep-alive policy (pure, tested per limit, not wired yet) (#1103, #1101).
+
+### Changed
+- `pre.tokens.guard` 0.18.0 marks every released retry, so the tool-output redirect keeps that output whole (#1106).
+- `prompt.flow.title-work` 0.10.0 computes its answer in the pure `hooks/lib/title-plan.js` (output byte-identical, 180 parity fixtures); new unwired stand-down marker `hooks/lib/mod-standdown.js` (#1102).
+
+### Docs
+- `docs/dev/mods.md`: spike results on engine 2.1.325 — Desktop mod load passes (#1100), no mod-side title API (#1102 Part B rejected), timer wake idle + busy (#1103), fork reads 100 % from cache after ~54 min (#1101).
+
 ## [0.383.0] — 2026-11-17
 
 ### Added

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook pre.tokens.guard
- * @version 0.17.1
+ * @version 0.18.0
  * @event PreToolUse
  * @plugin devops
  * @description Block Read/Bash/Glob/Grep operations that would consume a
@@ -45,6 +45,10 @@
  *   path segment, which the installed root (`…/plugin_<id>/`) does not have, so
  *   a ~11K-token bridge-server.md was blocked and then retried unchanged.
 
+ *   One decision path with the tool-output redirect (0.18.0, #1106 6c): a
+ *   released retry is marked (`lib/token-guard-release.js`), so the mod never
+ *   cuts that output down to head + tail afterwards.
+ *
  *   No blind retry (0.15.0): an unbounded Bash command (`git log`, `find .`)
  *   is priced at the Bash output cap like a file read, so at the harness
  *   default it runs and the bounded form comes back as a hint instead of a
@@ -212,31 +216,9 @@ function flagPath(key) {
   return path.join(os.tmpdir(), `claude_confirm_${hash}.flag`);
 }
 
-/**
- * The subset of a tool input that actually determines the token cost, in a
- * fixed key order. Everything else (`description`, `run_in_background`,
- * `timeout`) is noise that used to break the retry-to-proceed release.
- */
-function costFields(toolName, toolInput) {
-  switch (toolName) {
-    case 'Read':
-      return { file_path: toolInput.file_path || '', limit: toolInput.limit || 0, offset: toolInput.offset || 0 };
-    case 'Bash':
-      return { command: toolInput.command || '' };
-    case 'Glob':
-      return { pattern: toolInput.pattern || '', path: toolInput.path || '' };
-    case 'Grep':
-      return {
-        pattern: toolInput.pattern || '',
-        path: toolInput.path || '',
-        glob: toolInput.glob || '',
-        type: toolInput.type || '',
-        output_mode: toolInput.output_mode || '',
-      };
-    default:
-      return { tool: toolName };
-  }
-}
+// costFields / confirmKey live in lib/token-guard-release.js: the mod's tool-output
+// redirect (#1106 6c) keys its "released, keep the full output" check the same way.
+const { confirmKey, markReleased } = require('../lib/token-guard-release');
 
 // Read hook input from stdin
 let inputData = '';
@@ -493,7 +475,7 @@ process.stdin.on('end', () => {
   // being fixed. The residual over-share is one project's own later session
   // inheriting a confirmation; that is strictly narrower than the previous
   // behaviour, which leaked across projects too.
-  const flagKey = `${toolName}:${cwd}:${JSON.stringify(costFields(toolName, toolInput))}`;
+  const flagKey = confirmKey(toolName, cwd, toolInput);
   const flag = flagPath(flagKey);
 
   // Telemetry classification — cheap, string-only, no extra work on the hot path.
@@ -515,6 +497,7 @@ process.stdin.on('end', () => {
     try { fs.unlinkSync(flag); } catch {}
     if (fresh) {
       logSaving('released', estimatedTokens, { tool: toolName, kind: guardKind });
+      markReleased(flagKey); // the tool-output redirect keeps this output whole
       process.exit(0); // User confirmed — allow
     }
     // Expired: fall through and block again, re-arming the flag below.

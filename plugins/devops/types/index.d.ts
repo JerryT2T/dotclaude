@@ -83,6 +83,9 @@ export type SessionFlags = { noticesShown: boolean; agentsPaneOpened: boolean }
  */
 export type SpikeWatch = { lastMainEnd: number; armed: { turnId: string; gapMs: number } | null }
 
+/** #1103: a mod timer's due time, kept in $.state so a reload re-arms it and it fires once. */
+export type WakeDue = { id: string; at: number; tag: string; fired: boolean }
+
 /** One button of the completion card: its label and the prompt it sends. */
 export type CardButton = { label: string; prompt: string; primary: boolean }
 
@@ -151,6 +154,12 @@ export type InfoData = {
 /** The info card under the status element: open or not, and what it read when it opened. */
 export type InfoState = { open: boolean; data: InfoData | null }
 
+/** #1105: the last completion card's text (kept for a cold return) and the recap shown once on a return. */
+export type RecapState = {
+  card: { text: string; at: number } | null
+  shown: { text: string; source: 'fork' | 'card'; at: number } | null
+}
+
 declare module 'claude-code' {
   interface PluginState {
     devops: {
@@ -182,6 +191,10 @@ declare module 'claude-code' {
       echo: EchoState
       /** The info card a press on the status element opens. */
       info: InfoState
+      /** The return recap (#1105): the last card's text and the recap on screen. */
+      recap: RecapState
+      /** Spike 4 / #1103: the due times of the mod's wake timers. */
+      wake: WakeDue[]
     }
   }
 }

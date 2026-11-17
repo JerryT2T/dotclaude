@@ -1284,10 +1284,13 @@ function findStageIssues(html) {
   const topRe = /<section\b(?:[^>"']|"[^"]*"|'[^']*')*?\sdata-iteration=("|')([^"']*)\1(?:[^>"']|"[^"]*"|'[^']*')*>/gi;
   const rounds = [];
   let m;
-  while ((m = topRe.exec(body)) !== null) rounds.push({ n: m[2], tag: m[0], at: m.index, stage: attrOf(m[0], 'data-stage') });
+  // The final report and a reality-check round cover the whole concept: they
+  // carry no data-stage and belong to the live Etappe (templates-stages-js.md).
+  const closing = tag => /\sdata-(?:final-report|reality-check)(?=[\s=>/])/i.test(tag);
+  while ((m = topRe.exec(body)) !== null) rounds.push({ n: m[2], tag: m[0], at: m.index, stage: attrOf(m[0], 'data-stage'), closing: closing(m[0]) });
   if (!sm) {
     const stray = rounds.find(r => r.stage);
-    if (stray) errors.push({ kind: 'stages-undeclared', at: stray.at, why: `iteration ${stray.n} carries data-stage="${stray.stage}" but the page has no #concept-stages script — declare "stages" in page.json (step1-templates.md § Etappen)` });
+    if (stray) errors.push({ kind: 'stages-undeclared', at: stray.at, why: `iteration ${stray.n} carries data-stage="${stray.stage}" but the page has no #concept-stages script — declare "stages" in page.json (step1-templates.md § 1a · Design iteration authoring, Declaring them)` });
     return { errors, warnings };
   }
   let data;
@@ -1310,13 +1313,15 @@ function findStageIssues(html) {
   });
   let last = -1;
   for (const r of rounds) {
+    if (!r.stage && r.closing) continue;
     if (!r.stage) { errors.push({ kind: 'stages-round-untagged', at: r.at, why: `iteration ${r.n} has no data-stage — every round of a staged concept carries one` }); continue; }
     const idx = ids.indexOf(r.stage);
     if (idx < 0) { errors.push({ kind: 'stages-round-unknown', at: r.at, why: `iteration ${r.n}: data-stage="${r.stage}" is not a declared stage (${ids.join(', ')})` }); continue; }
     if (idx < last) errors.push({ kind: 'stages-order', at: r.at, why: `iteration ${r.n}: stage ${r.stage} comes after a later stage — stages advance in order` });
     last = Math.max(last, idx);
   }
-  const liveRound = rounds[rounds.length - 1];
+  // An untagged closing round keeps the Etappe of the last staged round.
+  const liveRound = [...rounds].reverse().find(r => r.stage || !r.closing);
   if (liveRound && liveRound.stage && data.current && data.current !== liveRound.stage) {
     errors.push({ kind: 'stages-current', at: sm.index, why: `#concept-stages current="${data.current}" but the live round ${liveRound.n} is stage ${liveRound.stage}` });
   }

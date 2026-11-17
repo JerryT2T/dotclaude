@@ -1657,9 +1657,9 @@ function redFindings(input) {
 function normalizeOpenItems(items) {
   if (!Array.isArray(items)) return [];
   return items.map(it => {
-    if (typeof it === 'string') return { text: it.trim(), reply: '' };
-    if (it && typeof it === 'object') return { text: String(it.text || '').trim(), reply: String(it.reply || '').trim() };
-    return { text: '', reply: '' };
+    if (typeof it === 'string') return { text: it.trim(), reply: '', cleanup: false };
+    if (it && typeof it === 'object') return { text: String(it.text || '').trim(), reply: String(it.reply || '').trim(), cleanup: it.kind === 'cleanup' };
+    return { text: '', reply: '', cleanup: false };
   }).filter(it => it.text);
 }
 
@@ -1683,11 +1683,22 @@ const OPEN_REPLY_FALLBACK = {
  */
 function openReplies(input, lang) {
   const F = OPEN_REPLY_FALLBACK[lang] || OPEN_REPLY_FALLBACK.de;
-  return normalizeOpenItems(input.open).filter(it => !isPromotionPoint(it)).map(it => {
+  // Cleanup hints (kind "cleanup") are no rework: their replies ride on Aufräumen (cleanupReplies).
+  return normalizeOpenItems(input.open).filter(it => !isPromotionPoint(it) && !it.cleanup).map(it => {
     if (it.reply) return it.reply;
     const text = it.text.replace(/\s+$/, '');
     return /\?$/.test(text) ? F.question(text) : F.point(text.replace(/[.!]$/, ''));
   });
+}
+
+/**
+ * The prepared answers of the cleanup hints (kind "cleanup", from ship_hygiene),
+ * in card order: what the Aufräumen button puts into the composer. A finished
+ * card stays finished — these are extras, never the user's turn (2026-11-17).
+ */
+function cleanupReplies(input, lang) {
+  const F = OPEN_REPLY_FALLBACK[lang] || OPEN_REPLY_FALLBACK.de;
+  return normalizeOpenItems(input.open).filter(it => it.cleanup).map(it => it.reply || F.point(it.text.replace(/\s+$/, '').replace(/[.!?]$/, '')));
 }
 
 /**
@@ -1731,8 +1742,10 @@ function openPointIcon(s) {
 }
 /** Display only: icon the open points among the shown lines (heading and cap count stay plain). */
 function iconizePoints(points, input) {
-  const open = new Set(normalizeOpenItems(input.open).map(it => it.text));
-  return points.map(p => (open.has(p) ? openPointIcon(p) : p));
+  const items = normalizeOpenItems(input.open);
+  const open = new Set(items.filter(it => !it.cleanup).map(it => it.text));
+  const cleanup = new Set(items.filter(it => it.cleanup).map(it => it.text));
+  return points.map(p => (cleanup.has(p) ? pointIcon('🧹', p) : open.has(p) ? openPointIcon(p) : p));
 }
 
 function basePointsForKey(input, key, lang) {
@@ -2238,6 +2251,7 @@ function baseDecisionBlock(input, lang, key, delivery, state) {
   // made after it (prompt.ship.detect: a named version is promotion-only).
   return {
     heading, context, points: iconizePoints(shown, input), buttonsKey, version: ctx.version || null, replies, noShip, guideHandoff, appStart,
+    cleanup: CONCLUDE_KEYS.has(key) || key === 'released' ? cleanupReplies(input, lang) : [],
     nextStep: key === 'analysis' || key === 'ship-successful-kept' ? keptNextStep(input) : '',
   };
 }
@@ -2354,6 +2368,7 @@ function buildCardModel(input, lang, key, buildId, usageData, delta5h, deltaWk, 
     buttonsKey: decision.buttonsKey,
     promoteVersion: decision.version || null,
     replies: decision.replies || [],
+    cleanup: decision.cleanup || [],
     noShip: !!decision.noShip,
     guideHandoff: decision.guideHandoff || null,
     appStart: !!decision.appStart,
@@ -3351,6 +3366,7 @@ server.registerTool(
           z.string(),
           z.object({
             text: z.string().describe("The open point as the card shows it."),
+            kind: z.enum(["cleanup"]).optional().describe("'cleanup' = a branch / worktree hygiene hint (ship_hygiene's risk / open / openItems carry it; pass them through unchanged): shown with 🧹, not 👉, its reply rides on the card's Aufräumen button, never on Nachbessern, and it never turns a finished card into a your-turn card."),
             finding: z.enum(["in-scope", "out-of-scope"]).optional().describe("Set on a review/QA finding. 'in-scope' = a defect in this diff's own topic: refused on ship-successful (fix it or block the ship). 'out-of-scope' = outside the diff's topic or requirement: may be an open point."),
             reply: z.string().optional().describe("The user's answer if they want this point tackled, written as the user ('Ja, die Änderung bitte auch in X machen.'). For either-or name your recommendation."),
             guide: z.enum(["web"]).optional().describe("'web' = this point is a manual step on a website the user wants walked through (log in, upload, API key, portal setting): the card shows 'Web-Guide starten' for it, whatever the wording."),

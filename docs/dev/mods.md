@@ -69,7 +69,7 @@ the generator change.
 | Notices | Toast **plus** the existing hook text | The hook text is also what the model reads (restart hint, MCP stale sentinel) |
 | Budget | One source: `session.measure` rate limits, written (if at all) into the same `usage-live.json` `lib/budget.js` reads | Two sources would let the band and the delegation policy disagree |
 | Long prompts | Original stays verbatim; a Haiku lint may only ask 1–3 clarifying questions, advisory, never on machine turns | Shortening a 3k prompt saves ≈ 1.6 % of a 200-step session and drops hedges and negations |
-| Large pastes / tool output | Deterministic head + tail + file path, never Haiku; never for `/do-run`, `AUTOSTART`, `<command-name>` prompts; test, git and CI output exempt. The pure decision + excerpt logic ships unwired as `hooks/lib/paste-redirect.js` (#1106 part 6a); wiring into the mod's `prompt.submit` (6b) and the tool-output path with `pre.tokens.guard` (6c) follow | `ss.run.task` and `prompt.run.contract` read the prompt text; an excerpt can hide the failing test |
+| Large pastes / tool output | Deterministic head + tail + file path, never Haiku; never for `/do-run`, `AUTOSTART`, `<command-name>` prompts; test, git and CI output exempt. Decision + excerpt in `hooks/lib/paste-redirect.js` (6a); the mod's `prompt.submit` rewrites a ≥ 8k-token typed paste via `next({...e, text})` (6b) and its `tool.call` hook replaces a ≥ 8k-token Bash stdout after `await next(e)` (6c), both through the one writer `scripts/paste-redirect-write.js` (original byte-exact under `.claude/redirects/`, read back before the excerpt is used). One decision path with `pre.tokens.guard`: a call the guard released on an identical retry is marked (`lib/token-guard-release.js`) and its output stays whole. At the harness default `BASH_MAX_OUTPUT_LENGTH` (30 000 chars ≈ 7.5k tokens) 6c cannot trigger — the same cap that keeps the guard's Bash branch silent; it acts once a user raises the limit | `ss.run.task` and `prompt.run.contract` read the prompt text; an excerpt can hide the failing test |
 | Branch cleanup button | Starts an **Opus subagent** via `$.agent.spawn` (no session, no main-context cost, works over Remote Control): it plans read-only, the plan shows in the `devops-cleanup` pane with a toast, and only the pane's **Apply plan** button starts a second Opus subagent that executes exactly that plan (re-checking each action) | No mod API starts a session, and `start_session` is refused over Remote Control; `$.agent.spawn` takes a model but no effort, so the run uses the model's default effort |
 | Return recap | Warm cache: one `$.model.fork`; cold: the last completion card, no model call | A cold fork costs a full cache write |
 | Cache keep-alive (stage 3) | Adaptive, conservative start: 2 h cap, at most 2 sessions machine-wide, never opens a new 5-h window, cancels on any input, disables itself after the first ping that reads < 95 % from cache, every ping logged | See the math below; the owner asked for a conservative start |
@@ -154,6 +154,39 @@ without input, then run `/mods-spike-fork`. **Passive (no command, no model call
 ≥ 0.95 and the 5-h / weekly before/after difference about 0. A fail blocks
 #1101.
 
+## Spike results (run by Claude, 2026-11-17)
+
+Run autonomously in one Desktop Code-tab session (bypass mode) and once in the
+CLI — no step by the owner. Engine: Desktop **2.1.325** (`AI_AGENT=claude-code_2-1-325`,
+SDK 0.3.325), CLI **2.1.302**; Windows 11 Home 10.0.26300. Probe: a throwaway dev
+mod `spike-wake` (`$.clock.after` → optional `$.model.fork` → `$.prompt.submit`,
+every step appended to a JSONL log); raw logs in the session-group notes
+(`mods-spikes/`), not in the repo.
+
+| Spike | Result | Evidence |
+|---|---|---|
+| 2 Desktop load (#1100, anthropics/claude-code#105936) | **Pass — not reproduced on 2.1.325.** The installed devops module loaded at this session's start: its row is in `~/.claude/devops-mods-loaded.json` (`sid b6ca49a2…`, 23:20:33Z); the marker file holds 30 Desktop sessions of 2026-11-15/16 the same way. A dev mod written under the session's `dev-mods` folder in bypass mode turned mods on without a prompt; the engine's notice at the next turn: "mods … loaded: they load and reload by themselves as their files change". | Note: at `session.start` the Desktop engine reports `surface: null` and `isInteractive: false` (the surface attaches later), so those two marker fields cannot tell Desktop from headless. No workaround needed; nothing surfaced to alpha users |
+| 3 Title writer (#1102) | **No mod-side title API.** The 2.1.325 types (24 261 lines) have no rename / title noun on `$` (`$.session` = messages, cwd, root, model, turns, id, repo, surfaces, usage, version, compact, send, append, authorize, identity, abort). `$.session.append` takes `user` / `system` text rows only, never a `custom-title` entry. The one title channel is `ClassicResult.sessionTitle` on `classic.UserPromptSubmit` / `classic.SessionStart` — the same `hookSpecificOutput.sessionTitle` command hooks already have, which `prompt.flow.title-work` uses since 0.9.0 and the app adopts only while its title is empty or app-generated | Part B rejected; Part A shipped (below) |
+| 4 Timer wake (#1103) | **Pass, idle, both engines.** Desktop: armed at `turn.complete` 23:25:23.277Z, fired 23:26:53.274Z (90.0 s), `$.prompt.submit` resolved 0.8 s later with `origin {kind: plugin, name: spike-wake}`, and a new turn started. CLI (`claude -p --plugin-dir … --input-format stream-json`): armed 23:49:14.787Z, fired 30.0 s later, submit resolved in 1.2 s, the next `turn.start` carried the prompt. The model reads it wrapped as `The spike-wake plugin sent a message:\n<text>` (so a matcher must use `includes`, not `startsWith`); `turn.start`'s `origin` is null for it. `--max-turns` in `-p` drops the submit (`{drop: "the run reached its --max-turns limit"}`) | Busy case: see the row below |
+| 4 busy | **Pass: held, then delivered.** Desktop: a timer armed at the wake turn's `turn.start` fired 20 s later (00:07:08.390Z) while that turn was still running; the submit waited and the engine started its turn 1.5 s after the running turn completed (`turn.start` 00:08:35.252Z), never in the middle of one | So a wake never interrupts work; it can arrive late by up to one turn |
+| 1 Fork cache hit (#1101) | **Pass.** One `$.model.fork` (no `effort`; the result reports the session's `medium`) from a `$.clock.after` timer 55 min after the last main turn (armed 00:08:33.707Z, fired 01:03:33.708Z; the last main request ended ≈ 00:09, so ≈ 54 min idle): `cache_read_input_tokens` 428 533, `cache_creation_input_tokens` 0, `input_tokens` 16, `output_tokens` 42 → **read share 1.000** of a 428 488-token context, 3.4 s. Rate limits: the 7-day window read 29 % before and 30 % after (integer percent: one rounding step, not a measured cost); no 5-h reading was reported | Gate ≥ 95 % met → keep-alive may proceed (wiring, band and payoff check are follow-ups). The plan-usage cost of a cached read stays unmeasured at integer resolution — the reason for the per-ping log and the payoff check |
+
+The probe's own JSONL log lost a row twice (two hooks appending within
+milliseconds, read-modify-write); the devops spike log is the capped one-call
+writer, so this is an artefact of the throwaway mod only.
+
+**Watcher / mod handshake (#1103, designed on the passing idle spike; not built yet).**
+`concept-watch.js` stays the source of truth and keeps running in every session.
+A mod that wants to wake the session instead writes its stand-down beat
+(`hooks/lib/mod-standdown.js`, job `concept-wake`, devops version, 90 s
+heartbeat) while its `$.clock` due time for the page sits in `devops.wake`. The
+watcher reads `hooksRun(sid, 'concept-wake', version)` before it exits to wake
+Claude: a valid beat → it keeps watching and lets the mod's `prompt.submit` be
+the wake; no beat, a stale one, another version → it exits as today. Either way
+exactly one wake: the mod claims its due entry before it submits, the watcher
+only exits when the mod is not there. A mod that unloads releases the job, so
+the next watcher check takes over within one heartbeat.
+
 ## Stage 1 implementation
 
 | Part | Where |
@@ -170,6 +203,12 @@ without input, then run `/mods-spike-fork`. **Passive (no command, no model call
 | Toasts | Waiting permission request (`classic.Notification`), subagents and background Bash runs that ran ≥ 120 s (Bash: start time per `tool_use_id` from `tool.call`, end from the `<task-notification>` that reaches `prompt.submit`; call and prompt pass through unchanged), and the hook lines Claude is asked to show verbatim (hook output passes through unchanged) — both formats: the line after a `[name] … verbatim` header (branch nudge, version notice) and a line followed by its `… verbatim, once.` instruction; once per session, never on a `compact` / `resume` SessionStart. Concept watchers (`concept-watch.js`, `concept-tick.js`, `concept-server.py`) toast only when they fail, at any length. No sound: no asset ships cleanly |
 | Ship pane | `/devops-ship`: `.claude/.ship-checkpoint.json` of this branch plus one bounded `gh pr view` (8 s) on open or Refresh |
 | Branch hygiene | Count from `~/.claude/orphan-report.json` (same rules as `ss.orphan.nudge.js`: open branches, dirty worktrees and undecided safety copies ≥ 3 days, `park-register` `isUndecided` mirrored; the session's own worktree left out) in the band (the status line no longer names it, see Status element); a report 24–72 h old adds "as of N h", older hides the line; the band's "Aufräumen" button runs the plan/apply subagents above, one run at a time machine-wide (see Cleanup visibility) |
+
+| Paste / tool-output redirect (#1106) | `pasteMaybeRedirect` / `outputMaybeRedirect` / `parseRedirectOutput` in `format.ts` (cheap pre-filters, strict reading of the writer), `redirectText` in `index.tsx`; anything unconfirmed (refusal, timeout, garbage, closed gate) keeps the text whole |
+| Return recap (#1105) | `classic.SessionStart` (not `compact` / `clear`) after a gap ≥ 15 min (`seconds_since_last_response`, else the last main turn's end): under 55 min one `$.model.fork` with `RECAP_PROMPT` and no `effort`; else, or when the fork fails, the last completion card's text (`devops.recap.card`, written when the card tool answers). Shown once as the band's first row with ✕; the next typed prompt spends it. Detached, so it never holds the start |
+| Wake timers (#1103) | `/mods-spike-wake [minutes]`: due time in `devops.wake` (`scheduleWake` / `pendingWakes` / `claimWake`), re-armed at every `session.start` (a reload drops `$.clock` timers, `$.state` stays), claimed before the prompt goes, so it fires once; logged to the spike log as `mode: "wake"`. `concept-watch.js` is unchanged: the watcher/mod handshake is designed on this tested base |
+| Keep-alive policy (#1101) | `keepalivePolicy` (every limit, first match wins), `breakEvenRate`, `readShare`, `disablesAfter` in `format.ts`, one engine test per limit. Not wired: no fork runs on its own until Spike 1 passes |
+| Title plan (#1102 Part A) | `hooks/lib/title-plan.js` (pure: prompt + what the hook read → instruction + `sessionTitle`), `hooks/lib/fixtures/title-work-parity.json` (180 cases recorded before the extraction, byte-identical after), stand-down marker `hooks/lib/mod-standdown.js` (session id + job + devops version + 90 s heartbeat, default "hooks run"), unwired |
 
 Limits: where an organization manages Claude Code, `classic.*` events do not
 reach plugin mods, so the permission / notice toasts and the agent stop status

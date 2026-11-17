@@ -1180,6 +1180,18 @@ describe("findStageIssues (Etappen)", () => {
   test("no script and no data-stage = no concern", () => {
     expect(findStageIssues(`<main>${sec(1)}</main>`)).toEqual({ errors: [], warnings: [] });
   });
+  // The final report and a reality check cover every Etappe: no data-stage,
+  // and `current` stays on the last staged round (measured 2026-11-17: the
+  // report of a staged concept was blocked as stages-round-untagged).
+  test("an untagged final report or reality check passes and keeps the live Etappe", () => {
+    const closing = (n, attr) => `<section data-iteration="${n}" data-iteration-template="free" ${attr}><p>x</p></section>`;
+    expect(kinds(page(ok, [sec(1, "A"), sec(2, "B"), closing(3, "data-final-report")]))).toEqual([]);
+    expect(kinds(page(ok, [sec(1, "A"), sec(2, "B"), closing(3, "data-reality-check")]))).toEqual([]);
+    expect(kinds(page(ok, [sec(1, "A"), sec(2, "B"), closing(3, 'data-final-report="" data-active')]))).toEqual([]);
+    expect(kinds(page({ ...ok, current: "A" }, [sec(1, "A"), sec(2, "B"), closing(3, "data-final-report")]))).toEqual(["stages-current"]);
+    // An ordinary untagged round after it is still an error.
+    expect(kinds(page(ok, [sec(1, "A"), sec(2, "B"), sec(3)]))).toContain("stages-round-untagged");
+  });
   test("data-stage without declared stages is flagged", () => {
     expect(kinds(`<main>${sec(1, "A")}</main>`)).toEqual(["stages-undeclared"]);
   });

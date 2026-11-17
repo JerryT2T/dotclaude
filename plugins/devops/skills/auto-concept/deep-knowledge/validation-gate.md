@@ -317,7 +317,7 @@ A page without that script and without `data-stage` is not affected. Errors are 
 | E3 | `stages-too-many` — more than 7 stages | **error (blocks)** |
 | E4 | `stages-ids` — ids are not consecutive capital letters from A | **error (blocks)** |
 | E5 | `stages-name` — a stage name is empty or longer than 24 characters | **error (blocks)** |
-| E6 | `stages-round-untagged` — a round has no `data-stage` although stages exist | **error (blocks)** |
+| E6 | `stages-round-untagged` — a round has no `data-stage` although stages exist (the final report and a reality-check round are exempt: they carry none) | **error (blocks)** |
 | E7 | `stages-round-unknown` — `data-stage` names an undeclared stage | **error (blocks)** |
 | E8 | `stages-order` — a round's stage is earlier than a previous round's (stages must be non-decreasing) | **error (blocks)** |
 | E9 | `stages-current` — `current` differs from the live round's stage | **error (blocks)** |
