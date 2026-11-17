@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.384.1] — 2026-11-17
+
+### Fixed
+- auto-concept: the final report and a reality-check round of a staged concept pass the page gate without a `data-stage` and stay in the last staged Etappe (the build no longer resets `current` to stage A).
+- evals: the Etappen cases deny the concept bridge, so a run ends and is graded.
+
+### Changed
+- auto-concept: unrelated topics are staged by default, not always — one test for "unrelated", small questions ride along, more than seven groups merge, the user's wish for one round wins. The rule lives in `deep-knowledge/step1-stages.md`.
+
+### Added
+- evals: counter-case `related-topics-one-round` (closely related wishes stay unstaged).
+
 ## [0.384.0] — 2026-11-17
 
 ### Added
