@@ -744,9 +744,58 @@ export const NO_OUTPUT_NUDGE_REPLY =
   'reply to it with nothing — no text, no tool call. It comes once per turn, and the ' +
   'empty reply ends the turn with the card last.';
 
-/** The widget_code for this card: the template (live MCP path) or, with `inline`, the full HTML (offline renderer). */
-function widgetCode(model, repoUrl, env, inline) {
-  return inline ? cardWidgetHtml(model, repoUrl) : cardWidgetTemplate(model, repoUrl, env);
+/**
+ * The minimal widget_code (d-level answer-head): the answer plus ONE heading
+ * line, no data block, buttons, points, evidence or budget — the mod band
+ * carries those. '' when the card has no heading (then the full card stays).
+ */
+export function cardWidgetMinimal(model) {
+  if (!model) return "";
+  const head = String(model.heading || "").trim();
+  if (!head) return "";
+  const lang = model.lang === "en" ? "en" : "de";
+  // The decision only (heading + button prompts): prompt.ship.detect reads it from the
+  // show_widget call to recognise a bare "ja" as the answer to this card.
+  let bt = [];
+  try {
+    const d = cardWidgetData(model, "");
+    bt = (Array.isArray(d.bt) ? d.bt : []).map(b => ({ p: (b && b.p) || "" })).filter(b => b.p);
+  } catch {
+    bt = [];
+  }
+  const decision = JSON.stringify({ h: head, bt }).replace(/</g, `${BACKSLASH}u003c`);
+  return [
+    summaryHtml(lang),
+    `${answerBlock(model)}<div id="dc-card"><p class="card-head" style="margin:0;font-size:14px;font-weight:500">${escapeHtml(head)}</p></div>`,
+    `<script type="application/json" id="dc-card-data">${decision}</script>`,
+  ].join("\n");
+}
+
+/**
+ * The FULL card data as its own tool-result block, outside widget_code: the
+ * mod band parses `#dc-card-data` from the result text (hooks/mods/format.ts
+ * cardFromResult) for points and buttons, so a minimal widget must not take
+ * them with it. '' without a model.
+ */
+export function cardDataBlock(model, repoUrl) {
+  if (!model) return "";
+  const json = JSON.stringify(cardWidgetData(model, repoUrl)).replace(/</g, `${BACKSLASH}u003c`);
+  return (
+    "[CARD DATA — FOR THE MOD BAND, DO NOT OUTPUT AND DO NOT PASS TO THE WIDGET]\n" +
+    `<script type="application/json" id="dc-card-data">${json}</script>`
+  );
+}
+
+/** The widget_code for this card: the template (live MCP path), the minimal heading (`minimal`) or, with `inline`, the full HTML (offline renderer). */
+function widgetCode(model, repoUrl, env, inline, minimal = false) {
+  if (inline) return cardWidgetHtml(model, repoUrl);
+  if (minimal) return cardWidgetMinimal(model) || cardWidgetTemplate(model, repoUrl, env);
+  return cardWidgetTemplate(model, repoUrl, env);
+}
+
+/** True when `minimal` really yields the minimal widget (a heading exists). */
+export function canMinimize(model) {
+  return !!cardWidgetMinimal(model);
 }
 
 /**
@@ -763,13 +812,16 @@ function widgetCode(model, repoUrl, env, inline) {
  * @param {{ widgetFile?: string, inline?: boolean }} [opts] the saved copy; `inline` = full HTML (offline renderer)
  * @returns {string}
  */
-export function cardWidgetInstruction(model, repoUrl, env = process.env, { widgetFile = "", inline = false } = {}) {
+export function cardWidgetInstruction(model, repoUrl, env = process.env, { widgetFile = "", inline = false, minimal = false } = {}) {
   if (!isDesktopSession(env)) return "";
   if (!model || model.variant === "test-minimal") return "";
-  const html = widgetCode(model, repoUrl, env, inline);
+  const html = widgetCode(model, repoUrl, env, inline, minimal);
   if (!html) return "";
   return (
     "[CARD WIDGET — DO NOT OUTPUT THIS BLOCK]\n" +
+    (minimal && !inline && canMinimize(model)
+      ? "Mod band active: this widget is the card's compact form (answer + one heading line); the band shows points and buttons. "
+      : "") +
     "Desktop app: this widget IS the whole card (no markdown). Once, as the LAST action of the turn, " +
     "call mcp__visualize__show_widget with title \"completion_card_body\", " +
     "loading_messages [\"Card wird geladen\"], widget_code = EXACTLY the block below (verbatim). " +
@@ -812,10 +864,10 @@ export const WIDGET_FILE_PREFIX = "dotclaude-devops-card-widget";
  *
  * @returns {string} the file path, or '' when nothing was written
  */
-export function writeCardWidgetFile(model, repoUrl, sessionId, dir, env = process.env, { inline = false } = {}) {
+export function writeCardWidgetFile(model, repoUrl, sessionId, dir, env = process.env, { inline = false, minimal = false } = {}) {
   if (!isDesktopSession(env)) return "";
   if (!model || model.variant === "test-minimal") return "";
-  const html = widgetCode(model, repoUrl, env, inline);
+  const html = widgetCode(model, repoUrl, env, inline, minimal);
   if (!html) return "";
   const file = join(dir, `${WIDGET_FILE_PREFIX}-${safeSessionId(sessionId)}`);
   try {

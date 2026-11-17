@@ -183,6 +183,8 @@ declare module 'claude-code' {
       settled: boolean
       /** The hint card's points are expanded behind its `?` (per session). */
       hintsOpen: boolean
+      /** Terminal: card points expanded past the 120-character clamp (indices). */
+      pointsOpen: number[]
       /** The last card's title and time, kept after the card is spent (the idle row's "Last:"). */
       lastCard: { title: string; at: string } | null
       /** Hooks running and MCP server connected: the status element's green or red dot. */

@@ -129,6 +129,19 @@ How the card reaches the user: the Desktop `show_widget` card body, its buttons,
 - **Terminal / other clients:** the markdown body as in § 2 without buttons;
   code spans only for error texts, names in *italics*; budget as glyph bars.
 - `test-minimal` never calls the widget.
+- **Points are ≤ 120 characters** (two lines in the band): the first
+  over-length card of a turn is refused naming each point and its length
+  (refuse-once, flag `dotclaude-devops-card-points-refused-<session>`); the
+  retry renders, clamped with `…`.
+- **Minimal widget while the mod band carries the card.** When
+  `~/.claude/devops-band-active.json` (written by the band, see
+  `docs/dev/mods.md`) has an entry for THIS session younger than 30 min with
+  `remoteControl !== true` (null = unknown counts as off), the widget_code is only the answer plus one
+  heading line (a decision-only data block for ship detection; no points, buttons, evidence or budget). The
+  band reads points and buttons from the tool result, so the full
+  `dc-card-data` rides there as its own `[CARD DATA]` block, outside
+  `widget_code`. Any other state (no/stale/other-session entry, Remote
+  Control `true`/`null`, terminal, cloud) keeps the full card.
 - **Template + data (token cost).** The inline card HTML is 7–12k
   characters and passed through the model twice (tool result, then the
   `show_widget` input). The live path therefore sends a template of about

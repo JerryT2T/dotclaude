@@ -19,7 +19,7 @@
         "hooks": [
           { "type": "command", "command": "command -v node >/dev/null 2>&1 || { echo '{\"systemMessage\":\"devops inactive: node/git missing\"}'; exit 0; }; node \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch/dispatch.js\" PreToolUse --fast", "timeout": 15 }
         ],
-        "matcher": "Read|Glob|Grep|mcp__ccd_session_mgmt__archive_session|mcp__ccd_session__start_session|Read|Glob|Grep|mcp__ccd_.*"
+        "matcher": "Read|Glob|Grep|mcp__ccd_session_mgmt__archive_session|mcp__ccd_session_mgmt__set_session_title|mcp__ccd_session__start_session|Read|Glob|Grep|mcp__ccd_.*"
       }
     ],
     "SubagentStop": [

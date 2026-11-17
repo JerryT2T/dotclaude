@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.387.0] — 2026-11-17
+
+### Added
+- Completion card: while the mods band shows the card in this session (fresh band marker, Remote Control not known to be on), the transcript widget is only the answer plus one heading line; points, buttons and evidence live in the band. The tool result keeps the full card data for the band.
+- Completion card: open and CTA points are limited to 120 characters; an over-length card is refused once per turn with each point and its length, the retry renders clamped.
+- Session titles: the topic after "┃" is named by the model on the first prompt (max 20 characters, abbreviations as a hint) instead of the prompt's first line; `pre.title.topic` refuses a longer new topic once, status swaps that keep the topic pass.
+
+### Fixed
+- Mods band: the card and its buttons no longer vanish right after the render — the app's no-output nudge, task notifications and plugin turns no longer clear it, only a typed prompt does.
+- Mods band: the batch hint card counts notes live instead of showing the count from render time; the expanded cleanup breakdown in collect mode is a right-aligned column, nothing cut off; long points and titles are clamped with the full text on hover (▸ in the terminal).
+
 ## [0.386.0] — 2026-11-17
 
 ### Added

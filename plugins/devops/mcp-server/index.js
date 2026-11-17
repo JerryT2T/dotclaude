@@ -70,7 +70,8 @@ import { summarizeShip, shipDurationTest } from "./ship/lib/ship-timings.js";
 import { CARD_VARIANTS, coerceCardInput, validateCardInput, formatIssues, unknownCardKeys } from "./lib/card-input.js";
 import { batchGuide, conceptCloseoutOnly, conceptUrl, readBatch, readRunContractLine, sameProjectRoot, titlePrefixFor, titleInstruction, demandedTitle, currentSessionTitle, titleStateForKey, hasMandatoryStep, TITLE_SCHEME } from "./lib/mode-state.js";
 import { staleServerLine } from "./lib/server-version.js";
-import { cardWidgetInstruction, isDesktopSession, safeSessionId, sessionOpenButton, warmCardClient, writeCardWidgetFile } from "./lib/card-widget.js";
+import { canMinimize, cardDataBlock, cardWidgetInstruction, isDesktopSession, safeSessionId, sessionOpenButton, warmCardClient, writeCardWidgetFile } from "./lib/card-widget.js";
+import { bandCarriesCard } from "./lib/band-marker.js";
 import { detectLaunchPath } from "./lib/launch-path.js";
 import { linkedPlan, linkedKeepTokens } from "./lib/linked-sessions.js";
 import { archiveDecision, archiveInstruction, writeArchiveFlag } from "./lib/session-archive.js";
@@ -1748,6 +1749,61 @@ function iconizePoints(points, input) {
   return points.map(p => (cleanup.has(p) ? pointIcon('🧹', p) : open.has(p) ? openPointIcon(p) : p));
 }
 
+/** Max characters of one card point's text (#3 d-limit): two lines at the band's width. */
+const POINT_MAX = 120;
+
+/**
+ * The 120-char limit on every point the renderer builds. The text counts
+ * without its leading status icon; a longer point is cut at a word boundary
+ * with "…" (the clamp the second try gets after the refusal). `over` names
+ * each point that was too long — { n: 1-based position, length, text }.
+ * @returns {{ points: string[], over: Array<{ n: number, length: number, text: string }> }}
+ */
+function limitPoints(points) {
+  const over = [];
+  const out = (Array.isArray(points) ? points : []).map((p, i) => {
+    const s = String(p);
+    const icon = POINT_ICONS.concat(['🧹']).find(ic => s.startsWith(ic + ' ')) || '';
+    const text = icon ? s.slice(icon.length + 1) : s;
+    if (text.length <= POINT_MAX) return s;
+    over.push({ n: i + 1, length: text.length, text });
+    const cut = clampText(text, POINT_MAX - 1).value.replace(/[.\s]+$/, '');
+    return (icon ? icon + ' ' : '') + cut + '…';
+  });
+  return { points: out, over };
+}
+
+/** Per-session flag: the card was refused once for over-long points (refuse-once, like the V&V gate). */
+const POINTS_REFUSED_FLAG = 'dotclaude-devops-card-points-refused';
+const POINTS_REFUSED_TTL_MS = 15 * 60 * 1000;
+
+/**
+ * Refuse-once for over-long points (#3 d-enforce): the first over-length card
+ * of a turn returns the refusal text naming each point and its length; the
+ * retry (flag set) renders, clamped. '' = render. No session id → never
+ * refuses (the clamp still applies); DEVOPS_CARD_PREGATE=0 disables it.
+ */
+function pointsRefusal(params, over) {
+  const sid = params && params.session_id;
+  const file = join(tmpdir(), POINTS_REFUSED_FLAG + '-' + safeSessionId(sid));
+  if (!over || over.length === 0) {
+    try { unlinkSync(file); } catch { /* none */ }
+    return '';
+  }
+  if (!sid || sid === 'unknown' || process.env.DEVOPS_CARD_PREGATE === '0') return '';
+  try {
+    if (Date.now() - statSync(file).mtimeMs < POINTS_REFUSED_TTL_MS) {
+      unlinkSync(file);
+      return '';
+    }
+  } catch { /* first time */ }
+  try { writeFileSync(file, String(Date.now())); } catch { return ''; }
+  const lines = over.map(o => `- point ${o.n}: ${o.length} characters (max ${POINT_MAX}): "${o.text.slice(0, 60)}…"`);
+  return `[dotclaude] Card not rendered: ${over.length} point(s) over ${POINT_MAX} characters — a point is at most two lines in the band.\n` +
+    lines.join('\n') + '\n' +
+    `Shorten each to ≤ ${POINT_MAX} characters (the decision first, detail into \`answer\`) and call render_completion_card again with the same arguments. A second call renders anyway, clamped with "…".`;
+}
+
 function basePointsForKey(input, key, lang) {
   const open = normalizeOpenItems(input.open).map(it => it.text);
   const userTest = (Array.isArray(input.userTest) ? input.userTest : []).map(String).filter(Boolean);
@@ -2364,7 +2420,8 @@ function buildCardModel(input, lang, key, buildId, usageData, delta5h, deltaWk, 
     ladder: buildChannelLadder(input),
     heading: decision.heading,
     context: decision.context,
-    points: decision.points,
+    points: limitPoints(decision.points).points,
+    pointsOver: limitPoints(decision.points).over,
     buttonsKey: decision.buttonsKey,
     promoteVersion: decision.version || null,
     replies: decision.replies || [],
@@ -2435,7 +2492,7 @@ function renderCard(input, usageData, delta5h, deltaWk, healthLine, buildId, { t
   const decision = buildDecisionBlock(input, lang, key, delivery, state);
   parts.push('## ' + decision.heading);
   if (body && decision.context) parts.push(decision.context);
-  if (body) decision.points.forEach((p, i) => parts.push((i + 1) + '. ' + p));
+  if (body) limitPoints(decision.points).points.forEach((p, i) => parts.push((i + 1) + '. ' + p));
 
   parts.push('');
   parts.push('---');
@@ -2637,9 +2694,9 @@ const RELAY_INSTRUCTION =
   "do NOT apply. Do NOT output this instruction block.";
 
 /** The tool-result blocks: relay contract, notes, and the markdown unless the widget is the card. */
-function cardResultBlocks(cardMarkdown, titleNote, actionsNote, archiveNote = '', openNote = '') {
+function cardResultBlocks(cardMarkdown, titleNote, actionsNote, archiveNote = '', openNote = '', dataBlock = '') {
   const texts = actionsNote
-    ? [titleNote, archiveNote, openNote, actionsNote]
+    ? [titleNote, archiveNote, openNote, dataBlock, actionsNote]
     : [RELAY_INSTRUCTION, titleNote, openNote, cardMarkdown];
   return texts.filter(Boolean).map(text => ({ type: "text", text }));
 }
@@ -2743,8 +2800,12 @@ function sessionArchiveNote(params, actionsNote) {
 function ctaActionsNote(params, { inline = false } = {}) {
   const model = params._cardModel || null;
   const repoUrl = params._repoUrl || '';
-  const widgetFile = writeCardWidgetFile(model, repoUrl, params.session_id, tmpdir(), process.env, { inline });
-  return cardWidgetInstruction(model, repoUrl, process.env, { widgetFile, inline });
+  // d-level / d-detect: the band carries this session's card (fresh marker, no
+  // Remote Control) → the widget shrinks to answer + heading. Never offline.
+  const minimal = !inline && canMinimize(model) && bandCarriesCard(params.session_id);
+  params._cardMinimal = minimal;
+  const widgetFile = writeCardWidgetFile(model, repoUrl, params.session_id, tmpdir(), process.env, { inline, minimal });
+  return cardWidgetInstruction(model, repoUrl, process.env, { widgetFile, inline, minimal });
 }
 
 /**
@@ -3282,6 +3343,8 @@ server.registerTool(
       "analysis = nothing changed ANYWHERE (answer/investigation only; never for work outside the repo, delegated work or a mode activation); " +
       "paused = the user pauses to continue later OR the next step is a Claude Code restart / reboot / usage-limit reset (pass pause:{reason:\"restart\"|\"reboot\"|\"usage-reset\"}); " +
       "fallback = work outside the repo with no repo diff (DB op, deploy, data migration, settings change) or unsure — never for a page the user should open and try (that is test + `preview`). A mode activation (batch, concept) uses its override, never analysis. " +
+      "POINT LENGTH: every card point (each open[].text, each CTA point) is at most 120 characters — two lines in the band, the decision first, detail into `answer`; a longer one is refused once naming the point and its length, the retry renders it clamped with “…”. " +
+      "BAND: when the mod band carries this session's card (no Remote Control) the CARD WIDGET shrinks to the answer + one heading line and the result adds a [CARD DATA] block — never output it, never pass it to the widget. " +
       "VALIDATION (V&V gate): for any code change populate `validation` (requirement -> how met, how confirmed); a code-change card without it is blocked once. " +
       "PENDING: background agents/workflows/tasks you started that still run -> `pending` [{ name, kind: agent|task|workflow, doing }] (replaces the CTA with the 'not finished yet' line; list only work really running; an ended or foreign task -> `pendingDismissed: \"<why>\"`). " +
       "CONCEPT (outranks pending): while an /auto-concept page is open pass `concept: { phase: \"waiting\"|\"iterating\"|\"implementing\" }`; bridge server, pulser and waker are infrastructure, never `pending`; after a merged ship whose page shows its final report, omit it — the ship card wins. " +
@@ -3502,13 +3565,19 @@ server.registerTool(
     const pre = cardPregate.check(params);
     if (pre.refuse) return { isError: true, content: [{ type: 'text', text: pre.text }] };
     let cardMarkdown = buildCompletionCard(params);
+    // d-enforce: over-long points are refused once per turn, then clamped.
+    const tooLong = pointsRefusal(params, params._cardModel && params._cardModel.pointsOver);
+    if (tooLong) return { isError: true, content: [{ type: 'text', text: tooLong }] };
     const dismissTrace = pendingDismissTrace(pre.dismissed, params);
     if (dismissTrace) cardMarkdown += '\n\n' + dismissTrace;
     const titleNote = sessionTitleNote(params);
     const actionsNote = ctaActionsNote(params);
     const archiveNote = sessionArchiveNote(params, actionsNote);
+    // A minimal widget leaves points and buttons to the band, which reads them
+    // from the result text: the full card data rides as its own block.
+    const dataBlock = params._cardMinimal ? cardDataBlock(params._cardModel, params._repoUrl || '') : '';
 
-    return { content: cardResultBlocks(cardMarkdown, titleNote, actionsNote, archiveNote, [openDropNote(params), openRefuseNote(params)].filter(Boolean).join("\n")) };
+    return { content: cardResultBlocks(cardMarkdown, titleNote, actionsNote, archiveNote, [openDropNote(params), openRefuseNote(params)].filter(Boolean).join("\n"), dataBlock) };
   }
 );
 

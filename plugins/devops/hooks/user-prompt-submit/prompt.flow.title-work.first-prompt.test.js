@@ -82,18 +82,35 @@ describe("prompt.flow.title-work — first prompt", () => {
       fs.rmSync(dir, { recursive: true, force: true });
     });
 
-    test("unknown title → the prompt's first line stands in, the fallback stays", () => {
+    // d-who (2026-11-17, "Nur das Modell"): the hook derives no topic from the prompt.
+    test("unknown title → the hook sets none (no prompt-derived topic), the fallback names the topic rule", () => {
       const { dir, tp } = session(null);
       const text = "<system-reminder>worktree</system-reminder>\n\nFix login\nmore detail";
-      const r = reply({ transcript_path: tp }, text).hookSpecificOutput;
-      expect(r.sessionTitle).toBe("⏳ ➜ 🤖 Solo ┃ Fix login");
-      expect(r.additionalContext).toBe(tw.freshInstruction());
+      const out = tw.hookReply({ prompt: text, transcript_path: tp }, text, process.cwd());
+      expect(out.startsWith("{")).toBe(false);
+      expect(out).toBe(tw.freshInstruction(undefined, { topic: true }));
+      expect(out).toContain("at most 20 characters");
+      expect(out).toContain("abbreviations allowed");
+      expect(out).not.toContain("Fix login");
       fs.rmSync(dir, { recursive: true, force: true });
+    });
+
+    test("the first prompt asks the model for a topic of at most 20 characters; a later prompt and a sub-session brief do not", () => {
+      const { dir, tp } = session(null);
+      const first = tw.hookReply({ transcript_path: tp, session_title: "Fix login" }, "fix", dir);
+      expect(first).toContain("topic label of at most 20 characters");
+      expect(first).toContain("not the prompt's opening words");
+      const brief = "Task (from the session that started this one):\nBackground";
+      expect(tw.hookReply({ transcript_path: tp, session_title: "Fix login" }, brief, dir)).not.toContain("topic label");
+      const later = session([prompt("first"), prompt("second")], "🟩 ➜ 📦 Committed ┃ Fix");
+      expect(tw.hookReply({ transcript_path: later.tp }, "next", later.dir)).not.toContain("topic label");
+      fs.rmSync(dir, { recursive: true, force: true });
+      fs.rmSync(later.dir, { recursive: true, force: true });
     });
 
     test("a ship prompt is marked Shipping right away", () => {
       const { dir, tp } = session(null);
-      expect(reply({ transcript_path: tp }, "/do-ship").hookSpecificOutput.sessionTitle).toBe("⏳ ➜ 🚀 Shipping ┃ /do-ship");
+      expect(reply({ transcript_path: tp, session_title: "Fix login" }, "/do-ship").hookSpecificOutput.sessionTitle).toBe("⏳ ➜ 🚀 Shipping ┃ Fix login");
       fs.rmSync(dir, { recursive: true, force: true });
     });
 
@@ -125,14 +142,10 @@ describe("prompt.flow.title-work — first prompt", () => {
       fs.rmSync(dir, { recursive: true, force: true });
     });
 
-    test("already marked → no output at all; a long first line is cut", () => {
+    test("already marked → no output at all; a long first line never becomes a topic", () => {
       const { dir, tp } = session(null);
       expect(tw.hookReply({ transcript_path: tp, session_title: "⏳ ➜ 🤖 Solo ┃ X" }, "fix", dir)).toBe("");
-      // The topic is clamped by the word of the prefix it goes under (title-budget.js).
-      const title = tw.earlyTitle({ transcript_path: tp }, "x".repeat(100), dir);
-      const shown = title.slice("⏳ ➜ 🤖 ".length);
-      expect([...shown].length).toBe(42);
-      expect(shown.endsWith("…")).toBe(true);
+      expect(tw.earlyTitle({ transcript_path: tp }, "x".repeat(100), dir)).toBeNull();
       fs.rmSync(dir, { recursive: true, force: true });
     });
   });

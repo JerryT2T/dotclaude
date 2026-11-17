@@ -48,6 +48,54 @@
           "00e6ac570581"
         ]
       }
+    ],
+    "prompt.flow.title-work.js›exports›promptTopic": [
+      {
+        "ship": "claude/batch-850ace",
+        "by": "JerryT2T",
+        "value": "superseded on purpose: concept Etappe B, user decision d-who=model (the hook no longer derives the topic from the prompt; promptTopic removed, parity fixture regenerated)",
+        "decided": true,
+        "at": "2026-11-17T16:22:07.924Z",
+        "hunks": [
+          "75982f2cae60"
+        ]
+      }
+    ],
+    "prompt.flow.title-work.js›header›@version": [
+      {
+        "ship": "claude/batch-850ace",
+        "by": "JerryT2T",
+        "value": "bumped with the changed hook (newer version wins)",
+        "decided": true,
+        "at": "2026-11-17T16:22:07.924Z",
+        "hunks": [
+          "b2dfc77cc7bc"
+        ]
+      }
+    ],
+    "title-plan.js›promptTopic/earlyTitleOf›topic source": [
+      {
+        "ship": "claude/batch-850ace",
+        "by": "JerryT2T",
+        "value": "superseded on purpose: concept Etappe B, user decision d-who=model (the hook no longer derives the topic from the prompt; promptTopic removed, parity fixture regenerated)",
+        "decided": true,
+        "at": "2026-11-17T16:22:07.924Z",
+        "hunks": [
+          "a6527911edd7"
+        ]
+      }
+    ],
+    "title-work-parity.json›outputs›first-prompt instruction": [
+      {
+        "ship": "claude/batch-850ace",
+        "by": "JerryT2T",
+        "value": "superseded on purpose: concept Etappe B, user decision d-who=model (the hook no longer derives the topic from the prompt; promptTopic removed, parity fixture regenerated)",
+        "decided": true,
+        "at": "2026-11-17T16:22:07.924Z",
+        "hunks": [
+          "96fb0f080121"
+        ]
+      }
     ]
   }
 }
