@@ -1418,3 +1418,200 @@ export function infoRows(d: InfoData, loc: Locale = 'en'): InfoRow[] {
 export function infoIsEmpty(d: InfoData): boolean {
   return d.benefit.since === null && !d.overhead && !(d.api && d.api.runs7 > 0) && !(d.ships && d.ships.branches7 > 0)
 }
+
+// ── #1106 6b / 6c: deterministic paste and tool-output redirect ─────────────────────────────────────────────────────
+// The writer (scripts/paste-redirect-write.js, decisions in hooks/lib/paste-redirect.js) is the authority; these are the
+// cheap pre-filters before a process is spawned and the strict reading of its answer.
+
+/** ≈ 8 000 tokens at 4 characters per token: the writer's own threshold, so smaller text never spawns it. */
+export const REDIRECT_MIN_CHARS = 32_000
+export const REDIRECT_TIMEOUT_MS = 10_000
+
+/** A typed (or bridged) prompt big enough to be a paste worth redirecting; machine, meta and slash-command text never. */
+export function pasteMaybeRedirect(e: { text: string; isMeta?: boolean; command?: unknown; origin?: { kind?: string } }): boolean {
+  if (e.isMeta === true || e.command) return false
+  if (e.origin && e.origin.kind !== 'composer' && e.origin.kind !== 'bridge') return false
+  const text = typeof e.text === 'string' ? e.text : ''
+  if (text.trimStart().startsWith('/')) return false
+  return text.length >= REDIRECT_MIN_CHARS
+}
+
+/**
+ * A finished Bash call whose stdout is big enough to redirect: answered (no error), in the foreground, not already cut
+ * down by the engine (persisted output, an end-only stdout) and no image.
+ */
+export function outputMaybeRedirect(tool: string, result: unknown): string | null {
+  if (tool !== 'Bash' || !result || typeof result !== 'object') return null
+  const r = result as { isError?: unknown; deny?: unknown; result?: Record<string, unknown> }
+  if (r.isError || r.deny || !r.result || typeof r.result !== 'object') return null
+  const rec = r.result
+  if (rec.isImage || rec.backgroundTaskId || rec.persistedOutputPath || rec.stdoutHoldsOutputEnd || rec.interrupted) return null
+  return typeof rec.stdout === 'string' && rec.stdout.length >= REDIRECT_MIN_CHARS ? rec.stdout : null
+}
+
+/** The writer's answer, strictly: only `ok` + `redirect` with an excerpt that names the stored path counts. */
+export function parseRedirectOutput(stdout: unknown): { path: string; excerpt: string } | null {
+  if (typeof stdout !== 'string') return null
+  const line = stdout.trim().split('\n').filter(Boolean).pop() || ''
+  try {
+    const j = JSON.parse(line) as { ok?: unknown; redirect?: unknown; path?: unknown; excerpt?: unknown }
+    if (j && j.ok === true && j.redirect === true && typeof j.path === 'string' && j.path && typeof j.excerpt === 'string' && j.excerpt.includes(j.path)) {
+      return { path: j.path, excerpt: j.excerpt }
+    }
+  } catch {
+    /* not JSON */
+  }
+  return null
+}
+
+// ── #1105: recap on return ──────────────────────────────────────────────────────────────────────────────────────────
+// Trigger (owner decision 2026-11-16): a session start after a gap; the mod API has no focus or idle event. A warm cache
+// (gap under the 1-h TTL, with margin) pays one fork that reads the prefix from cache; a cold one would pay a full write,
+// so it shows the last completion card's own text instead, no model call.
+
+/** A start this long after the last main turn counts as a return. */
+export const RECAP_MIN_GAP_MS = 15 * 60 * 1000
+/** Below this the 1-h prompt cache is still warm (same margin as the keep-alive ping). */
+export const RECAP_WARM_MS = 55 * 60 * 1000
+export const RECAP_PROMPT =
+  'In at most three short lines, in the language of this conversation: where did this session stand when it paused, and what is the next step? No preamble, no tool calls.'
+export const RECAP_MAX_CHARS = 600
+
+export type RecapSource = 'fork' | 'card'
+
+/** What a return shows: nothing (no gap, or cold with no card), one fork, or the stored card text. */
+export function recapPlan(gapMs: number | null, hasCard: boolean): 'none' | RecapSource {
+  if (gapMs === null || !Number.isFinite(gapMs) || gapMs < RECAP_MIN_GAP_MS) return 'none'
+  if (gapMs < RECAP_WARM_MS) return 'fork'
+  return hasCard ? 'card' : 'none'
+}
+
+/** The card's template part as plain lines: title, heading, up to three points. */
+export function recapCardText(view: { title?: string; heading?: string; points?: readonly string[] } | null): string {
+  if (!view) return ''
+  const lines = [view.title || '', view.heading || '', ...(view.points || []).slice(0, 3).map(p => `› ${p}`)]
+  return clampRecap(lines.map(l => l.trim()).filter(Boolean).join('\n'))
+}
+
+export function clampRecap(text: string): string {
+  const t = String(text || '').trim()
+  return t.length > RECAP_MAX_CHARS ? `${t.slice(0, RECAP_MAX_CHARS - 1)}…` : t
+}
+
+/** The gap of this start: the engine's own figure on resume / fork, else the time since the last main turn ended. */
+export function recapGap(secondsSinceLastResponse: unknown, lastMainEnd: number, now: number): number | null {
+  if (typeof secondsSinceLastResponse === 'number' && Number.isFinite(secondsSinceLastResponse) && secondsSinceLastResponse >= 0) {
+    return secondsSinceLastResponse * 1000
+  }
+  return lastMainEnd > 0 && now >= lastMainEnd ? now - lastMainEnd : null
+}
+
+// ── #1103: mod timers instead of watcher processes — due times, reload-safe and idempotent ──────────────────────────
+// A reload runs `register` again and drops every `$.clock` timer, but `$.state` stays: the due times live there, a
+// reload re-arms what is still open, and a due entry fires at most once (`fired` is written before the prompt goes).
+
+export type WakeDue = { id: string; at: number; tag: string; fired: boolean }
+
+export const WAKE_MAX_MS = 6 * 60 * 60 * 1000
+export const WAKE_KEEP = 20
+
+/** Adds or replaces the entry of `id` (same id = the same wake: never a second one), keeps the last WAKE_KEEP. */
+export function scheduleWake(list: readonly WakeDue[], id: string, at: number, tag: string): WakeDue[] {
+  const rest = list.filter(d => d.id !== id)
+  return [...rest, { id, at, tag, fired: false }].slice(-WAKE_KEEP)
+}
+
+/** Open entries and how long until each is due (0 when overdue): what a (re)load arms. */
+export function pendingWakes(list: readonly WakeDue[], now: number): Array<{ id: string; delayMs: number }> {
+  return list.filter(d => !d.fired).map(d => ({ id: d.id, delayMs: Math.max(0, d.at - now) }))
+}
+
+/** Marks `id` fired; `fire: false` when it was already fired or is unknown (a second timer after a reload). */
+export function claimWake(list: readonly WakeDue[], id: string): { list: WakeDue[]; fire: boolean } {
+  const hit = list.find(d => d.id === id)
+  if (!hit || hit.fired) return { list: [...list], fire: false }
+  return { list: list.map(d => (d.id === id ? { ...d, fired: true } : d)), fire: true }
+}
+
+/** `/mods-spike-wake <minutes>`: 0.1 … 360 minutes, default 1.5. Null for anything else. */
+export function wakeDelayMs(args: string): number | null {
+  const t = String(args || '').trim()
+  if (!t) return 90_000
+  const m = Number(t.replace(',', '.'))
+  if (!Number.isFinite(m) || m < 0.1) return null
+  const ms = Math.round(m * 60_000)
+  return ms > WAKE_MAX_MS ? null : ms
+}
+
+// ── #1101: cache keep-alive policy (pure; wired only after Spike 1 passes) ──────────────────────────────────────────
+// One ping = one `$.model.fork` without `effort` while the session is idle, so the 1-h cache entry is read (0.05×) and
+// refreshed instead of lapsing (a cold return writes it again at 2×). docs/dev/mods.md § Cache keep-alive math.
+
+export const KEEPALIVE = {
+  pingEveryMs: 55 * 60 * 1000,
+  minContextTokens: 80_000,
+  pauseCapMs: 2 * 60 * 60 * 1000,
+  maxSessions: 2,
+  minReadShare: 0.95,
+} as const
+
+export type KeepaliveInput = {
+  now: number
+  /** End of the last main request (a ping counts too): the cache entry's last refresh. */
+  lastRequestAt: number
+  /** When the pause began (the last main turn's end). */
+  pauseStartedAt: number
+  /** Any input since the pause began (prompt, press, tool) cancels the pause's pings. */
+  inputSincePause: boolean
+  contextTokens: number | null
+  /** The 1-h TTL is active (false in usage overage: the 5-min TTL never pays off). */
+  ttl1h: boolean
+  /** The session is finished: shipped / released card, archived, green title. */
+  finished: boolean
+  /** Other sessions pinging machine-wide right now (not this one). */
+  otherPingers: number
+  /** A 5-h window is open now: a ping must never open a new one. */
+  fiveHourWindowOpen: boolean
+  /** Learned share of pauses of about this length the person came back from; null = not learned yet. */
+  returnRate: number | null
+  /** Set after the first ping that read < 95 % from cache. */
+  disabled: boolean
+}
+
+export type KeepaliveDecision = { ping: boolean; reason: string; dueInMs: number }
+
+/** Break-even return probability for keeping a pause of `hours` warm: H / 39 (0.05 H / 1.95). */
+export function breakEvenRate(hours: number): number {
+  return Math.max(0, hours) / 39
+}
+
+/** Ping now, later (`dueInMs`) or not at all — every limit of #1101, first match wins. */
+export function keepalivePolicy(i: KeepaliveInput): KeepaliveDecision {
+  const no = (reason: string): KeepaliveDecision => ({ ping: false, reason, dueInMs: -1 })
+  if (i.disabled) return no('disabled-after-miss')
+  if (i.finished) return no('session-finished')
+  if (i.inputSincePause) return no('input-cancels')
+  if (!i.ttl1h) return no('no-1h-ttl')
+  if (i.contextTokens === null || i.contextTokens < KEEPALIVE.minContextTokens) return no('context-small')
+  if (i.otherPingers >= KEEPALIVE.maxSessions) return no('machine-cap')
+  if (!i.fiveHourWindowOpen) return no('would-open-5h-window')
+  const pauseMs = i.now - i.pauseStartedAt
+  if (pauseMs >= KEEPALIVE.pauseCapMs) return no('pause-cap')
+  const nextPauseHours = Math.min(KEEPALIVE.pauseCapMs, pauseMs + KEEPALIVE.pingEveryMs) / 3_600_000
+  if (i.returnRate === null || i.returnRate <= breakEvenRate(nextPauseHours)) return no('return-rate-below-break-even')
+  const due = i.lastRequestAt + KEEPALIVE.pingEveryMs - i.now
+  if (due > 0) return { ping: false, reason: 'not-due', dueInMs: due }
+  return { ping: true, reason: 'due', dueInMs: 0 }
+}
+
+/** The share of a fork's prompt read from cache: read / (read + write + uncached input); null without usage. */
+export function readShare(u: { cache_read_input_tokens?: number; cache_creation_input_tokens?: number; input_tokens?: number } | null): number | null {
+  if (!u || typeof u.cache_read_input_tokens !== 'number') return null
+  const total = u.cache_read_input_tokens + (u.cache_creation_input_tokens || 0) + (u.input_tokens || 0)
+  return total > 0 ? Math.round((u.cache_read_input_tokens / total) * 1000) / 1000 : null
+}
+
+/** After a ping: disable for good on a miss (Spike 1's gate, red-team finding 4). */
+export function disablesAfter(share: number | null): boolean {
+  return share === null || share < KEEPALIVE.minReadShare
+}

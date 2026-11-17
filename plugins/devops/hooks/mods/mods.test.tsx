@@ -50,8 +50,16 @@ import {
   ringPercent,
   tr,
   verbatimNotices,
+  breakEvenRate,
+  claimWake,
+  disablesAfter,
+  keepalivePolicy,
+  pendingWakes,
+  readShare,
+  scheduleWake,
+  wakeDelayMs,
 } from './format'
-import type { StrKey } from './format'
+import type { KeepaliveInput, StrKey } from './format'
 
 const HOME = 'C:/Users/tester'
 const NOW = Date.parse('2026-11-10T20:00:00.000Z')
@@ -195,7 +203,7 @@ test('gate off (stable pin): no command, nothing drawn, events pass through', as
 test('gate on: the commands are registered; the status line carries the state, never the hygiene count', async ($, on) => {
   const { seen } = engine(on, { files: { '/.claude/orphan-report.json': ORPHAN_REPORT } })
   await $.session.start({ cwd: 'P:/Projects/demo/.claude/worktrees/x', surface: 'desktop', isInteractive: true })
-  expect(seen.commands).toEqual(['devops-agents', 'devops-ship', 'mods-spike-fork', 'devops'])
+  expect(seen.commands).toEqual(['devops-agents', 'devops-ship', 'mods-spike-fork', 'mods-spike-wake', 'devops'])
   expect(seen.status.at(-1)).toBe('🟢 active')
   expect(seen.status.join('|')).not.toMatch(/branch|worktree/)
 })
@@ -1765,4 +1773,260 @@ test('gate off: nothing under the prompt, no /devops, the engine hint untouched'
   await hint.unmount()
   expect(seen.commands).toEqual([])
   expect(seen.status).toEqual([])
+})
+
+// ── #1106 6b / 6c: deterministic paste and tool-output redirect ─────────────────────────────────────────────────────
+const BIG = Array.from({ length: 900 }, (_, i) => `row ${i} ${'y'.repeat(40)}`).join(String.fromCharCode(10))
+const EXCERPT = 'row 0 … [… 820 lines omitted here — full original: /repo/.claude/redirects/paste-abc.txt …] row 899'
+const REDIRECT_OK = { value: { exitCode: 0, stdout: `${JSON.stringify({ ok: true, redirect: true, path: '/repo/.claude/redirects/paste-abc.txt', excerpt: EXCERPT })}\n`, stderr: '' } }
+
+function redirectEngine(on: any, writer: (stdin: string) => unknown) {
+  const e = engine(on)
+  const calls: string[] = []
+  on('process.run', (_: unknown, ev: { argv: string[]; init?: { stdin?: string } }) => {
+    if (ev.argv[0] !== 'node' || !String(ev.argv[1]).endsWith('paste-redirect-write.js')) return { value: { exitCode: 1, stdout: '', stderr: '' } }
+    calls.push(ev.init?.stdin ?? '')
+    return writer(ev.init?.stdin ?? '')
+  })
+  on('session.id', () => ({ value: 'sess-1' }))
+  return { ...e, calls }
+}
+
+test('redirect 6b: a large typed paste enters as the writer excerpt; the original goes to the writer whole', async ($, on) => {
+  const { seen, calls } = redirectEngine(on, () => REDIRECT_OK)
+  await $.session.start({ cwd: '/repo', surface: 'desktop', isInteractive: true })
+  const out = await $.prompt.submit({ text: BIG, origin: { kind: 'composer' } } as any)
+  expect(calls.length).toBe(1)
+  expect(JSON.parse(calls[0])).toMatchObject({ cwd: '/repo', kind: 'paste', text: BIG })
+  expect(seen.prompts).toEqual([EXCERPT])
+  expect(out.text).toBe(EXCERPT)
+})
+
+test('redirect 6b: refusal, no redirect, garbage, a throw → the prompt stays whole', async ($, on) => {
+  const answers: Array<() => unknown> = [
+    () => ({ value: { exitCode: 1, stdout: '{"ok":false,"reason":"write-failed"}\n', stderr: '' } }),
+    () => ({ value: { exitCode: 0, stdout: '{"ok":true,"redirect":false,"reason":"exempt-prompt"}\n', stderr: '' } }),
+    () => ({ value: { exitCode: 0, stdout: 'not json', stderr: '' } }),
+    () => ({ value: { exitCode: 0, stdout: '{"ok":true,"redirect":true,"path":"/x","excerpt":"no path named"}\n', stderr: '' } }),
+    () => { throw new Error('timeout') },
+  ]
+  let i = 0
+  const { seen } = redirectEngine(on, () => answers[i++]())
+  await $.session.start({ cwd: '/repo', surface: 'desktop', isInteractive: true })
+  for (let k = 0; k < answers.length; k++) {
+    expect((await $.prompt.submit({ text: BIG } as any)).text).toBe(BIG)
+  }
+  expect(seen.prompts).toEqual(answers.map(() => BIG))
+})
+
+test('redirect 6b: small, slash-command, meta and plugin prompts never start the writer', async ($, on) => {
+  const { calls } = redirectEngine(on, () => REDIRECT_OK)
+  await $.session.start({ cwd: '/repo', surface: 'desktop', isInteractive: true })
+  await $.prompt.submit({ text: 'short' } as any)
+  await $.prompt.submit({ text: `/do-run ${BIG}` } as any)
+  await $.prompt.submit({ text: BIG, isMeta: true } as any)
+  await $.prompt.submit({ text: BIG, origin: { kind: 'plugin', name: 'x' } } as any)
+  expect(calls.length).toBe(0)
+})
+
+test('redirect 6b: closed gate (stable pin) → no writer, prompt unchanged', async ($, on) => {
+  engine(on, { pin: 'stable' })
+  const calls: unknown[] = []
+  on('process.run', () => {
+    calls.push(1)
+    return REDIRECT_OK
+  })
+  await $.session.start({ cwd: '/repo', surface: 'desktop', isInteractive: true })
+  expect((await $.prompt.submit({ text: BIG } as any)).text).toBe(BIG)
+  expect(calls.length).toBe(0)
+})
+
+test('redirect 6c: a large Bash stdout is replaced by the excerpt; the command goes to the writer for its exemptions', async ($, on) => {
+  const { calls } = redirectEngine(on, () => REDIRECT_OK)
+  on('tool.call', () => ({ result: { stdout: BIG, stderr: '', interrupted: false }, text: BIG }))
+  await $.session.start({ cwd: '/repo', surface: 'desktop', isInteractive: true })
+  const r = await $.tool.call({ tool: 'Bash', command: 'cat big.log' } as any)
+  expect((r as any).result.stdout).toBe(EXCERPT)
+  expect((r as any).result.stderr).toBe('')
+  expect(JSON.parse(calls[0])).toMatchObject({ kind: 'output', command: 'cat big.log', text: BIG })
+})
+
+test('redirect 6c: writer keeps it (exempt / guard-released), small output, errors, background and subagent calls stay whole', async ($, on) => {
+  let redirect = false
+  const { calls } = redirectEngine(on, () => (redirect ? REDIRECT_OK : { value: { exitCode: 0, stdout: '{"ok":true,"redirect":false,"reason":"guard-released"}\n', stderr: '' } }))
+  let answer: any = { result: { stdout: BIG, stderr: '', interrupted: false }, text: BIG }
+  on('tool.call', () => answer)
+  await $.session.start({ cwd: '/repo', surface: 'desktop', isInteractive: true })
+  expect(((await $.tool.call({ tool: 'Bash', command: 'npm test' } as any)) as any).result.stdout).toBe(BIG)
+  expect(calls.length).toBe(1)
+  redirect = true
+  answer = { result: { stdout: 'small', stderr: '', interrupted: false }, text: 'small' }
+  expect(((await $.tool.call({ tool: 'Bash', command: 'ls' } as any)) as any).result.stdout).toBe('small')
+  answer = { result: { stdout: BIG, stderr: '', interrupted: false, backgroundTaskId: 'b1' }, text: BIG }
+  expect(((await $.tool.call({ tool: 'Bash', command: 'x' } as any)) as any).result.stdout).toBe(BIG)
+  answer = { isError: true, result: { stdout: BIG, stderr: '', interrupted: false }, text: BIG }
+  expect(((await $.tool.call({ tool: 'Bash', command: 'x' } as any)) as any).result.stdout).toBe(BIG)
+  answer = { result: { stdout: BIG, stderr: '', interrupted: false }, text: BIG }
+  expect(((await $.tool.call({ tool: 'Bash', command: 'x', agentId: 'sub1' } as any)) as any).result.stdout).toBe(BIG)
+  expect(calls.length).toBe(1)
+})
+
+// ── #1105: recap on return ──────────────────────────────────────────────────────────────────────────────────────────
+function recapEngine(on: any, fork: (e: unknown) => unknown) {
+  const e = engine(on)
+  const forks: unknown[] = []
+  on('model.fork', (_: unknown, ev: unknown) => {
+    forks.push(ev)
+    return fork(ev)
+  })
+  on('tool.call', (_: unknown, ev: { tool: string }) => ({ result: {}, text: ev.tool === CARD_TOOL ? CARD_RESULT : 'ok' }))
+  on('classic.SessionStart', () => ({}))
+  on('turn.start', (_: unknown, ev: { turnId: string }) => ({ turnId: ev.turnId || 't' }))
+  return { ...e, forks }
+}
+// showRecap runs detached from SessionStart: let its chain of engine calls finish.
+const settle = async (_: unknown) => {
+  for (let i = 0; i < 200; i++) await Promise.resolve()
+}
+
+test('recap: a cold return (2 h) shows the last card text once, no model call; the close button removes it', async ($, on) => {
+  const { forks } = recapEngine(on, () => ({ value: { isAnswered: true, text: 'never' } }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.tool.call({ tool: CARD_TOOL, variant: 'ready', summary: 'x' } as any)
+  await $.classic.SessionStart({ source: 'resume', seconds_since_last_response: 7200 } as any)
+  await settle($)
+  expect(forks).toEqual([])
+  const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await band.find({ key: 'devops-recap' })).toBeTruthy()
+  await band.press({ key: 'recap-close' })
+  expect(await band.find({ key: 'devops-recap' })).toBeFalsy()
+  await band.unmount()
+})
+
+test('recap: a warm return (30 min) runs one fork with the fixed prompt and no effort; its text is shown', async ($, on) => {
+  const { forks } = recapEngine(on, () => ({ value: { isAnswered: true, text: 'Stand: Spike 4 grün.', usage: {} } }))
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await $.classic.SessionStart({ source: 'resume', seconds_since_last_response: 1800 } as any)
+  await settle($)
+  expect(forks.length).toBe(1)
+  expect(Object.keys(forks[0] as object)).toEqual(['prompt'])
+  const band = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect(await has(band, 'Stand: Spike 4 grün.')).toBe('Stand: Spike 4 grün.')
+  await band.unmount()
+  // The next typed prompt spends it.
+  await $.turn.start({ text: 'weiter', turnId: 't9' } as any)
+  const after = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect(await after.find({ key: 'devops-recap' })).toBeFalsy()
+  await after.unmount()
+})
+
+test('recap: a failed warm fork falls back to the card text; a short gap or a compaction shows nothing', async ($, on) => {
+  const { forks } = recapEngine(on, () => ({ value: { isAnswered: false, reason: 'nothing-to-fork' } }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.classic.SessionStart({ source: 'resume', seconds_since_last_response: 60 } as any)
+  await $.classic.SessionStart({ source: 'compact', seconds_since_last_response: 7200 } as any)
+  await settle($)
+  expect(forks).toEqual([])
+  const none = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await none.find({ key: 'devops-recap' })).toBeFalsy()
+  await none.unmount()
+  await $.tool.call({ tool: CARD_TOOL, variant: 'ready', summary: 'x' } as any)
+  await $.classic.SessionStart({ source: 'resume', seconds_since_last_response: 1800 } as any)
+  await settle($)
+  expect(forks.length).toBe(1)
+  const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await band.find({ key: 'devops-recap' })).toBeTruthy()
+  await band.unmount()
+})
+
+// ── #1103: wake timers (due times in $.state, reload-safe, fire once) ───────────────────────────────────────────────
+test('wake: schedule is idempotent per id, pending re-arms open entries, claim fires once', () => {
+  let list = scheduleWake([], 'a', 1000, 'x')
+  list = scheduleWake(list, 'a', 2000, 'x')
+  expect(list).toEqual([{ id: 'a', at: 2000, tag: 'x', fired: false }])
+  list = scheduleWake(list, 'b', 500, 'y')
+  expect(pendingWakes(list, 1500)).toEqual([{ id: 'a', delayMs: 500 }, { id: 'b', delayMs: 0 }])
+  const first = claimWake(list, 'a')
+  expect(first.fire).toBe(true)
+  expect(claimWake(first.list, 'a').fire).toBe(false) // a second timer after a reload
+  expect(claimWake(first.list, 'nope').fire).toBe(false)
+  expect(pendingWakes(first.list, 1500)).toEqual([{ id: 'b', delayMs: 0 }])
+  expect(wakeDelayMs('')).toBe(90_000)
+  expect(wakeDelayMs('2')).toBe(120_000)
+  expect(wakeDelayMs('0,5')).toBe(30_000)
+  expect(wakeDelayMs('0')).toBe(null)
+  expect(wakeDelayMs('999')).toBe(null)
+  expect(wakeDelayMs('soon')).toBe(null)
+})
+
+test('wake: /mods-spike-wake arms a timer whose firing submits one prompt and logs it', async ($, on) => {
+  const { seen } = engine(on)
+  // A clock.after dispatch runs the timer's fn when it resolves: each wait resolves when the test says so.
+  const timers: Array<{ ms: number; fn: () => void }> = []
+  on('clock.after', (_: unknown, e: { ms: number }) => new Promise(resolve => timers.push({ ms: e.ms, fn: () => resolve({ value: undefined }) })))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  const r = await $.command.run({ command: 'mods-spike-wake', args: '0.5' } as any)
+  expect(r.text).toMatch(/30 s/)
+  expect(timers.map(t => t.ms)).toEqual([30_000])
+  timers[0].fn()
+  for (let i = 0; i < 5000 && !seen.prompts.length; i++) await Promise.resolve()
+  expect(seen.prompts.length).toBe(1)
+  expect(seen.prompts[0]).toMatch(/^SPIKE_WAKE after 30 s/)
+  const logged = () => seen.writes.some(w => w.path.replace(/\\/g, '/').endsWith('devops-mods-spike.jsonl'))
+  for (let i = 0; i < 5000 && !logged(); i++) await Promise.resolve()
+  const row = JSON.parse(seen.writes.find(w => w.path.replace(/\\/g, '/').endsWith('devops-mods-spike.jsonl'))!.text.trim().split('\n').pop()!)
+  expect(row).toMatchObject({ mode: 'wake', submitted: true })
+  // A reload re-arms only open entries: the fired one is never armed (nor submitted) again.
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  expect(timers.length).toBe(1)
+  expect(seen.prompts.length).toBe(1)
+})
+
+// ── #1101: keep-alive policy, one test per limit ────────────────────────────────────────────────────────────────────
+const H = 3_600_000
+const KA: KeepaliveInput = {
+  now: 10 * H,
+  lastRequestAt: 10 * H - 56 * 60_000,
+  pauseStartedAt: 10 * H - 56 * 60_000,
+  inputSincePause: false,
+  contextTokens: 150_000,
+  ttl1h: true,
+  finished: false,
+  otherPingers: 0,
+  fiveHourWindowOpen: true,
+  returnRate: 0.5,
+  disabled: false,
+}
+
+test('keepalive: due after ~55 min idle with every limit met', () => {
+  expect(keepalivePolicy(KA)).toEqual({ ping: true, reason: 'due', dueInMs: 0 })
+  expect(keepalivePolicy({ ...KA, lastRequestAt: KA.now - 10 * 60_000, pauseStartedAt: KA.now - 10 * 60_000 })).toMatchObject({ ping: false, reason: 'not-due', dueInMs: 45 * 60_000 })
+})
+
+test('keepalive: every limit refuses on its own', () => {
+  const cases: Array<[Partial<KeepaliveInput>, string]> = [
+    [{ disabled: true }, 'disabled-after-miss'],
+    [{ finished: true }, 'session-finished'],
+    [{ inputSincePause: true }, 'input-cancels'],
+    [{ ttl1h: false }, 'no-1h-ttl'],
+    [{ contextTokens: 79_999 }, 'context-small'],
+    [{ contextTokens: null }, 'context-small'],
+    [{ otherPingers: 2 }, 'machine-cap'],
+    [{ fiveHourWindowOpen: false }, 'would-open-5h-window'],
+    [{ pauseStartedAt: KA.now - 2 * H }, 'pause-cap'],
+    [{ returnRate: null }, 'return-rate-below-break-even'],
+    [{ returnRate: 0.01 }, 'return-rate-below-break-even'],
+  ]
+  for (const [patch, reason] of cases) expect(keepalivePolicy({ ...KA, ...patch }).reason).toBe(reason)
+  expect(keepalivePolicy({ ...KA, otherPingers: 1 }).ping).toBe(true)
+})
+
+test('keepalive: break-even H/39, read share and the self-disable rule', () => {
+  expect(Math.round(breakEvenRate(1) * 10000)).toBe(256)
+  expect(Math.round(breakEvenRate(8) * 1000)).toBe(205)
+  expect(readShare({ cache_read_input_tokens: 190_000, cache_creation_input_tokens: 3279, input_tokens: 2 })).toBe(0.983)
+  expect(readShare(null)).toBe(null)
+  expect(disablesAfter(0.983)).toBe(false)
+  expect(disablesAfter(0.94)).toBe(true)
+  expect(disablesAfter(null)).toBe(true)
 })
