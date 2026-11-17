@@ -814,6 +814,7 @@ const TABLE = {
   batchList: ['Notes', 'Notizen', 'Notas', 'Notes', 'Notas', 'メモ', '笔记'],
   batchOff: ['Off', 'Aus', 'Apagar', 'Arrêter', 'Desligar', '終了', '关闭'],
   batchQueued: ['go queued', 'go eingereiht', 'go en cola', 'go en file', 'go na fila', 'go を予約済み', 'go 已排队'],
+  batchMerging: ['go running …', 'go läuft …', 'go en curso …', 'go en cours …', 'go em andamento …', 'go 実行中 …', 'go 运行中 …'],
   batchStopping: ['ending …', 'beende …', 'terminando …', 'arrêt …', 'encerrando …', '終了中 …', '正在关闭 …'],
   batchMore: ['+{n} more', '+{n} weitere', '+{n} más', '+{n} autres', '+{n} outras', '他 {n} 件', '另有 {n} 条'],
   toastBatchOff: ['📚 Batch off · {n} notes stay in .claude/batch.md', '📚 Batch aus · {n} Notizen bleiben in .claude/batch.md', '📚 Batch apagado · {n} notas quedan en .claude/batch.md', '📚 Batch arrêté · {n} notes restent dans .claude/batch.md', '📚 Batch desligado · {n} notas ficam em .claude/batch.md', '📚 Batch 終了 · {n} 件のメモは .claude/batch.md に残ります', '📚 Batch 已关闭 · {n} 条笔记保留在 .claude/batch.md'],

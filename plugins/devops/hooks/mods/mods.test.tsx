@@ -1408,6 +1408,8 @@ test('batch row: the count folds the note list open (no prompt, no process); Go 
 
 test('batch row: Go queues the execute marker once, also while a turn runs; the row says it is queued', async ($, on) => {
   const { seen, calls } = batchEngine(on, () => WRITER_OK(1))
+  on('turn.start', () => ({ turnId: 't' }))
+  on('turn.complete', (_: unknown, e: { answer: string }) => ({ text: e.answer }))
   await $.session.start({ cwd: '/repo', surface: 'desktop', isInteractive: true })
   const working = { ...BAND, surface: 'desktop', props: { ...BAND.props, isWorking: true } }
   const band = await $.ui.mount(working)
@@ -1420,6 +1422,16 @@ test('batch row: Go queues the execute marker once, also while a turn runs; the 
   expect(await has(after, 'go queued')).toBe('go queued')
   await after.unmount()
   expect(seen.prompts).toEqual(['go'])
+  // The merge turn runs while the mode is still armed: no second Go until it ends (Codex review 2026-11-17).
+  await $.turn.start({ text: 'go', turnId: 'tgo', origin: { kind: 'plugin' } } as any)
+  const merging = await $.ui.mount(working)
+  expect(await merging.find({ key: 'batch-go' })).toBeUndefined()
+  expect(await has(merging, 'go running')).toBe('go running')
+  await merging.unmount()
+  await $.turn.complete({ answer: 'x', durationMs: 1000, isAborted: false, turnId: 'tgo', reason: 'end' } as any)
+  const done = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await done.find({ key: 'batch-go' })).toBeDefined() // still armed here (the merge did not retire it): Go again
+  await done.unmount()
 })
 
 test('batch row: Off ends the mode through scripts/batch-off.js without a prompt; failure leaves the mode and says to type it', async ($, on) => {

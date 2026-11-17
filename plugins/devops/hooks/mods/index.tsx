@@ -225,7 +225,8 @@ const hintsOpen = atom({ plugin: 'devops', key: 'hintsOpen' } as const, false, {
 // The batch row's note list is expanded (the zero-token stand-in for `/do-batch status`).
 const batchOpen = atom({ plugin: 'devops', key: 'batchOpen' } as const, false, { shape: 'batch-open-1' })
 // A batch button was pressed and its effect is not visible yet: 'go' waits for its turn, 'off' for the script.
-const batchPress = atom({ plugin: 'devops', key: 'batchPress' } as const, null as 'go' | 'off' | null, { shape: 'batch-press-1' })
+// 'go' = queued behind the running turn; 'going' = the merge turn runs (the mode is still armed until it retires it).
+const batchPress = atom({ plugin: 'devops', key: 'batchPress' } as const, null as 'go' | 'going' | 'off' | null, { shape: 'batch-press-2' })
 // The last card's title and time, kept after the card is spent: the idle row's "Last:".
 const lastCard = atom({ plugin: 'devops', key: 'lastCard' } as const, null as { title: string; at: string } | null, { shape: 'last-card-1' })
 // #1105: the last card's text for a cold return, and the recap on screen (shown once, dismissible).
@@ -1105,11 +1106,13 @@ export const register: Register = on => {
       if (startsTypedTurn(e as { text?: string; isMeta?: unknown; origin?: { kind?: string } | null })) {
         await update($, card, () => null)
         await update($, pointsOpen, () => [])
-        // A queued Go has reached its turn: the row's "go queued" ends, the merge turn takes over.
-        await update($, batchPress, p => (p === 'go' ? null : p))
         await update($, progress, () => ({ steps: [], activity: '', startedAt: now }))
         await update($, recap, r => (r.shown ? { ...r, shown: null } : r))
       }
+      // A queued Go has reached its turn: the merge turn runs. The button stays away until that turn ends — the mode is
+      // still armed meanwhile, and a second press would queue a second merge (Codex review, 2026-11-17). Matched on the
+      // text, not startsTypedTurn: the press is a plugin submit, whose origin the engine may report as 'plugin'.
+      if (/^go\b/i.test((e.text || '').trim())) await update($, batchPress, p => (p === 'go' ? 'going' : p))
       await update($, spike, s => {
         const gapMs = s.lastMainEnd ? now - s.lastMainEnd : 0
         return { ...s, armed: gapMs >= SPIKE_PAUSE_MS ? { turnId: e.turnId, gapMs } : null }
@@ -1243,6 +1246,8 @@ export const register: Register = on => {
     if (e.agentId === undefined && (await open($))) {
       const now = await $.clock.now()
       await update($, spike, s => ({ ...s, lastMainEnd: now, armed: null }))
+      // The merge turn is over: a mode it retired takes the row with it; one still armed (merge failed) offers Go again.
+      await update($, batchPress, p => (p === 'going' ? null : p))
     }
     if (e.agentId !== undefined && (await open($))) {
       const run = await read($, cleanup)
@@ -1582,7 +1587,7 @@ export const register: Register = on => {
             <Text key="batch-count" {...S.small}>{tr(loc, 'bandBatch', { n: bt.count })}</Text>
           )}
           {pressed ? (
-            <Text key="batch-pressed" {...S.small}>{tr(loc, pressed === 'go' ? 'batchQueued' : 'batchStopping')}</Text>
+            <Text key="batch-pressed" {...S.small}>{tr(loc, pressed === 'go' ? 'batchQueued' : pressed === 'going' ? 'batchMerging' : 'batchStopping')}</Text>
           ) : (
             [
               bt.count > 0 ? <Button key="batch-go" label={tr(loc, 'batchGo')} variant="primary" onPress={() => pressBatchGo($)} /> : null,
