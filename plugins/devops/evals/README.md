@@ -143,7 +143,18 @@ page), the page has `#decision-panel` and none of the concept gate's
 clipboard / paste-into-chat patterns, and no preview / Playwright tool is
 used. The page graders also look under `.claude/worktrees/*/` (the model
 may `EnterWorktree` before building). A run takes ~8 min, longer than the
-default 5 min timeout — pass `--timeout-min 15`. The three `auto-concept/round-*`
+default 5 min timeout — pass `--timeout-min 15`. Every `auto-concept` case
+denies the bridge: a run that starts it never ends (the server and the waker
+keep `claude -p` alive until the timeout, ungraded — `ab.test.js` pins the
+deny rules). Three cases (tag `stages`) grade the Etappen rule: a do-batch
+hand-off over four unrelated surfaces (`do-batch-unrelated-surfaces`, four
+stages) and a direct request naming three topics without calling them
+unrelated (`direct-unrelated-topics`, three stages) must open a staged page
+with no unstaged topics round; three wishes for one screen
+(`related-topics-one-round`) must stay unstaged. Measured 2026-11-17 on
+`direct-unrelated-topics`: the text before the rule (72ac0871) stages as well
+(5/5 both variants, one run each) — the case guards the behaviour, it does not
+prove the rule causes it. The three `auto-concept/round-*`
 cases (tag `concept-round`) grade the round-to-round step instead: the shared
 `round-scaffold.sh` builds a submitted round 1 (JSON file / SQLite / Markdown)
 and drops the page's payload next to it, since the bridge is denied.
