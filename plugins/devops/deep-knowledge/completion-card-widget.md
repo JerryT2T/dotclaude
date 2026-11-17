@@ -136,8 +136,8 @@ How the card reaches the user: the Desktop `show_widget` card body, its buttons,
 - **Minimal widget while the mod band carries the card.** When
   `~/.claude/devops-band-active.json` (written by the band, see
   `docs/dev/mods.md`) has an entry for THIS session younger than 30 min with
-  `remoteControl === false`, the widget_code is only the answer plus one
-  heading line (no data block, points, buttons, evidence or budget). The
+  `remoteControl !== true` (null = unknown counts as off), the widget_code is only the answer plus one
+  heading line (a decision-only data block for ship detection; no points, buttons, evidence or budget). The
   band reads points and buttons from the tool result, so the full
   `dc-card-data` rides there as its own `[CARD DATA]` block, outside
   `widget_code`. Any other state (no/stale/other-session entry, Remote

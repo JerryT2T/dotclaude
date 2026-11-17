@@ -4,9 +4,10 @@
  * The band (hooks/mods) writes `<home>/.claude/devops-band-active.json`:
  *   { "sessions": { "<sessionId>": { "at": <epoch ms>, "remoteControl": true|false|null } } }
  * refreshed while it draws. The card tool minimizes its transcript widget only
- * when that session's entry is fresh AND remoteControl is exactly `false`.
- * Everything else — no file, unreadable, stale, other session, null/true
- * Remote Control, terminal/cloud (no band ever wrote it) — keeps the full card.
+ * when that session's entry is fresh AND remoteControl is not `true` (null =
+ * unknown counts as off). Everything else — no file, unreadable, stale, other
+ * session, Remote Control true, terminal/cloud (no band ever wrote it) — keeps
+ * the full card.
  */
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
@@ -32,7 +33,9 @@ export function bandCarriesCard(sessionId, { home = homedir(), now = Date.now() 
     if (!entry || typeof entry.at !== "number" || !Number.isFinite(entry.at)) return false;
     const age = now - entry.at;
     if (age > BAND_FRESH_MS || age < -BAND_FRESH_MS) return false;
-    return entry.remoteControl === false;
+    // Unknown (null) counts as "no Remote Control": neither the mod API nor get_session exposes it,
+    // and a phone viewer still gets the answer + heading of the minimal widget (concept Etappe A close-out).
+    return entry.remoteControl !== true;
   } catch {
     return false;
   }

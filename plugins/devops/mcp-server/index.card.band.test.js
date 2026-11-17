@@ -97,9 +97,9 @@ describe("minimal widget while the band carries the card (d-level, d-detect)", (
   const widgetOf = (text) => text.slice(text.indexOf("----- widget_code -----"));
   const open = [{ text: "Entscheidung offen.", reply: "Ja." }];
 
-  test("fresh marker, remoteControl false: widget holds answer + heading only; the result still carries the full dc-card-data", async () => {
+  test("fresh marker, remoteControl null (unknown): widget holds answer + heading only; the result still carries the full dc-card-data", async () => {
     env("CLAUDE_CODE_ENTRYPOINT", "claude-desktop");
-    markerHome({ "band-min-1": { at: Date.now(), remoteControl: false } });
+    markerHome({ "band-min-1": { at: Date.now(), remoteControl: null } });
     const res = await render(base("band-min-1", { answer: "Die **Antwort**.", open }));
     const text = allText(res);
     const widget = widgetOf(text);
@@ -124,7 +124,6 @@ describe("minimal widget while the band carries the card (d-level, d-detect)", (
 
   test.each([
     ["remoteControl true", { at: Date.now(), remoteControl: true }],
-    ["remoteControl null", { at: Date.now(), remoteControl: null }],
     ["stale entry", { at: Date.now() - BAND_FRESH_MS - 1000, remoteControl: false }],
   ])("%s: the full card, as today", async (_name, entry) => {
     env("CLAUDE_CODE_ENTRYPOINT", "claude-desktop");
