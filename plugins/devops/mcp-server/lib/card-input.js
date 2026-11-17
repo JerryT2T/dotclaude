@@ -47,7 +47,7 @@ export const CARD_VARIANTS = [
 
 /** `linked[].mode` / `linked[].state` — the side sessions the parent card reports. */
 export const LINKED_MODES = ["handoff", "deliver", "independent"];
-export const LINKED_STATES = ["running", "waiting", "done", "shipped", "failed"];
+export const LINKED_STATES = ["running", "waiting", "done", "shipped", "failed", "archived"];
 
 /**
  * Top-level keys the tool schema knows. Anything else is silently stripped by

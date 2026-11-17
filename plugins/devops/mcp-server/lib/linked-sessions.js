@@ -52,6 +52,8 @@ const T = {
     allShipped: (v, s) => `${v ? `v${v} — ` : ""}in Side-Session ${names(s)} geshippt, hier ist nichts offen`,
     shippedLine: (e) => `${q(e.title)} geshippt${e.version ? ` v${e.version}` : ""}`,
     runLine: (e) => `${q(e.title)} läuft noch`,
+    idleYou: (l) => `Für dich nichts zu tun — ich mache weiter, sobald ${l.length > 1 ? "sie sich melden" : "sie sich meldet"}`,
+    archivedLine: (e) => `${q(e.title)} wurde archiviert, bevor sie fertig war — nicht geshippt`,
     independent: (l) => (l.length > 1 ? `${names(l)} laufen als eigene Aufgaben` : `${names(l)} läuft als eigene Aufgabe`),
     moveIn: (side) => `Weiter in der Side-Session: ${side}`,
     runIn: (side) => `Läuft in: ${side}`,
@@ -78,6 +80,8 @@ const T = {
     allShipped: (v, s) => `${v ? `v${v} — ` : ""}shipped in side session ${namesE(s)}, nothing is open here`,
     shippedLine: (e) => `${qe(e.title)} shipped${e.version ? ` v${e.version}` : ""}`,
     runLine: (e) => `${qe(e.title)} still runs`,
+    idleYou: (l) => `Nothing for you to do — I carry on once ${l.length > 1 ? "they report" : "it reports"}`,
+    archivedLine: (e) => `${qe(e.title)} was archived before it finished — not shipped`,
     independent: (l) => (l.length > 1 ? `${namesE(l)} run as their own tasks` : `${namesE(l)} runs as its own task`),
     moveIn: (side) => `Continue in the side session: ${side}`,
     runIn: (side) => `Running in: ${side}`,
@@ -111,7 +115,9 @@ export function normalizeLinked(raw) {
 }
 
 const isOpenState = (e) => e.state === "running" || e.state === "waiting";
-const isFinished = (e) => e.state === "done" || e.state === "shipped";
+// "archived": the user closed the session before it reported. It no longer runs,
+// so it never keeps a ⏳ head; its work counts as not shipped (a `›` line says so).
+const isFinished = (e) => e.state === "done" || e.state === "shipped" || e.state === "archived";
 
 /**
  * True while a marked (handoff/deliver) side session is not finished. A failed
@@ -208,6 +214,7 @@ function linkedPlanCore(input, key, ctx) {
   const failed = marked.filter((e) => e.state === "failed");
   const shipped = marked.filter((e) => e.state === "shipped");
   const unfinished = [...running, ...waiting];
+  const archivedLines = marked.filter((e) => e.state === "archived").map(L.archivedLine);
   const needUser = [...waiting, ...failed];
   const moveLines = [...needUser, ...running.filter((e) => e.mode === "handoff")].map((e) => sidebarLine(e, L));
   const deliver = marked.some((e) => e.mode === "deliver");
@@ -248,6 +255,7 @@ function linkedPlanCore(input, key, ctx) {
 
   // ---- handoff: the children ship themselves ----
   const linkedId = needUser.length ? "linked-waiting" : "linked";
+  if (archivedLines.length) indLines.unshift(...archivedLines);
   const partial = shipped.map(L.shippedLine);
   const restLines = unfinished.length && shipped.length ? partial : [];
   if (!ownStep && !unfinished.length && !failed.length && shipped.length) {
@@ -279,7 +287,10 @@ function linkedPlanCore(input, key, ctx) {
   }
   if (unfinished.length || failed.length) {
     const sentence = waiting.length ? L.waitAsk(waiting) : failed.length ? L.failedLook(failed) : L.runHandoff(running);
-    return { head: { id: linkedId, mandatory: false }, sentence, lines: [...restLines, ...moveLines, ...indLines], buttonsKey: null };
+    // Only running sessions: say outright that the user has nothing to do (#learn: a bare
+    // "läuft in Side-Session" left the user unsure whether to act or whether it was done).
+    const idle = !needUser.length ? [L.idleYou(running)] : [];
+    return { head: { id: linkedId, mandatory: false }, sentence, lines: [...idle, ...restLines, ...moveLines, ...indLines], buttonsKey: null };
   }
   if (shipped.length) {
     const v = ver || (shipped.find((e) => e.version) || {}).version || "";
