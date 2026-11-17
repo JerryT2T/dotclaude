@@ -1665,7 +1665,7 @@ export function cardLines(result, lang = "de") {
       text: `Pushed branch without a PR, content not in main: ${sn} — open a PR?`,
       reply: `Open a PR for ${st.slice(0, 3).map((x) => x.branch).join(", ")}.`,
     }] : [];
-  if (stale.length || decisions.length || remoteItems.length || strandedItems.length) out.openItems = [...stale, ...decisions, ...strandedItems, ...remoteItems];
+  if (stale.length || decisions.length || remoteItems.length || strandedItems.length) out.openItems = [...stale, ...decisions, ...strandedItems, ...remoteItems].map(cleanupKind);
   const risk = result.atRisk || [];
   if (risk.length) {
     const shown = risk.slice(0, 3).map((x) => {
@@ -1686,6 +1686,8 @@ export function cardLines(result, lang = "de") {
         reply: "Rescue the unlanded work: push, open a PR and merge it.",
       };
   }
+  if (out.risk) out.risk = cleanupKind(out.risk);
+  if (out.open) out.open = cleanupKind(out.open);
   return out;
 }
 
@@ -1934,4 +1936,13 @@ export function startHygieneWorker(job, script = fileURLToPath(new URL("../hygie
   } catch {
     return false;
   }
+}
+
+/**
+ * Every hygiene hint is a cleanup extra (2026-11-17): the card shows it with 🧹,
+ * puts its reply on Aufräumen and never on Nachbessern, and a finished card stays
+ * finished (render_completion_card's open[].kind).
+ */
+function cleanupKind(item) {
+  return item && typeof item === 'object' ? { ...item, kind: 'cleanup' } : item;
 }

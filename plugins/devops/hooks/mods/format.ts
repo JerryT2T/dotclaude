@@ -266,17 +266,18 @@ export function cardFromResult(text: unknown): CardView | null {
   const m = text.match(/<script type="application\/json" id="dc-card-data">([\s\S]*?)<\/script>/)
   if (m) {
     try {
-      const d = JSON.parse(m[1] ?? '') as { ti?: string; at?: string; h?: string; pt?: unknown[]; bt?: Array<{ l?: string; p?: string; pr?: number }> }
+      const d = JSON.parse(m[1] ?? '') as { ti?: string; at?: string; h?: string; pt?: unknown[]; bt?: Array<{ l?: string; p?: string; pr?: number; i?: string }> }
       const heading = plain(d.h)
       if (!heading) return null
       const buttons: CardButton[] = (Array.isArray(d.bt) ? d.bt : [])
-        .filter(b => b && plain(b.l) && typeof b.p === 'string' && b.p.trim())
+        // The band's own cleanup block (Altlasten) covers the card's cleanup hints and their Aufräumen button.
+        .filter(b => b && plain(b.l) && typeof b.p === 'string' && b.p.trim() && b.i !== 'trash')
         .map(b => ({ label: plain(b.l), prompt: String(b.p), primary: b.pr === 1 }))
       return {
         title: plain(d.ti),
         at: plain(d.at),
         heading,
-        points: (Array.isArray(d.pt) ? d.pt : []).map(plain).filter(Boolean).slice(0, CARD_POINTS_MAX),
+        points: (Array.isArray(d.pt) ? d.pt : []).map(plain).filter(p => p && !p.startsWith('🧹')).slice(0, CARD_POINTS_MAX),
         buttons,
       }
     } catch {

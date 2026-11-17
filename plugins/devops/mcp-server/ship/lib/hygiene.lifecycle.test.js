@@ -267,7 +267,7 @@ describe("stale own PRs", () => {
     const base = { cwd: c.dir, trigger: "ship", settings: { ...SETTINGS, autoClean: false }, statePath, now: NOW, fetchMerged: () => null };
     const res = runHygiene({ ...base, fetchOwnPrs: () => [c.pr()] });
     expect(res.card.openItems).toEqual([{
-      text: expect.stringContaining("PR #717"), reply: "PR #717 schließen — überholt durch main.",
+      text: expect.stringContaining("PR #717"), reply: "PR #717 schließen — überholt durch main.", kind: "cleanup",
     }]);
     expect(runHygiene({ ...base, fetchOwnPrs: () => null }).card.openItems).toBeUndefined();
     expect(cardLines({ autoClean: { ran: false }, stalePrs: [] }).openItems).toBeUndefined();

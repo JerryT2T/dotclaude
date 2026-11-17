@@ -173,6 +173,16 @@ export const CONCLUDE = {
   en: { label: "Rework", icon: "bug", tooltip: "Puts the prepared answer to the open points into the input box — tackle all of them, Enter sends.", intro: "Please tackle all open points:" },
 };
 
+/**
+ * The cleanup button (2026-11-17): the prepared answers of the card's cleanup
+ * hints (open items of kind "cleanup", ship_hygiene). Never primary, never
+ * Nachbessern — a shipped card stays finished, cleanup is an extra.
+ */
+export const CLEANUP = {
+  de: { label: "Aufräumen", icon: "trash", tooltip: "Legt die vorbereitete Antwort auf die Aufräum-Hinweise ins Eingabefeld — Enter sendet." },
+  en: { label: "Clean up", icon: "trash", tooltip: "Puts the prepared answer to the cleanup hints into the input box — Enter sends." },
+};
+
 /** Label of the analysis card's primary button when the card names its recommended next step (`nextStep`). */
 export const NEXT_STEP = {
   de: { label: "Empfehlung umsetzen" },
@@ -299,6 +309,11 @@ export function buttonsFor(buttonsKey, lang = "de", opts = {}) {
       : buttons.slice(1);
   }
   if (opts && Array.isArray(opts.extra)) for (const x of opts.extra) buttons.push({ label: x.label, icon: x.icon, prompt: x.prompt, tooltip: x.tooltip });
+  const tidy = conclusionPrompt(opts && opts.cleanup, lang);
+  if (tidy && !(opts && Array.isArray(opts.custom) && opts.custom.length)) {
+    const c = CLEANUP[lang] || CLEANUP.de;
+    buttons.push({ label: c.label, icon: c.icon, prompt: tidy, tooltip: c.tooltip });
+  }
   if (opts && opts.appStart) buttons.push(appStartButton(lang));
   const handoff = opts && opts.guideHandoff;
   if (handoff && handoff.service) buttons.push(guideHandoffButton(handoff.service, lang));
@@ -325,7 +340,7 @@ const WRAP_LABEL_MAX = 24;
 export function wrapUpArgs(model) {
   if (!model || model.variant === "test-minimal") return {};
   const lang = model.lang === "en" ? "en" : "de";
-  const buttons = buttonsFor(model.buttonsKey, lang, { custom: model.customButtons, extra: model.extraButtons, version: model.promoteVersion, replies: model.replies, noShip: model.noShip, guideHandoff: model.guideHandoff, appStart: model.appStart, nextStep: model.nextStep, readOnly: model.readOnly });
+  const buttons = buttonsFor(model.buttonsKey, lang, { custom: model.customButtons, extra: model.extraButtons, version: model.promoteVersion, replies: model.replies, cleanup: model.cleanup, noShip: model.noShip, guideHandoff: model.guideHandoff, appStart: model.appStart, nextStep: model.nextStep, readOnly: model.readOnly });
   if (!buttons.length) return {};
   const ordered = [...buttons.filter((a) => a.primary), ...buttons.filter((a) => !a.primary)];
   const labelOf = (a) => {
@@ -505,7 +520,7 @@ export function cardWidgetData(model, repoUrl = "") {
   const nz = (v) => (v ? v : undefined);
   const arr = (a) => (Array.isArray(a) ? a : []);
   const list = (a) => (arr(a).length ? a : undefined);
-  const buttons = buttonsFor(model.buttonsKey, lang, { custom: model.customButtons, extra: model.extraButtons, version: model.promoteVersion, replies: model.replies, noShip: model.noShip, guideHandoff: model.guideHandoff, appStart: model.appStart, nextStep: model.nextStep, readOnly: model.readOnly });
+  const buttons = buttonsFor(model.buttonsKey, lang, { custom: model.customButtons, extra: model.extraButtons, version: model.promoteVersion, replies: model.replies, cleanup: model.cleanup, noShip: model.noShip, guideHandoff: model.guideHandoff, appStart: model.appStart, nextStep: model.nextStep, readOnly: model.readOnly });
   const prNum = model.pipelinePr && model.pipelinePr.number;
   const b = model.budget;
   let bu;
