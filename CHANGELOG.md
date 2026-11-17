@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.385.0] — 2026-11-17
+
+### Added
+- auto-concept: Etappen can be worked in any order. One click on an open Etappe's tab in the ☰ panel starts its next round; "Nächste Etappe ›" leads to the next open one; a passed-over Etappe stays open.
+- auto-concept: "Diese Etappe umsetzen" stands in every Etappe — the implement order builds that Etappe only and the concept stays open.
+- auto-concept: every built Etappe ends with its own final report as a tab of the same page. Its close-out asks per open Etappe (nachholen / als Issue anlegen / streichen) and which one comes next; nothing ships until the last close-out (one PR, one version).
+- auto-concept: stage states `open | built | issue | dropped` in `#concept-stages`; `page.json` `stages[].state` routes an Etappe to an issue or drops it. Process: `deep-knowledge/step5-stages.md`.
+
+### Changed
+- Concept gate: the order rule `stages-order` is retired; new rules block a regular round after a stage's final report, a second report for one stage and a live round in a closed stage. Stage errors get their own gate message instead of the structural one.
+- Concept bridge: a stage close-out that keeps the concept open requires a reload before the reset, like an iterate.
+- A round that is passed over without one change is sent with `untouched: true`; its preselected options are not treated as answers.
+
 ## [0.384.3] — 2026-11-17
 
 ### Fixed
