@@ -30,16 +30,20 @@ topics as `data-design-set="topics"` sub-pages of one round.
   one last Etappe and say so in round 1. An unrelated topic that comes up
   after round 1 joins the current Etappe as its own section — the stage list
   is not reopened.
-- **The user's word wins.** A wish for one round, another order, or merged or
-  dropped Etappen overrules this rule; say in round 1 that the order can be
-  changed. Stages only advance (the gate refuses a step back), so a later
-  correction to an earlier Etappe is its own section in the current round.
-- **Never staged:** the final report, a reality-check round and a `--report`
-  page carry no `data-stage`; they cover every Etappe.
+- **The user's word wins.** A wish for one round, or merged or dropped
+  Etappen, overrules this rule. The order is the user's at any time: every
+  open Etappe can be started from the ☰ panel, passed over and reopened
+  until it is built (`step5-process.md` § 5b · next-stage).
+- **Built one at a time, shipped once.** Every Etappe has its own implement
+  station and ends with its own final report on the same page; the last
+  close-out ships everything together and asks what happens to an Etappe
+  still open (`step5-stages.md`).
+- **Never staged:** a reality-check round and a `--report` page carry no
+  `data-stage`. A final report carries the `data-stage` of the Etappe it
+  closes; only the report of a concept without Etappen carries none.
 - **Groups and order:** for a do-batch start the groups come from the hand-off
   (`step1-templates.md` § Step 0.5 · Asking, the do-batch start, count
   preferences — *Unrelated surfaces*); for every other start derive them from
-  the request. The order is a reading order, not a dependency, and the
-  implement order at the end stays ONE.
+  the request. The order is a reading order, not a dependency.
 - **Declaring:** `concept-build.js init … --stages "A:Galerie,B:Login"` (a
   name holds no comma), every round section `data-stage="<id>"`.

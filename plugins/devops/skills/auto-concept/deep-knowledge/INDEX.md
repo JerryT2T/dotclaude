@@ -25,6 +25,7 @@ Quick-reference for all deep-knowledge topics. Read this FIRST to find the right
 | [step4-monitor.md](step4-monitor.md) | Concept step 4 — heartbeat, pickup and polling schedule | Heartbeat, `/pending` pickup and the polling schedule — execution detail of `... |
 | [step5-finalize.md](step5-finalize.md) | Concept step 5b — finalize parts A to D, legacy actions, critical invariant | Finalize parts A · Issues, B · Implement, C · Ship, D · Close out and E · Tes... |
 | [step5-process.md](step5-process.md) | Concept step 5a–5b — reading a submission and the iterate / implement / finalize branches | Round marking, reading a submission, checkpoints and the iterate / implement ... |
+| [step5-stages.md](step5-stages.md) | Concept step 5 — Etappen: built and closed out one at a time | How `implement` and `finalize` run on a staged concept — execution detail of |
 | [step5-update-page.md](step5-update-page.md) | Concept step 5c–5d — appending rounds, the final report, resuming the watch | Appending rounds, the final report and its open points, re-confirming wakes a... |
 | [step6-closeout.md](step6-closeout.md) | Concept step 6 — disposition, cleanup procedure, completion card | Disposition, the cleanup procedure, durable-store disposal, safety rules and ... |
 | [templates-analysis-css.md](templates-analysis-css.md) | Concept templates, part 45 of 50: Template: analysis — styling CSS (Full + Lite) | Everything is namespaced: tokens `--an-*`, classes `an-*`, and the authored |

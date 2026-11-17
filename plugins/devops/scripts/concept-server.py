@@ -683,7 +683,16 @@ def _reset_needs_reload(raw):
     except (ValueError, TypeError):
         return False
     return bool(isinstance(obj, dict) and obj.get('submitted') is True
-                and obj.get('action') in RELOAD_REQUIRED_ACTIONS)
+                and (obj.get('action') in RELOAD_REQUIRED_ACTIONS
+                     or _is_stage_finalize(obj)))
+
+
+def _is_stage_finalize(obj):
+    """A finalize with `final: false` closes ONE stage report; the concept goes
+    on with a new round, so it behaves like iterate / next-stage (a /reload
+    follows). `final` true or absent is the real close-out, as before."""
+    return bool(isinstance(obj, dict) and obj.get('action') == 'finalize'
+                and obj.get('final') is False)
 
 
 def _submission_id_of(raw):
@@ -2633,7 +2642,8 @@ def _finalize_submitted(raw):
     try:
         obj = json.loads(raw)
         return bool(isinstance(obj, dict) and obj.get('submitted') is True
-                    and obj.get('action') == 'finalize')
+                    and obj.get('action') == 'finalize'
+                    and not _is_stage_finalize(obj))
     except (ValueError, TypeError):
         return False
 

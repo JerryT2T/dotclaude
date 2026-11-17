@@ -540,7 +540,7 @@ describe("concept-build — Etappen (stages)", () => {
     write(dir, 2, decisionRound(2, "", { attrs: ' data-stage="B"' }));
     const r = cb.build(dir, { home });
     expect(r.ok).toBe(true);
-    expect(stagesOf(r.html)).toEqual({ stages, current: "B", icon: "🧭", title: "Billing" });
+    expect(stagesOf(r.html)).toEqual({ stages: stages.map(s => ({ ...s, state: "open" })), current: "B", icon: "🧭", title: "Billing" });
     const d = doc(r.html);
     expect(d.querySelector('section[data-iteration="1"]').getAttribute("data-stage")).toBe("A");
     expect(d.querySelector('section[data-iteration="1"]').hasAttribute("hidden")).toBe(true);
@@ -560,6 +560,93 @@ describe("concept-build — Etappen (stages)", () => {
     expect(r.gate || "").not.toContain("stages-");
     expect(r.ok).toBe(true);
     expect(stagesOf(r.html).current).toBe("B");
+  });
+
+  const report = (n, stage, extra = "") => `<section data-iteration="${n}" data-iteration-template="free" data-final-report${extra}${stage ? ` data-stage="${stage}"` : ""}><h2>Report</h2></section>`;
+  const staged = (spec = "A:One,B:Two,C:Three") => {
+    const p = project();
+    cb.init(p.dir, { title: "T", locale: "en", stages: spec });
+    return p;
+  };
+  const rnd = (n, stage, baked = false) => decisionRound(n, "", { baked, attrs: ` data-stage="${stage}"` });
+
+  test("a baked stage report in the middle: other stages go on, states [built, open, open], current C", () => {
+    const { dir, home } = staged();
+    write(dir, 1, rnd(1, "A", true));
+    write(dir, 2, report(2, "A", " data-baked"));
+    write(dir, 3, rnd(3, "C"));
+    const r = cb.build(dir, { home });
+    expect(r.problems || []).toEqual([]);
+    expect(r.ok).toBe(true);
+    const s = stagesOf(r.html);
+    expect(s.stages.map(x => x.state)).toEqual(["built", "open", "open"]);
+    expect(s.current).toBe("C");
+    expect(doc(r.html).querySelector('section[data-iteration="2"]').hasAttribute("hidden")).toBe(true);
+  });
+
+  test("a regular round after its stage's report is blocked by the gate (stages-built-reopened)", () => {
+    const { dir, home } = staged();
+    write(dir, 1, rnd(1, "A", true));
+    write(dir, 2, report(2, "A", " data-baked"));
+    write(dir, 3, rnd(3, "A"));
+    const r = cb.build(dir, { home });
+    expect(r.ok).toBe(false);
+    expect(JSON.stringify(r)).toContain("stages-built-reopened");
+  });
+
+  test("two reports for one stage are refused; one per stage is fine; an untagged one keeps the old rules", () => {
+    let { dir, home } = staged();
+    write(dir, 1, report(1, "A", " data-baked"));
+    write(dir, 2, report(2, "A"));
+    let r = cb.build(dir, { home });
+    expect(r.ok).toBe(false);
+    expect(JSON.stringify(r)).toMatch(/more than one data-final-report round for stage A/);
+    ({ dir, home } = staged());
+    write(dir, 1, report(1, "A", " data-baked"));
+    write(dir, 2, report(2, "B"));
+    r = cb.build(dir, { home });
+    expect(r.ok).toBe(true);
+    expect(stagesOf(r.html).stages.map(x => x.state)).toEqual(["built", "built", "open"]);
+    ({ dir, home } = staged());
+    write(dir, 1, report(1, "", " data-baked"));
+    write(dir, 2, rnd(2, "A"));
+    r = cb.build(dir, { home });
+    expect(r.ok).toBe(false);
+    expect(JSON.stringify(r)).toMatch(/final-report round must be the last/);
+  });
+
+  test("an unstaged concept keeps one report, last round only (tagged or not)", () => {
+    const { dir, home } = project();
+    cb.init(dir, { title: "T", locale: "en" });
+    write(dir, 1, report(1, "A", " data-baked"));
+    write(dir, 2, report(2, "A"));
+    let r = cb.build(dir, { home });
+    expect(r.ok).toBe(false);
+    expect(JSON.stringify(r)).toMatch(/more than one data-final-report round/);
+    write(dir, 2, decisionRound(2));
+    r = cb.build(dir, { home });
+    expect(r.ok).toBe(false);
+    expect(JSON.stringify(r)).toMatch(/final-report round must be the last/);
+  });
+
+  test("a stage state from page.json reaches the script; a live round in that stage is blocked; a bad value is a problem", () => {
+    const { dir, home } = staged("A:One,B:Two|dropped,C:Three");
+    const page = JSON.parse(fs.readFileSync(path.join(dir, "page.json"), "utf8"));
+    expect(page.stages[1]).toEqual({ id: "B", name: "Two", state: "dropped" });
+    write(dir, 1, rnd(1, "A"));
+    let r = cb.build(dir, { home });
+    expect(r.ok).toBe(true);
+    expect(stagesOf(r.html).stages.map(x => x.state)).toEqual(["open", "dropped", "open"]);
+    write(dir, 1, rnd(1, "B"));
+    r = cb.build(dir, { home });
+    expect(r.ok).toBe(false);
+    expect(JSON.stringify(r)).toContain("stages-closed");
+    fs.writeFileSync(path.join(dir, "page.json"), JSON.stringify({ ...page, stages: [{ id: "A", name: "One", state: "later" }] }));
+    write(dir, 1, rnd(1, "A"));
+    r = cb.build(dir, { home });
+    expect(r.ok).toBe(false);
+    expect(JSON.stringify(r)).toMatch(/state \\"later\\"/);
+    expect(() => cb.init(path.join(dir, "..", "x"), { title: "T", stages: "A:One|nope" })).toThrow(/state "nope"/);
   });
 
   test("no stages in page.json -> no #concept-stages script, nothing else changes", () => {

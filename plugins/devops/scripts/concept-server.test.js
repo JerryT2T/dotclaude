@@ -632,6 +632,18 @@ print(json.dumps([a,st,b,c]))`);
     expect(out).toEqual([true, ["closed", { state: "closed" }], false, false]);
   });
 
+  test("a stage finalize (final:false) is no session end and needs a reload; final true/absent stay as before", () => {
+    const out = run(`
+n=lambda o: m._reset_needs_reload(json.dumps(o))
+stage={'submitted':True,'action':'finalize','final':False,'stage':'A','next':'B'}
+m._decisions=json.dumps(stage)
+hold=m._html_gone_hold(0)
+print(json.dumps([n(stage), m._finalize_submitted(json.dumps(stage)), hold, m._phase,
+  n({'submitted':True,'action':'finalize','final':True}), n({'submitted':True,'action':'finalize'}),
+  m._finalize_submitted(json.dumps({'submitted':True,'action':'finalize','final':True}))]))`);
+    expect(out).toEqual([true, false, false, "", false, false, true]);
+  });
+
   test("no finalize in flight - the old shutdown stands; a posted done phase is held too", () => {
     const out = run(`
 a=m._html_gone_hold(0)

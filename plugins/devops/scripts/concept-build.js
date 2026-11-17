@@ -598,7 +598,6 @@ function assemble({ page, head, fragments, slug = 'concept', md = readTemplates(
   });
   if (!rounds.length) problems.push('no round fragments in rounds/ — write rounds/01.html first');
   const seen = new Set();
-  let finals = 0;
   const live = rounds[rounds.length - 1];
   for (const r of rounds) {
     if (!r.root) { problems.push(`round ${r.n}: no <section> element`); continue; }
@@ -608,7 +607,6 @@ function assemble({ page, head, fragments, slug = 'concept', md = readTemplates(
     if (!t || !VALID_TEMPLATES.has(t)) problems.push(`round ${r.n}: data-iteration-template missing or not decision|design|free`);
     if (seen.has(r.n)) problems.push(`round ${r.n}: duplicate round number`);
     seen.add(r.n);
-    if (hasAttr(r.attrs, 'data-final-report')) finals++;
     const masked = maskComments(r.html);
     if ((masked.match(/<section\b[^>]*\bdata-iteration=/gi) || []).length > 1) problems.push(`round ${r.n}: more than one section[data-iteration] in one fragment`);
     const ext = rootExtent(r.html);
@@ -619,9 +617,28 @@ function assemble({ page, head, fragments, slug = 'concept', md = readTemplates(
     }
     if (r !== live && !hasAttr(r.attrs, 'data-baked')) problems.push(`round ${r.n}: frozen but never baked — run "concept-build.js bake --round ${r.n}" with its payload first`);
   }
-  if (finals > 1) problems.push('more than one data-final-report round');
+  // Etappen: a final report that carries data-stage closes only that stage -
+  // other stages' rounds and reports may follow it, one report per stage. An
+  // untagged final report (and every report of an unstaged concept) keeps the
+  // old rules: at most one, and it is the last round.
+  const staged = Array.isArray(page.stages) && page.stages.some(s => s && s.id);
+  const reports = rounds.filter(r => r.root && hasAttr(r.attrs, 'data-final-report'));
+  const stageReports = staged ? reports.filter(r => getAttr(r.attrs, 'data-stage')) : [];
+  const plainReports = reports.filter(r => !stageReports.includes(r));
+  const perStage = new Set();
+  for (const r of stageReports) {
+    const st = getAttr(r.attrs, 'data-stage');
+    if (perStage.has(st)) problems.push(`more than one data-final-report round for stage ${st}`);
+    perStage.add(st);
+  }
+  if (plainReports.length > 1) problems.push('more than one data-final-report round');
   // A review round ("Umsetzung prüfen" on the closing page) is the one round allowed after the final report.
-  if (finals === 1 && live && !hasAttr(live.attrs, 'data-final-report') && !hasAttr(live.attrs, 'data-review')) problems.push('a final-report round must be the last round');
+  for (const r of plainReports) {
+    if (live && r !== live && !hasAttr(live.attrs, 'data-review')) { problems.push('a final-report round must be the last round'); break; }
+  }
+  for (const s of staged ? page.stages : []) {
+    if (s && s.state !== undefined && !STAGE_STATES.includes(s.state)) problems.push(`page.json stage ${s.id}: state ${JSON.stringify(s.state)} — must be "issue" or "dropped" (or absent)`);
+  }
 
   const liveN = live ? live.n : 0;
   const sectionsHtml = rounds.map(r => {
@@ -678,6 +695,8 @@ function assemble({ page, head, fragments, slug = 'concept', md = readTemplates(
  * staged round before it. Falls back to the first stage when an ordinary live
  * round carries no data-stage (the gate flags that).
  */
+// page.json may route a not-built stage out of the way; "built" is derived from the final reports.
+const STAGE_STATES = ['issue', 'dropped'];
 function stagesScript(page, live, rounds = []) {
   const stages = Array.isArray(page.stages) ? page.stages.filter(s => s && s.id) : [];
   if (!stages.length) return '';
@@ -687,7 +706,9 @@ function stagesScript(page, live, rounds = []) {
     own = staged ? getAttr(staged.attrs, 'data-stage') : '';
   }
   const current = own && stages.some(s => s.id === own) ? own : stages[0].id;
-  const data = { stages: stages.map(s => ({ id: String(s.id), name: String(s.name || '') })), current, icon: page.icon || '🧭', title: page.title || 'Concept' };
+  const built = new Set(rounds.filter(r => hasAttr(r.attrs, 'data-final-report') && getAttr(r.attrs, 'data-stage')).map(r => getAttr(r.attrs, 'data-stage')));
+  const stateOf = s => (built.has(String(s.id)) ? 'built' : STAGE_STATES.includes(s.state) ? s.state : 'open');
+  const data = { stages: stages.map(s => ({ id: String(s.id), name: String(s.name || ''), state: stateOf(s) })), current, icon: page.icon || '🧭', title: page.title || 'Concept' };
   const json = JSON.stringify(data).replace(/</g, '\\u003c');
   return `<script type="application/json" id="concept-stages">\n${json}\n</script>\n`;
 }
@@ -700,7 +721,11 @@ function parseStages(spec) {
   if (spec === undefined || spec === null || spec === true || spec === '') return null;
   return String(spec).split(',').map(x => x.trim()).filter(Boolean).map(x => {
     const i = x.indexOf(':');
-    return i < 0 ? { id: x, name: '' } : { id: x.slice(0, i).trim(), name: x.slice(i + 1).trim() };
+    const s = i < 0 ? { id: x, name: '' } : { id: x.slice(0, i).trim(), name: x.slice(i + 1).trim() };
+    // Optional state: "A:Name|issue" / "A:Name|dropped" (validated by init).
+    const bar = s.name.lastIndexOf('|');
+    if (bar >= 0) { s.state = s.name.slice(bar + 1).trim(); s.name = s.name.slice(0, bar).trim(); }
+    return s;
   });
 }
 
@@ -786,6 +811,7 @@ function init(dir, opts) {
       const want = String.fromCharCode(65 + i);
       if (s.id !== want) throw new Error(`--stages: stage ${i + 1} must have id "${want}" (consecutive capitals from A), got "${s.id}"`);
       if (!s.name || [...s.name].length > 24) throw new Error(`--stages: stage ${s.id} needs a name of 1-24 characters`);
+      if (s.state !== undefined && !STAGE_STATES.includes(s.state)) throw new Error(`--stages: stage ${s.id} state "${s.state}" must be "issue" or "dropped"`);
     });
     page.stages = stages;
   }
