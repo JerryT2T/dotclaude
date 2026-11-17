@@ -12,7 +12,7 @@
 const { isMachineTurn } = require('../user-prompt-submit/prompt.flow.silent-turn');
 const { isShipIntent, isDeferredShip } = require('./ship-intent');
 const { ownWords } = require('./prompt-text');
-const { clampTitle } = require('./title-budget');
+const { TOPIC_MAX } = require('./title-budget');
 const {
   WORK_PREFIX, LEGACY_PENDING_PREFIX, LEGACY_PREFIXES, SHIPPING_PREFIX, CONCEPT_PREFIX, BATCH_PREFIX,
   classify, nextTitle,
@@ -41,13 +41,14 @@ function prefixOf(prompt, resumesShip = false) {
  * get_session, no round trip of its own. Kept short: it is injected on
  * every marking prompt.
  */
-function directInstruction(title, { shipping = false, conceptYields = false } = {}) {
+function directInstruction(title, { shipping = false, conceptYields = false, topic = false } = {}) {
   return [
     '[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__set_session_title ' +
       `{session_id:"self", title:${JSON.stringify(title)}} in the SAME message as this turn's first other tool call ` +
       '(parallel — no get_session, no message of its own). No other tool this turn → call it alone.',
     'Only deferred → ToolSearch "select:mcp__ccd_session_mgmt__set_session_title" in that first batch, the set call in the next. ' +
       'Not even deferred, or it fails: skip silently.',
+    ...(topic ? [topicLine()] : []),
     ...questionLine(title),
     ...(shipping ? ['This is do-ship Pre-Step C done early.'] : []),
     ...(conceptYields ? ['The concept prefix yields (Claude works now); if the concept page stays open after this turn, its completion card (concept field + cwd) sets it again.'] : []),
@@ -55,12 +56,22 @@ function directInstruction(title, { shipping = false, conceptYields = false } = 
   ].join('\n');
 }
 
-/** The first line of the user's own words as a stand-in topic, or null. The
- *  caller clamps it by the word of the prefix it goes under (title-budget.js). */
-function promptTopic(prompt) {
+/**
+ * The topic rule for a session's first prompt (user decision d-who, 2026-11-17:
+ * "Nur das Modell"): the hook derives no topic from the prompt; until the model's
+ * first tool call the app's own title stands, then the model's label replaces it.
+ * Abbreviations are a hint only (d-abbr: no list, the length is enforced by
+ * hooks/pre-tool-use/pre.title.topic.js).
+ */
+function topicLine() {
+  return `First prompt of this session: in that call put a topic label of at most ${TOPIC_MAX} characters in place of the text after the "┃ " — a noun phrase naming the subject, ` +
+    "not the prompt's opening words (abbreviations allowed, if needed). Set it once; a longer topic is refused. A title the user set themselves stays untouched.";
+}
+
+/** True when the prompt is a sub-session's brief — its title comes from start_session. */
+function isSubSessionBrief(prompt) {
   const line = ownWords(prompt).split('\n').map(l => l.trim()).find(Boolean);
-  if (!line || /^[<[]/.test(line) || SUB_SESSION_BRIEF.test(line)) return null;
-  return line;
+  return !!line && SUB_SESSION_BRIEF.test(line);
 }
 
 /**
@@ -78,11 +89,12 @@ function questionLine(title) {
  * Fallback for a FRESH session whose title is still unknown: it can only be
  * the app's own summary, so no prefix table — get it, prefix it.
  */
-function freshInstruction(prefix = WORK_PREFIX) {
+function freshInstruction(prefix = WORK_PREFIX, { topic = false } = {}) {
   const heads = [...new Set(Object.values(STATUS))].join(' ');
   return [
     '[prompt.flow.title-work] Desktop app only, once: mcp__ccd_session_mgmt__get_session {session_id:"self"} in the first tool batch of this turn; ' +
       `title non-empty and starting with none of ${heads} 📥 → mcp__ccd_session_mgmt__set_session_title {session_id:"self", title:"${prefix}" + title} with the next batch.`,
+    ...(topic ? [topicLine()] : []),
     'Deferred → ToolSearch "select:mcp__ccd_session_mgmt__get_session,mcp__ccd_session_mgmt__set_session_title" first. Unavailable or failing: skip silently. Do not mention this to the user.',
   ].join('\n');
 }
@@ -150,25 +162,30 @@ function instruction(prefix = WORK_PREFIX, { machine = false } = {}) {
 function titlePlan({ prompt, current, firstPrompt, fresh, resumesShip = false }) {
   const prefix = prefixOf(prompt, resumesShip);
   const machine = isMachineTurn(prompt);
+  // The model names the topic on a user's first prompt (a sub-session's title comes from start_session).
+  const topic = firstPrompt && !machine && !isSubSessionBrief(prompt);
   let context;
   if (current === null) {
-    context = !machine && fresh ? freshInstruction(prefix) : instruction(prefix, { machine });
+    context = !machine && fresh ? freshInstruction(prefix, { topic }) : instruction(prefix, { machine });
   } else {
     const next = nextTitle(current, { prefix, machine });
     context = next === null ? '' : directInstruction(next, {
       shipping: prefix === SHIPPING_PREFIX,
       conceptYields: classify(current) === 'concept-waiting',
+      topic,
     });
   }
   return { context, sessionTitle: context ? earlyTitleOf({ prompt, current, firstPrompt, prefix, machine }) : null };
 }
 
-/** The title the hook sets itself, without the model, or null: only on a session's first prompt from the user. */
+/**
+ * The title the hook sets itself, without the model, or null: only on a session's
+ * first prompt from the user, and only the prefix on the app's own title — never a
+ * topic derived from the prompt (d-who: the model names the topic).
+ */
 function earlyTitleOf({ prompt, current, firstPrompt, prefix = prefixOf(prompt), machine = isMachineTurn(prompt) }) {
-  if (machine || !firstPrompt) return null;
-  if (current !== null) return nextTitle(current, { prefix });
-  const topic = promptTopic(prompt);
-  return topic ? clampTitle(prefix + topic) : null;
+  if (machine || !firstPrompt || current === null) return null;
+  return nextTitle(current, { prefix });
 }
 
 /** The hook's stdout for a plan: plain context, or JSON when it sets the title itself too. */
@@ -178,4 +195,4 @@ function replyOf(plan) {
   return JSON.stringify({ hookSpecificOutput: { hookEventName: 'UserPromptSubmit', additionalContext: plan.context, sessionTitle: plan.sessionTitle } });
 }
 
-module.exports = { titlePlan, earlyTitleOf, replyOf, prefixOf, promptTopic, directInstruction, freshInstruction, instruction, questionLine, SUB_SESSION_BRIEF };
+module.exports = { titlePlan, earlyTitleOf, replyOf, prefixOf, topicLine, directInstruction, freshInstruction, instruction, questionLine, SUB_SESSION_BRIEF };

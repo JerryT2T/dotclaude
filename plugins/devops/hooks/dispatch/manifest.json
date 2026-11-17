@@ -127,6 +127,12 @@
       },
       {
         "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.title.topic.js\"", "timeout": 5, "dispatch": "fast" }
+        ],
+        "matcher": "mcp__ccd_session_mgmt__set_session_title"
+      },
+      {
+        "hooks": [
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.ask.title.js\"", "timeout": 5 }
         ],
         "matcher": "AskUserQuestion|ExitPlanMode"
