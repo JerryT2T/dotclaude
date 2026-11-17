@@ -13,6 +13,23 @@
         ]
       }
     ],
+    "plugins/devops/hooks/mods/index.tsx›batchEl›visibility with live batch hint card": [
+      {
+        "ship": "#1147",
+        "by": "Jerry",
+        "value": "whole batch row hidden when liveHead"
+      },
+      {
+        "ship": "claude/desktop-actions-mod-panel-4fcd8b",
+        "by": "JerryT2T",
+        "value": "count hidden (one count source, #1147), Notizen ▸ + Go/Aus buttons stay",
+        "decided": true,
+        "at": "2026-11-17T19:50:40.228Z",
+        "hunks": [
+          "32e759f85512"
+        ]
+      }
+    ],
     "plugins/devops/hooks/mods/index.tsx›turn.start hook›condition": [
       {
         "ship": "0.373.0",
