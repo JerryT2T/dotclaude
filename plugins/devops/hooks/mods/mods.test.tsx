@@ -5,6 +5,8 @@
 import { expect, test } from 'claude-code/testing'
 import {
   addRun,
+  archiveOffered,
+  archiveRefusal,
   agentRows,
   batchDropReason,
   batchMaybeCollectable,
@@ -2150,4 +2152,59 @@ test('card band: cleanup hints (🧹) and the card’s Aufräumen button are lef
   const view = cardFromResult(cardText(d))!
   expect(view.points).toEqual(['👉 Remote-Branch konnte nicht gelöscht werden'])
   expect(view.buttons.map(b => b.label)).toEqual(['Promote beta'])
+})
+
+test('archive helpers: offered only on a green card while idle; isError text becomes the reason', () => {
+  expect(archiveOffered({ heading: '🟩 🚀 Released Alpha — v1 — fertig.' }, false)).toBe(true)
+  expect(archiveOffered({ heading: '🟩 🖥️ System — erledigt — noch etwas?' }, false)).toBe(true)
+  expect(archiveOffered({ heading: '🟩 🚀 Released Alpha — v1 — fertig.' }, true)).toBe(false)
+  expect(archiveOffered({ heading: '👉 Ready — shippen?' }, false)).toBe(false)
+  expect(archiveOffered(null, false)).toBe(false)
+  expect(archiveRefusal({ isError: false, content: [] })).toBeNull()
+  expect(archiveRefusal({ isError: true, content: [{ type: 'text', text: 'Session is pinned.\n' }] })).toBe('Session is pinned.')
+  expect(archiveRefusal({ isError: true })).toBe('archive_session failed')
+})
+
+test('archive button: a green card offers it; a press calls the app archive_session on self, a refusal is a toast', async ($, on) => {
+  const { seen } = engine(on)
+  on('tool.call', () => ({ result: {}, text: cardText(REL) }))
+  const calls: Array<{ server: string; tool: string; args: Record<string, unknown> }> = []
+  on('mcp.call', (_: unknown, e: { server: string; tool: string; args: Record<string, unknown> }) => {
+    calls.push(e)
+    return { value: { isError: true, content: [{ type: 'text', text: 'Session is pinned' }] } }
+  })
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.tool.call({ tool: CARD_TOOL, summary: 'ship' } as any)
+  const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await band.find({ key: 'card-archive' })).toBeDefined()
+  await band.press({ key: 'card-archive' })
+  expect(calls).toHaveLength(1)
+  expect(calls[0].server).toBe('ccd_session_mgmt')
+  expect(calls[0].tool).toBe('archive_session')
+  expect(calls[0].args.session_id).toBe('self')
+  expect(seen.toasts.at(-1)).toMatch(/Session is pinned/)
+  expect(seen.prompts).toHaveLength(0)
+  await band.unmount()
+})
+
+test('archive button: server unreachable → the request goes out as the person\'s prompt', async ($, on) => {
+  const { seen } = engine(on)
+  on('tool.call', () => ({ result: {}, text: cardText(REL) }))
+  on('mcp.call', () => ({ deny: 'no such server' }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.tool.call({ tool: CARD_TOOL, summary: 'ship' } as any)
+  const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  await band.press({ key: 'card-archive' })
+  expect(seen.prompts.at(-1)).toMatch(/archiv/i)
+  await band.unmount()
+})
+
+test('archive button: no button on a card that is not green', async ($, on) => {
+  engine(on)
+  on('tool.call', () => ({ result: {}, text: cardText({ ...CARD_DATA, h: '👉 Ready — shippen?' }) }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.tool.call({ tool: CARD_TOOL, summary: 'x' } as any)
+  const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await band.find({ key: 'card-archive' })).toBeUndefined()
+  await band.unmount()
 })
