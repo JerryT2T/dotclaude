@@ -36,7 +36,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { AgentRow, Budget, CardView, CleanupHistory, CleanupRun, EchoState, Health, Hygiene, InfoData, InfoState, Progress, RunMarker, SessionFlags, ShipView, SpikeWatch } from '../../types/index'
+import type { AgentRow, Budget, CardView, CleanupHistory, CleanupRun, EchoState, Health, Hygiene, InfoData, InfoState, Progress, RecapState, WakeDue, RunMarker, SessionFlags, ShipView, SpikeWatch } from '../../types/index'
 import type { CompactEnv, Locale, WorkState } from './format'
 import {
   activityOf,
@@ -45,6 +45,19 @@ import {
   applyPlan,
   BATCH_MAX_ATTACHMENT_BYTES,
   BATCH_WRITER_TIMEOUT_MS,
+  REDIRECT_TIMEOUT_MS,
+  claimWake,
+  pendingWakes,
+  scheduleWake,
+  wakeDelayMs,
+  RECAP_PROMPT,
+  clampRecap,
+  recapCardText,
+  recapGap,
+  recapPlan,
+  outputMaybeRedirect,
+  parseRedirectOutput,
+  pasteMaybeRedirect,
   batchDropReason,
   batchMaybeCollectable,
   batchViewFrom,
@@ -161,6 +174,9 @@ const RAIL_WIDTH = 30
 const HINTS_WIDTH = 56
 const POPOVER_BG = '#262626'
 let ticker: { cancel: () => void } | null = null
+// #1103 / Spike 4: the armed wake timers of this module instance; the due times themselves live in $.state.
+const wakeTimers = new Map<string, { cancel: () => void }>()
+const wake = atom({ plugin: 'devops', key: 'wake' } as const, [] as WakeDue[], { shape: 'wake-1' })
 
 /** Keeps the Agents pane's elapsed times live: a timer that bumps `tick` while any subagent runs, and stops itself after. */
 function startTicker($: EngineInterface): void {
@@ -194,6 +210,9 @@ const settled = atom({ plugin: 'devops', key: 'settled' } as const, false, { sha
 const hintsOpen = atom({ plugin: 'devops', key: 'hintsOpen' } as const, false, { shape: 'hints-open-1' })
 // The last card's title and time, kept after the card is spent: the idle row's "Last:".
 const lastCard = atom({ plugin: 'devops', key: 'lastCard' } as const, null as { title: string; at: string } | null, { shape: 'last-card-1' })
+// #1105: the last card's text for a cold return, and the recap on screen (shown once, dismissible).
+const NO_RECAP: RecapState = { card: null, shown: null }
+const recap = atom({ plugin: 'devops', key: 'recap' } as const, NO_RECAP, { shape: 'recap-1' })
 // The last completion card of this prompt's turn (its template part, no answer) and what the turn is doing now.
 const card = atom({ plugin: 'devops', key: 'card' } as const, null as CardView | null, { shape: 'card-1' })
 const NO_PROGRESS: Progress = { steps: [], activity: '', startedAt: 0 }
@@ -463,6 +482,91 @@ async function fileBatchNote(
     /* display only */
   }
   return { drop: batchDropReason(n) }
+}
+
+/** #1105: decide and store the return recap. The gap comes from the engine (resume) or the last main turn's end. */
+async function showRecap($: EngineInterface, secondsSinceLastResponse: unknown): Promise<void> {
+  const now = await $.clock.now()
+  const gap = recapGap(secondsSinceLastResponse, (await read($, spike)).lastMainEnd, now)
+  const stored = await read($, recap)
+  const plan = recapPlan(gap, !!(stored.card && stored.card.text))
+  if (plan === 'none') return
+  let text = ''
+  let source: 'fork' | 'card' = 'card'
+  if (plan === 'fork') {
+    try {
+      const r = await $.model.fork({ prompt: RECAP_PROMPT })
+      if (r.isAnswered && r.text.trim()) {
+        text = clampRecap(r.text)
+        source = 'fork'
+      }
+    } catch {
+      /* falls back to the card */
+    }
+  }
+  if (!text && stored.card) text = stored.card.text
+  if (!text) return
+  await update($, recap, r => ({ ...r, shown: { text, source, at: now } }))
+  $.ui.invalidate('ui.render')
+}
+
+/** #1103 / Spike 4: arm the timer of one due entry; it fires once (claimed in $.state first), then submits its prompt. */
+function armWake($: EngineInterface, id: string, delayMs: number): void {
+  if (wakeTimers.has(id)) return
+  const timer = $.clock.after(delayMs, () => {
+    wakeTimers.delete(id)
+    void fireWake($, id).catch(() => undefined)
+  })
+  wakeTimers.set(id, timer)
+}
+
+async function fireWake($: EngineInterface, id: string): Promise<void> {
+  let fire = false
+  let entry: WakeDue | undefined
+  await update($, wake, list => {
+    const r = claimWake(list, id)
+    fire = r.fire
+    entry = list.find(d => d.id === id)
+    return r.list
+  })
+  if (!fire || !entry) return
+  const firedAt = await $.clock.now()
+  const row: Record<string, unknown> = { ts: new Date(firedAt).toISOString(), mode: 'wake', id, tag: entry.tag, due: new Date(entry.at).toISOString(), late_ms: firedAt - entry.at }
+  try {
+    const r = await $.prompt.submit({ text: `SPIKE_WAKE ${entry.tag} — the devops mod's $.clock timer (/mods-spike-wake) fired and submitted this prompt. Reply with one line.` })
+    row.submitted = true
+    row.origin = (r as { origin?: unknown }).origin ?? null
+  } catch (err) {
+    row.submitted = false
+    row.error = err instanceof Error ? err.message : String(err)
+  }
+  await appendSpikeLog($, row).catch(() => undefined)
+}
+
+/** After a (re)load: arm every open due entry again; an overdue one fires at once, a fired one never again. */
+async function rearmWakes($: EngineInterface): Promise<void> {
+  const now = await $.clock.now()
+  for (const p of pendingWakes(await read($, wake), now)) armWake($, p.id, p.delayMs)
+}
+
+/**
+ * #1106 6b / 6c: ask the one writer to store `text` and answer its excerpt. Null for everything that is not a confirmed
+ * redirect (small or exempt text, a guard-released output, a refusal, a timeout, missing node, garbage): the caller then
+ * keeps the text whole. Never throws.
+ */
+async function redirectText($: EngineInterface, kind: 'paste' | 'output', text: string, command?: string): Promise<string | null> {
+  try {
+    if (!(await open($))) return null
+    const cwd = sessionCwd.replace(/[\\]/g, '/').replace(/[/]+$/, '')
+    if (!cwd) return null
+    const request = { cwd, kind, text, command, tool: 'Bash' }
+    const r = await $.process.run(['node', `${$.plugin.root}/scripts/paste-redirect-write.js`], { cwd, stdin: JSON.stringify(request), timeoutMs: REDIRECT_TIMEOUT_MS })
+    if (r.exitCode !== 0) return null
+    const out = parseRedirectOutput(r.stdout)
+    return out ? out.excerpt : null
+  } catch {
+    return null
+  }
 }
 
 /** The machine-wide run marker (B13): one cleanup run per repo, seen by every session. */
@@ -754,6 +858,7 @@ export const register: Register = on => {
       name: 'mods-spike-fork',
       description: 'devops spike: one fork of this thread, logs its cache read to ~/.claude/devops-mods-spike.jsonl',
     })
+    await $.command.register({ name: 'mods-spike-wake', description: 'devops spike: a mod timer wakes this session after N minutes (default 1.5) via prompt.submit' })
     await $.command.register({ name: 'devops', description: 'devops: what the plugin saved and cost, from its local logs (no model call)' })
     sessionCwd = e.cwd || ''
     await writeLoadMarker($, e.surface || null, e.isInteractive === true).catch(() => undefined)
@@ -764,6 +869,7 @@ export const register: Register = on => {
     await checkSavings($, await homeDir($), null).catch(() => undefined)
     await checkMcp($).catch(() => undefined)
     await refreshStatus($).catch(() => undefined)
+    await rearmWakes($).catch(() => undefined)
     return started
   })
 
@@ -778,6 +884,11 @@ export const register: Register = on => {
         await update($, flags, f => ({ ...f, noticesShown: true }))
         for (const text of texts) $.ui.toast(text, { timeoutMs: 8000 })
       }
+    }
+    // #1105: a start after a gap shows a recap once: warm cache → one fork (no effort: an effort can force a full cache
+    // write), cold or a failed fork → the last card's own text, no model call. Detached, so it never holds the start.
+    if (source !== 'compact' && source !== 'clear' && (await open($))) {
+      void showRecap($, (e as { seconds_since_last_response?: unknown }).seconds_since_last_response).catch(() => undefined)
     }
     return result
   }).catch(($, e, next) => next(e)) // display only: a failure never changes the engine's answer
@@ -866,6 +977,7 @@ export const register: Register = on => {
       if ((e.text || '').trim()) {
         await update($, card, () => null)
         await update($, progress, () => ({ steps: [], activity: '', startedAt: now }))
+        await update($, recap, r => (r.shown ? { ...r, shown: null } : r))
       }
       await update($, spike, s => {
         const gapMs = s.lastMainEnd ? now - s.lastMainEnd : 0
@@ -920,7 +1032,19 @@ export const register: Register = on => {
         await update($, card, () => view)
         if (isShippedCard(view)) await update($, settled, () => true)
         if (view.title) await update($, lastCard, () => ({ title: view.title, at: view.at }))
+        const text = recapCardText(view)
+        if (text) {
+          const at = await $.clock.now()
+          await update($, recap, r => ({ ...r, card: { text, at } }))
+        }
       }
+    }
+    // #1106 6c: a large Bash stdout reaches the model as head + tail + path. Exempt commands (test, git, gh, CI) and an
+    // output pre.tokens.guard released on an identical retry stay whole: the writer decides, one path with the guard.
+    const stdout = gateOpen ? outputMaybeRedirect(tool, result) : null
+    if (stdout !== null && result && 'result' in result && result.result) {
+      const cut = await redirectText($, 'output', stdout, String((e as { command?: unknown }).command || ''))
+      if (cut) return { result: { ...(result.result as Record<string, unknown>), stdout: cut } } as typeof result
     }
     return result
   }).catch(($, e, next) => next(e)) // display only: a failure never changes the tool call
@@ -930,7 +1054,9 @@ export const register: Register = on => {
     // Batch collect first: a confirmed note ends the submission here (drop); anything else falls through unchanged.
     const filed = await fileBatchNote($, e)
     if (filed) return filed
-    const result = await next(e)
+    // #1106 6b: a large paste enters as head + tail + the path of its byte-exact original; anything unconfirmed stays whole.
+    const excerpt = pasteMaybeRedirect(e) ? await redirectText($, 'paste', e.text) : null
+    const result = await next(excerpt ? { ...e, text: excerpt } : e)
     const notice = taskNotice(e.text)
     if (notice && (await open($))) {
       const startedAt = (await read($, shells))[notice.toolUseId]
@@ -1045,6 +1171,18 @@ export const register: Register = on => {
     await $.ui.open({ id: SHIP_PANE, title: await titleOf($, 'titleShip') })
     await refreshShip($)
     return { text: 'Ship / CI pane opened.' }
+  })
+
+  // Spike 4 (#1103): one $.clock timer, its due time in $.state; at the time it submits a prompt, logged to the spike log.
+  on('command.run', { command: 'mods-spike-wake' }, async ($, e) => {
+    const ms = wakeDelayMs((e as { args?: string }).args || '')
+    if (ms === null) return { text: 'Usage: /mods-spike-wake [minutes, 0.1-360]' }
+    const now = await $.clock.now()
+    const id = `w${now}`
+    const tag = `after ${Math.round(ms / 100) / 10} s`
+    await update($, wake, list => scheduleWake(list, id, now + ms, tag))
+    armWake($, id, ms)
+    return { text: `Wake armed: a prompt arrives in ${Math.round(ms / 1000)} s (logged to ~/.claude/devops-mods-spike.jsonl).` }
   })
 
   // C10, Spike 1: ONE fork, no `effort` (an effort can force a full cache write).
@@ -1262,8 +1400,9 @@ export const register: Register = on => {
     const inf = await read($, info)
     const infoData = inf.open ? inf.data : null
     const hl = await read($, health)
+    const rc = working ? null : (await read($, recap)).shown
     // Idle and nothing due (no cleanup, no context worth a glance, no budget bar, no batch collection, no info card): the band stays away.
-    if (idle && !cv && !bars.length && !bt && !infoData && !(ring !== null && ring >= CONTEXT_SHOW_PERCENT)) return next(e)
+    if (idle && !cv && !bars.length && !bt && !infoData && !rc && !(ring !== null && ring >= CONTEXT_SHOW_PERCENT)) return next(e)
     const { Box, Button, Text } = $.ui.resolve(e)
     // Desktop: the card's animated SVG (bars, hourglass, ring) at a fixed size; the terminal has no Svg, so glyphs.
     const desktop = e.surface !== 'terminal'
@@ -1291,6 +1430,18 @@ export const register: Register = on => {
     const toggle = () => update($, fold, v => !v)
     // Collecting: one persistent row, neutral colour (the confirmation toast carries the event, this the standing state).
     const batchEl = bt ? <Text key="batch" {...S.small}>{tr(loc, 'bandBatch', { n: bt.count })}</Text> : null
+    // #1105: the return recap, once, above everything else; ✕ or the next typed prompt removes it.
+    const recapEl = rc ? (
+      <Box key="devops-recap" flexDirection="row" alignItems="flex-start" columnGap={1} paddingX={1} borderStyle="round" borderColor={DIVIDER} {...(desktop ? { width: INFO_WIDTH } : {})}>
+        <Text {...S.small}>{rc.source === 'fork' ? '↩︎' : '↩︎ 🗂'}</Text>
+        <Box flexDirection="column" flexGrow={1}>
+          {rc.text.split(String.fromCharCode(10)).map((line, i) => (
+            <Text key={`recap-${i}`} {...(i === 0 ? {} : S.point)}>{line}</Text>
+          ))}
+        </Box>
+        <Button key="recap-close" plain label="✕" onPress={() => update($, recap, r => ({ ...r, shown: null }))} />
+      </Box>
+    ) : null
     // The info card of the status element: left-aligned, the band's first row, so it sits right above the prompt's left edge.
     const infoEl = (() => {
       if (!infoData) return null
@@ -1395,6 +1546,7 @@ export const register: Register = on => {
       const text = lastLine(last, loc)
       return (
         <Box key="band" flexDirection="column" rowGap={1}>
+          {recapEl}
           {infoEl}
           {batchEl}
           <Box key="idle" flexDirection="row" alignItems="center" columnGap={2}>
@@ -1476,6 +1628,7 @@ export const register: Register = on => {
       // Terminal: one column, same parts.
       return (
         <Box key="band" flexDirection="column" rowGap={1}>
+          {recapEl}
           {infoEl}
           {batchEl}
           {workEl}
@@ -1502,7 +1655,8 @@ export const register: Register = on => {
     }
     return (
       <Box key="band" flexDirection="column" rowGap={1}>
-        {infoEl}
+        {recapEl}
+          {infoEl}
         {batchEl}
         <Box key="zones" position="relative" flexDirection="row" columnGap={2}>
           <Box key="main" flexDirection="column" flexGrow={1} rowGap={1}>
