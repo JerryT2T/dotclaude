@@ -8,6 +8,7 @@ import {
   agentRows,
   batchDropReason,
   batchMaybeCollectable,
+  batchPreviewLine,
   batchViewFrom,
   budgetFrom,
   cleanupApplyPrompt,
@@ -1386,6 +1387,69 @@ test('batch: the band shows the standing row while armed (count from batch.md)',
   await band.unmount()
 })
 
+test('batch row: the count folds the note list open (no prompt, no process); Go and Off sit beside it', async ($, on) => {
+  const { seen, calls } = batchEngine(on, () => WRITER_OK(1))
+  await $.session.start({ cwd: '/repo', surface: 'desktop', isInteractive: true })
+  const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect((await band.find({ key: 'batch-go' }))?.props.label).toBe('Go')
+  expect((await band.find({ key: 'batch-off' }))?.props.label).toBe('Off')
+  expect(await band.find({ key: 'batch-notes' })).toBeUndefined()
+  await band.press({ key: 'batch-fold' })
+  await band.unmount()
+  const open = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await has(open, '1. first')).toBe('1. first')
+  expect(await has(open, '2. second')).toBe('2. second')
+  await open.unmount()
+  expect(seen.prompts).toEqual([])
+  expect(calls).toEqual([])
+})
+
+test('batch row: Go queues the execute marker once, also while a turn runs; the row says it is queued', async ($, on) => {
+  const { seen, calls } = batchEngine(on, () => WRITER_OK(1))
+  await $.session.start({ cwd: '/repo', surface: 'desktop', isInteractive: true })
+  const working = { ...BAND, surface: 'desktop', props: { ...BAND.props, isWorking: true } }
+  const band = await $.ui.mount(working)
+  await band.press({ key: 'batch-go' })
+  await band.unmount()
+  expect(seen.prompts).toEqual(['go'])
+  expect(calls).toEqual([]) // the marker is never filed as a note
+  const after = await $.ui.mount(working)
+  expect(await after.find({ key: 'batch-go' })).toBeUndefined() // a second press has nothing to hit
+  expect(await has(after, 'go queued')).toBe('go queued')
+  await after.unmount()
+  expect(seen.prompts).toEqual(['go'])
+})
+
+test('batch row: Off ends the mode through scripts/batch-off.js without a prompt; failure leaves the mode and says to type it', async ($, on) => {
+  let offOk = true
+  const { seen, calls } = batchEngine(on, argv =>
+    /batch-off\.js$/.test(argv[1]) ? { value: offOk ? { exitCode: 0, stdout: '{"ok":true,"notes":2}\n', stderr: '' } : { exitCode: 1, stdout: '{"ok":false,"reason":"foreign"}\n', stderr: '' } } : WRITER_OK(1),
+  )
+  await $.session.start({ cwd: '/repo', surface: 'desktop', isInteractive: true })
+  const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  offOk = false
+  await band.press({ key: 'batch-off' })
+  expect(seen.toasts.pop()).toMatch(/could not be ended here/)
+  offOk = true
+  await band.press({ key: 'batch-off' })
+  await band.unmount()
+  expect(calls.map(c => c.argv[1].replace(/.*scripts\//, ''))).toEqual(['batch-off.js', 'batch-off.js'])
+  expect(JSON.parse(calls[1].stdin)).toEqual({ cwd: '/repo', sessionId: 'sess-1' })
+  expect(seen.toasts.pop()).toBe('📚 Batch off · 2 notes stay in .claude/batch.md')
+  expect(seen.prompts).toEqual([]) // no model turn
+})
+
+test('batch row: with no notes yet there is no Go and no list, only Off', async ($, on) => {
+  batchEngine(on, () => WRITER_OK(1), { '/repo/.claude/batch.md': '# do-batch notes\n' })
+  await $.session.start({ cwd: '/repo', surface: 'terminal', isInteractive: true })
+  const band = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect(await has(band, '📚 Batch · 0')).toBe('📚 Batch · 0')
+  expect(await band.find({ key: 'batch-go' })).toBeUndefined()
+  expect(await band.find({ key: 'batch-fold' })).toBeUndefined()
+  expect(await band.find({ key: 'batch-off' })).toBeDefined()
+  await band.unmount()
+})
+
 test('batch: no collection armed → the prompt passes unchanged and the writer is never started', async ($, on) => {
   const { seen, calls } = batchEngine(on, () => WRITER_OK(1), { '/repo/.claude/batch-mode.json': JSON.stringify({ active: false }) })
   await $.session.start({ cwd: '/repo', surface: 'desktop', isInteractive: true })
@@ -1458,7 +1522,9 @@ test('batch helpers: drop reason, writer output, mode view, pre-filter', () => {
   expect(parseWriterOutput('{"ok":true,"n":2,"images":1}\n')).toEqual({ n: 2, images: 1 })
   expect(parseWriterOutput('warn\n{"ok":true,"n":2}\n')).toEqual({ n: 2, images: 0 })
   for (const bad of ['', 'x', '{"ok":false,"n":2}', '{"ok":true,"n":"2"}', '{"ok":true,"n":1.5}', undefined, 5]) expect(parseWriterOutput(bad)).toBeNull()
-  expect(batchViewFrom(BATCH_MODE, BATCH_NOTES, 'sess-1', NOW)).toEqual({ count: 2 })
+  expect(batchViewFrom(BATCH_MODE, BATCH_NOTES, 'sess-1', NOW)).toEqual({ count: 2, notes: ['first', 'second'] })
+  expect(batchPreviewLine('\n  long ' + 'x'.repeat(200) + '\nsecond line')).toHaveLength(80)
+  expect(batchPreviewLine('   ')).toBe('…')
   expect(batchViewFrom(BATCH_MODE, BATCH_NOTES, 'other', NOW)).toBeNull() // another session's collection
   expect(batchViewFrom(BATCH_MODE, BATCH_NOTES, 'sess-1', Date.parse('2026-11-12T00:00:00Z'))).toBeNull() // expired
   expect(batchViewFrom(JSON.stringify({ active: true, maxNotes: 2 }), BATCH_NOTES, '', NOW)).toBeNull() // full

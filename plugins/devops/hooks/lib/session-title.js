@@ -61,10 +61,12 @@ function rest(current) {
  * title or the legacy worded hourglass is marked.
  *
  * @param {string|null} current the title now (`readCurrentTitle`)
- * @param {{ prefix?: string, machine?: boolean }} [opts]
+ * @param {{ prefix?: string, machine?: boolean, batchArmed?: boolean }} [opts]
+ *   `batchArmed`: false only when the collect mode is known to be off — a
+ *   `📚 Batch ┃` head is then stale and stripped; unknown keeps it.
  * @returns {string|null}
  */
-function nextTitle(current, { prefix = WORK_PREFIX, machine = false } = {}) {
+function nextTitle(current, { prefix = WORK_PREFIX, machine = false, batchArmed } = {}) {
   if (typeof current !== 'string' || !current.trim()) return null;
   const kind = classify(current);
   const legacyWorking = kind === 'work' && leadingPrefix(current).prefix === LEGACY_PENDING_PREFIX;
@@ -75,7 +77,12 @@ function nextTitle(current, { prefix = WORK_PREFIX, machine = false } = {}) {
     if (kind !== 'plain' && !legacyWorking) return null;
     next = WORK_PREFIX + r;
   } else if (kind === 'batch') {
-    return null;
+    // Batch mode owns its head while it collects. `batchArmed === false` (known off — the band's Off button ends
+    // the mode without a turn, and a mod cannot rename) → the stale head goes with this prompt's work prefix.
+    if (batchArmed !== false) return null;
+    const topic = unbatchTitle(current);
+    if (!topic) return null;
+    next = prefix + topic;
   } else if (kind === 'shipping') {
     if (prefix !== SHIPPING_PREFIX || current.startsWith(SHIPPING_PREFIX)) return null;
     next = SHIPPING_PREFIX + r;

@@ -8,6 +8,7 @@ import { ONCE_KEY, WORK_PREFIX, LEGACY_PENDING_PREFIX, LEGACY_PREFIXES as HOOK_L
 import { runOnce } from "../lib/run-once.js";
 import { SESSION_PREFIX, LEGACY_PREFIXES } from "../../mcp-server/lib/mode-state.js";
 import TITLE_SCHEME_MOD from "../lib/title-scheme.js";
+import BATCH_STATE from "../lib/batch-state.js";
 
 // The first prompt of a session puts the bare hourglass on the sidebar title.
 // The hook is CJS and reads the shared scheme (lib/title-scheme.js); these
@@ -245,10 +246,20 @@ describe("prompt.flow.title-work — title known from the transcript", () => {
     expect(text).not.toMatch(/concept prefix/);
   });
 
+  test("batch head: kept while the mode collects, stripped once it is known off (band Off button, no turn)", () => {
+    BATCH_STATE.activate(dir);
+    try {
+      expect(out("👉 ➜ 📚 Batch ┃ Queue")).toBe("");
+      expect(out("📥 Batch – Queue")).toBe("");
+    } finally {
+      BATCH_STATE.deactivate(dir);
+    }
+    expect(out("👉 ➜ 📚 Batch ┃ Queue")).toBe(directInstruction(WORK_PREFIX + "Queue"));
+    expect(out("📥 Batch – Queue")).toBe(directInstruction(WORK_PREFIX + "Queue"));
+  });
+
   test("a title that is already right → no output at all", () => {
     expect(out("⏳ Login")).toBe("");
-    expect(out("👉 ➜ 📚 Batch ┃ Queue")).toBe("");
-    expect(out("📥 Batch – Queue")).toBe("");
     expect(out("⏳ ➜ 🚀 Shipping ┃ Login")).toBe("");
     expect(out("🚀 Shipping – Login")).toBe("");
     // R1: every ⏳ two-slot process stays — the bare-⏳ shortcut is not what keeps them.

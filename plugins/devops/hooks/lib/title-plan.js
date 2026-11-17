@@ -147,14 +147,14 @@ function instruction(prefix = WORK_PREFIX, { machine = false } = {}) {
  *   `firstPrompt`: no transcript yet; `fresh`: isFreshSession of the transcript.
  * @returns {{ context: string, sessionTitle: string|null }} `context` '' = nothing to do.
  */
-function titlePlan({ prompt, current, firstPrompt, fresh, resumesShip = false }) {
+function titlePlan({ prompt, current, firstPrompt, fresh, resumesShip = false, batchArmed }) {
   const prefix = prefixOf(prompt, resumesShip);
   const machine = isMachineTurn(prompt);
   let context;
   if (current === null) {
     context = !machine && fresh ? freshInstruction(prefix) : instruction(prefix, { machine });
   } else {
-    const next = nextTitle(current, { prefix, machine });
+    const next = nextTitle(current, { prefix, machine, batchArmed });
     context = next === null ? '' : directInstruction(next, {
       shipping: prefix === SHIPPING_PREFIX,
       conceptYields: classify(current) === 'concept-waiting',

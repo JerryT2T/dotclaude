@@ -155,7 +155,14 @@ function planFor(hook, prompt, cwd) {
     firstPrompt: isFirstPrompt(hook.transcript_path),
     fresh: current === null ? isFreshSession(hook.transcript_path) : false,
     resumesShip: prefixFor(prompt, cwd) === SHIPPING_PREFIX,
+    batchArmed: batchArmedIn(cwd),
   });
+}
+
+/** Collect mode state for the title: false only when known off (no mode file / expired), undefined when unreadable. */
+function batchArmedIn(cwd) {
+  if (typeof cwd !== 'string' || !cwd) return undefined;
+  try { return require('../lib/batch-state').isModeActive(cwd); } catch { return undefined; }
 }
 
 /** The title the hook sets itself, without the model, or null (see 0.9.0 above). */

@@ -807,6 +807,13 @@ const TABLE = {
   noAnswer: ['No answer.', 'Keine Antwort.', 'Sin respuesta.', 'Pas de réponse.', 'Sem resposta.', '回答がありません。', '没有回答。'],
   toastNote: ['💾 Note #{n} saved', '💾 Notiz #{n} gespeichert', '💾 Nota #{n} guardada', '💾 Note #{n} enregistrée', '💾 Nota #{n} salva', '💾 メモ #{n} を保存しました', '💾 笔记 #{n} 已保存'],
   bandBatch: ['📚 Batch · {n}', '📚 Batch · {n}', '📚 Batch · {n}', '📚 Batch · {n}', '📚 Batch · {n}', '📚 Batch · {n}', '📚 Batch · {n}'],
+  batchGo: ['Go', 'Go', 'Go', 'Go', 'Go', 'Go', 'Go'],
+  batchOff: ['Off', 'Aus', 'Apagar', 'Arrêter', 'Desligar', '終了', '关闭'],
+  batchQueued: ['go queued', 'go eingereiht', 'go en cola', 'go en file', 'go na fila', 'go を予約済み', 'go 已排队'],
+  batchStopping: ['ending …', 'beende …', 'terminando …', 'arrêt …', 'encerrando …', '終了中 …', '正在关闭 …'],
+  batchMore: ['+{n} more', '+{n} weitere', '+{n} más', '+{n} autres', '+{n} outras', '他 {n} 件', '另有 {n} 条'],
+  toastBatchOff: ['📚 Batch off · {n} notes stay in .claude/batch.md', '📚 Batch aus · {n} Notizen bleiben in .claude/batch.md', '📚 Batch apagado · {n} notas quedan en .claude/batch.md', '📚 Batch arrêté · {n} notes restent dans .claude/batch.md', '📚 Batch desligado · {n} notas ficam em .claude/batch.md', '📚 Batch 終了 · {n} 件のメモは .claude/batch.md に残ります', '📚 Batch 已关闭 · {n} 条笔记保留在 .claude/batch.md'],
+  toastBatchOffFailed: ['📚 Batch could not be ended here — type "aus"', '📚 Batch ließ sich hier nicht beenden — „aus“ tippen', '📚 No se pudo terminar el batch aquí — escribe "aus"', '📚 Impossible d\'arrêter le batch ici — tapez « aus »', '📚 Não foi possível encerrar o batch aqui — digite "aus"', '📚 ここでは終了できません — 「aus」と入力', '📚 无法在此关闭 — 输入 “aus”'],
   learnBtn: ['devops learn', 'devops learn', 'devops learn', 'devops learn', 'devops learn', 'devops learn', 'devops learn'],
   // Status display (concept 20261115-2350-devops-status): the state under the prompt, the last benefit, the info card.
   stActive: ['active', 'aktiv', 'activo', 'actif', 'ativo', '稼働中', '运行中'],
@@ -1152,8 +1159,26 @@ export function batchMaybeCollectable(e: { text: string; isMeta?: boolean; comma
   return !t.startsWith('/')
 }
 
-/** The mode file as the band reads it: armed for this session (not expired, not full, not another session's), with the note count; else null. */
-export function batchViewFrom(modeText: unknown, notesText: unknown, sessionId: string, now: number): { count: number } | null {
+export type BatchView = { count: number; notes: string[] }
+
+/** Longest preview line of one note in the band's list. */
+export const BATCH_PREVIEW_CHARS = 80
+
+/** Each note's first non-empty line, clipped: the band's zero-token stand-in for `/do-batch status`. */
+export function batchNotePreviews(notesText: unknown): string[] {
+  const raw = typeof notesText === 'string' ? notesText.replace(/\r\n?/g, '\n') : ''
+  const parts = raw.split(/^<!--\s*\d{4}-\d{2}-\d{2}T[^\s>]*?\s*-->$/m).slice(1)
+  return parts.map(batchPreviewLine)
+}
+
+/** One note's preview: its first non-empty line, clipped to BATCH_PREVIEW_CHARS. */
+export function batchPreviewLine(text: unknown): string {
+  const line = (typeof text === 'string' ? text.replace(/\r\n?/g, '\n') : '').split('\n').map(l => l.trim()).find(Boolean) || '…'
+  return line.length > BATCH_PREVIEW_CHARS ? `${line.slice(0, BATCH_PREVIEW_CHARS - 1)}…` : line
+}
+
+/** The mode file as the band reads it: armed for this session (not expired, not full, not another session's), with the note count and previews; else null. */
+export function batchViewFrom(modeText: unknown, notesText: unknown, sessionId: string, now: number): BatchView | null {
   let mode: { active?: unknown; expiresAt?: unknown; maxNotes?: unknown; sessionId?: unknown } | null = null
   try {
     mode = typeof modeText === 'string' ? JSON.parse(modeText) : null
@@ -1166,7 +1191,7 @@ export function batchViewFrom(modeText: unknown, notesText: unknown, sessionId: 
   const raw = typeof notesText === 'string' ? notesText.replace(/\r\n?/g, '\n') : ''
   const count = (raw.match(/^<!--\s*\d{4}-\d{2}-\d{2}T[^\s>]*?\s*-->$/gm) || []).length
   if (typeof mode.maxNotes === 'number' && mode.maxNotes > 0 && count >= mode.maxNotes) return null
-  return { count }
+  return { count, notes: batchNotePreviews(raw) }
 }
 
 /** The writer's stdout as a confirmed note number, or null for anything else (no JSON, `ok` not true, no positive integer). */
