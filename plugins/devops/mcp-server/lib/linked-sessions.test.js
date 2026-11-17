@@ -42,7 +42,7 @@ describe("linkedPlan - handoff (S1, S2)", () => {
     expect(done.buttonsKey).toBeNull();
     const part = plan([L("X", "shipped", "handoff", { version: "0.3.0" }), L("Y", "running")], "fallback");
     expect(part.head.id).toBe("linked");
-    expect(part.lines).toEqual(['„X“ geshippt v0.3.0', 'Läuft in: „Y“']);
+    expect(part.lines).toEqual(["Für dich nichts zu tun — ich mache weiter, sobald sie sich meldet", '„X“ geshippt v0.3.0', 'Läuft in: „Y“']);
   });
 
   test("all done with nothing shipped is no Released", () => {
@@ -120,7 +120,7 @@ describe("linkedPlan - independent follow-ups (S5) and helpers", () => {
 describe("linkedPlan - clickable links and the newer release (S1.1, S1.4, S2.4)", () => {
   test("a running handoff session gets the Läuft-in line and a link", () => {
     const p = plan([L("Doku", "running")], "fallback");
-    expect(p.lines).toEqual(["Läuft in: „Doku“"]);
+    expect(p.lines).toEqual(["Für dich nichts zu tun — ich mache weiter, sobald sie sich meldet", "Läuft in: „Doku“"]);
     expect(p.links).toEqual([{ id: "local_Doku", title: "Doku", text: "„Doku“" }]);
   });
   test("waiting: link text is the quoted sidebar title; no id -> no link", () => {
