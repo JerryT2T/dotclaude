@@ -19,7 +19,8 @@
  *                                          send the card's own prompts) — copied from render_completion_card's
  *                                          result, the answer stays inline; 5-h / weekly bars + context fill
  *                                          (session.measure); branch-hygiene count with a cleanup button
- *                                          (opus subagent: plan, then apply)
+ *                                          (opus subagent: plan, then apply); on a green (🟩) card "Archivieren":
+ *                                          the app's archive_session on this session via $.mcp.call, no model turn
  *   Pane `devops-cleanup`                 the cleanup plan / result, Apply and Discard buttons
  *   PromptHint (under the prompt)          "● devops": green while the hooks run and the MCP server is connected, red
  *                                          with the reason otherwise; the last benefit next to it for 90 s; a press
@@ -64,6 +65,8 @@ import {
   budgetBarAlt,
   cardTextSvg,
   isShippedCard,
+  archiveOffered,
+  archiveRefusal,
   BUDGET_BAR_SIZE,
   budgetBars,
   budgetBarSvg,
@@ -394,6 +397,24 @@ async function pressCardButton($: EngineInterface, prompt: string): Promise<void
     return null
   })
   if (shown) await $.prompt.submit({ text: prompt, asUser: true })
+}
+
+/**
+ * "Archive" on a green card: the Desktop app's own archive_session on this session, called by the mod — no model
+ * turn. The app keeps its own guards (still working, pinned, side session busy) and answers isError with the reason,
+ * shown as a toast. The press is the person's request, the same one pre.session.archive lets through for a prompt.
+ * Server unreachable (terminal, older app) → the request goes out as the person's prompt instead.
+ */
+async function pressArchive($: EngineInterface, loc: Locale): Promise<void> {
+  let res: Awaited<ReturnType<EngineInterface['mcp']['call']>> | null = null
+  try {
+    res = await $.mcp.call('ccd_session_mgmt', 'archive_session', { session_id: 'self', reason: 'devops band: Archive pressed' })
+  } catch {
+    await pressCardButton($, tr(loc, 'archivePrompt'))
+    return
+  }
+  const why = archiveRefusal(res)
+  if (why) $.ui.toast(tr(loc, 'archiveRefused', { why }), { timeoutMs: 8000 })
 }
 // The session's folder (session.start), for the subagents' briefs.
 let sessionCwd = ''
@@ -1642,11 +1663,15 @@ export const register: Register = on => {
     )
 
     // --- the card part: title, heading, CTA points (never the result lines), the card's own buttons ---
-    const buttons = c && c.buttons.length > 0 && (
+    const archiveBtn = archiveOffered(c, working) ? (
+      <Button key="card-archive" label={tr(loc, 'archiveBtn')} onPress={() => pressArchive($, loc)} />
+    ) : null
+    const buttons = c && (c.buttons.length > 0 || archiveBtn) && (
       <Box key="card-buttons" flexDirection="row" columnGap={1} flexWrap="wrap">
         {c.buttons.map((bt, i) => (
           <Button key={`card-button-${i}`} label={bt.label} variant={bt.primary ? 'primary' : undefined} onPress={() => pressCardButton($, bt.prompt)} />
         ))}
+        {archiveBtn}
       </Box>
     )
     // Hint cards: a pointer surface (Desktop, editor) shows a round "?" whose hover overlays the hints; touch and the terminal toggle.
