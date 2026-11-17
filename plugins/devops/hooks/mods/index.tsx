@@ -38,7 +38,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import type { AgentRow, Budget, CardView, CleanupHistory, CleanupRun, EchoState, Health, Hygiene, InfoData, InfoState, Progress, RecapState, WakeDue, RunMarker, SessionFlags, ShipView, SpikeWatch } from '../../types/index'
-import type { CompactEnv, Locale, WorkState } from './format'
+import type { BatchView, CompactEnv, Locale, WorkState } from './format'
 import {
   activityOf,
   addRun,
@@ -61,6 +61,7 @@ import {
   pasteMaybeRedirect,
   batchDropReason,
   batchMaybeCollectable,
+  batchPreviewLine,
   batchViewFrom,
   budgetBarAlt,
   cardTextSvg,
@@ -180,6 +181,8 @@ const DIVIDER = '#353535'
 const RAIL_WIDTH = 30
 // The hover overlay of the batch / mode hints: cells wide, opaque so it covers the buttons under it.
 const HINTS_WIDTH = 56
+// The batch row's unfolded list shows this many notes, then "+N more".
+const BATCH_LIST_MAX = 12
 const POPOVER_BG = '#262626'
 let ticker: { cancel: () => void } | null = null
 // #1103 / Spike 4: the armed wake timers of this module instance; the due times themselves live in $.state.
@@ -219,6 +222,11 @@ const settled = atom({ plugin: 'devops', key: 'settled' } as const, false, { sha
 // Terminal: the card points the reader expanded past the clamp (indices; spent with the card).
 const pointsOpen = atom({ plugin: 'devops', key: 'pointsOpen' } as const, [] as number[], { shape: 'points-open-1' })
 const hintsOpen = atom({ plugin: 'devops', key: 'hintsOpen' } as const, false, { shape: 'hints-open-1' })
+// The batch row's note list is expanded (the zero-token stand-in for `/do-batch status`).
+const batchOpen = atom({ plugin: 'devops', key: 'batchOpen' } as const, false, { shape: 'batch-open-1' })
+// A batch button was pressed and its effect is not visible yet: 'go' waits for its turn, 'off' for the script.
+// 'go' = queued behind the running turn; 'going' = the merge turn runs (the mode is still armed until it retires it).
+const batchPress = atom({ plugin: 'devops', key: 'batchPress' } as const, null as 'go' | 'going' | 'off' | null, { shape: 'batch-press-2' })
 // The last card's title and time, kept after the card is spent: the idle row's "Last:".
 const lastCard = atom({ plugin: 'devops', key: 'lastCard' } as const, null as { title: string; at: string } | null, { shape: 'last-card-1' })
 // #1105: the last card's text for a cold return, and the recap on screen (shown once, dismissible).
@@ -431,15 +439,15 @@ async function repoRoot($: EngineInterface): Promise<string> {
 // While `/do-batch` collects, the mod files the prompt itself through the SAME node entry the hook family uses
 // (scripts/batch-note.js) and drops the prompt only after that entry confirmed the note. Every other outcome passes the
 // prompt on, so the classic hook (prompt.batch.collect.js) handles it exactly as without the mod.
-let batchCache: { at: number; view: { count: number } | null } = { at: 0, view: null }
+let batchCache: { at: number; view: BatchView | null } = { at: 0, view: null }
 
 type BatchAttachment = { id?: string; filename?: string; mediaType?: string }
 
-/** The collection as armed for this session (count of notes), read from the mode file; cached 2 s. */
-async function batchView($: EngineInterface, force = false): Promise<{ count: number } | null> {
+/** The collection as armed for this session (count and previews of the notes), read from the mode file; cached 2 s. */
+async function batchView($: EngineInterface, force = false): Promise<BatchView | null> {
   const now = await $.clock.now()
-  if (!force && now - batchCache.at < 2000) return batchCache.view
-  let view: { count: number } | null = null
+  if (!force && batchCache.at > 0 && now - batchCache.at < 2000) return batchCache.view
+  let view: BatchView | null = null
   const cwd = sessionCwd.replace(/[\\]/g, '/').replace(/[/]+$/, '')
   if (cwd) {
     try {
@@ -505,12 +513,63 @@ async function fileBatchNote(
   try {
     const loc = (await sharedNow($)).loc
     $.ui.toast(tr(loc, 'toastNote', { n }), { timeoutMs: 4000 })
-    batchCache = { at: await $.clock.now(), view: { count: n } }
+    // The writer's count is the authority; the new note's preview joins the list until the next read of batch.md.
+    const prev = batchCache.view ? batchCache.view.notes : []
+    batchCache = { at: await $.clock.now(), view: { count: n, notes: [...prev, batchPreviewLine(e.text)].slice(-n) } }
     $.ui.invalidate('ui.render')
   } catch {
     /* display only */
   }
   return { drop: batchDropReason(n) }
+}
+
+/**
+ * The batch row's Go: the execute marker as the person's own prompt. The classic hook (prompt.batch.collect.js) fires
+ * the merge on it exactly as when typed; during a running turn the engine holds it until that turn ends (Spike 4 busy).
+ * The one batch button that is meant to cost a turn.
+ */
+async function pressBatchGo($: EngineInterface): Promise<void> {
+  let first = false
+  await update($, batchPress, p => {
+    first = p === null
+    return p ?? 'go'
+  })
+  if (!first) return
+  try {
+    await $.prompt.submit({ text: 'go', asUser: true })
+  } catch {
+    await update($, batchPress, () => null)
+  }
+}
+
+/**
+ * The batch row's Off: the skill's Step 5 (watchdog stop + deactivate) through scripts/batch-off.js, no model turn.
+ * The notes stay in .claude/batch.md. Anything but a confirmed `ok` leaves the mode as it was and says to type "aus".
+ */
+async function pressBatchOff($: EngineInterface): Promise<void> {
+  let first = false
+  await update($, batchPress, p => {
+    first = p === null
+    return p ?? 'off'
+  })
+  if (!first) return
+  const loc = (await sharedNow($)).loc
+  let notes: number | null = null
+  try {
+    const cwd = sessionCwd.replace(/[\\]/g, '/').replace(/[/]+$/, '')
+    const sessionId = await $.session.id().catch(() => '')
+    const r = await $.process.run(['node', `${$.plugin.root}/scripts/batch-off.js`], { cwd, stdin: JSON.stringify({ cwd, sessionId }), timeoutMs: BATCH_WRITER_TIMEOUT_MS })
+    const line = (r.stdout || '').trim().split('\n').filter(Boolean).pop() || ''
+    const j = r.exitCode === 0 ? (JSON.parse(line) as { ok?: unknown; notes?: unknown }) : null
+    if (j && j.ok === true) notes = typeof j.notes === 'number' ? j.notes : 0
+  } catch {
+    notes = null
+  }
+  batchCache = { at: 0, view: null }
+  await update($, batchPress, () => null)
+  await update($, batchOpen, () => false)
+  $.ui.toast(notes === null ? tr(loc, 'toastBatchOffFailed') : tr(loc, 'toastBatchOff', { n: notes }), { timeoutMs: 6000 })
+  $.ui.invalidate('ui.render')
 }
 
 /** #1105: decide and store the return recap. The gap comes from the engine (resume) or the last main turn's end. */
@@ -1050,6 +1109,10 @@ export const register: Register = on => {
         await update($, progress, () => ({ steps: [], activity: '', startedAt: now }))
         await update($, recap, r => (r.shown ? { ...r, shown: null } : r))
       }
+      // A queued Go has reached its turn: the merge turn runs. The button stays away until that turn ends — the mode is
+      // still armed meanwhile, and a second press would queue a second merge (Codex review, 2026-11-17). Matched on the
+      // text, not startsTypedTurn: the press is a plugin submit, whose origin the engine may report as 'plugin'.
+      if (/^go\b/i.test((e.text || '').trim())) await update($, batchPress, p => (p === 'go' ? 'going' : p))
       await update($, spike, s => {
         const gapMs = s.lastMainEnd ? now - s.lastMainEnd : 0
         return { ...s, armed: gapMs >= SPIKE_PAUSE_MS ? { turnId: e.turnId, gapMs } : null }
@@ -1183,6 +1246,8 @@ export const register: Register = on => {
     if (e.agentId === undefined && (await open($))) {
       const now = await $.clock.now()
       await update($, spike, s => ({ ...s, lastMainEnd: now, armed: null }))
+      // The merge turn is over: a mode it retired takes the row with it; one still armed (merge failed) offers Go again.
+      await update($, batchPress, p => (p === 'going' ? null : p))
     }
     if (e.agentId !== undefined && (await open($))) {
       const run = await read($, cleanup)
@@ -1508,7 +1573,38 @@ export const register: Register = on => {
     }
     const toggle = () => update($, fold, v => !v)
     // Collecting: one persistent row, neutral colour (the confirmation toast carries the event, this the standing state).
-    const batchEl = bt && !liveHead ? <Text key="batch" {...S.small}>{tr(loc, 'bandBatch', { n: bt.count })}</Text> : null
+    // The count folds the note list open (zero tokens, instead of `/do-batch status`); Go queues the execute marker as the
+    // person's prompt, also while a turn runs; Off ends the mode through a script, no turn. Typing go / aus works as before.
+    // A batch hint card shows the live count in its heading (one count source): the row then keeps only list + buttons.
+    const batchUp = bt ? await read($, batchOpen) : false
+    const pressed = bt ? await read($, batchPress) : null
+    const batchEl = bt ? (
+      <Box key="batch" flexDirection="column" rowGap={1}>
+        <Box key="batch-row" flexDirection="row" alignItems="center" columnGap={1} flexWrap="wrap">
+          {bt.count > 0 ? (
+            <Button key="batch-fold" plain label={`${liveHead ? tr(loc, 'batchList') : tr(loc, 'bandBatch', { n: bt.count })} ${batchUp ? '▾' : '▸'}`} onPress={() => update($, batchOpen, v => !v)} />
+          ) : liveHead ? null : (
+            <Text key="batch-count" {...S.small}>{tr(loc, 'bandBatch', { n: bt.count })}</Text>
+          )}
+          {pressed ? (
+            <Text key="batch-pressed" {...S.small}>{tr(loc, pressed === 'go' ? 'batchQueued' : pressed === 'going' ? 'batchMerging' : 'batchStopping')}</Text>
+          ) : (
+            [
+              bt.count > 0 ? <Button key="batch-go" label={tr(loc, 'batchGo')} variant="primary" onPress={() => pressBatchGo($)} /> : null,
+              <Button key="batch-off" label={tr(loc, 'batchOff')} onPress={() => pressBatchOff($)} />,
+            ]
+          )}
+        </Box>
+        {batchUp && bt.count > 0 && (
+          <Box key="batch-notes" flexDirection="column">
+            {bt.notes.slice(0, BATCH_LIST_MAX).map((n, i) => (
+              <Text key={`batch-note-${i}`} {...S.small}>{`${i + 1}. ${n}`}</Text>
+            ))}
+            {bt.notes.length > BATCH_LIST_MAX && <Text key="batch-more" {...S.small}>{tr(loc, 'batchMore', { n: bt.notes.length - BATCH_LIST_MAX })}</Text>}
+          </Box>
+        )}
+      </Box>
+    ) : null
     // #1105: the return recap, once, above everything else; ✕ or the next typed prompt removes it.
     const recapEl = rc ? (
       <Box key="devops-recap" flexDirection="row" alignItems="flex-start" columnGap={1} paddingX={1} borderStyle="round" borderColor={DIVIDER} {...(desktop ? { width: INFO_WIDTH } : {})}>

@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.388.0] — 2026-11-17
+
+### Added
+- Mod band: the batch row offers **Go** (queues `go` as your prompt, also mid-turn), **Off** (ends collect mode via `scripts/batch-off.js`, no model turn, notes kept) and a foldable note list instead of a paid `status` turn.
+
+### Fixed
+- A stale `📚 Batch ┃` session-title head is stripped on the next prompt once collect mode is off (also after expiry).
+
 ## [0.387.0] — 2026-11-17
 
 ### Added

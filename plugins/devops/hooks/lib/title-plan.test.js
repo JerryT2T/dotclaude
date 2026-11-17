@@ -21,6 +21,8 @@ beforeAll(() => {
   const long = path.join(dir, 'long.jsonl');
   fs.writeFileSync(long, Array.from({ length: 40 }, (_, i) => JSON.stringify({ type: i % 2 ? 'assistant' : 'user', message: { content: 'x'.repeat(9000) } })).join('\n') + '\n');
   T = { none: path.join(dir, 'missing.jsonl'), fresh, long };
+  // The fixtures were recorded while a batch head always stayed: that is the armed case (an unarmed one strips it).
+  require('./batch-state.js').activate(dir);
 });
 afterAll(() => fs.rmSync(dir, { recursive: true, force: true }));
 
