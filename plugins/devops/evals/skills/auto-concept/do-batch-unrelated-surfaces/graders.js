@@ -29,5 +29,7 @@ module.exports = (g) => ({
   "page-built": (ctx) => builtPages(ctx.workdir).length > 0,
   "four-stages": (ctx) => pageJsons(ctx.workdir).some((p) => Array.isArray(p.stages) && p.stages.length >= 4),
   "rounds-carry-stage": (ctx) => builtPages(ctx.workdir).some((html) => /id="concept-stages"/.test(html) && /data-stage="[A-G]"/.test(html)),
-  "no-topics-mix": (ctx) => builtPages(ctx.workdir).every((html) => !/data-design-set="topics"/.test(html)),
+  // A topics set inside ONE Etappe (closely related sub-pages) is fine; the
+  // failure is a topics round on a page that is not staged at all.
+  "no-topics-mix": (ctx) => builtPages(ctx.workdir).every((html) => !/data-design-set="topics"/.test(html) || /id="concept-stages"/.test(html)),
 });

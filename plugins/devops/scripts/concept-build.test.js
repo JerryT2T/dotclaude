@@ -547,6 +547,21 @@ describe("concept-build — Etappen (stages)", () => {
     expect(d.querySelector('section[data-iteration="2"]').getAttribute("data-stage")).toBe("B");
   });
 
+  // The final report covers every Etappe: it carries no data-stage, the build
+  // passes and `current` stays on the last staged round (2026-11-17: the
+  // report of a staged concept was blocked, and `current` fell back to A).
+  test("an untagged final report builds and keeps the last staged round's Etappe", () => {
+    const { dir, home } = project();
+    cb.init(dir, { title: "T", locale: "en", stages: "A:One,B:Two" });
+    write(dir, 1, decisionRound(1, "", { baked: true, attrs: ' data-stage="A"' }));
+    write(dir, 2, decisionRound(2, "", { baked: true, attrs: ' data-stage="B"' }));
+    write(dir, 3, '<section data-iteration="3" data-iteration-template="free" data-final-report><h2>Report</h2></section>');
+    const r = cb.build(dir, { home });
+    expect(r.gate || "").not.toContain("stages-");
+    expect(r.ok).toBe(true);
+    expect(stagesOf(r.html).current).toBe("B");
+  });
+
   test("no stages in page.json -> no #concept-stages script, nothing else changes", () => {
     const { dir, home } = project();
     cb.init(dir, { title: "T", locale: "en" });

@@ -205,6 +205,69 @@ describe("path_prepend (stub CLIs)", () => {
     expect(graders["built-by-script"](bad)).toBe(false);
     fs.rmSync(dir, { recursive: true, force: true });
   });
+
+  // A case that lets the model start the bridge never ends: the server and
+  // the waker keep `claude -p` alive until --timeout-min, the run grades as
+  // undecided, and a real Edge tab opens on the machine (measured 2026-11-17,
+  // direct-unrelated-topics: 20 min and ~4 USD per variant, no grade).
+  // The browser itself stays a per-case choice (round-replay-r6-hover probes
+  // hover states with it).
+  // The same matrix a qax run proved on really built pages (2026-11-17).
+  it("Etappen graders: staged passes, unstaged and a topics round fail", () => {
+    const c = loadCase(resolveCases("skills/auto-concept/direct-unrelated-topics")[0]);
+    const graders = Object.fromEntries(g.loadGraders(c).map((x) => [x.name, x.check]));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ab-grade-"));
+    const run = { parsed: parseStream(""), raw: "", workdir: dir };
+    const stagesScript = '<script type="application/json" id="concept-stages">{}</script>';
+    const put = (root, stages, html) => {
+      const base = path.join(root, "docs", "concepts");
+      fs.rmSync(path.join(dir, "docs"), { recursive: true, force: true });
+      fs.rmSync(path.join(dir, ".claude"), { recursive: true, force: true });
+      fs.mkdirSync(path.join(base, "x"), { recursive: true });
+      fs.writeFileSync(path.join(base, "x", "page.json"), JSON.stringify(stages ? { stages } : {}));
+      fs.writeFileSync(path.join(base, "x.html"), html);
+    };
+    const three = [{ id: "A", name: "a" }, { id: "B", name: "b" }, { id: "C", name: "c" }];
+    const grade = () => ["page-built", "three-stages", "rounds-carry-stage", "no-topics-mix"].map((n) => graders[n](run));
+
+    expect(grade()).toEqual([false, false, false, true]); // nothing built
+    put(dir, three, `${stagesScript}<section data-iteration="1" data-stage="A"></section>`);
+    expect(grade()).toEqual([true, true, true, true]);
+    put(dir, null, '<section data-iteration="1"></section>');
+    expect(grade()).toEqual([true, false, false, true]);
+    put(dir, null, '<section data-iteration="1"><div data-design-set="topics"></div></section>');
+    expect(grade()).toEqual([true, false, false, false]);
+    put(dir, three.slice(0, 2), `${stagesScript}<section data-iteration="1" data-stage="A"></section>`);
+    expect(grade()).toEqual([true, false, true, true]); // two stages are not three
+    // A topics set inside one Etappe of a staged page is no mix.
+    put(dir, three, `${stagesScript}<section data-iteration="1" data-stage="A"><div data-design-set="topics"></div></section>`);
+    expect(grade()).toEqual([true, true, true, true]);
+    // A page built inside a worktree the session entered counts too.
+    put(path.join(dir, ".claude", "worktrees", "k7"), three, `${stagesScript}<section data-iteration="1" data-stage="A"></section>`);
+    expect(grade()).toEqual([true, true, true, true]);
+
+    // The counter-case: closely related wishes must stay unstaged.
+    const rel = loadCase(resolveCases("skills/auto-concept/related-topics-one-round")[0]);
+    const notStaged = Object.fromEntries(g.loadGraders(rel).map((x) => [x.name, x.check]))["not-staged"];
+    expect(notStaged(run)).toBe(false); // staged page from above
+    put(dir, null, '<section data-iteration="1"></section>');
+    expect(notStaged(run)).toBe(true);
+    put(dir, [], '<section data-iteration="1"></section>');
+    expect(notStaged(run)).toBe(true);
+    fs.rmSync(path.join(dir, "docs"), { recursive: true, force: true });
+    expect(notStaged(run)).toBe(false); // nothing built is no pass
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("every auto-concept case denies the bridge", () => {
+    const cases = resolveCases("skills/auto-concept/*").map(loadCase);
+    expect(cases.length).toBeGreaterThanOrEqual(7);
+    for (const c of cases) {
+      expect(c.denyTools, c.id).toEqual(expect.arrayContaining([
+        "Bash(python *)", "Bash(*concept-server*)", "Bash(*concept-watch*)", "CronCreate",
+      ]));
+    }
+  });
 });
 
 describe("failed runs", () => {

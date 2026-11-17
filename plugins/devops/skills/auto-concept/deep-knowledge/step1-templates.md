@@ -36,19 +36,13 @@ the implement click (`auto-agents`), not through a second do-run.
 two or more unrelated surfaces — the hand-off's `Flächen:` line names
 separate groups, or the bundles with open design decisions share no file and
 no design question — round 1 declares **one Etappe per surface group**
-(§ Etappen below, `stages` in `page.json`, every round section with its
-`data-stage`), never one `data-design-set="topics"` round with the
+(`step1-stages.md` § Unrelated topics → Etappen, `stages` in `page.json`,
+every round section with its `data-stage`), never one `data-design-set="topics"` round with the
 different surfaces as sub-pages. Each Etappe runs its own round sequence;
 the A→D order is a reading order, not a dependency. Closely related surfaces
 (one screen family, variants of one component) may still share a round. The
 coverage list, the `Bündel:` section and the single implement order at the
 end travel unchanged — the Etappen split the decisions, not the build.
-
-The mode is decided **once per concept**, not once per iteration. Later
-iterations (Step 5c) still pick their own template through the 1a check —
-the mode only says which templates are in scope. Feedback that pulls the
-concept the other way ("zeig mir das mal als Mockup" on a decision concept)
-widens the mode silently; no second question.
 
 ### Count preferences — recommendations, not instructions
 
@@ -169,30 +163,20 @@ with an overview table carrying a recommendation column and jump links
    (page count and `data-nav-label`), so a reviewer can compare page by page: a
    variant switch keeps the page by its label. The gate warns otherwise (V9).
 
-   **Etappen (stages) — optional.** In round 1 propose Etappen (e.g. use cases →
-   structure → design → animation) only when content, UX or visual dependencies
-   make that sensible (a later stage depends on the answers of an earlier one).
-   For such dependent stages they are never mandatory: a concept without
-   Etappen stays valid, and the user may merge stages.
-
-   **Unrelated topics → Etappen, always.** A concept whose request or open
-   decisions span two or more topics that have nothing to do with each other
-   declares **one Etappe per topic group** in round 1 and works them through
-   one after another, whatever started it — a direct prompt, a do-batch
-   hand-off, another skill — and whatever its mode (design, decision, mixed).
-   Never one round that mixes them. Topics are unrelated when no answer in one
-   changes an option in another: no shared file, screen family or question.
-   Closely related topics (one screen family, variants of one component, one
-   decision with its sub-questions) stay in one round. For a do-batch start the
-   groups come from the hand-off (§ Step 0.5 — Started from do-batch); for
-   every other start derive them from the request. The order is a reading
-   order, not a dependency, and the implement order at the end stays ONE.
+   **Etappen (stages) — optional for dependent stages.** In round 1 propose
+   Etappen (e.g. use cases → structure → design → animation) only when content,
+   UX or visual dependencies make that sensible (a later stage depends on the
+   answers of an earlier one). For such dependent stages they are never
+   mandatory: a concept without Etappen stays valid, and the user may merge
+   stages. Unrelated topics are the other case and are staged by default:
+   `step1-stages.md` § Unrelated topics → Etappen.
 
    *Declaring them:* `page.json` gets `"stages": [{ "id": "A", "name": "Use Cases" }, …]`
    (or `concept-build.js init … --stages "A:Use Cases,B:Struktur"`) — 1 to 7 entries, ids
    consecutive capitals A–G, name at most 24 characters. Optional `"icon": "🧭"` (emoji before
    the concept name in the ☰ panel head, default 🧭); the concept name is `page.json.title`, at
-   most 32 characters. Every round section of a staged concept carries `data-stage="<id>"`; the
+   most 32 characters. Every round section of a staged concept carries `data-stage="<id>"` (the
+   final report and a reality-check round carry none and stay in the live Etappe); the
    rounds of one stage are consecutive and stages advance in order (the gate checks this, see
    validation-gate.md § Etappen). The build injects them as `<script type="application/json"
    id="concept-stages">` — never write that script by hand. In the LAST stage there is no

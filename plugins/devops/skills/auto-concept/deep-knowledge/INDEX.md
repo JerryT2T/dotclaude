@@ -16,6 +16,7 @@ Quick-reference for all deep-knowledge topics. Read this FIRST to find the right
 | [pause-resume.md](pause-resume.md) | Pause and resume an open concept (#555) | Referenced from `SKILL.md` § 6c. A pause stops every process of an open conce... |
 | [reality-check.md](reality-check.md) | Reality Check — the implement gate | A concept session lives for hours or days. The default branch keeps moving |
 | [step0-report.md](step0-report.md) | Concept report-only entry — the Abschluss without a prior concept | The `--report` entry of `SKILL.md`, moved here verbatim: only a `--report` ca... |
+| [step1-stages.md](step1-stages.md) | Step 1 — Etappen for unrelated topics | Read before round 1 of a concept whose request names several topics. The |
 | [step1-templates.md](step1-templates.md) | Concept steps 0.5–1 — mode question, count preferences, template authoring | Mode question, count preferences, per-iteration template choice, design autho... |
 | [step2-build.md](step2-build.md) | Concept step 2 — the build: source folder, round fragments, bake, round author | How a concept page comes into being: the source folder, the build script, what |
 | [step2-feedback.md](step2-feedback.md) | Concept step 2 — feedback surfaces, persistence, file location | Feedback dock, annotation layer, views, reload resilience, comment durability... |

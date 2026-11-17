@@ -635,7 +635,7 @@ function assemble({ page, head, fragments, slug = 'concept', md = readTemplates(
     || page.mode === 'design' || page.mode === 'mixed';
   const version = page.pageVersion || stamp();
   const title = page.title || 'Concept';
-  const stagesHtml = stagesScript(page, live);
+  const stagesHtml = stagesScript(page, live, rounds);
   const headExtra =`<meta name="generator" content="${GENERATOR}">\n${head}`;
   let html;
 
@@ -673,13 +673,19 @@ function assemble({ page, head, fragments, slug = 'concept', md = readTemplates(
 
 /**
  * Etappen: the `#concept-stages` JSON script (only when page.json declares
- * stages). `current` = stage of the live (last) round; falls back to the first
- * stage when the live round carries no data-stage (the gate flags that).
+ * stages). `current` = stage of the live (last) round. A final report or a
+ * reality-check round carries no data-stage and keeps the Etappe of the last
+ * staged round before it. Falls back to the first stage when an ordinary live
+ * round carries no data-stage (the gate flags that).
  */
-function stagesScript(page, live) {
+function stagesScript(page, live, rounds = []) {
   const stages = Array.isArray(page.stages) ? page.stages.filter(s => s && s.id) : [];
   if (!stages.length) return '';
-  const own = live ? getAttr(live.attrs, 'data-stage') : '';
+  let own = live ? getAttr(live.attrs, 'data-stage') : '';
+  if (!own && live && (hasAttr(live.attrs, 'data-final-report') || hasAttr(live.attrs, 'data-reality-check'))) {
+    const staged = [...rounds].reverse().find(r => getAttr(r.attrs, 'data-stage'));
+    own = staged ? getAttr(staged.attrs, 'data-stage') : '';
+  }
   const current = own && stages.some(s => s.id === own) ? own : stages[0].id;
   const data = { stages: stages.map(s => ({ id: String(s.id), name: String(s.name || '') })), current, icon: page.icon || '🧭', title: page.title || 'Concept' };
   const json = JSON.stringify(data).replace(/</g, '\\u003c');
