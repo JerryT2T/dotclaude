@@ -68,6 +68,8 @@ concept the user wants. Three modes exist:
 
 See `deep-knowledge/step1-templates.md` § Step 0.5 · Asking, the do-batch start, count preferences. Ask exactly ONE `AskUserQuestion` (mixed first, "(Recommended)") unless the prompt names or unambiguously implies the mode or a caller pins the template — then skip it; lean to mixed when the prompt allows two readings; no "Erstmal in Ruhe durchlesen" prefix; a typed "Other" is a real answer; a `--from=do-batch` start derives the mode from its open decisions and never drops a coverage line; the mode is decided once per concept and feedback widens it silently; plus the count preferences (7 alternatives, 3 designs, top 3–7 annotations — the user's count wins).
 
+**Several unrelated topics in one request → a staged concept**, whatever started it: one Etappe per topic group, worked through one after another on the same page (`deep-knowledge/step1-templates.md` § Etappen — Unrelated topics).
+
 ## Report-only entry (`--report`) — the Abschluss without a prior concept
 
 Only for `auto-concept --report` (another skill calls it after an

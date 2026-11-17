@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.383.0] — 2026-11-17
+
+### Added
+- Fail-closed guards: a PreToolUse guard marked `onFailure: "block"` that is terminated, skipped or crashes holds the call back; the guarded dispatcher entry also carries Claude Code's `onFailure: "block"`. `DEVOPS_GUARD_FAIL_OPEN` switches both off.
+- Alpha feature `bash-output-filter`: plain test, build and lint commands print failure lines and the summary, the full output goes to a log, and the saving is recorded.
+- auto-concept: a request with unrelated topics opens a staged concept (one Etappe per topic) on every start.
+- `engines["claude-code"]` `>=2.1.295` in the devops manifest.
+
+### Fixed
+- plugin-audit: brief markers, the deep-knowledge index and a git-ignored project map no longer raise false alarms; a test run stopped at the audit's limit takes the CI result and is never red by itself.
+
 ## [0.382.1] — 2026-11-17
 
 ### Fixed

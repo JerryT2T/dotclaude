@@ -1,7 +1,7 @@
 'use strict';
 /**
  * @module full-suite-cmd
- * @version 0.1.0
+ * @version 0.2.0
  * @description Recognises a FULL test-suite run in a shell command: `npm test`,
  *   `npm run test`, `npm t`, `npx vitest run`, `vitest run` with no test-file
  *   filter. Shared by pre.ship.test-guard (blocks it during a ship) and
@@ -11,7 +11,18 @@
  *   (`vitest run a.test.js`, `npm test -- a.test.js`), or it is `vitest related`,
  *   `--changed`, or watch mode (no `run`). Quoted text is blanked first, so a
  *   command that merely mentions `npm test` in a string is not a run.
+ *
+ *   A run wrapped by the output filter (pre.bash.output-filter:
+ *   `node "<root>/scripts/run-filtered.js" -- npm test`) is the same run:
+ *   the wrapper is taken off first.
  */
+
+const FILTER_PREFIX = /\bnode\s+(?:"[^"\r\n]*run-filtered\.js"|'[^'\r\n]*run-filtered\.js'|\S*run-filtered\.js)\s+--\s+/g;
+
+/** The command without the output-filter runner in front of its runs. */
+function unwrapFiltered(cmd) {
+  return String(cmd || '').replace(FILTER_PREFIX, '');
+}
 
 const VALUED = new Set(['--reporter', '--outputFile', '--config', '-c', '--root', '-r', '--dir', '--project', '--pool',
   '--maxWorkers', '--minWorkers', '--testTimeout', '--hookTimeout', '-t', '--testNamePattern', '--shard', '--mode',
@@ -62,7 +73,7 @@ function isFullSuiteSegment(segment) {
  * @returns {boolean}
  */
 function containsFullSuite(cmd) {
-  return blankQuoted(cmd).split(/&&|\|\||;|\||\r?\n/).some(isFullSuiteSegment);
+  return blankQuoted(unwrapFiltered(cmd)).split(/&&|\|\||;|\||\r?\n/).some(isFullSuiteSegment);
 }
 
 /**
@@ -81,7 +92,8 @@ function andChain(cmd) {
  * @param {string} cmd
  * @returns {{segment: string, cdTo: (string|null)}|null}
  */
-function trailingFullSuite(cmd) {
+function trailingFullSuite(command) {
+  const cmd = unwrapFiltered(command);
   const segs = andChain(cmd);
   if (!segs || segs.length === 0) return null;
   if (!isFullSuiteSegment(segs[segs.length - 1])) return null;
@@ -93,4 +105,4 @@ function trailingFullSuite(cmd) {
   return { segment: String(cmd).split('&&').pop().trim(), cdTo };
 }
 
-module.exports = { isFullSuiteSegment, containsFullSuite, trailingFullSuite, blankQuoted };
+module.exports = { isFullSuiteSegment, containsFullSuite, trailingFullSuite, blankQuoted, unwrapFiltered };

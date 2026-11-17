@@ -98,7 +98,9 @@ function nameFromTitle(title) {
  * it": only a local "user_asked" start — an offer and a proposal show the
  * title on a card and may never start, a cloud or SSH session runs no title
  * hook that would ever clear the head. The name is pinned too, or the app
- * would derive it from the head.
+ * would derive it from the head. Only `title` and `name` change, both
+ * properties of the tool's schema: Claude Code (2.1.300) drops an unknown key
+ * of a hook's updatedInput and denies the call on an input the tool rejects.
  *
  * @param {object} input
  * @returns {object|null}

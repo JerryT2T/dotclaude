@@ -107,6 +107,9 @@
         "pre.test.fullguard"
       ],
       [
+        "pre.bash.output-filter"
+      ],
+      [
         "pre.merge.guard"
       ],
       [

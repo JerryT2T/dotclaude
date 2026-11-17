@@ -124,7 +124,17 @@ Rules inside the dispatcher:
 - **Budgets.** A hook's `timeout` is its budget from its own start; the
   event's budget is the largest timeout. A hook over budget is terminated, one
   without budget left is skipped — both fail open, exactly like a timed-out
-  hook process (Claude Code ignores `onFailure`; it is plugin metadata).
+  hook process.
+- **Fail-closed guards.** A PreToolUse hook whose verdict a call needs gets
+  `"onFailure": "block"` in the manifest: terminated, skipped or crashed
+  (error code, no JSON reply), the dispatcher holds the call back with the
+  reason instead of letting it through. `DEVOPS_GUARD_FAIL_OPEN=1` switches
+  that off. Only for real gates: such a hook that breaks blocks every call it
+  matches. The generated hooks.json entry of a lane with such a guard also
+  carries Claude Code's own `onFailure: "block"` (2.1.295): a dispatcher that
+  cannot start, is killed at its timeout or dies holds the call back. On that
+  lane the dispatcher answers only with exit 0 or 2, never with a module's
+  exit 1 (Claude Code would block on it).
 - **Telemetry.** Each hook keeps its start/end records in
   `devops-hook-telemetry.jsonl`; the dispatcher adds `dispatch:<Event>` and
   `outcome: "timeout" | "skipped"` end records.

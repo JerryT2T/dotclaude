@@ -60,6 +60,12 @@
       },
       {
         "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.bash.output-filter.js\"", "timeout": 5, "commandFilter": "\\b(?:npm|pnpm|yarn|vitest|jest|pytest|cargo|go|dotnet|tsc|eslint)\\b" }
+        ],
+        "matcher": "Bash|PowerShell"
+      },
+      {
+        "hooks": [
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.merge.guard.js\"", "timeout": 10, "commandFilter": "\\b[Gg][Ii][Tt]\\b" }
         ],
         "matcher": "Bash|PowerShell|Write"
