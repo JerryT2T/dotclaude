@@ -26,7 +26,7 @@ keep git clean, block risky moves and stop context waste.
 - **Runs while you are away** — `/do-run` works off a backlog, a task or the leftover weekly budget, and ships each item
 - **Per-project tuning** — extend any skill with a `reference.md`, no fork
 
-<!--devops:count:hooks-->112<!--/devops:count:hooks--> hooks ·
+<!--devops:count:hooks-->114<!--/devops:count:hooks--> hooks ·
 <!--devops:count:skills-->15<!--/devops:count:skills--> skills ·
 <!--devops:count:agents-->12<!--/devops:count:agents--> agents ·
 ~0.7M tokens/week overhead (1–4 % of a Max plan), paid back 1.5–6× by the
@@ -519,7 +519,7 @@ A different stack: extend the skills per project — see [Customize](#customize)
 </details>
 
 <details>
-<summary><strong>Hooks</strong> — <!--devops:count:hooks-->112<!--/devops:count:hooks--> hooks by lifecycle and by category</summary>
+<summary><strong>Hooks</strong> — <!--devops:count:hooks-->114<!--/devops:count:hooks--> hooks by lifecycle and by category</summary>
 
 ```
 SessionStart  ──>  UserPromptSubmit  ──>  PreToolUse  ──>  PostToolUse  ──>  Stop
@@ -578,6 +578,7 @@ SessionStart  ──>  UserPromptSubmit  ──>  PreToolUse  ──>  PostToolU
 - `prompt.burn.resume` — After a usage limit stopped a burn: ask on a manual nudge, apply the chosen policy on…
 - `prompt.worktree.branch-guard` — Prevents working without a dedicated branch inside a linked worktree.
 - `prompt.governor.resume` — Tells the session when deferred heavy commands can run again.
+- `prompt.hook.hardend` — Fallback of stop.hook.hardend (#1151): when a hard dispatcher end left its marker and…
 
 #### PreToolUse — runs before each tool call
 
@@ -657,6 +658,7 @@ SessionStart  ──>  UserPromptSubmit  ──>  PreToolUse  ──>  PostToolU
 - `stop.git.sync` — Background git sync at turn end, triggered when the remote moved (model-free `git ls-…
 - `stop.flow.browsertest` — Light-verification enforcement gate (the "V" of the V&V gate).
 - `stop.agent.relay` — Blocks the turn end once when an agent launch of this turn never showed its card (lib…
+- `stop.hook.hardend` — After a hard dispatcher end (a stuck hook module, #1151), Claude Code cancels the oth…
 - `stop.flow.guard` — Per-turn completion card + validation enforcement (the validation half of the V&V gate).
 - `stop.guide.handoff` — Offer the auto-guide skill when Claude's own answer hands the user a manual click-thr…
 - `stop.strict.release` — Settles the lifetime of an inline strict mode at the end of the turn that armed it.
@@ -792,6 +794,7 @@ SessionStart  ──>  UserPromptSubmit  ──>  PreToolUse  ──>  PostToolU
 - `ss.setup.firstrun` *(SessionStart)*
 - `ss.backup.stale` *(SessionStart)*
 - `ss.ci.workflows.sweep` *(SessionStart)*
+- `prompt.hook.hardend` *(UserPromptSubmit)*
 - `pre.test.fullguard` *(PreToolUse)*
 - `pre.merge.guard` *(PreToolUse)*
 - `pre.redirect.scope` *(PreToolUse)*
@@ -799,6 +802,7 @@ SessionStart  ──>  UserPromptSubmit  ──>  PreToolUse  ──>  PostToolU
 - `pre.visible-browser.guard` *(PreToolUse)*
 - `post.backup.routine` *(PostToolUse)*
 - `post.test.record` *(PostToolUse)*
+- `stop.hook.hardend` *(Stop)*
 <!--/devops:block:hook-categories-->
 
 </details>
@@ -835,7 +839,7 @@ plugins/
 │   ├── .claude-plugin/plugin.json ← Plugin manifest (SemVer, tags v0.x.y)
 │   ├── .mcp.json                  ← MCP servers: completion card, ship, issues
 │   ├── CONVENTIONS.md             ← Naming, versioning, extension rules
-│   ├── hooks/                     ← <!--devops:count:hooks-->112<!--/devops:count:hooks--> hooks (JS) registered in hooks/dispatch/manifest.json
+│   ├── hooks/                     ← <!--devops:count:hooks-->114<!--/devops:count:hooks--> hooks (JS) registered in hooks/dispatch/manifest.json
 │   ├── skills/                    ← <!--devops:count:skills-->15<!--/devops:count:skills--> skill definitions (SKILL.md)
 │   ├── agents/                    ← <!--devops:count:agents-->12<!--/devops:count:agents--> agent definitions
 │   ├── mcp-server/                ← Card renderer + Desktop widget, ship tools, issue matching

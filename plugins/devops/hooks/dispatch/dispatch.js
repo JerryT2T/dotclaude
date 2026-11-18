@@ -372,7 +372,9 @@ async function runEvent(o) {
   const left = () => eventDeadline - Date.now();
   const note = (mod, r, id) => {
     if (!tele || !(r.timedOut || r.skipped)) return;
-    tele.record({ id, hook: mod.name, phase: 'end', event: o.event, ms: r.ms || 0, outcome: r.timedOut ? 'timeout' : 'skipped', chars: 0, dispatched: true });
+    // A thread that would not end is `stuck` (#1151): it forces the hard end, so the record names the tool too.
+    const tool = o.payload && typeof o.payload.tool_name === 'string' ? o.payload.tool_name : '';
+    tele.record({ id, hook: mod.name, phase: 'end', event: o.event, ...(tool ? { tool } : {}), ms: r.ms || 0, outcome: r.stuck ? 'stuck' : (r.timedOut ? 'timeout' : 'skipped'), chars: 0, dispatched: true });
   };
   const budgetFor = (mod) => Math.min(mod.timeoutS * 1000, left());
 
@@ -462,7 +464,27 @@ async function main() {
   if (!modules.length) return { code: 0, stdout: '', stderr: '' };
   const lanes = loadLanes();
   const r = await runEvent({ event, raw, payload, modules, budgetS: eventBudgetS(all), startedAt, processMode: dispatchDisabled(), tele, lanes: lanes ? lanes[laneKey] : undefined });
-  return { ...r, guarded: guardedLane(all, fast) };
+  const p = payload && typeof payload === 'object' ? payload : {};
+  return { ...r, guarded: guardedLane(all, fast), sessionId: typeof p.session_id === 'string' ? p.session_id : '', tool: typeof p.tool_name === 'string' ? p.tool_name : '' };
+}
+
+const HARD_END_TEXT = '[devops] a hook module is stuck in a call that cannot be ended, so the dispatcher ends hard and this call is held back once. Send the same call again. ' +
+  'Other tool calls of the same message may come back as "The user doesn\'t want to take this action right now": Claude Code cancelled them because of this hook failure, the user declined nothing. Send those calls again too and continue.\n';
+
+/**
+ * The trace of a hard end, written synchronously before the kill (#1151).
+ * The stuck module's telemetry record is already out (runEvent's note(),
+ * outcome `stuck`); on a guarded lane, where the call is held back, this
+ * leaves the session marker that stop.hook.hardend / prompt.hook.hardend
+ * turn into one notice.
+ * @returns {string[]} the stuck module names
+ */
+function recordHardEnd(event, r, deps = {}) {
+  const names = (r.results || []).filter((x) => x && x.stuck).map((x) => x.name);
+  if (r.guarded && r.sessionId) {
+    try { (deps.hardend || require('../lib/hook-hardend')).write({ sessionId: r.sessionId, event, tool: r.tool, modules: names }); } catch { /* fail open */ }
+  }
+  return names;
 }
 
 /**
@@ -516,7 +538,8 @@ if (require.main === module) {
     const kill = () => process.kill(process.pid, 'SIGKILL');
     if (r.stderr) process.stderr.write(r.stderr);
     // A hard end is no exit 0: on a guarded lane Claude Code holds the call back for it.
-    if (hard && r.guarded) process.stderr.write('[devops] a hook module is stuck in a call that cannot be ended, so the dispatcher ends hard and this call is held back once. Send the same call again.\n');
+    if (hard) recordHardEnd(String(process.argv[2] || ''), r);
+    if (hard && r.guarded) process.stderr.write(HARD_END_TEXT);
     const stdout = hard ? hardExitStdout(process.argv[2], out.stdout) : out.stdout;
     if (stdout) process.stdout.write(stdout, () => { if (hard) kill(); });
     else if (hard) kill();
@@ -533,6 +556,6 @@ if (require.main === module) {
 }
 
 module.exports = {
-  moduleFile, loadManifest, loadLanes, laneGroups, eventModules, laneModules, eventBudgetS, selectModules, runEvent, dispatchDisabled, hardExitStdout, guardFailOpen, guardFailure, failClosed, guardedLane, finalReply, unchecked,
-  DEFAULT_TIMEOUT_S, FAST_DEFAULT_TIMEOUT_S, HEADROOM_S, MIN_START_MS, TERMINATE_GRACE_MS, MANIFEST,
+  moduleFile, loadManifest, loadLanes, laneGroups, eventModules, laneModules, eventBudgetS, selectModules, runEvent, dispatchDisabled, hardExitStdout, guardFailOpen, guardFailure, failClosed, guardedLane, finalReply, unchecked, recordHardEnd,
+  HARD_END_TEXT, DEFAULT_TIMEOUT_S, FAST_DEFAULT_TIMEOUT_S, HEADROOM_S, MIN_START_MS, TERMINATE_GRACE_MS, MANIFEST,
 };
