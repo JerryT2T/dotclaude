@@ -124,14 +124,44 @@ export function budgetFrom(m: {
     return Number.isFinite(t) ? t : null
   }
   const ctx = m.context && Number.isFinite(m.context.percent) ? Math.round(m.context.percent as number) : null
+  // A Fable kind in the engine's rate limits, should one ever be reported (none is known today: usage-live.json carries it).
+  const fableKind = limits.map(l => (l && typeof l.kind === 'string' ? l.kind : '')).find(k => /fable/i.test(k)) || ''
   return {
     fiveHour: pct('five_hour'),
     weekly: pct('seven_day'),
     context: ctx,
     fiveHourResetsAt: reset('five_hour'),
     weeklyResetsAt: reset('seven_day'),
+    fable: fableKind ? pct(fableKind) : null,
+    fableResetsAt: fableKind ? reset(fableKind) : null,
     contextTokens: m.context && Number.isFinite(m.context.tokens) ? (m.context.tokens as number) : null,
     contextWindow: m.context && Number.isFinite(m.context.window) ? (m.context.window as number) : null,
+  }
+}
+
+const LIVE_STALE_MS = 3 * 60 * 60 * 1000
+
+/**
+ * The scoped Fable share from the parsed `~/.claude/usage-live.json` (hooks/lib/budget.js: `scoped[]`, name `Fable`).
+ * Robust like the other windows: anything missing, malformed, expired (its reset passed) or an old unreset reading
+ * is no reading (null), never a wrong one; never throws.
+ */
+export function fableFromLive(live: unknown, nowMs: number): { pct: number; resetsAt: number | null } | null {
+  try {
+    const o = live as { timestamp?: unknown; scoped?: unknown } | null
+    if (!o || typeof o !== 'object' || !Array.isArray(o.scoped)) return null
+    const ts = typeof o.timestamp === 'string' ? Date.parse(o.timestamp) : NaN
+    if (!Number.isFinite(ts)) return null
+    const l = (o.scoped as Array<{ name?: unknown; pct?: unknown; resetInMinutes?: unknown } | null>).find(x => x && x.name === 'Fable' && typeof x.pct === 'number' && Number.isFinite(x.pct))
+    if (!l) return null
+    const pct = Math.round(l.pct as number)
+    if (pct <= 0 || pct > 100) return null
+    const reset = typeof l.resetInMinutes === 'number' && Number.isFinite(l.resetInMinutes) ? l.resetInMinutes : null
+    if (reset == null) return nowMs - ts > LIVE_STALE_MS ? null : { pct, resetsAt: null }
+    const resetsAt = ts + reset * 60_000
+    return nowMs > resetsAt ? null : { pct, resetsAt }
+  } catch {
+    return null
   }
 }
 
@@ -147,7 +177,7 @@ export const CONTEXT_SHOW_PERCENT = 50
 export const BUDGET_BAR_WIDTH = 14
 
 export type BudgetBar = {
-  label: '5h' | 'Wk'
+  label: '5h' | 'Wk' | 'Fb'
   pct: number
   elapsedPct: number
   level: 'white' | 'yellow' | 'red'
@@ -181,19 +211,23 @@ export function budgetBars(b: Budget | null, now: number): BudgetBar[] {
   if (!b) return []
   const minsTo = (t: number | null | undefined) => (typeof t === 'number' ? Math.max(0, Math.round((t - now) / 60_000)) : null)
   const bars: BudgetBar[] = []
+  // Order everywhere: Wk, Fable, 5h (the Fable share is a scoped counter inside the week).
+  const weekly = (label: 'Wk' | 'Fb', pct: number | null | undefined, resetsAt: number | null | undefined) => {
+    if (typeof pct !== 'number' || !Number.isFinite(pct)) return
+    const r = minsTo(resetsAt)
+    const e = elapsedOf(r, WINDOW_WK_MIN)
+    const level = markerLevel(pct, e)
+    if (r != null && (level !== 'white' || r <= WEEKLY_SHOW_BEFORE_RESET_MIN)) {
+      bars.push({ label, pct, elapsedPct: e, level, watermark: formatResetSpaced(r) })
+    }
+  }
+  weekly('Wk', b.weekly, b.weeklyResetsAt)
+  if (typeof b.fable === 'number' && b.fable > 0) weekly('Fb', b.fable, b.fableResetsAt)
   if (b.fiveHour !== null) {
     const r = minsTo(b.fiveHourResetsAt)
     const e = elapsedOf(r, WINDOW_5H_MIN)
     if (!(b.fiveHour < 50 && (r == null || r > 60))) {
       bars.push({ label: '5h', pct: b.fiveHour, elapsedPct: e, level: r == null ? 'white' : markerLevel(b.fiveHour, e), watermark: formatResetSpaced(r) })
-    }
-  }
-  if (b.weekly !== null) {
-    const r = minsTo(b.weeklyResetsAt)
-    const e = elapsedOf(r, WINDOW_WK_MIN)
-    const level = markerLevel(b.weekly, e)
-    if (r != null && (level !== 'white' || r <= WEEKLY_SHOW_BEFORE_RESET_MIN)) {
-      bars.push({ label: 'Wk', pct: b.weekly, elapsedPct: e, level, watermark: formatResetSpaced(r) })
     }
   }
   return bars
@@ -784,6 +818,15 @@ const TABLE = {
     '{label}: {p} % 使用済み · {w} 後にリセット',
     '{label}：已用 {p} % · {w} 后重置',
   ],
+  dropSaved: [
+    '💾 Note #{n} saved · "go" runs it',
+    '💾 Notiz #{n} gemerkt · „go“ setzt um',
+    '💾 Nota #{n} guardada · "go" la ejecuta',
+    '💾 Note #{n} enregistrée · « go » l’exécute',
+    '💾 Nota #{n} guardada · "go" executa',
+    '💾 メモ #{n} を保存 · 「go」で実行',
+    '💾 笔记 #{n} 已保存 · 发送“go”执行',
+  ],
   titleCleanup: ['Cleanup', 'Aufräumen', 'Limpieza', 'Nettoyage', 'Limpeza', '整理', '清理'],
   titleAgents: ['Agents', 'Agenten', 'Agentes', 'Agents', 'Agentes', 'エージェント', '代理'],
   titleShip: ['Ship / CI', 'Ship / CI', 'Ship / CI', 'Ship / CI', 'Ship / CI', 'Ship / CI', 'Ship / CI'],
@@ -1202,9 +1245,9 @@ export const BATCH_WRITER_TIMEOUT_MS = 20_000
 /** One attached item above this (decoded bytes) is left to the classic hook. */
 export const BATCH_MAX_ATTACHMENT_BYTES = 12 * 1024 * 1024
 
-/** The drop reason: as short and neutral as a reason can be; the toast and the band row carry the confirmation. */
-export function batchDropReason(n: number): string {
-  return `💾 #${n}`
+/** The drop reason, in the session's language: the note number and what "go" does (the hook's one visible line). */
+export function batchDropReason(n: number, loc: Locale = 'en'): string {
+  return tr(loc, 'dropSaved', { n })
 }
 
 /**

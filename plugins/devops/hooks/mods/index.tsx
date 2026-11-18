@@ -72,6 +72,7 @@ import {
   budgetBars,
   budgetBarSvg,
   budgetFrom,
+  fableFromLive,
   budgetLine,
   cardFromResult,
   checksFrom,
@@ -179,6 +180,8 @@ const AMBER = '#e6c36a'
 const VIOLET = '#9d8cd6'
 const DIVIDER = '#353535'
 const RAIL_WIDTH = 30
+/** The budget bars' column in the rail (cells): the 220 px bar (BUDGET_BAR_SIZE) plus its label; fixed, bars or none. */
+const BARS_COL_WIDTH = 34
 // The hover overlay of the batch / mode hints: cells wide, opaque so it covers the buttons under it.
 const HINTS_WIDTH = 56
 // The batch row's unfolded list shows this many notes, then "+N more".
@@ -510,8 +513,9 @@ async function fileBatchNote(
     return null
   }
   // The note is filed: nothing below may change that, so display failures are swallowed and the prompt is still dropped.
+  let loc: Locale = 'en'
   try {
-    const loc = (await sharedNow($)).loc
+    loc = (await sharedNow($)).loc
     $.ui.toast(tr(loc, 'toastNote', { n }), { timeoutMs: 4000 })
     // The writer's count is the authority; the new note's preview joins the list until the next read of batch.md.
     const prev = batchCache.view ? batchCache.view.notes : []
@@ -520,7 +524,7 @@ async function fileBatchNote(
   } catch {
     /* display only */
   }
-  return { drop: batchDropReason(n) }
+  return { drop: batchDropReason(n, loc) }
 }
 
 /**
@@ -1275,17 +1279,31 @@ export const register: Register = on => {
     return result
   }).catch(($, e, next) => next(e)) // display only
 
-  // C5: the live budget, one source (session.measure); nothing is written.
+  // C5: the live budget, one source (session.measure); nothing is written. The scoped Fable share is not in the
+  // measure: it is read from usage-live.json (hooks/lib/budget.js), and a read that fails is simply no Fable bar.
   on('session.measure', async ($, e, next) => {
     const measured = await next(e)
     if (await open($)) {
       const b = budgetFrom(e)
+      if (b.fable == null) {
+        try {
+          const home = await homeDir($)
+          const f = home ? fableFromLive(await readJson($, `${home}/.claude/usage-live.json`), await $.clock.now()) : null
+          b.fable = f ? f.pct : null
+          b.fableResetsAt = f ? f.resetsAt : null
+        } catch {
+          /* no Fable bar */
+        }
+      }
       await update($, budget, prev => ({
         fiveHour: b.fiveHour ?? (prev ? prev.fiveHour : null),
         weekly: b.weekly ?? (prev ? prev.weekly : null),
         context: b.context ?? (prev ? prev.context : null),
         fiveHourResetsAt: b.fiveHourResetsAt ?? (prev ? prev.fiveHourResetsAt ?? null : null),
         weeklyResetsAt: b.weeklyResetsAt ?? (prev ? prev.weeklyResetsAt ?? null : null),
+        // Not carried over: a Fable share that is gone, stale or reset is no bar (never a false one).
+        fable: b.fable ?? null,
+        fableResetsAt: b.fableResetsAt ?? null,
         contextTokens: b.contextTokens ?? (prev ? prev.contextTokens ?? null : null),
         contextWindow: b.contextWindow ?? (prev ? prev.contextWindow ?? null : null),
       }))
@@ -1505,7 +1523,9 @@ export const register: Register = on => {
       <Box key="devops-hint" flexDirection="row" alignItems="center" columnGap={2}>
         {engineRow}
         <Button key="devops-status" plain onPress={() => toggleInfo($)}>
-          <Text color={ok ? STATUS_GREEN : STATUS_RED}>●</Text> devops
+          <Text color={ok ? STATUS_GREEN : STATUS_RED}>●</Text>
+          {/* The word in the engine hint's look (white, body size), not the plain Button's dimmed label. */}
+          <Text key="devops-word" size="body" color="#ffffff">{' devops'}</Text>
         </Button>
         {note && <Text key="devops-note" dimColor={ok} {...(ok ? {} : { color: STATUS_RED })}>{note}</Text>}
       </Box>
@@ -1882,11 +1902,24 @@ export const register: Register = on => {
             {points}
             {buttons}
           </Box>
+          {/* The divider spans the whole zone height; the bars column keeps its width with or without bars, so the divider never moves. */}
           <Box key="rail-divider" width={1} backgroundColor={DIVIDER} />
-          <Box key="rail" flexDirection="column" rowGap={1} width={RAIL_WIDTH}>
-            {ringEl}
-            {compactBtn}
-            {cleanupBlock}
+          <Box key="rail" flexDirection="row" columnGap={2} width={Svg ? BARS_COL_WIDTH + 2 + RAIL_WIDTH : RAIL_WIDTH}>
+            {Svg && (
+              <Box key="rail-bars" flexDirection="column" rowGap={1} width={BARS_COL_WIDTH}>
+                {bars.map(bar => (
+                  <Box key={`bar-${bar.label}`} flexDirection="row" alignItems="center" columnGap={1}>
+                    <Text dimColor>{bar.label}</Text>
+                    <Svg source={budgetBarSvg(bar)} alt={budgetBarAlt(bar, loc)} width={BUDGET_BAR_SIZE.width} height={BUDGET_BAR_SIZE.height} isInteractive />
+                  </Box>
+                ))}
+              </Box>
+            )}
+            <Box key="rail-ring" flexDirection="column" rowGap={1} width={RAIL_WIDTH}>
+              {ringEl}
+              {compactBtn}
+              {cleanupBlock}
+            </Box>
           </Box>
           {c && c.at && (
             <Box key="card-time" position="absolute" top={0} right={0}>
@@ -1894,7 +1927,7 @@ export const register: Register = on => {
             </Box>
           )}
         </Box>
-        {budgetEl}
+        {!Svg && budgetEl}
       </Box>
     )
   })

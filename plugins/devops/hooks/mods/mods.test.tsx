@@ -13,6 +13,8 @@ import {
   batchPreviewLine,
   batchViewFrom,
   budgetFrom,
+  budgetBars,
+  fableFromLive,
   cleanupApplyPrompt,
   cleanupPlanPrompt,
   cleanupView,
@@ -1243,7 +1245,7 @@ test('defect 4: bar alt, pane bodies, spawn failure and background labels follow
   const cp = await $.ui.mount({ ...pane('devops-cleanup', 'Aufräumen'), surface: 'desktop' })
   expect((await cp.find({ type: 'Markdown' }))?.props.text).toBe('Subagent nicht gestartet: no agent started')
   await cp.unmount()
-  const keys: StrKey[] = ['barAlt', 'titleCleanup', 'titleAgents', 'titleShip', 'noAgents', 'noShip', 'shipBranch', 'unknown', 'shipDone', 'shipNone', 'shipNext', 'prLine', 'prNone', 'refresh', 'spawnFailed', 'finishedWord', 'noAnswer']
+  const keys: StrKey[] = ['barAlt', 'dropSaved', 'titleCleanup', 'titleAgents', 'titleShip', 'noAgents', 'noShip', 'shipBranch', 'unknown', 'shipDone', 'shipNone', 'shipNext', 'prLine', 'prNone', 'refresh', 'spawnFailed', 'finishedWord', 'noAnswer']
   for (const loc of LOCALES)
     for (const k of keys) {
       const text = tr(loc, k, { label: 'x', p: 1, w: 'x', b: 'x', steps: 'x', next: 'x', n: 1, state: 'x', pass: 1, fail: 1, pending: 1, why: 'x' })
@@ -1367,7 +1369,7 @@ test('batch: an armed collection files the note via the writer, drops the prompt
   const { seen, calls } = batchEngine(on, () => WRITER_OK(3))
   await $.session.start({ cwd: '/repo', surface: 'desktop', isInteractive: true })
   const out = await $.prompt.submit({ text: 'Mach den Button blau' } as any)
-  expect(out).toEqual({ drop: '💾 #3' })
+  expect(out).toEqual({ drop: '💾 Note #3 saved · "go" runs it' })
   expect(seen.prompts).toEqual([]) // never reached the hooks beneath: no double filing with the classic hook
   expect(seen.toasts).toEqual(['💾 Note #3 saved'])
   expect(calls.length).toBe(1)
@@ -1518,7 +1520,7 @@ test('batch: an @file mention and pasted text travel verbatim to the writer, whi
   const { calls } = batchEngine(on, () => WRITER_OK(4))
   await $.session.start({ cwd: '/repo', surface: 'desktop', isInteractive: true })
   const text = 'siehe @docs/spec.md und\n```\nzeile 1\nzeile 2\n```'
-  expect(await $.prompt.submit({ text } as any)).toEqual({ drop: '💾 #4' })
+  expect(await $.prompt.submit({ text } as any)).toEqual({ drop: '💾 Note #4 saved · "go" runs it' })
   expect(JSON.parse(calls[0].stdin).text).toBe(text)
 })
 
@@ -1532,7 +1534,8 @@ test('batch: an image the engine cannot hand over whole → next(e) (the hook ta
 })
 
 test('batch helpers: drop reason, writer output, mode view, pre-filter', () => {
-  expect(batchDropReason(7)).toBe('💾 #7')
+  expect(batchDropReason(7)).toBe('💾 Note #7 saved · "go" runs it')
+  expect(batchDropReason(7, 'de')).toBe('💾 Notiz #7 gemerkt · „go“ setzt um')
   expect(parseWriterOutput('{"ok":true,"n":2,"images":1}\n')).toEqual({ n: 2, images: 1 })
   expect(parseWriterOutput('warn\n{"ok":true,"n":2}\n')).toEqual({ n: 2, images: 0 })
   for (const bad of ['', 'x', '{"ok":false,"n":2}', '{"ok":true,"n":"2"}', '{"ok":true,"n":1.5}', undefined, 5]) expect(parseWriterOutput(bad)).toBeNull()
@@ -2349,4 +2352,18 @@ test('archive button: no button on a card that is not green', async ($, on) => {
   const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
   expect(await band.find({ key: 'card-archive' })).toBeUndefined()
   await band.unmount()
+})
+
+test('budget bars: Wk, Fb, 5h in that order; Fable follows the weekly show rule; fableFromLive never gives a false bar', () => {
+  const b = { fiveHour: 80, weekly: 80, context: null, fiveHourResetsAt: NOW + 3_600_000, weeklyResetsAt: NOW + 3 * 86_400_000, fable: 70, fableResetsAt: NOW + 3 * 86_400_000 }
+  expect(budgetBars(b, NOW).map(x => x.label)).toEqual(['Wk', 'Fb', '5h'])
+  // Fable on pace and more than a day from the reset: omitted like Wk; zero or unknown: no bar.
+  expect(budgetBars({ ...b, fable: 5, weekly: 5 }, NOW).map(x => x.label)).toEqual(['5h'])
+  expect(budgetBars({ ...b, fable: 0 }, NOW).map(x => x.label)).toEqual(['Wk', '5h'])
+  expect(budgetBars({ ...b, fable: null }, NOW).map(x => x.label)).toEqual(['Wk', '5h'])
+  const live = (scoped: unknown, ts = new Date(NOW - 60_000).toISOString()) => ({ timestamp: ts, scoped })
+  expect(fableFromLive(live([{ name: 'Fable', pct: 61.4, resetInMinutes: 3000 }]), NOW)).toEqual({ pct: 61, resetsAt: NOW - 60_000 + 3000 * 60_000 })
+  for (const bad of [null, undefined, 'x', {}, live(null), live([]), live([{ name: 'Fable', pct: 'a' }]), live([{ name: 'Fable', pct: 0, resetInMinutes: 100 }]), live([{ name: 'Fable', pct: 50, resetInMinutes: 0 }], new Date(NOW - 3_600_000).toISOString()), { scoped: [{ name: 'Fable', pct: 50, resetInMinutes: 100 }] }, live([{ name: 'Fable', pct: 50 }], new Date(NOW - 4 * 3_600_000).toISOString())]) {
+    expect(fableFromLive(bad, NOW)).toBeNull()
+  }
 })
