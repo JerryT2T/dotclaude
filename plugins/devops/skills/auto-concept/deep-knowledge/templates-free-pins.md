@@ -16,7 +16,9 @@ touched. **Pins are not draggable** in a document (the anchor is the block).
 - **Anchor** (what survives a rebuild of the round): `anchor = { section,
   kind, index, ref?, text }` — `section` is the id of the nearest
   `section[id]` inside the round (`''` = the round itself), `kind` is
-  `p` / `li` / `tr`, `index` the block's position among the eligible blocks
+  `p` / `li` / `tr` — or, for a mock built from `div` / `span`, the tag of
+  the nearest `[data-pin]` element, else of the clicked element itself
+  (an `svg` as a whole) — `index` the block's position among the eligible blocks
   of that kind in that section, `ref` the block's own `id` (when the author
   gave it one), `text` its first 80 normalised characters. Resolving tries
   `ref`, then `index` + matching `text`, then the first block with the same
@@ -185,9 +187,15 @@ touched. **Pins are not draggable** in a document (the anchor is the block).
   };
   const blocksOf = (scope, it, kind) =>
     [...scope.querySelectorAll(kind)].filter(n => eligible(n, it) && scopeOf(n, it) === scope);
+  // Mocks built from div / span (#1149): [data-pin] first, then the text
+  // blocks, then the clicked element itself (an svg as a whole), never the
+  // round or one of its sections.
+  const ownOf = (t, it) => (t === it || t.matches(SCOPE) ? null : (t.closest('svg') || t));
   function blockOf(target, it) {
-    let b = target.closest && target.closest(inAnalysis(target) ? ANA_BLOCK : BLOCK);
-    if (!b || !eligible(b, it)) return null;
+    if (!target.closest) return null;
+    let b = inAnalysis(target) ? target.closest(ANA_BLOCK)
+      : (target.closest('[data-pin]') || target.closest(BLOCK) || ownOf(target, it));
+    if (!b || b === it || !eligible(b, it)) return null;
     const row = b.closest('tr');
     if (row && b !== row && b.closest('td, th') && eligible(row, it)) b = row;
     return b;
@@ -604,7 +612,8 @@ touched. **Pins are not draggable** in a document (the anchor is the block).
    (same contract as the design notes' body[data-note-editing] rule). */
 body[data-note-editing="true"] .dpin-layer .upin:not([data-editing="true"]) .upin-pin { opacity: 0.35; animation: none; transition: opacity 0.15s ease; }
 .dpin-layer .upin[data-orphan="true"] .upin-pin { opacity: 0.6; }
-body.dpin-armed section[data-iteration][data-active] :is(p, li, tr) { cursor: crosshair; }
+body.dpin-armed section[data-iteration][data-active] :not(section, a, button, input, select, textarea, label, summary, .dpin-layer, .dpin-layer *, [data-analysis], [data-analysis] *) { cursor: crosshair; }
+body.dpin-armed section[data-iteration][data-active] [data-analysis] :is(p, li, tr, h2, h3, h4, label, [data-opt], [data-options], .an-kind, .an-msg) { cursor: crosshair; }
 body.anno-hidden .dpin-layer .upin:not([data-upin-fresh]), body.anno-hidden .dpin-hint { display: none !important; }
 .dpin-hint {
   position: fixed; left: 50%; bottom: 2rem; transform: translateX(-50%); z-index: 99;

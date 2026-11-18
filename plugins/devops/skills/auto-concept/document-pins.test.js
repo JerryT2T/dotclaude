@@ -145,6 +145,26 @@ describe("document pins · set, save, payload", () => {
     expect(pins[1].anchor.text).toBe("Zelle X | Y");
   }, BOOT_TIMEOUT);
 
+  test("a mock built from div / span takes a pin; [data-pin] wins; the round itself never does (#1149)", async () => {
+    const { window, document } = await boot(fixture("decision"));
+    const sec = live(document).querySelector("section[id]");
+    sec.insertAdjacentHTML("beforeend",
+      '<div class="mock"><div class="mock-bar"><span id="chip">Chip</span></div>' +
+      '<div data-pin id="card"><span class="t">Karte</span><p>Text in der Karte</p></div></div>');
+    ctrlClick(window, document.getElementById("chip"));
+    typeAndSave(window, document, "Chipnotiz");
+    ctrlClick(window, sec.querySelector("#card p"));
+    typeAndSave(window, document, "Kartennotiz");
+    const n = document.querySelectorAll(".dpin-layer .upin").length;
+    ctrlClick(window, sec);
+    expect(editorOf(document), "a click on the section itself opens no pin").toBeFalsy();
+    expect(document.querySelectorAll(".dpin-layer .upin")).toHaveLength(n);
+    const pins = window.collectDecisions("iterate").userPins;
+    expect(pins.map((q) => q.anchor.kind)).toEqual(["span", "div"]);
+    expect(pins.map((q) => q.anchor.ref)).toEqual(["chip", "card"]);
+    expect(pins[0].anchor.text).toBe("Chip");
+  }, BOOT_TIMEOUT);
+
   test("pins survive a refresh from the store (reload path) and re-resolve after the document changed", async () => {
     const { window, document } = await boot(fixture("decision"));
     const sec = live(document).querySelector("section[id]");
