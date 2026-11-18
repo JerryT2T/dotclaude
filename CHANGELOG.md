@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.389.0] — 2026-11-19
+
+### Added
+- Band: Fable usage bar next to Wk and 5h, from the scoped Fable share; no bar when the value is missing or stale.
+- Concept overview: `data-ov-fit="component|view"` lets a design say how its preview is zoomed.
+
+### Changed
+- Band: usage bars sit stacked in the rail right of the divider, which keeps a fixed position.
+- Usage bars are always ordered Wk → Fb → 5h, in the band and in the completion card.
+- Concept overview: a component preview is zoomed at most 1.5×; a full view still fills its card.
+- Concept page: one blur veil, also while the ☰ menu is open, slightly lighter (1.2px).
+- Batch: a collected note answers "💾 Notiz #n gemerkt · „go“ setzt um" (localized) instead of "💾 #n"; "devops" under the prompt reads in white body text.
+
+### Fixed
+- Concept note dock: mic and paperclip no longer overhang the field border.
+
 ## [0.388.0] — 2026-11-17
 
 ### Added
