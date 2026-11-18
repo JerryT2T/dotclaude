@@ -84,7 +84,7 @@ describe("overview preview fit shows what differs (bundle B4)", () => {
   });
   test("component vs view: the author's data-ov-fit wins, else narrow non-device content is a component (#1)", () => {
     expect(md).toMatch(/const full = authorFit \? authorFit === 'view' : content >= 700;/);
-    expect(md).toMatch(/const component = authorFit \? authorFit === 'component'\s*\n\s*: !full && !p\.dataset\.ovDevice && content < 650;/);
+    expect(md).toMatch(/const component = authorFit \? authorFit === 'component'\s*\n\s*: !full && !p\.dataset\.ovDevice;/);
     expect(md).toMatch(/preview\.dataset\.ovFit = ovFit;/);
     expect(md).toMatch(/phone\|tablet\|mobile/);
   });

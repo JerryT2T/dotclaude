@@ -484,7 +484,7 @@ function createConceptVoice(env) {
 /* In the notes dock the buttons sit inside the field, bottom right: mic left of the 📎. */
 /* Same 30px height and centre line as the 📎, 8px apart: never overlapping. */
 .feedback-dock .attach-slot .attach-btn { box-sizing: border-box; min-width: 30px; height: 30px; padding: 0 7px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; }
-.feedback-dock .attach-slot .voice-btn { position: absolute; right: 52px; top: -34px; opacity: .7; }
+.feedback-dock .attach-slot .voice-btn { position: absolute; right: 52px; top: -40px; opacity: .7; }
 .feedback-dock .attach-slot .voice-btn:hover, .feedback-dock .attach-slot .voice-btn.is-listening { opacity: 1; }
 html .feedback-dock .feedback-section textarea[data-attachable] { padding-right: 5.6rem; }
 .voice-mode-btn[aria-pressed="true"] { color: var(--danger-color, #f85149); }

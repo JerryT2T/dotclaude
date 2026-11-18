@@ -99,7 +99,7 @@ returns — the single-design page is untouched.
 - **Component vs view zoom (`data-ov-fit`).** Optional on the design
   section: `component` (one widget, not a whole app view) or `view`. The
   attribute wins; without it `fitPreviews()` measures — narrow tight content
-  (< 65 % of the 1000px canvas) that is not a phone / tablet device view
+  (< 700px of the 1000px canvas) that is not a phone / tablet device view
   (`data-viewports`, `[data-device]`) counts as a component. A component is
   scaled at most 1.5x, centred, and may stay smaller than the card; a view
   fills the card edge to edge.
@@ -1659,10 +1659,10 @@ returns — the single-design page is untouched.
       // Component vs full view (#1): a COMPONENT (not a whole app view) is
       // shown at most 1.5x, centred, and may stay smaller than the card; a
       // full view fills the card as before. The author's `data-ov-fit`
-      // wins; without it, narrow tight content (< 65 % of the canvas) that
+      // wins; without it, tight content narrower than a full view (< 700px) that
       // is not a phone / tablet device view counts as a component.
       const component = authorFit ? authorFit === 'component'
-        : !full && !p.dataset.ovDevice && content < 650;
+        : !full && !p.dataset.ovDevice;
       p.dataset.fit = full ? 'cover' : 'contain';
       // Contain (component / element): the whole mock, as large as the card
       // allows - cap 4x, so a small widget still fills >= 2/3 of the card
