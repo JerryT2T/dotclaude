@@ -37,9 +37,9 @@ const rows = (text) => text.split("\n").filter((l) => /^(5h|Wk|Fb)\s/.test(l)).m
 
 describe("5h row follows the plan rule (U1, U3), every surface", () => {
   test.each(["Free", "Pro", "Max", "Team", "Max Plan"])("%s: real and idle 5h keep their row", (plan) => {
-    expect(rows(renderUsageMeter(snap(plan, REAL5, WK), 1, 1))).toEqual(["5h", "Wk"]);
-    expect(rows(renderUsageMeter(snap(plan, IDLE5, WK), 1, 1))).toEqual(["5h", "Wk"]);
-    expect(rows(renderUsageMeterForCard(snap(plan, REAL5, WK), 1, 1, ""))).toEqual(["5h", "Wk"]);
+    expect(rows(renderUsageMeter(snap(plan, REAL5, WK), 1, 1))).toEqual(["Wk", "5h"]);
+    expect(rows(renderUsageMeter(snap(plan, IDLE5, WK), 1, 1))).toEqual(["Wk", "5h"]);
+    expect(rows(renderUsageMeterForCard(snap(plan, REAL5, WK), 1, 1, ""))).toEqual(["Wk", "5h"]);
   });
   test("verified Ultra (null window): no 5h row in meter or card", () => {
     expect(rows(renderUsageMeter(snap("Ultra", IDLE5, WK), 1, 1))).toEqual(["Wk"]);
@@ -47,7 +47,7 @@ describe("5h row follows the plan rule (U1, U3), every surface", () => {
     expect(rows(renderUsageMeter(snap("Ultra", undefined, WK), 1, 1))).toEqual(["Wk"]);
   });
   test("unverified Ultra with real 5h data shows the row", () => {
-    expect(rows(renderUsageMeter(snap("Ultra", REAL5, WK), 1, 1))).toEqual(["5h", "Wk"]);
+    expect(rows(renderUsageMeter(snap("Ultra", REAL5, WK), 1, 1))).toEqual(["Wk", "5h"]);
     const model = buildBudgetModel(snap("Ultra", { pct: 60, resetInMinutes: 120 }, WK), 1, 1, "");
     expect(model.bars.map((b) => b.label)).toContain("5h");
   });
@@ -57,7 +57,7 @@ describe("5h row follows the plan rule (U1, U3), every surface", () => {
     expect(renderBudgetLineMd(model)).not.toMatch(/5h/);
   });
   test("an unknown plan label falls back to the credentials tier (empty home: stays unknown = idle row)", () => {
-    expect(rows(renderUsageMeter(snap("Max Plan", IDLE5, WK), 1, 1))).toEqual(["5h", "Wk"]);
+    expect(rows(renderUsageMeter(snap("Max Plan", IDLE5, WK), 1, 1))).toEqual(["Wk", "5h"]);
   });
   test("the credentials tier decides when the label is the placeholder", () => {
     fs.mkdirSync(path.join(FAKE_HOME, ".claude"), { recursive: true });
@@ -73,19 +73,19 @@ describe("5h row follows the plan rule (U1, U3), every surface", () => {
 describe("Pro and Max output is byte-identical to before this change", () => {
   test("Pro, real data (pinned from the previous implementation)", () => {
     const d = snap("Pro", REAL5, WK);
-    expect(renderUsageMeterForCard(d, 3, 1, "")).toBe("```\n5h  ━━━━━━╏━──────  42% +3%  · 2h  0m\nWk  ━━━━━━━╏──────  50% +1%  · 3d 11h\n```");
+    expect(renderUsageMeterForCard(d, 3, 1, "")).toBe("```\nWk  ━━━━━━━╏──────  50% +1%  · 3d 11h\n5h  ━━━━━━╏━──────  42% +3%  · 2h  0m\n```");
     expect(JSON.stringify(buildBudgetModel(d, 3, 1, ""))).toBe('{"omitted":true,"bars":[],"warn":false,"contextHealth":""}');
   });
   test("Max, real data (pinned from the previous implementation)", () => {
     const d = snap("Max", { pct: 85, resetInMinutes: 40 }, { pct: 90, resetInMinutes: 600 });
-    expect(renderUsageMeterForCard(d, 3, 1, "")).toBe("```\n5h  ━━━━━━━━━━━━╏─  85% +3%  · 0h 40m\nWk  ━━━━━━━━━━━━━╏  90% +1%  · 10h  0m\n```");
+    expect(renderUsageMeterForCard(d, 3, 1, "")).toBe("```\nWk  ━━━━━━━━━━━━━╏  90% +1%  · 10h  0m\n5h  ━━━━━━━━━━━━╏─  85% +3%  · 0h 40m\n```");
     expect(JSON.stringify(buildBudgetModel(d, 3, 1, ""))).toBe(
-      '{"omitted":false,"bars":[{"label":"5h","pct":85,"elapsedPct":86.66666666666667,"level":"white","watermark":"0 h 40 m","tooltip":"85% verbraucht · Reset in 0 h 40 m"},{"label":"Wk","pct":90,"elapsedPct":94.04761904761905,"level":"white","watermark":"10 h 0 m","tooltip":"90% verbraucht · Reset in 10 h 0 m"}],"warn":false,"contextHealth":""}',
+      '{"omitted":false,"bars":[{"label":"Wk","pct":90,"elapsedPct":94.04761904761905,"level":"white","watermark":"10 h 0 m","tooltip":"90% verbraucht · Reset in 10 h 0 m"},{"label":"5h","pct":85,"elapsedPct":86.66666666666667,"level":"white","watermark":"0 h 40 m","tooltip":"85% verbraucht · Reset in 0 h 40 m"}],"warn":false,"contextHealth":""}',
     );
   });
   test("Pro / Max / Team idle 5h: meter row unchanged", () => {
     for (const plan of ["Pro", "Max", "Team"]) {
-      expect(renderUsageMeterForCard(snap(plan, IDLE5, WK), 3, 1, "")).toBe("```\n5h  ╏─────────────   0% +3%  · —\nWk  ━━━━━━━╏──────  50% +1%  · 3d 11h\n```");
+      expect(renderUsageMeterForCard(snap(plan, IDLE5, WK), 3, 1, "")).toBe("```\nWk  ━━━━━━━╏──────  50% +1%  · 3d 11h\n5h  ╏─────────────   0% +3%  · —\n```");
     }
   });
 });
@@ -143,7 +143,7 @@ describe("Fable bar (U11)", () => {
   });
   test("a plan without a scoped limit has none: Pro and Max output has no Fb", () => {
     for (const plan of ["Pro", "Max", "Team"]) {
-      expect(rows(renderUsageMeter(snap(plan, REAL5, WK), 1, 1))).toEqual(["5h", "Wk"]);
+      expect(rows(renderUsageMeter(snap(plan, REAL5, WK), 1, 1))).toEqual(["Wk", "5h"]);
     }
   });
 });
