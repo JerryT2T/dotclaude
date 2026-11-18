@@ -1,6 +1,91 @@
 {
   "version": 1,
   "aspects": {
+    "README.md›count:hooks›value": [
+      {
+        "ship": "#1147",
+        "by": "Jerry",
+        "value": "112"
+      },
+      {
+        "ship": "claude/quirky-poitras-7d043f",
+        "by": "JerryT2T",
+        "value": "114 (generated count incl. 2 new hooks)",
+        "decided": true,
+        "at": "2026-11-18T23:04:59.372Z",
+        "hunks": [
+          "81d9aad74d93"
+        ]
+      }
+    ],
+    "README.md›hooks-summary›count": [
+      {
+        "ship": "#1147",
+        "by": "Jerry",
+        "value": "112"
+      },
+      {
+        "ship": "claude/quirky-poitras-7d043f",
+        "by": "JerryT2T",
+        "value": "114 (generated)",
+        "decided": true,
+        "at": "2026-11-18T23:04:59.372Z",
+        "hunks": [
+          "e6978f5b9fe0"
+        ]
+      }
+    ],
+    "README.md›tree-hooks›count": [
+      {
+        "ship": "#1147",
+        "by": "Jerry",
+        "value": "112"
+      },
+      {
+        "ship": "claude/quirky-poitras-7d043f",
+        "by": "JerryT2T",
+        "value": "114 (generated)",
+        "decided": true,
+        "at": "2026-11-18T23:04:59.372Z",
+        "hunks": [
+          "b10e01dd8bd6"
+        ]
+      }
+    ],
+    "architecture.html›h4›hook-count": [
+      {
+        "ship": "#1147",
+        "by": "Jerry",
+        "value": "112"
+      },
+      {
+        "ship": "claude/quirky-poitras-7d043f",
+        "by": "JerryT2T",
+        "value": "114 (generated)",
+        "decided": true,
+        "at": "2026-11-18T23:04:59.372Z",
+        "hunks": [
+          "1a45dc070c62"
+        ]
+      }
+    ],
+    "architecture.html›intro›hook-count": [
+      {
+        "ship": "#1147",
+        "by": "Jerry",
+        "value": "112"
+      },
+      {
+        "ship": "claude/quirky-poitras-7d043f",
+        "by": "JerryT2T",
+        "value": "114 (generated)",
+        "decided": true,
+        "at": "2026-11-18T23:04:59.372Z",
+        "hunks": [
+          "8d833c1e9610"
+        ]
+      }
+    ],
     "plugins/devops/hooks/mods/index.tsx›AbovePrompt band›idle early-return": [
       {
         "ship": "claude/batch-206a00",
