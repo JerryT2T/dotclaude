@@ -103,6 +103,16 @@ describe("field mic: insert at the cursor", () => {
     expect(t.value).toContain("final");
   });
 
+  test("exactly one mic per note field: a duplicate in the bar and a solo mic beside an attachable field are dropped (#6)", () => {
+    make();
+    const bar = doc.querySelector(".attach-bar");
+    bar.insertAdjacentHTML("beforeend", '<button class="voice-btn"></button>');
+    doc.getElementById("b").insertAdjacentHTML("afterend", '<button class="voice-btn voice-btn-solo"></button>');
+    v.scan();
+    expect(bar.querySelectorAll(".voice-btn").length).toBe(1);
+    expect(doc.getElementById("b").nextElementSibling.classList.contains("voice-btn-solo")).toBe(false);
+  });
+
   test("a field without an attach bar gets its own mic", () => {
     make();
     const solo = doc.getElementById("solo");

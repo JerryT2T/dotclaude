@@ -150,4 +150,11 @@ describe("one veil: re-armed by the menu, never stacked with the backdrop", () =
     expect(md).toMatch(/rearmVeilOnMenuOpen[\s\S]*?!wasOpen[\s\S]*?lockFrozenView\(\)/);
     expect(md).toMatch(/body\.panel-open #content-dimmer \{ background: transparent/);
   });
+  test("the open panel's backdrop paints the same veil as the content dimmer (dim + a soft blur), so it is the one visible veil (#3)", () => {
+    const veil = (sel) => (md.match(new RegExp("\n" + sel + " \{([^}]*)\}")) || [])[1] || "";
+    for (const sel of ["\.panel-backdrop", "\.content-dimmer"]) {
+      expect(veil(sel)).toMatch(/background: rgba\(0, ?0, ?0, ?0?\.4\)/);
+      expect(veil(sel)).toMatch(/backdrop-filter: blur\(1\.2px\)/);
+    }
+  });
 });

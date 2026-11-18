@@ -96,6 +96,13 @@ returns — the single-design page is untouched.
   its own digit hotkey - turn to the next
   page of that design (last → first; a single-page design: back to the
   overview); the ▾ caret lists the pages; other chips switch the design.
+- **Component vs view zoom (`data-ov-fit`).** Optional on the design
+  section: `component` (one widget, not a whole app view) or `view`. The
+  attribute wins; without it `fitPreviews()` measures — narrow tight content
+  (< 65 % of the 1000px canvas) that is not a phone / tablet device view
+  (`data-viewports`, `[data-device]`) counts as a component. A component is
+  scaled at most 1.5x, centred, and may stay smaller than the card; a view
+  fills the card edge to edge.
 - **Preview fit** is measured through no ancestor transform (`fitPreviews()`
   divides by the wrap's ancestor scale — a side card's rects read at its
   `scale(.74)` made the fit too large and cropped the real content).
@@ -731,6 +738,12 @@ returns — the single-design page is untouched.
       try { const t = d.querySelector(demoSel); demoScreen = t && t.closest('section[data-screen]'); } catch (_) { demoScreen = null; }
       if (demoScreen) { preview.dataset.demo = demoSel; shown = demoScreen; }
     }
+    // Zoom class (#1): the author's `data-ov-fit="component|view"` wins; a
+    // phone / tablet device view is never a component (fitPreviews() measures
+    // the rest).
+    const ovFit = String(d.dataset.ovFit || '').trim().toLowerCase();
+    if (ovFit === 'component' || ovFit === 'view') preview.dataset.ovFit = ovFit;
+    if (/phone|tablet|mobile/i.test(String(d.dataset.viewports || '')) || d.querySelector('[data-device]')) preview.dataset.ovDevice = 'true';
     preview.appendChild(cloneScreen(shown, 'ov' + m.n + '-'));
     // The design's own background (colour + image) paints the card behind
     // the scaled clone (.design-ov-preview reads the two variables).
@@ -1641,13 +1654,21 @@ returns — the single-design page is untouched.
       // at the bottom. A narrower widget / phone mock is CONTAINED (whole,
       // up to 2.5×). The card's own background (the design's) fills what
       // the content does not reach. The info card sits bottom-left on top.
-      const full = content >= 700;
+      const authorFit = p.dataset.ovFit;
+      const full = authorFit ? authorFit === 'view' : content >= 700;
+      // Component vs full view (#1): a COMPONENT (not a whole app view) is
+      // shown at most 1.5x, centred, and may stay smaller than the card; a
+      // full view fills the card as before. The author's `data-ov-fit`
+      // wins; without it, narrow tight content (< 65 % of the canvas) that
+      // is not a phone / tablet device view counts as a component.
+      const component = authorFit ? authorFit === 'component'
+        : !full && !p.dataset.ovDevice && content < 650;
       p.dataset.fit = full ? 'cover' : 'contain';
       // Contain (component / element): the whole mock, as large as the card
       // allows - cap 4x, so a small widget still fills >= 2/3 of the card
       // instead of sitting small in a sea of empty tile. Cover (full app)
       // stays capped at 2.5x.
-      let scale = Math.min(full ? 2.5 : 4, tall ? (full ? Math.max(w / content, h / tall) : Math.min(w / content, h / tall)) : w / content);
+      let scale = Math.min(full ? 2.5 : component ? 1.5 : 4, tall ? (full ? Math.max(w / content, h / tall) : Math.min(w / content, h / tall)) : w / content);
       let cx = from, cy = fromY, cw = content, ch = tall || h / Math.max(scale, 0.01);
       let topAnchor = full && tall * scale > h + 0.5;
       // `data-ov-demo`: zoom onto the differing element instead — fitted

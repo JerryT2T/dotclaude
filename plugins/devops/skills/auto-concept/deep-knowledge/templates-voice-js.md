@@ -357,6 +357,17 @@ function createConceptVoice(env) {
   }
   /** Every field gets one mic: attach bars (static markup), plain fields, the analysis composer. */
   function scan() {
+    // Exactly ONE mic per note field (#6): a second one in the same attach bar
+    // (static markup + the injected bar) or a solo mic beside a field that
+    // already has a bar is dropped, so two mics never sit on top of each other.
+    doc.querySelectorAll('.attach-bar').forEach(bar => {
+      bar.querySelectorAll('.voice-btn').forEach((b, i) => { if (i > 0) b.remove(); });
+    });
+    doc.querySelectorAll('.voice-btn-solo').forEach(b => {
+      const f = b.previousElementSibling;
+      const slot = f && f.matches && f.matches('textarea[data-attachable]') ? (f.dataset.comment || f.id || '') : '';
+      if (slot && [...doc.querySelectorAll('.attach-bar')].some(bar => bar.dataset.attachFor === slot && bar.querySelector('.voice-btn'))) b.remove();
+    });
     doc.querySelectorAll('.attach-bar .voice-btn:not([data-voice-wired])').forEach(b => {
       const key = b.closest('.attach-bar').dataset.attachFor;
       wireButton(b, () => fieldFor(key));
@@ -471,6 +482,8 @@ function createConceptVoice(env) {
 .an-comp-b.voice-btn-an.is-listening { width: auto; min-width: 36px; padding: 0 12px; border-radius: 18px; background: var(--accent-color); border-color: var(--accent-color); color: #fff; }
 .an-comp-ed.voice-field-listening { outline: 1px solid color-mix(in srgb, var(--accent-color) 55%, var(--border-color)); outline-offset: -1px; }
 /* In the notes dock the buttons sit inside the field, bottom right: mic left of the 📎. */
+/* Same 30px height and centre line as the 📎, 8px apart: never overlapping. */
+.feedback-dock .attach-slot .attach-btn { box-sizing: border-box; min-width: 30px; height: 30px; padding: 0 7px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; }
 .feedback-dock .attach-slot .voice-btn { position: absolute; right: 52px; top: -34px; opacity: .7; }
 .feedback-dock .attach-slot .voice-btn:hover, .feedback-dock .attach-slot .voice-btn.is-listening { opacity: 1; }
 html .feedback-dock .feedback-section textarea[data-attachable] { padding-right: 5.6rem; }
