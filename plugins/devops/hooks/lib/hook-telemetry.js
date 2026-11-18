@@ -26,8 +26,8 @@
  *   thread of one process; its run id comes from the dispatcher
  *   (workerData.telemetryId) so pid-based ids cannot collide. The dispatcher
  *   writes a module's end record itself when it kills or skips the module:
- *     end    {…, phase:'end', outcome:'timeout'|'skipped', dispatched:true}
- *   killRates() counts both as killed runs. The dispatcher's own run is
+ *     end    {…, phase:'end', outcome:'timeout'|'skipped'|'stuck', dispatched:true}
+ *   killRates() counts all three as killed runs. The dispatcher's own run is
  *   named `dispatch:<Event>` (setHook).
  *
  *   Daily rollup (memory beyond the 1 MB raw window, ~11 min on a busy
@@ -88,7 +88,7 @@ function append(file, rec) {
 const KEEP_DAYS = 60;
 const LOCK_STALE_MS = 30000;
 const BUCKETS = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 30000]; // upper bounds, ms; +1 overflow
-const OUTCOMES = ['ok', 'output', 'block', 'error', 'timeout', 'skipped'];
+const OUTCOMES = ['ok', 'output', 'block', 'error', 'timeout', 'skipped', 'stuck'];
 
 function rollupPath(file) {
   return `${file.replace(/\.jsonl$/, '')}-daily.json`;
@@ -319,7 +319,7 @@ function killRates(file, { window = 200, graceMs = 120000, now = Date.now(), tai
     if (!r || !r.id || !r.hook) continue;
     if (r.phase === 'start') runs.set(r.id, { hook: r.hook, ts: r.ts, ended: runs.has(r.id) && runs.get(r.id).ended });
     else if (r.phase === 'end') {
-      const killed = r.outcome === 'timeout' || r.outcome === 'skipped';
+      const killed = r.outcome === 'timeout' || r.outcome === 'skipped' || r.outcome === 'stuck';
       runs.set(r.id, { hook: r.hook, ts: (runs.get(r.id) || r).ts, ended: !killed, final: killed });
     }
   }

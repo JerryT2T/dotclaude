@@ -303,6 +303,9 @@
         "stop.agent.relay"
       ],
       [
+        "stop.hook.hardend"
+      ],
+      [
         "stop.flow.guard"
       ],
       [
@@ -373,6 +376,9 @@
       ],
       [
         "prompt.governor.resume"
+      ],
+      [
+        "prompt.hook.hardend"
       ]
     ]
   },

@@ -103,6 +103,13 @@ describe("dispatcher runs modules in worker threads like separate processes", ()
     expect(JSON.parse(r.stdout).hookSpecificOutput.additionalContext).toBe("ctx:Bash");
   }, 20_000);
 
+  test("a stuck thread's end record says stuck and names the tool (#1151)", async () => {
+    const recs = [];
+    const r = await run([mod("stuck.js", { timeoutS: 1 }), mod("ctx.js")], { tele: { record: (x) => recs.push(x) }, payload: { tool_name: "Write" } });
+    expect(r.results[0].stuck).toBe(true);
+    expect(recs).toEqual([expect.objectContaining({ hook: "stuck", outcome: "stuck", event: "PreToolUse", tool: "Write" })]);
+  }, 20_000);
+
   test("a hard exit keeps plain context, as JSON: exit 1 would drop it as plain text", () => {
     expect(JSON.parse(hardExitStdout("SessionStart", "rule\n")).hookSpecificOutput).toEqual({ hookEventName: "SessionStart", additionalContext: "rule" });
     expect(hardExitStdout("SessionStart", '{"systemMessage":"m"}\n')).toBe('{"systemMessage":"m"}\n');
