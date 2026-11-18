@@ -365,6 +365,7 @@
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/stop/stop.git.sync.js\"" },
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/stop/stop.flow.browsertest.js\"" },
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/stop/stop.agent.relay.js\"" },
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/stop/stop.hook.hardend.js\"" },
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/stop/stop.flow.guard.js\"" },
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/stop/stop.guide.handoff.js\"" },
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/stop/stop.strict.release.js\"" },
@@ -394,7 +395,8 @@
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/user-prompt-submit/prompt.flow.appstart.js\"" },
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/user-prompt-submit/prompt.burn.resume.js\"" },
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/user-prompt-submit/prompt.worktree.branch-guard.js\"" },
-          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/user-prompt-submit/prompt.governor.resume.js\"", "timeout": 5 }
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/user-prompt-submit/prompt.governor.resume.js\"", "timeout": 5 },
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/user-prompt-submit/prompt.hook.hardend.js\"", "timeout": 5 }
         ]
       }
     ]

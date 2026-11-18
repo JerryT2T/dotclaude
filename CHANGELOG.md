@@ -16,6 +16,12 @@
 ### Fixed
 - Concept note dock: mic and paperclip no longer overhang the field border.
 
+## [0.388.1] — 2026-11-19
+
+### Fixed
+- Hook dispatcher: a stuck hook module that ends the dispatcher hard is written to the hook telemetry (`outcome: stuck`, module, event, tool), the held-back call names the cancelled sibling calls as a hook failure, and the next Stop (or prompt) says once that the user declined nothing (#1151).
+- auto-concept: Ctrl/⌘+click and long press notes in decision/free rounds work on `[data-pin]` and div/span mock elements, not only on paragraphs, list items and table rows (#1149).
+
 ## [0.388.0] — 2026-11-17
 
 ### Added
