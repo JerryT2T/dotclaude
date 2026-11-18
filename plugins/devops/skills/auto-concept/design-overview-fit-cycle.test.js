@@ -79,8 +79,14 @@ describe("overview preview fit shows what differs (bundle B4)", () => {
     expect(md).toMatch(/availB = hit\(\) \? Math\.max\(0, ovr\.t - 8\)/);
     expect(md).toMatch(/const want = fh <= availB - 8/);
   });
-  test("component mode is contained up to 4x (>= 2/3 of the card), cover stays at 2.5x", () => {
-    expect(md).toMatch(/Math\.min\(full \? 2\.5 : 4, tall \?/);
+  test("a component is contained up to 1.5x (may stay small), a full view covers at 2.5x (#1)", () => {
+    expect(md).toMatch(/Math\.min\(full \? 2\.5 : component \? 1\.5 : 4, tall \?/);
+  });
+  test("component vs view: the author's data-ov-fit wins, else narrow non-device content is a component (#1)", () => {
+    expect(md).toMatch(/const full = authorFit \? authorFit === 'view' : content >= 700;/);
+    expect(md).toMatch(/const component = authorFit \? authorFit === 'component'\s*\n\s*: !full && !p\.dataset\.ovDevice;/);
+    expect(md).toMatch(/preview\.dataset\.ovFit = ovFit;/);
+    expect(md).toMatch(/phone\|tablet\|mobile/);
   });
   test("warnings: identical variants, demo selector matching nothing, whole-screen demo target", () => {
     expect(md).toMatch(/visually identical/);

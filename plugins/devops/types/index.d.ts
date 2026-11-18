@@ -19,6 +19,9 @@ export type Budget = {
   /** Window resets, epoch ms (the rate limit's resetsAt); null when none was reported. */
   fiveHourResetsAt?: number | null
   weeklyResetsAt?: number | null
+  /** The scoped Fable share of the week (percent used) and its reset, epoch ms; null/absent when unknown, stale or unused. */
+  fable?: number | null
+  fableResetsAt?: number | null
   /** The measured context: tokens in use and the window they sit in (session.measure); the ring's basis, never a model constant. */
   contextTokens?: number | null
   contextWindow?: number | null

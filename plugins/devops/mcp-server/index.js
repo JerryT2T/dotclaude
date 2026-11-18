@@ -404,15 +404,15 @@ function renderUsageMeter(usageData, delta5h, deltaWk) {
   const w = usageData.weekly;
   const lines = [];
 
-  const fw = fiveHourView(usageData);
-  if (fw.applies) lines.push(renderUsageLine('5h', fw.pct, elapsedOf(fw.resetInMinutes, WINDOW_5H_MIN), delta5h, fw.resetInMinutes));
-
   if (w) {
     lines.push(renderUsageLine('Wk', w.pct, elapsedOf(w.resetInMinutes, WINDOW_WK_MIN), deltaWk, w.resetInMinutes));
   }
   for (const l of usedScopedLimits(usageData)) {
     lines.push(renderUsageLine('Fb', l.pct, elapsedOf(l.resetInMinutes, WINDOW_WK_MIN), null, l.resetInMinutes));
   }
+  // Order is always Wk -> Fb -> 5h.
+  const fw = fiveHourView(usageData);
+  if (fw.applies) lines.push(renderUsageLine('5h', fw.pct, elapsedOf(fw.resetInMinutes, WINDOW_5H_MIN), delta5h, fw.resetInMinutes));
 
   // Staleness is surfaced here too \u2014 get_usage consumers previously saw stale
   // numbers with no hint in either the JSON or this meter string.
@@ -459,9 +459,6 @@ function renderUsageMeterForCard(usageData, delta5h, deltaWk, healthLine) {
   const w = usageData.weekly;
   const bars = [];
 
-  const fw = fiveHourView(usageData);
-  if (fw.applies) bars.push(renderUsageLine('5h', fw.pct, elapsedOf(fw.resetInMinutes, WINDOW_5H_MIN), delta5h, fw.resetInMinutes));
-
   if (w) {
     bars.push(renderUsageLine('Wk', w.pct, elapsedOf(w.resetInMinutes, WINDOW_WK_MIN), deltaWk, w.resetInMinutes));
   }
@@ -469,6 +466,9 @@ function renderUsageMeterForCard(usageData, delta5h, deltaWk, healthLine) {
     const elapsedFb = elapsedOf(l.resetInMinutes, WINDOW_WK_MIN);
     if (!omitWeeklyWindow(l.pct, elapsedFb, l.resetInMinutes)) bars.push(renderUsageLine('Fb', l.pct, elapsedFb, null, l.resetInMinutes));
   }
+  // Order is always Wk -> Fb -> 5h.
+  const fw = fiveHourView(usageData);
+  if (fw.applies) bars.push(renderUsageLine('5h', fw.pct, elapsedOf(fw.resetInMinutes, WINDOW_5H_MIN), delta5h, fw.resetInMinutes));
 
   // Trailing pad columns would show up as stray whitespace inside the fence.
   const blocks = [fence(bars.map(l => l.replace(/\s+$/, '')).join('\n'))];
@@ -1155,16 +1155,6 @@ function buildBudgetModel(usageData, delta5h, deltaWk, healthLine, lang = 'de') 
   const bars = [];
   let warn = false;
 
-  if (fw.applies && !omitWindow(fw.pct, fw.resetInMinutes)) {
-    // No pace verdict without a known reset (the bar still draws, never as ahead of time).
-    const level = fw.resetInMinutes == null ? 'white' : markerLevel(fw.pct, elapsed5h);
-    if (level !== 'white') warn = true;
-    bars.push({
-      label: '5h', pct: fw.pct, elapsedPct: elapsed5h, level,
-      watermark: formatResetSpaced(fw.resetInMinutes),
-      tooltip: tooltipFor(Math.round(fw.pct), formatResetSpaced(fw.resetInMinutes)),
-    });
-  }
   if (w) {
     const elapsedWk = elapsedOf(w.resetInMinutes, WINDOW_WK_MIN);
     if (!omitWeeklyWindow(w.pct, elapsedWk, w.resetInMinutes)) {
@@ -1187,6 +1177,17 @@ function buildBudgetModel(usageData, delta5h, deltaWk, healthLine, lang = 'de') 
       label: 'Fb', pct: l.pct, elapsedPct: elapsedFb, level,
       watermark: formatResetSpaced(l.resetInMinutes),
       tooltip: tooltipFor(Math.round(l.pct), formatResetSpaced(l.resetInMinutes)),
+    });
+  }
+  // Order is always Wk -> Fb -> 5h.
+  if (fw.applies && !omitWindow(fw.pct, fw.resetInMinutes)) {
+    // No pace verdict without a known reset (the bar still draws, never as ahead of time).
+    const level = fw.resetInMinutes == null ? 'white' : markerLevel(fw.pct, elapsed5h);
+    if (level !== 'white') warn = true;
+    bars.push({
+      label: '5h', pct: fw.pct, elapsedPct: elapsed5h, level,
+      watermark: formatResetSpaced(fw.resetInMinutes),
+      tooltip: tooltipFor(Math.round(fw.pct), formatResetSpaced(fw.resetInMinutes)),
     });
   }
   return { omitted: bars.length === 0, bars, warn, contextHealth: healthLine || '' };

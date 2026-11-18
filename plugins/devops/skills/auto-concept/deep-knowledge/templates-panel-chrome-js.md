@@ -572,7 +572,7 @@ html .feedback-dock .feedback-section textarea {
 .feedback-dock .attach-slot { position: relative; }
 /* right: 14px keeps it clear of the field's scrollbar; the field reserves a
    matching right gutter (§ Attachments CSS) so typed text never runs under it. */
-.feedback-dock .attach-slot .attach-btn { position: absolute; right: 14px; top: -34px; opacity: 0.7; }
+.feedback-dock .attach-slot .attach-btn { position: absolute; right: 14px; top: -40px; opacity: 0.7; }
 .feedback-dock .attach-slot .attach-btn:hover { opacity: 1; }
 /* "Wusstest du schon?" — ONE line, always (the pool's texts are kept short,
    ellipsis is only the safety net for a narrow phone sheet), in the calm

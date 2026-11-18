@@ -300,8 +300,8 @@ body.viewing-final .panel-status { display: none; }
   /* Theme-neutral grey overlay — works on dark and light backgrounds without
      a CSS variable dependency. Same opacity range as .panel-backdrop. */
   background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(1.5px);
-  -webkit-backdrop-filter: blur(1.5px);
+  backdrop-filter: blur(1.2px);
+  -webkit-backdrop-filter: blur(1.2px);
   cursor: pointer;
   opacity: 0;
   transition: opacity 0.25s ease;
@@ -313,7 +313,9 @@ body.content-dimmed .content-dimmer:not([hidden]) {
 }
 .content-dimmer[hidden] { display: none; }
 /* One dimmer for the content area, in EVERY template (decision, free, design; it lived in the design CSS only before). While the ☰ menu is open the panel
-   backdrop is the only veil on screen: the content dimmer (past iteration,
+   backdrop is the only veil on screen — it paints the SAME veil (rgba(0,0,0,.4) +
+   blur(1.2px), § Panel Chrome), so the page behind stays recognisable but dimmed
+   with or without the menu, also when no content dimmer is armed: the content dimmer (past iteration,
    sent round) stays armed underneath but paints nothing, so the two never
    stack — it is back, still armed, the moment the menu closes. */
 body.panel-open #content-dimmer { background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; }

@@ -112,8 +112,8 @@ describe("renderUsageMeterForCard", () => {
     const lines = renderUsageMeterForCard(usage(), 0, 0, "").split("\n");
     expect(lines[0]).toBe("```");
     expect(lines[lines.length - 1]).toBe("```");
-    expect(lines[1].startsWith("5h  ")).toBe(true);
-    expect(lines[2].startsWith("Wk  ")).toBe(true);
+    expect(lines[1].startsWith("Wk  ")).toBe(true);
+    expect(lines[2].startsWith("5h  ")).toBe(true);
   });
 
   test("health line stays a dim blockquote above the fence", () => {

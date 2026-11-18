@@ -830,7 +830,8 @@ describe("B4 visuals — card preview, variant numbers, active chip, demo and th
     expect(md).not.toMatch(/\.design-ov-slide\[data-pos="cur"\]\s*\{[^}]*100cqw/);
     expect(md).toMatch(/\.design-ov-preview \{[^}]*border-radius: 22px;[^}]*var\(--dz-ov-bg-img, none\)/);
     // fitPreviews: cover for a full-app screen (>= 700 of 1000px), contain otherwise.
-    expect(md).toMatch(/const full = content >= 700;\s*\n\s*p\.dataset\.fit = full \? 'cover' : 'contain';/);
+    expect(md).toMatch(/const full = authorFit \? authorFit === 'view' : content >= 700;/);
+    expect(md).toMatch(/p\.dataset\.fit = full \? 'cover' : 'contain';/);
     expect(md).toMatch(/full \? Math\.max\(w \/ content, h \/ tall\) : Math\.min\(w \/ content, h \/ tall\)/);
   });
   test("every variant shows its hotkey digit in the quick nav and the ☰ rows", async () => {

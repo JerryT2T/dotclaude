@@ -264,10 +264,13 @@ html:not([data-theme="dark"]) .theme-toggle-btn [data-glyph="moon"] { display: i
   display: none;
   position: fixed;
   inset: 0;
-  /* Light dim only: the ☰ menu is navigation the user clicks through while
-     watching the page change behind it (the user's call) — the page must
-     stay readable, the dim only says "a click here closes the menu". */
-  background: rgba(0,0,0,0.16);
+  /* THE one veil while the ☰ menu is open (the content dimmer paints
+     nothing then, § Content dimmer): same look as that dimmer — dark dim plus
+     a soft blur, a tick below the strongest blur, so the page behind the
+     menu stays recognisable while the user navigates (the user's call). */
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(1.2px);
+  -webkit-backdrop-filter: blur(1.2px);
   z-index: 150;
 }
 .panel-backdrop.visible { display: block; }

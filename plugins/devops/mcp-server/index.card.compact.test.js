@@ -194,8 +194,8 @@ describe("AUD-035 — the budget tooltip speaks the card's language", () => {
   });
 
   test("de card (and the default) keep the German tooltip", () => {
-    expect(buildBudgetModel(usage(), 0, 0, "", "de").bars[0].tooltip).toMatch(/^62% verbraucht · Reset in /);
-    expect(buildBudgetModel(usage(), 0, 0, "").bars[0].tooltip).toMatch(/^62% verbraucht · Reset in /);
+    expect(buildBudgetModel(usage(), 0, 0, "", "de").bars.find((b) => b.label === "5h").tooltip).toMatch(/^62% verbraucht · Reset in /);
+    expect(buildBudgetModel(usage(), 0, 0, "").bars.find((b) => b.label === "5h").tooltip).toMatch(/^62% verbraucht · Reset in /);
   });
 });
 
