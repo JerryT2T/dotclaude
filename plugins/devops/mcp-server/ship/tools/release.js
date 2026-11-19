@@ -855,7 +855,8 @@ export async function handler(params) {
     result.mergeSha = merge.fullSha ? merge.fullSha.slice(0, 8) : merge.sha;
     if (merge.verified === false) result.mergeVerified = false;
     if (merge.warning) result.mergeWarning = merge.warning;
-    // #1136: a refused rebase merge landed as squash — the card names the lost per-commit history.
+    // #1136 / #1155: a refused rebase merge landed as a merge commit (history kept) or, without merge
+    // commits, as squash — the card names a lost per-commit history.
     if (merge.strategyFallback) { result.mergeStrategy = merge.strategyFallback.to; result.mergeStrategyFallback = merge.strategyFallback; }
 
     // If mergePR could not fetch origin/base, retry the fetch here with backoff

@@ -550,8 +550,14 @@ describe("readPRForLand / landEligibility (#955)", () => {
 // #1136: a backlog batch asked for a rebase merge, but the branch carried a
 // merge commit of origin/main — GitHub refused, the ship stopped with
 // release-failed and had to be re-called with squash by hand.
-describe("mergePR — rebase refused falls back to squash", () => {
-  test("a 'can't be rebased' refusal retries once with --squash and reports the fallback", () => {
+// #1155: the per-issue commits must survive that refusal — the retry is a merge
+// commit, squash only when the repository forbids merge commits.
+describe("mergePR — rebase refused falls back to a merge commit, then squash", () => {
+  const strategies = () => execFileSync.mock.calls
+    .filter(([b, a]) => b === "gh" && a[0] === "pr" && a[1] === "merge")
+    .map(([, a]) => a.find((x) => /^--(rebase|squash|merge)$/.test(x)));
+
+  test("a 'can't be rebased' refusal retries once with --merge and reports the fallback", () => {
     let merges = 0;
     execFileSync.mockImplementation((bin, args) => {
       const key = `${bin} ${args.slice(0, 2).join(" ")}`;
@@ -566,9 +572,27 @@ describe("mergePR — rebase refused falls back to squash", () => {
     });
     const r = mergePR(42, "main", undefined, { ...noSleep, strategy: "rebase" });
     expect(r.sha).toBe("abc1234");
+    expect(r.strategyFallback).toEqual(expect.objectContaining({ from: "rebase", to: "merge" }));
+    expect(strategies()).toEqual(["--rebase", "--merge"]);
+  });
+
+  test("a repository without merge commits lands the refused rebase as a squash", () => {
+    let merges = 0;
+    execFileSync.mockImplementation((bin, args) => {
+      const key = `${bin} ${args.slice(0, 2).join(" ")}`;
+      if (key === "gh pr merge") {
+        merges++;
+        if (args.includes("--rebase")) throw new Error("GraphQL: This branch can't be rebased (mergePullRequest)");
+        if (args.includes("--merge")) throw new Error("GraphQL: Merge commits are not allowed on this repository. (mergePullRequest)");
+        return "";
+      }
+      if (key === "gh pr view") return merges >= 3 ? "MERGED" : "OPEN";
+      if (key === "git rev-parse --short") return "abc1234\n";
+      return "";
+    });
+    const r = mergePR(42, "main", undefined, { ...noSleep, strategy: "rebase" });
     expect(r.strategyFallback).toEqual(expect.objectContaining({ from: "rebase", to: "squash" }));
-    const calls = execFileSync.mock.calls.filter(([b, a]) => b === "gh" && a[0] === "pr" && a[1] === "merge");
-    expect(calls.map(([, a]) => a.find((x) => /^--(rebase|squash|merge)$/.test(x)))).toEqual(["--rebase", "--squash"]);
+    expect(strategies()).toEqual(["--rebase", "--merge", "--squash"]);
   });
 
   test("any other rebase failure is not retried", () => {

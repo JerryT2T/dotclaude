@@ -400,7 +400,9 @@ Batch lane, differences to the loop below:
   on the card, follow-up issue); they never fix code the branch did not change.
 - **Step 4 SHIP runs once, after the last item**, over the whole batch:
   `Skill("devops:do-ship", "--batch=<M> --keep")` (see do-ship SKILL.md,
-  composed ships). A parked or blocked item is dropped from the batch (its
+  composed ships). It lands as a merge commit, so every per-issue commit stays
+  in the base's history (log, blame and revert per issue) even after git-sync
+  merged `origin/<base>` into the batch branch (#1155). A parked or blocked item is dropped from the batch (its
   commit reverted or never made) and does not hold the others back. Step 5 CLOSE
   covers every issue of the batch after the single merge.
 
