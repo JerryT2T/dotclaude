@@ -1142,6 +1142,38 @@ test('B17 hint cards (batch / test mode): heading plus a ? toggle, hints collaps
 const REL = { ...CARD_DATA, h: '🟩 🚀 Released Alpha — v0.270.1 — nach Beta promoten?' }
 const cardText = (d: unknown) => `<script type="application/json" id="dc-card-data">${JSON.stringify(d)}</script>`
 
+// #1157: a release card, then a typed follow-up whose card is a fallback with pending work.
+test('release state: a later non-ship card keeps the session release beside its own status; a new ship replaces it', async ($, on) => {
+  engine(on)
+  const PENDING = { ...CARD_DATA, ti: 'Folgeauftrag', at: '02:10', h: '⏳ Team — noch nicht fertig — Task läuft', pt: [], bt: [] }
+  const REL2 = { ...CARD_DATA, at: '03:00', h: '🟩 🚀 Released Alpha — v0.271.0 — nach Beta promoten?' }
+  let next: unknown = REL
+  on('tool.call', () => ({ result: {}, text: cardText(next) }))
+  on('turn.start', (_: unknown, e: { turnId: string }) => ({ turnId: e.turnId || 't' }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.tool.call({ tool: CARD_TOOL, summary: 'ship' } as any)
+  let band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await band.find({ type: 'Text', text: /^🚀 Released Alpha — v0\.270\.1 · / })).toBeUndefined() // the ship card itself says it
+  await band.unmount()
+  await $.turn.start({ text: 'split two issues', turnId: 't2' } as any)
+  next = PENDING
+  await $.tool.call({ tool: CARD_TOOL, summary: 'fallback' } as any)
+  for (const surface of ['desktop', 'terminal'] as const) {
+    band = await $.ui.mount({ ...BAND, surface })
+    expect((await band.find({ type: 'Text', text: /Released Alpha/ }))?.text, surface).toBe('🚀 Released Alpha — v0.270.1 · 01:43')
+    expect(JSON.stringify(await band.find({ key: 'band' }))).toContain('Task läuft')
+    await band.unmount()
+  }
+  await $.turn.start({ text: 'ship again', turnId: 't3' } as any)
+  next = REL2
+  await $.tool.call({ tool: CARD_TOOL, summary: 'ship' } as any)
+  next = PENDING
+  await $.tool.call({ tool: CARD_TOOL, summary: 'fallback' } as any)
+  band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect((await band.find({ type: 'Text', text: /Released Alpha/ }))?.text).toBe('🚀 Released Alpha — v0.271.0 · 03:00')
+  await band.unmount()
+})
+
 test('defect 1: after a ship the squash-merged branch (still "ahead" of main) keeps the ring grey until a new edit or open plan', async ($, on) => {
   engine(on)
   on('tool.call', () => ({ result: {}, text: cardText(REL) }))

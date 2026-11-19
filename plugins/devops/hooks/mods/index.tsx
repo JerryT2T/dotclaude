@@ -66,6 +66,8 @@ import {
   budgetBarAlt,
   cardTextSvg,
   isShippedCard,
+  isReleaseCard,
+  releaseLine,
   archiveOffered,
   archiveRefusal,
   BUDGET_BAR_SIZE,
@@ -232,6 +234,9 @@ const batchOpen = atom({ plugin: 'devops', key: 'batchOpen' } as const, false, {
 const batchPress = atom({ plugin: 'devops', key: 'batchPress' } as const, null as 'go' | 'going' | 'off' | null, { shape: 'batch-press-2' })
 // The last card's title and time, kept after the card is spent: the idle row's "Last:".
 const lastCard = atom({ plugin: 'devops', key: 'lastCard' } as const, null as { title: string; at: string } | null, { shape: 'last-card-1' })
+// #1157: the session's last release (ship card heading + time). A typed prompt never spends it; a later ship replaces it,
+// and a later non-ship card shows it beside its own status instead of erasing it.
+const released = atom({ plugin: 'devops', key: 'released' } as const, null as { line: string; at: string } | null, { shape: 'released-1' })
 // #1105: the last card's text for a cold return, and the recap on screen (shown once, dismissible).
 const NO_RECAP: RecapState = { card: null, shown: null }
 const recap = atom({ plugin: 'devops', key: 'recap' } as const, NO_RECAP, { shape: 'recap-1' })
@@ -1169,6 +1174,7 @@ export const register: Register = on => {
       if (view) {
         await update($, card, () => view)
         if (isShippedCard(view)) await update($, settled, () => true)
+        if (isReleaseCard(view)) await update($, released, () => ({ line: releaseLine(view.heading), at: view.at }))
         if (view.title) await update($, lastCard, () => ({ title: view.title, at: view.at }))
         const text = recapCardText(view)
         if (text) {
@@ -1546,6 +1552,8 @@ export const register: Register = on => {
     const liveHead = c0 && bt && isHintCard(c0) ? liveBatchHeading(c0.heading, bt.count) : null
     const c = c0 && liveHead ? { ...c0, heading: liveHead } : c0
     const last = await read($, lastCard)
+    // #1157: a later non-ship card keeps the session's release visible above its own heading.
+    const rel = c && !isReleaseCard(c) ? await read($, released) : null
     const w = working ? workingLine(prog) : null
     const b = await read($, budget)
     const now = await $.clock.now()
@@ -1874,6 +1882,7 @@ export const register: Register = on => {
               {c.at && <Text {...S.time}>{c.at}</Text>}
             </Box>
           )}
+          {rel && <Text key="card-released" {...S.small}>{rel.at ? `${rel.line} · ${rel.at}` : rel.line}</Text>}
           {c && (
             <Box key="card-heading-row" flexDirection="row" columnGap={1}>
               <Text key="card-heading" bold>{c.heading}</Text>
@@ -1898,6 +1907,7 @@ export const register: Register = on => {
           <Box key="main" flexDirection="column" flexGrow={1} rowGap={1}>
             {workEl}
             {titleEl}
+            {rel && <Text key="card-released" {...S.small}>{rel.at ? `${rel.line} · ${rel.at}` : rel.line}</Text>}
             {c && (
               <Box key="card-heading-row" flexDirection="row" alignItems="center" columnGap={1}>
                 {cardText('card-heading', c.heading, 'heading')}

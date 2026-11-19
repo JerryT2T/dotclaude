@@ -1163,6 +1163,22 @@ export function isShippedCard(c: { heading: string } | null): boolean {
 }
 
 /**
+ * #1157: a landed ship / release card — green, or 👉 asking to promote, with a 🚀 and a version in its heading.
+ * A failed (🟥) or running (⏳) release is no release to remember.
+ */
+export function isReleaseCard(c: { heading: string } | null): boolean {
+  return !!c && /^(?:🟩|👉)\s*🚀/u.test(c.heading) && /\bv?\d+\.\d+\.\d+\b/.test(c.heading)
+}
+
+/**
+ * #1157: the release line a later card keeps beside its own status — the release heading without its status
+ * icon and its trailing question ("🟩 🚀 Released Alpha — v0.270.1 — nach Beta promoten?" → "🚀 Released Alpha — v0.270.1").
+ */
+export function releaseLine(heading: string): string {
+  return heading.replace(/^(?:🟩|👉|⏳|🟥|🟦)\s*/u, '').replace(/\s+—\s+[^—]*\?\s*$/u, '').trim()
+}
+
+/**
  * The band offers "Archive" for a green card (shipped, released, finished analysis) while nothing runs.
  * The press calls the Desktop app's own archive_session through $.mcp.call — no model turn.
  */
