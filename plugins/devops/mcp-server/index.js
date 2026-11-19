@@ -3549,7 +3549,7 @@ server.registerTool(
           version: z.string().optional().describe("Version it shipped (state shipped)."),
           branch: z.string().optional().describe("Its branch / worktree folder."),
         })).optional(),
-      ).describe("Side sessions you started with start_session: one entry each. Marked briefs ([devops:handoff] / [devops:deliver]) set the card (⏳/👉 Linked or Team, Released only when ALL are finished, no Ship for their work); unmarked follow-ups are mode independent: one › line, no status change. Pass the state you know from their finished notes."),
+      ).describe("Side sessions you started with start_session: one entry each. Marked briefs ([devops:handoff] / [devops:deliver]) set the card (⏳/👉 Linked or Team, Released only when ALL are finished, no Ship for their work); unmarked follow-ups are mode independent: one › line, no status change. Before every render read each running/waiting entry with mcp__ccd_session_mgmt__get_session: a child that finished or shipped (its note may not have arrived yet) is passed as done/shipped + version, never left running."),
       handoff: z.preprocess(
         v => typeof v === 'string' ? tryParse(v) : v,
         z.object({
