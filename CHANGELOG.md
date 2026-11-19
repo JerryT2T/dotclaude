@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.389.1] — 2026-11-20
+
+### Fixed
+- Band: the cleanup popover keeps a row of air above the Aufräumen button (#1159).
+- Stop guard: the compact band card widget counts as relayed; its title is read from the heading, the card head or the card-data block (#1158).
+- Stop guard: the card widget's own PostToolUse counts as its relay, so no second card is demanded (#1152).
+- Session title: a cleanly finished last background task restores the settled title instead of "Interrupted", only when a card was rendered since the last typed prompt (#1156).
+- Band: the session's release line stays visible beside a later non-ship card (#1157).
+- Band: cards rendered offline via `--render-card` reach the band, and a turn that ends without a card shows "Stopped" or the head of the answer (#1150).
+- Ship: batch ships land as a merge commit so every per-issue commit reaches main; a refused rebase falls back to merge, a refused merge commit to squash (#1155).
+
 ## [0.389.0] — 2026-11-19
 
 ### Added
