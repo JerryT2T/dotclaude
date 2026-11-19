@@ -1696,7 +1696,12 @@ export const register: Register = on => {
           </Box>
         ))}
         <Text key="cleanup-rule" {...S.small}>{ruleText(cv, loc)}</Text>
-        {cta}
+        {/* One row of air above the button: the rule caption wraps at RAIL_WIDTH and the button sat flush on its last line (#1159). */}
+        {cta && (
+          <Box key="cleanup-cta" marginTop={1}>
+            {cta}
+          </Box>
+        )}
       </Box>
     )
     // Collapsed: one line "🧹 N leftovers ▸" + the button; expanded: the breakdown, the rule, the button.

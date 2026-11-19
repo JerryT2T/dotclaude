@@ -889,6 +889,10 @@ test('B11 cleanup block: one collapsed line + button, expands to the breakdown a
   expect((await band.find({ key: 'cleanup-fold' }))?.props.label).toBe('🧹 5 leftovers ▾')
   const detail = JSON.stringify(await band.find({ key: 'cleanup-detail' }))
   for (const t of ['Agent worktrees', 'Safety copies', 'Branches', 'Broken worktrees', 'Trigger: 3 unmerged, inactive for over a day']) expect(detail).toContain(t)
+  // #1159: the button keeps a row of air below the wrapped rule caption, it never sits flush on its last line.
+  const ctaBox = await band.find({ key: 'cleanup-cta' })
+  expect(ctaBox?.props.marginTop).toBeGreaterThan(0)
+  expect(JSON.stringify(ctaBox)).toContain('"cleanup"')
   await band.press({ key: 'cleanup-fold' })
   await band.unmount()
   band = await $.ui.mount({ ...BAND, surface: 'desktop' })
