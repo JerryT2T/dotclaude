@@ -92,6 +92,8 @@ const {
   deliveredCardText,
   textAfterCard,
   lastUserEntryIsNotification,
+  lastNotificationCompleted,
+  cardSinceTypedPrompt,
   lastUserEntryIsSideSession,
   safeReadTranscript,
   showWidgetCalledThisTurn,
@@ -104,7 +106,7 @@ const { isMcpServerAliveForSession } = require('../lib/mcp-heartbeat');
 const { releaseOnce } = require('../lib/run-once');
 const { isGuideActive, isGuideLoopLive } = require('../../scripts/guide-active-state');
 const { execFileSync } = require('child_process');
-const { interruptedTitle, staleWorkTitle, lastTitlePrefix, readCurrentTitle } = require('../lib/session-title');
+const { interruptedTitle, staleWorkTitle, lastTitlePrefix, lastSettledTitlePrefix, readCurrentTitle } = require('../lib/session-title');
 
 /** Per-session marker of a pending F5 rename — the follow-up stop passes. */
 const INTERRUPT_FLAG = 'interruptTitle';
@@ -393,9 +395,16 @@ process.stdin.on('end', () => {
       // #833: a card-less NOTIFICATION turn with no background work left must
       // not keep ANY ⏳ (Team, Shipping, Testing too): it takes the last
       // delegated ship result's terminal prefix, else Interrupted.
+      // #1156: a notification that reports its task finished cleanly restores
+      // the session's last settled title (a released run reads Released again),
+      // not ⚡ Interrupted; a failed or killed task keeps Interrupted.
       const current = readCurrentTitle(hook.transcript_path);
+      // Only when the work behind the ⏳ closed with a card that named its pending part:
+      // a typed task that never got a card is unfinished, not settled.
+      const settled = (notificationTurn && transcript && lastNotificationCompleted(transcript) && cardSinceTypedPrompt(transcript))
+        ? lastSettledTitlePrefix(transcript) : null;
       const next = (notificationTurn && transcript)
-        ? staleWorkTitle(current, lastTitlePrefix(transcript))
+        ? staleWorkTitle(current, lastTitlePrefix(transcript) || settled)
         : interruptedTitle(current);
       let marked = false;
       if (next) {

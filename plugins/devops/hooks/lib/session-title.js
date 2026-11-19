@@ -208,6 +208,31 @@ function lastTitlePrefix(text) {
   return kind === 'plain' || kind === 'work' || kind === 'process' || kind === 'shipping' ? null : last;
 }
 
+/**
+ * #1156: the prefix of the newest SETTLED title in `text` (a transcript
+ * slice) — a `custom-title` entry whose head is an outcome (`👉 ➜ 🚀 Released
+ * Alpha ┃ `, `🟩 …`), never ⏳ work, a running process, a batch, a concept
+ * page or an open ❓ question. `null` when the slice holds none. The prefix is
+ * cut from the title itself, so an older grammar comes back as it was.
+ *
+ * @param {string} text
+ * @returns {string|null}
+ */
+function lastSettledTitlePrefix(text) {
+  if (typeof text !== 'string' || !text.includes('custom-title')) return null;
+  const lines = text.split('\n');
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const t = titleOf(lines[i], 'custom-title', 'customTitle');
+    if (t === undefined || classify(t) !== 'outcome') continue;
+    const lead = leadingPrefix(t);
+    if (!lead) continue;
+    const prefix = t.slice(0, lead.length);
+    if (prefix.includes('❓')) continue;
+    return prefix;
+  }
+  return null;
+}
+
 /** The title an entry line carries, or undefined when it is no title entry. */
 function titleOf(line, type, key) {
   if (!line.includes(`"type":"${type}"`)) return undefined;
@@ -351,6 +376,7 @@ module.exports = {
   isFreshSession,
   staleWorkTitle,
   lastTitlePrefix,
+  lastSettledTitlePrefix,
   projectSlug,
   findTranscript,
   WORK_PREFIX,

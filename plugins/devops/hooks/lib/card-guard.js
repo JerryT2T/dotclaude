@@ -527,6 +527,59 @@ function lastUserEntryIsNotification(transcriptContent) {
   return text.includes('<task-notification>') || isSideSessionTurn(text);
 }
 
+/**
+ * #1156: true when the turn's prompt is a `<task-notification>` whose every
+ * task ended normally — status `completed` and no non-zero exit code. A
+ * failed, killed or stopped task, a side-session note or a typed prompt is
+ * false: only a clean finish may restore the session's settled title.
+ */
+function lastNotificationCompleted(transcriptContent) {
+  const text = lastUserEntryText(transcriptContent);
+  if (!text.includes('<task-notification>')) return false;
+  const statuses = [...text.matchAll(/<status>\s*([^<]*?)\s*<\/status>/g)].map(m => m[1].toLowerCase());
+  if (!statuses.length || statuses.some(s => s !== 'completed')) return false;
+  // The exit code is read from the harness's own <summary> lines only — an agent's
+  // result text that merely mentions an exit code must not decide it.
+  const summaries = [...text.matchAll(/<summary>([\s\S]*?)<\/summary>/g)].map(m => m[1]).join('\n');
+  return !/exit code\s*:?\s*(?!0\b)-?\d+/i.test(summaries);
+}
+
+/** The text of a user entry's content ('' for tool results only). */
+function entryText(entry) {
+  const content = entry && entry.message && entry.message.content;
+  if (typeof content === 'string') return content;
+  if (!Array.isArray(content)) return '';
+  return content.filter(b => b && b.type === 'text' && typeof b.text === 'string').map(b => b.text).join('');
+}
+
+/**
+ * #1156: true when a completion card was rendered after the last prompt the
+ * user (or a hook for them) TYPED — task-notification and side-session note
+ * prompts are skipped. Only then did the work that left the ⏳ title close with
+ * a card that named its pending part; a typed task that never got a card is
+ * unfinished work, never "settled".
+ */
+function cardSinceTypedPrompt(transcriptContent) {
+  if (!transcriptContent) return false;
+  const lines = transcriptContent.split('\n');
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const raw = lines[i].trim();
+    if (!raw) continue;
+    let entry;
+    try { entry = JSON.parse(raw); } catch { continue; }
+    if (entry.type === 'assistant') {
+      const content = entry.message && entry.message.content;
+      if (Array.isArray(content) && content.some(isCardRenderCall)) return true;
+      continue;
+    }
+    if (entry.type !== 'user' || !isPromptEntry(entry)) continue;
+    const text = entryText(entry);
+    if (text.includes('<task-notification>') || isSideSessionTurn(text)) continue;
+    return false;
+  }
+  return false;
+}
+
 /** True when the turn's last user-role entry is a side-session note turn (notes only). */
 function lastUserEntryIsSideSession(transcriptContent) {
   return isSideSessionTurn(lastUserEntryText(transcriptContent));
@@ -547,17 +600,7 @@ function lastUserEntryText(transcriptContent) {
     let entry;
     try { entry = JSON.parse(raw); } catch { continue; }
     if (entry.type !== 'user' || !isPromptEntry(entry)) continue;
-    const content = entry.message && entry.message.content;
-    let text = '';
-    if (typeof content === 'string') {
-      text = content;
-    } else if (Array.isArray(content)) {
-      text = content
-        .filter(b => b && b.type === 'text' && typeof b.text === 'string')
-        .map(b => b.text)
-        .join('');
-    }
-    return text;
+    return entryText(entry);
   }
   return '';
 }
@@ -1267,6 +1310,8 @@ module.exports = {
   cardSignature,
   isDuplicateNotificationCard,
   lastUserEntryIsNotification,
+  lastNotificationCompleted,
+  cardSinceTypedPrompt,
   lastUserEntryIsSideSession,
   buildTitleStatusWordReason,
   buildResultLinesReason,

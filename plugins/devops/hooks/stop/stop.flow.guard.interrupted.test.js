@@ -190,6 +190,59 @@ describe("stop.flow.guard — F5 interrupted title", () => {
     }
   });
 
+  // #1156: a released run's follow-up left `pending`; the title went to ⏳ Team.
+  // Its last task's notification ends card-less → back to Released, not Interrupted.
+  // `card`: the follow-up turn that left ⏳ closed with a card naming its pending task.
+  const withEarlierTitle = (p, earlier, status = "completed", card = true) => {
+    const lines = fs.readFileSync(p, "utf8").trim().split("\n").map((l) => JSON.parse(l));
+    const render = { type: "assistant", message: { role: "assistant", content: [{ type: "tool_use", id: "toolu_r", name: "mcp__plugin_devops_dotclaude__render_completion_card", input: {} }] } };
+    // [prompt, launch, launch result, (render), …note]
+    if (card) lines.splice(3, 0, render);
+    lines.splice(0, 0, { type: "custom-title", customTitle: earlier, sessionId: SESSION },
+      { type: "custom-title", customTitle: "👉 ➜ ❓ Question ┃ Refactor", sessionId: SESSION });
+    const out = lines.map((l) => JSON.stringify(l)).join("\n").replace(/<status>completed<\/status>/g, `<status>${status}</status>`);
+    fs.writeFileSync(p, out + "\n");
+    return p;
+  };
+
+  test("#1156: a cleanly finished last task restores the session's settled title, never Interrupted", async () => {
+    const dir = project();
+    try {
+      const p = withEarlierTitle(notificationTranscript(dir, "⏳ ➜ 🤖 Team ┃ Refactor"), "🟩 ➜ 🚀 Released Alpha ┃ Refactor");
+      const out = await stop(dir, { transcript_path: p });
+      expect(out).toMatch(/"decision":"block"/);
+      const reason = JSON.parse(out).reason;
+      expect(reason).toContain("title:" + JSON.stringify("🟩 ➜ 🚀 Released Alpha ┃ Refactor"));
+      expect(reason).not.toContain("Interrupted");
+    } finally {
+      cleanup(dir);
+    }
+  });
+
+  // Review 2026-11-19: a typed task that never got a card is unfinished work — its
+  // background job finishing must not bring back the older Released title.
+  test("#1156: without a card since the last typed prompt the title stays Interrupted", async () => {
+    const dir = project();
+    try {
+      const p = withEarlierTitle(notificationTranscript(dir, "⏳ ➜ 🤖 Solo ┃ Refactor"), "🟩 ➜ 🚀 Released Alpha ┃ Refactor", "completed", false);
+      expect(await stop(dir, { transcript_path: p })).toContain("👉 ➜ ⚡ Interrupted ┃ Refactor");
+    } finally {
+      cleanup(dir);
+    }
+  });
+
+  test("#1156: a failed or killed last task keeps Interrupted", async () => {
+    for (const status of ["failed", "killed"]) {
+      const dir = project();
+      try {
+        const p = withEarlierTitle(notificationTranscript(dir, "⏳ ➜ 🤖 Team ┃ Refactor"), "🟩 ➜ 🚀 Released Alpha ┃ Refactor", status);
+        expect(await stop(dir, { transcript_path: p }), status).toContain("👉 ➜ ⚡ Interrupted ┃ Refactor");
+      } finally {
+        cleanup(dir);
+      }
+    }
+  });
+
   test("#833: a Team ⏳ on a card-less notification turn takes the ship result's titlePrefix", async () => {
     const dir = project();
     try {
