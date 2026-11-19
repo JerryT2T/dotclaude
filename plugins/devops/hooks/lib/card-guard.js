@@ -170,15 +170,39 @@ function isCardRenderCall(block) {
   return OFFLINE_RENDER_RE.test(command);
 }
 
-/** The card title the widget HTML draws (`<h3 class="card-title" …>`). */
-function widgetCardTitle(widgetCode) {
-  if (typeof widgetCode !== 'string') return null;
-  const m = widgetCode.match(/<h3 class="card-title"[^>]*>([\s\S]*?)<\/h3>/);
-  if (!m) return null;
-  return m[1].replace(/<[^>]*>/g, '')
+/** Generic stand-in title for a card widget whose heading cannot be read (#1158). */
+const GENERIC_WIDGET_TITLE = 'Completion card';
+
+function decodeTitle(html) {
+  const t = html.replace(/<[^>]*>/g, '')
     .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'").replace(/&amp;/g, '&')
     .trim();
+  return t || null;
+}
+
+/**
+ * The card title the widget HTML draws: the full form's `<h3 class="card-title" …>`,
+ * else the compact band form's `<p class="card-head" …>` (#1158), else the `h`
+ * of its `#dc-card-data` JSON. null when none of them is there.
+ */
+function widgetCardTitle(widgetCode) {
+  if (typeof widgetCode !== 'string') return null;
+  // An empty heading (icon only) falls through to the next source instead of ending the search.
+  const h3 = widgetCode.match(/<h3 class="card-title"[^>]*>([\s\S]*?)<\/h3>/);
+  const fromH3 = h3 ? decodeTitle(h3[1]) : null;
+  if (fromH3) return fromH3;
+  const head = widgetCode.match(/<p class="card-head"[^>]*>([\s\S]*?)<\/p>/);
+  const fromHead = head ? decodeTitle(head[1]) : null;
+  if (fromHead) return fromHead;
+  const data = widgetCode.match(/<script type="application\/json" id="dc-card-data">([\s\S]*?)<\/script>/);
+  if (data) {
+    try {
+      const h = JSON.parse(data[1]).h;
+      if (typeof h === 'string' && h.trim()) return h.trim();
+    } catch { /* not the card's JSON — no title */ }
+  }
+  return null;
 }
 
 /**
@@ -231,8 +255,10 @@ function deliveredCardText(transcriptContent) {
       if (block.type !== 'tool_use') continue;
       if (isCardRenderCall(block)) return '';
       if (isCardWidgetCall(block.name, block.input)) {
-        const title = widgetCardTitle(block.input.widget_code);
-        return title ? `${CARD_MARKER} ${title} ${CARD_MARKER}` : '';
+        // A recognised card widget is delivered even when its heading cannot be read:
+        // '' here made every compact band widget count as "never relayed" (#1158).
+        const title = widgetCardTitle(block.input.widget_code) || GENERIC_WIDGET_TITLE;
+        return `${CARD_MARKER} ${title} ${CARD_MARKER}`;
       }
     }
   }

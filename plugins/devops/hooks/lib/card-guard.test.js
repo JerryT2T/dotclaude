@@ -1497,6 +1497,37 @@ describe("cardDelivered / deliveredCardText — the card shown after the last re
     expect(widgetCardTitle("<div>no title</div>")).toBe(null);
   });
 
+  // #1158: the compact band widget draws its heading as p.card-head inside #dc-card,
+  // with no h3 — it never counted as relayed and the guard re-demanded it three times.
+  const compactHtml = (head) =>
+    `<div id="dc-card"><p class="card-head" style="margin:0;font-size:14px;font-weight:500">${head}</p></div>\n` +
+    `<script type="application/json" id="dc-card-data">{"h":"from json","bt":[]}</script>`;
+
+  test("widgetCardTitle reads the compact form's p.card-head, else the #dc-card-data h (#1158)", () => {
+    expect(widgetCardTitle(compactHtml("🟩 🖥️ System — erledigt &amp; mehr"))).toBe("🟩 🖥️ System — erledigt & mehr");
+    expect(widgetCardTitle('<div id="dc-card"></div><script type="application/json" id="dc-card-data">{"h":"Nur JSON"}</script>')).toBe("Nur JSON");
+    expect(widgetCardTitle('<script type="application/json" id="dc-card-data">not json</script>')).toBe(null);
+    // An icon-only h3 does not end the search.
+    expect(widgetCardTitle('<h3 class="card-title"><svg/></h3>' + compactHtml("Kompakt"))).toBe("Kompakt");
+  });
+
+  test("the compact band widget counts as delivered on the first call (#1158)", () => {
+    const compact = assistantMsg({
+      type: "tool_use", id: "w1", name: "mcp__visualize__show_widget",
+      input: { title: "completion_card_body", widget_code: compactHtml("🟩 🖥️ System — erledigt — noch etwas?") },
+    });
+    const tx = jsonl(userMsg("go"), render, renderResult, compact, widgetResult);
+    expect(cardDelivered(tx)).toBe(true);
+    expect(extractCardTitle(deliveredCardText(tx))).toBe("🟩 🖥️ System — erledigt — noch etwas?");
+  });
+
+  test("a card widget without any readable heading still counts as delivered (#1158)", () => {
+    const bare = assistantMsg({ type: "tool_use", id: "w1", name: "mcp__visualize__show_widget", input: { title: "x", widget_code: '<div id="dc-card"></div>' } });
+    const tx = jsonl(userMsg("go"), render, renderResult, bare, widgetResult);
+    expect(cardDelivered(tx)).toBe(true);
+    expect(deliveredCardText(tx)).toBe(`${CARD_MARKER} Completion card ${CARD_MARKER}`);
+  });
+
   test("returns false when the marker is in an EARLIER turn", () => {
     const tx = jsonl(
       assistantMsg({ type: "text", text: `## ${CARD_MARKER} old card ${CARD_MARKER}` }),
