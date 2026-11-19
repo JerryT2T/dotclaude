@@ -5,7 +5,9 @@ import { join } from "node:path";
 import {
   WORK_PREFIX, LEGACY_PENDING_PREFIX, LEGACY_PREFIXES as HOOK_LEGACY, SHIPPING_PREFIX, CONCEPT_PREFIX,
   CONCEPT_WORKING_PREFIX, INTERRUPTED_PREFIX, classify, stripPrefixes, nextTitle, interruptedTitle, readCurrentTitle,
+  lastSettledTitlePrefix,
 } from "./session-title.js";
+import { lastNotificationCompleted, cardSinceTypedPrompt } from "./card-guard.js";
 import S from "./title-scheme.js";
 import { SESSION_PREFIX, LEGACY_PREFIXES, releasedPrefix, pausedPrefix, stripTitlePrefix, hookRequire } from "../../mcp-server/lib/mode-state.js";
 
@@ -200,6 +202,41 @@ describe("session-title — interruptedTitle (F5)", () => {
     expect(interruptedTitle("⏳ ")).toBeNull();
   });
 });
+// #1156: what a cleanly finished notification turn restores instead of Interrupted.
+describe("session-title — lastSettledTitlePrefix / lastNotificationCompleted (#1156)", () => {
+  const title = (t) => JSON.stringify({ type: "custom-title", customTitle: t, sessionId: "s" });
+  const note = (status, extra = "") => JSON.stringify({ type: "user", message: { role: "user",
+    content: `<task-notification>\n<task-id>x</task-id>\n<status>${status}</status>\n<summary>Task done${extra}</summary>\n</task-notification>` } });
+
+  test("the newest outcome title wins; ⏳ work, a running ship and a ❓ question are skipped", () => {
+    const tx = [title("👉 ➜ 📦 Ready ┃ Alt"), title("🟩 ➜ 🚀 Released Alpha ┃ X"), title("⏳ ➜ 🚀 Shipping ┃ X"),
+      title("👉 ➜ ❓ Question ┃ X"), title("⏳ ➜ 🤖 Team ┃ X")].join("\n");
+    expect(lastSettledTitlePrefix(tx)).toBe("🟩 ➜ 🚀 Released Alpha ┃ ");
+    expect(lastSettledTitlePrefix([title("⏳ ➜ 🤖 Team ┃ X"), title("⏳ X")].join("\n"))).toBeNull();
+    expect(lastSettledTitlePrefix("")).toBeNull();
+  });
+
+  test("only a <task-notification> whose tasks all completed with exit 0 counts", () => {
+    expect(lastNotificationCompleted(note("completed"))).toBe(true);
+    expect(lastNotificationCompleted(note("completed", " (exit code 0)"))).toBe(true);
+    expect(lastNotificationCompleted(note("completed", " (exit code 1)"))).toBe(false);
+    expect(lastNotificationCompleted(note("completed", " (exit code: 2)"))).toBe(false);
+    // An agent's result text that mentions an exit code does not decide it — only <summary> does.
+    expect(lastNotificationCompleted(note("completed").replace("</summary>", "</summary>\\n<result>exits with exit code 1 on purpose</result>"))).toBe(true);
+    expect(lastNotificationCompleted(note("failed"))).toBe(false);
+    expect(lastNotificationCompleted(note("killed"))).toBe(false);
+    expect(lastNotificationCompleted(JSON.stringify({ type: "user", message: { role: "user", content: "weiter" } }))).toBe(false);
+  });
+
+  test("cardSinceTypedPrompt: a render after the last typed prompt counts; notification prompts are skipped", () => {
+    const typed = (t) => JSON.stringify({ type: "user", message: { role: "user", content: t } });
+    const render = JSON.stringify({ type: "assistant", message: { role: "assistant", content: [{ type: "tool_use", name: "mcp__plugin_devops_dotclaude__render_completion_card", input: {} }] } });
+    expect(cardSinceTypedPrompt([typed("split"), render, note("completed")].join("\n"))).toBe(true);
+    expect(cardSinceTypedPrompt([render, typed("next task"), note("completed")].join("\n"))).toBe(false);
+    expect(cardSinceTypedPrompt("")).toBe(false);
+  });
+});
+
 describe("session-title — readCurrentTitle", () => {
   let dir;
   beforeAll(() => { dir = mkdtempSync(join(tmpdir(), "session-title-")); });

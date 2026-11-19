@@ -238,18 +238,30 @@ export function landEligibility(pr) {
  */
 /** GitHub's refusal of a rebase merge — the branch carries a merge commit (e.g. origin/<base> merged in during the ship). */
 const REBASE_REFUSED_RE = /can'?t be rebased/i;
+/** GitHub's refusal of a merge commit — the repository allows only squash / rebase merges. */
+const MERGE_COMMIT_REFUSED_RE = /merge commits are not allowed/i;
 
 export function mergePR(prNumber, base = "main", opts, flags = {}) {
-  // A rebase merge GitHub refuses has provably NOT landed (mergePR only throws
-  // while the PR is not merged), so one squash retry is safe and lands the same
-  // tree. The caller reports the lost per-commit history (`strategyFallback`).
+  // A merge GitHub refuses has provably NOT landed (mergePR only throws while
+  // the PR is not merged), so a retry with another strategy is safe and lands
+  // the same tree. A refused rebase retries as a merge commit — the per-issue
+  // commits stay reachable in the base's history (#1155: git-sync and the base
+  // sync put a merge commit on every batch branch, so the rebase never held) —
+  // and only a repo without merge commits falls back to squash. The caller
+  // reports the change (`strategyFallback`).
   if (flags.strategy === "rebase") {
     try {
       return mergePRWith(prNumber, base, opts, flags);
     } catch (e) {
       if (!REBASE_REFUSED_RE.test(String(e && e.message))) throw e;
-      const landed = mergePRWith(prNumber, base, opts, { ...flags, strategy: "squash" });
-      return { ...landed, strategyFallback: { from: "rebase", to: "squash", reason: "branch can't be rebased (it carries a merge commit)" } };
+      try {
+        const landed = mergePRWith(prNumber, base, opts, { ...flags, strategy: "merge" });
+        return { ...landed, strategyFallback: { from: "rebase", to: "merge", reason: "branch can't be rebased (it carries a merge commit)" } };
+      } catch (e2) {
+        if (!MERGE_COMMIT_REFUSED_RE.test(String(e2 && e2.message))) throw e2;
+        const landed = mergePRWith(prNumber, base, opts, { ...flags, strategy: "squash" });
+        return { ...landed, strategyFallback: { from: "rebase", to: "squash", reason: "branch can't be rebased and the repository allows no merge commits" } };
+      }
     }
   }
   return mergePRWith(prNumber, base, opts, flags);

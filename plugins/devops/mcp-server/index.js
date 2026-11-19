@@ -71,7 +71,7 @@ import { CARD_VARIANTS, coerceCardInput, validateCardInput, formatIssues, unknow
 import { batchGuide, conceptCloseoutOnly, conceptUrl, readBatch, readRunContractLine, sameProjectRoot, titlePrefixFor, titleInstruction, demandedTitle, currentSessionTitle, titleStateForKey, hasMandatoryStep, TITLE_SCHEME } from "./lib/mode-state.js";
 import { staleServerLine } from "./lib/server-version.js";
 import { canMinimize, cardDataBlock, cardWidgetInstruction, isDesktopSession, safeSessionId, sessionOpenButton, warmCardClient, writeCardWidgetFile } from "./lib/card-widget.js";
-import { bandCarriesCard } from "./lib/band-marker.js";
+import { bandCarriesCard, writeBandCard } from "./lib/band-marker.js";
 import { detectLaunchPath } from "./lib/launch-path.js";
 import { linkedPlan, linkedKeepTokens } from "./lib/linked-sessions.js";
 import { archiveDecision, archiveInstruction, writeArchiveFlag } from "./lib/session-archive.js";
@@ -3153,6 +3153,8 @@ function runRenderCardCli(source) {
     process.exit(3);
   }
   const cardMarkdown = buildCompletionCard(params);
+  // #1150: the band never sees this card (it reads only the MCP tool's result) — leave it the card's data.
+  if (params._cardModel) writeBandCard(params.session_id, cardDataBlock(params._cardModel, params._repoUrl || ''));
   // The rename and CTA-widget instructions ride on stderr so stdout stays the verbatim card.
   const titleNote = sessionTitleNote(params);
   const actionsNote = ctaActionsNote(params, { inline: true });

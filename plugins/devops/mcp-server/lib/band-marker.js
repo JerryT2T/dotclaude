@@ -9,9 +9,34 @@
  * session, Remote Control true, terminal/cloud (no band ever wrote it) — keeps
  * the full card.
  */
-import { readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+
+/**
+ * #1150: where the offline renderer (`--render-card`) leaves a session's card for the band:
+ * `<home>/.claude/devops-band/card-<sessionId>.json`. The band (hooks/mods/format.ts bandCardFile)
+ * reads it after the Bash call — a card that never passed the MCP tool still reaches the band.
+ */
+export function bandCardPath(sessionId, home = homedir()) {
+  return join(home, ".claude", "devops-band", `card-${String(sessionId).replace(/[^\w.-]/g, "_")}.json`);
+}
+
+/**
+ * #1150: store the card's band data (the `#dc-card-data` block) for the session. Best effort:
+ * returns false (and writes nothing) without a usable session id, a text, or on a write error.
+ */
+export function writeBandCard(sessionId, text, { home = homedir(), now = Date.now() } = {}) {
+  if (typeof sessionId !== "string" || !sessionId || sessionId === "unknown" || typeof text !== "string" || !text) return false;
+  try {
+    const file = bandCardPath(sessionId, home);
+    mkdirSync(join(home, ".claude", "devops-band"), { recursive: true });
+    writeFileSync(file, JSON.stringify({ writtenAt: new Date(now).toISOString(), text }) + "\n");
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /** An entry older than this is "not active": the band is gone or the session moved on. */
 export const BAND_FRESH_MS = 30 * 60 * 1000;

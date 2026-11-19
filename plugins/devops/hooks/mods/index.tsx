@@ -66,6 +66,15 @@ import {
   budgetBarAlt,
   cardTextSvg,
   isShippedCard,
+  isReleaseCard,
+  releaseLine,
+  isOfflineCardRender,
+  bandCardFile,
+  bandCardText,
+  answerHead,
+  haltedLine,
+  clockAt,
+  type Halted,
   archiveOffered,
   archiveRefusal,
   BUDGET_BAR_SIZE,
@@ -232,6 +241,11 @@ const batchOpen = atom({ plugin: 'devops', key: 'batchOpen' } as const, false, {
 const batchPress = atom({ plugin: 'devops', key: 'batchPress' } as const, null as 'go' | 'going' | 'off' | null, { shape: 'batch-press-2' })
 // The last card's title and time, kept after the card is spent: the idle row's "Last:".
 const lastCard = atom({ plugin: 'devops', key: 'lastCard' } as const, null as { title: string; at: string } | null, { shape: 'last-card-1' })
+// #1157: the session's last release (ship card heading + time). A typed prompt never spends it; a later ship replaces it,
+// and a later non-ship card shows it beside its own status instead of erasing it.
+const released = atom({ plugin: 'devops', key: 'released' } as const, null as { line: string; at: string } | null, { shape: 'released-1' })
+// #1150: how the last main turn ended when it brought no card (stopped, or its answer's first line); a card clears it.
+const halted = atom({ plugin: 'devops', key: 'halted' } as const, null as Halted | null, { shape: 'halted-1' })
 // #1105: the last card's text for a cold return, and the recap on screen (shown once, dismissible).
 const NO_RECAP: RecapState = { card: null, shown: null }
 const recap = atom({ plugin: 'devops', key: 'recap' } as const, NO_RECAP, { shape: 'recap-1' })
@@ -1109,6 +1123,7 @@ export const register: Register = on => {
       const now = await $.clock.now()
       if (startsTypedTurn(e as { text?: string; isMeta?: unknown; origin?: { kind?: string } | null })) {
         await update($, card, () => null)
+        await update($, halted, () => null)
         await update($, pointsOpen, () => [])
         await update($, progress, () => ({ steps: [], activity: '', startedAt: now }))
         await update($, recap, r => (r.shown ? { ...r, shown: null } : r))
@@ -1164,11 +1179,27 @@ export const register: Register = on => {
         /* display only */
       }
     }
-    if (gateOpen && isCardTool(tool) && result && typeof result.text === 'string' && !result.isError) {
-      const view = cardFromResult(result.text)
+    // #1150: the card text — the card tool's result, or the band data the offline renderer left for this session
+    // (`node mcp-server/index.js --render-card` via Bash, the way out when the MCP server is gone; its stdout may be
+    // filtered or persisted, so the band reads the renderer's own file instead).
+    let cardSource: string | null = null
+    if (gateOpen && isCardTool(tool) && result && typeof result.text === 'string' && !result.isError) cardSource = result.text
+    else if (gateOpen && isOfflineCardRender(tool, (e as { command?: unknown }).command) && result && !result.isError) {
+      try {
+        const home = await homeDir($)
+        const sid = await $.session.id().catch(() => '')
+        if (home && sid) cardSource = bandCardText(await readJson($, bandCardFile(home, sid)), startedAt, await $.clock.now())
+      } catch {
+        /* display only */
+      }
+    }
+    if (cardSource) {
+      const view = cardFromResult(cardSource)
       if (view) {
+        await update($, halted, () => null)
         await update($, card, () => view)
         if (isShippedCard(view)) await update($, settled, () => true)
+        if (isReleaseCard(view)) await update($, released, () => ({ line: releaseLine(view.heading), at: view.at }))
         if (view.title) await update($, lastCard, () => ({ title: view.title, at: view.at }))
         const text = recapCardText(view)
         if (text) {
@@ -1250,6 +1281,13 @@ export const register: Register = on => {
     if (e.agentId === undefined && (await open($))) {
       const now = await $.clock.now()
       await update($, spike, s => ({ ...s, lastMainEnd: now, armed: null }))
+      // #1150: a main turn that ends without a card leaves the band a status: stopped, or the answer's first line.
+      if ((await read($, card)) === null) {
+        const ev = e as { isAborted?: unknown; answer?: unknown }
+        const aborted = ev.isAborted === true
+        const text = aborted ? '' : answerHead(ev.answer)
+        await update($, halted, () => (aborted || text ? { aborted, text, at: clockAt(now) } : null))
+      }
       // The merge turn is over: a mode it retired takes the row with it; one still armed (merge failed) offers Go again.
       await update($, batchPress, p => (p === 'going' ? null : p))
     }
@@ -1546,6 +1584,8 @@ export const register: Register = on => {
     const liveHead = c0 && bt && isHintCard(c0) ? liveBatchHeading(c0.heading, bt.count) : null
     const c = c0 && liveHead ? { ...c0, heading: liveHead } : c0
     const last = await read($, lastCard)
+    // #1157: a later non-ship card keeps the session's release visible above its own heading.
+    const rel = c && !isReleaseCard(c) ? await read($, released) : null
     const w = working ? workingLine(prog) : null
     const b = await read($, budget)
     const now = await $.clock.now()
@@ -1566,7 +1606,9 @@ export const register: Register = on => {
     const hl = await read($, health)
     const rc = working ? null : (await read($, recap)).shown
     // Idle and nothing due (no cleanup, no context worth a glance, no budget bar, no batch collection, no info card): the band stays away.
-    if (idle && !cv && !bars.length && !bt && !infoData && !rc && !(ring !== null && ring >= CONTEXT_SHOW_PERCENT)) return next(e)
+    // #1150: a stopped turn is a state worth the band on its own — the user must see that nothing runs any more.
+    const halt = idle ? await read($, halted) : null
+    if (idle && !cv && !bars.length && !bt && !infoData && !rc && !(halt && halt.aborted) && !(ring !== null && ring >= CONTEXT_SHOW_PERCENT)) return next(e)
     const { Box, Button, Text } = $.ui.resolve(e)
     // Desktop: the card's animated SVG (bars, hourglass, ring) at a fixed size; the terminal has no Svg, so glyphs.
     const desktop = e.surface !== 'terminal'
@@ -1696,7 +1738,12 @@ export const register: Register = on => {
           </Box>
         ))}
         <Text key="cleanup-rule" {...S.small}>{ruleText(cv, loc)}</Text>
-        {cta}
+        {/* One row of air above the button: the rule caption wraps at RAIL_WIDTH and the button sat flush on its last line (#1159). */}
+        {cta && (
+          <Box key="cleanup-cta" marginTop={1}>
+            {cta}
+          </Box>
+        )}
       </Box>
     )
     // Collapsed: one line "🧹 N leftovers ▸" + the button; expanded: the breakdown, the rule, the button.
@@ -1738,7 +1785,8 @@ export const register: Register = on => {
 
     // --- idle: one slim row; the batch chip sits left, the ring + 🧹 right; the expanded breakdown is its own right-aligned column ---
     if (idle) {
-      const text = lastLine(last, loc)
+      // #1150: after a card-less turn its status wins over the older card's "Last:".
+      const text = haltedLine(halt, loc) || lastLine(last, loc)
       return (
         <Box key="band" flexDirection="column" rowGap={1}>
           {recapEl}
@@ -1869,6 +1917,7 @@ export const register: Register = on => {
               {c.at && <Text {...S.time}>{c.at}</Text>}
             </Box>
           )}
+          {rel && <Text key="card-released" {...S.small}>{rel.at ? `${rel.line} · ${rel.at}` : rel.line}</Text>}
           {c && (
             <Box key="card-heading-row" flexDirection="row" columnGap={1}>
               <Text key="card-heading" bold>{c.heading}</Text>
@@ -1893,6 +1942,7 @@ export const register: Register = on => {
           <Box key="main" flexDirection="column" flexGrow={1} rowGap={1}>
             {workEl}
             {titleEl}
+            {rel && <Text key="card-released" {...S.small}>{rel.at ? `${rel.line} · ${rel.at}` : rel.line}</Text>}
             {c && (
               <Box key="card-heading-row" flexDirection="row" alignItems="center" columnGap={1}>
                 {cardText('card-heading', c.heading, 'heading')}

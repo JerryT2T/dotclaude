@@ -18,7 +18,7 @@ describe("batch landing lane is the default (#1016)", () => {
     expect(read("plugins/devops/skills/do-run/SKILL.md")).toContain("--per-item");
     const ship = read("plugins/devops/skills/do-ship/SKILL.md");
     expect(ship).toContain("`--batch=<M>`");
-    expect(ship).toContain('mergeStrategy: "rebase"');
+    expect(ship).toContain('mergeStrategy: "merge"');
   });
   it("Full suite CI is not cancelled by follow-up pushes", () => {
     const wf = read(".github/workflows/ci-suite.yml");

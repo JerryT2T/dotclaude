@@ -170,15 +170,52 @@ function isCardRenderCall(block) {
   return OFFLINE_RENDER_RE.test(command);
 }
 
-/** The card title the widget HTML draws (`<h3 class="card-title" …>`). */
-function widgetCardTitle(widgetCode) {
-  if (typeof widgetCode !== 'string') return null;
-  const m = widgetCode.match(/<h3 class="card-title"[^>]*>([\s\S]*?)<\/h3>/);
-  if (!m) return null;
-  return m[1].replace(/<[^>]*>/g, '')
+/** Generic stand-in title for a card widget whose heading cannot be read (#1158). */
+const GENERIC_WIDGET_TITLE = 'Completion card';
+
+function decodeTitle(html) {
+  const t = html.replace(/<[^>]*>/g, '')
     .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'").replace(/&amp;/g, '&')
     .trim();
+  return t || null;
+}
+
+/**
+ * The card title the widget HTML draws: the full form's `<h3 class="card-title" …>`,
+ * else the compact band form's `<p class="card-head" …>` (#1158), else the `h`
+ * of its `#dc-card-data` JSON. null when none of them is there.
+ */
+function widgetCardTitle(widgetCode) {
+  if (typeof widgetCode !== 'string') return null;
+  // An empty heading (icon only) falls through to the next source instead of ending the search.
+  const h3 = widgetCode.match(/<h3 class="card-title"[^>]*>([\s\S]*?)<\/h3>/);
+  const fromH3 = h3 ? decodeTitle(h3[1]) : null;
+  if (fromH3) return fromH3;
+  const head = widgetCode.match(/<p class="card-head"[^>]*>([\s\S]*?)<\/p>/);
+  const fromHead = head ? decodeTitle(head[1]) : null;
+  if (fromHead) return fromHead;
+  const data = widgetCode.match(/<script type="application\/json" id="dc-card-data">([\s\S]*?)<\/script>/);
+  if (data) {
+    try {
+      const h = JSON.parse(data[1]).h;
+      if (typeof h === 'string' && h.trim()) return h.trim();
+    } catch { /* not the card's JSON — no title */ }
+  }
+  return null;
+}
+
+/**
+ * The delivered-card text of one show_widget call, '' when the call is not
+ * the card. A recognised card widget is delivered even when its heading
+ * cannot be read: '' there made every compact band widget count as "never
+ * relayed" (#1158). Also the relay witness card-turn-end hands the Stop hooks
+ * from the widget's own PostToolUse (#1152).
+ */
+function widgetRelayText(name, input) {
+  if (!isCardWidgetCall(name, input)) return '';
+  const title = widgetCardTitle(input.widget_code) || GENERIC_WIDGET_TITLE;
+  return `${CARD_MARKER} ${title} ${CARD_MARKER}`;
 }
 
 /**
@@ -230,10 +267,7 @@ function deliveredCardText(transcriptContent) {
       if (block.type === 'text' && typeof block.text === 'string' && block.text.includes(CARD_MARKER)) return cardPortion(block.text);
       if (block.type !== 'tool_use') continue;
       if (isCardRenderCall(block)) return '';
-      if (isCardWidgetCall(block.name, block.input)) {
-        const title = widgetCardTitle(block.input.widget_code);
-        return title ? `${CARD_MARKER} ${title} ${CARD_MARKER}` : '';
-      }
+      if (isCardWidgetCall(block.name, block.input)) return widgetRelayText(block.name, block.input);
     }
   }
   return '';
@@ -493,6 +527,59 @@ function lastUserEntryIsNotification(transcriptContent) {
   return text.includes('<task-notification>') || isSideSessionTurn(text);
 }
 
+/**
+ * #1156: true when the turn's prompt is a `<task-notification>` whose every
+ * task ended normally — status `completed` and no non-zero exit code. A
+ * failed, killed or stopped task, a side-session note or a typed prompt is
+ * false: only a clean finish may restore the session's settled title.
+ */
+function lastNotificationCompleted(transcriptContent) {
+  const text = lastUserEntryText(transcriptContent);
+  if (!text.includes('<task-notification>')) return false;
+  const statuses = [...text.matchAll(/<status>\s*([^<]*?)\s*<\/status>/g)].map(m => m[1].toLowerCase());
+  if (!statuses.length || statuses.some(s => s !== 'completed')) return false;
+  // The exit code is read from the harness's own <summary> lines only — an agent's
+  // result text that merely mentions an exit code must not decide it.
+  const summaries = [...text.matchAll(/<summary>([\s\S]*?)<\/summary>/g)].map(m => m[1]).join('\n');
+  return !/exit code\s*:?\s*(?!0\b)-?\d+/i.test(summaries);
+}
+
+/** The text of a user entry's content ('' for tool results only). */
+function entryText(entry) {
+  const content = entry && entry.message && entry.message.content;
+  if (typeof content === 'string') return content;
+  if (!Array.isArray(content)) return '';
+  return content.filter(b => b && b.type === 'text' && typeof b.text === 'string').map(b => b.text).join('');
+}
+
+/**
+ * #1156: true when a completion card was rendered after the last prompt the
+ * user (or a hook for them) TYPED — task-notification and side-session note
+ * prompts are skipped. Only then did the work that left the ⏳ title close with
+ * a card that named its pending part; a typed task that never got a card is
+ * unfinished work, never "settled".
+ */
+function cardSinceTypedPrompt(transcriptContent) {
+  if (!transcriptContent) return false;
+  const lines = transcriptContent.split('\n');
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const raw = lines[i].trim();
+    if (!raw) continue;
+    let entry;
+    try { entry = JSON.parse(raw); } catch { continue; }
+    if (entry.type === 'assistant') {
+      const content = entry.message && entry.message.content;
+      if (Array.isArray(content) && content.some(isCardRenderCall)) return true;
+      continue;
+    }
+    if (entry.type !== 'user' || !isPromptEntry(entry)) continue;
+    const text = entryText(entry);
+    if (text.includes('<task-notification>') || isSideSessionTurn(text)) continue;
+    return false;
+  }
+  return false;
+}
+
 /** True when the turn's last user-role entry is a side-session note turn (notes only). */
 function lastUserEntryIsSideSession(transcriptContent) {
   return isSideSessionTurn(lastUserEntryText(transcriptContent));
@@ -513,17 +600,7 @@ function lastUserEntryText(transcriptContent) {
     let entry;
     try { entry = JSON.parse(raw); } catch { continue; }
     if (entry.type !== 'user' || !isPromptEntry(entry)) continue;
-    const content = entry.message && entry.message.content;
-    let text = '';
-    if (typeof content === 'string') {
-      text = content;
-    } else if (Array.isArray(content)) {
-      text = content
-        .filter(b => b && b.type === 'text' && typeof b.text === 'string')
-        .map(b => b.text)
-        .join('');
-    }
-    return text;
+    return entryText(entry);
   }
   return '';
 }
@@ -1215,6 +1292,7 @@ module.exports = {
   editsThisTurn,
   foreignWidgetTitle,
   isCardWidgetCall,
+  widgetRelayText,
   CARD_WIDGET_TITLE,
   buildPendingReason,
   buildTextAfterCardReason,
@@ -1232,6 +1310,8 @@ module.exports = {
   cardSignature,
   isDuplicateNotificationCard,
   lastUserEntryIsNotification,
+  lastNotificationCompleted,
+  cardSinceTypedPrompt,
   lastUserEntryIsSideSession,
   buildTitleStatusWordReason,
   buildResultLinesReason,

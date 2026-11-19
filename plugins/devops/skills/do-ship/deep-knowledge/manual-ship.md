@@ -42,7 +42,8 @@ plugin for cloud sessions brings the automated pipeline back.
 6. **Wait for checks** — every required check green before the merge.
 7. **Squash merge** — never a merge commit, never a rebase merge, unless the
    pipeline's own rule applies (overlapping files with a parallel branch →
-   merge commit, `merge-safety.md`). Commit title
+   merge commit, `merge-safety.md`; a `--batch` backlog ship → merge commit,
+   so each per-issue commit reaches the base, #1155). Commit title
    `type(scope): summary (X.Y.Z) (#PR)`. Read back the merge commit SHA from
    `origin/<base>` after a fetch.
 8. **Ring tag** — the annotated `alpha/vX.Y.Z` on that squash commit, pushed
