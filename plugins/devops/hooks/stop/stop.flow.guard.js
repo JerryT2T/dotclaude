@@ -253,11 +253,16 @@ process.stdin.on('end', () => {
   // rendered (#449). It also backs up a failed flag write: a shown card alone
   // still counts as rendered. An unreadable transcript leaves it undefined so
   // the relay gate stays out of the way instead of blocking blind.
-  const cardRelayed = (silent || !transcript) ? undefined : cardDelivered(transcript);
+  // #1152: run from the card widget's own PostToolUse (lib/card-turn-end.js),
+  // the payload names the widget being shown right now — the transcript may
+  // not hold that entry yet, so it is the relay witness.
+  const relayWitness = (!silent && typeof hook.card_widget_relay === 'string') ? hook.card_widget_relay : '';
+  const cardRelayed = relayWitness ? true : (silent || !transcript) ? undefined : cardDelivered(transcript);
   const cardRendered = flagCardRendered || cardRelayed === true;
-  const cardText = (!silent && cardRendered) ? deliveredCardText(transcript) : '';
+  const cardText = (!silent && cardRendered) ? (deliveredCardText(transcript) || relayWitness) : '';
   const widgetFile = widgetResult ? String(widgetResult.filePath).replace(/\\/g, '/') : '';
-  const widgetCalled = (widgetFile && transcript) ? showWidgetCalledThisTurn(transcript) : undefined;
+  // The witnessed widget IS this turn's show_widget call (#1152) — Gate 1c must not read it as skipped.
+  const widgetCalled = relayWitness ? true : (widgetFile && transcript) ? showWidgetCalledThisTurn(transcript) : undefined;
   // #713: a non-card widget shown after the render; the relay reason names its title.
   const foreignTitle = cardRelayed === false ? foreignWidgetTitle(transcript) : null;
   // Both probes are only needed on the paths that read them: the tree check

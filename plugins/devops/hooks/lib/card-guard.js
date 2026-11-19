@@ -206,6 +206,19 @@ function widgetCardTitle(widgetCode) {
 }
 
 /**
+ * The delivered-card text of one show_widget call, '' when the call is not
+ * the card. A recognised card widget is delivered even when its heading
+ * cannot be read: '' there made every compact band widget count as "never
+ * relayed" (#1158). Also the relay witness card-turn-end hands the Stop hooks
+ * from the widget's own PostToolUse (#1152).
+ */
+function widgetRelayText(name, input) {
+  if (!isCardWidgetCall(name, input)) return '';
+  const title = widgetCardTitle(input.widget_code) || GENERIC_WIDGET_TITLE;
+  return `${CARD_MARKER} ${title} ${CARD_MARKER}`;
+}
+
+/**
  * The card part of a text block that also carries the answer before it: from
  * the `---` rule that opens the card (the last one above the ✨ title), else
  * from the title's line. The answer's own `## ` headings and numbered lists
@@ -254,12 +267,7 @@ function deliveredCardText(transcriptContent) {
       if (block.type === 'text' && typeof block.text === 'string' && block.text.includes(CARD_MARKER)) return cardPortion(block.text);
       if (block.type !== 'tool_use') continue;
       if (isCardRenderCall(block)) return '';
-      if (isCardWidgetCall(block.name, block.input)) {
-        // A recognised card widget is delivered even when its heading cannot be read:
-        // '' here made every compact band widget count as "never relayed" (#1158).
-        const title = widgetCardTitle(block.input.widget_code) || GENERIC_WIDGET_TITLE;
-        return `${CARD_MARKER} ${title} ${CARD_MARKER}`;
-      }
+      if (isCardWidgetCall(block.name, block.input)) return widgetRelayText(block.name, block.input);
     }
   }
   return '';
@@ -1241,6 +1249,7 @@ module.exports = {
   editsThisTurn,
   foreignWidgetTitle,
   isCardWidgetCall,
+  widgetRelayText,
   CARD_WIDGET_TITLE,
   buildPendingReason,
   buildTextAfterCardReason,

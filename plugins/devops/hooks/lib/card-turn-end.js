@@ -38,7 +38,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { projectRoot } = require('./project-root');
-const { safeReadTranscript, TRANSCRIPT_TAIL_BYTES } = require('./card-guard');
+const { safeReadTranscript, TRANSCRIPT_TAIL_BYTES, widgetRelayText } = require('./card-guard');
 const { isPromptEntry } = require('./skill-invocations');
 
 /** The stop notice Claude sees next turn; the Desktop stream does not carry it. */
@@ -181,9 +181,17 @@ function blockedEarlierThisTurn(transcript) {
   return false;
 }
 
-/** The Stop payload Claude Code would have sent at this turn end. */
+/**
+ * The Stop payload Claude Code would have sent at this turn end. When the
+ * PostToolUse being answered is the card widget call itself, the payload
+ * carries `card_widget_relay` — that call's delivered-card text. The
+ * transcript may not hold the widget entry yet at this moment (#1152: the
+ * guard then read "never relayed" and the same card was drawn twice); the
+ * hook's own input already proves the card is on screen. Claude Code's real
+ * Stop event never carries the field.
+ */
 function stopPayload(hook, stopHookActive) {
-  return {
+  const payload = {
     session_id: hook.session_id,
     transcript_path: hook.transcript_path,
     cwd: hook.cwd,
@@ -192,6 +200,9 @@ function stopPayload(hook, stopHookActive) {
     stop_hook_active: stopHookActive,
     last_assistant_message: '',
   };
+  const relay = widgetRelayText(hook.tool_name, hook.tool_input);
+  if (relay) payload.card_widget_relay = relay;
+  return payload;
 }
 
 /**

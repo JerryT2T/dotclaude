@@ -129,6 +129,36 @@ describe("stop.flow.guard — a rendered card must also be relayed (#449)", () =
     } finally { cleanup(dir); }
   });
 
+  // #1152: run from the widget's PostToolUse, the transcript ends at the render
+  // (+ wrap_up) — the widget entry is not written yet. The relay witness in the
+  // payload is the card on screen; demanding it again drew the card twice.
+  test("Desktop: the relay witness from the widget's PostToolUse passes before the widget is in the transcript", async () => {
+    const renderThenWrapUp = (dir) => {
+      setFlag(dir, "work-happened");
+      setFlag(dir, "card-rendered");
+      // Desktop: the renderer left the per-session widget file — Gate 1c (widget skipped) is armed too.
+      setFlag(dir, "card-widget");
+      // render → wrap_up, the widget call itself not written yet (it is the PostToolUse being answered).
+      const t = path.join(dir, "t.jsonl");
+      const lines = [
+        { type: "user", message: { role: "user", content: [{ type: "text", text: "ship it" }] } },
+        { type: "assistant", message: { role: "assistant", content: [{ type: "tool_use", id: "r1", name: "mcp__plugin_devops_dotclaude__render_completion_card", input: {} }] } },
+        { type: "user", message: { role: "user", content: [{ type: "tool_result", tool_use_id: "r1", content: "card" }] } },
+        { type: "assistant", message: { role: "assistant", content: [{ type: "text", text: "Fertig." }, { type: "tool_use", id: "u1", name: "mcp__ccd_turn__wrap_up", input: { recap: "x" } }] } },
+        { type: "user", message: { role: "user", content: [{ type: "tool_result", tool_use_id: "u1", content: "ok" }] } },
+      ];
+      fs.writeFileSync(t, lines.map((l) => JSON.stringify(l)).join("\n") + "\n");
+      return t;
+    };
+    const withWitness = project();
+    const without = project();
+    try {
+      expect((await stop(withWitness, renderThenWrapUp(withWitness), { card_widget_relay: `${MARKER} Card relay guarded ${MARKER}` })).trim()).toBe("");
+      // Without the witness the same transcript is still "never relayed".
+      expect(await stop(without, renderThenWrapUp(without))).toContain("never relayed");
+    } finally { cleanup(withWitness); cleanup(without); }
+  });
+
   test("flag set, the turn ended on other text → block once", async () => {
     const dir = project();
     try {

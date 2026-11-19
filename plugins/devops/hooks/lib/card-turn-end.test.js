@@ -68,6 +68,15 @@ describe("stopPayload", () => {
   test("carries the session, transcript and cwd as a Stop event", () => {
     const p = stopPayload({ session_id: "s1", transcript_path: "t.jsonl", cwd: "C:/x", permission_mode: "default" }, true);
     expect(p).toMatchObject({ session_id: "s1", transcript_path: "t.jsonl", cwd: "C:/x", hook_event_name: "Stop", stop_hook_active: true, last_assistant_message: "" });
+    expect(p.card_widget_relay).toBeUndefined();
+  });
+
+  // #1152: the widget call being answered is the relay, whatever the transcript shows yet.
+  test("from the card widget's own PostToolUse it carries that call as the relay witness", () => {
+    const widgetHook = (input) => ({ session_id: "s1", transcript_path: "t.jsonl", cwd: "C:/x", tool_name: "mcp__visualize__show_widget", tool_input: input });
+    const p = stopPayload(widgetHook({ title: "completion_card_body", widget_code: '<h3 class="card-title">Fertig</h3>' }), false);
+    expect(p.card_widget_relay).toBe("✨✨✨ Fertig ✨✨✨");
+    expect(stopPayload(widgetHook({ title: "chart", widget_code: "<svg/>" }), false).card_widget_relay).toBeUndefined();
   });
 });
 
