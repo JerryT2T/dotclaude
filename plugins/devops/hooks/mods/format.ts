@@ -699,6 +699,7 @@ const TABLE = {
   archivePrompt: ['Archive this session.', 'Archiviere diese Session.', 'Archiva esta sesión.', 'Archive cette session.', 'Arquive esta sessão.', 'このセッションをアーカイブして。', '归档此会话。'],
   junk: ['{n} leftovers', '{n} Altlasten', '{n} restos', '{n} restes', '{n} restos', '残り {n} 件', '{n} 项遗留'],
   last: ['Last:', 'Zuletzt:', 'Último:', 'Dernier :', 'Último:', '直近:', '最近：'],
+  stopped: ['⏸ Stopped — waiting for you', '⏸ Gestoppt — wartet auf dich', '⏸ Detenido — te espera', '⏸ Arrêté — vous attend', '⏸ Parado — aguardando você', '⏸ 停止中 — 入力待ち', '⏸ 已停止 — 等待你'],
   rowAgent: ['Agent worktrees', 'Agent-Worktrees', 'Worktrees de agentes', "Worktrees d'agents", 'Worktrees de agentes', 'エージェントの worktree', '代理 worktree'],
   rowCopies: ['Safety copies', 'Sicherungskopien', 'Copias de seguridad', 'Copies de sauvegarde', 'Cópias de segurança', 'バックアップ', '备份副本'],
   rowBranches: ['Branches', 'Branches', 'Ramas', 'Branches', 'Branches', 'ブランチ', '分支'],
@@ -1102,6 +1103,59 @@ export function learnPrompt(cause: string, runs: number): string {
     `Cleanup runs keep finding unmerged work that nobody continues: ${runs} runs each left at least ${LEARN_MIN_LEFTOVERS} inactive, unmerged leftovers of the same cause: "${cause}".`,
     'Find out why this work is not landed (what the sessions skip or forget) and propose a rule or workflow fix that stops it.',
   ].join('\n')
+}
+
+/**
+ * #1150: how the last main turn ended when it brought no card. `aborted` = stopped (interrupt, a rejected call
+ * the turn could not recover from); else `text` = the first line of the turn's answer. `at` = HH:MM.
+ */
+export type Halted = { aborted: boolean; text: string; at: string }
+
+/** #1150: the first line of a card-less turn's answer, clamped for the idle row; '' when there is none. */
+export function answerHead(answer: unknown, max = 80): string {
+  if (typeof answer !== 'string') return ''
+  const line = answer.split(/\r?\n/).map(l => l.replace(/^#+\s*/, '').replace(/\*\*/g, '').trim()).find(Boolean) || ''
+  return line.length > max ? `${line.slice(0, max - 1).trimEnd()}…` : line
+}
+
+/** #1150: the idle row's status after a card-less turn: "⏸ Stopped — waiting for you · 14:02" or "Last: {answer} · 14:02". */
+export function haltedLine(h: Halted | null, loc: Locale): string {
+  if (!h) return ''
+  const at = h.at ? ` · ${h.at}` : ''
+  if (h.aborted) return `${tr(loc, 'stopped')}${at}`
+  return h.text ? `${tr(loc, 'last')} ${h.text}${at}` : ''
+}
+
+/** HH:MM of `ms` in local time — the card's own `at` format. */
+export function clockAt(ms: number): string {
+  const d = new Date(ms)
+  return Number.isFinite(d.getTime()) ? `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}` : ''
+}
+
+/** #1150: the offline card renderer's command line (`node ".../mcp-server/index.js" --render-card …`), as card-guard.js reads it. */
+const OFFLINE_RENDER_RE = /mcp-server[\\/]index\.js["']?\s+--render-card\b/
+
+/** #1150: a Bash call that ran the offline card renderer. */
+export function isOfflineCardRender(tool: unknown, command: unknown): boolean {
+  return tool === 'Bash' && typeof command === 'string' && OFFLINE_RENDER_RE.test(command)
+}
+
+/** #1150: where the offline renderer leaves the card's band data for the session (under the home dir). */
+export function bandCardFile(home: string, sid: string): string {
+  return `${home}/.claude/devops-band/card-${String(sid).replace(/[^\w.-]/g, '_')}.json`
+}
+
+/**
+ * #1150: the stored card's text when this Bash call wrote it — `writtenAt` not before the call started
+ * (`since`, with a small clock skew allowed) and not in the future — else null. A render that wrote nothing
+ * (refused, local-ship exit, a hidden exit code) never brings back the session's previous card.
+ */
+export function bandCardText(j: unknown, since: number, now: number, skewMs = 2_000): string | null {
+  if (!j || typeof j !== 'object') return null
+  const { text, writtenAt } = j as { text?: unknown; writtenAt?: unknown }
+  const at = typeof writtenAt === 'string' ? Date.parse(writtenAt) : NaN
+  if (typeof text !== 'string' || !text || !Number.isFinite(at) || at < since - skewMs || at > now + 60_000) return null
+  return text
 }
 
 /** B10: "Last: {title} · {time}", dim, left of the idle row; '' without a last card. */

@@ -1142,6 +1142,69 @@ test('B17 hint cards (batch / test mode): heading plus a ? toggle, hints collaps
 const REL = { ...CARD_DATA, h: '🟩 🚀 Released Alpha — v0.270.1 — nach Beta promoten?' }
 const cardText = (d: unknown) => `<script type="application/json" id="dc-card-data">${JSON.stringify(d)}</script>`
 
+// #1150 (a): the offline renderer (Bash `--render-card`) leaves the card's band data in a file; the band reads it.
+test('offline card: a --render-card Bash call puts its card in the band; a stale or foreign file does not', async ($, on) => {
+  const writtenAt = new Date(NOW).toISOString() // written by this very call
+  const file = '/.claude/devops-band/card-sid-offline.json'
+  // A cleanup report keeps the idle band on screen once the card is spent (else the band steps aside).
+  const report = idleReport([agentWt(1), agentWt(2)])
+  const { files } = engine(on, { files: { [file]: JSON.stringify({ writtenAt, text: CARD_RESULT }), '/.claude/orphan-report.json': report } })
+  on('session.id', () => ({ value: 'sid-offline' }))
+  on('tool.call', () => ({ result: { stdout: '' }, text: '' }))
+  on('turn.start', (_: unknown, e: { turnId: string }) => ({ turnId: e.turnId || 't' }))
+  await $.session.start({ cwd: REPO, surface: 'desktop', isInteractive: true })
+  // Any other Bash call leaves the band alone.
+  await $.tool.call({ tool: 'Bash', command: 'git status' } as any)
+  let band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await has(band, 'Committed')).toBeUndefined()
+  await band.unmount()
+  await $.tool.call({ tool: 'Bash', command: 'node "C:/x/devops/mcp-server/index.js" --render-card C:/tmp/p.json' } as any)
+  band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await has(band, 'Committed')).toBeDefined()
+  await band.unmount()
+  // Spent by the next typed prompt like any card: the idle row then says "Last: {title} · {time}".
+  await $.turn.start({ text: 'next', turnId: 't2' } as any)
+  band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect((await band.find({ type: 'Text', text: /^Last: / }))?.text).toBe('Last: Band zeigt die Card · 01:43')
+  await band.unmount()
+  // A file written before this call started (a render that wrote nothing) is a previous card, never this one.
+  files[file] = JSON.stringify({ writtenAt: new Date(NOW - 60_000).toISOString(), text: CARD_RESULT.replace('Committed', 'Stale') })
+  await $.tool.call({ tool: 'Bash', command: 'node "C:/x/devops/mcp-server/index.js" --render-card -' } as any)
+  band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await has(band, 'Stale')).toBeUndefined()
+  await band.unmount()
+})
+
+// #1150 (b): a turn that ends without a card leaves the band a status, not only the 🧹 chip.
+test('card-less turn end: a stopped turn shows "Stopped — waiting for you", an answer its first line; a card clears it', async ($, on) => {
+  const report = idleReport([agentWt(1), agentWt(2)])
+  engine(on, { files: { '/.claude/orphan-report.json': report } })
+  on('tool.call', () => ({ result: {}, text: CARD_RESULT }))
+  on('turn.start', (_: unknown, e: { turnId: string }) => ({ turnId: e.turnId || 't' }))
+  on('turn.complete', (_: unknown, e: { answer: string }) => ({ text: e.answer }))
+  await $.session.start({ cwd: REPO, surface: 'desktop', isInteractive: true })
+  await $.turn.start({ text: 'build it', turnId: 't1' } as any)
+  await $.turn.complete({ answer: '', durationMs: 1, isAborted: true, turnId: 't1', reason: 'aborted' } as any)
+  let band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect((await band.find({ type: 'Text', text: /Stopped/ }))?.text).toMatch(/^⏸ Stopped — waiting for you · \d\d:\d\d$/)
+  expect(await band.find({ key: 'cleanup-fold' })).toBeDefined()
+  await band.unmount()
+  // A plain answer without a card: its first line, not "Stopped".
+  await $.turn.start({ text: 'what is X?', turnId: 't2' } as any)
+  await $.turn.complete({ answer: '**X** is the band.\nMore lines.', durationMs: 1, isAborted: false, turnId: 't2', reason: 'end' } as any)
+  band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect((await band.find({ type: 'Text', text: /^Last: / }))?.text).toMatch(/^Last: X is the band\. · \d\d:\d\d$/)
+  await band.unmount()
+  // A card in the next turn takes over; its turn end leaves no status of its own.
+  await $.turn.start({ text: 'ship', turnId: 't3' } as any)
+  await $.tool.call({ tool: CARD_TOOL, summary: 'x' } as any)
+  await $.turn.complete({ answer: '', durationMs: 1, isAborted: false, turnId: 't3', reason: 'end' } as any)
+  band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await has(band, 'Stopped')).toBeUndefined()
+  expect(await has(band, 'Committed')).toBeDefined()
+  await band.unmount()
+})
+
 // #1157: a release card, then a typed follow-up whose card is a fallback with pending work.
 test('release state: a later non-ship card keeps the session release beside its own status; a new ship replaces it', async ($, on) => {
   engine(on)
