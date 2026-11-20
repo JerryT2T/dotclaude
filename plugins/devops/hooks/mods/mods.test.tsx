@@ -991,10 +991,34 @@ test('B10 idle band is hidden when nothing is due', async ($, on) => {
   engine(on)
   await $.session.start({ cwd: REPO, surface: 'desktop', isInteractive: true })
   await $.session.measure({ context: { window: 200000, tokens: 20000, percent: 10 }, rateLimits: [], changed: ['context'] } as any)
+  const hint = await $.ui.mount({ ...HINT, surface: 'desktop' }) // the host drew the line under the prompt
+  await hint.unmount()
   const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
   expect(await band.find({ type: 'Text', text: /engine/ })).toBeDefined() // the engine own drawing: the mod stepped aside
   expect(await band.find({ key: 'idle' })).toBeUndefined()
   await band.unmount()
+})
+
+test('#1176: while the host has not drawn the line under the prompt, the band carries "● devops"; the first hint draw drops it and marks the load row', async ($, on) => {
+  const { seen } = engine(on)
+  on('session.id', () => ({ value: 'sid-hint' }))
+  await $.session.start({ cwd: REPO, surface: 'desktop', isInteractive: true })
+  await $.session.measure({ context: { window: 200000, tokens: 20000, percent: 10 }, rateLimits: [], changed: ['context'] } as any)
+  const before = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await before.find({ key: 'devops-hint-fallback' })).toBeDefined()
+  expect(await before.find({ key: 'devops-status' })).toBeDefined()
+  await before.unmount()
+  const term = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect(await term.find({ key: 'devops-hint-fallback' })).toBeUndefined() // the terminal keeps its hint tail
+  await term.unmount()
+  const hint = await $.ui.mount({ ...HINT, surface: 'desktop' })
+  await hint.unmount()
+  await new Promise(r => setTimeout(r, 0))
+  const after = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await after.find({ key: 'devops-hint-fallback' })).toBeUndefined()
+  await after.unmount()
+  const marker = seen.writes.filter(w => /devops-mods-loaded\.json$/.test(w.path.replace(/\\/g, '/'))).at(-1)
+  expect(marker && JSON.parse(marker.text).sessions.find((r: { sid: string }) => r.sid === 'sid-hint')).toMatchObject({ hint: true })
 })
 
 test('B11 cleanup block: one collapsed line + button, expands to the breakdown and the rule, state per session', async ($, on) => {

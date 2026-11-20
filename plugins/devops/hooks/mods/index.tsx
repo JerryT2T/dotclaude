@@ -196,7 +196,8 @@ const RUN_MARKER = '/.claude/devops-cleanup-run.json'
 const HISTORY_FILE = '/.claude/devops-cleanup-history.json'
 const LOAD_MARKER = '/.claude/devops-mods-loaded.json'
 const LOAD_MARKER_MAX = 30
-type LoadMark = { sid: string; surface: string | null; interactive: boolean; ts: string }
+// #1176: `hint` = the line under the prompt was drawn in this session (load is not render: the Desktop host may never draw it).
+type LoadMark = { sid: string; surface: string | null; interactive: boolean; ts: string; hint?: boolean }
 
 const agents = atom({ plugin: 'devops', key: 'agents' } as const, [] as AgentRow[], { shape: 'agents-1' })
 const budget = atom({ plugin: 'devops', key: 'budget' } as const, null as Budget | null, { shape: 'budget-1' })
@@ -1023,7 +1024,27 @@ async function writeLoadMarker($: EngineInterface, surface: string | null, inter
   const prev = (await readJson($, file)) as { sessions?: LoadMark[] } | null
   const kept = (prev && Array.isArray(prev.sessions) ? prev.sessions : []).filter(s => s && s.sid !== sid).slice(-(LOAD_MARKER_MAX - 1))
   const row: LoadMark = { sid, surface, interactive, ts: new Date(await $.clock.now()).toISOString() }
+  loadRow = row
   await $.fs.write(file, `${JSON.stringify({ sessions: [...kept, row] }, null, 1)}\n`)
+}
+
+let loadRow: LoadMark | null = null
+/** #1176: the marker row of this session gets `hint: true` once the line under the prompt was drawn. */
+async function markHintDrawn($: EngineInterface): Promise<void> {
+  const home = await homeDir($)
+  if (!home) return
+  const file = home + LOAD_MARKER
+  const sid = await $.session.id()
+  const prev = (await readJson($, file)) as { sessions?: LoadMark[] } | null
+  const rows = prev && Array.isArray(prev.sessions) ? prev.sessions : []
+  const own = rows.find(r => r && r.sid === sid)
+  if (own && own.hint) return
+  // The row this session wrote at session.start, also when the file was rotated or unreadable since.
+  const base = own || (loadRow && loadRow.sid === sid ? loadRow : null)
+  if (!base) return
+  const next = [...rows.filter(r => r && r.sid !== sid).slice(-(LOAD_MARKER_MAX - 1)), { ...base, hint: true }]
+  await $.fs.write(file, `${JSON.stringify({ sessions: next }, null, 1)}
+`)
 }
 
 /** B1 (#2): the band's session marker, read by the card tool to shrink the transcript card. Written while the band draws. */
@@ -1623,6 +1644,13 @@ export const register: Register = on => {
     const note = ok ? said : `${tr(loc, 'stInactive')} · ${inactiveReason(state, loc)}`
     if (!hintDrawn) {
       hintDrawn = true
+      // #1176: render evidence for the load marker, and the band drops its fallback status element.
+      void markHintDrawn($).catch(() => undefined)
+      try {
+        $.ui.invalidate('ui.render')
+      } catch {
+        /* the next draw drops it */
+      }
       // The fallback status line would now repeat this line. Drawing may not clear it, so a timer does,
       // and the next turn start does when no timer is to be had.
       try {
@@ -1706,7 +1734,9 @@ export const register: Register = on => {
     // #1150: a stopped turn is a state worth the band on its own — the user must see that nothing runs any more.
     const halt = idle ? await read($, halted) : null
     // #1161: a cleanup run in any phase but idle keeps the band up — the whole flow lives here, not in a pane.
-    if (idle && run.phase === 'idle' && !cv && !bars.length && !bt && !infoData && !optPopup && !rc && !(halt && halt.aborted) && !(ring !== null && ring >= CONTEXT_SHOW_PERCENT)) return next(e)
+    // #1176: on a graphical surface whose host has not drawn the line under the prompt, the band carries "● devops".
+    const hintFallback = e.surface !== 'terminal' && !hintDrawn
+    if (idle && run.phase === 'idle' && !hintFallback && !cv && !bars.length && !bt && !infoData && !optPopup && !rc && !(halt && halt.aborted) && !(ring !== null && ring >= CONTEXT_SHOW_PERCENT)) return next(e)
     const { Box, Button, Markdown, Text } = $.ui.resolve(e)
     // Desktop: the card's animated SVG (bars, hourglass, ring) at a fixed size; the terminal has no Svg, so glyphs.
     const desktop = e.surface !== 'terminal'
@@ -1732,6 +1762,16 @@ export const register: Register = on => {
       )
     }
     const toggle = () => update($, fold, v => !v)
+    const hintOk = isActive(hl)
+    const hintEl = hintFallback ? (
+      <Box key="devops-hint-fallback" flexDirection="row" alignItems="center" columnGap={1}>
+        <Button key="devops-status" plain onPress={() => toggleInfo($)}>
+          <Text color={hintOk ? STATUS_GREEN : STATUS_RED}>●</Text>
+          <Text key="devops-word">{' devops'}</Text>
+        </Button>
+        {!hintOk && <Text key="devops-note" color={STATUS_RED}>{`${tr(loc, 'stInactive')} · ${inactiveReason(hl, loc)}`}</Text>}
+      </Box>
+    ) : null
     // Collecting: one persistent row, neutral colour (the confirmation toast carries the event, this the standing state).
     // The count folds the note list open (zero tokens, instead of `/do-batch status`); Go queues the execute marker as the
     // person's prompt, also while a turn runs; Off ends the mode through a script, no turn. Typing go / aus works as before.
@@ -1934,6 +1974,7 @@ export const register: Register = on => {
           {infoEl}
           {runEl}
           <Box key="idle" flexDirection="row" alignItems="center" columnGap={2}>
+            {hintEl}
             {batchEl}
             {text && <Text key="idle-last" {...S.small}>{text}</Text>}
             <Box flexGrow={1} />
@@ -2116,6 +2157,7 @@ export const register: Register = on => {
           )}
         </Box>
         {budgetEl}
+        {hintEl}
       </Box>
     )
   })
