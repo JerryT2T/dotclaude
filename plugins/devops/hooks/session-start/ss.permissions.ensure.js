@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 /**
  * @hook ss.permissions.ensure
- * @version 0.1.0
+ * @version 0.2.0
  * @event SessionStart
  * @plugin devops
  * @description Ensure required plugin permissions exist so devops skills that
  *   write ephemeral review artifacts don't trigger permission prompts.
  *
- *   Idempotent: only adds rules that are missing. Never removes anything.
+ *   Idempotent: only adds rules that are missing; removes only its own
+ *   retired rules (RETIRED_RULES), never a rule of the user's.
  *   Scope: user-global settings at ~/.claude/settings.json — the rules apply
  *   to all projects for this user. Also ensures the target directory exists
  *   so skills can Write without first running mkdir.
@@ -21,9 +22,15 @@ const HOME = homedir();
 const SETTINGS_PATH = join(HOME, ".claude", "settings.json");
 const CONCEPTS_DIR = join(HOME, ".claude", "devops-concepts");
 
+// Edit(path) rules cover every file-editing tool, Write included. A
+// Write(path) rule is not matched by file permission checks and makes Claude
+// Code warn on every start, so it is retired and removed where an older
+// version added it (0.2.0).
 const REQUIRED_RULES = [
-  "Write(~/.claude/devops-concepts/**)",
   "Edit(~/.claude/devops-concepts/**)",
+];
+const RETIRED_RULES = [
+  "Write(~/.claude/devops-concepts/**)",
 ];
 
 try {
@@ -48,17 +55,20 @@ try {
 settings.permissions ??= {};
 settings.permissions.allow ??= [];
 
+const before = settings.permissions.allow.length;
+settings.permissions.allow = settings.permissions.allow.filter((r) => !RETIRED_RULES.includes(r));
+const removed = before - settings.permissions.allow.length;
 const existing = new Set(settings.permissions.allow);
 const toAdd = REQUIRED_RULES.filter((r) => !existing.has(r));
 
-if (toAdd.length === 0) process.exit(0);
+if (toAdd.length === 0 && removed === 0) process.exit(0);
 
 settings.permissions.allow.push(...toAdd);
 
 try {
   writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2) + "\n");
   console.error(
-    `[dotclaude] Added ${toAdd.length} permission rule(s) for devops report artifacts.`,
+    `[dotclaude] Permission rules for devops report artifacts: +${toAdd.length} / -${removed}.`,
   );
 } catch (err) {
   console.error(`[dotclaude] Could not update ${SETTINGS_PATH}: ${err.message}`);
