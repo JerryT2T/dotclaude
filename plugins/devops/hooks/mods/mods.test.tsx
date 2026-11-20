@@ -18,6 +18,7 @@ import {
   cleanupApplyPrompt,
   cleanupPlanPrompt,
   planComplete,
+  planSummary,
   cleanupView,
   compactAdvised,
   compactThreshold,
@@ -276,7 +277,8 @@ test('cleanup button: one press = one read-only opus plan subagent; its answer l
   // While the plan runs the button is a dim text: a second press cannot start another run.
   const busy = await $.ui.mount({ ...BAND, surface: 'desktop' })
   expect(await busy.find({ key: 'cleanup' })).toBeUndefined()
-  expect((await busy.find({ type: 'Text', text: /planning/ }))?.text).toBe('[ Clean up · planning… ]')
+  expect((await busy.find({ type: 'Text', text: /^\[ Clean up/ }))?.text).toBe('[ Clean up · planning… ]')
+  expect(await busy.find({ type: 'Text', text: /planning the cleanup/ })).toBeDefined() // #1161: the band's run row
   await busy.unmount()
   expect(spawns.length).toBe(1)
   expect(spawns[0].model).toBe('opus')
@@ -292,6 +294,63 @@ test('cleanup button: one press = one read-only opus plan subagent; its answer l
   await pane.unmount()
   expect(spawns.length).toBe(2)
   expect(spawns[1].prompt).toMatch(/APPROVED PLAN:\n## Plan\n1\. git worktree remove/)
+})
+
+test('#1161: the cleanup flow stays in the band — no pane opens on its own; status, summary, plan and Apply live in the band row', async ($, on) => {
+  const { seen } = engine(on, {
+    files: { '/.claude/orphan-report.json': ORPHAN_REPORT },
+    agents: [
+      { id: 'c1', description: 'Branch cleanup plan', type: 'general-purpose', status: 'running' },
+      { id: 'c2', description: 'Branch cleanup apply', type: 'general-purpose', status: 'running' },
+    ],
+  })
+  const spawns: string[] = []
+  on('agent.spawn', (_: unknown, e: { prompt: string }) => {
+    spawns.push(e.prompt)
+    return { model: 'claude-opus', agentId: `c${spawns.length}` }
+  })
+  on('session.root', () => ({ value: 'P:/Projects/demo' }))
+  on('turn.complete', (_: unknown, e: { answer: string }) => ({ text: e.answer }))
+  await $.session.start({ cwd: 'P:/Projects/demo', surface: 'desktop', isInteractive: true })
+  const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  await band.press({ key: 'cleanup-fold' })
+  await band.press({ key: 'cleanup' })
+  await band.unmount()
+  const busy = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await busy.find({ type: 'Text', text: /planning the cleanup/ })).toBeDefined()
+  expect(await busy.find({ key: 'cleanup-apply' })).toBeUndefined()
+  await busy.unmount()
+  const planText = '## Plan\n1. git branch -d old (landed)\n2. git worktree remove P:/x (landed, clean)\n\n## Braucht deine Entscheidung\n- feat: 3 unmerged commits'
+  await $.turn.complete({ answer: planText, durationMs: 1000, isAborted: false, turnId: 't1', agentId: 'c1', reason: 'end' } as any)
+  expect(seen.toasts.at(-1)).toMatch(/review it in the band/)
+  const ready = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await ready.find({ type: 'Text', text: '2 actions · 1 need your decision' })).toBeDefined()
+  expect(await ready.find({ key: 'cleanup-run-report' })).toBeUndefined() // folded until Details
+  await ready.press({ key: 'cleanup-details' })
+  await ready.unmount()
+  const open = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect((await open.find({ key: 'cleanup-run-report' }))?.props.text).toBe(planText)
+  await open.press({ key: 'cleanup-apply' })
+  await open.unmount()
+  expect(spawns.length).toBe(2)
+  expect(spawns[1]).toMatch(/APPROVED PLAN:\n## Plan\n1\. git branch -d old/)
+  await $.turn.complete({ answer: '✓ 1\n✓ 2', durationMs: 1000, isAborted: false, turnId: 't2', agentId: 'c2', reason: 'end' } as any)
+  expect(seen.opened).not.toContain('devops-cleanup') // never opened by the flow itself
+  const done = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await done.find({ type: 'Text', text: 'Cleanup applied.' })).toBeDefined()
+  await done.press({ key: 'cleanup-expand' }) // the explicit expand is the one way into the pane
+  expect(seen.opened).toContain('devops-cleanup')
+  await done.press({ key: 'cleanup-discard' })
+  await done.unmount()
+  const after = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await after.find({ key: 'cleanup-run-row' })).toBeUndefined()
+  await after.unmount()
+})
+
+test('#1161: planSummary counts numbered plan actions and listed decision items only', () => {
+  expect(planSummary('## Plan\n1. a\n2) b\nprose\n## Braucht deine Entscheidung\n- x\n* y\n1. z')).toEqual({ actions: 2, decisions: 3 })
+  expect(planSummary('## Plan\nNichts ist sicher zu entfernen.')).toEqual({ actions: 0, decisions: 0 })
+  expect(planSummary('')).toEqual({ actions: 0, decisions: 0 })
 })
 
 test('#1160: a plan run that ends on an interim waiting line fails as "plan incomplete" and offers no Apply', async ($, on) => {
@@ -802,7 +861,7 @@ test('B15 locales: one table, en de es fr pt ja zh, chosen by the Claude Code la
   expect(tr('de', 'ctx')).toBe('Kontext')
   expect(tr('en', 'ruleCount', { n: 62, t: 50 })).toBe('Trigger: 62 leftovers, more than 50')
   // Every string exists, non-empty and distinct from the placeholder, in all seven languages.
-  const keys: StrKey[] = ['stActive', 'stInactive', 'stNoHooks', 'stNoMcp', 'echoNarrow1', 'echoNarrow2', 'echoLocal', 'infoHead', 'infoHeadNote', 'infoNarrowed', 'infoShipped', 'infoApi', 'infoGuards', 'infoOwn', 'noteMeasuredSince', 'noteMeasured7', 'noteCounted7', 'infoFoot', 'infoEmpty', 'ctx', 'compact', 'cleanupBtn', 'junk', 'last', 'rowAgent', 'rowCopies', 'rowBranches', 'rowBroken', 'ruleInactive', 'ruleCount', 'working', 'ringAlt', 'stBranch1', 'stBranchN', 'stDirty1', 'stDirtyN', 'stCopy1', 'stCopyN', 'asOf', 'toastPlanned', 'toastDone', 'toastFailed', 'toastLearn', 'permission', 'finishedAfter', 'bgCommand', 'paneIdle', 'panePlanning', 'paneApplying', 'panePlanned', 'paneDone', 'paneFailed', 'btnApply', 'btnDiscard', 'btnClose', 'btnPlan', 'btnReview', 'runPlanning', 'runApplying', 'learnOffer', 'learnBtn', 'runBusy']
+  const keys: StrKey[] = ['stActive', 'stInactive', 'stNoHooks', 'stNoMcp', 'echoNarrow1', 'echoNarrow2', 'echoLocal', 'infoHead', 'infoHeadNote', 'infoNarrowed', 'infoShipped', 'infoApi', 'infoGuards', 'infoOwn', 'noteMeasuredSince', 'noteMeasured7', 'noteCounted7', 'infoFoot', 'infoEmpty', 'ctx', 'compact', 'cleanupBtn', 'junk', 'last', 'rowAgent', 'rowCopies', 'rowBranches', 'rowBroken', 'ruleInactive', 'ruleCount', 'working', 'ringAlt', 'stBranch1', 'stBranchN', 'stDirty1', 'stDirtyN', 'stCopy1', 'stCopyN', 'asOf', 'toastPlanned', 'toastDone', 'toastFailed', 'toastLearn', 'permission', 'finishedAfter', 'bgCommand', 'paneIdle', 'panePlanning', 'paneApplying', 'panePlanned', 'paneDone', 'paneFailed', 'btnApply', 'btnDiscard', 'btnClose', 'btnPlan', 'runPlanning', 'runApplying', 'learnOffer', 'learnBtn', 'runBusy']
   for (const loc of LOCALES) for (const k of keys) expect(tr(loc, k, { n: 1, t: 1, p: 1, h: 1, what: 'x', s: 'x', runs: 2, cause: 'c' })).toMatch(/\S/)
   // No placeholder is left unfilled in any language.
   for (const loc of LOCALES) for (const k of keys) expect(tr(loc, k, { n: 1, t: 1, p: 1, h: 1, what: 'x', s: 'x', runs: 2, cause: 'c' })).not.toMatch(/\{\w+\}/)

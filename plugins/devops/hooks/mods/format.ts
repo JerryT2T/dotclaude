@@ -603,6 +603,24 @@ export function planComplete(answer: string): boolean {
   return /^##\s+Plan\b/m.test(answer || '')
 }
 
+/** The band's one-line summary of a plan (#1161): numbered actions under `## Plan`, listed items under
+ *  `## Braucht deine Entscheidung`. Other sections and prose lines are not counted. */
+export function planSummary(report: string): { actions: number; decisions: number } {
+  let actions = 0
+  let decisions = 0
+  let section: 'plan' | 'decide' | null = null
+  for (const line of (report || '').split(/\r?\n/)) {
+    const h = /^##\s+(.*)$/.exec(line)
+    if (h) {
+      section = /^Plan\b/.test(h[1]) ? 'plan' : /Entscheidung|decision/i.test(h[1]) ? 'decide' : null
+      continue
+    }
+    if (section === 'plan' && /^\s*\d+[.)]\s/.test(line)) actions++
+    else if (section === 'decide' && /^\s*(\d+[.)]|[-*])\s/.test(line)) decisions++
+  }
+  return { actions, decisions }
+}
+
 /** The apply subagent's brief: exactly the approved plan, re-verified per action. */
 export function cleanupApplyPrompt(root: string, cwd: string, plan: string): string {
   return [
@@ -749,22 +767,22 @@ const TABLE = {
   stCopyN: ['{n} undecided safety copies', '{n} offene Sicherungskopien', '{n} copias de seguridad sin decidir', '{n} copies de sauvegarde en attente', '{n} cópias de segurança pendentes', '未判断のバックアップ {n}', '{n} 个待定备份副本'],
   asOf: ['as of {h} h', 'Stand vor {h} h', 'de hace {h} h', 'il y a {h} h', 'de {h} h atrás', '{h} 時間前の状態', '截至 {h} 小时前'],
   toastPlanned: [
-    'devops cleanup: plan ready — review it in the Cleanup pane',
-    'devops Aufräumen: Plan fertig — im Aufräumen-Bereich prüfen',
-    'devops limpieza: plan listo — revísalo en el panel de limpieza',
-    'devops nettoyage : plan prêt — à vérifier dans le volet Nettoyage',
-    'devops limpeza: plano pronto — revise no painel de limpeza',
-    'devops 整理: プランができました — 整理ペインで確認してください',
-    'devops 清理：计划已就绪 — 请在清理面板中查看',
+    'devops cleanup: plan ready — review it in the band',
+    'devops Aufräumen: Plan fertig — im Band prüfen',
+    'devops limpieza: plan listo — revísalo en la banda',
+    'devops nettoyage : plan prêt — à vérifier dans la bande',
+    'devops limpeza: plano pronto — revise na faixa',
+    'devops 整理: プランができました — バンドで確認してください',
+    'devops 清理：计划已就绪 — 请在横栏中查看',
   ],
   toastDone: [
-    'devops cleanup: done — result in the Cleanup pane',
-    'devops Aufräumen: erledigt — Ergebnis im Aufräumen-Bereich',
-    'devops limpieza: hecho — resultado en el panel de limpieza',
-    'devops nettoyage : terminé — résultat dans le volet Nettoyage',
-    'devops limpeza: concluída — resultado no painel de limpeza',
-    'devops 整理: 完了 — 結果は整理ペインにあります',
-    'devops 清理：完成 — 结果见清理面板',
+    'devops cleanup: done — result in the band',
+    'devops Aufräumen: erledigt — Ergebnis im Band',
+    'devops limpieza: hecho — resultado en la banda',
+    'devops nettoyage : terminé — résultat dans la bande',
+    'devops limpeza: concluída — resultado na faixa',
+    'devops 整理: 完了 — 結果はバンドにあります',
+    'devops 清理：完成 — 结果见横栏',
   ],
   toastFailed: [
     'devops cleanup: the subagent stopped without a result',
@@ -776,13 +794,13 @@ const TABLE = {
     'devops 清理：子代理未给出结果就停止了',
   ],
   toastLearn: [
-    'devops learn: unmerged work keeps being left behind — offer in the Cleanup pane',
-    'devops learn: ungemergte Arbeit bleibt wiederholt liegen — Angebot im Aufräumen-Bereich',
-    'devops learn: el trabajo sin fusionar se queda atrás con frecuencia — oferta en el panel de limpieza',
-    'devops learn : du travail non fusionné reste souvent en plan — proposition dans le volet Nettoyage',
-    'devops learn: trabalho sem merge fica para trás com frequência — oferta no painel de limpeza',
-    'devops learn: 未マージの作業が繰り返し残っています — 整理ペインに提案があります',
-    'devops learn：未合并的工作反复被遗留 — 清理面板中有建议',
+    'devops learn: unmerged work keeps being left behind — offer in the band',
+    'devops learn: ungemergte Arbeit bleibt wiederholt liegen — Angebot im Band',
+    'devops learn: el trabajo sin fusionar se queda atrás con frecuencia — oferta en la banda',
+    'devops learn : du travail non fusionné reste souvent en plan — proposition dans la bande',
+    'devops learn: trabalho sem merge fica para trás com frequência — oferta na faixa',
+    'devops learn: 未マージの作業が繰り返し残っています — バンドに提案があります',
+    'devops learn：未合并的工作反复被遗留 — 横栏中有建议',
   ],
   permission: ['Permission request waiting', 'Berechtigungsanfrage wartet', 'Solicitud de permiso en espera', "Demande d'autorisation en attente", 'Pedido de permissão aguardando', '権限リクエストが待機中', '权限请求等待中'],
   finishedAfter: ['{what} finished after {t}', '{what} nach {t} fertig', '{what} terminó tras {t}', '{what} terminé après {t}', '{what} terminou após {t}', '{what} が {t} で完了', '{what} 用时 {t} 完成'],
@@ -797,7 +815,9 @@ const TABLE = {
   btnDiscard: ['Discard plan', 'Plan verwerfen', 'Descartar plan', 'Abandonner le plan', 'Descartar plano', 'プランを破棄', '放弃计划'],
   btnClose: ['Close', 'Schließen', 'Cerrar', 'Fermer', 'Fechar', '閉じる', '关闭'],
   btnPlan: ['Plan cleanup', 'Aufräumen planen', 'Planificar limpieza', 'Planifier le nettoyage', 'Planejar limpeza', '整理を計画', '规划清理'],
-  btnReview: ['Review cleanup plan', 'Aufräum-Plan prüfen', 'Revisar el plan de limpieza', 'Vérifier le plan de nettoyage', 'Revisar o plano de limpeza', '整理プランを確認', '查看清理计划'],
+  planSummary: ['{n} actions · {d} need your decision', '{n} Aktionen · {d} brauchen deine Entscheidung', '{n} acciones · {d} requieren tu decisión', '{n} actions · {d} demandent ta décision', '{n} ações · {d} precisam da sua decisão', '{n} 件のアクション · {d} 件は判断が必要', '{n} 项操作 · {d} 项需要你决定'],
+  cleanupDetails: ['Details', 'Details', 'Detalles', 'Détails', 'Detalhes', '詳細', '详情'],
+  btnExpand: ['Open in pane', 'Im Bereich öffnen', 'Abrir en el panel', 'Ouvrir dans le volet', 'Abrir no painel', 'ペインで開く', '在面板中打开'],
   runPlanning: ['planning…', 'plant …', 'planificando…', 'planification…', 'planejando…', '計画中…', '规划中…'],
   runApplying: ['applying…', 'führt aus …', 'aplicando…', 'application…', 'aplicando…', '実行中…', '执行中…'],
   learnOffer: [
