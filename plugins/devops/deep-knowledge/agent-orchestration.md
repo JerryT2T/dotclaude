@@ -307,6 +307,16 @@ Every spawned agent MUST receive:
 13. **Browsers never take focus** — scripted browsers run headless, also for a
    real GPU; headed only on request or while the user is away, never activated
    (`browser-tool-strategy.md` § Scripts that start their own browser, #1099).
+14. **No process outlives the agent** — the instruction *"Write and change
+   files with Write / Edit, never with a shell heredoc or `python3 -` on
+   stdin. Before you report, stop every background command and process you
+   started (dev servers, test runs, watchers spawned by a hook you ran from a
+   temp copy); report 'nothing left running'."* A heredoc that never closes
+   keeps its shell waiting for stdin as a child of the session: the Desktop
+   app then counts the whole session as running ("läuft noch" on archive)
+   while every card says nothing is pending (2026-11-20, a `python3 -`
+   heredoc hung for 3 h). Reaping what an agent still left is Step 7 of
+   `skills/auto-agents/SKILL.md`.
 
 ### Interaction Directives
 

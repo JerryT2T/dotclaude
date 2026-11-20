@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.390.1] — 2026-11-20
+
+### Fixed
+- **A finished session no longer shows as running.** Agents now write files with Write/Edit instead of shell heredocs and stop every process they started before reporting; `auto-agents` reaps leftover agent commands and processes started from temp plugin copies before the card. A hung `python3 -` heredoc of a background agent had kept a session "running" for hours (Desktop archive: „läuft noch“) while no card listed anything pending.
+
 ## [0.390.0] — 2026-11-20
 
 ### Fixed

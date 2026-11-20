@@ -334,6 +334,8 @@ After the last wave (or when a `needs-decision` stops the run):
 
 0. **Integration proof** — `node "{PLUGIN_ROOT}/scripts/integration-check.js" --integration <integration-branch> --sub <parts> --remove`. Pass the run's own parts as `--sub <branch|path,...>`; `--remove` deletes only those (or branches carrying the whole run slug) and only when landed, clean, with own commits and idle ≥30 min and only when the shared age/count rule (`autoCleanMinAgeDays` / `autoCleanKeepNewest`, landed in the default branch, pushed) says it is due — a part not yet due stays as `kept-for-inspection` for `ship_hygiene`, never deleted by hand (a part already removed after its merge in Step 6 is simply absent) — other runs' agent worktrees are listed, never removed. Its `open` line ("ungelandet: N Teile" + paths) goes into `open:` verbatim; unlanded or uncommitted agent work is never `done:`.
 
+0.5. **Nothing left running** — an agent "waiting on its own background work", or a process a spot test started from a temp plugin copy, keeps the session "running" (Desktop: „läuft noch“ on archive): stop it (`TaskStop`, else kill the tree) before the caller's card. Why and prevention: `agent-orchestration.md` § Agent Prompt Template item 14.
+
 1. Summarize what each agent accomplished
 2. List any unresolved findings or open questions
 3. Show final branch/PR state
