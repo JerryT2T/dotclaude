@@ -15,11 +15,12 @@
  *   silent. Never decides the permission. Fail-open.
  */
 
-require('../lib/plugin-guard');
+const { sessionOptedOut } = require('../lib/plugin-guard');
 
 const W = require('../lib/approval-wait');
 
 function main(hook) {
+  if (sessionOptedOut(hook.session_id)) return null; // devops off for this session
   if (!W.record(hook)) return null;
   const transcript = W.mainTranscript(hook);
   const { readCurrentTitle } = require('../lib/session-title');

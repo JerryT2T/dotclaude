@@ -1,75 +1,50 @@
 #!/usr/bin/env node
 /**
  * @module plugin-guard
- * @version 0.4.0
+ * @version 0.5.0
  * @description Project isolation guard — self-executing on require().
- *   Checks whether devops plugin is enabled for the current project
- *   (project settings) or globally (user settings). If neither, exits
- *   silently with code 0 so Claude Code does not treat it as a hook failure.
+ *   Asks lib/devops-optout.js whether devops is on for this project and exits
+ *   silently with code 0 when it is not, so Claude Code does not treat it as
+ *   a hook failure.
  *
- *   A plugin loaded ad hoc — `claude --plugin-dir <src>` or the
- *   `claude plugin eval` sandbox, which runs with a fresh HOME — is enabled
- *   in no settings file at all, yet Claude Code only invokes its hooks
- *   because it was explicitly loaded. Such a load runs the hook from a path
- *   outside the installed-plugin cache, and that is the tell: hooks running
- *   from outside `~/.claude/plugins/cache/` pass the guard. Before 0.2.0
- *   every hook was a silent no-op in an eval run, so behavioral evals could
- *   never see hook-injected context.
+ *   Precedence (Claude Code's): session flag > settings.local.json >
+ *   settings.json > user settings — the first explicit true/false for a
+ *   devops key decides, and an explicit `false` silences EVERY copy of the
+ *   plugin (cache, the account-synced copy, --plugin-dir). The guard runs
+ *   before stdin is read, so the SESSION flag is checked by the dispatcher
+ *   and the permission hooks (`sessionOptedOut`), where `session_id` is known.
  *
- *   Once the plugin is enabled the guard also starts lib/hook-telemetry.js
+ *   No file deciding: a plugin loaded ad hoc — `claude --plugin-dir <src>`,
+ *   the `claude plugin eval` sandbox (fresh HOME), the account copy — runs
+ *   from outside `~/.claude/plugins/cache/` and passes; the cache copy is off
+ *   unless enabled. Corrupt settings JSON is skipped, never read as "off".
+ *
+ *   Once the plugin is on the guard also starts lib/hook-telemetry.js
  *   (fail-safe run log, see there) — every hook requires this file first.
  *
  * Usage (first line in any hook script):
  *   require('../lib/plugin-guard');
  */
 
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
-
-const PLUGIN_KEY_LEGACY_V1 = 'dotclaude-dev-ops@Jerry0022';
-const PLUGIN_KEY_LEGACY_V2 = 'dotclaude-dev-ops@dotclaude-dev-ops';
-const PLUGIN_KEY = 'devops@dotclaude';
+const O = require('./devops-optout');
 
 // Project settings live at the repo root, not wherever the session cwd has
-// wandered to — a session in a subdirectory must not silence every hook of a
-// per-project-enabled plugin (lib/project-root.js).
-const projectDir = require('./project-root').projectClaudeDir(process.cwd());
-const projectSettings = path.join(projectDir, 'settings.json');
-const projectLocalSettings = path.join(projectDir, 'settings.local.json');
-const globalSettings = path.join(os.homedir(), '.claude', 'settings.json');
-
-function isEnabledInAny(settingsPath) {
-  try {
-    const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
-    if (!settings.enabledPlugins) return false;
-    return !!(settings.enabledPlugins[PLUGIN_KEY] || settings.enabledPlugins[PLUGIN_KEY_LEGACY_V2] || settings.enabledPlugins[PLUGIN_KEY_LEGACY_V1]);
-  } catch {
-    return false;
-  }
-}
-
-function realpathOr(p) {
-  try { return fs.realpathSync.native ? fs.realpathSync.native(p) : fs.realpathSync(p); }
-  catch { return path.resolve(p); }
-}
-
-/**
- * True when the running hook was loaded from a source dir, not the install
- * cache. Both sides go through realpath so a junction, a symlinked cache or
- * a HOME≠USERPROFILE mismatch cannot flip the answer either way (redteam #15).
- */
-function isAdHocLoad() {
-  const root = process.env.CLAUDE_PLUGIN_ROOT;
-  if (!root) return false;
-  const cacheDir = realpathOr(path.join(os.homedir(), '.claude', 'plugins', 'cache'));
-  const rel = path.relative(cacheDir, realpathOr(root));
-  return rel.startsWith('..') || path.isAbsolute(rel);
-}
-
-if (!isEnabledInAny(projectSettings) && !isEnabledInAny(projectLocalSettings)
-    && !isEnabledInAny(globalSettings) && !isAdHocLoad()) {
+// wandered to (lib/project-root.js — resolve() applies it).
+if (!O.resolve({ cwd: process.cwd(), pluginRoot: process.env.CLAUDE_PLUGIN_ROOT }).on) {
   process.exit(0);
 }
 
+/**
+ * True when the session `sessionId` was switched off ("devops only off for
+ * this session"). For the hooks that parse their payload.
+ * @param {string} [sessionId]
+ */
+function sessionOptedOut(sessionId) {
+  if (!sessionId || typeof sessionId !== 'string') return false;
+  try { return require('fs').existsSync(O.sessionFlagPath(require('os').homedir(), sessionId)); }
+  catch { return false; }
+}
+
 try { require('./hook-telemetry').start(); } catch { /* telemetry is optional */ }
+
+module.exports = { sessionOptedOut };

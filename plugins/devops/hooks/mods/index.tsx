@@ -152,6 +152,36 @@ import {
   CONTEXT_SHOW_PERCENT,
 } from './format'
 import { featureAllowed, homeDir } from './gate'
+import { readOptState, switchOff, switchOn } from './optout'
+import type { OptState } from './optout'
+
+/** The switch popup: OFF form while devops is on (session / project / cancel), ON form while it is off. */
+function optPopupEl($: EngineInterface, e: any, loc: Locale, opt: OptState): any {
+  const { Box, Button, Text } = $.ui.resolve(e)
+  const desktop = e.surface !== 'terminal'
+  const mode = opt.on ? 'off' : 'on'
+  return (
+    <Box key="optout-row" flexDirection="row">
+      <Box key="optout-popup" flexDirection="column" rowGap={1} paddingX={1} borderStyle="round" borderColor={DIVIDER} {...(desktop ? { width: INFO_WIDTH } : {})}>
+        <Text key="optout-title" bold>{tr(loc, mode === 'off' ? 'optOffTitle' : 'optOnTitle')}</Text>
+        <Box key="optout-choices" flexDirection="row" alignItems="center" columnGap={1} flexWrap="wrap">
+          {mode === 'off' ? (
+            [
+              <Button key="optout-session" label={tr(loc, 'optSession')} onPress={() => pressOpt($, 'off', 'session')} />,
+              <Button key="optout-project" label={tr(loc, 'optProject')} onPress={() => pressOpt($, 'off', 'project')} />,
+            ]
+          ) : (
+            [
+              opt.sessionOff ? <Button key="optout-session" label={tr(loc, 'optOnSession')} onPress={() => pressOpt($, 'on', 'session')} /> : null,
+              opt.projectOff ? <Button key="optout-project" label={tr(loc, 'optOnProject')} onPress={() => pressOpt($, 'on', 'project')} /> : null,
+            ]
+          )}
+          <Button key="optout-cancel" plain label={tr(loc, 'optCancel')} onPress={() => toggleOptPopup($, false)} />
+        </Box>
+      </Box>
+    </Box>
+  )
+}
 
 export const AGENTS_PANE = 'devops-agents'
 export const SHIP_PANE = 'devops-ship'
@@ -401,6 +431,37 @@ async function loadInfo($: EngineInterface): Promise<InfoData> {
     version: manifest && typeof manifest.version === 'string' ? manifest.version : '',
     at: now,
   }
+}
+
+// --- devops off / on (concept 20261120-1805-devops-optout, decision d-band = popup, d-back = chip) ---
+// The engine has no modal: the "popup" is a bordered box in the band (same family as the info card) with the three
+// choices as Buttons. State is read from the same files the hooks' resolver reads (optout.ts), cached for two seconds.
+let optPopup = false
+let optCache: { at: number; v: OptState } | null = null
+
+async function optNow($: EngineInterface): Promise<OptState> {
+  const now = await $.clock.now()
+  if (optCache && now - optCache.at < 2000) return optCache.v
+  const v = await readOptState($, await homeDir($), await repoRoot($), await $.session.id().catch(() => ''))
+  optCache = { at: now, v }
+  return v
+}
+
+async function pressOpt($: EngineInterface, mode: 'off' | 'on', scope: 'session' | 'project'): Promise<void> {
+  const loc = (await sharedNow($)).loc
+  const root = await repoRoot($)
+  const sid = await $.session.id().catch(() => '')
+  const ok = mode === 'off' ? await switchOff($, scope, { home: await homeDir($), root, sid, now: await $.clock.now() }) : await switchOn($, scope, { root, sid })
+  optPopup = false
+  optCache = null
+  const text = !ok ? tr(loc, 'toastOptFailed') : mode === 'on' ? tr(loc, 'toastOptOn') : tr(loc, scope === 'session' ? 'toastOptOffSession' : 'toastOptOffProject')
+  $.ui.toast(text, { timeoutMs: 6000 })
+  $.ui.invalidate('ui.render')
+}
+
+function toggleOptPopup($: EngineInterface, openIt: boolean): void {
+  optPopup = openIt
+  $.ui.invalidate('ui.render')
 }
 
 /** A press on the status element (or /devops): open the card with fresh figures, or close it. */
@@ -996,6 +1057,8 @@ export const register: Register = on => {
     gate = null
     bandMarkAt = 0
     batchCache = { at: 0, view: null }
+    optPopup = false
+    optCache = null
     shared = null
     const started = await next(e)
     if (!(await open($))) return started
@@ -1535,6 +1598,7 @@ export const register: Register = on => {
   // the same words as its tail; the card opens with /devops there.
   on('ui.render', { component: 'PromptHint' }, async ($, e, next) => {
     if (!(await open($))) return next(e)
+    if (!(await optNow($)).on) return next(e) // off: the band's chip is the only devops element
     const loc = (await sharedNow($)).loc
     // (Not `h`: that name is the JSX factory.)
     const state = await read($, health)
@@ -1565,6 +1629,8 @@ export const register: Register = on => {
           {/* The word in the engine hint's look (white, body size), not the plain Button's dimmed label. */}
           <Text key="devops-word" size="body" color="#ffffff">{' devops'}</Text>
         </Button>
+        {/* One press from the visible devops label to the opt-out question (session or project). */}
+        <Button key="devops-optout" plain label="⏻" onPress={() => toggleOptPopup($, !optPopup)} />
         {note && <Text key="devops-note" dimColor={ok} {...(ok ? {} : { color: STATUS_RED })}>{note}</Text>}
       </Box>
     )
@@ -1573,6 +1639,21 @@ export const register: Register = on => {
   // The card's answer and its result lines never show here: they stay inline in the transcript.
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     if (e.props.hasSurvey || !(await open($))) return next(e)
+    const opt = await optNow($)
+    if (!opt.on) {
+      // Off (project or session): only the chip with its way back, nothing else of the band.
+      const locOff = (await sharedNow($)).loc
+      const { Box: OBox, Button: OButton, Text: OText } = $.ui.resolve(e)
+      return (
+        <OBox key="band" flexDirection="column" rowGap={1}>
+          {optPopup && optPopupEl($, e, locOff, opt)}
+          <OBox key="devops-off" flexDirection="row" alignItems="center" columnGap={2}>
+            <OText key="devops-off-label" dimColor>{tr(locOff, opt.scope === 'session' ? 'optChipSession' : 'optChipProject')}</OText>
+            <OButton key="optout-enable" label={tr(locOff, 'optEnable')} onPress={() => toggleOptPopup($, !optPopup)} />
+          </OBox>
+        </OBox>
+      )
+    }
     await touchBandMarker($, await $.clock.now())
     const sh = await sharedNow($)
     const loc = sh.loc
@@ -1608,7 +1689,7 @@ export const register: Register = on => {
     // Idle and nothing due (no cleanup, no context worth a glance, no budget bar, no batch collection, no info card): the band stays away.
     // #1150: a stopped turn is a state worth the band on its own — the user must see that nothing runs any more.
     const halt = idle ? await read($, halted) : null
-    if (idle && !cv && !bars.length && !bt && !infoData && !rc && !(halt && halt.aborted) && !(ring !== null && ring >= CONTEXT_SHOW_PERCENT)) return next(e)
+    if (idle && !cv && !bars.length && !bt && !infoData && !optPopup && !rc && !(halt && halt.aborted) && !(ring !== null && ring >= CONTEXT_SHOW_PERCENT)) return next(e)
     const { Box, Button, Text } = $.ui.resolve(e)
     // Desktop: the card's animated SVG (bars, hourglass, ring) at a fixed size; the terminal has no Svg, so glyphs.
     const desktop = e.surface !== 'terminal'
@@ -1679,6 +1760,7 @@ export const register: Register = on => {
         <Button key="recap-close" plain label="✕" onPress={() => update($, recap, r => ({ ...r, shown: null }))} />
       </Box>
     ) : null
+    const optEl = optPopup ? optPopupEl($, e, loc, opt) : null
     // The info card of the status element: left-aligned, the band's first row, so it sits right above the prompt's left edge.
     const infoEl = (() => {
       if (!infoData) return null
@@ -1716,7 +1798,11 @@ export const register: Register = on => {
                 </Box>
               </Box>
             ))}
-            <Text key="info-foot" {...S.small}>{tr(loc, 'infoFoot')}</Text>
+            <Box key="info-foot-row" flexDirection="row" alignItems="center" columnGap={2}>
+              <Text key="info-foot" {...S.small}>{tr(loc, 'infoFoot')}</Text>
+              <Box flexGrow={1} />
+              <Button key="optout-open" plain label={tr(loc, 'optOffBtn')} onPress={() => toggleOptPopup($, !optPopup)} />
+            </Box>
           </Box>
         </Box>
       )
@@ -1790,6 +1876,7 @@ export const register: Register = on => {
       return (
         <Box key="band" flexDirection="column" rowGap={1}>
           {recapEl}
+          {optEl}
           {infoEl}
           <Box key="idle" flexDirection="row" alignItems="center" columnGap={2}>
             {batchEl}
@@ -1908,6 +1995,7 @@ export const register: Register = on => {
       return (
         <Box key="band" flexDirection="column" rowGap={1}>
           {recapEl}
+          {optEl}
           {infoEl}
           {batchEl}
           {workEl}
@@ -1936,6 +2024,7 @@ export const register: Register = on => {
     return (
       <Box key="band" flexDirection="column" rowGap={1}>
         {recapEl}
+          {optEl}
           {infoEl}
         {batchEl}
         <Box key="zones" position="relative" flexDirection="row" columnGap={2}>

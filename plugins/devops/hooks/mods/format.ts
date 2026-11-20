@@ -884,6 +884,21 @@ const TABLE = {
   noteCounted7: ['counted · 7 days', 'gezählt · 7 Tage', 'contado · 7 días', 'compté · 7 jours', 'contado · 7 dias', '集計 · 7 日間', '计数 · 7 天'],
   infoFoot: ['From local logs · no model call', 'Aus lokalen Protokollen · kein Modellaufruf', 'De registros locales · sin llamada al modelo', 'Depuis les journaux locaux · aucun appel au modèle', 'De registros locais · sem chamada ao modelo', 'ローカルのログから · モデル呼び出しなし', '来自本地日志 · 不调用模型'],
   infoEmpty: ['No savings logged yet.', 'Noch keine Ersparnis protokolliert.', 'Aún no hay ahorros registrados.', 'Aucune économie enregistrée pour l’instant.', 'Nenhuma economia registrada ainda.', 'まだ節約の記録がありません。', '尚无节省记录。'],
+  optOffBtn: ['Switch devops off …', 'devops ausschalten …', 'Apagar devops …', 'Désactiver devops …', 'Desligar devops …', 'devops をオフにする …', '关闭 devops …'],
+  optOffTitle: ['Switch devops off', 'devops ausschalten', 'Apagar devops', 'Désactiver devops', 'Desligar devops', 'devops をオフにする', '关闭 devops'],
+  optOnTitle: ['Switch devops on', 'devops einschalten', 'Encender devops', 'Activer devops', 'Ligar devops', 'devops をオンにする', '开启 devops'],
+  optSession: ['Only this session', 'Nur diese Session', 'Solo esta sesión', 'Seulement cette session', 'Só esta sessão', 'このセッションのみ', '仅本次会话'],
+  optProject: ['For this project (permanent)', 'Für dieses Projekt (dauerhaft)', 'Para este proyecto (permanente)', 'Pour ce projet (permanent)', 'Para este projeto (permanente)', 'このプロジェクト（恒久）', '此项目（永久）'],
+  optCancel: ['Cancel', 'Abbrechen', 'Cancelar', 'Annuler', 'Cancelar', 'キャンセル', '取消'],
+  optOnSession: ['On for this session', 'Für diese Session einschalten', 'Encender en esta sesión', 'Activer pour cette session', 'Ligar nesta sessão', 'このセッションでオン', '本次会话开启'],
+  optOnProject: ['On for this project', 'Für dieses Projekt einschalten', 'Encender en este proyecto', 'Activer pour ce projet', 'Ligar neste projeto', 'このプロジェクトでオン', '此项目开启'],
+  optChipSession: ['devops · off (session)', 'devops · aus (Session)', 'devops · apagado (sesión)', 'devops · désactivé (session)', 'devops · desligado (sessão)', 'devops · オフ（セッション）', 'devops · 已关（会话）'],
+  optChipProject: ['devops · off (project)', 'devops · aus (Projekt)', 'devops · apagado (proyecto)', 'devops · désactivé (projet)', 'devops · desligado (projeto)', 'devops · オフ（プロジェクト）', 'devops · 已关（项目）'],
+  optEnable: ['switch on', 'einschalten', 'encender', 'activer', 'ligar', 'オンにする', '开启'],
+  toastOptOffSession: ['devops is off for this session — hooks stay silent from the next event', 'devops ist für diese Session aus — Hooks schweigen ab dem nächsten Ereignis', 'devops está apagado en esta sesión — los hooks callan desde el próximo evento', 'devops est désactivé pour cette session — les hooks se taisent dès le prochain événement', 'devops está desligado nesta sessão — os hooks se calam a partir do próximo evento', 'このセッションの devops はオフ — 次のイベントからフックは沈黙します', '本次会话已关闭 devops — 从下一个事件起钩子静默'],
+  toastOptOffProject: ['devops is off for this project (.claude/settings.local.json)', 'devops ist für dieses Projekt aus (.claude/settings.local.json)', 'devops está apagado en este proyecto (.claude/settings.local.json)', 'devops est désactivé pour ce projet (.claude/settings.local.json)', 'devops está desligado neste projeto (.claude/settings.local.json)', 'このプロジェクトの devops はオフ (.claude/settings.local.json)', '此项目已关闭 devops (.claude/settings.local.json)'],
+  toastOptOn: ['devops is on again', 'devops ist wieder an', 'devops vuelve a estar encendido', 'devops est de nouveau actif', 'devops está ligado de novo', 'devops が再びオンになりました', 'devops 已重新开启'],
+  toastOptFailed: ['devops could not be switched here — use /plugin', 'devops ließ sich hier nicht umschalten — /plugin nutzen', 'No se pudo cambiar devops aquí — usa /plugin', 'Impossible de basculer devops ici — utilisez /plugin', 'Não foi possível alternar o devops aqui — use /plugin', 'ここでは切り替えできません — /plugin を使用', '无法在此切换 devops — 请用 /plugin'],
 } as const
 
 export type StrKey = keyof typeof TABLE

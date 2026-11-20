@@ -15,7 +15,7 @@
  *   anyway). Fail-open.
  */
 
-require('../lib/plugin-guard');
+const { sessionOptedOut } = require('../lib/plugin-guard');
 
 const W = require('../lib/approval-wait');
 
@@ -35,6 +35,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
  * @returns {Promise<{block: string}|null>}
  */
 async function main(hook, { pollMs = POLL_MS, deadlineMs = DEADLINE_MS } = {}) {
+  if (sessionOptedOut(hook.session_id)) return null; // devops off for this session
   const entry = W.record(hook);
   if (!entry) return null;
   const end = Date.now() + deadlineMs;

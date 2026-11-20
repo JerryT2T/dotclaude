@@ -86,11 +86,12 @@ const POINTERS = Object.freeze([
     file: 'devops-config.md',
     legacy: null,
     extension: false,
-    topic: 'devops plugin settings, per project or global (e.g. when the cleanup hint appears, whether old branches/worktrees are removed automatically) — change them with scripts/devops-config.js, never by editing JSON',
+    topic: 'devops plugin settings, per project or global (e.g. when the cleanup hint appears, whether old branches/worktrees are removed automatically) — change them with scripts/devops-config.js, never by editing JSON; also switching devops off/on for a project or session (scripts/devops-optout.js)',
     phrases: Object.freeze([
       'devops config', 'devops settings', 'devops einstellungen', 'plugin einstellungen', 'plugin settings',
       'cleanup einstellen', 'cleanup settings', 'cleanup konfigurieren', 'aufräumen einstellen',
       'nicht automatisch aufräumen', 'automatisch aufräumen', 'aufräum-hinweis', 'cleanup hint',
+      'devops aus', 'devops ausschalten', 'devops abschalten', 'devops wieder an', 'devops an', 'devops opt-out', 'disable devops', 'turn off devops',
     ]),
   }),
 ]);

@@ -9,6 +9,9 @@
 
 import { z } from "zod";
 import { execFileSync } from "node:child_process";
+import { existsSync } from "node:fs";
+import { createRequire } from "node:module";
+import { join } from "node:path";
 import { git, gitStrict, detectDefaultBranch, NETWORK_TIMEOUT } from "../lib/git.js";
 import { createRelease, releaseExists } from "../lib/github.js";
 import { parseChannelTag, compareVersions } from "../lib/channels.js";
@@ -37,6 +40,39 @@ export const schema = z.object({
   tagBudgetMs: z.number().int().min(0).max(600_000).default(120_000).describe("Wall-clock cap for ALL tag push/verify retries in this call. 0 disables the cap. Bounds the nested loops so a promotion cannot hang for minutes on an unreachable remote"),
   cwd: z.string().describe("Working directory of the target repo (required — must be passed by the caller)"),
 });
+
+/**
+ * Gate for promotion to beta / stable (never alpha, never ship_release): the
+ * real-Claude opt-out check (evals/optout-live-check.js). Applies only when the
+ * target repo IS the plugin source (the script is there); a consumer repo
+ * promoting its own tags is not our business. Fail-closed: a failing OR
+ * inconclusive check blocks. There is deliberately no skip parameter — this
+ * tool has no skip convention, and a skip for a release gate needs the user's
+ * word, not a flag an agent can set. `params.optoutCheck` injects a stub (tests).
+ * Returns null (go) or an error string (blocked).
+ */
+export function optoutGateError(cwd, check) {
+  let run = check;
+  if (!run) {
+    const script = join(cwd, "plugins", "devops", "evals", "optout-live-check.js");
+    if (!existsSync(script)) return null;
+    run = () => createRequire(import.meta.url)(script).runCheck({ billing: "auto" });
+  }
+  let res;
+  try {
+    res = run();
+  } catch (e) {
+    res = { status: "inconclusive", reason: e.message?.slice(0, 200) || "check threw" };
+  }
+  if (res && res.status === "pass") return null;
+  const why = res?.reason || "no result";
+  const kind = res?.status === "fail" ? "FAILED" : "could not run (inconclusive)";
+  return (
+    `opt-out-live-check ${kind}: ${why}. ` +
+    `Promotion to beta/stable blocked / Heben auf beta/stable blockiert: ein Projekt mit devops@dotclaude=false bekommt noch devops-Hooks. ` +
+    `Re-run: node plugins/devops/evals/optout-live-check.js (details: evals/README.md). Alpha ships are not gated.`
+  );
+}
 
 const ORDER = { alpha: 0, beta: 1, stable: 2 };
 
@@ -259,6 +295,10 @@ export async function handler(params) {
     if (ORDER[to] <= ORDER[from]) {
       return { ...result, success: false, error: `invalid promotion direction: ${from} → ${to}` };
     }
+
+    // 0. Live opt-out gate (beta / stable only — ORDER check above already excluded to=alpha).
+    const gate = optoutGateError(cwd, params.optoutCheck);
+    if (gate) return { ...result, success: false, error: gate, optoutGate: "blocked" };
 
     // 1. Resolve source tag → SHA (remote is the source of truth, never local state)
     const sourceTag = `${from}/v${version}`;
