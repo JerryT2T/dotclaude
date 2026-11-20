@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.391.0] — 2026-11-21
+
+### Added
+- auto-concept: **Live-Treue** switch in the feedback dock. Sticky per concept and Etappe, off by default. The next design rounds then show every untouched part exactly as live and changed or new parts fully polished. Live rounds carry a LIVE tab and a fidelity note. Live CSS is referenced and scoped to its design at build time, and the gate blocks unscoped rules and foreign assets in live rounds.
+
 ## [0.390.1] — 2026-11-20
 
 ### Fixed
