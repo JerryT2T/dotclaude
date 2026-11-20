@@ -871,6 +871,31 @@ test('B15 locales: one table, en de es fr pt ja zh, chosen by the Claude Code la
   expect(hourglassSvg()).toMatch(/⏳/)
 })
 
+test('#1170: the rail is the small fixed context column; the usage bars sit under the zones; all 4 card buttons are in the card column', async ($, on) => {
+  engine(on, { files: { '/.claude/orphan-report.json': ORPHAN_REPORT } })
+  const four = { ...CARD_DATA, pt: ['Erst testen', 'Dann shippen', 'Web-Guide starten'], bt: [
+    { l: 'Promote beta', i: 'rocket', p: 'promote beta', pr: 1 },
+    { l: 'Promote stable', i: 'rocket', p: 'promote stable' },
+    { l: 'Nachbessern', i: 'pencil', p: 'nachbessern' },
+    { l: 'Web-Guide starten', i: 'globe', p: 'guide' },
+  ] }
+  const result = CARD_RESULT.replace(JSON.stringify(CARD_DATA), JSON.stringify(four))
+  on('tool.call', () => ({ result: {}, text: result }))
+  await $.session.start({ cwd: REPO, surface: 'desktop', isInteractive: true })
+  await $.session.measure(MEASURE as any)
+  await $.tool.call({ tool: CARD_TOOL, summary: 'x' } as any)
+  const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  const rail = await band.find({ key: 'rail' })
+  expect(rail?.props.width).toBe(30) // no 34-cell bars column beside the ring any more (was 66)
+  expect(JSON.stringify(rail)).not.toMatch(/bar-5h/)
+  const main = await band.find({ key: 'main' })
+  for (let i = 0; i < 4; i++) expect(JSON.stringify(main)).toContain(`card-button-${i}`)
+  const zones = JSON.stringify(await band.find({ key: 'zones' }))
+  expect(zones).not.toMatch(/bar-5h/)
+  expect(await band.find({ key: 'budget' })).toBeDefined() // the bars row, under the zones
+  await band.unmount()
+})
+
 test('B1 B3 B4 B5 B7 band with a card: left card part, divider, right rail (ring + Compact), time in the top-right corner; CTA points only', async ($, on) => {
   const { seen } = engine(on, { files: { '/.claude/orphan-report.json': ORPHAN_REPORT, '/.claude/concept-active.json': '{"port":8791}' } })
   on('tool.call', () => ({ result: {}, text: CARD_RESULT }))

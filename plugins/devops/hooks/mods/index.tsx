@@ -221,8 +221,6 @@ const AMBER = '#e6c36a'
 const VIOLET = '#9d8cd6'
 const DIVIDER = '#353535'
 const RAIL_WIDTH = 30
-/** The budget bars' column in the rail (cells): the 220 px bar (BUDGET_BAR_SIZE) plus its label; fixed, bars or none. */
-const BARS_COL_WIDTH = 34
 // The hover overlay of the batch / mode hints: cells wide, opaque so it covers the buttons under it.
 const HINTS_WIDTH = 56
 // The batch row's unfolded list shows this many notes, then "+N more".
@@ -2100,19 +2098,11 @@ export const register: Register = on => {
             {points}
             {buttons}
           </Box>
-          {/* The divider spans the whole zone height; the bars column keeps its width with or without bars, so the divider never moves. */}
+          {/* The divider spans the whole zone height. #1170: the rail is the small fixed context column (ring, Compact,
+              cleanup) only; the usage bars moved under the zones, so the card column gets the band width minus 30 cells
+              instead of ~half of it (the 34-cell bars column beside the ring forced points and buttons to wrap and clip). */}
           <Box key="rail-divider" width={1} backgroundColor={DIVIDER} />
-          <Box key="rail" flexDirection="row" columnGap={2} width={Svg ? BARS_COL_WIDTH + 2 + RAIL_WIDTH : RAIL_WIDTH}>
-            {Svg && (
-              <Box key="rail-bars" flexDirection="column" rowGap={1} width={BARS_COL_WIDTH}>
-                {bars.map(bar => (
-                  <Box key={`bar-${bar.label}`} flexDirection="row" alignItems="center" columnGap={1}>
-                    <Text dimColor>{bar.label}</Text>
-                    <Svg source={budgetBarSvg(bar)} alt={budgetBarAlt(bar, loc)} width={BUDGET_BAR_SIZE.width} height={BUDGET_BAR_SIZE.height} isInteractive />
-                  </Box>
-                ))}
-              </Box>
-            )}
+          <Box key="rail" flexDirection="row" columnGap={2} width={RAIL_WIDTH} flexShrink={0}>
             <Box key="rail-ring" flexDirection="column" rowGap={1} width={RAIL_WIDTH}>
               {ringEl}
               {compactBtn}
@@ -2125,7 +2115,7 @@ export const register: Register = on => {
             </Box>
           )}
         </Box>
-        {!Svg && budgetEl}
+        {budgetEl}
       </Box>
     )
   })
