@@ -34,6 +34,7 @@ import {
   lineBudgetReport,
   cardSignature,
   isDuplicateNotificationCard,
+  textAfterShownCard,
   SUBSTANTIAL_CHARS,
   CARD_MARKER,
 } from "./card-guard.js";
@@ -1758,3 +1759,29 @@ describe("card widget recognized by its marker, not only its title (#713)", () =
     expect(deliveredCardText(tx)).toBe("");
   });
 });
+
+describe("#1166: generic widget title and the witnessed re-show", () => {
+  const generic = `${CARD_MARKER} Completion card ${CARD_MARKER}`;
+  test("the generic stand-in title is no signature; two such cards are never a duplicate", () => {
+    expect(cardSignature(generic)).toBeNull();
+    expect(isDuplicateNotificationCard(cardSignature(generic), cardSignature(generic))).toBe(false);
+  });
+  test("a real widget title still signs, and two equal titled cards stay duplicates", () => {
+    const titled = `${CARD_MARKER} Filter dialog moved ${CARD_MARKER}`;
+    expect(cardSignature(titled)).toBe(JSON.stringify({ title: "Filter dialog moved" }));
+    expect(isDuplicateNotificationCard(cardSignature(titled), cardSignature(titled))).toBe(true);
+  });
+  const reShown = [
+    { type: "user", message: { role: "user", content: [{ type: "text", text: "ship it" }] } },
+    { type: "assistant", message: { role: "assistant", content: [{ type: "tool_use", id: "w1", name: "mcp__visualize__show_widget", input: { title: "completion_card_body", widget_code: "<div><h3 class=\"card-title\">X</h3></div>" } }] } },
+    { type: "user", message: { role: "user", content: [{ type: "tool_result", tool_use_id: "w1", content: "ok" }] } },
+    { type: "assistant", message: { role: "assistant", content: [{ type: "text", text: "Nachsatz" }] } },
+  ].map((l) => JSON.stringify(l)).join("\n");
+  test("with the relay witness the line before the re-shown widget is not text after the card", () => {
+    expect(textAfterShownCard(reShown, `${CARD_MARKER} X ${CARD_MARKER}`)).toBe(false);
+  });
+  test("without the witness the same transcript still reports the trailing text (#886 kept)", () => {
+    expect(textAfterShownCard(reShown, "")).toBe(true);
+  });
+});
+

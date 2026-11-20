@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook stop.flow.guard
- * @version 0.14.0
+ * @version 0.14.1
  * @event Stop
  * @plugin devops
  * @description Per-turn completion card + validation enforcement (the validation
@@ -90,7 +90,7 @@ const {
   isSubstantialAnswer,
   cardDelivered,
   deliveredCardText,
-  textAfterCard,
+  textAfterShownCard,
   lastUserEntryIsNotification,
   lastNotificationCompleted,
   cardSinceTypedPrompt,
@@ -299,7 +299,10 @@ process.stdin.on('end', () => {
     openTasksKnown: silent ? false : Boolean(transcript),
     openTaskNames: openTasks,
     pendingAttested,
-    textAfterCard: (!silent && cardRendered) ? textAfterCard(transcript) : false,
+    // #1166: a witnessed re-show (the widget's own PostToolUse set
+    // card_widget_relay) is not in the transcript yet, so the scan would stop
+    // at the previous widget and count the line between as trailing prose.
+    textAfterCard: (!silent && cardRendered) ? textAfterShownCard(transcript, relayWitness) : false,
     // Active install root — the block reason names the offline renderer under it
     // for the case where the MCP server never connected this session.
     pluginRoot: process.env.CLAUDE_PLUGIN_ROOT || path.resolve(__dirname, '..', '..'),

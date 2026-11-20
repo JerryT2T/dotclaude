@@ -274,6 +274,17 @@ function deliveredCardText(transcriptContent) {
 }
 
 /**
+ * textAfterCard for the Stop hooks (#1166): with the relay witness set by the
+ * widget's own PostToolUse, the just-shown widget is not in the transcript yet
+ * and is the turn's last action — nothing can trail it, so the scan (which
+ * would stop at the previous widget) is skipped.
+ */
+function textAfterShownCard(transcriptContent, relayWitness) {
+  if (relayWitness) return false;
+  return textAfterCard(transcriptContent);
+}
+
+/**
  * Did the assistant write text AFTER the shown card (#886)? Scans back from the
  * end of the turn to the card (widget call or ✨ text block): any non-empty text
  * block met on the way is trailing prose. A render call met first means the
@@ -505,7 +516,10 @@ function cardSignature(cardText) {
   // Desktop (design § 4): the body lives in the widget and there is no
   // markdown — the title is then the only field to compare on.
   const title = extractCardTitle(cardText);
-  return title ? JSON.stringify({ title }) : null;
+  // #1166: the generic stand-in for an unreadable widget heading is no
+  // signature — two different compact widgets would otherwise look identical.
+  if (!title || title.trim() === GENERIC_WIDGET_TITLE) return null;
+  return JSON.stringify({ title });
 }
 
 /** True when a notification turn's new card is identical (by signature) to
@@ -1275,6 +1289,7 @@ module.exports = {
   cardDelivered,
   deliveredCardText,
   textAfterCard,
+  textAfterShownCard,
   isCardRenderCall,
   NO_OUTPUT_NUDGE_REPLY,
   widgetCardTitle,
