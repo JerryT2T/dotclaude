@@ -1,6 +1,6 @@
 /**
  * @module card-guard
- * @version 0.10.0
+ * @version 0.11.0
  * @description Pure decision logic for the completion-card enforcement flow,
  *   plus the validation half of the V&V gate. Split out of stop.flow.guard.js so
  *   the rules can be unit-tested without mocking stdin or temp files.
@@ -1268,12 +1268,66 @@ function safeReadTranscript(transcriptPath, tailBytes = TRANSCRIPT_TAIL_BYTES) {
     fd = fs.openSync(transcriptPath, 'r');
     const buf = Buffer.alloc(length);
     fs.readSync(fd, buf, 0, length, start);
-    return buf.toString('utf8');
+    const tail = buf.toString('utf8');
+    // #1165: one api-request blob line (>200 KB) can fill the whole window and
+    // push the user's prompt and the card out of it. Only then the tail is
+    // re-read without those lines; a transcript without them reads as before.
+    // A blob cut at the window start has lost its `type`, so a huge first
+    // (partial) line counts as a blob sign too.
+    const firstBreak = tail.indexOf('\n');
+    const hugeCut = start > 0 && (firstBreak === -1 || firstBreak > BLOB_CHUNK_BYTES);
+    if (!hugeCut && !tail.includes(API_REQUEST_TYPE)) return tail;
+    return readTailSkippingBlobs(fd, size, tailBytes);
   } catch {
     return '';
   } finally {
     if (fd !== undefined) try { fs.closeSync(fd); } catch {}
   }
+}
+
+/** The `type` prefix of the transcript's request-payload lines (`api-request-blob` and kin). */
+const API_REQUEST_TYPE = '"type":"api-request';
+/** How far back the blob-skipping read may scan at most, so a huge transcript stays bounded. */
+const BLOB_SCAN_CAP_BYTES = 16 * 1024 * 1024;
+const BLOB_CHUNK_BYTES = 64 * 1024;
+/** A line is a request blob when its head carries the type (the key order is not pinned). */
+const isBlobLine = (line) => line.slice(0, 200).includes(API_REQUEST_TYPE);
+
+/**
+ * Read backwards in chunks, keep whole lines that are not request blobs until
+ * `tailBytes` of them are kept, the file start is reached or the scan cap is
+ * hit. Splits only at line boundaries (0x0A is never inside a UTF-8 sequence).
+ */
+function readTailSkippingBlobs(fd, size, tailBytes) {
+  const kept = [];
+  let keptBytes = 0;
+  let pos = size;
+  let carry = Buffer.alloc(0);
+  while (pos > 0 && keptBytes < tailBytes && size - pos < BLOB_SCAN_CAP_BYTES) {
+    const len = Math.min(BLOB_CHUNK_BYTES, pos);
+    pos -= len;
+    const chunk = Buffer.alloc(len);
+    fs.readSync(fd, chunk, 0, len, pos);
+    const joined = Buffer.concat([chunk, carry]);
+    const parts = [];
+    let end = joined.length;
+    for (let i = joined.length - 1; i >= 0; i--) {
+      if (joined[i] !== 0x0a) continue;
+      parts.push(joined.subarray(i + 1, end));
+      end = i;
+    }
+    // Before the first newline: an incomplete line unless the file start is reached.
+    carry = joined.subarray(0, end);
+    if (pos === 0) { parts.push(carry); carry = Buffer.alloc(0); }
+    for (const p of parts) {
+      if (keptBytes >= tailBytes) break;
+      const line = p.toString('utf8');
+      if (isBlobLine(line)) continue;
+      kept.push(line);
+      keptBytes += p.length + 1;
+    }
+  }
+  return kept.reverse().join('\n');
 }
 
 module.exports = {
