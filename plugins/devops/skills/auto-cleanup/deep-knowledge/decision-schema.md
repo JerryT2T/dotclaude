@@ -19,9 +19,19 @@ cleanup-specific meaning is defined here.
 
 | `kind` | `choice` → action |
 |---|---|
-| `branch` | `Entfernen` → delete local (and the remote ref when `ort` has one); `Behalten` / missing → nothing |
-| `session-worktree` | `Entfernen` → remove the worktree directory (clean only), then the branch; `Behalten` / missing → nothing |
+| `branch` | `Entfernen` → delete local (and the remote ref when `ort` has one); `Integrieren` → integrate queue (Step 10b); `Neu umsetzen` → follow-up issue, branch kept; `Behalten` / missing → nothing |
+| `session-worktree` | `Entfernen` → remove the worktree directory (clean only), then the branch; `Integrieren` / `Neu umsetzen` as for `branch` (the worktree stays until the work landed); `Behalten` / missing → nothing |
 | `open-pr` | `Shippen` → ship queue (Step 10b); `Behalten` / missing → nothing |
+
+`Integrieren` and `Neu umsetzen` carry the content triage
+(`investigation.md` § Content triage) in the decision: `verdict`, `intention`,
+`date` and, for `Neu umsetzen`, the `spec`:
+
+```json
+{ "id": "br-kw-pages", "kind": "branch", "branch": "kw/pages", "ort": "lokal+remote",
+  "verdict": "REIMPLEMENT", "intention": "Pages-Navigation für /verse", "date": "2026-11-10",
+  "spec": "…", "choice": "Neu umsetzen" }
+```
 
 Rules:
 

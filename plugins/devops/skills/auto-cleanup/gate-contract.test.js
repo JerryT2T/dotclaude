@@ -236,3 +236,35 @@ describe("hook timeouts under load (#827)", () => {
     expect(h.onFailure).not.toBe("block");
   });
 });
+
+describe("auto-cleanup gate contract — content triage (#1162)", () => {
+  const INV = read("deep-knowledge", "investigation.md");
+  const SCHEMA = read("deep-knowledge", "decision-schema.md");
+  test("every ambiguous branch gets a content triage with one of five verdicts before any question", () => {
+    const s = flat(INV);
+    expect(s).toMatch(/## Content triage/);
+    for (const v of ["`LANDED`", "`SUPERSEDED`", "`MERGE`", "`REIMPLEMENT`", "`ASK`"]) expect(s, v).toContain(v);
+    expect(s).toMatch(/git cherry origin\/main <branch>/);
+    expect(s).toMatch(/git merge-tree --write-tree origin\/main <branch>/);
+    expect(section(SKILL, "## Step 7", "## Step 8")).toMatch(/content triage\*\* before any question/);
+  });
+  test("only LANDED with the landed proof becomes autonomous; SUPERSEDED stays a decision", () => {
+    const s = flat(INV);
+    expect(s).toMatch(/`LANDED` \|.*autonomous class \(Step 8a\)/);
+    expect(s).toMatch(/`SUPERSEDED` stays a decision, never autonomous/);
+  });
+  test("unlanded work is offered Integrieren / Neu umsetzen / Entfernen / Behalten, never a bare storage choice", () => {
+    const p = flat(PAGE);
+    expect(p).toMatch(/`Integrieren` · `Neu umsetzen` · `Entfernen` \(needs the extra `Unmerged` yes at execution\) · `Behalten`/);
+    expect(p).toMatch(/No option is a bare storage choice/);
+    expect(flat(INV)).toMatch(/never a storage question/);
+  });
+  test("the new choices have a defined action: Integrieren ships via do-ship, Neu umsetzen files an issue and keeps the branch", () => {
+    expect(flat(SCHEMA)).toMatch(/`Integrieren` → integrate queue \(Step 10b\); `Neu umsetzen` → follow-up issue, branch kept/);
+    const e = section(EXEC, "## Step 10b", "## Step 10c");
+    expect(e).toMatch(/`Integrieren` branches \(#1162\)\*\* join the same queue/);
+    expect(e).toMatch(/Skill\("devops:do-ship", args: "--cwd=<path> --keep --queued"\)/);
+    expect(e).toMatch(/`Neu umsetzen` branches\*\* never ship their old code/);
+    expect(section(SKILL, "## Step 10", "### Steps 10a")).toMatch(/"Integrieren" ships the branch through the ship queue, "Neu umsetzen" files a follow-up issue/);
+  });
+});

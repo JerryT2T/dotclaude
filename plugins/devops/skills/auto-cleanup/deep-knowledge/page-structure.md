@@ -25,18 +25,26 @@ commits, then the rest). Per topic:
 | Part | Content |
 |---|---|
 | Title | full branch name (the rail label may be shortened per auto-concept's rules) |
-| Short analysis | 2–4 lines: what the branch holds (own commits / files not in main), age, where it lives (`lokal` / `nur-remote` / `lokal+remote`), PR state, why it is not autonomous (e.g. "Session idle seit 4 Tagen, 37 Commits eigener Inhalt") |
+| Short analysis | 2–4 lines, content first: the branch's **intention** and **date**, the content-triage **verdict** with its evidence (`investigation.md` § Content triage — what main already has, what main rebuilt since, merge conflicts), then where it lives (`lokal` / `nur-remote` / `lokal+remote`) and PR state |
 | Facts | commits ahead, last commit, worktree path + clean/dirty, the squash cross-check result |
-| Recommendation | one line from `investigation.md` § Recommendation Logic |
+| Recommendation | the option the verdict recommends (§ Content triage), with its reason |
 | Decision | exactly one per topic (below) |
 
-Decision options per kind (2-state, no third "maybe"):
+A feature split across several branches (`kw/*`, agent sub-branches of one
+run) is ONE topic with one decision for the group, the branches listed in its
+facts.
+
+Decision options per kind (no third "maybe"):
 
 | Item | Options |
 |---|---|
-| Git-Session branch / idle session worktree | `Behalten` (recommended unless the analysis says the content is in main) · `Entfernen` (worktree directory, then branch) |
-| Unlanded branch | `Behalten` · `Entfernen` (needs the extra `Unmerged` yes at execution) |
+| Unlanded branch / idle session worktree with own content | `Integrieren` · `Neu umsetzen` · `Entfernen` (needs the extra `Unmerged` yes at execution) · `Behalten` — the verdict's option recommended |
+| Idle session worktree whose content is in main | `Behalten` · `Entfernen` (worktree directory, then branch) — `Entfernen` recommended |
 | Open PR | `Behalten` · `Shippen` (full `/do-ship`) |
+
+No option is a bare storage choice ("lokal/remote löschen") without the
+content summary above it; an `ASK` verdict states its question in the short
+analysis as content with its time context.
 
 Page header: repo name, path, default branch, "N autonom entfernt" (the
 Step 8a list, collapsed), and the audit line "N Refs geprüft, K Befunde" plus
