@@ -218,7 +218,17 @@ never re-run a completed step. The checkpoint records what the previous run
    declared item with a fresh regular id in the next round's spec and
    rewrite every `u{n}` reference in `assigned` / `order` to the new id —
    reserved `u\d+` ids never appear in an authored spec.
-5. Proceed to Step 5c (append next iteration with refined options that
+5. **Live-Treue:** `fidelity: "live"` in the payload makes the next round's
+   designs live rounds. The switch is sticky per Etappe, so every payload
+   carries its current state and the session keeps none. Before the round
+   brief, collect the `liveSource`: the files, the commit, the copied assets
+   and a screenshot, as `live-fidelity.md` § Live-Treue rounds
+   describes. A next round that is not a design round ignores the flag.
+   `"off"` or a missing field means a sketch round as before. A design
+   follow-up that would show the live app as boxes or a cut-out may suggest
+   the switch in ONE line of the round intro, once per concept. Claude never
+   turns it on itself: the cost is the user's choice.
+6. Proceed to Step 5c (append next iteration with refined options that
    reflect the Miteinbeziehen/Verwerfen choices)
 
 ## 5b · next-stage

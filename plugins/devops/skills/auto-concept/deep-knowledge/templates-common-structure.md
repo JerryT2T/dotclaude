@@ -1,4 +1,4 @@
-# Concept templates, part 02 of 51: Shared systems — common structure (all templates)
+# Concept templates, part 02 of 52: Shared systems — common structure (all templates)
 
 ## Common Structure (all templates)
 
@@ -511,8 +511,23 @@
                   placeholder="{{proto.feedback_general}}"></textarea>
         <div class="attach-slot" data-attach-slot="general"></div>
       </div>
+      <!-- Live-Treue switch (§ Feedback dock · Live-Treue switch): one
+           round-wide setting for the NEXT round, after the general note.
+           Not a [data-comment] field and data-no-persist: its own store
+           keeps it per concept and Etappe. -->
+      <div class="dock-fidelity" id="dock-fidelity" data-on="false">
+        <label class="fidelity-switch">
+          <input type="checkbox" id="fidelity-toggle" role="switch" data-no-persist>
+          <span class="fidelity-track" aria-hidden="true"></span>
+          <span class="fidelity-text"><strong>{{fidelity.label}}</strong><small>{{fidelity.hint}}</small></span>
+        </label>
+        <small class="fidelity-scope">{{fidelity.scope}}</small>
+      </div>
     </aside>
   </div>
+
+  <!-- Live-Treue chip: shown while the round on screen is a live round. -->
+  <div class="fidelity-chip" id="fidelity-chip" hidden><strong>{{fidelity.chip}}</strong><small id="fidelity-chip-note"></small></div>
 
   <!-- Content dimmer (all templates) — two jobs, one element.
        (1) Submitted-state focus shifter: after a submit, body.content-dimmed

@@ -32,6 +32,12 @@ While a view is active (§ Views (optional) below), the design and per-screen
 rows are replaced by a single per-view textarea, so the visible order
 becomes view → general.
 
+Below the general note, on every template, sits the **Live-Treue switch**. It
+is one setting for the next design rounds and not a note, so it is not a
+`[data-comment]` field. It is sticky per concept and Etappe, off by default,
+and hidden on the final report. Markup, storage and payload are in
+`templates-panel-fidelity.md`, the round it asks for in `live-fidelity.md`.
+
 The dock is toggled via the 💬 FAB and starts **collapsed** — the artefact,
 not an empty form, is what a concept opens on. The FAB stays visible AND
 clickable while the dock is open (clicking it toggles closed again). The

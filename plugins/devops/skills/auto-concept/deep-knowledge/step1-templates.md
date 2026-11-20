@@ -106,7 +106,8 @@ with an overview table carrying a recommendation column and jump links
    hides what would silently change: the reviewer approves the idea, and the
    implementation then drops or restyles parts nobody asked to touch. Read
    the element's current markup (engine docs or the app's source) before
-   mocking it.
+   mocking it. With the dock's Live-Treue switch on, this widens to the whole
+   view at live quality (`live-fidelity.md`).
 
    **Several competing visual directions** (e.g. 21 layout variants that
    don't fit a 340px card) are several **designs within the same `design`

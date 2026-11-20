@@ -1,4 +1,4 @@
-# Concept templates, part 10 of 51: Template: design — fullscreen layout, overlay panel, feedback dock
+# Concept templates, part 11 of 52: Template: design — fullscreen layout, overlay panel, feedback dock
 
 ## Layout — Fullscreen single-screen + Overlay Panel + Feedback Dock
 
@@ -470,8 +470,20 @@
                   placeholder="{{proto.feedback_general}}"></textarea>
         <div class="attach-slot" data-attach-slot="general"></div>
       </div>
+      <!-- Live-Treue switch — same markup as Common Structure. -->
+      <div class="dock-fidelity" id="dock-fidelity" data-on="false">
+        <label class="fidelity-switch">
+          <input type="checkbox" id="fidelity-toggle" role="switch" data-no-persist>
+          <span class="fidelity-track" aria-hidden="true"></span>
+          <span class="fidelity-text"><strong>{{fidelity.label}}</strong><small>{{fidelity.hint}}</small></span>
+        </label>
+        <small class="fidelity-scope">{{fidelity.scope}}</small>
+      </div>
     </aside>
   </div>
+
+  <!-- Live-Treue chip — same markup as Common Structure. -->
+  <div class="fidelity-chip" id="fidelity-chip" hidden><strong>{{fidelity.chip}}</strong><small id="fidelity-chip-note"></small></div>
 
   <!-- Shared content dimmer + frozen bar — see Common Structure for
        behavior + CSS. Both are page-level chrome and MUST be copied verbatim:

@@ -95,6 +95,8 @@ See `deep-knowledge/step1-templates.md` § 1a · Per-iteration choice. The templ
 
 See `deep-knowledge/step1-templates.md` § 1a · Design iteration authoring. Click-dummy wiring, screens as states, competing designs, single-screen, design system, annotation layer, optional views and the view-vs-decision-iteration rule of thumb.
 
+See `deep-knowledge/live-fidelity.md`. When the last payload carries `fidelity: "live"` (the dock switch, sticky per Etappe, default off), every design of the next round reproduces the untouched view exactly as live and draws changed or new parts fully polished. The rest of the round is unchanged. It needs the liveSource, `data-fidelity` + note, and live CSS by reference; it is not the Realitäts-Check.
+
 See `deep-knowledge/step1-templates.md` § 1a · Variant overview and orthogonality. ≥ 2 designs get the overview attributes (motto, three traits, icon, `data-design-set`, the optional Favourite); a view never re-asks the design choice, never lists the designs or their traits, never pre-decides one.
 See `deep-knowledge/step1-templates.md` § 1a · Orthogonality test. The pre-authoring test, the one-line "needed by" exception and gate P31.
 
