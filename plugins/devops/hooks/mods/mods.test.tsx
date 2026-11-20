@@ -2466,3 +2466,120 @@ test('budget bars: Wk, Fb, 5h in that order; Fable follows the weekly show rule;
     expect(fableFromLive(bad, NOW)).toBeNull()
   }
 })
+
+// --- devops off / on in the band (concept 20261120-1805-devops-optout; contract: briefs/contract.md) ---
+
+const OPT_SETTINGS = '/.claude/settings.local.json'
+/** The opt-out writes only (the engine reports Windows paths with backslashes; the band's own marker files are left out). */
+const optWrites = (seen: { writes: { path: string; text: string }[] }) => seen.writes.map(w => ({ ...w, path: w.path.replace(/\\/g, '/') })).filter(w => /devops-optout|settings\.local/.test(w.path))
+
+test('opt-out popup: the info card offers it; "Only this session" writes the flag file of this session, toasts, closes', async ($, on) => {
+  const { seen } = engine(on, { files: LOG_FILES })
+  on('session.id', () => ({ value: 'sid-opt' }))
+  on('session.root', () => ({ value: 'P:/Projects/demo' }))
+  await $.session.start({ cwd: 'P:/Projects/demo', surface: 'desktop', isInteractive: true })
+  const hint = await $.ui.mount({ ...HINT, surface: 'desktop' })
+  await hint.press({ key: 'devops-status' })
+  let band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await band.find({ key: 'optout-popup' })).toBeUndefined()
+  await band.press({ key: 'optout-open' })
+  await band.unmount()
+  band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  const text = JSON.stringify(await band.find({ key: 'optout-popup' }))
+  expect(text).toMatch(/Only this session/)
+  expect(text).toMatch(/For this project \(permanent\)/)
+  expect(text).toMatch(/Cancel/)
+  await band.press({ key: 'optout-session' })
+  const flag = optWrites(seen).find(w => w.path.endsWith('/.claude/devops-optout/sessions/sid-opt.json'))
+  expect(flag).toBeDefined()
+  expect(JSON.parse(flag!.text)).toMatchObject({ off: true, cwd: 'P:/Projects/demo' })
+  expect(flag!.text.endsWith('\n')).toBe(true)
+  expect(optWrites(seen).some(w => w.path.endsWith(OPT_SETTINGS))).toBe(false)
+  expect(seen.toasts.some(t => /off for this session/.test(t))).toBe(true)
+  await band.unmount()
+  band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await band.find({ key: 'optout-popup' })).toBeUndefined() // closed after the choice
+})
+
+test('opt-out popup: "For this project" merges settings.local.json (keeps keys, outputStyle default) and writes the restore memo; Cancel writes nothing', async ($, on) => {
+  const { seen } = engine(on, { files: { ...LOG_FILES, [OPT_SETTINGS]: JSON.stringify({ permissions: { allow: ['x'] }, outputStyle: 'Quiet', enabledPlugins: { 'other@mp': true } }) } })
+  on('session.id', () => ({ value: 'sid-opt' }))
+  on('session.root', () => ({ value: 'P:/Projects/demo' }))
+  await $.session.start({ cwd: 'P:/Projects/demo', surface: 'desktop', isInteractive: true })
+  const hint = await $.ui.mount({ ...HINT, surface: 'desktop' })
+  await hint.press({ key: 'devops-status' })
+  let band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  await band.press({ key: 'optout-open' })
+  await band.unmount()
+  band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  await band.press({ key: 'optout-cancel' })
+  expect(optWrites(seen).length).toBe(0)
+  await band.unmount()
+  band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await band.find({ key: 'optout-popup' })).toBeUndefined()
+  await band.press({ key: 'optout-open' })
+  await band.unmount()
+  band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  await band.press({ key: 'optout-project' })
+  const settings = optWrites(seen).find(w => w.path.endsWith(OPT_SETTINGS))
+  expect(JSON.parse(settings!.text)).toEqual({ permissions: { allow: ['x'] }, outputStyle: 'default', enabledPlugins: { 'other@mp': true, 'devops@dotclaude': false } })
+  expect(settings!.text).toMatch(/^\{\n {2}"/) // 2-space indent
+  const memo = optWrites(seen).find(w => w.path.endsWith('/.claude/devops-optout.json'))
+  expect(JSON.parse(memo!.text)).toMatchObject({ prevOutputStyle: 'Quiet', hadLocalOutputStyle: true })
+  expect(seen.toasts.some(t => /off for this project/.test(t))).toBe(true)
+})
+
+test('opt-out chip: project off shows only "devops · off (project)" + switch on; the popup in its ON form runs the writer (project)', async ($, on) => {
+  const { seen } = engine(on, { files: { ...LOG_FILES, [OPT_SETTINGS]: JSON.stringify({ enabledPlugins: { 'devops@dotclaude': false } }) } })
+  const runs: string[][] = []
+  on('process.run', (_: unknown, e: { argv: string[] }) => {
+    runs.push(e.argv)
+    return { value: { exitCode: 0, stdout: '', stderr: '' } }
+  })
+  on('session.id', () => ({ value: 'sid-opt' }))
+  on('session.root', () => ({ value: 'P:/Projects/demo' }))
+  await $.session.start({ cwd: 'P:/Projects/demo', surface: 'desktop', isInteractive: true })
+  let band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  const all = JSON.stringify(await band.find({ key: 'devops-off' }))
+  expect(all).toMatch(/devops · off \(project\)/)
+  expect(all).toMatch(/switch on/)
+  expect(await band.find({ key: 'card-title' })).toBeUndefined()
+  expect(await band.find({ key: 'optout-popup' })).toBeUndefined()
+  const hint = await $.ui.mount({ ...HINT, surface: 'desktop' })
+  expect(await hint.find({ key: 'devops-status' })).toBeUndefined() // the green dot is gone while off
+  await band.press({ key: 'optout-enable' })
+  await band.unmount()
+  band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  const pop = JSON.stringify(await band.find({ key: 'optout-popup' }))
+  expect(pop).toMatch(/Switch devops on/)
+  expect(pop).toMatch(/On for this project/)
+  expect(pop).not.toMatch(/On for this session/)
+  await band.press({ key: 'optout-project' })
+  expect(runs.some(a => a.some(x => /scripts[\\/]devops-optout\.js$/.test(x)) && a.includes('on') && a.includes('project') && a.includes('sid-opt'))).toBe(true)
+  expect(seen.toasts.some(t => /on again/.test(t))).toBe(true)
+})
+
+test('opt-out chip: a session flag shows "(session)" (de: "aus (Session)"), its ON choice runs the writer for the session; corrupt settings are skipped, not "off"', async ($, on) => {
+  engine(on, { files: { ...LOG_FILES, '/.claude/devops-optout/sessions/sid-opt.json': '{"off":true}', [OPT_SETTINGS]: '{ not json' } })
+  const runs: string[][] = []
+  on('process.run', (_: unknown, e: { argv: string[] }) => {
+    runs.push(e.argv)
+    return { value: { exitCode: 0, stdout: '', stderr: '' } }
+  })
+  on('session.id', () => ({ value: 'sid-opt' }))
+  on('session.root', () => ({ value: 'P:/Projects/demo' }))
+  await $.session.start({ cwd: 'P:/Projects/demo', surface: 'desktop', isInteractive: true })
+  let band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(JSON.stringify(await band.find({ key: 'devops-off' }))).toMatch(/devops · off \(session\)/)
+  await band.press({ key: 'optout-enable' })
+  await band.unmount()
+  band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await band.find({ key: 'optout-project' })).toBeUndefined() // the corrupt file is no project "off"
+  await band.press({ key: 'optout-session' })
+  expect(runs.some(a => a.includes('on') && a.includes('session'))).toBe(true)
+  expect(tr('de', 'optChipSession')).toBe('devops · aus (Session)')
+  expect(tr('de', 'optChipProject')).toBe('devops · aus (Projekt)')
+  expect(tr('de', 'optSession')).toBe('Nur diese Session')
+  expect(tr('de', 'optProject')).toBe('Für dieses Projekt (dauerhaft)')
+  expect(tr('de', 'optCancel')).toBe('Abbrechen')
+})

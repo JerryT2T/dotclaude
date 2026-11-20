@@ -77,3 +77,58 @@ describe("plugin-guard", () => {
     expect(runGuard({ home, cwd: sub, pluginRoot: cached })).toBe("alive");
   });
 });
+
+describe("plugin-guard opt-out", () => {
+  const put = (file, v) => {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, JSON.stringify({ enabledPlugins: { "devops@dotclaude": v } }));
+  };
+  const synced = (home) => path.join(home, ".claude", "plugins", "synced", "org_acct", "devops~g2");
+  const cachedOf = (home) => path.join(home, ".claude", "plugins", "cache", "dotclaude", "devops", "0.1.0");
+
+  test("project false silences the account-synced copy even with user true", () => {
+    const { home, cwd } = freshHome();
+    put(path.join(home, ".claude", "settings.json"), true);
+    put(path.join(cwd, ".claude", "settings.local.json"), false);
+    expect(runGuard({ home, cwd, pluginRoot: synced(home) })).toBe("");
+  });
+
+  test("project false silences a --plugin-dir load", () => {
+    const { home, cwd } = freshHome();
+    put(path.join(cwd, ".claude", "settings.json"), false);
+    const src = fs.mkdtempSync(path.join(os.tmpdir(), "guard-src-"));
+    expect(runGuard({ home, cwd, pluginRoot: src })).toBe("");
+  });
+
+  test("project false silences the cache copy despite user true", () => {
+    const { home, cwd } = freshHome();
+    put(path.join(home, ".claude", "settings.json"), true);
+    put(path.join(cwd, ".claude", "settings.json"), false);
+    expect(runGuard({ home, cwd, pluginRoot: cachedOf(home) })).toBe("");
+  });
+
+  test("local true beats project false", () => {
+    const { home, cwd } = freshHome();
+    put(path.join(cwd, ".claude", "settings.json"), false);
+    put(path.join(cwd, ".claude", "settings.local.json"), true);
+    expect(runGuard({ home, cwd, pluginRoot: cachedOf(home) })).toBe("alive");
+  });
+
+  test("corrupt project settings do not silence the account copy", () => {
+    const { home, cwd } = freshHome();
+    fs.mkdirSync(path.join(cwd, ".claude"));
+    fs.writeFileSync(path.join(cwd, ".claude", "settings.json"), "{ broken");
+    expect(runGuard({ home, cwd, pluginRoot: synced(home) })).toBe("alive");
+  });
+
+  test("sessionOptedOut sees the session flag", () => {
+    const { home, cwd } = freshHome();
+    const flag = path.join(home, ".claude", "devops-optout", "sessions", "s1.json");
+    fs.mkdirSync(path.dirname(flag), { recursive: true });
+    fs.writeFileSync(flag, "{}");
+    const probe = path.join(cwd, "p2.cjs");
+    fs.writeFileSync(probe, `const g=require(${JSON.stringify(GUARD)});process.stdout.write(String(g.sessionOptedOut('s1'))+String(g.sessionOptedOut('s2')));`);
+    const r = spawnSync(process.execPath, [probe], { cwd, env: { ...process.env, HOME: home, USERPROFILE: home, CLAUDE_PLUGIN_ROOT: synced(home) }, encoding: "utf8" });
+    expect(r.stdout).toBe("truefalse");
+  });
+});

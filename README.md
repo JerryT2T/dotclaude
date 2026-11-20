@@ -1,6 +1,6 @@
 # dotclaude
 
-**Version: 0.389.1**
+**Version: 0.390.0**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
 
@@ -308,6 +308,10 @@ prefix is read at ~0.1× the input price (0.05× on Opus 5.5), new content is
 written once at 1.25× (5 min) or 2× (1 h).
 
 </details>
+
+### Switch devops off (project or session)
+
+Say "devops aus für dieses Projekt" or "devops nur für diese Session aus" — Claude runs `scripts/devops-optout.js`. The project switch writes the git-ignored `.claude/settings.local.json` (devops off, output style `default`); every hook and the MCP server stay silent, including the account-synced copy of the plugin. "devops wieder an" (or the chip in the mod band, or `/plugin`) switches it back. Skills of the account copy stay listed until you remove the plugin in your claude.ai account. Details: `plugins/devops/deep-knowledge/devops-config.md`.
 
 ## Optional features
 

@@ -333,3 +333,34 @@ languages (en, zh, hi, es, fr, ar, bn, pt, ru, ja) plus German. Every case is a
   `delegation/`, for the same reason: the eval runner injects no
   `prompt.knowledge.dispatch` SessionStart/UserPromptSubmit output, and the
   generator pins the line verbatim from that hook.
+
+## Opt-out live check (`optout-live-check.js`)
+
+Not an `ab-run.js` case: `ab-run.js` disables the installed plugin and loads a
+`--plugin-dir` copy, which hides exactly what this guards — the account-synced
+copy (`plugins/synced/…`, Desktop `rpm/…`) that ignored
+`enabledPlugins["devops@dotclaude"]=false`. The script runs two real
+`claude -p … --model haiku --output-format json --session-id <uuid>` calls in
+temp git projects (control without an entry; opted-out with `false` in both
+`.claude/settings.json` and `settings.local.json`), then reads the session
+transcript `~/.claude/projects/*/<uuid>.jsonl` and asserts `[devops] version=`
+is present in the control and absent when opted out (never the answer text).
+A control without the marker is a failure, not a pass. Exit 0 pass · 1 fail ·
+3 inconclusive · 2 usage; `--dry-run` prints the commands; temp projects are
+removed (`--keep` to inspect).
+
+```bash
+node plugins/devops/evals/optout-live-check.js              # real run, ~1-2 min
+node plugins/devops/evals/optout-live-check.js --dry-run
+node plugins/devops/evals/optout-live-check.js --billing api  # own terminal only
+```
+
+Billing follows `deep-knowledge/api-credits.md` § Evals: API credit only from
+your own terminal with a stored key (`--billing auto` default; if the control
+shows no marker under the key, one retry on the plan login, since an API-key
+login may not load the synced copy); inside a session it uses the plan.
+
+Gate: `ship_promote` (`mcp-server/ship/tools/promote.js`) runs it before any
+promotion to beta / stable when the repo is the plugin source, and refuses on a
+fail or inconclusive result. Alpha ships and `ship_release` are not gated.
+There is no skip parameter (the tool has no skip convention).

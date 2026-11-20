@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.390.0] — 2026-11-20
+
+### Fixed
+- **Project opt-out actually works.** A project with devops switched off (`enabledPlugins` false) still got every hook, because Claude Code also loads the account-synced copy and the guard let any copy outside the plugin cache through. One resolver now decides with Claude Code's precedence (session > `settings.local.json` > `settings.json` > user settings); an explicit false silences every copy, including the claude.ai account copy and `--plugin-dir` loads. The MCP server lists no tools in an opted-out project.
+- **No more permission warning on every start.** `ss.permissions.ensure` stops adding a `Write(~/.claude/devops-concepts/**)` rule (Edit rules cover all file tools) and removes the one older versions added.
+
+### Added
+- **Switch devops off from the band.** A ⏻ next to the devops label opens a popup: only this session, this project (permanent, `settings.local.json`, output style back to default) or cancel. While off, the band shows `devops · aus` with a way to switch it back on.
+- **Opt-out by prompt** via `scripts/devops-optout.js` (`off|on|status --scope session|project`), documented in `deep-knowledge/devops-config.md`.
+- **Opt-out regression tests**: a resolver matrix over every copy and settings layout, every `hooks.json` entry point, the MCP server and the band; a real-Claude live check (`evals/optout-live-check.js`) gates every promotion to beta and stable.
+
 ## [0.389.1] — 2026-11-20
 
 ### Fixed

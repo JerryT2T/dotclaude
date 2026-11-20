@@ -23,7 +23,7 @@ vi.mock("../lib/github.js", () => ({
   releaseExists: vi.fn(() => true),
 }));
 
-import { handler, parseLsRemoteTagOutput, parseLsRemoteChannelTags } from "./promote.js";
+import { handler, optoutGateError, parseLsRemoteTagOutput, parseLsRemoteChannelTags } from "./promote.js";
 import { execFileSync } from "node:child_process";
 import * as gitLib from "../lib/git.js";
 import * as ghLib from "../lib/github.js";
@@ -653,5 +653,57 @@ describe("ship_promote — #251 reconciliation and fail-closed edges", () => {
     await handler(params());
     const revParses = gitLib.git.mock.calls.map((c) => c[0]).filter((c) => c.startsWith("rev-parse"));
     expect(revParses).toContain('rev-parse -q --verify "refs/tags/beta/v0.113.0^{commit}"');
+  });
+});
+
+// Live opt-out gate (real Claude is stubbed — never started from a unit test).
+describe("ship_promote — opt-out live gate (beta / stable only)", () => {
+  test("a failing check blocks alpha→beta before any remote read or tag", async () => {
+    mockRemote({ "alpha/v0.113.0": SHA });
+    const check = vi.fn(() => ({ status: "fail", reason: "opted-out project still got devops hook context" }));
+    const r = await handler(params({ optoutCheck: check }));
+    expect(check).toHaveBeenCalledTimes(1);
+    expect(r.success).toBe(false);
+    expect(r.optoutGate).toBe("blocked");
+    expect(r.error).toMatch(/FAILED.*still got devops hook context/);
+    expect(r.error).toMatch(/blockiert/);
+    expect(gitLib.git).not.toHaveBeenCalled();
+    expect(tagCreateCalls()).toHaveLength(0);
+  });
+
+  test("a failing check blocks beta→stable too", async () => {
+    mockRemote({ "beta/v0.113.0": SHA });
+    const r = await handler(params({ from: "beta", to: "stable", optoutCheck: () => ({ status: "fail", reason: "x" }) }));
+    expect(r.success).toBe(false);
+    expect(tagCreateCalls()).toHaveLength(0);
+  });
+
+  test("an inconclusive check or one that throws blocks (fail-closed)", async () => {
+    mockRemote({ "alpha/v0.113.0": SHA });
+    const a = await handler(params({ optoutCheck: () => ({ status: "inconclusive", reason: "claude not logged in" }) }));
+    expect(a.success).toBe(false);
+    expect(a.error).toMatch(/inconclusive.*claude not logged in/);
+    const b = await handler(params({ optoutCheck: () => { throw new Error("boom"); } }));
+    expect(b.success).toBe(false);
+    expect(b.error).toMatch(/boom/);
+    expect(tagCreateCalls()).toHaveLength(0);
+  });
+
+  test("a passing check lets the promotion run", async () => {
+    mockRemote({ "alpha/v0.113.0": SHA });
+    const r = await handler(params({ optoutCheck: () => ({ status: "pass", reason: "ok" }) }));
+    expect(r.success).toBe(true);
+    expect(r.tag).toBe("beta/v0.113.0");
+  });
+
+  test("an invalid direction (never a real promotion) does not start the check", async () => {
+    const check = vi.fn(() => ({ status: "pass" }));
+    const r = await handler(params({ from: "beta", to: "beta", optoutCheck: check }));
+    expect(r.success).toBe(false);
+    expect(check).not.toHaveBeenCalled();
+  });
+
+  test("a repo without the plugin's check script (consumer project) is not gated", () => {
+    expect(optoutGateError("/repo-without-plugin")).toBeNull();
   });
 });

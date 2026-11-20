@@ -3199,6 +3199,25 @@ const server = new McpServer({
   server.registerTool = (name, cfg, handler) => rawRegister(name, cfg, guardHandler(name, handler));
 }
 
+// Opt-out: in a project (or for a user) that switched devops off, the server
+// still connects but lists NO tools — ship, card and usage tools vanish there.
+// hooks/lib/devops-optout.js decides; only an explicit "off" counts.
+let OPTED_OUT = false;
+try {
+  const O = (await import("../hooks/lib/devops-optout.js")).default;
+  OPTED_OUT = O.optedOut({ cwd: process.env.CLAUDE_PROJECT_DIR || process.cwd(), pluginRoot: process.env.CLAUDE_PLUGIN_ROOT });
+} catch { /* resolver unreadable: stay on */ }
+if (OPTED_OUT) {
+  const { ListToolsRequestSchema } = await import("@modelcontextprotocol/sdk/types.js");
+  // Every group registers through server.registerTool: make that a no-op and
+  // answer tools/list with an empty list (the capability must still be declared).
+  const stub = { enable() {}, disable() {}, update() {}, remove() {}, enabled: false };
+  server.registerTool = () => stub;
+  server.server.registerCapabilities({ tools: {} });
+  server.server.setRequestHandler(ListToolsRequestSchema, () => ({ tools: [] }));
+  console.error(`[${SERVER_NAME}-mcp] devops is switched off for this project: no tools`);
+}
+
 // Status of the tool groups that load after the card tools (health_check).
 const toolGroups = { card: "ok", ship: "pending", issues: "pending" };
 
