@@ -17,6 +17,7 @@ import {
   fableFromLive,
   cleanupApplyPrompt,
   cleanupPlanPrompt,
+  planComplete,
   cleanupView,
   compactAdvised,
   compactThreshold,
@@ -291,6 +292,47 @@ test('cleanup button: one press = one read-only opus plan subagent; its answer l
   await pane.unmount()
   expect(spawns.length).toBe(2)
   expect(spawns[1].prompt).toMatch(/APPROVED PLAN:\n## Plan\n1\. git worktree remove/)
+})
+
+test('#1160: a plan run that ends on an interim waiting line fails as "plan incomplete" and offers no Apply', async ($, on) => {
+  const { seen } = engine(on, {
+    files: { '/.claude/orphan-report.json': ORPHAN_REPORT },
+    agents: [{ id: 'c1', description: 'Branch cleanup plan', type: 'general-purpose', status: 'running' }],
+  })
+  const spawns: string[] = []
+  on('agent.spawn', (_: unknown, e: { prompt: string }) => {
+    spawns.push(e.prompt)
+    return { model: 'claude-opus', agentId: `c${spawns.length}` }
+  })
+  on('session.root', () => ({ value: 'P:/Projects/demo' }))
+  on('turn.complete', (_: unknown, e: { answer: string }) => ({ text: e.answer }))
+  await $.session.start({ cwd: 'P:/Projects/demo', surface: 'desktop', isInteractive: true })
+  const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  await band.press({ key: 'cleanup-fold' })
+  await band.press({ key: 'cleanup' })
+  await band.unmount()
+  const waiting = 'Waiting for the ancestor check to finish.'
+  await $.turn.complete({ answer: waiting, durationMs: 1000, isAborted: false, turnId: 't1', agentId: 'c1', reason: 'end' } as any)
+  expect(seen.toasts.at(-1)).not.toMatch(/plan ready/)
+  const pane = await $.ui.mount({ plugin: 'devops', component: 'Pane', requestId: 'devops-cleanup', props: { isFocused: false, bodyColumns: 60, placement: 'dock', scroll: { offset: 0, bodyRows: 20 }, view: {}, title: 'Cleanup' }, surface: 'desktop' } as any)
+  expect(await pane.find({ key: 'cleanup-apply' })).toBeUndefined()
+  const report = (await pane.find({ type: 'Markdown' }))?.props.text as string
+  expect(report).toMatch(/^Plan incomplete/)
+  expect(report.endsWith(waiting)).toBe(true) // the raw answer stays visible below the notice
+  await pane.unmount()
+  expect(spawns.length).toBe(1) // nothing was applied
+})
+
+test('#1160: planComplete needs the ## Plan heading; the plan brief forbids background commands and interim answers', () => {
+  expect(planComplete('## Plan\n1. git branch -d old')).toBe(true)
+  expect(planComplete('Intro\n\n##  Plan — numbered\n1. x')).toBe(true)
+  expect(planComplete('Waiting for the ancestor check to finish.')).toBe(false)
+  expect(planComplete('The ## Plan follows later')).toBe(false)
+  expect(planComplete('')).toBe(false)
+  const plan = cleanupPlanPrompt('P:/r', 'P:/r/.claude/worktrees/me')
+  expect(plan).toMatch(/never use run_in_background/)
+  expect(plan).toMatch(/never wait for or poll background tasks/)
+  expect(plan).toMatch(/finished plan and nothing else/)
 })
 
 test('hygiene ignores the worktree this session works in; zero counts are left out of the line', async ($, on) => {
@@ -1344,7 +1386,7 @@ test('defect 4: bar alt, pane bodies, spawn failure and background labels follow
   const cp = await $.ui.mount({ ...pane('devops-cleanup', 'Aufräumen'), surface: 'desktop' })
   expect((await cp.find({ type: 'Markdown' }))?.props.text).toBe('Subagent nicht gestartet: no agent started')
   await cp.unmount()
-  const keys: StrKey[] = ['barAlt', 'dropSaved', 'titleCleanup', 'titleAgents', 'titleShip', 'noAgents', 'noShip', 'shipBranch', 'unknown', 'shipDone', 'shipNone', 'shipNext', 'prLine', 'prNone', 'refresh', 'spawnFailed', 'finishedWord', 'noAnswer']
+  const keys: StrKey[] = ['barAlt', 'dropSaved', 'titleCleanup', 'titleAgents', 'titleShip', 'noAgents', 'noShip', 'shipBranch', 'unknown', 'shipDone', 'shipNone', 'shipNext', 'prLine', 'prNone', 'refresh', 'spawnFailed', 'finishedWord', 'noAnswer', 'planIncomplete']
   for (const loc of LOCALES)
     for (const k of keys) {
       const text = tr(loc, k, { label: 'x', p: 1, w: 'x', b: 'x', steps: 'x', next: 'x', n: 1, state: 'x', pass: 1, fail: 1, pending: 1, why: 'x' })

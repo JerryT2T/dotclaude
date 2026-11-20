@@ -584,6 +584,8 @@ export function cleanupPlanPrompt(root: string, cwd: string): string {
     `You plan the branch and worktree cleanup of the git repository at ${root}. This run is READ-ONLY:`,
     'run only read commands (git status, git worktree list --porcelain, git branch -vv, git log, git cherry, gh pr list).',
     'Do not commit, delete, prune, push or change any file.',
+    'Run every command in the foreground: never use run_in_background, never wait for or poll background tasks.',
+    'Your answer is the finished plan and nothing else: no interim status line such as "waiting for …".',
     'Rules of the devops cleanup flow: a branch or worktree may go only when its work is landed in the default branch',
     '(merged, or the same tree) and it has no uncommitted or unpushed changes. Uncommitted changes are never discarded:',
     'list them for the user. Never touch the worktree ' + cwd + ' (this session) nor a worktree another running Claude',
@@ -593,6 +595,12 @@ export function cleanupPlanPrompt(root: string, cwd: string): string {
     '## Braucht deine Entscheidung — everything that is not safe, with the evidence (uncommitted files, unmerged commits).',
     'If nothing is safe to remove, say so in one line under Plan.',
   ].join('\n')
+}
+
+/** Whether a plan run's answer is a plan at all: it carries the `## Plan` heading the brief asks for (#1160).
+ *  An interim line ("Waiting for the ancestor check to finish.") is not, and must never offer Apply. */
+export function planComplete(answer: string): boolean {
+  return /^##\s+Plan\b/m.test(answer || '')
 }
 
 /** The apply subagent's brief: exactly the approved plan, re-verified per action. */
@@ -852,6 +860,15 @@ const TABLE = {
   spawnFailed: ['Subagent not started: {why}', 'Subagent nicht gestartet: {why}', 'Subagente no iniciado: {why}', 'Sous-agent non démarré : {why}', 'Subagente não iniciado: {why}', 'サブエージェントを起動できませんでした: {why}', '子代理未启动：{why}'],
   finishedWord: ['finished', 'beendet', 'terminado', 'terminé', 'concluído', '完了', '已结束'],
   noAnswer: ['No answer.', 'Keine Antwort.', 'Sin respuesta.', 'Pas de réponse.', 'Sem resposta.', '回答がありません。', '没有回答。'],
+  planIncomplete: [
+    'Plan incomplete: the planner ended without a plan. Nothing was changed; start the plan again.',
+    'Plan unvollständig: Der Planer hat ohne Plan geendet. Nichts wurde geändert; Plan neu starten.',
+    'Plan incompleto: el planificador terminó sin plan. No se cambió nada; vuelve a iniciar el plan.',
+    "Plan incomplet : le planificateur s'est arrêté sans plan. Rien n'a été modifié ; relancez le plan.",
+    'Plano incompleto: o planejador terminou sem plano. Nada foi alterado; inicie o plano novamente.',
+    '計画が不完全です: プランナーが計画なしで終了しました。何も変更されていません。計画をやり直してください。',
+    '计划不完整：规划器未给出计划就结束了。未做任何更改；请重新开始计划。',
+  ],
   toastNote: ['💾 Note #{n} saved', '💾 Notiz #{n} gespeichert', '💾 Nota #{n} guardada', '💾 Note #{n} enregistrée', '💾 Nota #{n} salva', '💾 メモ #{n} を保存しました', '💾 笔记 #{n} 已保存'],
   bandBatch: ['📚 Batch · {n}', '📚 Batch · {n}', '📚 Batch · {n}', '📚 Batch · {n}', '📚 Batch · {n}', '📚 Batch · {n}', '📚 Batch · {n}'],
   batchGo: ['Go', 'Go', 'Go', 'Go', 'Go', 'Go', 'Go'],

@@ -87,6 +87,7 @@ import {
   checksFrom,
   cleanupApplyPrompt,
   cleanupPlanPrompt,
+  planComplete,
   cleanupToast,
   cleanupView,
   compactAdvised,
@@ -1358,7 +1359,10 @@ export const register: Register = on => {
       const run = await read($, cleanup)
       if (run.agentId === e.agentId && (run.phase === 'planning' || run.phase === 'applying')) {
         const answer = (e.answer || '').trim()
-        const phase = e.isAborted || !answer ? 'failed' : run.phase === 'planning' ? 'planned' : 'done'
+        // #1160: a planning answer without the `## Plan` heading (an interim "waiting …" line) is no plan — it
+        // fails instead of offering Apply, so a deletion is only ever offered for a real, reviewable plan.
+        const noPlan = run.phase === 'planning' && !!answer && !planComplete(answer)
+        const phase = e.isAborted || !answer || noPlan ? 'failed' : run.phase === 'planning' ? 'planned' : 'done'
         const now = await $.clock.now()
         const loc = (await sharedNow($)).loc
         // B14: a finished run feeds the history; the same unmerged cause in two runs makes the pane offer `devops learn`.
@@ -1366,7 +1370,7 @@ export const register: Register = on => {
         await update($, cleanup, () => ({
           phase,
           agentId: null,
-          report: answer || tr(loc, 'noAnswer'),
+          report: noPlan ? `${tr(loc, 'planIncomplete')}\n\n${answer}` : answer || tr(loc, 'noAnswer'),
           at: now,
           causes: run.causes,
           ...(offer ? { learn: offer.cause, learnRuns: offer.runs } : {}),
