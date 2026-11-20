@@ -51,6 +51,7 @@ const crypto = require('crypto');
 const { readTemplates } = require('../skills/auto-concept/templates-source.js');
 const { scanBlocks, localeMap } = require('./build-concept-fixture.js');
 const gate = require('../hooks/lib/concept-gate.js');
+const { inlineLiveCss } = require('./concept-live-css.js');
 
 const GENERATOR = 'concept-build';
 
@@ -359,6 +360,8 @@ function bakeFrozenFeedback(fragment, payload) {
   const alternatives = !!rootTag && /(?:^|\s)data-design-set=("|')alternatives\1/i.test(rootTag.attrs);
   if (alternatives && payload && typeof payload.favorite === 'string' && payload.favorite) blob.favorite = payload.favorite;
   if (payload && Array.isArray(payload.userPins) && payload.userPins.length) blob.userPins = payload.userPins;
+  // Live-Treue switch state the round was sent with (templates-panel-fidelity.md).
+  if (payload && (payload.fidelity === 'live' || payload.fidelity === 'off')) blob.fidelity = payload.fidelity;
   const tag = `<script type="application/json" data-frozen-feedback>${JSON.stringify(blob).replace(/<\/script/gi, '<\\/script')}</script>`;
   const cleaned = fragment.replace(/\s*<script\b[^>]*data-frozen-feedback[^>]*>[\s\S]*?<\/script>/gi, '');
   const root = rootSection(cleaned);
@@ -549,7 +552,8 @@ function tabLabel(attrs, n) {
 
 function tabsHtml(rounds, liveN) {
   return rounds.map(r => {
-    const flags = ['data-reality-check', 'data-final-report'].filter(f => hasAttr(r.attrs, f)).map(f => ' ' + f).join('');
+    const fidelity = getAttr(r.attrs, 'data-fidelity') === 'live' ? ' data-fidelity="live"' : '';
+    const flags = ['data-reality-check', 'data-final-report'].filter(f => hasAttr(r.attrs, f)).map(f => ' ' + f).join('') + fidelity;
     const id = getAttr(r.attrs, 'id') || `iter-${r.n}`;
     return `<button class="iteration-tab" role="tab"${flags} data-iteration="${r.n}" aria-selected="${r.n === liveN ? 'true' : 'false'}" aria-controls="${esc(id)}">${tabLabel(r.attrs, r.n)}</button>`;
   }).join('\n');
@@ -755,13 +759,22 @@ function runGate(outPath, html) {
 function build(dir, opts = {}) {
   const page = readPage(dir);
   const head = resolveHead(dir, opts);
-  const fragments = roundFiles(dir).map(r => ({ n: r.n, html: fs.readFileSync(r.file, 'utf8') }));
   const out = opts.out || outPathOf(dir);
+  // Live-Treue rounds name the live app's stylesheet instead of copying it;
+  // it is scoped to its design and inlined here (concept-live-css.js).
+  const liveProblems = [], liveWarnings = [];
+  const fragments = roundFiles(dir).map(r => {
+    const live = inlineLiveCss(fs.readFileSync(r.file, 'utf8'), { sourceDir: path.resolve(dir), pageDir: path.dirname(path.resolve(out)), round: r.n });
+    liveProblems.push(...live.problems);
+    liveWarnings.push(...live.warnings);
+    return { n: r.n, html: live.html };
+  });
   const slug = path.basename(out).replace(/\.html?$/i, '');
   if (!page.pageVersion) page.pageVersion = stamp();          // fixed from the first build on
   const res = assemble({ page, head: head.html, fragments, slug, md: opts.md });
   const g = runGate(out, res.html);
-  const problems = [...res.problems];
+  g.warnings = [...(g.warnings || []), ...liveWarnings];
+  const problems = [...res.problems, ...liveProblems];
 
   // A page on disk that is not the last build was edited by hand (or by a
   // session without this script) — rebuilding would silently drop that work.

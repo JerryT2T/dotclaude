@@ -1,4 +1,4 @@
-# Concept templates, part 35 of 51: Shared systems — two-button submit JS
+# Concept templates, part 36 of 52: Shared systems — two-button submit JS
 
 ### JS
 
@@ -71,6 +71,8 @@ async function submitWithAction(action, extra) {
     if (action === 'next-stage' && !_userInteracted) data.untouched = true;
     // A staged concept builds one Etappe at a time: implement names it.
     if (action === 'implement' && typeof stageImplementFields === 'function') Object.assign(data, stageImplementFields());
+    // Live-Treue switch (templates-panel-fidelity.md); next-stage: the target Etappe's state.
+    if (typeof window.fidelityPayload === 'function') data.fidelity = window.fidelityPayload(action === 'next-stage' ? data.next : undefined);
   } catch (e) {
     _submitInFlight = false;
     console.error('collectDecisions failed', e);

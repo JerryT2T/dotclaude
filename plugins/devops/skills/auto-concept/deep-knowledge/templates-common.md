@@ -1,4 +1,4 @@
-# Concept templates, part 01 of 51: Overview, UI locale
+# Concept templates, part 01 of 52: Overview, UI locale
 
 # Concept HTML Templates
 
@@ -364,7 +364,11 @@ must see their own language. The locale hint is authoritative.
 | `dock.crumb_concept`           | Concept                         | Concept |
 | `dock.tag_general`             | general                         | allgemein |
 | `dock.tip_title`               | Did you know?                   | Wusstest du schon? |
-| `anno.open_count`              | {n} open notes                  | {n} offene Notizen |
+| `fidelity.label`               | Live fidelity                   | Live-Treue |
+| `fidelity.hint`                | Next rounds: untouched parts exactly as live, changed and new parts fully polished | Nächste Runden: Unverändertes exakt wie live, Geändertes und Neues voll ausgearbeitet |
+| `fidelity.scope`               | Applies to design rounds of this stage until you switch it off · implementing ignores it | Gilt für Design-Runden dieser Etappe, bis du ihn ausschaltest · Umsetzen ignoriert ihn |
+| `fidelity.chip`                | Live fidelity                   | Live-Treue |
+| `fidelity.chip_approx`         | approximated                    | angenähert || `anno.open_count`              | {n} open notes                  | {n} offene Notizen |
 | `view.compare_favourite`       | Favourite                       | Favorit |
 | `view.compare_no_preference`   | No preference                   | Keine Präferenz |
 | `view.compare_criteria`        | Criteria                        | Kriterien |

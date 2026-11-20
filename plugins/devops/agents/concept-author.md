@@ -37,6 +37,9 @@ bridge protocol and every message to the user.
    (orthogonality, continuity, design rules, counts). Never read a whole
    `templates-*.md` part, and never read the built page
    `docs/concepts/{name}.html`.
+   A brief with `fidelity: live` makes this a Live-Treue round. Read
+   `live-fidelity.md` § Live-Treue rounds and every path its
+   `liveSource` names before you write anything.
 4. Write `rounds/NN.html`, where `NN` is N zero-padded to two digits. It holds
    one root `<section data-iteration="N" data-iteration-template="…">`
    with nothing outside it. Write in the user's language, with no

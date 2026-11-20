@@ -1,4 +1,4 @@
-# Concept templates, part 36 of 51: Shared systems — two-button submit JS (continued 2)
+# Concept templates, part 37 of 52: Shared systems — two-button submit JS (continued 2)
 
 ```javascript
 // Every user-facing string comes from the sheet's data-label-* attributes,

@@ -1,4 +1,4 @@
-# Concept templates, part 50 of 51: Shared systems — Etappen: implement station and the close-out of a stage report JS
+# Concept templates, part 51 of 52: Shared systems — Etappen: implement station and the close-out of a stage report JS
 
 ## Etappen — stage close-out JS
 

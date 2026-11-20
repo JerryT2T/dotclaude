@@ -1348,6 +1348,50 @@ function findStageIssues(html) {
   return { errors, warnings };
 }
 
+/**
+ * Live-Treue rounds (auto-concept live-fidelity.md).
+ * A round with `data-fidelity` must say "live", be a design round and carry a
+ * `data-fidelity-note` (what was taken 1:1 from live, what is approximated).
+ * Every rule of its `<style>` blocks must be scoped — a live stylesheet's
+ * `body {}` / `button {}` / `:root {}` would restyle the engine chrome, and P32
+ * only sees class selectors. Its assets come from next to the page, never from
+ * another origin.
+ * @returns {Array<{kind:string, why:string, at:number}>}
+ */
+const FIDELITY_SCOPED_RE = /^(\[data-design(?:[~|^$*]?=(?:"[^"]*"|'[^']*'|[\w-]+))?\]|\.(?:d\d+-|s\d+-|mock-|mk-)[\w-]*)/;
+function findFidelityIssues(html) {
+  const src = String(html || '');
+  const body = src.replace(/<!--[\s\S]*?-->/g, m => ' '.repeat(m.length));
+  const issues = [];
+  const starts = [...body.matchAll(/<section\b(?:[^>"']|"[^"]*"|'[^']*')*?\sdata-iteration=("|')([^"']*)\1(?:[^>"']|"[^"]*"|'[^']*')*>/gi)];
+  for (let k = 0; k < starts.length; k++) {
+    const tag = starts[k][0];
+    const n = starts[k][2];
+    const at = starts[k].index;
+    if (!/\sdata-fidelity(?=[\s=>/])/i.test(tag)) continue;
+    const value = attrOf(tag, 'data-fidelity');
+    if (value !== 'live') { issues.push({ kind: 'fidelity-value', at, why: `iteration ${n}: data-fidelity="${value || ''}" — the only value is "live" (leave the attribute off for a sketch round)` }); continue; }
+    const tpl = attrOf(tag, 'data-iteration-template') || '';
+    if (!/^(design|prototype)$/.test(tpl)) issues.push({ kind: 'fidelity-template', at, why: `iteration ${n}: data-fidelity="live" on a ${tpl || 'template-less'} round — Live-Treue applies to design rounds only` });
+    const note = attrOf(tag, 'data-fidelity-note');
+    if (!note || !note.trim()) issues.push({ kind: 'fidelity-note', at, why: `iteration ${n}: live round without data-fidelity-note — one line on what is 1:1 from live and what is approximated (live-fidelity.md)` });
+    const chunk = body.slice(at, k + 1 < starts.length ? starts[k + 1].index : body.length);
+    for (const m of chunk.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)) {
+      for (const rule of cssRules(stripCssComments(m[1]))) {
+        for (const sel of rule.selectors) {
+          if (!FIDELITY_SCOPED_RE.test(sel.trim())) {
+            issues.push({ kind: 'fidelity-unscoped', at, why: `iteration ${n}: live-round selector "${sel}" is not scoped — start it with [data-design="<id>"] (or name the file in <style data-live-css data-scope>, which the build scopes)` });
+          }
+        }
+      }
+    }
+    for (const a of chunk.matchAll(/\s(?:src|href|poster)=("|')((?:https?:)?\/\/[^"']+)\1/gi)) {
+      issues.push({ kind: 'fidelity-external', at, why: `iteration ${n}: external asset ${a[2]} — copy it into the concept source folder's assets/ and reference it as {{slug}}/assets/…` });
+    }
+  }
+  return issues;
+}
+
 /** Rail labels of analysis rounds (topic data-nav-label, decision data-label) stay short: the rail names them in one line. */
 const RAIL_LABEL_MAX = 28;
 function findRailLabelWarnings(html) {
@@ -1381,7 +1425,7 @@ function evaluate(filePath, html) {
   const missing = findMissing(html);
   const forbidden = findForbidden(html);
   const st = findStageIssues(html);
-  const structural = [...findStructural(html), ...findSubpageOnlyRounds(html), ...st.errors];
+  const structural = [...findStructural(html), ...findSubpageOnlyRounds(html), ...st.errors, ...findFidelityIssues(html)];
   const mapping = findMappingIssues(html);
   const overlap = findViewOverlap(html);
   const stale = findStaleEngine(html);
@@ -1630,6 +1674,7 @@ module.exports = {
   findDifferingAlternativePages,
   findSubpageOnlyRounds,
   findStageIssues,
+  findFidelityIssues,
   findRailLabelWarnings,
   RAIL_LABEL_MAX,
   SCREEN_SIM_THRESHOLD,

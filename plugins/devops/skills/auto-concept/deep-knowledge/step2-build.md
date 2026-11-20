@@ -140,6 +140,10 @@ would refuse over it.
   `templates-rounds.md` § Final-report section HTML for the report. Find the
   heading with Grep and read that range (`offset` / `limit`), never a whole
   part. The CSS/JS engine sections belong to the build.
+- **Live source (Live-Treue rounds only):** every path the brief's
+  `liveSource` names, read as far as the view needs it: markup, styles,
+  tokens, the screenshot. This is the one read outside the source folder and
+  the plugin reference.
 - **`validation-gate.md`:** before the build, check the round against Phase 0
   (forbidden), the Phase 2 block of its own template, § Frozen/Active
   Mismatch and § Mappings. Phase 1 (engine patterns) holds by construction.
@@ -234,7 +238,11 @@ Step 5a/5b are done:
    - what to carry over from the previous round;
    - open points;
    - the constraints and project or code facts from the conversation that the
-     files do not show.
+     files do not show;
+   - for a Live-Treue round (`fidelity: "live"`): the line `fidelity: live`
+     and the `liveSource` block (`live-fidelity.md` §
+  Live-Treue rounds). The agent may read every path the block names, also outside
+     the source folder.
 2. **Spawn.** The session spawns `concept-author` with the Agent tool, `model`
    set to the session's family. The prompt names the source folder, the round
    number, the brief path, the locale and `{PLUGIN_ROOT}`. The agent:
