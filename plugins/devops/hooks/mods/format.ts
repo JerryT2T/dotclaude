@@ -210,9 +210,10 @@ export function formatResetSpaced(minutes: number | null): string {
   return `${Math.floor(minutes / 60)} h ${minutes % 60} m`
 }
 
-/** "19 h" / "45 m" / "–": the reset watermark of the half-width band bar. */
+/** "6 d" / "19 h" / "45 m" / "–": the reset watermark of the half-width band bar (the largest unit only). */
 export function formatResetShort(minutes: number | null): string {
   if (minutes == null || !Number.isFinite(minutes)) return '–'
+  if (minutes >= 1440) return `${Math.floor(minutes / 1440)} d`
   if (minutes >= 60) return `${Math.floor(minutes / 60)} h`
   return `${Math.max(0, Math.floor(minutes))} m`
 }

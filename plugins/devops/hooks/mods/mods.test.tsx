@@ -5,6 +5,7 @@
 import { expect, test } from 'claude-code/testing'
 import {
   addRun,
+  formatResetShort,
   archiveOffered,
   archiveRefusal,
   agentRows,
@@ -1043,6 +1044,13 @@ test('B2: the status word is green while active, grey with the reason in its ove
   await ok.press({ key: 'devops-status' })
   expect(seen.opened).toContain('devops-home')
   await ok.unmount()
+})
+
+test('B2: the band bar watermark keeps the largest unit only — 6 d, 19 h, 45 m, – (never "164 h")', async () => {
+  expect(formatResetShort(6 * 1440 + 20 * 60)).toBe('6 d')
+  expect(formatResetShort(19 * 60 + 45)).toBe('19 h')
+  expect(formatResetShort(45)).toBe('45 m')
+  expect(formatResetShort(null)).toBe('–')
 })
 
 test('B2: bars row = Wk, Fb, 5h always (also not due), 110 px, hours-only watermark with the full text in the alt; no 5h window = empty bar with "–"', async ($, on) => {
