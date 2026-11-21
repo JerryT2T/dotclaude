@@ -155,7 +155,7 @@ describe("stop.flow.browsertest — background agents that may still change file
     const dir = project();
     try {
       owe(dir);
-      expect(await stop(dir, transcriptWithAgent(dir, "devops:frontend"))).toBe("");
+      expect(await stop(dir, transcriptWithAgent(dir, "devops:builder"))).toBe("");
       expect(hasFlag(dir, "light-pending")).toBe(true);
       expect(hasFlag(dir, "light-blockcount")).toBe(false);
     } finally { cleanup(dir); }
@@ -165,7 +165,7 @@ describe("stop.flow.browsertest — background agents that may still change file
     const dir = project();
     try {
       owe(dir);
-      const decision = JSON.parse(await stop(dir, transcriptWithAgent(dir, "devops:frontend", { finished: true })));
+      const decision = JSON.parse(await stop(dir, transcriptWithAgent(dir, "devops:builder", { finished: true })));
       expect(decision.decision).toBe("block");
     } finally { cleanup(dir); }
   });

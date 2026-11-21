@@ -6,8 +6,8 @@ import {
 
 describe("normalizePending", () => {
   it("accepts bare strings as agents", () => {
-    expect(normalizePending(["devops:frontend"]))
-      .toEqual([{ kind: "agent", name: "devops:frontend", doing: "" }]);
+    expect(normalizePending(["devops:builder"]))
+      .toEqual([{ kind: "agent", name: "devops:builder", doing: "" }]);
   });
 
   it("defaults kind to agent and keeps doing", () => {
@@ -40,7 +40,7 @@ describe("normalizePending", () => {
   it("keeps hyphens and colons — real names are slugs", () => {
     expect(normalizePending([{ name: "verify-geopolitics-spec" }])[0].name)
       .toBe("verify-geopolitics-spec");
-    expect(normalizePending(["devops:frontend"])[0].name).toBe("devops:frontend");
+    expect(normalizePending(["devops:builder"])[0].name).toBe("devops:builder");
   });
 
   it("strips characters that would break the card's markdown", () => {
@@ -63,14 +63,14 @@ describe("hasPending", () => {
   });
 
   it("is true as soon as one usable item exists", () => {
-    expect(hasPending(["devops:frontend"])).toBe(true);
+    expect(hasPending(["devops:builder"])).toBe(true);
   });
 });
 
 describe("pendingWhat — the CTA slot", () => {
   it("names the single agent instead of just counting it", () => {
-    expect(pendingWhat(["devops:frontend"], "de")).toBe("Agent `devops:frontend` arbeitet");
-    expect(pendingWhat(["devops:frontend"], "en")).toBe("agent `devops:frontend` is working");
+    expect(pendingWhat(["devops:builder"], "de")).toBe("Agent `devops:builder` arbeitet");
+    expect(pendingWhat(["devops:builder"], "en")).toBe("agent `devops:builder` is working");
   });
 
   it("names a single workflow with its own noun", () => {
@@ -81,7 +81,7 @@ describe("pendingWhat — the CTA slot", () => {
   });
 
   it("counts instead of naming from two items on — the names go on the line", () => {
-    expect(pendingWhat(["devops:frontend", "devops:qax"], "de")).toBe("2 Agenten arbeiten");
+    expect(pendingWhat(["devops:builder", "devops:qax"], "de")).toBe("2 Agenten arbeiten");
     expect(pendingWhat(["a", "b", "c", "d"], "de")).toBe("4 Agenten arbeiten");
   });
 
@@ -151,10 +151,10 @@ describe("renderPendingLine — the dim line next to the CTA", () => {
 describe("renderPendingBlock", () => {
   it("renders one bullet per item with its work description", () => {
     const block = renderPendingBlock(
-      [{ name: "devops:frontend", doing: "Farbstil auf Tokens umstellen" }], "de",
+      [{ name: "devops:builder", doing: "Farbstil auf Tokens umstellen" }], "de",
     );
     expect(block).toContain("⏳ **LÄUFT NOCH — nicht abgeschlossen:**");
-    expect(block).toContain("* `devops:frontend` — Farbstil auf Tokens umstellen");
+    expect(block).toContain("* `devops:builder` — Farbstil auf Tokens umstellen");
   });
 
   it("keeps a long work description whole up to 90 characters and cuts on a word boundary after", () => {
@@ -224,15 +224,15 @@ describe("concept layer", () => {
   });
 
   it("a single content agent follows the implementing state by name", () => {
-    expect(conceptWhat("implementing", [{ name: "devops:frontend" }], "de"))
-      .toBe("in Implementierung. Agent `devops:frontend` arbeitet");
-    expect(conceptWhat("implementing", [{ name: "devops:frontend" }], "en"))
-      .toBe("in implementation. agent `devops:frontend` is working");
+    expect(conceptWhat("implementing", [{ name: "devops:builder" }], "de"))
+      .toBe("in Implementierung. Agent `devops:builder` arbeitet");
+    expect(conceptWhat("implementing", [{ name: "devops:builder" }], "en"))
+      .toBe("in implementation. agent `devops:builder` is working");
   });
 
   it("several items follow as counts per class, biggest unit first", () => {
     const mix = [
-      { name: "devops:frontend" }, { name: "devops:core" },
+      { name: "devops:builder" }, { name: "devops:builder" },
       { name: "harden-pass", kind: "workflow" }, { name: "npm test", kind: "task" },
     ];
     expect(conceptWhat("implementing", [{ name: "a" }, { name: "b" }], "de"))

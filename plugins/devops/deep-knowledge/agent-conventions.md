@@ -16,7 +16,7 @@
 {project}/.claude/deep-knowledge/agent-conventions.md
 ```
 
-Example: `pox` (product owner), `frontend`, `backend`, `qax`, `devops` — names need at least 3 characters (the claude.ai plugin sync drops shorter ones)
+Example: `pox` (product owner), `builder`, `analyst`, `qax`, `devops` — names need at least 3 characters (the claude.ai plugin sync drops shorter ones)
 
 ## Inline role attribution
 

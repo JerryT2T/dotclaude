@@ -215,7 +215,21 @@ function widgetCardTitle(widgetCode) {
 function widgetRelayText(name, input) {
   if (!isCardWidgetCall(name, input)) return '';
   const title = widgetCardTitle(input.widget_code) || GENERIC_WIDGET_TITLE;
-  return `${CARD_MARKER} ${title} ${CARD_MARKER}`;
+  const text = `${CARD_MARKER} ${title} ${CARD_MARKER}`;
+  // The compact band form draws no title, only the renderer's own decision
+  // heading ("… wartet auf deine Entscheidungen", "… 4 Agenten arbeiten"):
+  // tag it so the title status-word gate does not judge the heading.
+  return widgetHasTitle(input.widget_code) ? text : `${text}\n${HEADING_ONLY_TAG}`;
+}
+
+/** Marks relay text whose ✨ title is the widget's decision heading, not a title. */
+const HEADING_ONLY_TAG = '[card-title: decision heading]';
+
+/** Does the widget draw the full form's own title (`<h3 class="card-title">`)? */
+function widgetHasTitle(widgetCode) {
+  if (typeof widgetCode !== 'string') return false;
+  const h3 = widgetCode.match(/<h3 class="card-title"[^>]*>([\s\S]*?)<\/h3>/);
+  return !!(h3 && decodeTitle(h3[1]));
 }
 
 /**
@@ -824,7 +838,9 @@ function decideAction({
   // exists and its text is available.
   if (cardRendered && cardText) {
     const title = extractCardTitle(cardText);
-    const statusWord = titleStatusWordViolation(title);
+    // A compact band widget has no title of its own — its ✨ line is the
+    // renderer-generated decision heading, where status words belong.
+    const statusWord = cardText.includes(HEADING_ONLY_TAG) ? null : titleStatusWordViolation(title);
     if (statusWord) { failures.push(buildTitleStatusWordReason(statusWord)); gates.push('title-status-word'); }
 
     const resultLines = extractResultLines(cardText);

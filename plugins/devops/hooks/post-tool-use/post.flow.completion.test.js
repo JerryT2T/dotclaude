@@ -214,11 +214,11 @@ describe("post.flow.completion — pending reminder", () => {
   test("fires on a background agent launch and names it", () => {
     const dir = project();
     const out = runHook(dir, "s-pending-agent", "Agent", {
-      tool_input: { subagent_type: "devops:frontend", run_in_background: true },
+      tool_input: { subagent_type: "devops:builder", run_in_background: true },
       tool_response: AGENT_LAUNCH,
     });
     expect(out).toContain("[pending]");
-    expect(out).toContain("devops:frontend");
+    expect(out).toContain("devops:builder");
     expect(out).toContain("`pending` field");
     cleanup(dir);
   });

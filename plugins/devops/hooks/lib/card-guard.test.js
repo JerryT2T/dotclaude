@@ -19,6 +19,7 @@ import {
   showWidgetCalledThisTurn,
   editsThisTurn,
   decideAction,
+  widgetRelayText,
   buildBlockReason,
   buildGuideLoopReason,
   buildValidationReason,
@@ -608,13 +609,13 @@ describe("decideAction — pending gate", () => {
       cardRendered: true,
       stopHookActive: false,
       substantial: false,
-      openTaskNames: ["devops:frontend"],
+      openTaskNames: ["devops:builder"],
       pendingAttested: false,
     });
     expect(d.action).toBe("block");
     expect(d.resetFlags).toBe(false);
     expect(d.reason).toMatch(/STILL RUNNING/);
-    expect(d.reason).toMatch(/devops:frontend/);
+    expect(d.reason).toMatch(/devops:builder/);
   });
 
   test("card rendered + open background work + attested → pass", () => {
@@ -623,7 +624,7 @@ describe("decideAction — pending gate", () => {
       cardRendered: true,
       stopHookActive: false,
       substantial: false,
-      openTaskNames: ["devops:frontend"],
+      openTaskNames: ["devops:builder"],
       pendingAttested: true,
     });
     expect(d.action).toBe("pass");
@@ -730,8 +731,8 @@ describe("decideAction — pending gate", () => {
 
 describe("buildPendingReason", () => {
   test("names each open item and the pending field", () => {
-    const r = buildPendingReason(["devops:frontend", "npm test"]);
-    expect(r).toMatch(/devops:frontend/);
+    const r = buildPendingReason(["devops:builder", "npm test"]);
+    expect(r).toMatch(/devops:builder/);
     expect(r).toMatch(/npm test/);
     expect(r).toMatch(/pending/);
     expect(r).toMatch(/render_completion_card/);
@@ -1035,6 +1036,18 @@ describe("decideAction — card content gates", () => {
     expect(d.reason).toMatch(/running/);
   });
 
+  test("a compact band widget's decision heading is not judged as a title", () => {
+    const compact = '<div id="dc-card"><p class="card-head">⏳ 🧭 Concept — in Implementierung. 4 Agenten arbeiten — ich melde mich</p></div>';
+    const cardText = widgetRelayText("mcp__visualize__show_widget", { title: "completion_card_body", widget_code: compact });
+    const d = decideAction({ workHappened: true, cardRendered: true, stopHookActive: false, substantial: false, cardText });
+    expect(d.gates || []).not.toContain("title-status-word");
+    // The full form's own title is still judged.
+    const full = '<h3 class="card-title">Agents still running</h3><div id="dc-card"></div>';
+    const fullText = widgetRelayText("mcp__visualize__show_widget", { title: "completion_card_body", widget_code: full });
+    const d2 = decideAction({ workHappened: true, cardRendered: true, stopHookActive: false, substantial: false, cardText: fullText });
+    expect(d2.reason).toMatch(/status word/);
+  });
+
   test("too many result lines → BLOCK once", () => {
     const d = decideAction({
       workHappened: true,
@@ -1148,7 +1161,7 @@ describe("decideAction — notification turn", () => {
       turnEdits: 0,
       shipped: false,
       openTasksKnown: true,
-      openTaskNames: ["devops:core"],
+      openTaskNames: ["devops:builder"],
     });
     expect(d.action).toBe("pass");
     expect(d.exempt).toBe("notification-work-running");
@@ -1181,7 +1194,7 @@ describe("decideAction — notification turn", () => {
       turnEdits: 2,
       shipped: false,
       openTasksKnown: true,
-      openTaskNames: ["devops:core"],
+      openTaskNames: ["devops:builder"],
     });
     expect(d.action).toBe("block");
   });
@@ -1531,7 +1544,7 @@ describe("cardDelivered / deliveredCardText — the card shown after the last re
     const bare = assistantMsg({ type: "tool_use", id: "w1", name: "mcp__visualize__show_widget", input: { title: "x", widget_code: '<div id="dc-card"></div>' } });
     const tx = jsonl(userMsg("go"), render, renderResult, bare, widgetResult);
     expect(cardDelivered(tx)).toBe(true);
-    expect(deliveredCardText(tx)).toBe(`${CARD_MARKER} Completion card ${CARD_MARKER}`);
+    expect(deliveredCardText(tx)).toBe(`${CARD_MARKER} Completion card ${CARD_MARKER}\n[card-title: decision heading]`);
   });
 
   test("returns false when the marker is in an EARLIER turn", () => {

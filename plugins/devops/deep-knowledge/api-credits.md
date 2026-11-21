@@ -57,10 +57,25 @@ is on and a key exists. While it is there:
 | Codex second opinion when Codex is skipped (75 / 124 / 127) | `claude-api-safe.js` one-shot (`codex-integration.md` § Claude API fallback) |
 | Evals (`evals/ab-run.js`) | API key only when started from the user's own terminal (below) |
 | Month-end audit | `api-credit-audit.js` (below) |
-| Code-writing agents (`core`, `frontend`, `feature`), test runs (`qax`), anything that edits or executes | **in-session**, always — the API agent has no write or shell tools |
+| Code-writing agents (`builder`, `feature`), test runs (`qax`), anything that edits or executes | **in-session**, always — the API agent has no write or shell tools |
 
 `[api-credit] on · no key stored` → everything stays on the plan; offer the
 web guide once if `apiCredit.webGuide`. `… credit exhausted until …` → plan.
+**The spawn gate** (`pre.agent.apicredit`, `lib/agent-apicredit-gate.js`) enforces
+the first row: a `devops:scout|research|redteam` spawn is refused once per type
+per turn with the ready command; the repeat, or a prompt citing the API rc,
+passes. Three passes keep it from taxing work the API agent cannot do:
+
+- **Shell-needing prompts are never refused.** A prompt that runs `gh `, `git `,
+  `npm `, `npx `, `node `, `curl `, `python`, `pwsh`, holds a fenced
+  bash/sh/powershell block or says "run the tests" needs a shell — the API
+  agent only reads files (audit 2026-11: 8 scout triage spawns, each starting
+  with `gh issue view`, were refused for nothing).
+- **At most one refusal per assistant message.** Of several gated spawns in one
+  message only the first (in message order) can be refused; the rest pass, so a
+  parallel wave pays one round trip, not one per spawn. The first spawn that is
+  itself exempt (shell, rc) does not use the refusal up.
+- A spawn that cannot be found in the transcript falls back to the per-turn rule (one refusal per agent type per turn).
 
 ## The API agent — `scripts/claude-api-agent.js`
 

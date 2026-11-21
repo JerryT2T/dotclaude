@@ -180,7 +180,7 @@ Template (`{key}` → resolved per locale):
 **{plan.budget}:** Complex → ~15–30 tool calls per agent   [de: Complex → ~15–30 Tool-Calls pro Agent]
 
 ### {plan.deps}
-- Wave 2 waits on Wave 1 (core contracts)   [de: Wave 2 wartet auf Wave 1 (Core-Contracts)]
+- Wave 2 waits on Wave 1 (builder contracts)   [de: Wave 2 wartet auf Wave 1 (Builder-Contracts)]
 - Wave 3 verifies all changes from Wave 1+2  [de: Wave 3 prüft alle Änderungen aus Wave 1+2]
 
 ### {plan.estimate}: N
@@ -376,7 +376,7 @@ calls this skill again with the answer.
   both verbatim; no CTA, no hard-coded model version.
 - **Never run agents silently** — a launch without its spawn card shown is a
   silent launch, also under the Quiet output style
-- **Respect wave dependencies** — Core before Frontend, QA after all code changes
+- **Respect wave dependencies** — contracts before their consumers, QA after all code changes
 - **Never ship automatically** — agents commit and push only; `ship: auto`
   is an instruction to the caller, not an action here.
 - **Follow handoff protocol** — every agent-to-agent transition uses structured handoffs

@@ -46,9 +46,9 @@ recommended option and is listed under `assumptions`.
 
 - **One domain** → implement it yourself, whatever the size.
 - **Several domains with separate files** → delegate in waves per
-  `{PLUGIN_ROOT}/deep-knowledge/agent-collaboration.md`: `core` (contracts)
-  first, then `designer` when the UX is not specified yet, then `frontend`,
-  `aix` and — for platform code (`windows-platform.md`) — a second `core` in
+  `{PLUGIN_ROOT}/deep-knowledge/agent-collaboration.md`: one `builder` (contracts)
+  first, then `designer` when the UX is not specified yet, then two or more
+  `builder` agents (UI, AI, platform code per `windows-platform.md`) in
   parallel on disjoint files. Spawn implementers with
   `isolation: "worktree"`; every prompt carries
   `Parent branch: <your-integration-branch>` (or `none (file-only)` without a
@@ -99,3 +99,5 @@ Result first (works / partial / blocked), then: integration branch,
 with met/unmet each, the synthesis' "explicitly out" list, `assumptions`,
 agents used, tests run, review verdict, `needs-decision` (or none),
 `open_questions`.
+
+Your final message IS the report to the caller — within the requested length, never a status line or a reply to a late background notification; write it last.

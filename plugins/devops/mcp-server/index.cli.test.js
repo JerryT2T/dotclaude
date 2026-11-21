@@ -449,10 +449,10 @@ describe("--render-card CLI fallback", () => {
       summary: "Agent läuft noch",
       lang: "de",
       session_id: S("pending"),
-      pending: JSON.stringify([{ name: "devops:frontend", doing: "Farbstil" }]),
+      pending: JSON.stringify([{ name: "devops:builder", doing: "Farbstil" }]),
     });
     expect(out).toMatch(/^## ⏳ 🤖 Team — noch nicht fertig/m);
-    expect(out).toContain("devops:frontend");
+    expect(out).toContain("devops:builder");
     expect(out).not.toMatch(/^## 👉 📦 Ready — Shippen/m);
   });
 

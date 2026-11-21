@@ -3,7 +3,7 @@
 Reference for Windows-specific implementation — system tray, native
 notifications, installers and update mechanisms, registry, file associations,
 startup behaviour, native API wrappers (Win32, .NET interop). Read it before
-such work, whether it runs inline or in the `core` agent. (It replaced the
+such work, whether it runs inline or in a `builder` agent. (It replaced the
 former `windows` role agent, which saw 8 spawns in 30 days: the domain is
 real, but too rare to justify a role of its own.)
 
@@ -34,5 +34,5 @@ real, but too rare to justify a role of its own.)
 
 ## Collaboration
 
-Platform code depends on core contracts and hands off to `qax` for
-platform-specific testing, like any other `core` work.
+Platform code depends on the backend contracts and hands off to `qax` for
+platform-specific testing, like any other `builder` work.

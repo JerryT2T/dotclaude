@@ -19,8 +19,16 @@ auto-polish) execute through the auto-agents skill; Inline needs no skill load.
 **Spawn shape, every Agent call:** `subagent_type` + `model` (`haiku`|`sonnet`|
 `opus`, never a pinned version), even if it equals the session's — without
 `model` the first spawn is refused. Locating → `devops:scout` (haiku, only
-there), not `Explore`. Implementing → a domain agent on `sonnet`; opus only for
-design-heavy/ambiguous work in class `free`. With api-credit on, a first `scout`/`research`/`redteam` spawn is refused once: run `claude-api-agent.js` first.
+there), not `Explore`. Reading WITH a verdict (triage, diagnose-only, cause
+analysis) → `devops:analyst` (sonnet); a diagnose-only order never goes to an
+implementer. Implementing → `devops:builder` on `sonnet`; opus only for
+design-heavy/ambiguous work in class `free`. Parallel implementers = two
+builders on disjoint files. A task that needs THIS conversation →
+`subagent_type: "fork"` (inherits conversation + cache, keeps the session
+model, no `model` field; never for a cheaper-model run); fresh context + own
+model/tools → a named agent. `general-purpose`/`Explore` only when no devops
+type fits; the `description` then ends with the reason, e.g. `… (general-purpose:
+needs Write outside repo)`. With api-credit on, a first `scout`/`research`/`redteam` spawn is refused once: run `claude-api-agent.js` first.
 
 **Card:** the agent card (`pre.agent.announce`) is your very next text,
 verbatim, before any other tool call, also under Quiet; parallel spawns → last

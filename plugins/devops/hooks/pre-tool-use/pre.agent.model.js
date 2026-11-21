@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook pre.agent.model
- * @version 0.1.0
+ * @version 0.2.0
  * @event PreToolUse
  * @plugin devops
  * @matcher Agent
@@ -21,7 +21,11 @@ const gate = require('../lib/agent-model-gate');
 
 // Agents renamed so claude.ai accepts them (3df34d31). Claude Code ignores
 // updatedInput for the Agent tool, so a stale name is refused with the new one.
-const RENAMED = { 'devops:ai': 'devops:aix', 'devops:po': 'devops:pox', 'devops:qa': 'devops:qax' };
+// core / frontend / aix (and the older ai) merged into devops:builder.
+const RENAMED = {
+  'devops:ai': 'devops:builder', 'devops:aix': 'devops:builder', 'devops:core': 'devops:builder', 'devops:frontend': 'devops:builder',
+  'devops:po': 'devops:pox', 'devops:qa': 'devops:qax',
+};
 
 function renameHint(input) {
   const to = RENAMED[String((input && input.subagent_type) || '').trim()];

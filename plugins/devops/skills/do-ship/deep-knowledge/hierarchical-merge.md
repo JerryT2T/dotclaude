@@ -4,9 +4,9 @@ When multiple agents work on sub-branches of a feature branch:
 
 ```
 feat/42-video-filters              ← feature branch (integration)
-├── feat/42-video-filters-core     ← sub-branch (Core agent)
-├── feat/42-video-filters/frontend ← sub-branch (Frontend agent)
-└── feat/42-video-filters/ai       ← sub-branch (AI agent)
+├── feat/42-video-filters-builder   ← sub-branch (Builder agent)
+├── feat/42-video-filters/builder-2 ← sub-branch (Builder agent)
+└── feat/42-video-filters/builder-3 ← sub-branch (Builder agent)
 ```
 
 Each sub-agent ships independently via `/do-ship`. The pipeline

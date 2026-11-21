@@ -94,6 +94,9 @@ squash-merged sub-branches and autosave snapshots usually landed by content,
 and the rest is work that got lost. So before any question, every ambiguous
 branch (or feature group: branches sharing a prefix such as `kw/*`, one
 intention split across agents) gets a content triage. Read-only commands only.
+Inline for a few branches; for a long list delegate to `devops:analyst` with
+`model: "sonnet"` (one per branch or group, `description` starting
+`Triage <branch>`; it returns the verdict) — never `general-purpose`.
 
 1. **Intention** — one sentence from the commit subjects and the diff:
    `git log --format='%s' origin/main..<branch>` + `git diff --stat origin/main...<branch>`.

@@ -13,7 +13,7 @@ Three readers, one source:
 
 | Reader | When | What it does with the rules |
 |---|---|---|
-| `post.design.remind` hook + `agents/frontend.md` / `agents/designer.md` | The moment a UI file is written | Prevention — the rules are in context before the element exists |
+| `post.design.remind` hook + `agents/builder.md` / `agents/designer.md` | The moment a UI file is written | Prevention — the rules are in context before the element exists |
 | `/auto-polish --invoked-by=ship` (called from `/do-ship` Step 1e) | Every ship whose diff touches UI files | Measurement — **static** halves only, diff files only, report-only |
 | `/auto-polish` (direct, `/auto-agents`, `/do-run autonomous`) | A polish pass with a browser | Full check — static **and** runtime halves, whole scope |
 
@@ -51,7 +51,7 @@ No rule repeats it.
   look.
 - **Fix policy:** a literal with a clean token equivalent is swapped
   (mechanical). Replacing a native construct with the app's own component is
-  report-only on the ship path. The prevention readers (hook, `frontend` /
+  report-only on the ship path. The prevention readers (hook, `builder` /
   `designer` agents) build or theme the missing component **before** they
   write the first element that needs it.
 

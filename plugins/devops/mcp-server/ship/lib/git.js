@@ -384,7 +384,7 @@ export function getConfig(key, opts) {
 }
 
 /** Roles an agent sub-branch name ends in (`<parent>-<role>`, agents/*.md). */
-const SUB_BRANCH_ROLES = Object.freeze(["ai", "aix", "core", "design", "designer", "frontend", "windows", "feature", "qa", "qax"]);
+const SUB_BRANCH_ROLES = Object.freeze(["ai", "aix", "analyst", "builder", "core", "design", "designer", "frontend", "windows", "feature", "qa", "qax"]);
 
 /**
  * Detect parent branch from sub-branch naming convention.

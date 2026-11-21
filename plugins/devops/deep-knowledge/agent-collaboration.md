@@ -18,14 +18,14 @@ Feature Agent (one feature, elaborate → build → verify)
     ├──→ PO synthesis    (weighs the lenses → scope + acceptance criteria)
     │       │
     │       ▼
-    ├──→ Core Agent      (business logic, contracts, platform code)
+    ├──→ Builder Agent   (business logic, contracts, platform code)
     │       │
     │       ▼
     ├──→ Designer Agent  (UX/UI specs, when the UX is not specified yet)
     │       │
     │       ▼
-    ├──→ Frontend Agent  ┐ parallel, disjoint files,
-    ├──→ AI Agent        ┘ consume Core contracts
+    ├──→ Builder Agents  ┐ two or more in parallel on disjoint files
+    │                    ┘ (UI, AI, ...), consume the contracts
     │
     ▼
 QA Agent (verifies all changes)
@@ -44,8 +44,8 @@ When multiple agents work on a feature, they execute in waves:
 | Wave | Agents | Model | Why |
 |------|--------|-------|-----|
 | 0 | **PO** lenses (parallel) → **PO** synthesis | sonnet → opus | Elaboration — unless criteria come from outside (`feature-elaboration.md`) |
-| 1 | **Core** | sonnet | Defines contracts and interfaces first |
-| 2 | **Designer** → **Frontend**, **AI** (parallel) | sonnet | Consume Core contracts |
+| 1 | **Builder** (contracts) | sonnet | Defines contracts and interfaces first |
+| 2 | **Designer** → **Builder** × N (parallel, disjoint files) | sonnet | Consume the contracts |
 | 3 | **QA** | sonnet | Verifies all changes together |
 | 4 | **PO** review | opus | Validates against the acceptance criteria |
 
@@ -102,13 +102,13 @@ branch off the integration branch:
 
 ```
 feat/42-video-filters               ← Feature agent (integration branch)
-├── feat/42-video-filters-core      ← Core agent worktree
-├── feat/42-video-filters-frontend  ← Frontend agent worktree
-└── feat/42-video-filters-ai        ← AI agent worktree
+├── feat/42-video-filters-builder    ← Builder worktree (contracts)
+├── feat/42-video-filters-builder-2  ← Builder worktree (UI)
+└── feat/42-video-filters-builder-3  ← Builder worktree (AI)
 ```
 
 The orchestrator merges each sub-branch back into the integration branch (merge order
-follows wave order: Core → Frontend/AI → integration). The integration branch is
+follows wave order: contracts builder → parallel builders → integration). The integration branch is
 shipped to `main` **once**, at the end, via `/do-ship` — sub-branches are NOT shipped
 individually.
 
@@ -150,7 +150,7 @@ non-isolated agent from resetting the session's checkout — is
 ### Branch naming
 
 Sub-branches use a **flat, dash-joined** name: `<parent-branch>-<role>`
-Example: parent `feat/42-video-filters` → core agent works on `feat/42-video-filters-core`.
+Example: parent `feat/42-video-filters` → builder agent works on `feat/42-video-filters-builder`.
 
 **Never use a slash (`<parent-branch>/<role>`).** Git stores branches as files under
 `.git/refs/heads`, so it refuses to create `foo/bar` while a branch `foo` exists
@@ -167,7 +167,7 @@ conflicts per `deep-knowledge/merge-safety.md`.
 ### Hierarchical ship (separate, optional)
 
 The ship pipeline can also auto-detect a parent from a **slash-nested** branch name
-(`detectParentBranch`: `feat/42-core` → base `feat/42` → intermediate merge; full release
+(`detectParentBranch`: `feat/42-builder` → base `feat/42` → intermediate merge; full release
 only on the final ship to main). This is a distinct capability for genuine multi-stage
 feature branches, with a hard precondition: the parent must exist **on origin only** and
 NOT be checked out as a local branch — otherwise the slash-nested child cannot be created
@@ -191,8 +191,8 @@ conflicts occur, follow `deep-knowledge/merge-safety.md` strictly:
    - **Design decision** (different user-facing behavior): ask the user
 3. **Semantic verification**: after textual resolution, read the merged file and verify
    logical correctness. Watch for silent semantic conflicts — code that merges cleanly
-   but is logically broken (e.g., function signature changed by Core, new call added
-   by Frontend without the new parameter).
+   but is logically broken (e.g., function signature changed by one builder, new call added
+   by another without the new parameter).
 4. **Never skip a conflict**: every hunk must be explicitly resolved. No `--ours`, no `--theirs`.
 5. **Never leave markers**: `<<<<<<<` must never be committed.
 
@@ -209,11 +209,11 @@ All happens within the single `/auto-issue` execution.
 
 ## Rules
 
-- **Never skip a wave.** Core must commit contracts before Frontend starts.
+- **Never skip a wave.** The contracts builder must commit contracts before the UI/AI builders start.
 - **Never skip QA review.** Even "trivial" changes get reviewed.
 - **Handoff data is mandatory.** No agent starts without knowing what came before.
 - **Conflicts resolve at integration.** The Feature agent handles merge conflicts per `deep-knowledge/merge-safety.md`. Never use `--ours`/`--theirs`. Auto-resolve complementary changes; escalate design decisions to user.
-- **Parallel agents don't cross-depend.** Frontend and AI never import from each other.
+- **Parallel agents don't cross-depend.** Parallel builders never import from each other.
 - **Push integration branch before spawning sub-agents.** Sub-agents reset to `origin/<integration-branch>` to start from the integration tip.
 - **Sub-branches use dash names, never slashes.** `<parent>-<role>` — a slash-nested child collides with the checked-out integration branch ref (see § Branch naming).
 - **Merge sub-branches back in wave order; ship the integration branch once.** Sub-branches are not shipped individually.
