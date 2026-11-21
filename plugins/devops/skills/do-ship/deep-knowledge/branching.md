@@ -5,7 +5,7 @@
 | Type | Pattern | Example |
 |---|---|---|
 | Feature | `feat/<issue>-<short-desc>` | `feat/42-video-filters` |
-| Agent sub-branch | `<parent>-<role>` | `feat/42-core` |
+| Agent sub-branch | `<parent>-<role>` | `feat/42-builder` |
 | Bugfix | `fix/<issue>-<short-desc>` | `fix/55-startup-crash` |
 | Chore | `chore/<issue>-<short-desc>` | `chore/60-cleanup-imports` |
 
@@ -14,9 +14,9 @@
 ```
 main
  └── feat/42-video-filters          ← integration branch
-      ├── feat/42-core               ← agent worktree
-      ├── feat/42-frontend           ← agent worktree
-      └── feat/42-ai                 ← agent worktree
+      ├── feat/42-builder            ← agent worktree
+      ├── feat/42-builder-2         ← agent worktree
+      └── feat/42-builder-3         ← agent worktree
 ```
 
 Merge order follows wave order (see `{PLUGIN_ROOT}/deep-knowledge/agent-collaboration.md`):

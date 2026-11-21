@@ -51,7 +51,7 @@ No rule repeats it.
   look.
 - **Fix policy:** a literal with a clean token equivalent is swapped
   (mechanical). Replacing a native construct with the app's own component is
-  report-only on the ship path. The prevention readers (hook, `frontend` /
+  report-only on the ship path. The prevention readers (hook, `builder` /
   `designer` agents) build or theme the missing component **before** they
   write the first element that needs it.
 

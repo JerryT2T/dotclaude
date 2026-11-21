@@ -92,14 +92,14 @@ function notification(taskId, status = 'completed') {
 }
 
 const AGENT_START = [
-  toolUse('toolu_1', 'Agent', { subagent_type: 'devops:frontend', run_in_background: true }),
+  toolUse('toolu_1', 'Agent', { subagent_type: 'devops:builder', run_in_background: true }),
   toolResult('toolu_1', AGENT_LAUNCH_TEXT),
 ];
 
 describe('scanOpenTasks', () => {
   test('reports a launched background agent as open', () => {
     const open = scanOpenTasks(AGENT_START.join('\n'));
-    expect(open).toEqual([{ id: 'a75d674f7108dd6c8', kind: 'agent', name: 'devops:frontend' }]);
+    expect(open).toEqual([{ id: 'a75d674f7108dd6c8', kind: 'agent', name: 'devops:builder' }]);
   });
 
   test('a task-notification closes it again', () => {
@@ -132,7 +132,7 @@ describe('scanOpenTasks', () => {
       toolResult('toolu_2', BASH_BG_TEXT),
       notification('b68oycrr6'),
     ];
-    expect(scanOpenTasks(lines.join('\n')).map(t => t.name)).toEqual(['devops:frontend']);
+    expect(scanOpenTasks(lines.join('\n')).map(t => t.name)).toEqual(['devops:builder']);
   });
 
   test('a SendMessage resume re-opens a completed agent', () => {
@@ -143,7 +143,7 @@ describe('scanOpenTasks', () => {
     ];
     // Re-opened, and still labelled by its type — never by the internal id.
     expect(scanOpenTasks(lines.join('\n')))
-      .toEqual([{ id: 'a75d674f7108dd6c8', kind: 'agent', name: 'devops:frontend' }]);
+      .toEqual([{ id: 'a75d674f7108dd6c8', kind: 'agent', name: 'devops:builder' }]);
   });
 
   test('a resumed agent closes again on its next notification', () => {
@@ -237,7 +237,7 @@ describe('scanOpenTasks — a SendMessage re-opens only an in-process agent', ()
       ...send('toolu_s', 'a75d674f7108dd6c8', SEND_RESUMED),
     ];
     expect(scanOpenTasks(lines.join('\n')))
-      .toEqual([{ id: 'a75d674f7108dd6c8', kind: 'agent', name: 'devops:frontend' }]);
+      .toEqual([{ id: 'a75d674f7108dd6c8', kind: 'agent', name: 'devops:builder' }]);
     expect(scanOpenTasks([...lines, notification('a75d674f7108dd6c8')].join('\n'))).toEqual([]);
   });
 
@@ -292,7 +292,7 @@ describe('scanOpenTasks — a SendMessage re-opens only an in-process agent', ()
 
   test('an unknown result shape falls back to the address — an agent this transcript launched only', () => {
     expect(scanOpenTasks([...AGENT_DONE, ...send('toolu_s', 'a75d674f7108dd6c8', UNKNOWN_REPLY)].join('\n')))
-      .toEqual([{ id: 'a75d674f7108dd6c8', kind: 'agent', name: 'devops:frontend' }]);
+      .toEqual([{ id: 'a75d674f7108dd6c8', kind: 'agent', name: 'devops:builder' }]);
     for (const to of ['main', PEER, 'a0000000000000000']) {
       expect(scanOpenTasks([...AGENT_DONE, ...send('toolu_s', to, UNKNOWN_REPLY)].join('\n'))).toEqual([]);
     }
@@ -366,7 +366,7 @@ describe('scanOpenTasks — a TaskStop result ends the task', () => {
       ...SERVER,
       ...taskStop('toolu_x', 'b0fag5evq'),
     ].join('\n'));
-    expect(open).toEqual([{ id: 'a75d674f7108dd6c8', kind: 'agent', name: 'devops:frontend' }]);
+    expect(open).toEqual([{ id: 'a75d674f7108dd6c8', kind: 'agent', name: 'devops:builder' }]);
   });
 
   test('a TaskStop result quoted inside another tool\'s output does not close the task', () => {
@@ -445,7 +445,7 @@ describe('scanOpenTasks — a TaskStop result ends the task', () => {
     const lines = [...AGENT_START, ...taskStop('toolu_x', 'a75d674f7108dd6c8', agentStopped)];
     expect(scanOpenTasks(lines.join('\n'))).toEqual([]);
     expect(scanOpenTasks([...lines, ...send('toolu_s', 'a75d674f7108dd6c8', SEND_RESUMED)].join('\n')))
-      .toEqual([{ id: 'a75d674f7108dd6c8', kind: 'agent', name: 'devops:frontend' }]);
+      .toEqual([{ id: 'a75d674f7108dd6c8', kind: 'agent', name: 'devops:builder' }]);
   });
 });
 
@@ -647,14 +647,14 @@ describe('responseLaunch', () => {
 describe('openTaskNames', () => {
   test('returns names only — never the internal id', () => {
     const names = openTaskNames(scanOpenTasks(AGENT_START.join('\n')));
-    expect(names).toEqual(['devops:frontend']);
+    expect(names).toEqual(['devops:builder']);
     expect(names.join(' ')).not.toContain('a75d674f7108dd6c8');
   });
 
   test('deduplicates repeated names and preserves order', () => {
     expect(openTaskNames([
-      { name: 'devops:qax' }, { name: 'devops:frontend' }, { name: 'devops:qax' },
-    ])).toEqual(['devops:qax', 'devops:frontend']);
+      { name: 'devops:qax' }, { name: 'devops:builder' }, { name: 'devops:qax' },
+    ])).toEqual(['devops:qax', 'devops:builder']);
   });
 
   test('skips unnamed entries and tolerates no input', () => {
@@ -960,7 +960,7 @@ describe('scanOpenTasks — concept bridge infrastructure is not work', () => {
       ...bgLaunch('toolu_t', 'tst1', { command: 'npm test', description: 'Baseline test run' }),
     ].join('\n'));
     expect(open).toEqual([
-      { id: 'a75d674f7108dd6c8', kind: 'agent', name: 'devops:frontend' },
+      { id: 'a75d674f7108dd6c8', kind: 'agent', name: 'devops:builder' },
       { id: 'tst1', kind: 'task', name: 'Baseline test run' },
     ]);
   });
@@ -1084,7 +1084,7 @@ describe('scanOpenTasksInFile — a launch older than the tail slice', () => {
     expect(scanOpenTasks(fs.readFileSync(running, 'utf8').slice(-TAIL))).toEqual([]);
     // ... the file scan does.
     expect(scanOpenTasksInFile(running, TAIL))
-      .toEqual([{ id: 'a75d674f7108dd6c8', kind: 'agent', name: 'devops:frontend' }]);
+      .toEqual([{ id: 'a75d674f7108dd6c8', kind: 'agent', name: 'devops:builder' }]);
 
     const done = write('done.jsonl', [...AGENT_START, ...filler, notification('a75d674f7108dd6c8')]);
     expect(scanOpenTasksInFile(done, TAIL)).toEqual([]);

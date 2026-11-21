@@ -113,7 +113,7 @@ function cleanName(s, max = NAME_MAX) {
 
 /**
  * Coerce the accepted input shapes into a uniform item list.
- * Accepts plain strings ("devops:frontend") and objects
+ * Accepts plain strings ("devops:builder") and objects
  * ({ kind, name, doing }). Anything unusable is dropped rather than thrown —
  * a card with a slightly thinner pending block still beats no card.
  *
@@ -263,7 +263,7 @@ export function renderPendingBlock(pending, lang) {
 // whole concept — they never produce a result, they ARE the waiting. So the
 // concept CTA replaces the pending CTA and states the one thing that is true:
 // waiting for decisions, in iteration, or in implementation. Real content
-// agents (a frontend agent, a research workflow) still count and follow the
+// agents (a builder agent, a research workflow) still count and follow the
 // state as their own sentence — "CONCEPT in Implementierung. 2 Agenten
 // arbeiten". The word CONCEPT itself is the template's; this module only
 // produces what comes after it.

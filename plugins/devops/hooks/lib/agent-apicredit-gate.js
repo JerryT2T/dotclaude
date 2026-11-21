@@ -1,6 +1,6 @@
 /**
  * @module agent-apicredit-gate
- * @version 0.1.0
+ * @version 0.2.0
  * @description Should this read-only devops Agent spawn be refused once so the
  *   API credit is tried first? (#1013: 71 in-session scout/research/redteam
  *   spawns vs 5 API runs in a week, with the credit on.)
@@ -11,6 +11,13 @@
  *   `claude-api-agent.js` command; a prompt that cites the API rc it falls
  *   back from passes. Stateless like agent-model-gate (the transcript tells
  *   whether this type was already refused this turn). Fail-open.
+ *
+ *   Two passes (2026-11 agent-deployment audit): a prompt that needs shell
+ *   commands (`gh `, `git `, `npm `, a fenced bash block, "run the tests" …)
+ *   is never refused — the API agent only reads files. And of several gated
+ *   spawns in ONE assistant message only the first can be refused (parallel
+ *   hooks run before any result exists, so "first in the message" is the
+ *   stateless, race-free choice); the others pass.
  */
 
 'use strict';
@@ -24,12 +31,59 @@ const TAGS = { 'devops:scout': 'scout', 'devops:research': 'research', 'devops:r
 // Only a concrete number counts as a citation: "rc 75", "rc=124", "exit code 127".
 const RC_CITED = /\b(?:rc|exit(?:\s+code)?)\s*[:=]?\s*(?:75|124|126|127|1)\b/i;
 
+// A prompt that needs a shell: the API agent has list_files/read_file/grep only.
+const NEEDS_SHELL = new RegExp([
+  /(?:^|[\s`"'(])(?:gh|git|npm|npx|node|curl|pnpm|yarn|pwsh|powershell)\s+[\w./-]/.source,
+  /\bpython3?\b/.source,
+  /```\s*(?:bash|sh|shell|powershell|pwsh|cmd)\b/.source,
+  /\brun\s+(?:the\s+|all\s+)?(?:unit\s+|vitest\s+)?tests?\b/.source,
+].join('|'), 'i');
+
+function needsShell(prompt) {
+  return NEEDS_SHELL.test(String(prompt || ''));
+}
+
 function tagOf(input) {
   return TAGS[String((input && input.subagent_type) || '').trim()] || null;
 }
 
 function citesRc(prompt) {
   return RC_CITED.test(String(prompt || ''));
+}
+
+/**
+ * Is `toolUseId` the first gated spawn (no rc citation, no shell need) of its
+ * assistant message? null = this tool_use is not in the transcript (unknown).
+ */
+function leadsItsMessage(transcriptText, toolUseId) {
+  if (!toolUseId) return null;
+  let run = 0;
+  let prevAssistant = false;
+  const groups = new Map(); // group key → [{ id, input }]
+  for (const line of String(transcriptText || '').split('\n')) {
+    if (!line.trim()) continue;
+    let e;
+    try { e = JSON.parse(line); } catch { continue; }
+    if (e.isSidechain) continue;
+    if (e.type !== 'assistant') { prevAssistant = false; continue; }
+    if (!prevAssistant) run++;
+    prevAssistant = true;
+    const key = (e.message && e.message.id) || `run${run}`;
+    const content = e.message && e.message.content;
+    if (!Array.isArray(content)) continue;
+    for (const b of content) {
+      if (b && b.type === 'tool_use' && b.name === 'Agent') {
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push({ id: b.id, input: b.input || {} });
+      }
+    }
+  }
+  for (const list of groups.values()) {
+    if (!list.some(x => x.id === toolUseId)) continue;
+    const first = list.find(x => tagOf(x.input) && !citesRc(x.input.prompt) && !needsShell(x.input.prompt));
+    return !!first && first.id === toolUseId;
+  }
+  return null;
 }
 
 /** Is the credit usable right now (switch on, key, no limit)? Any error → not usable. */
@@ -75,9 +129,12 @@ function refusedBefore(transcriptText, input, toolUseId) {
 
 /** @returns {boolean} true → refuse this spawn once */
 function wouldRefuse(input, transcriptText, toolUseId, ctx) {
-  if (!tagOf(input) || citesRc(input.prompt)) return false;
+  if (!tagOf(input) || citesRc(input.prompt) || needsShell(input.prompt)) return false;
   if (!String(transcriptText || '').trim()) return false; // retry not recognisable → fail open
   if (!creditUsable(ctx)) return false;
+  // At most one refusal per assistant message: only its first gated spawn may
+  // be refused. Not found in the transcript → cannot tell → pass (fail open).
+  if (toolUseId && leadsItsMessage(transcriptText, toolUseId) === false) return false;
   return !refusedBefore(transcriptText, input, toolUseId);
 }
 
@@ -93,4 +150,4 @@ function refusalText(input) {
   );
 }
 
-module.exports = { MARKER, TAGS, tagOf, citesRc, creditUsable, refusedBefore, wouldRefuse, refusalText };
+module.exports = { MARKER, TAGS, tagOf, citesRc, needsShell, leadsItsMessage, creditUsable, refusedBefore, wouldRefuse, refusalText };

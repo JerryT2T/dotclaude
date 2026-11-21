@@ -37,7 +37,7 @@ const payload = (dir) => JSON.stringify({
   session_id: "s1",
   cwd: dir,
   agent_id: "af25c54147bc6c9b1",
-  agent_type: "devops:frontend",
+  agent_type: "devops:builder",
 });
 
 describe("sub.plugin.root", () => {

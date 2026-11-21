@@ -9,7 +9,7 @@
  *   `{PLUGIN_ROOT}/deep-knowledge/<file>`. A skill can infer the root from its
  *   "Base directory" line, but a subagent gets nothing equivalent: the
  *   SessionStart injection (ss.knowledge.index) does not reach it and
- *   $CLAUDE_PLUGIN_ROOT is unset in the Bash tool. On 2026-09-24 devops:frontend
+ *   $CLAUDE_PLUGIN_ROOT is unset in the Bash tool. On 2026-09-24 devops:builder
  *   subagents therefore ran `find / -maxdepth 6 -iname ui-defaults.md`; the
  *   Bash timeout backgrounded the crawl and find.exe ran for hours after the
  *   agent had finished. This hook injects the one line from lib/plugin-root

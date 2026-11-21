@@ -190,7 +190,7 @@ Merge everything into one queue file (JSON array). Per task:
 |------|--------|-------|
 | **P0** | User's primary prompt | core — always first |
 | **P1** | Lint / type errors, failing tests | mechanical — standard depth |
-| **P2** | Issues assigned to the user | core |
+| **P2** | Issues assigned to the user | builder |
 | **P3** | TODO/FIXME in changed files | filler — standard depth |
 | **P4** | Coverage gaps | filler — standard depth |
 | **P5** | Remaining TODOs, unassigned issues | filler — standard depth |

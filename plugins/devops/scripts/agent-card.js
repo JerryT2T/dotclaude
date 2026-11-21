@@ -8,8 +8,8 @@
  * Usage:
  *   node scripts/agent-card.js <<'EOF'
  *   { "lang": "de", "tier": "volle Zeremonie", "session": "opus 5.5 · high",
- *     "agents": [ { "type": "devops:core", "wave": 1, "task": "API contracts" },
- *                 { "type": "devops:frontend", "wave": 2, "task": "Settings UI", "model": "opus" } ] }
+ *     "agents": [ { "type": "devops:builder", "wave": 1, "task": "API contracts" },
+ *                 { "type": "devops:builder", "wave": 2, "task": "Settings UI", "model": "opus" } ] }
  *   EOF
  *
  * `session` (optional, "<model> · <effort>") fills in what inheriting agents

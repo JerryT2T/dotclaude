@@ -31,10 +31,10 @@ describe('substop.agent.wip', () => {
     const wt = path.join(repo, '.claude', 'worktrees', 'agent-abc123');
     g(repo, 'worktree', 'add', '-b', 'worktree-agent-abc123', wt);
     fs.writeFileSync(path.join(wt, 'result.txt'), 'r');
-    const out = await hookMain({ cwd: repo, agent_id: 'abc123', agent_type: 'devops:core' });
+    const out = await hookMain({ cwd: repo, agent_id: 'abc123', agent_type: 'devops:builder' });
     expect(out.context).toContain('worktree-agent-abc123');
     expect(out.context).toContain('agent-abc123');
-    expect(g(wt, 'log', '-1', '--format=%s')).toBe('wip(agent): uncommitted result of devops:core');
+    expect(g(wt, 'log', '-1', '--format=%s')).toBe('wip(agent): uncommitted result of devops:builder');
     expect(g(repo, 'rev-parse', 'main')).not.toBe(g(wt, 'rev-parse', 'HEAD'));
   });
 
@@ -75,7 +75,7 @@ describe('substop.agent.wip', () => {
     g(repo, 'worktree', 'add', '-b', 'worktree-agent-sec', wt);
     fs.writeFileSync(path.join(wt, 'r.txt'), 'r');
     fs.writeFileSync(path.join(wt, '.env'), 'SECRET=1');
-    const out = await hookMain({ cwd: wt, agent_id: 'sec', agent_type: 'devops:core' });
+    const out = await hookMain({ cwd: wt, agent_id: 'sec', agent_type: 'devops:builder' });
     expect(out.context).toMatch(/1 file\(s\) left out/);
     expect(g(wt, 'show', '--name-only', '--format=', 'HEAD')).toBe('r.txt');
     expect(fs.readFileSync(path.join(wt, '.env'), 'utf8')).toBe('SECRET=1');

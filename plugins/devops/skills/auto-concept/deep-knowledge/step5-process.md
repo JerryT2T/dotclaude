@@ -275,7 +275,7 @@ external systems change** — with one difference: the next round belongs to `ne
    brief: the concept file path, the submitted round, and the decisions the
    work must honour — not a paraphrase. `auto-agents` applies the delegation
    tiers, shows its agent cards, splits the approved work by domain
-   (`devops:core`, `devops:frontend`, `devops:designer`, `devops:aix`),
+   (`devops:builder` per area, `devops:designer`),
    runs independent parts in parallel and lets
    `devops:qax` verify; `{PLUGIN_ROOT}/deep-knowledge/agent-orchestration.md`
    stays the authority on who owns what. The implement click is the yes its

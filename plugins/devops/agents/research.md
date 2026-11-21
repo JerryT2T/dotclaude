@@ -62,3 +62,5 @@ remained contested.
 - Flag information older than 12 months
 - **Fact verification mandatory** — see `deep-knowledge/fact-verification.md`.
   Double-check every claim. Include verification table if 3+ facts.
+
+Your final message IS the report to the caller — within the requested length, never a status line or a reply to a late background notification; write it last.

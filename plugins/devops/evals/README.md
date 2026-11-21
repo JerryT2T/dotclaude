@@ -265,7 +265,7 @@ Two things about how the graders are written:
   once (B) both pass 4/4.
 - Role-agent graders exclude spawns whose input mentions the completion
   card: without Bash the Stop hook's offline card render is delegated to
-  whichever agent has a shell — `devops:core` was observed doing it.
+  whichever agent has a shell — `devops:builder` was observed doing it.
 - Each case's `scaffold.sh` checks out an `eval/work` branch, because the
   plugin's own `pre.edit.branch` hook refuses writes on `main` and the eval
   workspace starts as a fresh repo on `main` (`ab-run.js` always runs it).

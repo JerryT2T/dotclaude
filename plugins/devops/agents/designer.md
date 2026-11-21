@@ -54,7 +54,7 @@ Work in checkpoints: commit `wip(<scope>): <what>` after every green sub-step an
 ### Design-to-Code Bridge
 - Export design tokens to code
 - Create Code Connect mappings (`send_code_connect_mappings`) to link Figma ↔ code
-- Write component specs that the Frontend agent can implement directly
+- Write component specs that a builder can implement directly
 - Verify implementation matches design with a browser screenshot
   (Claude browser pane for localhost, Claude in Chrome for logged-in sites, Playwright last, headless and never activated — see browser-tool-strategy.md)
 
@@ -72,8 +72,8 @@ judgment of a built result is the `pox` customer lens.)
   requirements the `pox` synthesis produced)
 - **Delegates to**: Research agent (user research, competitor analysis,
   accessibility audits) — spawn it rather than web-searching yourself
-- **Hands off to**: Frontend agent (implementation-ready specs, tokens, component definitions)
-- **Depends on**: Core agent (data models — what data is available to display)
+- **Hands off to**: Builder agent (implementation-ready specs, tokens, component definitions)
+- **Depends on**: Builder agent (data models — what data is available to display)
 
 ## Handoff to Frontend
 
@@ -120,3 +120,5 @@ paths/links, branch, and `open_questions` — you cannot ask the user.
 - Design tokens go in code, not just Figma — they ARE the source of truth
 - Screenshots for every design decision (show, don't describe)
 - Mobile-first responsive approach unless the project is desktop-only
+
+Your final message IS the report to the caller — within the requested length, never a status line or a reply to a late background notification; write it last.

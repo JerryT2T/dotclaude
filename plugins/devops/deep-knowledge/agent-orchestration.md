@@ -19,9 +19,9 @@ Select agents based on domains touched, complexity, and risk:
 |-------|----------------|------|
 | **research** | Topic needs investigation first | 0 (pre-work) |
 | **pox** (`Lens:` customer / tech / business) | Elaboration unless the acceptance criteria come from outside — lenses in parallel, then a po synthesis; procedure and gate: [feature-elaboration.md](feature-elaboration.md) | 0 |
-| **core** | Business logic, APIs, data models, platform code (`windows-platform.md`) | 1 |
-| **frontend** | UI components, templates, styling | 2 |
-| **aix** | AI/ML integration, embeddings, prompts | 2 |
+| **scout** | Pure locating / sweeps ("where is X?") | 0 (pre-work) |
+| **analyst** | Reading WITH a verdict: triage (ready / needs-decision / oversized / already-fixed), diagnose-only, branch triage, cause analysis — never edits, never replaced by an implementer | 0 (pre-work) |
+| **builder** | Implementation: business logic, APIs, data models, platform code (`windows-platform.md`), UI components, templates, styling, AI/ML integration. Parallel = one builder per disjoint ownership bundle ("two builders on disjoint files"); a contract-defining bundle goes first (wave 1), its consumers after (wave 2) | 1–2 |
 | **designer** | UX/UI decisions, design system, specs | 0 or 2 |
 | **qax** | Unit tests, build check, browser-based visual verification | 3 |
 | **pox** (`Review:`) | Go/no-go against the acceptance criteria — with `Lens: customer` and qa screenshots for UI/game work | 4 |
@@ -64,9 +64,8 @@ do-run mode is not, with the ceiling on analysis roles only
 | **pox** | opus | high | Strategic decisions — needs deep reasoning |
 | **research** | opus | high | Cross-referencing, fact verification |
 | **redteam** | opus | high | Adversarial review — inter-wave risk gate |
-| **core** | sonnet | medium | Standard code generation |
-| **frontend** | sonnet | medium | Standard code generation |
-| **aix** | sonnet | medium | Standard code generation |
+| **builder** | sonnet | medium | Standard code generation (backend, UI, AI integration) |
+| **analyst** | sonnet | medium | Read-only judgment: triage, diagnose, cause analysis |
 | **designer** | sonnet | medium | Design specs |
 | **qax** | sonnet | medium | Test execution + evaluation |
 | **scout** | haiku | medium | Read-only locating and sweeps — replaces Explore (which inherits the session); measured against sonnet · low in `docs/haiku-5-5-scout.md` |
@@ -88,9 +87,14 @@ do-run mode is not, with the ceiling on analysis roles only
   `model: haiku` in every class.
 - **Always name the model**, also when it equals the session's — a spawn that
   would inherit it (Explore, general-purpose, `model: inherit`) is refused once
-  by `pre.agent.model`; the identical retry is the deliberate exception —
+  by `pre.agent.model` (a `subagent_type: "fork"` spawn is exempt: it keeps the
+  session model by design, and takes no `model` field — never use a fork for a
+  cheaper-model run); the identical retry is the deliberate exception —
   except on a Fable session, where an inherited spawn would run on Fable: there
   the model must always be named.
+- **`general-purpose` / `Explore` only when no devops type fits** — the spawn's
+  `description` ends with the reason (`… (general-purpose: needs Write outside
+  repo)`). Reading with a verdict → `analyst`; locating → `scout`.
 - **Effort is chosen by agent**: the cheap tier is a small model at `medium`,
   not a big one at `low` — haiku·medium for locating beats opus·anything;
   reasoning roles keep medium/high.
@@ -108,8 +112,8 @@ do-run mode is not, with the ceiling on analysis roles only
   frontmatter effort stays, an upgraded role runs at `opus · medium`. Its goal is to turn budget that would expire into
   depth-per-task rather than breadth-of-unfinished-tasks. See
   `skills/do-run/modes/burn/deep-knowledge/burn-scheduler.md` § Depth profiles.
-- **Implementers stay on sonnet** (`core`, `frontend`, `aix`, `designer`,
-  `qax` — their frontmatter): a well-specified bundle (contract given, files
+- **Implementers stay on sonnet** (`builder`, `designer`,
+  `qax` — their frontmatter; `analyst` too): a well-specified bundle (contract given, files
   named, tests known) is never upgraded. `opus` (`fable` see § Fable below) only for
   design-heavy, architecture or ambiguous work (no contract yet, an open
   trade-off, a cross-cutting refactor) — and only in budget class `free`.
@@ -189,7 +193,7 @@ The count follows the work, not a fixed number. Parallel **implementers**
    yes) is exempt from the budget class and keeps the ceilings of 3. Any other
    do-run obeys it, and *spare the window* or an unattended run means one
    implementer at a time.
-5. **Read-only lens agents** (research, scout, qa, redteam, po) are not
+5. **Read-only lens agents** (research, scout, analyst, qa, redteam, po) are not
    implementers: up to ~8 in parallel, limited by cost only — they cannot
    conflict, and more independent lenses keep adding signal.
 6. **Fewer wake-ups** — every background completion wakes the orchestrator
@@ -365,7 +369,7 @@ check to risk:
 - **Low risk** (additive, disjoint files): a lightweight self-check — the
   orchestrator reads the handoff (contracts, signatures, findings) and confirms it
   is internally consistent and matches what the next wave was told to expect.
-- **Contract-defining waves** (Core → Frontend/AI): before spawning the
+- **Contract-defining waves** (builder → dependent builder): before spawning the
   dependent wave, validate the contract concretely — types compile, exported
   signatures match the handoff, no TODO stubs where the next wave expects real
   APIs. A mismatch here is exactly what cascades.

@@ -105,7 +105,7 @@ describe("agent-orchestration.md § Model & Effort Defaults stays the source of 
     expect(defaults).toMatch(/only in budget class `free`/);
     expect(defaults).toMatch(/Pro always lands there/);
     expect(defaults).toMatch(/`\/do-run burn`, which\s+upgrades on purpose/);
-    for (const name of ["core", "frontend", "aix", "designer", "qax"]) {
+    for (const name of ["builder", "analyst", "designer", "qax"]) {
       const fm = readFileSync(join(PLUGIN_ROOT, "agents", `${name}.md`), "utf8");
       expect(fm.match(/^model:\s*(\S+)/m)?.[1], `${name}: model`).toBe("sonnet");
     }
@@ -263,14 +263,14 @@ describe("the plan card script renders through the same template", () => {
       lang: "de", tier: "volle Zeremonie", session: "fable · high",
       agents: [
         { type: "devops:qax", wave: 2, task: "Tests" },
-        { type: "devops:core", wave: 1, task: "API", model: "opus" },
-        { type: "devops:core", wave: 1, task: "DB" },
+        { type: "devops:builder", wave: 1, task: "API", model: "opus" },
+        { type: "devops:builder", wave: 1, task: "DB" },
         { type: "devops:feature", wave: 1, task: "Glue" },
       ],
     });
     expect(card).toContain("### 🗺️ **Agent-Plan** · 4 Agents · 2 Waves · volle Zeremonie");
     expect(card.indexOf("#### Wave 1")).toBeLessThan(card.indexOf("#### Wave 2"));
-    expect(card).toContain("| 🔧 | **core** | API | sonnet → opus | ●● medium |");
+    expect(card).toContain("| 🔧 | **builder** | API | sonnet → opus | ●● medium |");
     expect(card).toContain("| 🧩 | **feature** | Glue | opus | ●● medium |");
     expect(card).toContain("**Σ Verteilung:** **2×** sonnet ●● medium");
   });

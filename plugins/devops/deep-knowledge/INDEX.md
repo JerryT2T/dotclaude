@@ -5,7 +5,7 @@ Quick-reference for all deep-knowledge topics. Read this FIRST to find the right
 
 | File | Topic | Summary |
 |------|-------|---------|
-| [agent-branch-setup.md](agent-branch-setup.md) | Agent Branch Setup | The first step of every implementing agent (`core`, `frontend`, `aix`, |
+| [agent-branch-setup.md](agent-branch-setup.md) | Agent Branch Setup | The first step of every implementing agent (`builder`, |
 | [agent-collaboration.md](agent-collaboration.md) | Agent Collaboration Protocol | How agents work together on multi-role tasks. |
 | [agent-conventions.md](agent-conventions.md) | Agent Naming & Collaboration Conventions | [role:X · Type] Task description |
 | [agent-engagement-rules.md](agent-engagement-rules.md) | Interactive Mode — Engagement Rules | The rule block every agent spawned in interactive mode gets as its interactio... |

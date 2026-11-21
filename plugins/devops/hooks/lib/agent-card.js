@@ -48,7 +48,7 @@ const L = {
 };
 
 const ICON = {
-  core: '🔧', frontend: '🎨', designer: '🖌️', ai: '🧠', aix: '🧠', qa: '🧪', qax: '🧪', redteam: '🛡️',
+  builder: '🔧', analyst: '📊', scout: '🔭', designer: '🖌️', qa: '🧪', qax: '🧪', redteam: '🛡️',
   research: '🔎', po: '🎯', pox: '🎯', feature: '🧩', rethinker: '💡', 'concept-author': '🧭',
   explore: '🔭', plan: '📐', 'general-purpose': '🤖',
 };
@@ -64,7 +64,7 @@ function parseWave(description) {
   return m ? { wave: m[1], task: text.slice(m[0].length) } : { wave: null, task: text };
 }
 
-/** `devops:core` → `core`; other namespaces stay visible. */
+/** `devops:builder` → `builder`; other namespaces stay visible. */
 function shortType(type) {
   return String(type || 'general-purpose').replace(/^devops:/, '');
 }

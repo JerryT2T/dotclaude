@@ -1,0 +1,222 @@
+[
+ {
+  "iteration": 1,
+  "action": "implement",
+  "decisions": [
+   {
+    "id": "d-readonly",
+    "label": "Agent für Triage + Diagnose",
+    "mode": "single",
+    "value": "analyst",
+    "rec": "scout-sonnet",
+    "deviates": true,
+    "none": false,
+    "untouched": false,
+    "note": "",
+    "appliesTo": "Backlog-Triage, Diagnose-Aufträge, Branch-Triage",
+    "finding": "f-readonly",
+    "issue": false,
+    "epic": "",
+    "hesitation": {
+     "ms": 147467,
+     "noteWords": 0,
+     "revisits": 2,
+     "flagged": true
+    }
+   },
+   {
+    "id": "d-domain",
+    "label": "Domänen-Implementierer",
+    "mode": "single",
+    "value": "builder",
+    "rec": "merge-aix",
+    "deviates": true,
+    "none": false,
+    "untouched": false,
+    "note": "",
+    "appliesTo": "Agents core, frontend, aix",
+    "finding": "f-domain",
+    "issue": false,
+    "epic": "",
+    "hesitation": {
+     "ms": 53167,
+     "noteWords": 0,
+     "revisits": 0,
+     "flagged": false
+    }
+   },
+   {
+    "id": "d-fork",
+    "label": "Forks in der Policy",
+    "mode": "yesnoalt",
+    "value": {
+     "answer": "yes",
+     "alt": ""
+    },
+    "rec": "yes",
+    "deviates": false,
+    "none": false,
+    "untouched": false,
+    "note": "",
+    "appliesTo": "Delegations-Policy (agent-proactivity)",
+    "finding": "f-fork",
+    "issue": false,
+    "epic": "",
+    "hesitation": {
+     "ms": 22604,
+     "noteWords": 0,
+     "revisits": 0,
+     "flagged": false
+    }
+   },
+   {
+    "id": "d-gate",
+    "label": "Ausnahmen vom API-Gate",
+    "mode": "multi",
+    "value": [
+     "shell",
+     "fanout"
+    ],
+    "rec": "shell fanout",
+    "deviates": false,
+    "none": false,
+    "untouched": false,
+    "note": "",
+    "appliesTo": "Hook agent-apicredit-gate (scout, research, redteam)",
+    "finding": "f-gate",
+    "issue": false,
+    "epic": "",
+    "hesitation": {
+     "ms": 16560,
+     "noteWords": 0,
+     "revisits": 0,
+     "flagged": false
+    }
+   },
+   {
+    "id": "d-pin",
+    "label": "Triage-Typ festschreiben",
+    "mode": "yesnoalt",
+    "value": {
+     "answer": "yes",
+     "alt": ""
+    },
+    "rec": "yes",
+    "deviates": false,
+    "none": false,
+    "untouched": false,
+    "note": "",
+    "appliesTo": "do-run backlog, Schritt 2 Pre-Triage",
+    "finding": "f-pin",
+    "issue": false,
+    "epic": "",
+    "hesitation": {
+     "ms": 50119,
+     "noteWords": 0,
+     "revisits": 0,
+     "flagged": false
+    }
+   },
+   {
+    "id": "d-gp",
+    "label": "Regel für general-purpose",
+    "mode": "single",
+    "value": "fallback",
+    "rec": "fallback",
+    "deviates": false,
+    "none": false,
+    "untouched": false,
+    "note": "",
+    "appliesTo": "Delegations-Policy, alle Projekte",
+    "finding": "f-gp",
+    "issue": false,
+    "epic": "",
+    "hesitation": {
+     "ms": 6062,
+     "noteWords": 0,
+     "revisits": 0,
+     "flagged": false
+    }
+   },
+   {
+    "id": "d-opus",
+    "label": "Modell der SCC-Worker",
+    "mode": "single",
+    "value": "",
+    "rec": "sonnet",
+    "deviates": true,
+    "none": true,
+    "untouched": false,
+    "note": "opus mittel und bei komplex angeklickt opus hoch! und den rest dnach den gleichen regeln wie als würd e die nachricht im normalen chat mit devops kommen, sprich agenteneinsätze, concepte erstellen usw...",
+    "appliesTo": "Star-Citizen-Companion-Web, Feedback-Routine",
+    "finding": "f-opus",
+    "issue": false,
+    "epic": "",
+    "hesitation": {
+     "ms": 114818,
+     "noteWords": 32,
+     "revisits": 2,
+     "flagged": true
+    }
+   },
+   {
+    "id": "d-report",
+    "label": "Abschlussbericht absichern",
+    "mode": "multi",
+    "value": [
+     "rule",
+     "hook"
+    ],
+    "rec": "rule hook",
+    "deviates": false,
+    "none": false,
+    "untouched": false,
+    "note": "",
+    "appliesTo": "alle devops-Agents",
+    "finding": "f-report",
+    "issue": false,
+    "epic": "",
+    "hesitation": {
+     "ms": 32311,
+     "noteWords": 0,
+     "revisits": 2,
+     "flagged": false
+    }
+   },
+   {
+    "id": "d-limit",
+    "label": "Höchstlänge qax-Bericht",
+    "mode": "slider",
+    "value": 400,
+    "rec": "400",
+    "deviates": false,
+    "none": false,
+    "untouched": false,
+    "note": "",
+    "appliesTo": "qax-Abschlussbericht",
+    "finding": "f-limit",
+    "issue": false,
+    "epic": "",
+    "hesitation": {
+     "ms": 28122,
+     "noteWords": 0,
+     "revisits": 1,
+     "flagged": false
+    }
+   }
+  ],
+  "comments": {
+   "general": {
+    "text": "",
+    "attachments": []
+   },
+   "items": [
+    {
+     "id": "d-opus-note",
+     "text": "opus mittel und bei komplex angeklickt opus hoch! und den rest dnach den gleichen regeln wie als würd e die nachricht im normalen chat mit devops kommen, sprich agenteneinsätze, concepte erstellen usw...",
+     "attachments": []
+    }
+   ]
+  }
+ }
+]

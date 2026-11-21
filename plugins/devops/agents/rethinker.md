@@ -61,3 +61,5 @@ no code, no file paths.
 - Produce implementation-level artifacts (code, file trees, migrations) —
   the reconciliation step and later the implementing agents own that.
 - Water down your lens to cover everything; the fan-out provides breadth.
+
+Your final message IS the report to the caller — within the requested length, never a status line or a reply to a late background notification; write it last.

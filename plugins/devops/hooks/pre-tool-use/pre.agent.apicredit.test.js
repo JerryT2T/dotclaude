@@ -111,7 +111,7 @@ describe("pre.agent.apicredit", () => {
     expect(main(hook("devops:scout")).block).toBeTruthy();
   });
 
-  test.each(["general-purpose", "Explore", "devops:core", undefined])("%s is never blocked", (type) => {
+  test.each(["general-purpose", "Explore", "devops:builder", undefined])("%s is never blocked", (type) => {
     configure();
     expect(main(hook(type))).toBeNull();
   });
@@ -137,5 +137,92 @@ describe("pre.agent.apicredit", () => {
   test("an internal error fails open", () => {
     configure();
     expect(gate.wouldRefuse({ subagent_type: "devops:scout", prompt: "x" }, "{}\n", "t", { cwd: {}, env: null })).toBe(false);
+  });
+});
+
+// A transcript of ONE assistant message (shared message.id) holding several Agent spawns.
+function batch(inputs, ids) {
+  const lines = [{ type: "user", message: { role: "user", content: "go" } }];
+  inputs.forEach((input, i) => {
+    lines.push({ type: "assistant", message: { id: "msg1", role: "assistant", content: [{ type: "tool_use", id: ids[i], name: "Agent", input }] } });
+  });
+  const file = path.join(home, "batch.jsonl");
+  fs.writeFileSync(file, lines.map((l) => JSON.stringify(l)).join("\n") + "\n");
+  return file;
+}
+
+describe("pre.agent.apicredit - shell-needing prompts pass (D1)", () => {
+  test.each([
+    "gh issue view 12 and judge it",
+    "run git log -5 and summarise",
+    "npm test must pass",
+    "Use npx vitest run",
+    "node scripts/x.js then report",
+    "curl https://example.com",
+    "python build.py",
+    "pwsh -File a.ps1",
+    "```bash\nls -la\n```",
+    "Run the tests and report",
+  ])("%j is not refused", (prompt) => {
+    configure();
+    const h = hook("devops:scout");
+    h.tool_input.prompt = prompt;
+    expect(gate.needsShell(prompt)).toBe(true);
+    expect(main(h)).toBeNull();
+  });
+
+  test("a read-only prompt mentioning no command is still refused", () => {
+    configure();
+    const h = hook("devops:scout");
+    h.tool_input.prompt = "Find where the github token is read in src/";
+    expect(main(h).block).toContain("claude-api-agent.js");
+  });
+});
+
+describe("pre.agent.apicredit - one refusal per assistant message (D2)", () => {
+  const spawns = ["devops:scout", "devops:scout", "devops:research"].map((t, i) => ({ subagent_type: t, description: `d${i}`, prompt: "find X" }));
+  const ids = ["a", "b", "c"];
+
+  test("8 spawns in one message: only the first is refused", () => {
+    configure();
+    const eight = Array.from({ length: 8 }, (_, i) => ({ subagent_type: "devops:scout", description: `d${i}`, prompt: "find X" }));
+    const eightIds = eight.map((_, i) => `t${i}`);
+    const file = batch(eight, eightIds);
+    const verdicts = eightIds.map((id, i) => !!main(hook("devops:scout", { transcript_path: file, tool_use_id: id, tool_input: eight[i] })));
+    expect(verdicts).toEqual([true, false, false, false, false, false, false, false]);
+  });
+
+  test("a mixed batch: the first gated spawn leads, other types pass too", () => {
+    configure();
+    const file = batch(spawns, ids);
+    const run = (i) => main(hook(spawns[i].subagent_type, { transcript_path: file, tool_use_id: ids[i], tool_input: spawns[i] }));
+    expect(run(0).block).toBeTruthy();
+    expect(run(1)).toBeNull();
+    expect(run(2)).toBeNull();
+  });
+
+  test("a shell-needing or rc-citing first spawn does not use up the message's refusal", () => {
+    configure();
+    const mixed = [
+      { subagent_type: "devops:scout", description: "a", prompt: "gh issue view 1" },
+      { subagent_type: "devops:scout", description: "b", prompt: "find X" },
+    ];
+    const file = batch(mixed, ["p", "q"]);
+    expect(main(hook("devops:scout", { transcript_path: file, tool_use_id: "p", tool_input: mixed[0] }))).toBeNull();
+    expect(main(hook("devops:scout", { transcript_path: file, tool_use_id: "q", tool_input: mixed[1] })).block).toBeTruthy();
+  });
+
+  test("a spawn in a LATER message is judged on its own", () => {
+    configure();
+    const file = batch([spawns[0]], ["a"]);
+    fs.appendFileSync(file, JSON.stringify({ type: "user", message: { content: [{ type: "tool_result", tool_use_id: "a", content: "ok" }] } }) + "\n");
+    fs.appendFileSync(file, JSON.stringify({ type: "assistant", message: { id: "msg2", content: [{ type: "tool_use", id: "z", name: "Agent", input: spawns[2] }] } }) + "\n");
+    expect(main(hook("devops:research", { transcript_path: file, tool_use_id: "z", tool_input: spawns[2] })).block).toBeTruthy();
+  });
+
+  test("a tool_use missing from the transcript still gets the old behaviour", () => {
+    configure();
+    expect(gate.leadsItsMessage(transcript(), "nope")).toBeNull();
+    expect(main(hook("devops:scout")).block).toBeTruthy();
   });
 });

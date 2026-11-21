@@ -34,7 +34,7 @@ Depth first; lanes only fill a time gap depth cannot close.
 | Profile | Opus for | Extra pass | Tool calls | depthFactor |
 |---------|----------|------------|------------|-------------|
 | `standard` | per `agent-orchestration.md` § Model & Effort Defaults | — | 15–30 | 1.0 |
-| `deep` | core, frontend, ai, designer | redteam on the task diff | 30–45 | 1.5 |
+| `deep` | builder, designer | redteam on the task diff | 30–45 | 1.5 |
 | `max` | deep + qa | redteam on the task diff | 45–60 | 2.0 |
 
 The first version's per-task **PO review** and **second QA** are gone: the
@@ -236,7 +236,7 @@ Project root of the run's worktree; git-excluded (`/BURN-*`, autonomous Step
   "readings": [{ "at": "…", "weeklyRemaining": 28, "sessionUsed": 41, "lanesBusy": 1 }],
   "holds": 0, "blind": null,
   "queue":    [{ "id": "t7", "task": "…", "size": "M", "priority": "P2", "source": "issue", "files": [], "branch": "…(after a requeue)" }],
-  "inFlight": [{ "id": "t4", "profile": "max", "agent": "core", "agentId": "…", "sessionId": "…", "branch": "burn/…-core-4", "worktree": "…", "checkpoints": 3 }],
+  "inFlight": [{ "id": "t4", "profile": "max", "agent": "builder", "agentId": "…", "sessionId": "…", "branch": "burn/…-builder-4", "worktree": "…", "checkpoints": 3 }],
   "done":     [{ "id": "t1", "sha": "abc1234", "pushed": true, "profile": "max", "claimedAt": "…", "landedAt": "…" }],
   "failed": [], "skipped": [],
   "drained": false, "drainReason": null, "pause": null,

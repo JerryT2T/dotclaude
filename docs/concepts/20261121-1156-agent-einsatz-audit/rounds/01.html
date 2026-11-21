@@ -1,0 +1,467 @@
+<section data-iteration="1" data-iteration-template="decision" data-analysis="full">
+
+  <div class="iteration-intro">
+    <h2>Agent-Einsatz der letzten 3 Tage</h2>
+    <p>Eure Rollen-Agents sind nicht veraltet – die Reibung sitzt bei Typwahl, Gate und Modell.</p>
+  </div>
+
+  <!-- ===================== Briefing ===================== -->
+  <section id="briefing" data-analysis-briefing data-nav-label="Briefing">
+    <p data-briefing-what>115 Agent-Spawns aus 3 Tagen in 4 Projekten geprüft, 1.204 aus 30 Tagen als Gegenprobe. Die Aufträge selbst sind präzise; Verluste entstehen beim Agent-Typ, beim API-Gate und beim Modell.</p>
+    <p data-briefing-why>Offiziell bleiben eigene Agents empfohlen – geschnitten nach Kontext und Werkzeugen, nicht nach Organigramm.</p>
+    <div data-briefing-potential data-viz="kpi"
+         data-viz-spec='{"value":"66","unit":"von 115 Spawns","label":"mit vermeidbarer Reibung"}'>66 von 115 Spawns</div>
+    <a data-briefing-topic="t-katalog" data-share="32">Agent-Katalog</a>
+    <a data-briefing-topic="t-regeln" data-share="33">Spawn-Regeln</a>
+    <a data-briefing-topic="t-modell" data-share="35">Modell &amp; Berichte</a>
+    <p data-briefing-duration>≈ 6 min</p>
+    <div data-alevel="1" data-title="Briefing">
+      <div data-slot="short"><div data-viz="kpi" data-viz-spec='{"value":"66 / 115","unit":"Spawns","label":"mit vermeidbarer Reibung"}'></div></div>
+      <div data-slot="long">
+        <div data-viz="bars" data-viz-spec='{"items":[{"label":"Opus für kleine Fixes","value":23},{"label":"Gate-Abweisung / Allzweck-Agent","value":22},{"label":"Lese-Job beim falschen Typ","value":21}],"unit":"Spawns"}'></div>
+        <p>Nicht veraltet: Die Claude-Code-Doku (Stand 11/2026) rät zu eigenen Agents, wenn man immer wieder dieselbe Art Worker startet – genau euer Fall. Neu sind Forks, die das Gespräch erben (Standard seit v2.1.302), und Anthropics Rat vom 22.10.2026, Agents nach Kontext statt nach Rolle zu schneiden.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== Topic 1 · Agent-Katalog ===================== -->
+  <section id="t-katalog" data-topic data-nav-label="Agent-Katalog">
+    <div data-alevel="2" data-title="Agent-Katalog">
+      <div data-slot="short"><div data-viz="text" data-viz-spec='{"text":"Die Rollen tragen; es fehlt ein Lese-Agent mit Urteil, aix ist praktisch ungenutzt."}'></div></div>
+      <div data-slot="long">
+        <div data-viz="bars" data-viz-spec='{"items":[{"label":"frontend","value":432},{"label":"core","value":237},{"label":"qax","value":169},{"label":"scout","value":101},{"label":"concept-author","value":61},{"label":"pox","value":57},{"label":"general-purpose","value":46},{"label":"research","value":33},{"label":"redteam","value":23},{"label":"designer","value":20},{"label":"feature","value":5},{"label":"aix","value":3}],"unit":"Spawns / 30 Tage","hl":"aix"}'></div>
+        <p>Spawns je Typ in 30 Tagen. Die Implementierer tragen die Last, scout und qax laufen regelmäßig. Lese-Aufgaben mit Urteil haben keinen eigenen Platz und landen bei pox oder dem Allzweck-Agent.</p>
+      </div>
+    </div>
+
+    <!-- d-readonly -->
+    <section id="d-readonly" data-nav-label="Lese-Aufgaben" data-decision="d-readonly" data-decision-mode="single"
+             data-label="Agent für Triage + Diagnose" data-rec="scout-sonnet"
+             data-rec-why="Gleiche Werkzeuge und Rechte wie scout, kein neuer Agent – Anthropic rät zu wenigen, nach Kontext geschnittenen Agents."
+             data-applies-to="Backlog-Triage, Diagnose-Aufträge, Branch-Triage" data-finding="f-readonly">
+      <p data-applies>Gilt für: Backlog-Triage, Diagnose-Aufträge, Branch-Triage</p>
+      <p data-situation>22 Triage-Läufe in 3 Tagen landeten beim Produkt-Owner oder beim Allzweck-Agent, 7 reine Diagnosen bei Agents mit Schreibrechten.</p>
+      <h3 data-question>Welcher Agent übernimmt Lese-Aufgaben mit Urteil?</h3>
+      <p data-stakes>Rechte-Schnitt, Modellkosten und ob das API-Gate greift.</p>
+      <div data-options>
+        <label data-opt="scout-sonnet" data-recommended>
+          <input type="radio" name="dm-d-readonly" value="scout-sonnet" checked>
+          <span data-opt-label>scout übernimmt sie, auf sonnet statt haiku</span>
+          <span data-opt-consequence>Kein neuer Agent; scout bekommt einen Triage-Teil, haiku bleibt fürs reine Finden.</span>
+        </label>
+        <label data-opt="analyst">
+          <input type="radio" name="dm-d-readonly" value="analyst">
+          <span data-opt-label>Neuen Lese-Agent „analyst“ anlegen</span>
+          <span data-opt-consequence>Eigenes Berichtsformat, aber 13 statt 12 Agents und mehr Routing-Text.</span>
+        </label>
+        <label data-opt="pox">
+          <input type="radio" name="dm-d-readonly" value="pox">
+          <span data-opt-label>pox mit Technik-Linse fest dafür nehmen</span>
+          <span data-opt-consequence>Kleinste Änderung; die Produkt-Rolle passt nicht zu Code-Ursachen.</span>
+        </label>
+      </div>
+      <textarea data-comment="d-readonly-note" placeholder="Notiz (optional)"></textarea>
+      <input type="hidden" name="dm-d-readonly-none" value="">
+      <input type="hidden" name="dm-d-readonly-hes" value="">
+      <input type="hidden" name="dm-d-readonly-touched" value="">
+      <input type="hidden" name="dm-d-readonly-issue" value="">
+      <input type="hidden" name="dm-d-readonly-epic" value="">
+      <div data-alevel="3" data-title="Lese-Aufgaben">
+        <div data-slot="short"><div data-viz="text" data-viz-spec='{"text":"Gleiche Aufgabe, vier Agent-Typen, zwei Modelle."}'></div></div>
+        <div data-slot="long">
+          <div data-viz="bars" data-viz-spec='{"items":[{"label":"scout (9 abgewiesen)","value":11},{"label":"general-purpose","value":8},{"label":"pox auf haiku","value":7},{"label":"pox auf sonnet","value":7},{"label":"Implementierer für Diagnose","value":7}],"unit":"Spawns","hl":"Implementierer für Diagnose"}'></div>
+          <p>Der Backlog-Ablauf nennt nur einen „leichten Analyse-Agent“, ohne Typ.</p>
+        </div>
+        <div data-example><pre>Diagnose #380 · Typ core · Modell opus · Schreibrechte: ja
+  „DIAGNOSE ONLY. Never edit code, never commit, never open a PR.“
+
+Triage #1170 · Typ pox (Produkt-Owner)
+  „Locate the code involved … Classify: ready / needs-decision …
+   root cause with file:line“</pre></div>
+      </div>
+    </section>
+
+    <!-- d-domain -->
+    <section id="d-domain" data-nav-label="Implementierer" data-decision="d-domain" data-decision-mode="single"
+             data-label="Domänen-Implementierer" data-rec="merge-aix"
+             data-rec-why="core und frontend unterscheiden sich in Werkzeugen und laufen parallel auf getrennten Dateien – beides offizielle Gründe für eigene Agents; aix hat keinen."
+             data-applies-to="Agents core, frontend, aix" data-finding="f-domain">
+      <p data-applies>Gilt für: Agents core, frontend, aix</p>
+      <p data-situation>aix lief in 30 Tagen 3-mal bei 1.204 Spawns, steht aber in jeder Session im Agent-Menü und in der Routing-Policy.</p>
+      <h3 data-question>Wie geht es mit den Domänen-Implementierern weiter?</h3>
+      <p data-stakes>Wie viel Routing-Text jede Session lädt und wie Wellen parallel laufen.</p>
+      <div data-options>
+        <label data-opt="merge-aix" data-recommended>
+          <input type="radio" name="dm-d-domain" value="merge-aix" checked>
+          <span data-opt-label>core und frontend behalten, aix in core aufgehen lassen</span>
+          <span data-opt-consequence>Die echten Unterschiede bleiben: Browser-Werkzeuge nur bei frontend, Datei-Trennung in Wellen.</span>
+        </label>
+        <label data-opt="builder">
+          <input type="radio" name="dm-d-domain" value="builder">
+          <span data-opt-label>Alle drei zu einem Agent „builder“ zusammenlegen</span>
+          <span data-opt-consequence>Folgt Anthropics Rat am klarsten; jeder Implementierer bekommt dann Browser-Werkzeuge.</span>
+        </label>
+        <label data-opt="keep">
+          <input type="radio" name="dm-d-domain" value="keep">
+          <span data-opt-label>Alle drei unverändert lassen</span>
+          <span data-opt-consequence>Kein Aufwand; aix bleibt ein toter Eintrag.</span>
+        </label>
+      </div>
+      <textarea data-comment="d-domain-note" placeholder="Notiz (optional)"></textarea>
+      <input type="hidden" name="dm-d-domain-none" value="">
+      <input type="hidden" name="dm-d-domain-hes" value="">
+      <input type="hidden" name="dm-d-domain-touched" value="">
+      <input type="hidden" name="dm-d-domain-issue" value="">
+      <input type="hidden" name="dm-d-domain-epic" value="">
+      <div data-alevel="3" data-title="Implementierer">
+        <div data-slot="short"><div data-viz="text" data-viz-spec='{"text":"frontend und core tragen die Last, aix fast nie."}'></div></div>
+        <div data-slot="long">
+          <div data-viz="bars" data-viz-spec='{"items":[{"label":"frontend","value":432},{"label":"core","value":237},{"label":"aix","value":3}],"unit":"Spawns / 30 Tage","hl":"aix"}'></div>
+          <p>Anthropic warnt am 22.10.2026 vor Agent-Architekturen als Kopie des Organigramms.</p>
+        </div>
+        <div data-example><pre>aix.md (Beschreibung, wird in jede Session geladen)
+  „AI/ML integration agent — models, prompts, embeddings, vector
+   stores. Spawn proactively only alongside another domain agent …“
+
+frontend.md  → Werkzeuge: … mcp__Claude_Browser, mcp__claude-in-chrome …
+core.md      → Werkzeuge: Read, Write, Edit, Bash, Glob, Grep</pre></div>
+      </div>
+    </section>
+
+    <!-- d-fork -->
+    <section id="d-fork" data-nav-label="Forks" data-decision="d-fork" data-decision-mode="yesnoalt"
+             data-label="Forks in der Policy" data-rec="yes"
+             data-rec-why="Fork-Modus ist seit v2.1.302 Standard; die Policy erwähnt ihn nicht und verlangt bei jedem Spawn ein Modell, das ein Fork gar nicht wählen kann."
+             data-applies-to="Delegations-Policy (agent-proactivity)" data-finding="f-fork">
+      <p data-applies>Gilt für: Delegations-Policy (agent-proactivity)</p>
+      <p data-situation>Jeder Spawn bekommt im Mittel 3.173 Zeichen nachgebauten Kontext; ein Fork erbt das Gespräch samt Prompt-Cache, kommt in der Policy aber nicht vor.</p>
+      <h3 data-question>Soll die Policy Forks als eigenen Weg neben den benannten Agents nennen?</h3>
+      <p data-stakes>Prompt-Länge und Treffsicherheit bei gesprächslastigen Aufgaben.</p>
+      <div data-options>
+        <label data-opt="yes" data-recommended>
+          <input type="radio" name="dm-d-fork" value="yes" checked>
+          <span data-opt-label>Fork nehmen, wenn die Aufgabe das Gespräch braucht</span>
+          <span data-opt-consequence>Weniger nachgebauter Kontext; nie für Sparläufe, weil ein Fork das Modell der Session behält.</span>
+        </label>
+        <label data-opt="no">
+          <input type="radio" name="dm-d-fork" value="no">
+          <span data-opt-label>Bei benannten Agents bleiben</span>
+          <span data-opt-consequence>Policy bleibt kürzer; Kontext wird weiter im Auftrag nachgebaut.</span>
+        </label>
+        <label data-opt="alt">
+          <input type="radio" name="dm-d-fork" value="alt">
+          <span data-opt-label>Anders regeln</span>
+          <span data-opt-consequence>Deine Regel im Feld darunter.</span>
+          <input type="text" name="dm-d-fork-alt" placeholder="z. B. Fork nur für Analysen, nie für Implementierung">
+        </label>
+      </div>
+      <textarea data-comment="d-fork-note" placeholder="Notiz (optional)"></textarea>
+      <input type="hidden" name="dm-d-fork-none" value="">
+      <input type="hidden" name="dm-d-fork-hes" value="">
+      <input type="hidden" name="dm-d-fork-touched" value="">
+      <input type="hidden" name="dm-d-fork-issue" value="">
+      <input type="hidden" name="dm-d-fork-epic" value="">
+      <div data-alevel="3" data-title="Forks">
+        <div data-slot="short"><div data-viz="kpi" data-viz-spec='{"value":"3.173","unit":"Zeichen","label":"Median-Auftrag je Spawn"}'></div></div>
+        <div data-slot="long">
+          <div data-viz="kpi" data-viz-spec='{"value":"3.173","unit":"Zeichen","label":"Median-Auftrag je Spawn (431 bis 11.584)"}'></div>
+          <p>Lange Aufträge sind gut, solange der Agent frischen Kontext braucht.</p>
+        </div>
+        <div data-example><pre>Policy heute (agent-proactivity.md):
+  „Spawn shape, every Agent call: subagent_type + model …
+   without model the first spawn is refused.“
+
+Ergänzung (Vorschlag):
++ Fork (subagent_type: "fork") statt benanntem Agent, wenn die Aufgabe
++ dieses Gespräch braucht – kein model-Feld, Modell = Session.</pre></div>
+      </div>
+    </section>
+  </section>
+
+  <!-- ===================== Topic 2 · Spawn-Regeln ===================== -->
+  <section id="t-regeln" data-topic data-nav-label="Spawn-Regeln">
+    <div data-alevel="2" data-title="Spawn-Regeln">
+      <div data-slot="short"><div data-viz="text" data-viz-spec='{"text":"Das API-Gate weist ab, was die API gar nicht lösen kann; Ausweichen geht zum Allzweck-Agent."}'></div></div>
+      <div data-slot="long">
+        <div data-viz="bars" data-viz-spec='{"items":[{"label":"vom API-Gate abgewiesen","value":13},{"label":"Allzweck-Agent für Triage","value":8},{"label":"durchgelassen","value":3}],"unit":"Spawns / 3 Tage"}'></div>
+        <p>13 von 16 Spawns der Typen scout, research und redteam wurden erst einmal abgewiesen. Daneben liefen 8 Triagen beim Allzweck-Agent, den das Gate nicht prüft.</p>
+      </div>
+    </div>
+
+    <!-- d-gate -->
+    <section id="d-gate" data-nav-label="API-Gate" data-decision="d-gate" data-decision-mode="multi"
+             data-label="Ausnahmen vom API-Gate" data-rec="shell fanout"
+             data-rec-why="Abweisungen ohne Chance auf API-Erfolg sind reine Reibung; der Spareffekt bleibt für reine Code-Suchen erhalten."
+             data-applies-to="Hook agent-apicredit-gate (scout, research, redteam)" data-finding="f-gate">
+      <p data-applies>Gilt für: Hook agent-apicredit-gate (scout, research, redteam)</p>
+      <p data-situation>13 Spawns in 3 Tagen wurden abgewiesen, 8 davon in einer einzigen Nachricht. Der API-Agent liest nur Dateien – Aufträge mit Issue- oder Git-Befehlen kann er nie lösen.</p>
+      <h3 data-question>Wann soll das API-Gate einen Spawn direkt durchlassen?</h3>
+      <p data-stakes>Wie oft Triage und Analysen einen Umweg drehen.</p>
+      <div data-options>
+        <label data-opt="shell" data-recommended>
+          <input type="checkbox" name="dm-d-gate.shell" checked>
+          <span data-opt-label>Durchlassen, wenn der Auftrag Shell-Befehle braucht</span>
+          <span data-opt-consequence>Triage und Branch-Analysen laufen sofort; reine Code-Suchen gehen weiter zuerst an die API.</span>
+        </label>
+        <label data-opt="fanout" data-recommended>
+          <input type="checkbox" name="dm-d-gate.fanout" checked>
+          <span data-opt-label>Pro Nachricht höchstens einen Spawn abweisen</span>
+          <span data-opt-consequence>Aus 8 Abweisungen wird eine; die übrigen Spawns starten.</span>
+        </label>
+        <label data-opt="off">
+          <input type="checkbox" name="dm-d-gate.off">
+          <span data-opt-label>Gate für scout ganz abschalten</span>
+          <span data-opt-consequence>Keine Abweisung mehr; der API-Kredit wird für Suchen kaum noch genutzt.</span>
+        </label>
+      </div>
+      <textarea data-comment="d-gate-note" placeholder="Notiz (optional)"></textarea>
+      <input type="hidden" name="dm-d-gate-none" value="">
+      <input type="hidden" name="dm-d-gate-hes" value="">
+      <input type="hidden" name="dm-d-gate-touched" value="">
+      <input type="hidden" name="dm-d-gate-issue" value="">
+      <input type="hidden" name="dm-d-gate-epic" value="">
+      <div data-alevel="3" data-title="API-Gate">
+        <div data-slot="short"><div data-viz="bar" data-viz-spec='{"value":13,"max":16,"unit":"Spawns","label":"abgewiesen von 16 geprüften"}'></div></div>
+        <div data-slot="long">
+          <div data-viz="bar" data-viz-spec='{"value":13,"max":16,"unit":"Spawns","label":"abgewiesen von 16 geprüften (3 Tage)"}'></div>
+          <p>Das Gate prüft nur den Typ, nicht ob der Auftrag Shell braucht.</p>
+        </div>
+        <div data-example><pre>Star-Citizen-Companion · 18.11. 20:56 · 8 scouts in einer Nachricht
+  Triage #1044 … #832  →  alle 8:
+  „[api-credit-first] Spawn refused once: api-credit is on …“
+
+Auftrag jedes dieser Scouts, Schritt 1:
+  „Read `gh issue view 1063` (full body + comments)“
+  → der API-Agent hat kein gh</pre></div>
+      </div>
+    </section>
+
+    <!-- d-pin -->
+    <section id="d-pin" data-nav-label="Triage festschreiben" data-decision="d-pin" data-decision-mode="yesnoalt"
+             data-label="Triage-Typ festschreiben" data-rec="yes"
+             data-rec-why="Eine feste Wahl macht Kosten und Berichte vergleichbar und verhindert das Ausweichen auf den Allzweck-Agent."
+             data-applies-to="do-run backlog, Schritt 2 Pre-Triage" data-finding="f-pin">
+      <p data-applies>Gilt für: do-run backlog, Schritt 2 Pre-Triage</p>
+      <p data-situation>Dieselbe Triage lief in 3 Tagen auf vier Agent-Typen und zwei Modellen; die Berichte schwankten zwischen 9 und 97 Zeilen.</p>
+      <h3 data-question>Soll der Backlog-Ablauf Agent-Typ und Modell der Triage festschreiben?</h3>
+      <p data-context>Der Typ ist der aus deiner Antwort zu „Lese-Aufgaben“.</p>
+      <p data-stakes>Vergleichbarkeit der Triagen und ihr Budget.</p>
+      <div data-options>
+        <label data-opt="yes" data-recommended>
+          <input type="radio" name="dm-d-pin" value="yes" checked>
+          <span data-opt-label>Typ und Modell fest eintragen</span>
+          <span data-opt-consequence>Gleiche Triage, gleiche Kosten, vergleichbare Berichte.</span>
+        </label>
+        <label data-opt="no">
+          <input type="radio" name="dm-d-pin" value="no">
+          <span data-opt-label>Claude wählt weiter frei</span>
+          <span data-opt-consequence>Flexibel, aber die Drift bleibt.</span>
+        </label>
+        <label data-opt="alt">
+          <input type="radio" name="dm-d-pin" value="alt">
+          <span data-opt-label>Anders regeln</span>
+          <span data-opt-consequence>Deine Regel im Feld darunter.</span>
+          <input type="text" name="dm-d-pin-alt" placeholder="z. B. nur den Typ festschreiben, Modell frei">
+        </label>
+      </div>
+      <textarea data-comment="d-pin-note" placeholder="Notiz (optional)"></textarea>
+      <input type="hidden" name="dm-d-pin-none" value="">
+      <input type="hidden" name="dm-d-pin-hes" value="">
+      <input type="hidden" name="dm-d-pin-touched" value="">
+      <input type="hidden" name="dm-d-pin-issue" value="">
+      <input type="hidden" name="dm-d-pin-epic" value="">
+      <div data-alevel="3" data-title="Triage festschreiben">
+        <div data-slot="short"><div data-viz="text" data-viz-spec='{"text":"Vier Typen, zwei Modelle für dieselbe Triage."}'></div></div>
+        <div data-slot="long">
+          <div data-viz="bars" data-viz-spec='{"items":[{"label":"general-purpose","value":97},{"label":"pox (sonnet)","value":40},{"label":"scout (haiku)","value":27},{"label":"pox (haiku)","value":16}],"unit":"Zeilen, längster Bericht"}'></div>
+          <p>Längster Triage-Bericht je Typ; verlangt waren 10 bis 30 Zeilen.</p>
+        </div>
+        <div data-example><pre>backlog.md, Schritt 2:
+  „Pre-triage — spawn one lightweight analysis agent per queued issue“
+  → kein subagent_type, kein Modell
+
+Vorschlag:
++ … one devops:scout (model: sonnet) per queued issue …</pre></div>
+      </div>
+    </section>
+
+    <!-- d-gp -->
+    <section id="d-gp" data-nav-label="Allzweck-Agent" data-decision="d-gp" data-decision-mode="single"
+             data-label="Regel für general-purpose" data-rec="fallback"
+             data-rec-why="Eine Begründungspflicht macht Lücken im Katalog sichtbar, ohne echte Sonderfälle zu blockieren."
+             data-applies-to="Delegations-Policy, alle Projekte" data-finding="f-gp">
+      <p data-applies>Gilt für: Delegations-Policy, alle Projekte</p>
+      <p data-situation>46 Spawns in 30 Tagen gingen an den Allzweck-Agent – ohne Werkzeug-Grenzen und ohne Modell-Profil, 8 davon allein für Triage.</p>
+      <h3 data-question>Wann darf Claude den Allzweck-Agent general-purpose nehmen?</h3>
+      <p data-stakes>Ob Lücken im Katalog auffallen oder still umgangen werden.</p>
+      <div data-options>
+        <label data-opt="fallback" data-recommended>
+          <input type="radio" name="dm-d-gp" value="fallback" checked>
+          <span data-opt-label>Nur wenn kein devops-Typ passt, mit Grund in der Beschreibung</span>
+          <span data-opt-consequence>Jeder Einsatz zeigt, wo der Katalog eine Lücke hat.</span>
+        </label>
+        <label data-opt="never">
+          <input type="radio" name="dm-d-gp" value="never">
+          <span data-opt-label>Per Hook abweisen</span>
+          <span data-opt-consequence>Erzwingt den Katalog, blockiert aber echte Sonderfälle.</span>
+        </label>
+        <label data-opt="free">
+          <input type="radio" name="dm-d-gp" value="free">
+          <span data-opt-label>Frei lassen</span>
+          <span data-opt-consequence>Kein Aufwand; Lücken bleiben unsichtbar.</span>
+        </label>
+      </div>
+      <textarea data-comment="d-gp-note" placeholder="Notiz (optional)"></textarea>
+      <input type="hidden" name="dm-d-gp-none" value="">
+      <input type="hidden" name="dm-d-gp-hes" value="">
+      <input type="hidden" name="dm-d-gp-touched" value="">
+      <input type="hidden" name="dm-d-gp-issue" value="">
+      <input type="hidden" name="dm-d-gp-epic" value="">
+      <div data-alevel="3" data-title="Allzweck-Agent">
+        <div data-slot="short"><div data-viz="kpi" data-viz-spec='{"value":"46","unit":"Spawns / 30 Tage","label":"an general-purpose"}'></div></div>
+        <div data-slot="long">
+          <div data-viz="bars" data-viz-spec='{"items":[{"label":"Branch-Triage","value":3},{"label":"Issue-Triage","value":5},{"label":"übrige 30 Tage","value":38}],"unit":"Spawns","hl":"Issue-Triage"}'></div>
+          <p>Die Policy nennt den Allzweck-Agent nicht – weder erlaubt noch verboten.</p>
+        </div>
+        <div data-example><pre>Star-Citizen-Companion · 20.11. 23:27 · 5 × general-purpose
+  „Triage #1191 #1192 #1193 #900 — HQ live-event features“
+  „Read-only backlog triage. Do NOT edit files …“
+  → genau der Auftrag, für den scout abgewiesen worden wäre</pre></div>
+      </div>
+    </section>
+  </section>
+
+  <!-- ===================== Topic 3 · Modell & Berichte ===================== -->
+  <section id="t-modell" data-topic data-nav-label="Modell &amp; Berichte">
+    <div data-alevel="2" data-title="Modell &amp; Berichte">
+      <div data-slot="short"><div data-viz="text" data-viz-spec='{"text":"Kleine UI-Fixes laufen auf opus, Berichte reißen ihre Grenzen oder fehlen."}'></div></div>
+      <div data-slot="long">
+        <div data-viz="bars" data-viz-spec='{"items":[{"label":"frontend auf opus","value":27},{"label":"frontend auf sonnet","value":12},{"label":"core auf opus","value":3},{"label":"core auf sonnet","value":20}],"unit":"Spawns / 3 Tage","hl":"frontend auf opus"}'></div>
+        <p>Die Implementierer laufen 30 bis 170 Werkzeug-Aufrufe lang. Fast alle opus-Läufe stammen aus der Feedback-Routine von Star-Citizen-Companion.</p>
+      </div>
+    </div>
+
+    <!-- d-opus -->
+    <section id="d-opus" data-nav-label="Routine-Modell" data-decision="d-opus" data-decision-mode="single"
+             data-label="Modell der SCC-Worker" data-rec="sonnet"
+             data-rec-why="Die Fixes sind klein und sehr genau beschrieben; die Policy sieht sonnet für Implementierer vor, opus nur für Design-lastige Arbeit."
+             data-applies-to="Star-Citizen-Companion-Web, Feedback-Routine" data-finding="f-opus">
+      <p data-applies>Gilt für: Star-Citizen-Companion-Web, Feedback-Routine</p>
+      <p data-situation>102 Feedback-Fixes in 30 Tagen liefen auf opus, auch Einzeiler wie „Fabrik-Button entfernen“. Die Routine startet ihre Worker mit opus als Standard.</p>
+      <h3 data-question>Auf welchem Modell sollen die Worker der Feedback-Routine laufen?</h3>
+      <p data-stakes>Wochenbudget pro Fix und Trefferquote bei kniffligen Fällen.</p>
+      <div data-options>
+        <label data-opt="sonnet" data-recommended>
+          <input type="radio" name="dm-d-opus" value="sonnet" checked>
+          <span data-opt-label>sonnet für Fixes, opus nur für Konzept-Runden und Diagnosen</span>
+          <span data-opt-consequence>Deutlich weniger Budget pro Fix; schwierige Fälle behalten opus.</span>
+        </label>
+        <label data-opt="opus">
+          <input type="radio" name="dm-d-opus" value="opus">
+          <span data-opt-label>Alles auf opus lassen</span>
+          <span data-opt-consequence>Höchste Trefferquote, höchster Verbrauch.</span>
+        </label>
+        <label data-opt="haiku">
+          <input type="radio" name="dm-d-opus" value="haiku">
+          <span data-opt-label>haiku für Kleinstfixes, sonnet für den Rest</span>
+          <span data-opt-consequence>Am billigsten; haiku scheitert öfter an Angular-Details.</span>
+        </label>
+      </div>
+      <textarea data-comment="d-opus-note" placeholder="Notiz (optional)"></textarea>
+      <input type="hidden" name="dm-d-opus-none" value="">
+      <input type="hidden" name="dm-d-opus-hes" value="">
+      <input type="hidden" name="dm-d-opus-touched" value="">
+      <input type="hidden" name="dm-d-opus-issue" value="">
+      <input type="hidden" name="dm-d-opus-epic" value="">
+      <div data-alevel="3" data-title="Routine-Modell">
+        <div data-slot="short"><div data-viz="kpi" data-viz-spec='{"value":"102","unit":"opus-Fixes / 30 Tage","label":"Feedback-Routine"}'></div></div>
+        <div data-slot="long">
+          <div data-viz="kpi" data-viz-spec='{"value":"102","unit":"Fixes auf opus","label":"Feedback-Routine, 30 Tage"}'></div>
+          <p>Die Änderung liegt im Projekt-Repo, nicht im Plugin.</p>
+        </div>
+        <div data-example><pre>scripts/routine-watcher.mjs:55
+  const RUN_MODEL = process.env.SCC_ROUTINE_MODEL || 'opus';
+
+Feedback #373 „remove factory btn“ · frontend · opus · 11 Werkzeug-Aufrufe
+Feedback #372 „holo focus rings“   · frontend · opus · 13 Werkzeug-Aufrufe</pre></div>
+      </div>
+    </section>
+
+    <!-- d-report -->
+    <section id="d-report" data-nav-label="Bericht sichern" data-decision="d-report" data-decision-mode="multi"
+             data-label="Abschlussbericht absichern" data-rec="rule hook"
+             data-rec-why="Der Pflichtsatz kostet nichts, der Hook fängt die Fälle ab, in denen das Modell ihn trotzdem ignoriert."
+             data-applies-to="alle devops-Agents" data-finding="f-report">
+      <p data-applies>Gilt für: alle devops-Agents</p>
+      <p data-situation>5 von 90 Agents endeten ohne Bericht – der Auftraggeber bekam Sätze wie „Use Edge headless“ statt eines Ergebnisses.</p>
+      <h3 data-question>Wie stellen wir sicher, dass jeder Agent mit seinem Bericht endet?</h3>
+      <p data-stakes>Ob der Hauptagent ein Ergebnis hat oder raten muss.</p>
+      <div data-options>
+        <label data-opt="rule" data-recommended>
+          <input type="checkbox" name="dm-d-report.rule" checked>
+          <span data-opt-label>Pflichtsatz in jedem Agent: die letzte Nachricht ist der Bericht</span>
+          <span data-opt-consequence>Billig; wirkt nur, wenn das Modell ihn befolgt.</span>
+        </label>
+        <label data-opt="hook" data-recommended>
+          <input type="checkbox" name="dm-d-report.hook" checked>
+          <span data-opt-label>Stopp-Hook schickt Agents mit Bericht unter 30 Wörtern zurück</span>
+          <span data-opt-consequence>Fängt die Fälle sicher ab; kostet einen Zusatz-Turn pro Treffer.</span>
+        </label>
+        <label data-opt="nobg">
+          <input type="checkbox" name="dm-d-report.nobg">
+          <span data-opt-label>Hintergrund-Befehle in Agents verbieten</span>
+          <span data-opt-consequence>Späte Meldungen stören keinen Bericht mehr; lange Tests im Agent werden schwerer.</span>
+        </label>
+      </div>
+      <textarea data-comment="d-report-note" placeholder="Notiz (optional)"></textarea>
+      <input type="hidden" name="dm-d-report-none" value="">
+      <input type="hidden" name="dm-d-report-hes" value="">
+      <input type="hidden" name="dm-d-report-touched" value="">
+      <input type="hidden" name="dm-d-report-issue" value="">
+      <input type="hidden" name="dm-d-report-epic" value="">
+      <div data-alevel="3" data-title="Bericht sichern">
+        <div data-slot="short"><div data-viz="donut" data-viz-spec='{"parts":[{"label":"mit Bericht","value":85},{"label":"ohne Bericht","value":5}]}'></div></div>
+        <div data-slot="long">
+          <div data-viz="donut" data-viz-spec='{"parts":[{"label":"mit Bericht","value":85},{"label":"ohne Bericht","value":5}],"text":"5 von 90 Agents endeten auf einem Zwischensatz."}'></div>
+          <p>Drei davon hatten kurz vorher einen Hintergrund-Befehl gestartet.</p>
+        </div>
+        <div data-example><pre>Letzte Nachricht an den Auftraggeber:
+  frontend · Fix type-to-search #385      → „Use Edge headless (channel msedge).“
+  core     · Voice stack live smoke       → „Meanwhile, update brain.md.“
+  core     · Voice stack live smoke       → „Loads (killed by timeout, ok). Re-run the smoke.“
+  frontend · Feedback #374 RSI/pledge up  → „Now ship facts: mass and signature notes → tip.“</pre></div>
+      </div>
+    </section>
+
+    <!-- d-limit -->
+    <section id="d-limit" data-nav-label="Berichtslänge" data-decision="d-limit" data-decision-mode="slider"
+             data-label="Höchstlänge qax-Bericht" data-rec="400" data-unit="Wörter"
+             data-rec-why="Reicht für Gate-Ergebnis, Befunde mit file:line und offene Punkte; Details gehören in eine Datei, auf die der Bericht verweist."
+             data-applies-to="qax-Abschlussbericht" data-finding="f-limit">
+      <p data-applies>Gilt für: qax-Abschlussbericht</p>
+      <p data-situation>Keine der 7 pox-Triagen hielt ihre 300-Wörter-Grenze (Ø +50 %); qax-Berichte liefen bis 1.554 Wörter, die der Hauptagent ganz lesen muss.</p>
+      <h3 data-question>Wie viele Wörter darf ein qax-Bericht höchstens haben?</h3>
+      <p data-stakes>Kontext des Hauptagents nach jeder Prüfwelle.</p>
+      <div data-options>
+        <input type="range" name="dm-d-limit" min="150" max="1500" step="50" value="400">
+      </div>
+      <textarea data-comment="d-limit-note" placeholder="Notiz (optional)"></textarea>
+      <input type="hidden" name="dm-d-limit-hes" value="">
+      <input type="hidden" name="dm-d-limit-touched" value="">
+      <input type="hidden" name="dm-d-limit-issue" value="">
+      <input type="hidden" name="dm-d-limit-epic" value="">
+      <div data-alevel="3" data-title="Berichtslänge">
+        <div data-slot="short"><div data-viz="kpi" data-viz-spec='{"value":"1.554","unit":"Wörter","label":"längster qax-Bericht"}'></div></div>
+        <div data-slot="long">
+          <div data-viz="bars" data-viz-spec='{"items":[{"label":"Prüfung Gates + Abnahme","value":1554},{"label":"Unabhängige Prüfung","value":1242},{"label":"Gates Listen-Dateien","value":1032},{"label":"Independent check","value":1004},{"label":"Integration QA","value":816},{"label":"QA Batch 1160","value":261}],"unit":"Wörter","hl":"Prüfung Gates + Abnahme"}'></div>
+          <p>Die Agent-Definition von qax nennt keine Längengrenze.</p>
+        </div>
+        <div data-example><pre>Auftrag:   „Return in under 300 words: classification; root cause …“
+Ergebnis:  Triage #1161 → 563 Wörter · #1170 → 495 · #1163 → 402
+
+qax [W3] „Prüfung: Gates + Abnahme gegen den Auftrag“
+  verlangt: at most ~60 lines   →   geliefert: 103 Zeilen, 1.554 Wörter</pre></div>
+      </div>
+    </section>
+  </section>
+</section>

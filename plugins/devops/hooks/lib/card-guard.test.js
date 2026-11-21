@@ -608,13 +608,13 @@ describe("decideAction — pending gate", () => {
       cardRendered: true,
       stopHookActive: false,
       substantial: false,
-      openTaskNames: ["devops:frontend"],
+      openTaskNames: ["devops:builder"],
       pendingAttested: false,
     });
     expect(d.action).toBe("block");
     expect(d.resetFlags).toBe(false);
     expect(d.reason).toMatch(/STILL RUNNING/);
-    expect(d.reason).toMatch(/devops:frontend/);
+    expect(d.reason).toMatch(/devops:builder/);
   });
 
   test("card rendered + open background work + attested → pass", () => {
@@ -623,7 +623,7 @@ describe("decideAction — pending gate", () => {
       cardRendered: true,
       stopHookActive: false,
       substantial: false,
-      openTaskNames: ["devops:frontend"],
+      openTaskNames: ["devops:builder"],
       pendingAttested: true,
     });
     expect(d.action).toBe("pass");
@@ -730,8 +730,8 @@ describe("decideAction — pending gate", () => {
 
 describe("buildPendingReason", () => {
   test("names each open item and the pending field", () => {
-    const r = buildPendingReason(["devops:frontend", "npm test"]);
-    expect(r).toMatch(/devops:frontend/);
+    const r = buildPendingReason(["devops:builder", "npm test"]);
+    expect(r).toMatch(/devops:builder/);
     expect(r).toMatch(/npm test/);
     expect(r).toMatch(/pending/);
     expect(r).toMatch(/render_completion_card/);
@@ -1148,7 +1148,7 @@ describe("decideAction — notification turn", () => {
       turnEdits: 0,
       shipped: false,
       openTasksKnown: true,
-      openTaskNames: ["devops:core"],
+      openTaskNames: ["devops:builder"],
     });
     expect(d.action).toBe("pass");
     expect(d.exempt).toBe("notification-work-running");
@@ -1181,7 +1181,7 @@ describe("decideAction — notification turn", () => {
       turnEdits: 2,
       shipped: false,
       openTasksKnown: true,
-      openTaskNames: ["devops:core"],
+      openTaskNames: ["devops:builder"],
     });
     expect(d.action).toBe("block");
   });

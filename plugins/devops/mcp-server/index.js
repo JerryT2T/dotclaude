@@ -3464,7 +3464,7 @@ server.registerTool(
         z.array(z.union([
           z.string(),
           z.object({
-            name: z.string().describe("What is running, named: agent type ('devops:frontend'), workflow name or task label ('npm test'). Never an internal agentId."),
+            name: z.string().describe("What is running, named: agent type ('devops:builder'), workflow name or task label ('npm test'). Never an internal agentId."),
             kind: z.enum(["agent", "task", "workflow"]).optional().describe("'agent' (default) = background subagent; 'task' = backgrounded Bash command; 'workflow' = a Workflow run (counted as its own class, never folded into agents)."),
             doing: z.string().optional().describe("Short description of the work, e.g. 'Farbstil auf Tokens umstellen'."),
           }),

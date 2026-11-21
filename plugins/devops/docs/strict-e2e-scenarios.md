@@ -66,7 +66,7 @@ there).
 
 ```bash
 git checkout -q -- . && node "$PLUGIN/hooks/lib/strict-state.js" on
-run "Spawn a devops:frontend agent to make the box border thinner. Do not do it yourself." claude-sonnet-5
+run "Spawn a devops:builder agent to make the box border thinner. Do not do it yourself." claude-sonnet-5
 ```
 
 Pass when: the transcript shows one `[claude-strict] BLOCKED` gate message

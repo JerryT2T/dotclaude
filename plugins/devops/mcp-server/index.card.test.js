@@ -704,10 +704,10 @@ describe("render_completion_card — anatomy (§ 2 of the design doc)", () => {
       const pending = mod.buildDecisionBlock({ variant: "test", summary: "x", cwd: withPath, pending: [{ name: "qa", doing: "läuft" }] }, "de", "test", delivery, state);
       expect(pending.appStart).toBeFalsy();
       // Four running agents of the same type: the points never silently drop one.
-      const four = ["A", "B", "C", "D"].map((d) => ({ name: "devops:core", doing: d }));
+      const four = ["A", "B", "C", "D"].map((d) => ({ name: "devops:builder", doing: d }));
       for (const extra of [{}, { concept: { phase: "implementing" } }]) {
         const block = mod.buildDecisionBlock({ variant: "ready", summary: "x", pending: four, ...extra }, "de", "ready", delivery, state);
-        expect(block.points).toEqual(["`devops:core` — A", "`devops:core` — B", "+2"]);
+        expect(block.points).toEqual(["`devops:builder` — A", "`devops:builder` — B", "+2"]);
       }
     } finally {
       rmSync(withPath, { recursive: true, force: true });
@@ -937,7 +937,7 @@ describe("render_completion_card — § 3 per-variant table (de + en)", () => {
     },
     {
       name: "pending override",
-      params: { variant: "ready", pending: [{ name: "devops:frontend", doing: "Farbstil" }] },
+      params: { variant: "ready", pending: [{ name: "devops:builder", doing: "Farbstil" }] },
       de: /^## ⏳ 🤖 Team — noch nicht fertig — .+$/m, en: /^## ⏳ 🤖 Team — not done yet — .+$/m,
     },
     {
@@ -1228,10 +1228,10 @@ describe("render_completion_card — every input. field lands somewhere", () => 
   test("pending overrides evidence with a provisional-evidence post and the block's items as points", async () => {
     const text = await cardText({
       variant: "ready", summary: "x", lang: "de", session_id: "test-fields-pending",
-      pending: [{ name: "devops:frontend", doing: "Farbstil umstellen" }],
+      pending: [{ name: "devops:builder", doing: "Farbstil umstellen" }],
     });
     expect(text).toContain("◐ Belege vorläufig");
-    expect(text).toContain("`devops:frontend` — Farbstil umstellen");
+    expect(text).toContain("`devops:builder` — Farbstil umstellen");
   });
 
   test("concept override renders the quiet page context line", async () => {
@@ -1254,11 +1254,11 @@ describe("render_completion_card — every input. field lands somewhere", () => 
     const impl = await cardText({
       variant: "ready", summary: "Implementieren gestartet", lang: "de", session_id: "test-fields-concept-impl",
       concept: "implementing",
-      pending: [{ name: "devops:core", doing: "Hangar-Mechanik" }, { name: "devops:frontend", doing: "Holotable" }],
+      pending: [{ name: "devops:builder", doing: "Hangar-Mechanik" }, { name: "devops:builder", doing: "Holotable" }],
     });
     expect(impl).toMatch(/^## ⏳ 🧭 Concept — in Implementierung\. 2 Agenten arbeiten — ich melde mich$/m);
     expect(impl).not.toMatch(/wartet auf deine Entscheidungen/);
-    expect(impl).toContain("`devops:core` — Hangar-Mechanik");
+    expect(impl).toContain("`devops:builder` — Hangar-Mechanik");
     const en = await cardText({
       variant: "ready", summary: "x", lang: "en", session_id: "test-fields-concept-en",
       concept: { phase: "implementing" },
