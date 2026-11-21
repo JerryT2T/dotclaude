@@ -1875,6 +1875,18 @@ describe("render_completion_card — test card's Nachbessern only when something
     expect(d.replies).toEqual(["Alle Buttons — bitte angehen."]);
   });
 
+  // 2026-11-21 (devops learn): "Neu-Seite ersetzen" waitsOn external landed in Nachbessern as "— bitte angehen."
+  test.each(["user", "deploy", "external", "pending"])("a gap that waits on %s is no rework — Nachbessern leaves it out", async (waitsOn) => {
+    const mod = await import("./index.js");
+    const input = {
+      variant: "test", summary: "x",
+      validation: [{ requirement: "Neu-Seite ersetzen", status: "unmet", waitsOn, evidence: "keine Render-Stelle vor Sitzungsstart" }],
+    };
+    const d = mod.buildDecisionBlock(input, "de", "test", {}, state);
+    expect(d.replies).toEqual([]);
+    expect(await labels(d)).not.toContain("Nachbessern");
+  });
+
   test("open points keep their own replies and come first", async () => {
     const mod = await import("./index.js");
     const input = { variant: "test", summary: "x", open: [{ text: "Logo zu groß?", reply: "Ja, Logo verkleinern." }] };

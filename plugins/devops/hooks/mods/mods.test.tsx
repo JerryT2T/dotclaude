@@ -59,6 +59,7 @@ import {
   verbatimNotices,
   breakEvenRate,
   cardFromResult,
+  capCardPoints,
   claimWake,
   disablesAfter,
   keepalivePolicy,
@@ -2416,6 +2417,17 @@ test('card band: cleanup hints (🧹) and the card’s Aufräumen button are lef
   const view = cardFromResult(cardText(d))!
   expect(view.points).toEqual(['👉 Remote-Branch konnte nicht gelöscht werden'])
   expect(view.buttons.map(b => b.label)).toEqual(['Promote beta'])
+})
+
+// 2026-11-21 (devops learn): 3 🧪 steps pushed the ❓ point out of the band while Nachbessern still carried its reply.
+test('card band: over the cap, the ❓/👉 point a button acts on wins over 🧪 checks, in card order', () => {
+  const d = {
+    ...CARD_DATA,
+    pt: ['🧪 Pane erscheint rechts', '🧪 Normale Ansicht klicken', '🧪 Neue Aufgabe füllt den Prompt', '❓ Gefällt es: ins Plugin übernehmen?'],
+  }
+  const view = cardFromResult(cardText(d))!
+  expect(view.points).toEqual(['🧪 Pane erscheint rechts', '🧪 Normale Ansicht klicken', '❓ Gefällt es: ins Plugin übernehmen?'])
+  expect(capCardPoints(['a', 'b'])).toEqual(['a', 'b'])
 })
 
 // --- B1 Mod-Band: one count source, the card surviving the app's nudge, idle collect layout, clamps, session marker. ---

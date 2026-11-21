@@ -1705,13 +1705,19 @@ function cleanupReplies(input, lang) {
 
 /**
  * The test card's prepared answers (#784): its open points, then every
- * partial/unmet requirement — the concrete points its Nachbessern button
- * carries. Empty means nothing is open, and the button is left out.
+ * partial/unmet requirement that is still Claude's own (no `waitsOn`) — the
+ * concrete points its Nachbessern button carries. A gap that waits on the
+ * user, a deploy, a third party or running work is no rework: "bitte angehen"
+ * on it asks for something Claude cannot do. Empty means nothing is open, and
+ * the button is left out.
  */
 function testReplies(input, lang) {
   const F = OPEN_REPLY_FALLBACK[lang] || OPEN_REPLY_FALLBACK.de;
   const replies = openReplies(input, lang);
+  const validation = Array.isArray(input.validation) ? input.validation : [];
+  const waiting = new Set(validation.filter(v => v && v.waitsOn).map(v => v.requirement + (v.evidence ? ' — ' + v.evidence : '')));
   for (const d of deviations(input, lang)) {
+    if (waiting.has(d.text)) continue;
     const reply = F.point(d.text.replace(/\s+$/, '').replace(/[.!]$/, ''));
     if (!replies.includes(reply)) replies.push(reply);
   }
