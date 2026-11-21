@@ -193,7 +193,8 @@ What the code does, in the order of the file:
   }
   function valueText(d, e) {
     const m = e.mode, v = e.value, unit = d.dataset.unit ? ' ' + d.dataset.unit : '';
-    if (e.none) return L('Keine passt', 'None fits') + (e.note ? ': ' + e.note : '');
+    // The note stands in its own bubble right under the answer: repeating it here showed every word twice.
+    if (e.none) return L('Keine passt', 'None fits');
     if (m === 'multi') return v.length ? v.map(x => optLabel(d, x)).join(', ') : L('nichts gewählt', 'nothing picked');
     if (m === 'yesnoalt') return v.answer === 'alt' ? L('Anders: ', 'Other: ') + (v.alt || '…') : v.answer ? optLabel(d, v.answer) : '–';
     if (m === 'slider') return v == null ? '–' : fmt(v) + unit;
@@ -640,6 +641,8 @@ What the code does, in the order of the file:
     inst.comp.ed.dataset.empty = !text ? '1' : '';
     if (!store || frozen(inst)) return;
     const msgs = msgsOf(st, store);
+    // A draft restored from deleted messages is text in the field only: untouched, it is neither a message nor part of the result.
+    if (st.restDraft != null) { if (text === st.restDraft.trim()) { writeMsgs(st, store, msgs); return; } st.restDraft = null; }
     // A blank line separates messages in the store, so a paragraph break inside a draft holds a no-break space.
     const draft = text.trim() ? text.trim().replace(/\n\s*\n/g, '\n \n') : '';
     writeMsgs(st, store, draft ? msgs.concat(draft) : msgs);
@@ -676,7 +679,7 @@ What the code does, in the order of the file:
     box.textContent = '';
     const editable = !frozen(inst);
     msgsOf(st, store).forEach((m, i) => box.appendChild(noteRow(inst, st, m, i, editable)));
-    box.hidden = !box.firstChild;
+    box.hidden = !box.firstChild || st !== inst.stages[inst.idx];   // a question left shows its messages in its answer block (an-m-me), never twice
   }
   /** One chat message of the user with its pen and x; the same bubble on the open stage and on an earlier question. */
   function noteRow(inst, st, m, i, editable) {
@@ -710,6 +713,7 @@ What the code does, in the order of the file:
     if (!store || frozen(inst)) return;
     // A message of an earlier question is edited where it stands: no composer (it belongs to the OPEN stage), no jump.
     if (st !== inst.stages[inst.idx]) { editInline(inst, st, i); return; }
+    if (restOnly(st, compText(inst.comp.ed))) st.restDraft = null;   // the user works with the restored draft now: it is theirs
     composeSync(inst);
     const m = msgsOf(st, store)[i];
     if (compText(inst.comp.ed) || pendingRecs(inst, st).length) { sealDraft(inst, st, compText(inst.comp.ed)); clearComposer(inst); }
@@ -732,10 +736,18 @@ What the code does, in the order of the file:
     const open = st === inst.stages[inst.idx];
     const draft = open ? compText(inst.comp.ed) : '', list = msgsOf(st, store).slice();
     const id = list[i] ? msgIdOf(list[i]) : '';
+    const gone = list[i] ? plainMsg(list[i]).replace(/\n \n/g, '\n\n').trim() : '';
     list.splice(i, 1);
     st.msgs = list;
     writeMsgs(st, store, list);
-    if (draft) composeSync(inst);
+    // The deleted text moves into this question's UNSENT draft (blank line between several, deletion order, after any draft text):
+    // back on the question the user can still revise it; left alone it is not a message and not part of the result.
+    if (gone) {
+      const base = open ? draft : (st.restDraft || '');
+      st.restDraft = base ? base + '\n\n' + gone : gone;
+      if (open) { inst.comp.ed.textContent = ''; inst.comp.ed.appendChild(document.createTextNode(st.restDraft)); }
+    }
+    if (open) composeSync(inst);
     // The message's attachments go with it.
     if (id && typeof removeAttachment === 'function') { const slot = slotOf(inst, st); msgRecs(inst, st, id).forEach(r => removeAttachment(slot, r.key)); }
     refreshNotes(inst, st);
@@ -1004,8 +1016,8 @@ What the code does, in the order of the file:
   function loadComposer(inst, st) {
     const store = storeOf(inst, st), ed = inst.comp.ed, prev = inst.compSt, draft = compText(ed);
     const keep = prev === st && draft && store && st.msgSig === store.value;
-    if (prev && prev !== st && !frozen(inst) && (draft || pendingRecs(inst, prev).length)) {
-      sealDraft(inst, prev, draft); renderNotes(inst, prev);
+    if (prev && prev !== st && !frozen(inst) && ((draft && !restOnly(prev, draft)) || pendingRecs(inst, prev).length)) {
+      sealDraft(inst, prev, restOnly(prev, draft) ? '' : draft); renderNotes(inst, prev);
       // The note sent with the answer (Ctrl+Enter / arrow keys / rail) is a message only now: the earlier question's own
       // bubble under its answer is redrawn at once, never left without it (the cache of go() ran before this seal).
       if (prev.me) fillMe(inst, prev, true);
@@ -1013,12 +1025,16 @@ What the code does, in the order of the file:
     inst.compSt = st;
     ed.dataset.ph = L('Notiz an devops … (optional)', 'Note to devops … (optional)');   // a question with "Keine passt" re-sets it (syncDecision)
     if (!keep) clearComposer(inst);
+    // Deleted messages of this question wait here as an unsent draft (never in the store, never in the result).
+    if (!keep && st.restDraft != null && !frozen(inst)) { ed.appendChild(document.createTextNode(st.restDraft)); ed.dataset.empty = ''; }
     renderNotes(inst, st);
     ed.contentEditable = frozen(inst) ? 'false' : 'true';
     inst.comp.att.hidden = false;   // every stage takes attachments (its own slot), not only the questions with an attach bar
     closeLightbox(inst);
     renderStrip(inst);
   }
+  /** True while the composer still holds exactly the restored (deleted-messages) draft: it is not the user's own input yet. */
+  function restOnly(st, draft) { return st.restDraft != null && String(draft || '').trim() === st.restDraft.trim(); }
   /** The stage being left: its draft (and the strip's attachments) become a sent message BEFORE any view reads the notes
    *  (the earlier question's bubble, the closing overview) - Ctrl+Enter, arrow keys and the rail all pass through here. */
   function sealLeaving(inst, prev) {
@@ -1035,6 +1051,8 @@ What the code does, in the order of the file:
   }
   /** Send: the text becomes a chat message on this stage. It moves on only under "Keine passt", where the message IS the answer. */
   function sendNote(inst) {
+    // Sending the restored draft as it stands is the user's decision: from here it is a normal message.
+    { const s0 = inst.stages[inst.idx]; if (s0 && restOnly(s0, compText(inst.comp.ed))) s0.restDraft = null; }
     composeSync(inst);
     const st = inst.stages[inst.idx], text = compText(inst.comp.ed);
     if (frozen(inst)) return false;

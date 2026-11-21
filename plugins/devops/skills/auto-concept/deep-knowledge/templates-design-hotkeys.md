@@ -129,6 +129,22 @@ the same hotkeys and tips as a design round. Three jobs:
     const r = n.getBoundingClientRect();
     return r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < innerHeight;
   };
+  // The part of a control the user really sees: its box cut by every clipping / scrolling ancestor and the
+  // viewport. Hidden (visibility), disabled, inert and fully clipped controls have none: no badge for them.
+  const seen = n => {
+    const cs = getComputedStyle(n);
+    if (cs.visibility === 'hidden' || n.disabled || n.closest('[inert], [aria-hidden="true"]:not(.hk-overlay)')) return null;
+    const r = n.getBoundingClientRect();
+    let t = Math.max(r.top, 0), b = Math.min(r.bottom, innerHeight), l = Math.max(r.left, 0), rt = Math.min(r.right, innerWidth);
+    for (let p = n.parentElement; p && p !== document.documentElement; p = p.parentElement) {
+      const o = getComputedStyle(p);
+      if (/(auto|scroll|hidden|clip)/.test(o.overflowX + o.overflowY)) {
+        const q = p.getBoundingClientRect();
+        t = Math.max(t, q.top); b = Math.min(b, q.bottom); l = Math.max(l, q.left); rt = Math.min(rt, q.right);
+      }
+    }
+    return (b - t > 2 && rt - l > 2) ? { top: t, right: rt, left: l, bottom: b } : null;
+  };
   function showKeys() {
     if (layer) return;
     body.classList.add('hk-keys');
@@ -137,11 +153,12 @@ the same hotkeys and tips as a design round. Three jobs:
     layer.setAttribute('aria-hidden', 'true');
     document.querySelectorAll('[data-tip-key]').forEach(n => {
       if (!visible(n)) return;
-      const r = n.getBoundingClientRect();
+      const r = seen(n);
+      if (!r) return;
       // Only what the user can see: a control under the shortcut sheet (or
       // any other layer) gets no badge floating on top of that layer.
       const top = document.elementFromPoint
-        ? document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) : null;
+        ? document.elementFromPoint((r.left + r.right) / 2, (r.top + r.bottom) / 2) : null;
       if (top && !n.contains(top) && !top.contains(n)) return;
       const badge = mk('kbd', 'app-kbd hk-badge', n.dataset.tipKey.replace(/\|/g, '/'));
       badge.style.left = Math.round(r.right) + 'px';

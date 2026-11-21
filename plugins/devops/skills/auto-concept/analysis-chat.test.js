@@ -44,15 +44,14 @@ function page(html) {
 const type = (w, inst, text) => { inst.comp.ed.appendChild(w.document.createTextNode(text)); inst.comp.ed.dispatchEvent(new w.Event("input", { bubbles: true })); };
 
 describe("hesitation signal", () => {
-  test("the flag needs at least two of: slow (2x median, >= 20 s), note > 12 words, >= 2 revisits", () => {
+  test("the flag needs BOTH slow (2x median, >= 20 s) and >= 2 revisits; a long note never flags", () => {
     const { w } = page("");
     const flag = (ms, noteWords, revisits, median) => w.hesitationFlag({ ms, noteWords, revisits }, median);
     expect(flag(60000, 0, 0, 10000)).toBe(false);          // slow only
-    expect(flag(60000, 13, 0, 10000)).toBe(true);          // slow + wordy
-    expect(flag(5000, 13, 2, 10000)).toBe(true);           // wordy + revisits
+    expect(flag(60000, 0, 2, 10000)).toBe(true);           // slow + back
+    expect(flag(60000, 13, 2, 10000)).toBe(false);         // a long own note counts as clarified
     expect(flag(15000, 0, 2, 4000)).toBe(false);           // 15 s is under the 20 s floor
     expect(flag(25000, 0, 2, 20000)).toBe(false);          // not over twice the median
-    expect(flag(25000, 12, 1, 10000)).toBe(false);         // exactly 12 words / 1 revisit do not count
     expect(w.noteWordCount("one two three")).toBe(3);
   });
   test("dwell counts only while the window is focused; the payload carries ms, noteWords, revisits, flagged", () => {
@@ -70,7 +69,7 @@ describe("hesitation signal", () => {
     expect(e.hesitation.noteWords).toBe(0);
     expect(e.hesitation.flagged).toBe(false);
   });
-  test("revisits and answer changes add up; with a long note the decision is flagged", () => {
+  test("revisits and answer changes add up; a long own note keeps the decision unflagged", () => {
     const { w, doc, ca } = page(LITE);
     const inst = ca.instances[0];
     ca.go(inst, 1); ca.go(inst, 0);                     // one revisit of q1
@@ -83,7 +82,7 @@ describe("hesitation signal", () => {
     const e = w.collectModeDecision(doc.getElementById("q1"));
     expect(e.hesitation.revisits).toBe(2);
     expect(e.hesitation.noteWords).toBe(13);
-    expect(e.hesitation.flagged).toBe(true);
+    expect(e.hesitation.flagged).toBe(false);
   });
   test("none and hesitation survive the bake: the hidden controls come back from decisions[]", () => {
     const { w, doc, ca } = page(LITE);
@@ -383,5 +382,60 @@ describe("the finding is only the finding", () => {
     expect(ctx.closest(".an-ans")).toBeTruthy();
     expect(ctx.closest(".an-m-find")).toBeNull();
     expect(ctx.classList.contains("an-ans-hint")).toBe(true);
+  });
+});
+
+describe("B1: sharpen heuristic, no doubled answer, deleted messages become a draft", () => {
+  test("d-sharpen=own: an own answer is never flagged; ownAnswer reads none / custom / alt", () => {
+    const { w } = page("");
+    expect(w.hesitationFlag({ ms: 60000, noteWords: 0, revisits: 3, own: true }, 10000)).toBe(false);
+    expect(w.hesitationFlag({ ms: 60000, noteWords: 0, revisits: 3 }, 10000)).toBe(true);
+    expect(w.ownAnswer({ none: true })).toBe(true);
+    expect(w.ownAnswer({ mode: "wording", choice: "custom" })).toBe(true);
+    expect(w.ownAnswer({ mode: "yesnoalt", value: { answer: "alt", alt: "x" } })).toBe(true);
+    expect(w.ownAnswer({ mode: "single", value: "a" })).toBe(false);
+  });
+  test("#4a: Keine passt + sent answer shows its text once after jumping away and back", () => {
+    const { doc, ca, w } = page(LITE);
+    const inst = ca.instances[0];
+    doc.querySelector("#q1 .an-none").click();
+    type(w, inst, "my own answer");
+    ca.sendNote(inst);
+    ca.go(inst, 2); ca.go(inst, 0); ca.go(inst, 2);
+    const bubbles = [...doc.querySelectorAll("#q1 .an-note-m, #q1 .an-ans-m")].filter(n => !n.closest("[hidden]"));
+    expect(bubbles.filter(n => n.textContent.includes("my own answer"))).toHaveLength(1);
+    expect(doc.querySelector("#q1 .an-notes").hidden).toBe(true);
+  });
+  test("#4b: deleted messages aggregate into the unsent draft; the draft is not in the payload", () => {
+    const { doc, w, ca } = page(LITE);
+    const inst = ca.instances[0];
+    type(w, inst, "first"); ca.sendNote(inst); type(w, inst, "second"); ca.sendNote(inst);
+    doc.querySelectorAll("#q1 .an-notes .an-note-m")[0].querySelectorAll(".an-note-b")[1].click();
+    doc.querySelectorAll("#q1 .an-notes .an-note-m")[0].querySelectorAll(".an-note-b")[1].click();
+    expect(inst.comp.ed.textContent).toBe("first
+
+second");
+    expect(doc.querySelector("#q1 .an-note").value).toBe("");
+    ca.go(inst, 1); ca.go(inst, 0);
+    expect(inst.comp.ed.textContent).toBe("first
+
+second");
+    expect(doc.querySelector("#q1 .an-note").value).toBe("");
+    ca.flush();
+    expect(w.collectModeDecision(doc.getElementById("q1")).note).toBe("");
+    ca.sendNote(inst);
+    expect(doc.querySelector("#q1 .an-note").value).toBe("first
+
+second");
+  });
+  test("#4b: a message deleted from an earlier question waits in that question's draft", () => {
+    const { doc, w, ca } = page(LITE);
+    const inst = ca.instances[0];
+    type(w, inst, "keep me"); ca.sendNote(inst);
+    ca.go(inst, 1);
+    doc.querySelectorAll("#q1 .an-m-me .an-note-m .an-note-b")[1].click();
+    expect(doc.querySelector("#q1 .an-note").value).toBe("");
+    ca.go(inst, 0);
+    expect(inst.comp.ed.textContent).toBe("keep me");
   });
 });

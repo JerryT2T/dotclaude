@@ -582,7 +582,9 @@
   function hesOf(inst, st) {
     const id = decId(st.el), e = inst.hes[id] || { ms: 0, revisits: 0 }, median = hesMedian(inst);
     const note = ((st.el.querySelector('.an-note') || {}).value || '').replace(/\u2063[a-z0-9]+/g, '');
-    const h0 = { ms: Math.round(e.ms), noteWords: typeof noteWordCount === 'function' ? noteWordCount(note) : 0, revisits: e.revisits || 0 };
+    let own = false;
+    try { own = typeof ownAnswer === 'function' && ownAnswer(entryOf(st.el)); } catch (err) { own = false; }
+    const h0 = { own, ms: Math.round(e.ms), noteWords: typeof noteWordCount === 'function' ? noteWordCount(note) : 0, revisits: e.revisits || 0 };
     const auto = typeof hesitationFlag === 'function' ? hesitationFlag(h0, median) : false;
     h0.flagged = inst.sharpen.has(id) ? inst.sharpen.get(id) : auto;
     h0.median = median;
@@ -652,6 +654,7 @@
       s.el.classList.toggle('an-past', past);
       s.el.classList.remove('an-first');
       s.el.style.minHeight = '';
+      if (s.notes) s.notes.hidden = s !== st || !s.notes.firstChild;   // a question left shows its messages in the answer block only
       if (past) fillMe(inst, s);
     });
     inst.groups.forEach(g => g.topic.classList.toggle('an-off', st.group !== g && !inst.stages.some(s => s.group === g && s.el.classList.contains('an-past'))));
@@ -870,14 +873,13 @@
     return null;
   }
   /** Closing: a devops message ("Abschluss" meta line, like every question) introduces the list of every
-   *  question with its dwell bar and a "Nachschärfen" toggle (preset from the hesitation signal); below it
+   *  question with a "Nachschärfen" toggle (no dwell bar: dwell stays an internal signal) (preset from the hesitation signal); below it
    *  Zurück and the ☰ panel's two journey buttons. No counts, no deviation summary. */
   function fillReview(inst, st) {
     const el = st.el;
     const keepFocus = el.contains(document.activeElement) ? document.activeElement.className : '';
     el.textContent = '';
     const stats = inst.decs.map(s => ({ s, e: entryOf(s.el), hs: hesOf(inst, s) }));
-    const max = Math.max.apply(null, stats.map(x => x.hs.ms).concat([1]));
     const wrap = h('div', 'an-close');
     const m = msg('an-m-close'), bub = h('div', 'an-bub');
     bub.appendChild(h('div', 'an-meta', L('Abschluss', 'Closing')));
@@ -901,12 +903,6 @@
       name.append(h('b', '', x.s.el.dataset.label || id), h('small', '', x.e.untouched ? L('nicht angesehen — Vorauswahl gilt', 'not looked at — the preselection stands') : valueText(x.s.el, x.e)));
       // The user's notes stand next to their answer (every one, in full, wrapped - never cut).
       noteTexts(inst, x.s).forEach(t => name.appendChild(h('small', 'an-sig-note', '✎ ' + t)));
-      const dw = h('div', 'an-dw'), bar = h('b');
-      bar.style.width = Math.round(x.hs.ms / max * 100) + '%';
-      dw.appendChild(bar);
-      dw.classList.toggle('an-warn', x.hs.flagged);
-      const sec = Math.round(x.hs.ms / 1000);
-      tip(dw, L('Verweildauer ', 'Time spent ') + sec + ' s · ' + x.hs.noteWords + ' ' + L('Wörter Notiz', 'note words') + ' · ' + x.hs.revisits + ' ' + L('Rückkehr/Änderungen', 'revisits/changes') + ' · ' + L('Markiert ab zwei von: Zeit über dem Doppelten des Medians (mind. 20 s), Notiz über 12 Wörtern, mind. 2 Rückkehren.', 'Flagged at two of: time over twice the median (at least 20 s), note over 12 words, at least 2 revisits.'));
       const tg = btn('an-tg', L('Nachschärfen', 'Sharpen'));
       tg.setAttribute('aria-pressed', x.hs.flagged ? 'true' : 'false');
       tg.disabled = frozen(inst);
@@ -919,9 +915,8 @@
         hesFlush(inst);
         // In place: re-rendering the closing on every toggle made it flicker and lose its scroll.
         tg.setAttribute('aria-pressed', on ? 'true' : 'false');
-        dw.classList.toggle('an-warn', on);
       });
-      row.append(h('i'), name, dw, tg);
+      row.append(h('i'), name, tg);
       list.appendChild(row);
     });
     body.appendChild(list);
