@@ -154,6 +154,8 @@ import {
   CONTEXT_SHOW_PERCENT,
 } from './format'
 import { featureAllowed, homeDir } from './gate'
+import { HOME_PANE, homeClosed, renderHome, toggleHome } from './home'
+import type { HomeCtx } from './home'
 import { readOptState, switchOff, switchOn } from './optout'
 import type { OptState } from './optout'
 
@@ -467,15 +469,25 @@ function toggleOptPopup($: EngineInterface, openIt: boolean): void {
   $.ui.invalidate('ui.render')
 }
 
-/** A press on the status element (or /devops): open the card with fresh figures, or close it. */
+/**
+ * A press on the status element (or /devops): open the devops Home pane, or close it (concept 20261121-1400-devops-home).
+ * The pane took over the info card that used to open above the prompt; a card still open from before closes here.
+ */
 async function toggleInfo($: EngineInterface): Promise<void> {
-  if ((await read($, info)).open) {
-    await update($, info, i => ({ ...i, open: false }))
-    return
-  }
+  if ((await read($, info)).open) await update($, info, i => ({ ...i, open: false }))
   await checkMcp($)
-  const data = await loadInfo($)
-  await update($, info, () => ({ open: true, data }))
+  await toggleHome($, await homeCtx($))
+}
+
+/** What the Home pane needs from this module, resolved for one call. */
+async function homeCtx($: EngineInterface): Promise<HomeCtx> {
+  return {
+    loc: (await sharedNow($)).loc,
+    isOn: (await optNow($)).on,
+    root: await repoRoot($),
+    loadInfo: () => loadInfo($),
+    switchDevops: v => pressOpt($, v ? 'on' : 'off', 'session'),
+  }
 }
 
 /** A card button: its prompt goes out as the person's own turn; the card leaves the band at once (one press = one prompt). */
@@ -1090,6 +1102,13 @@ async function appendSpikeLog($: EngineInterface, row: unknown): Promise<string>
 }
 
 export const register: Register = on => {
+  on('ui.render', { component: 'Pane', requestId: HOME_PANE }, async ($, e) => renderHome($, e, await homeCtx($)))
+  on('ui.close', async ($, e, next) => {
+    const r = await next(e)
+    if (e.id === HOME_PANE) homeClosed()
+    return r
+  }).catch(($, e, next) => next(e))
+
   on('session.start', async ($, e, next) => {
     gate = null
     bandMarkAt = 0
@@ -1462,7 +1481,7 @@ export const register: Register = on => {
   // short line: a command's output can enter the conversation, the figures must not cost tokens.
   on('command.run', { command: 'devops' }, async $ => {
     await toggleInfo($)
-    return { text: (await read($, info)).open ? 'devops info opened above the prompt.' : 'devops info closed.' }
+    return { text: `devops Home pane toggled (${HOME_PANE}).` }
   })
 
   on('command.run', { command: 'devops-ship' }, async $ => {

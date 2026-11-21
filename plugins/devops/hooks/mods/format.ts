@@ -289,6 +289,20 @@ function plain(s: unknown): string {
 }
 
 /**
+ * The band's ≤3 points. Over the cap, the points a button acts on (❓ a question, 👉 a step) win over 🧪 checks:
+ * cutting the open point while Nachbessern still carries its reply shows a button with nothing to answer.
+ * The kept points stay in card order.
+ */
+export function capCardPoints(points: string[], max = CARD_POINTS_MAX): string[] {
+  if (points.length <= max) return points
+  const actionable = (p: string) => p.startsWith('❓') || p.startsWith('👉')
+  const keep = new Set<number>()
+  points.forEach((p, i) => { if (keep.size < max && actionable(p)) keep.add(i) })
+  points.forEach((_, i) => { if (keep.size < max) keep.add(i) })
+  return points.filter((_, i) => keep.has(i))
+}
+
+/**
  * The card's template part from the text render_completion_card returned.
  * Desktop: the `#dc-card-data` JSON the widget mounts (title, heading, points,
  * buttons). Terminal: the markdown card's title and status heading, no buttons
@@ -311,7 +325,7 @@ export function cardFromResult(text: unknown): CardView | null {
         title: plain(d.ti),
         at: plain(d.at),
         heading,
-        points: (Array.isArray(d.pt) ? d.pt : []).map(plain).filter(p => p && !p.startsWith('🧹')).slice(0, CARD_POINTS_MAX),
+        points: capCardPoints((Array.isArray(d.pt) ? d.pt : []).map(plain).filter(p => p && !p.startsWith('🧹'))),
         buttons,
       }
     } catch {

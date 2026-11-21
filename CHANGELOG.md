@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.394.0] — 2026-11-21
+
+### Added
+- **devops Home pane.** A click on "devops" in the status bar opens it, in place of the info card above the prompt.
+  - **Übersicht:** budget rings with a pace tick and four clickable state tiles (longest waiting, newest running, oldest finished, cleanup). Project rows with **＋ Batch** start a collect-mode session there and jump to it. Past 85 % of the week the button asks once first.
+  - **Einstellungen:** the devops switch for this session, the figures with an "i" info toggle, and measured facts instead of a negative token gain.
+
+### Fixed
+- Completion card: the band no longer drops the ❓/👉 point that the Nachbessern button answers when more than three points compete.
+- Completion card: Nachbessern leaves out requirements that wait on the user, a deploy, a third party or running work.
+
 ## [0.393.0] — 2026-11-21
 
 ### Added
