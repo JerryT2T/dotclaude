@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.393.0] — 2026-11-21
+
+### Added
+- `devops:analyst` — read-only agent (sonnet) for triage, diagnose-only orders and cause analysis; do-run backlog pre-triage is pinned to it.
+- `devops:builder` — one implementer for backend, UI and AI/ML work; parallel waves use two builders on disjoint files.
+- SubagentStop hook `substop.agent.report`: a devops agent whose last message is under 30 words is sent back once to write its report.
+- Delegation policy names forks (`subagent_type: "fork"`) for tasks that need the conversation, and allows `general-purpose` only as a fallback with the reason in the description.
+
+### Changed
+- `devops:core`, `devops:frontend` and `devops:aix` are merged into `devops:builder`; spawning an old name is refused with a hint.
+- API-credit gate lets prompts that need shell commands through and refuses at most one gated spawn per assistant message.
+- Fork spawns need no `model` field.
+- Every agent ends on its report; qax reports are capped at 400 words.
+
+### Fixed
+- Stop guard no longer rejects a band widget's renderer-generated decision heading ("wartet", "N Agenten") as a title status word.
+
 ## [0.392.1] — 2026-11-21
 
 ### Fixed
