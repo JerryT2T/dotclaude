@@ -218,7 +218,7 @@ must see their own language. The locale hint is authoritative.
 | `final.route_issue_hint`       | Filed as a GitHub issue for later. Nothing is built now. | Wird als GitHub-Issue für später angelegt. Jetzt wird nichts gebaut. |
 | `final.route_ignore_hint`      | Ends with the concept. Nothing is filed or built. | Fällt mit dem Concept weg. Nichts wird angelegt oder gebaut. |
 | `final.group_decide`           | You decide                     | Du entscheidest |
-| `final.group_todo`             | Left for you                   | Bleibt für dich |
+| `final.group_todo`             | Your tasks                     | Deine Aufgaben  |
 | `final.group_tests`            | You test                       | Du testest |
 | `final.group_handoffs`         | You do afterwards              | Du machst danach |
 | `final.mode_skip`              | Struck                         | Gestrichen |

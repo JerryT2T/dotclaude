@@ -284,7 +284,7 @@
            SHEET, a to-do inbox (§ Final Report Panel):
              🧭 Du entscheidest   the Funde, one line each: the name jumps to
                                   the Fund in the report, the pill cycles the route
-             Bleibt für dich      🧪 and 👉 in one list: "Führ mich" and ✕
+             Deine Aufgaben       🧪 and 👉 in one list: "Führ mich" and ✕
            Under the divider: the plan line, the disposition as one quiet line,
            the TWO buttons that are the ship answer — both submit
            `action: "finalize"` (ship.run true / false), then the clicked one

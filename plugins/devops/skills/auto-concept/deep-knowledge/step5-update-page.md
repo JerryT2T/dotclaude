@@ -194,7 +194,7 @@ lives in the single built `{date}-{slug}.html` and its source folder
      👉 what the user has to do by hand after the merge (flip a cron, rotate
      a key). Each `<li>` carries `data-todo-id`, `data-crit` and `data-guide`
      (§ Funde, 🧪 and 👉 defaults below). The panel shows them as
-     one list, "Bleibt für dich". Never a place for recommendations: work that is
+     one list, "Deine Aufgaben". Never a place for recommendations: work that is
      worth doing and in scope was built; work that is out of scope goes
      through the gate below or nowhere.
    - **🛠 Für Entwickler** (`<details class="fr-fold">`) — **at most five short
