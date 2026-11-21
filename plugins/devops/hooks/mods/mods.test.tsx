@@ -1916,7 +1916,7 @@ test('status state: active unless the hooks or the MCP server are not running; t
   expect(statusText(ok, e, NOW + 90_000, 'de')).toBe('🟢 aktiv')
 })
 
-test('under the prompt: "● devops" beside the engine hint; a press opens the info card in the band, a second one closes it; no prompt, no write', async ($, on) => {
+test('under the prompt: "● devops" beside the engine hint; a press opens the devops Home pane (no card in the band), its Einstellungen tab holds the figures; no prompt, no write', async ($, on) => {
   const { seen } = engine(on, { files: LOG_FILES })
   const forks: unknown[] = []
   on('model.fork', (_: unknown, e: unknown) => {
@@ -1931,33 +1931,26 @@ test('under the prompt: "● devops" beside the engine hint; a press opens the i
   const dot = await hint.find({ key: 'devops-status' })
   expect(JSON.stringify(dot)).toMatch(/#7bc98f/) // the green dot of the mock's chip
   expect(JSON.stringify(dot)).toMatch(/devops/)
-  expect(await hint.find({ type: 'Text', text: /tokens|not active/ })).toBeUndefined() // quiet: no benefit is fresh
-  // Closed: nothing of the card is in the band.
-  let band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  await hint.press({ key: 'devops-status' })
+  expect(seen.opened).toContain('devops-home')
+  // The pane took over the info card: nothing of it is drawn in the band any more.
+  const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
   expect(await band.find({ key: 'devops-info' })).toBeUndefined()
   await band.unmount()
-  await hint.press({ key: 'devops-status' })
-  band = await $.ui.mount({ ...BAND, surface: 'desktop' })
-  const card = await band.find({ key: 'devops-info' })
-  expect(card).toBeDefined()
-  const text = JSON.stringify(card)
-  expect(text).toMatch(/≈ 20 k/) // the headline: the net estimate
-  expect(text).toMatch(/estimate · net · 7 days/)
-  expect(text).toMatch(/searches narrowed · up to 78 k tokens/)
-  expect(text).toMatch(/branches shipped · 1 test runs reused/)
-  expect(text).toMatch(/on API credit instead of your plan · 1 runs/)
-  expect(text).toMatch(/guard interventions/)
-  expect(text).toMatch(/≈ 2 k/)
-  expect(text).toMatch(/From local logs · no model call/)
-  expect(text).toMatch(/v9\.9\.9/)
-  expect(text).not.toMatch(/leftover|worktree|open branch/) // no cleanup figures in the card
-  // The card is the band's first row, left: no chip in the band's right rail.
-  expect(await band.find({ key: 'devops-info-row' })).toBeDefined()
-  await band.unmount()
-  await hint.press({ key: 'devops-status' })
-  band = await $.ui.mount({ ...BAND, surface: 'desktop' })
-  expect(await band.find({ key: 'devops-info' })).toBeUndefined()
-  await band.unmount()
+  let home = await $.ui.mount({ ...pane('devops-home', 'devops Home'), surface: 'desktop' } as any)
+  await home.press({ key: 'home-tab-settings' })
+  let text = ''
+  for (let i = 0; i < 40 && !/≈ 20 k/.test(text); i++) {
+    await home.unmount()
+    for (let j = 0; j < 200; j++) await Promise.resolve()
+    home = await $.ui.mount({ ...pane('devops-home', 'devops Home'), surface: 'desktop' } as any)
+    text = JSON.stringify((await home.find({ type: 'Text', text: /≈ 20 k/ })) ?? '')
+  }
+  expect(text).toMatch(/≈ 20 k/) // the headline tile: the net estimate
+  expect(await home.find({ type: 'Text', text: /searches narrowed/ })).toBeDefined()
+  expect(await home.find({ type: 'Text', text: /Version 9.9.9/ })).toBeDefined()
+  expect(await home.find({ key: 'home-devops-switch' })).toBeDefined()
+  await home.unmount()
   await hint.unmount()
   // Opening costs nothing: no prompt, no model call, no file written.
   expect(seen.prompts).toEqual([])
@@ -1965,15 +1958,13 @@ test('under the prompt: "● devops" beside the engine hint; a press opens the i
   expect(seen.writes).toEqual([])
 })
 
-test('/devops opens and closes the same card with a one-line answer; the terminal hint carries the state as its tail', async ($, on) => {
+test('/devops toggles the devops Home pane with a one-line answer; the terminal hint carries the state as its tail', async ($, on) => {
   const { seen } = engine(on, { files: LOG_FILES })
   await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
-  const opened = await $.command.run({ command: 'devops' })
-  expect(opened.text).toBe('devops info opened above the prompt.')
+  expect((await $.command.run({ command: 'devops' })).text).toBe('devops Home pane toggled (devops-home).')
   const band = await $.ui.mount({ ...BAND, surface: 'terminal' })
-  expect(JSON.stringify(await band.find({ key: 'devops-info' }))).toMatch(/≈ 20 k/)
+  expect(await band.find({ key: 'devops-info' })).toBeUndefined()
   await band.unmount()
-  expect((await $.command.run({ command: 'devops' })).text).toBe('devops info closed.')
   const hint = await $.ui.mount({ ...HINT, surface: 'terminal' })
   expect(seen.hints.at(-1)?.tail).toBe('● devops')
   await hint.unmount()
@@ -2635,17 +2626,16 @@ const OPT_SETTINGS = '/.claude/settings.local.json'
 /** The opt-out writes only (the engine reports Windows paths with backslashes; the band's own marker files are left out). */
 const optWrites = (seen: { writes: { path: string; text: string }[] }) => seen.writes.map(w => ({ ...w, path: w.path.replace(/\\/g, '/') })).filter(w => /devops-optout|settings\.local/.test(w.path))
 
-test('opt-out popup: the info card offers it; "Only this session" writes the flag file of this session, toasts, closes', async ($, on) => {
+test('opt-out popup: the ⏻ beside devops offers it; "Only this session" writes the flag file of this session, toasts, closes', async ($, on) => {
   const { seen } = engine(on, { files: LOG_FILES })
   on('session.id', () => ({ value: 'sid-opt' }))
   on('session.root', () => ({ value: 'P:/Projects/demo' }))
   await $.session.start({ cwd: 'P:/Projects/demo', surface: 'desktop', isInteractive: true })
   const hint = await $.ui.mount({ ...HINT, surface: 'desktop' })
-  await hint.press({ key: 'devops-status' })
   let band = await $.ui.mount({ ...BAND, surface: 'desktop' })
   expect(await band.find({ key: 'optout-popup' })).toBeUndefined()
-  await band.press({ key: 'optout-open' })
   await band.unmount()
+  await hint.press({ key: 'devops-optout' })
   band = await $.ui.mount({ ...BAND, surface: 'desktop' })
   const text = JSON.stringify(await band.find({ key: 'optout-popup' }))
   expect(text).toMatch(/Only this session/)
@@ -2669,18 +2659,16 @@ test('opt-out popup: "For this project" merges settings.local.json (keeps keys, 
   on('session.root', () => ({ value: 'P:/Projects/demo' }))
   await $.session.start({ cwd: 'P:/Projects/demo', surface: 'desktop', isInteractive: true })
   const hint = await $.ui.mount({ ...HINT, surface: 'desktop' })
-  await hint.press({ key: 'devops-status' })
-  let band = await $.ui.mount({ ...BAND, surface: 'desktop' })
-  await band.press({ key: 'optout-open' })
-  await band.unmount()
+  await hint.press({ key: 'devops-optout' })
+  let band: any
   band = await $.ui.mount({ ...BAND, surface: 'desktop' })
   await band.press({ key: 'optout-cancel' })
   expect(optWrites(seen).length).toBe(0)
   await band.unmount()
   band = await $.ui.mount({ ...BAND, surface: 'desktop' })
   expect(await band.find({ key: 'optout-popup' })).toBeUndefined()
-  await band.press({ key: 'optout-open' })
   await band.unmount()
+  await hint.press({ key: 'devops-optout' })
   band = await $.ui.mount({ ...BAND, surface: 'desktop' })
   await band.press({ key: 'optout-project' })
   const settings = optWrites(seen).find(w => w.path.endsWith(OPT_SETTINGS))
