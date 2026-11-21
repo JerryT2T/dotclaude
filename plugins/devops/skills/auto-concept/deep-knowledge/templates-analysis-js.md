@@ -379,6 +379,7 @@ What the code does, in the order of the file:
     inst.peekDn = h('div', 'an-peek an-peek-dn');
     root.append(inst.peekDn, inst.stores);
     inst.decs.forEach(st => prepDecision(inst, st));
+    inst.stages.forEach(st => restInputOf(inst, st));   // there before restoreState() runs, so a reload can fill them
     loadHes(inst);
     if (inst.brief) prepBrief(inst);
     inst.groups.forEach(g => prepIntro(inst, g));
@@ -642,7 +643,7 @@ What the code does, in the order of the file:
     if (!store || frozen(inst)) return;
     const msgs = msgsOf(st, store);
     // A draft restored from deleted messages is text in the field only: untouched, it is neither a message nor part of the result.
-    if (st.restDraft != null) { if (text === st.restDraft.trim()) { writeMsgs(st, store, msgs); return; } st.restDraft = null; }
+    if (st.restDraft != null) { if (text === st.restDraft.trim()) { writeMsgs(st, store, msgs); return; } setRest(inst, st, null); }
     // A blank line separates messages in the store, so a paragraph break inside a draft holds a no-break space.
     const draft = text.trim() ? text.trim().replace(/\n\s*\n/g, '\n \n') : '';
     writeMsgs(st, store, draft ? msgs.concat(draft) : msgs);
@@ -713,7 +714,7 @@ What the code does, in the order of the file:
     if (!store || frozen(inst)) return;
     // A message of an earlier question is edited where it stands: no composer (it belongs to the OPEN stage), no jump.
     if (st !== inst.stages[inst.idx]) { editInline(inst, st, i); return; }
-    if (restOnly(st, compText(inst.comp.ed))) st.restDraft = null;   // the user works with the restored draft now: it is theirs
+    if (restOnly(st, compText(inst.comp.ed))) setRest(inst, st, null);   // the user works with the restored draft now: it is theirs
     composeSync(inst);
     const m = msgsOf(st, store)[i];
     if (compText(inst.comp.ed) || pendingRecs(inst, st).length) { sealDraft(inst, st, compText(inst.comp.ed)); clearComposer(inst); }
@@ -742,15 +743,17 @@ What the code does, in the order of the file:
     writeMsgs(st, store, list);
     // The deleted text moves into this question's UNSENT draft (blank line between several, deletion order, after any draft text):
     // back on the question the user can still revise it; left alone it is not a message and not part of the result.
-    if (gone) {
+    // The message's attachments move with it into that draft (flagged rec.draft: no message, not in the payload).
+    const recs = id ? msgRecs(inst, st, id) : [];
+    if (gone || recs.length) {
       const base = open ? draft : (st.restDraft || '');
-      st.restDraft = base ? base + '\n\n' + gone : gone;
-      if (open) { inst.comp.ed.textContent = ''; inst.comp.ed.appendChild(document.createTextNode(st.restDraft)); }
+      setRest(inst, st, base && gone ? base + '\n\n' + gone : (base || gone));
+      recs.forEach(r => { if (typeof setAttachmentMsg === 'function') setAttachmentMsg(r, null, true); else { delete r.msg; r.draft = true; } });
+      if (open) { inst.comp.ed.textContent = ''; if (st.restDraft) inst.comp.ed.appendChild(document.createTextNode(st.restDraft)); }
     }
     if (open) composeSync(inst);
-    // The message's attachments go with it.
-    if (id && typeof removeAttachment === 'function') { const slot = slotOf(inst, st); msgRecs(inst, st, id).forEach(r => removeAttachment(slot, r.key)); }
     refreshNotes(inst, st);
+    if (open) renderStrip(inst);
   }
   /* ----- attachments of a sent message: the record carries the message's id (rec.msg), the message ends with
    *       U+2063 + that id (invisible, stripped wherever the text is shown or submitted) ----- */
@@ -770,10 +773,40 @@ What the code does, in the order of the file:
   function msgRecs(inst, st, id) { return slotRecs(inst, st).filter(r => r.msg === id); }
   /** Attachments in the strip, not yet sent with a message. A record whose message is gone (deleted
    *  while its record was restored from storage) counts as unsent, so it is never invisible. */
-  function pendingRecs(inst, st) {
+  function unsentRecs(inst, st) {
     const store = storeOf(inst, st);
     const ids = store ? new Set(msgsOf(st, store).map(msgIdOf).filter(Boolean)) : new Set();
     return slotRecs(inst, st).filter(r => !r.msg || !ids.has(r.msg));
+  }
+  /** The unsent ones the user made their own: they go out with the next message. Those of a restored draft (rec.draft) wait. */
+  function pendingRecs(inst, st) { return unsentRecs(inst, st).filter(r => !r.draft); }
+  /* ----- the restored draft (deleted messages) survives a reload: its text in a hidden dm-*-rest input (the page's own
+   *       draft store; data-engine-store, so never a payload field), its attachments as records flagged rec.draft ----- */
+  function restKey(inst, st) {
+    return st.kind === 'dec' ? decId(st.el) : st.kind === 'topic' ? st.topic.id : st.kind === 'brief' ? (st.el.id || 'briefing') : inst.key + '-closing';
+  }
+  function restInputOf(inst, st) {
+    if (!st) return null;
+    if (st.restEl) return st.restEl;
+    const c = newHidden(inst.root, 'dm-' + restKey(inst, st) + '-rest', '');
+    c.dataset.engineStore = '1';
+    (st.kind === 'dec' ? st.el : inst.stores).appendChild(c);
+    return (st.restEl = c);
+  }
+  /** The restored draft of a stage: text ('' = attachments only) or null; mirrored into the hidden store. */
+  function setRest(inst, st, val) {
+    st.restDraft = val;
+    const c = restInputOf(inst, st), v = val == null ? '' : val;
+    if (val == null) slotRecs(inst, st).forEach(r => { if (r.draft) { if (typeof setAttachmentMsg === 'function') setAttachmentMsg(r, null); else delete r.draft; } });
+    if (c && c.value !== v) { c.value = v; fire(c); }
+  }
+  /** Re-reads the stage's draft from the hidden store (reload restore) and the flagged records; true if it changed. */
+  function loadRest(inst, st) {
+    const c = restInputOf(inst, st), flagged = slotRecs(inst, st).some(r => r.draft && !r.msg);
+    const v = c && c.value ? c.value : (flagged ? '' : null);
+    if (v === st.restDraft) return false;
+    st.restDraft = v;
+    return true;
   }
   /** The draft (already in the store as its last message) becomes a sent message; the strip's attachments go with it. */
   function sealDraft(inst, st, text) {
@@ -908,6 +941,8 @@ What the code does, in the order of the file:
     const f1 = function (slot) {
       const r = f0.apply(this, arguments);
       instances.forEach(inst => {
+        // Records flagged as a restored draft (after a reload they arrive late) bring that draft back, even without text.
+        inst.stages.forEach(st => { if (slotOf(inst, st) === slot && loadRest(inst, st) && st === inst.stages[inst.idx]) loadComposer(inst, st); });
         renderStrip(inst);
         if ((_attachments.get(slot) || []).some(x => x.msg)) inst.stages.forEach(st => { if (slotOf(inst, st) === slot) refreshNotes(inst, st); });
       });
@@ -939,7 +974,7 @@ What the code does, in the order of the file:
     const c = inst.comp;
     if (!c) return;
     // Only what is not sent yet: a sent attachment stands in its message's bubble.
-    const slot = slotOf(inst, inst.stages[inst.idx]), recs = slot ? pendingRecs(inst, inst.stages[inst.idx]) : [], locked = frozen(inst);
+    const slot = slotOf(inst, inst.stages[inst.idx]), recs = slot ? unsentRecs(inst, inst.stages[inst.idx]) : [], locked = frozen(inst);
     c.strip.textContent = '';
     recs.forEach(rec => {
       const it = h('div', 'an-att-i'), raster = RASTER.test(rec.mime || '');
@@ -1026,7 +1061,7 @@ What the code does, in the order of the file:
     ed.dataset.ph = L('Notiz an devops … (optional)', 'Note to devops … (optional)');   // a question with "Keine passt" re-sets it (syncDecision)
     if (!keep) clearComposer(inst);
     // Deleted messages of this question wait here as an unsent draft (never in the store, never in the result).
-    if (!keep && st.restDraft != null && !frozen(inst)) { ed.appendChild(document.createTextNode(st.restDraft)); ed.dataset.empty = ''; }
+    if (!keep && st.restDraft && !frozen(inst)) { ed.appendChild(document.createTextNode(st.restDraft)); ed.dataset.empty = ''; }
     renderNotes(inst, st);
     ed.contentEditable = frozen(inst) ? 'false' : 'true';
     inst.comp.att.hidden = false;   // every stage takes attachments (its own slot), not only the questions with an attach bar
@@ -1039,7 +1074,7 @@ What the code does, in the order of the file:
    *  (the earlier question's bubble, the closing overview) - Ctrl+Enter, arrow keys and the rail all pass through here. */
   function sealLeaving(inst, prev) {
     if (!prev || !inst.comp || frozen(inst) || inst.compSt !== prev) return;
-    const draft = compText(inst.comp.ed);
+    const draft = restOnly(prev, compText(inst.comp.ed)) ? '' : compText(inst.comp.ed);   // the restored draft stays a draft
     if (draft || pendingRecs(inst, prev).length) { sealDraft(inst, prev, draft); renderNotes(inst, prev); }
   }
   function focusComposer(inst) {
@@ -1052,7 +1087,7 @@ What the code does, in the order of the file:
   /** Send: the text becomes a chat message on this stage. It moves on only under "Keine passt", where the message IS the answer. */
   function sendNote(inst) {
     // Sending the restored draft as it stands is the user's decision: from here it is a normal message.
-    { const s0 = inst.stages[inst.idx]; if (s0 && restOnly(s0, compText(inst.comp.ed))) s0.restDraft = null; }
+    { const s0 = inst.stages[inst.idx]; if (s0 && restOnly(s0, compText(inst.comp.ed))) setRest(inst, s0, null); }
     composeSync(inst);
     const st = inst.stages[inst.idx], text = compText(inst.comp.ed);
     if (frozen(inst)) return false;

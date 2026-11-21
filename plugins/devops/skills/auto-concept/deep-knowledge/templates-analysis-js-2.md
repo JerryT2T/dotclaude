@@ -499,7 +499,7 @@
     if (!d) return;
     const n = e.target.name || '';
     if (/-touched$/.test(n)) { refresh(inst); return; }
-    if (/-hes$/.test(n)) return;
+    if (/-hes$/.test(n) || /-rest$/.test(n)) return;
     // Picking an option again withdraws "Keine passt".
     if ((e.target.type === 'radio' || e.target.type === 'checkbox') && e.target.checked && e.target.closest('[data-options]')) setHidden(d, '-none', '');
     syncDecision(d);
@@ -564,9 +564,11 @@
     instances.forEach(inst => {
       loadHes(inst);
       refresh(inst);
+      // The restored drafts (deleted messages) come back from their hidden store.
+      const moved = inst.stages.map(s => loadRest(inst, s) && s);
       const st = inst.stages[inst.idx], store = storeOf(inst, st);
       if (!st || !store || !inst.comp) return;
-      if (st.msgSig !== store.value) loadComposer(inst, st);
+      if (st.msgSig !== store.value || moved.includes(st)) loadComposer(inst, st);
     });
   }
   /** Writes every record now (the collect path calls this before reading dm-{id}-hes). */

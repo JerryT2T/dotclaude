@@ -423,6 +423,42 @@ describe("B1: sharpen heuristic, no doubled answer, deleted messages become a dr
     ca.sendNote(inst);
     expect(doc.querySelector("#q1 .an-note").value).toMatch(/^first\s+second$/);   // one message (a paragraph break inside a message is stored as a no-break line)
   });
+  test("oq-draft-reload: the restored draft survives a reload and stays out of the payload", () => {
+    const a = page(LITE);
+    const inst = a.ca.instances[0];
+    type(a.w, inst, "keep"); a.ca.sendNote(inst); type(a.w, inst, "also"); a.ca.sendNote(inst);
+    a.doc.querySelectorAll("#q1 .an-notes .an-note-m")[0].querySelectorAll(".an-note-b")[1].click();
+    const rest = a.doc.querySelector('input[type="hidden"][name="dm-q1-rest"]');
+    expect(rest.value).toBe("keep");
+    expect(rest.dataset.engineStore).toBe("1");                   // the submit collector skips engine stores
+    const store = a.doc.querySelector("#q1 .an-note").value;
+    // reload: a fresh page, the persisted values put back by value (restoreState), then the engine's restored() hook
+    const b = page(LITE);
+    b.doc.querySelector("#q1 .an-note").value = store;
+    b.doc.querySelector('input[type="hidden"][name="dm-q1-rest"]').value = rest.value;
+    b.ca.restored();
+    const inst2 = b.ca.instances[0];
+    expect(inst2.comp.ed.textContent).toBe("keep");
+    expect(b.doc.querySelectorAll("#q1 .an-notes .an-note-m")).toHaveLength(1);
+    b.ca.flush();
+    expect(b.w.collectModeDecision(b.doc.getElementById("q1")).note).toBe("also");
+    b.ca.go(inst2, 1); b.ca.go(inst2, 0);
+    expect(inst2.comp.ed.textContent).toBe("keep");
+    b.ca.sendNote(inst2);                                         // sending it is the user's decision: now a message, hidden store cleared
+    expect(b.doc.querySelector('input[type="hidden"][name="dm-q1-rest"]').value).toBe("");
+    expect(b.doc.querySelectorAll("#q1 .an-notes .an-note-m")).toHaveLength(2);
+  });
+  test("oq-draft-reload: typing into the restored draft or clearing it empties the hidden store", () => {
+    const { doc, w, ca } = page(LITE);
+    const inst = ca.instances[0];
+    type(w, inst, "gone"); ca.sendNote(inst);
+    doc.querySelectorAll("#q1 .an-notes .an-note-m")[0].querySelectorAll(".an-note-b")[1].click();
+    const rest = doc.querySelector('input[type="hidden"][name="dm-q1-rest"]');
+    expect(rest.value).toBe("gone");
+    type(w, inst, " more");
+    expect(rest.value).toBe("");
+    expect(doc.querySelector("#q1 .an-note").value).toBe("gone more");
+  });
   test("#4b: a message deleted from an earlier question waits in that question's draft", () => {
     const { doc, w, ca } = page(LITE);
     const inst = ca.instances[0];
