@@ -19,6 +19,7 @@ import {
   showWidgetCalledThisTurn,
   editsThisTurn,
   decideAction,
+  widgetRelayText,
   buildBlockReason,
   buildGuideLoopReason,
   buildValidationReason,
@@ -1035,6 +1036,18 @@ describe("decideAction — card content gates", () => {
     expect(d.reason).toMatch(/running/);
   });
 
+  test("a compact band widget's decision heading is not judged as a title", () => {
+    const compact = '<div id="dc-card"><p class="card-head">⏳ 🧭 Concept — in Implementierung. 4 Agenten arbeiten — ich melde mich</p></div>';
+    const cardText = widgetRelayText("mcp__visualize__show_widget", { title: "completion_card_body", widget_code: compact });
+    const d = decideAction({ workHappened: true, cardRendered: true, stopHookActive: false, substantial: false, cardText });
+    expect(d.gates || []).not.toContain("title-status-word");
+    // The full form's own title is still judged.
+    const full = '<h3 class="card-title">Agents still running</h3><div id="dc-card"></div>';
+    const fullText = widgetRelayText("mcp__visualize__show_widget", { title: "completion_card_body", widget_code: full });
+    const d2 = decideAction({ workHappened: true, cardRendered: true, stopHookActive: false, substantial: false, cardText: fullText });
+    expect(d2.reason).toMatch(/status word/);
+  });
+
   test("too many result lines → BLOCK once", () => {
     const d = decideAction({
       workHappened: true,
@@ -1531,7 +1544,7 @@ describe("cardDelivered / deliveredCardText — the card shown after the last re
     const bare = assistantMsg({ type: "tool_use", id: "w1", name: "mcp__visualize__show_widget", input: { title: "x", widget_code: '<div id="dc-card"></div>' } });
     const tx = jsonl(userMsg("go"), render, renderResult, bare, widgetResult);
     expect(cardDelivered(tx)).toBe(true);
-    expect(deliveredCardText(tx)).toBe(`${CARD_MARKER} Completion card ${CARD_MARKER}`);
+    expect(deliveredCardText(tx)).toBe(`${CARD_MARKER} Completion card ${CARD_MARKER}\n[card-title: decision heading]`);
   });
 
   test("returns false when the marker is in an EARLIER turn", () => {
