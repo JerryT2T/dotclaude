@@ -679,7 +679,7 @@ What the code does, in the order of the file:
     box.textContent = '';
     const editable = !frozen(inst);
     msgsOf(st, store).forEach((m, i) => box.appendChild(noteRow(inst, st, m, i, editable)));
-    box.hidden = !box.firstChild || st !== inst.stages[inst.idx];   // a question left shows its messages in its answer block (an-m-me), never twice
+    box.hidden = !box.firstChild || !!(inst.stages && st !== inst.stages[inst.idx]);   // a question left shows its messages in its answer block (an-m-me), never twice
   }
   /** One chat message of the user with its pen and x; the same bubble on the open stage and on an earlier question. */
   function noteRow(inst, st, m, i, editable) {

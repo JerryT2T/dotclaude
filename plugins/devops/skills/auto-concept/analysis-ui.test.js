@@ -462,13 +462,13 @@ describe("chat flow Full round", () => {
     expect(inst.root.querySelector(".an-peek-up")).toBeNull();
     expect(inst.peekDn.textContent).toBe("Next: Two");
   });
-  test("the closing lists every question with a dwell bar and a Nachschärfen toggle", () => {
+  test("the closing lists every question with a Nachschärfen toggle and no dwell bar", () => {
     const { ca } = page(FULL);
     const inst = ca.instances[0];
     ca.go(inst, inst.stages.findIndex(s => s.kind === "review"));
     const rows = inst.stages[inst.idx].el.querySelectorAll(".an-sigrow");
     expect(rows).toHaveLength(3);
-    expect(rows[0].querySelector(".an-dw")).toBeTruthy();
+    expect(rows[0].querySelector(".an-dw")).toBeNull();
     const tg = rows[0].querySelector(".an-tg");
     expect(tg.getAttribute("aria-pressed")).toBe("false");
     tg.click();
