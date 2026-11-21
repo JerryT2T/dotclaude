@@ -1,6 +1,6 @@
 /**
  * @module session-title
- * @version 0.6.0
+ * @version 0.7.0
  * @description Reads the session's CURRENT sidebar title straight from the
  *   transcript and computes the next one, so a title instruction can hand
  *   Claude the exact `set_session_title` value instead of a
@@ -61,12 +61,14 @@ function rest(current) {
  * title or the legacy worded hourglass is marked.
  *
  * @param {string|null} current the title now (`readCurrentTitle`)
- * @param {{ prefix?: string, machine?: boolean, batchArmed?: boolean }} [opts]
+ * @param {{ prefix?: string, machine?: boolean, batchArmed?: boolean, clamp?: boolean }} [opts]
  *   `batchArmed`: false only when the collect mode is known to be off — a
  *   `📚 Batch ┃` head is then stale and stripped; unknown keeps it.
+ *   `clamp`: false keeps the topic whole — a project thread's title is the
+ *   person's handle for it and its list is not the 42-character sidebar.
  * @returns {string|null}
  */
-function nextTitle(current, { prefix = WORK_PREFIX, machine = false, batchArmed } = {}) {
+function nextTitle(current, { prefix = WORK_PREFIX, machine = false, batchArmed, clamp = true } = {}) {
   if (typeof current !== 'string' || !current.trim()) return null;
   const kind = classify(current);
   const legacyWorking = kind === 'work' && leadingPrefix(current).prefix === LEGACY_PENDING_PREFIX;
@@ -93,7 +95,7 @@ function nextTitle(current, { prefix = WORK_PREFIX, machine = false, batchArmed 
   } else {
     next = prefix + r;
   }
-  next = clampTitle(next);
+  if (clamp) next = clampTitle(next);
   return next !== current ? next : null;
 }
 

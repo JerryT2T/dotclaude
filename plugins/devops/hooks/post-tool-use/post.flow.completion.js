@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook post.flow.completion
- * @version 0.34.0
+ * @version 0.35.0
  * @event PostToolUse
  * @plugin devops
  * @description Keeps the completion-card contract in Claude's context: on the
@@ -116,6 +116,13 @@
  *   Released only with this session's own evidence: a merged ship_release it
  *   saw, the same work tree, a clean tree (lib/session-archive-gate.js).
  *
+ *   A Claude Projects thread (lib/project-thread.js, 0.35.0): the person sees
+ *   only what the thread's own tools post. Without the feature project-threads
+ *   the card contract and the turn-end line stay away there; with it the
+ *   contract names the thread reply, a checklist with every step done is a
+ *   turn-end signal, the posted card ends the turn, and a reply without the
+ *   card under a ⏳ thread title gets the exact head-off rename once per prompt.
+ *
  *   Stdin, parsing and the reply go through lib/hook-input.js's runHook; main()
  *   runs the numbered sections below in order and returns the reply. Its git
  *   reads use lib/git-timeout.js's gitRun (harden scan 2026-09-26).
@@ -135,7 +142,8 @@ let sessionFile, readSessionFile, writeSessionFile, projectRoot, inOwnWorkTree, 
   SPAWN_TOOL_RE, DISMISS_TOOL_RE, recordSpawn, recordDismiss, chipReminder,
   decideCardTurnEnd, cardTurnBlockedLines, CARD_STOP_REASON, isGuideActive, archiveGate,
   classifyProfile, carveOutsFromProfile, domPathsFromProfile, resolveVerificationKind,
-  inRepoTree, isCodeChange, isBrowserTool, isBrowserScriptRun, isTestRunnerTool, testRunOutcome, LIGHT_SKIPPED_FLAG;
+  inRepoTree, isCodeChange, isBrowserTool, isBrowserScriptRun, isTestRunnerTool, testRunOutcome, LIGHT_SKIPPED_FLAG,
+  CARD_MARKER, projectThread;
 let loadError = false;
 let loadingModule = '';
 const guardedRequire = (m) => { loadingModule = m; return require(m); };
@@ -147,7 +155,8 @@ try {
   ({ gitRun } = guardedRequire('../lib/git-timeout'));
   ({ inRepoTree } = guardedRequire('../lib/repo-tree'));
   ({ isMcpServerAliveForSession } = guardedRequire('../lib/mcp-heartbeat'));
-  ({ NO_OUTPUT_NUDGE_REPLY, isCardWidgetCall } = guardedRequire('../lib/card-guard'));
+  ({ NO_OUTPUT_NUDGE_REPLY, isCardWidgetCall, CARD_MARKER } = guardedRequire('../lib/card-guard'));
+  projectThread = guardedRequire('../lib/project-thread');
   ({ getLocale, t } = guardedRequire('../lib/locale'));
   ({ responseLaunch, responseTaskId, labelFor, isConceptInfra } = guardedRequire('../lib/pending-tasks'));
   ({ BGRUN_FLAG, recordBackgroundRun, settleRecordedRuns } = guardedRequire('../lib/light-bgrun'));
@@ -779,27 +788,62 @@ function recordTaskChip(hook, toolName) {
  * 3 can still append to them — plus whether this call carried the card contract.
  * @returns {{ lines: string[], cardContract: boolean }}
  */
-function completionCardLines(hook, toolName, isCodeEdit, editCount, scheduledTask, firstOfTurn) {
+function completionCardLines(hook, toolName, isCodeEdit, editCount, scheduledTask, firstOfTurn, threadMode = 'off') {
   const lines = [...recordTaskChip(hook, toolName)];
   lines.push(...cardRenderedLines(hook));
 
   // 2c. The card contract — once per turn, on its first tool call. Not while an
   // /auto-guide loop runs (#526): its turns live inside javascript_tool wait()
   // calls, stop.flow.guard waives their card, and a card is what ends the loop.
+  // Nor in a project thread without the feature (`quiet`): the Desktop card
+  // would reach no one there.
   const guideActive = firstOfTurn && isGuideActive(hook.cwd);
-  const cardContract = !guideActive && contractDue(hook, firstOfTurn);
+  const cardContract = !guideActive && threadMode !== 'quiet' && contractDue(hook, firstOfTurn);
   if (guideActive) {
     lines.push(
       '[auto-guide] A guide run is active — no completion card while its step loop runs.',
       'The card is due once the guide ends (done, aborted or closed tab — Step 6/7).',
     );
   }
-  if (cardContract) lines.push(...cardContractLines(hook, scheduledTask));
+  if (cardContract) lines.push(...cardContractLines(hook, scheduledTask, threadMode));
 
   lines.push(...backgroundLaunchLines(hook));
   lines.push(...editMilestoneLines(hook, isCodeEdit, editCount));
-  if (!cardContract && !scheduledTask) lines.push(...turnEndLines(hook, toolName));
+  if (!cardContract && !scheduledTask && threadMode !== 'quiet') lines.push(...turnEndLines(hook, toolName, threadMode));
+  if (threadMode === 'on') lines.push(...threadReplyLines(hook, toolName));
   return { lines, cardContract };
+}
+
+/** lib/turn-state.js key: the prompt whose card-less thread reply was answered. */
+const THREAD_REPLY_KEY = 'threadReplyHinted';
+
+/**
+ * 2g. A reply in a Claude Projects thread (lib/project-thread.js, feature on).
+ * The card went out with it → the turn is over. A reply without the card while
+ * the thread title still says Claude works → once per prompt the exact rename
+ * that takes the head off, for the case that the turn ends here: no Stop hook
+ * can correct a title there, and a stale ⏳ on an idle thread misleads.
+ */
+function threadReplyLines(hook, toolName) {
+  if (toolName !== projectThread.POST_TOOL) return [];
+  const text = String((hook.tool_input && hook.tool_input.text) || '');
+  if (text.includes(CARD_MARKER)) {
+    return ['[completion-flow] Card posted — the turn is over: no further reply. Only set_thread_resolved may follow, when the work has ended.'];
+  }
+  const titles = guardedRequire('../lib/session-title');
+  const title = projectThread.lastThreadTitle(hook.transcript_path);
+  const kind = title ? titles.classify(title) : 'plain';
+  if (kind !== 'work' && kind !== 'shipping' && kind !== 'process') return [];
+  const plain = titles.stripPrefixes(title).trim();
+  if (!plain) return [];
+  const turnState = guardedRequire('../lib/turn-state');
+  const id = currentPromptId(hook) || '-';
+  if (turnState.get(hook.session_id, THREAD_REPLY_KEY) === id) return [];
+  try { turnState.set(hook.session_id, THREAD_REPLY_KEY, id); } catch { /* best effort — may repeat once */ }
+  return [
+    '[completion-flow] Project thread: this reply went out without the completion card and the thread title still says ⏳. ' +
+    `More work this turn → carry on (the card comes with the result). The turn ends here → ${projectThread.renameCall(plain)} now, so the title stops claiming work.`,
+  ];
 }
 
 /** Marker: the card contract went out for this prompt (content = the prompt's identity). */
@@ -970,7 +1014,7 @@ function cardRenderedLines(hook) {
  * render_completion_card tool description (mcp-server/index.js), which sits in
  * the cached system prompt for the whole session.
  */
-function cardContractLines(hook, scheduledTask) {
+function cardContractLines(hook, scheduledTask, threadMode = 'off') {
   const lines = [];
   // Offline-first when the completion MCP's heartbeat is dead (#371): each
   // failed rung of the ladder costs a turn, so name the working one first.
@@ -991,6 +1035,10 @@ function cardContractLines(hook, scheduledTask) {
   // Server alive → its tool description carries the offline fallback; only a
   // dead heartbeat (description possibly never loaded) needs the path here.
   if (completionDown) lines.push(`The completion MCP server is NOT running (heartbeat dead) — render offline FIRST: ${offline}.`);
+  // A project thread: the render's result (stderr on the offline path) says how the card is posted.
+  if (threadMode === 'on') {
+    lines.push('Project thread: the card is your result reply — post it with mcp__hearthbot__post_message as its result says (no show_widget, no wrap_up, no second summary).');
+  }
   return lines;
 }
 
@@ -1000,10 +1048,14 @@ const DONE_STATUS = /^(completed|complete|done)$/i;
 
 /**
  * The tool call says the turn is ending: 'wrap_up' (the app's closing-message
- * tool), 'plan' (a TodoWrite / update_plan with every item completed), or null.
+ * tool), 'plan' (a TodoWrite / update_plan with every item completed),
+ * 'checklist' (a project thread's progress checklist with every step done), or null.
  */
 function turnEndSignal(toolName, input) {
   if (/^mcp__ccd_turn__wrap_up$/.test(toolName)) return 'wrap_up';
+  if (projectThread && toolName === projectThread.CHECKLIST_TOOL) {
+    return projectThread.checklistComplete(input && input.text) ? 'checklist' : null;
+  }
   let items = null;
   if (toolName === 'TodoWrite') items = input && input.todos;
   else if (/^mcp__ccd_turn__update_plan$/.test(toolName) && input && typeof input === 'object') {
@@ -1017,15 +1069,20 @@ function turnEndSignal(toolName, input) {
  * 2f. One short "card now" line when the turn signals its end — once per
  * prompt, never after a card was rendered (see the header: reminder model).
  */
-function turnEndLines(hook, toolName) {
+function turnEndLines(hook, toolName, threadMode = 'off') {
   const signal = turnEndSignal(toolName, hook.tool_input);
   if (!signal || isGuideActive(hook.cwd)) return [];
+  // The checklist signal belongs to the project-thread feature alone.
+  if (signal === 'checklist' && threadMode !== 'on') return [];
   if (readSessionFile('dotclaude-devops-card-rendered', hook.session_id, { exact: true }) !== null) return [];
   const turnState = guardedRequire('../lib/turn-state');
   const id = currentPromptId(hook) || '-';
   if (turnState.get(hook.session_id, TURN_END_KEY) === id) return [];
   try { turnState.set(hook.session_id, TURN_END_KEY, id); } catch { /* best effort — may repeat once */ }
   const call = `mcp__plugin_devops_dotclaude__render_completion_card (session_id:"${hook.session_id || ''}", cwd:"${hook.cwd || ''}")`;
+  if (signal === 'checklist') {
+    return [`[completion-flow] Checklist complete: no work left → ${call} now and post its card as the result reply (mcp__hearthbot__post_message), no other summary.`];
+  }
   return [signal === 'wrap_up'
     ? `[completion-flow] Turn ending: the completion card IS the closing message — ${call} now; its result names the WRAP_UP_ARGS (the card's decision) for one more mcp__ccd_turn__wrap_up before the widget (#1132), then show it, nothing after it.`
     : `[completion-flow] Last plan step done: no work left → end with ${call} now (no closing text).`];
@@ -1217,7 +1274,9 @@ function main(hook) {
   // markdown, last action) and the tool description the no-second-card rule: no extra text.
   if (toolName.endsWith('__render_completion_card')) return null;
 
-  const { lines, cardContract } = completionCardLines(hook, toolName, isCodeEdit, editCount, scheduledTask, firstOfTurn);
+  // A hearthbot call marks the session as a Claude Projects thread (lib/project-thread.js).
+  const threadMode = projectThread.threadMode(hook);
+  const { lines, cardContract } = completionCardLines(hook, toolName, isCodeEdit, editCount, scheduledTask, firstOfTurn, threadMode);
   appendIssueStatusInstruction(hook, lines, cardContract);
   return contextOf(lines);
 }

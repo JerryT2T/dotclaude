@@ -47,6 +47,16 @@
         "hooks/pre-tool-use/pre.bash.output-filter.js"
       ]
     },
+    "project-threads": {
+      "minChannel": "alpha",
+      "summary": "Claude Projects threads on this computer: the status head goes on the thread title and the completion card is posted in the thread",
+      "docs": [
+        "deep-knowledge/project-threads.md"
+      ],
+      "scripts": [
+        "hooks/lib/project-thread.js"
+      ]
+    },
     "claude-mods": {
       "minChannel": "alpha",
       "summary": "Claude Code mods: agent pane, budget and context band, ship/CI pane, branch-hygiene status, notice toasts, return recap, deterministic paste / tool-output redirect, and the fork-cache and wake spike commands",
