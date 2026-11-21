@@ -99,11 +99,11 @@ function nameFromTitle(title) {
 
 /**
  * The start_session input with its head on the title, or null for "leave
- * it". Every LOCAL start with a title gets it — except an unmarked offer / own
- * proposal: those show the title on a card, may never start, and are
- * independent follow-ups that get their normal head from the title-work hook
+ * it". Every LOCAL start with a title gets it — except an unmarked own
+ * proposal: it shows the title on a card, may never start, and is an
+ * independent follow-up that get their normal head from the title-work hook
  * (concept 2026-11-21 rows 12, 13). The head is `⏳ ➜ 🤖 Solo ┃ ` — a start the
- * parent LINKS (brief marker, or `user_asked`: `launchMode`) gets `🔗 ` in front
+ * parent LINKS (brief marker, or `user_asked` / `offer` — a task the user named: `launchMode`) gets `🔗 ` in front
  * and, when its brief has no marker, `[devops:handoff]` appended, so the new
  * session knows it is a sub (`subModeOfTranscript`). A cloud or SSH session runs
  * no title hook that would ever clear the head. The name is pinned too, or the
@@ -120,7 +120,7 @@ function nameFromTitle(title) {
  */
 function startSessionInput(input) {
   if (!input) return null;
-  // Linked = brief marker, or user_asked (counts as handoff). Anything else gets its head from the title-work hook.
+  // Linked = brief marker, or user_asked / offer (the user's own task, counts as handoff). Anything else gets its head from the title-work hook.
   const mode = launchMode(input);
   if (!mode) return null;
   if (input.target && input.target !== 'local') return null;

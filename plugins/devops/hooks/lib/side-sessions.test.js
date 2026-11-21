@@ -85,7 +85,7 @@ describe("scanLinkedSessions", () => {
     expect(P.scanLinkedSessions(jl(...start("[devops:handoff]", [mine])))).toEqual([]);
   });
 
-  test("an unmarked session the user asked for (user_asked) is linked as handoff; offers and own-initiative stay independent", () => {
+  test("an unmarked session the user asked for (user_asked) is linked as handoff, so is an offer; own-initiative stays independent", () => {
     const run = (initiation) => P.scanLinkedSessions(jl(
       userText("go inkl. einem devops backlog lauf"),
       use("t1", { title: "Backlog", prompt: "devops backlog — run do-run backlog", initiation }),
@@ -93,7 +93,7 @@ describe("scanLinkedSessions", () => {
     ));
     expect(run("user_asked")).toEqual([{ id: ID, kind: "session", title: "Backlog", mode: "handoff", state: "running" }]);
     expect(run("own_initiative")).toEqual([]);
-    expect(run("offer")).toEqual([]);
+    expect(run("offer")).toEqual([{ id: ID, kind: "session", title: "Backlog", mode: "handoff", state: "running" }]);
   });
 
   test("a turn note whose work is still in flight keeps the session running; only a done report closes it", () => {

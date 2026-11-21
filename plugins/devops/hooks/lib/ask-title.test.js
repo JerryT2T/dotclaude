@@ -59,7 +59,6 @@ describe("startSessionInput — the new session shows ⏳ from its first moment"
 
   test("an unmarked card, a remote session or a marked title stays as it is", () => {
     for (const input of [
-      { ...base, initiation: "offer" },
       { ...base, initiation: "own_initiative" },
       { proposal_id: "t1" },
       { proposal_id: "t1", initiation: "own_initiative", title: "Fix" },
@@ -201,8 +200,13 @@ describe("🔗 start head for every linked start (round 6 rows 12, 13)", () => {
     expect(out.title).toBe(SUB + SOLO + "Part");
     expect(out.prompt).toBe("x" + NL2 + "[devops:deliver]");
   });
-  test("row 12: an unmarked own_initiative / offer start stays unlinked (no input rewrite, no 🔗)", () => {
-    for (const initiation of ["own_initiative", "offer"]) expect(ask.startSessionInput({ initiation, title: "Side", prompt: "p" })).toBeNull();
+  test("row 12: an unmarked own_initiative start stays unlinked (no input rewrite, no 🔗)", () => {
+    expect(ask.startSessionInput({ initiation: "own_initiative", title: "Side", prompt: "p" })).toBeNull();
+  });
+  test("an unmarked offer is the user's own task: linked as handoff, 🔗 ⏳ head from the start", () => {
+    const out = ask.startSessionInput({ initiation: "offer", title: "Side" });
+    expect(out.title).toBe(SUB + SOLO + "Side");
+    expect(ask.startSessionInput({ initiation: "offer", title: "Side", prompt: "p" }).prompt).toBe("p" + NL2 + "[devops:handoff]");
   });
   test("a linked start without a title (proposal_id only) cannot carry a head", () => {
     expect(ask.startSessionInput({ proposal_id: "p1", initiation: "user_asked", prompt: "p" })).toBeNull();

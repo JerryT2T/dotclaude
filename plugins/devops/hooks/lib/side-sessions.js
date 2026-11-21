@@ -61,7 +61,7 @@ const RUNNING_RE = /\b(?:läuft (?:noch|jetzt|gerade|weiter)|laufen noch|noch (?
 function launchMode(input) {
   const m = MARKER_RE.exec(String((input && input.prompt) || ''));
   if (m) return m[1] === 'deliver' ? 'deliver' : 'handoff';
-  return input && input.initiation === 'user_asked' ? 'handoff' : null;
+  return input && (input.initiation === 'user_asked' || input.initiation === 'offer') ? 'handoff' : null;
 }
 
 /** The brief marker of a prompt text: 'handoff' | 'deliver' | null. */
