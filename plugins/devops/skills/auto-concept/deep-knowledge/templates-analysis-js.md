@@ -282,14 +282,26 @@ What the code does, in the order of the file:
     m.appendChild(bub);
     bub.appendChild(h('div', 'an-meta', metaText(inst, st)));
     const pane = h('div', 'an-pane an-p-find'), sit = d.querySelector('[data-situation]');
+    // ONE text block (situation + the long slot's prose, <= 3 lines by the gate) first, the display(s) last: never text below the display.
+    const block = sit || h('p'), disp = [];
+    if (!sit) block.setAttribute('data-situation', '');   // same type as an authored situation, with or without one
+
     if (sit) pane.appendChild(sit);
     const slot = src && [...src.children].find(c => c.getAttribute('data-slot') === 'long');
     if (slot) {
       const c = slot.cloneNode(true);
       c.querySelectorAll('[data-example], [data-evidence]').forEach(e => e.remove());
       c.querySelectorAll('[data-viz-done]').forEach(e => e.removeAttribute('data-viz-done'));
-      while (c.firstChild) pane.appendChild(c.firstChild);
+      while (c.firstChild) {
+        const n = c.firstChild;
+        if (n.nodeType === 1 && (n.matches('[data-viz]') || n.querySelector('[data-viz]'))) { disp.push(n); n.remove(); continue; }
+        if (n.nodeType === 1 && n.tagName === 'P') { if (block.firstChild) block.appendChild(document.createTextNode(' ')); while (n.firstChild) block.appendChild(n.firstChild); n.remove(); continue; }
+        if (n.nodeType === 3 && !n.textContent.trim()) { n.remove(); continue; }
+        block.appendChild(n);
+      }
     }
+    if (block.firstChild && !sit) pane.appendChild(block);
+    disp.forEach(n => pane.appendChild(n));
     // The finding is only the finding: [data-context] speaks about the answer, so it sits in the answer block.
     renderViz(pane, 'long');
     const ex = src && src.querySelector('[data-example]');

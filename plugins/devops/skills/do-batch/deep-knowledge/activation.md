@@ -13,6 +13,23 @@ absence is not permission to act — the detection is best-effort. For the conte
 fallback (`/do-batch <Gedanke>`) the hook's `detectActivation()` (`viaCommand`)
 injects the same guard.
 
+## Mid-turn messages (Step 1)
+
+The app injects a message sent while a turn runs straight into that turn ("The
+user sent a new message while you were working"), past `UserPromptSubmit` —
+`prompt.batch.collect.js` never sees it, so only you can file it. During the
+activating turn, and any later turn while the mode is on:
+
+- Activation still runs to the end: Step 2.2 arms the mode, the turn ends ON.
+  A mid-turn message never cancels or postpones it — skipping 2.2 leaves the
+  user outside collect mode with nothing collected.
+- File the message verbatim as its own note (`appendNote`, Step 2.4; an image
+  per Step 2.6 — describe it, the merge cannot see it) and do **not** act on
+  it, a bug report with a screenshot included. Its urgency is the user's to
+  weigh at `go`, not yours now.
+- Only `off`/`aus`/`stop`, `go`, or a question about the mode itself is handled
+  instead of filed.
+
 ## Execute marker
 
 Fixed to the word `go` as the first word of a prompt, any language, word boundary

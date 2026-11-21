@@ -47,7 +47,7 @@ the click that confirms it is also the ship answer.
 | Group | Source in the report body | Row | Default |
 |---|---|---|---|
 | 🧭 **Du entscheidest** | the Funde: elements with `data-issue-title` inside `[data-open-questions]` (not `data-routed`) | ONE line: name · route pill | `data-route-default` (`now` / `issue` / `ignore`); missing → 📌 Issue (writes no code) |
-| **Bleibt für dich** | `[data-tests] li` (🧪, what Claude could not verify) and `[data-handoffs] li` (👉, manual hand-offs), one list | kind glyph · text · "hoch" when `data-crit="high"`, then "Führ mich" switch · ✕ | `data-crit="low"` → struck (`skip`); else `data-guide="web"`/`"desktop"` (ONLY a guided action on a third-party site or system setting, never a manual check of the user's own app) → Führ mich on (`guide`); else on the card (`self`, the default). `data-mode-default` overrides |
+| **Deine Aufgaben** | `[data-tests] li` (🧪, what Claude could not verify) and `[data-handoffs] li` (👉, manual hand-offs), one list | kind glyph · text · "hoch" when `data-crit="high"`, then "Führ mich" switch · ✕ | `data-crit="low"` → struck (`skip`); else `data-guide="web"`/`"desktop"` (ONLY a guided action on a third-party site or system setting, never a manual check of the user's own app) → Führ mich on (`guide`); else on the card (`self`, the default). `data-mode-default` overrides |
 
 - **A tap on the pill moves to the next route** (⚡ Jetzt → 📌 Issue → Weglassen →
   ⚡, `cycleRoute()`); focus stays on the pill, the plan line follows. The pill's

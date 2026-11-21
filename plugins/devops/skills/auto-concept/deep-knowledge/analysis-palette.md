@@ -55,9 +55,9 @@ a slot is never empty.
 | | Short (`data-slot="short"`) | Long (`data-slot="long"`) |
 |---|---|---|
 | When | every level the reader is not on | the level the reader is on |
-| Text | 1 sentence, ≤ 140 characters — only the statement | L1 / L2: 2–4 sentences: statement, reading, what it means for the decision. L3 (a decision's finding): consequence first, ≤ 40 words / 3 sentences with `data-situation`, never the answer (`step1-templates.md` § The finding message) |
+| Text | 1 sentence, ≤ 140 characters — only the statement | L1 / L2: 2–4 sentences: statement, reading, what it means for the decision. L3 (a decision's finding): ONE text block above the display, ≤ 3 lines (≤ 220 characters, ≤ 40 words / 3 sentences together with `data-situation`), consequence first, never the answer (`step1-templates.md` § The finding message) |
 | Graphic | 1 KPI or 1 mini graphic (≤ 52 × 16 px) — strong lean to the mini graphic whenever there is a number | 1 palette display, cut down to this statement |
-| Height | ≤ 3 lines (≈ 64 px) | graphic 150–220 px, whole slot ≤ 420 px, **never scrolls** |
+| Height | ≤ 3 lines (≈ 64 px) | one text block ≤ 3 lines above the display, graphic 150–220 px, whole slot ≤ 420 px, **never scrolls** |
 | No number | Formatierter Text, one sentence | Formatierter Text, 2–4 sentences, free formatting |
 
 L2 short is always the topic's **result**, never its progress (the stepper

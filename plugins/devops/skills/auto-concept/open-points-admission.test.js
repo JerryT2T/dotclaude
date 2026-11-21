@@ -209,7 +209,7 @@ describe("open points — a Fund's name leads to the report", () => {
 // The steps the user has to take by hand after the merge are the 👉 group:
 // in the panel where the close-out happens, with a mode each, and still there
 // after the close-out.
-describe("hand-offs — 👉 in Bleibt für dich", () => {
+describe("hand-offs — 👉 in Deine Aufgaben", () => {
   const STEPS = ["Set the cron to <code>0,20,40 * * * *</code>", "Watch the first run"];
 
   test("the list mirrors the report's hand-offs, with a count", () => {

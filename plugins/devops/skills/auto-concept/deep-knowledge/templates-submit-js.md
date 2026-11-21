@@ -392,7 +392,7 @@ document.addEventListener('change', e => {
 //   🧭 Du entscheidest  the Funde, one line each: the name jumps to the Fund in
 //                       the report, the pill cycles ⚡ → 📌 → Weglassen on a tap;
 //                       one hint under all of them
-//   Bleibt für dich     🧪 what Claude could not verify and 👉 the manual
+//   Deine Aufgaben      🧪 what Claude could not verify and 👉 the manual
 //                       hand-offs, one list: each goes on the completion card,
 //                       "Führ mich" asks for guidance, ✕ strikes it
 // and under the divider the plan line, the disposition as one quiet line, TWO

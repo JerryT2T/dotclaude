@@ -45,6 +45,8 @@ function isBlockingCall(name, input) {
   if (name !== START_TOOL) return false;
   // A follow-up start by proposal_id is the user's own click — no prompt.
   if (input && input.proposal_id && !input.initiation) return false;
+  // A devops Home pane button is the person's own press: nothing waits on an answer.
+  if (require('./home-pane').isHomePaneStart(input)) return false;
   return !(input && input.initiation === 'own_initiative');
 }
 

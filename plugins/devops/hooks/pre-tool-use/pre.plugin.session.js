@@ -23,7 +23,10 @@
  *     - auto-issue did not run in this turn (same check as pre.issue.guard),
  *     - this exact call was not refused before (refuse ONCE: the retry with
  *       the same input passes, so a brief that only mentions the plugin never
- *       wedges).
+ *       wedges),
+ *     - the call does not come from a devops Home pane button (its `background`
+ *       starts with HOME_PANE_BACKGROUND): a press of "＋ Batch" or the cleanup
+ *       tile is the person starting a session, not Claude routing a plugin fix.
  */
 
 require('../lib/plugin-guard');
@@ -33,6 +36,7 @@ const fs = require('fs');
 const { parseHookInput } = require('../lib/hook-input');
 
 const TOOL = 'mcp__ccd_session__start_session';
+const { HOME_PANE_BACKGROUND, isHomePaneStart } = require('../lib/home-pane');
 
 /** Every string of the tool input, joined — the brief's field names may change. */
 function inputText(input) {
@@ -79,6 +83,7 @@ function decide(inputData, deps = defaultDeps()) {
   const hook = parseHookInput(inputData);
   if (!hook || hook.tool_name !== TOOL) return '';
   const input = hook.tool_input && typeof hook.tool_input === 'object' ? hook.tool_input : {};
+  if (isHomePaneStart(input)) return '';
   const here = deps.gitTopLevel(hook.cwd || process.cwd());
   if (deps.isPluginSourceRepo(here)) return '';
   if (!targetsPlugin(input, deps)) return '';
@@ -112,4 +117,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { decide, targetsPlugin, inputText, TOOL };
+module.exports = { decide, targetsPlugin, inputText, TOOL, HOME_PANE_BACKGROUND };

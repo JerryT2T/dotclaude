@@ -95,7 +95,7 @@ the gate never depend on it.
         <div data-slot="short">…</div>
         <div data-slot="long">
           <div data-viz="bar" data-viz-spec='{"value":80,"max":100,"label":"hits within 10 min","unit":"%"}'></div>
-          <p>2-4 sentences.</p>
+          <p>Prose joins data-situation into ONE block of at most 3 lines, shown above the display.</p>
         </div>
         <!-- Beispiel: a concrete case from the real application (screen excerpt / code / transcript); a diagram only when there is nothing visual. -->
         <div data-example><pre>…</pre></div>
@@ -115,7 +115,7 @@ Attribute reference:
 | `data-briefing-duration` | briefing | the time the bar names beside "Los geht's" |
 | `data-topic` | `section[id][data-nav-label]` | a Themenfeld; 1–7 per Full, 3–7 questions each, title ≤ 5 words (gate warns outside) |
 | `data-alevel="1\|2\|3"` + `data-title` | block | analysis level: 1 briefing/overall, 2 topic, 3 this decision. `data-title` equals the rail / topic-page name exactly. Lite has L1 + L3 only. The stage shows ONE level as its first message (brief → L1, topic → L2, decision → L3, falling back to L2, then L1) |
-| `data-slot="short\|long"` | child of a level | short = 1 sentence + KPI or mini graphic (formatted text only when there is no number); long = one palette display + 2-4 sentences, never scrolls |
+| `data-slot="short\|long"` | child of a level | short = 1 sentence + KPI or mini graphic (formatted text only when there is no number); long = one palette display; its prose is merged with `data-situation` into ONE text block (L3 finding: ≤ 3 lines / 220 characters) shown ABOVE the display, never below it; never scrolls |
 | `data-example` | inside a level (next to / inside the long slot) | the "Beispiel" tab of the finding message: a concrete case from the real application; required at L3 whenever something visible exists (gate A12) |
 | `data-ui-ok="<why>"` | decision | waives gate A13 (`analysis-ui-question`: an analysis view of a design round must not ask about the UI of the round's variants) for a false positive; the reason is the value and is required |
 | `data-no-example="<why>"` | decision | opt-out of the L3 example when nothing visible exists (pure strategy, budget); the reason is the value |

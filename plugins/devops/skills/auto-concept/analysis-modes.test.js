@@ -293,6 +293,10 @@ describe("gate A12 finding text", () => {
     expect(k(withFinding("Word ".repeat(30) + ".", "Word ".repeat(15) + ".", ex))).toContain("finding-length");
     expect(k(withFinding("One. Two.", "Three. Four.", ex))).toContain("finding-length");
   });
+  test("over 220 characters (3 lines at stage width) warns even within 40 words and 3 sentences", () => {
+    expect(k(withFinding("W".repeat(120) + ".", "V".repeat(120) + ".", ex))).toContain("finding-length");
+    expect(k(withFinding("W".repeat(90) + ".", "V".repeat(90) + ".", ex))).not.toContain("finding-length");
+  });
   test("more than one code name in the text warns; up to three in a display do not", () => {
     expect(k(withFinding("The scene stops on sub pages.", "sceneStep() in scene.model.ts returns still.", ex))).toContain("finding-code");
     expect(k(withFinding("The scene stops on sub pages.", "sceneStep() returns still.", ex))).not.toContain("finding-code");
