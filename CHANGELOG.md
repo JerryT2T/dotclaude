@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.394.2] — 2026-11-22
+
+### Fixed
+- Home pane: ＋ Batch and the cleanup tile start their session on the first press — no plugin-scope or ask-title hook refuses a button press any more
+- Concept close-out: the to-do group reads „Deine Aufgaben“ / “Your tasks”
+- Analysis pages: a decision's finding is one text block of at most 3 lines above the display, never text below it (gate A12 adds a 220-character ceiling)
+- do-batch: a message sent while the activating turn runs is filed as a note, and activation always finishes
+
 ## [0.394.1] — 2026-11-21
 
 ### Fixed

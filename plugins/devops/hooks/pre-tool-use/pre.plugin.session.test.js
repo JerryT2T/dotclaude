@@ -5,7 +5,7 @@ import path from "node:path";
 import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
-const { decide } = require("./pre.plugin.session.js");
+const { decide, HOME_PANE_BACKGROUND } = require("./pre.plugin.session.js");
 
 const PLUGIN = "/repos/dotclaude";
 const CONSUMER = "/repos/app";
@@ -42,6 +42,17 @@ describe("pre.plugin.session (#1076)", () => {
   test("passes inside the plugin source repo and for sessions that are not about the plugin", () => {
     expect(decide(call({ cwd: PLUGIN }, PLUGIN), deps())).toBe("");
     expect(decide(call({ prompt: "refactor the login page", cwd: CONSUMER }), deps())).toBe("");
+  });
+  test("a Home pane button press into the plugin repo passes on the first try", () => {
+    const input = {
+      initiation: "user_asked", context: "fresh", cwd: PLUGIN, title: "Batch ┃ dotclaude", prompt: "/do-batch",
+      background: HOME_PANE_BACKGROUND + "; no other context belongs to this session.",
+    };
+    expect(decide(call(input), deps())).toBe("");
+  });
+  test("home.tsx still sends the background the hook exempts", () => {
+    const home = fs.readFileSync(path.join(__dirname, "..", "mods", "home.tsx"), "utf8");
+    expect(home).toMatch(new RegExp(`background: '${HOME_PANE_BACKGROUND}`));
   });
   test("an unwritable marker never wedges the start: it passes", () => {
     const d = deps({ markerFile: () => path.join(os.tmpdir(), "no-such-dir-plugsess", "x", "m") });

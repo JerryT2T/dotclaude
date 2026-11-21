@@ -114,6 +114,11 @@ describe("isBlockingCall", () => {
     expect(ask.isBlockingCall(START, { proposal_id: "p1" })).toBe(false);
     expect(ask.isBlockingCall("Bash", {})).toBe(false);
   });
+  test("a devops Home pane press waits on nobody, even as user_asked", () => {
+    const background = "Started from the devops Home pane by the person pressing its button; no other context belongs to this session.";
+    expect(ask.isBlockingCall(START, { initiation: "user_asked", background })).toBe(false);
+    expect(ask.isBlockingCall(START, { initiation: "user_asked", background: "Claude started this" })).toBe(true);
+  });
 });
 
 describe("pre.ask.title", () => {

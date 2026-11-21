@@ -342,7 +342,7 @@ describe("🧭 three rows in view, the rest behind +N weitere", () => {
   });
 });
 
-describe("Bleibt für dich — criticality, then guidability", () => {
+describe("Deine Aufgaben — criticality, then guidability", () => {
   const TESTS = [
     { id: "t-low", text: "Read the English copy", crit: "low", guide: "web" },
     { id: "t-web", text: "Create the OAuth app in the provider console", crit: "mid", guide: "web" },
