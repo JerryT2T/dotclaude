@@ -282,12 +282,12 @@ describe('card-pregate — analysis after a change (#624)', () => {
       toolUse('t1', 'Read', { file_path: 'a.js' }),
       toolUse('t2', 'mcp__x__execute_sql', { query: 'select 1' }),
       toolUse('t3', 'mcp__x__execute_sql', { query: 'DELETE FROM objects' }),
-      toolUse('t4', 'Agent', { subagent_type: 'devops:core' }),
+      toolUse('t4', 'Agent', { subagent_type: 'devops:builder' }),
       toolUse('t5', 'Agent', { subagent_type: 'devops:research' }),
       toolUse('t6', 'Bash', { command: 'git status' }),
       toolUse('t7', 'Bash', { command: 'git push origin main' }),
     ].join('\n');
-    expect(writeToolsThisTurn(t)).toEqual(['Bash', 'Agent devops:core', 'execute_sql']);
+    expect(writeToolsThisTurn(t)).toEqual(['Bash', 'Agent devops:builder', 'execute_sql']);
   });
 
   test('a write outside the repo work tree is no change; inside it still is', () => {

@@ -91,6 +91,8 @@ function fableSession(transcriptText) {
  */
 function wouldRefuse(input, frontmatterModel, transcriptText, toolUseId) {
   if (typeof input.model === 'string' && input.model) return false;
+  // A fork keeps the session model; a `model` on it is ignored — nothing to name.
+  if (String(input.subagent_type || '').trim() === 'fork') return false;
   const base = frontmatterModel || 'inherit';
   if (base !== 'inherit') return false;
   // No transcript → the retry could never be recognised: fail open.

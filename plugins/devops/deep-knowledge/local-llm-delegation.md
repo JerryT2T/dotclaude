@@ -1,7 +1,7 @@
 # Local LLM Delegation
 
 Rule for the main session on when to delegate mechanical code generation to
-the local-llm plugin. The role agents (core, frontend, feature, ai) no longer
+the local-llm plugin. The role agents (builder, feature) no longer
 list `local_generate` / `local_status`: the bare names never resolved to the
 plugin's MCP tools and no agent called them (0 calls across 70 sessions,
 benchmark 2026-09-27).

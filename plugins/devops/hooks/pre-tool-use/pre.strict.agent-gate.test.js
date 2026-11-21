@@ -53,8 +53,8 @@ afterEach(() => {
   try { fs.rmSync(cwd, { recursive: true, force: true }); } catch { /* best effort */ }
 });
 
-const PLAIN = { tool_input: { subagent_type: "devops:frontend", prompt: "Mach den Rand dünner." } };
-const WITH_BLOCK = { tool_input: { subagent_type: "devops:frontend", prompt: `${S.CONTRACT_BLOCK}\n\nMach den Rand dünner.` } };
+const PLAIN = { tool_input: { subagent_type: "devops:builder", prompt: "Mach den Rand dünner." } };
+const WITH_BLOCK = { tool_input: { subagent_type: "devops:builder", prompt: `${S.CONTRACT_BLOCK}\n\nMach den Rand dünner.` } };
 
 describe("inactive", () => {
   test("no mode → silent allow", () => {

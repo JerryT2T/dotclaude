@@ -124,7 +124,7 @@ describe("stop.flow.guard — F5 interrupted title", () => {
       const lines = fs.readFileSync(p, "utf8").trim().split("\n").map((l) => JSON.parse(l));
       const second = "a1e64673538029e08";
       lines.splice(3, 0,
-        { type: "assistant", message: { role: "assistant", content: [{ type: "tool_use", id: "toolu_9", name: "Agent", input: { subagent_type: "devops:frontend", run_in_background: true, description: "Overview", prompt: "x" } }] } },
+        { type: "assistant", message: { role: "assistant", content: [{ type: "tool_use", id: "toolu_9", name: "Agent", input: { subagent_type: "devops:builder", run_in_background: true, description: "Overview", prompt: "x" } }] } },
         { type: "user", message: { role: "user", content: [{ type: "tool_result", tool_use_id: "toolu_9", content: [{ type: "text", text: AGENT_LAUNCH_TEXT.replace(AGENT_ID, second) }] }] } });
       fs.writeFileSync(p, lines.map((l) => JSON.stringify(l)).join("\n") + "\n");
       expect(await stop(dir, { transcript_path: p })).not.toContain("Interrupted");

@@ -76,3 +76,5 @@ bridge protocol and every message to the user.
 - Do not ask questions. Turn a gap in the brief into a stated assumption in the
   report, or into an explicit open question on the page when the user has to
   decide it.
+
+Your final message IS the report to the caller — within the requested length, never a status line or a reply to a late background notification; write it last.

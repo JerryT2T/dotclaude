@@ -66,7 +66,7 @@ A new commit = one completed logical unit:
 
 ## Checkpoint commits (agents)
 
-Every agent that writes code — `core`, `frontend`, `aix`, `designer`,
+Every agent that writes code — `builder`, `designer`,
 `feature` — works in checkpoints on its own branch:
 
 - **Where — never above the session's branch:**
@@ -96,7 +96,7 @@ Every agent that writes code — `core`, `frontend`, `aix`, `designer`,
 - Same rules as any commit: stage the task's files by name, hooks stay on (a
   pre-commit hook that refuses a checkpoint means: keep working, commit at
   the next green step — never `--no-verify`).
-- Analysis-only agents (`pox`, `research`, `redteam`, `qax`, `scout`,
+- Analysis-only agents (`analyst`, `pox`, `research`, `redteam`, `qax`, `scout`,
   `rethinker`) change no files and do not commit. The main session's own
   inline work follows the table above, not this section.
 

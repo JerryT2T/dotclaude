@@ -199,6 +199,9 @@
       ],
       [
         "substop.approval.clear"
+      ],
+      [
+        "substop.agent.report"
       ]
     ],
     "SubagentStart": [

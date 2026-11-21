@@ -86,3 +86,5 @@ by the caller — never raw `gh issue create`).
 
 Result first (the lens verdict, the recommendation, or the go/no-go), then the
 mode's items above, then `open_questions`. No fixed YAML — keep it scannable.
+
+Your final message IS the report to the caller — within the requested length, never a status line or a reply to a late background notification; write it last.

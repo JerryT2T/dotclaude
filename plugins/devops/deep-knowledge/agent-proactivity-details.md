@@ -8,7 +8,7 @@ On demand. The always-on core is `agent-proactivity.md` (tiers, precedence, hard
 |------|--------|----|
 | **Inline** | 1 domain, Q&A, quick fix, or an answer reachable by reading ~5 files or fewer | No agent — a sub-agent pays a full context bootstrap and loses the conversation. |
 | **1 agent, background** | The deliverable is a *conclusion* whose path would flood the conversation: open web research — searches, several sources to weigh (`research`; a few targeted fetches of pages the task names stay inline: measured 2026-11-02, inline cost 25 % less and took half the time with the same answer), a sweep over more than ~10 files (`scout`, "where/how is X?"), a full test suite or build (`qax`), a high-stakes plan or diff to attack (`redteam`), a trade-off with real stakes that no file answers (`pox`) | Spawn with `run_in_background: true`; keep working inline; relay the conclusion, not the transcript. |
-| **2–3 agents, parallel** | Two *analysis* lenses on one question (`research` + `pox`, `pox` + `redteam`) | Spawn in one message, ~5–15 tool calls per agent. **Implementing** agents in parallel (`core` + `frontend` editing the working tree at once) are never auto-spawned: offer it in one sentence like a ceremony. A UI consuming a new endpoint is not independent: Inline if ~5 files or fewer, else Full ceremony. |
+| **2–3 agents, parallel** | Two *analysis* lenses on one question (`research` + `pox`, `pox` + `redteam`) | Spawn in one message, ~5–15 tool calls per agent. **Implementing** agents in parallel (two `builder`s on disjoint files editing the working tree at once) are never auto-spawned: offer it in one sentence like a ceremony. A UI consuming a new endpoint is not independent: Inline if ~5 files or fewer, else Full ceremony. |
 | **Full ceremony** | 3+ domains, a feature end-to-end, or a high-risk change (migration, auth, breaking contract, destructive op) | Never auto-start. Offer it in one sentence, no slash name; on a yes invoke the auto-agents skill (do-run if the user will be away). |
 
 **Execution path.** Implementing skills (do-run, auto-concept implement,
@@ -24,9 +24,23 @@ the next text, also under Quiet; spawns in one message → only the last card.
 Every spawn names its `model` (family alias, never a pinned version), even
 when it equals the session's: an inheriting spawn is refused once
 (`pre.agent.model`). Effort comes from the agent file (at spawn only per `agent-orchestration.md`). Locating → `scout`
-(haiku · medium), not `Explore`; `haiku` only for `scout`. Implementing → a
-domain agent on `sonnet`; opus only for design-heavy/ambiguous work in class
+(haiku · medium), not `Explore`; `haiku` only for `scout`. Pure locating stays
+`scout`; a reading task WITH a verdict (issue/branch triage, diagnose-only,
+cause analysis) → `devops:analyst` (sonnet · medium, read-only) — a
+diagnose-only order never goes to an implementer. Implementing →
+`devops:builder` on `sonnet`; opus only for design-heavy/ambiguous work in class
 `free`.
+
+**Fork vs. named agent.** A task that needs THIS conversation (analysis of the
+discussion, a change resting on many earlier decisions) → `subagent_type:
+"fork"`: it inherits the conversation and the prompt cache, keeps the session
+model (so never use it for a cheaper-model run) and takes no `model` field.
+A fresh context with its own model/tools → a named agent. Basis:
+code.claude.com/docs/en/sub-agents (fork mode is the default since v2.1.302).
+
+**`general-purpose` / `Explore`** only when no devops type fits; the spawn's
+`description` then ends with the reason, e.g. `Rename assets (general-purpose:
+needs Write outside repo)`.
 
 ## Precedence: explicit run skill > hard stop > hard go > switch > escalation > tier table
 
@@ -47,7 +61,7 @@ domain agent on `sonnet`; opus only for design-heavy/ambiguous work in class
   `off` → Inline always, no offers. Both cap only *proactive* spawns — a
   run skill or a hard go still spawns as designed.
 - **Escalation** — same area iterated 2+ times without converging → one tier
-  up (`qax` recurring bug, `designer` UI polish, `core` repeated refactor).
+  up (`qax` recurring bug, `designer` UI polish, `builder` repeated refactor).
 - Never spawn for an explanation or a single-fact lookup; never silently.
 - `redteam` only after the inline pre-mortem hits a higher-stakes trigger;
   max 2 rounds per diff, round-2 leftovers become open points.

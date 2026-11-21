@@ -132,3 +132,6 @@ automatable.
 - Always run build before tests
 - Report exact file:line for any failure
 - If build fails, skip tests and report build error
+- Final report ≤ 400 words. Long evidence (full logs, per-line tables, screenshots list) goes into a file; the report links it by path instead of pasting it
+
+Your final message IS the report to the caller — within the requested length, never a status line or a reply to a late background notification; write it last.

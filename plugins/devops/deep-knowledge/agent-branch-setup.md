@@ -1,6 +1,6 @@
 # Agent Branch Setup
 
-The first step of every implementing agent (`core`, `frontend`, `aix`,
+The first step of every implementing agent (`builder`,
 `designer`, `feature`). One procedure, referenced from each agent file, so the
 copies cannot drift apart. The orchestrator side (push or name the
 integration branch, pass `Parent branch:` and the exact sub-branch name,

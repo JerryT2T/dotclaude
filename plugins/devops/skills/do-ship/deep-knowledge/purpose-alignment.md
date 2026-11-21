@@ -32,8 +32,8 @@ convention does not expire when its PR leaves the git log's first page).
 | `mode: "file-only"`, zero purpose sources, or every purpose clearly out of scope for the diff | **Skip** silently |
 
 Intermediate ships (sub-branch → feature branch) use the sibling sub-branches
-merged into the feature branch as sources — parallel role agents (core,
-frontend, ai) are precisely the scenario where one agent's convention must
+merged into the feature branch as sources — parallel builder agents (
+UI, backend, AI) are precisely the scenario where one agent's convention must
 propagate to another agent's work.
 
 ## Step P1 — Gather purpose sources

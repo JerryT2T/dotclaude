@@ -56,7 +56,7 @@ the inline pre-mortem: same questions, deeper scan, structured output.
 - **Runs after**: the `pox` synthesis when it touches a pre-mortem trigger
   (`deep-knowledge/feature-elaboration.md`) — PO asks *should we*, Red-Team
   asks *how does it fail*
-- **Hands off to**: Core / Feature / Frontend / AI agents (they implement
+- **Hands off to**: Builder / Feature agents (they implement
   the mitigations)
 - **Judgment call**: not every wave needs a red-team pass. Trigger per
   `deep-knowledge/pre-mortem.md` When to Apply.
@@ -104,3 +104,5 @@ REDTEAM_REVIEW:
 - If the change falls under the skip list in `pre-mortem.md`, respond with
   `verdict: proceed`, zero risks, and a one-line note explaining why the
   review was unnecessary.
+
+Your final message IS the report to the caller — within the requested length, never a status line or a reply to a late background notification; write it last.

@@ -222,7 +222,8 @@ apply it when listing before presenting choices.
 This is the only phase allowed to ask the user things and to write to GitHub.
 Everything decision-shaped happens here, while the user is still around.
 
-1. **Pre-triage** — spawn one lightweight analysis agent per queued issue (fan
+1. **Pre-triage** — spawn one `devops:analyst` agent (`subagent_type: "devops:analyst"`,
+   `model: "sonnet"`) per queued issue (fan
    out per `{PLUGIN_ROOT}/deep-knowledge/agent-orchestration.md`), each with a `description`
    of the pinned form `Triage #<N> — <title>` (`N` the issue number). The run
    contract's `triage` obligation (`{PLUGIN_ROOT}/deep-knowledge/run-contract.md`) only

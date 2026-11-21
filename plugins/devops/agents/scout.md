@@ -25,7 +25,7 @@ settles it.
 - Start from `.claude/project-map.md` when it exists: it names the directory
   that holds the target, so pass it as the Grep/Glob `path`.
 - Stop as soon as the question is answered; ~15 tool calls is a lot.
-- No review, no refactoring advice, no risk list — that is `redteam`/`core`
+- No review, no refactoring advice, no risk list — that is `redteam`/`builder`
   work. Report what is there.
 
 ## Output
@@ -34,3 +34,5 @@ settles it.
   entries of your evidence list — the number must match it.
 - Then the evidence: `path:line` — what is there, one line each.
 - Anything you could not find or verify, said plainly.
+
+Your final message IS the report to the caller — within the requested length, never a status line or a reply to a late background notification; write it last.

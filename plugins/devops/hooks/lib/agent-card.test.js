@@ -4,10 +4,10 @@ import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const { renderAgentCard, parseWave } = require("./agent-card.js");
 
-const core = { type: "devops:core", description: "Engine", model: "sonnet", effort: "medium" };
+const core = { type: "devops:builder", description: "Engine", model: "sonnet", effort: "medium" };
 const redteam = { type: "devops:redteam", description: "Gate", model: "opus", effort: "high" };
 describe("agent card - renamed agents keep their icon", () => {
-  test.each([["qax", "🧪"], ["aix", "🧠"], ["pox", "🎯"]])("devops:%s", (name, ic) => {
+  test.each([["qax", "🧪"], ["builder", "🔧"], ["analyst", "📊"], ["pox", "🎯"]])("devops:%s", (name, ic) => {
     const card = renderAgentCard({ lang: "en", agents: [{ type: "devops:" + name, description: "x", model: "sonnet", effort: "medium" }] });
     expect(card).toContain("| " + ic + " | **" + name + "**");
   });
@@ -27,7 +27,7 @@ describe("agent card — one template for one agent or many", () => {
   });
 
   test("three agents: same shape, more rows, tally because a combination repeats", () => {
-    const card = renderAgentCard({ lang: "en", agents: [core, { ...core, type: "devops:frontend" }, redteam] });
+    const card = renderAgentCard({ lang: "en", agents: [core, { ...core, type: "devops:builder" }, redteam] });
     expect(card).toContain("### 🤖 **3 agents started** · background");
     expect(rows(card)).toHaveLength(3);
     expect(card).toContain("**Σ Mix:** **2×** sonnet ●● medium  ·  **1×** opus ●●● high");

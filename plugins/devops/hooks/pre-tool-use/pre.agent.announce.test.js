@@ -112,9 +112,9 @@ describe("pre.agent.announce (hook)", () => {
   test("a model override shows as default → override, effort once", () => {
     const dir = project();
     const res = runHook(dir, {
-      input: { subagent_type: "devops:core", model: "opus", run_in_background: false, prompt: "x" },
+      input: { subagent_type: "devops:builder", model: "opus", run_in_background: false, prompt: "x" },
     });
-    expect(line(res)).toBe("core · sonnet → opus · medium · foreground");
+    expect(line(res)).toBe("builder · sonnet → opus · medium · foreground");
   });
 
   test("a budget downgrade of an opus role reads opus → sonnet", () => {
@@ -242,8 +242,8 @@ describe("pre.agent.announce (hook)", () => {
       type: "assistant",
       message: { id: msg, role: "assistant", model: "claude-opus-5-5", content: [{ type: "tool_use", id, name: "Agent", input }] },
     });
-    const a = { subagent_type: "devops:core", description: "[W1] Engine", prompt: "a" };
-    const b = { subagent_type: "devops:frontend", description: "[W1] Hold", prompt: "b" };
+    const a = { subagent_type: "devops:builder", description: "[W1] Engine", prompt: "a" };
+    const b = { subagent_type: "devops:builder", description: "[W1] Hold", prompt: "b" };
     const c = { subagent_type: "devops:qax", description: "Tests", prompt: "c" };
     const lines = [
       call("m0", "t0", { subagent_type: "devops:research", description: "Earlier", prompt: "r" }),
@@ -255,15 +255,15 @@ describe("pre.agent.announce (hook)", () => {
 
     const second = runHook(dir, { input: b, extra: { transcript_path: file, tool_use_id: "t2" } });
     expect(line(second)).toEqual([
-      "core · sonnet · medium · background — Engine",
-      "frontend · sonnet · medium · background — Hold",
+      "builder · sonnet · medium · background — Engine",
+      "builder · sonnet · medium · background — Hold",
     ]);
     expect(card(second)).toMatch(/\*\*2 agents started\*\* · background · Wave 1/);
     expect(card(second)).toContain("**Σ Mix:** **2×** sonnet ●● medium");
 
     // Without a tool_use_id the spawn is found by its prompt; the first of the batch is alone.
     const first = runHook(dir, { input: a, extra: { transcript_path: file } });
-    expect(line(first)).toBe("core · sonnet · medium · background — Engine");
+    expect(line(first)).toBe("builder · sonnet · medium · background — Engine");
   });
 
   test("the plugin's agent roster never pins a model version", () => {
@@ -299,7 +299,7 @@ describe("pre.agent.announce under strict mode", () => {
 
   test("a spawn the strict gate will refuse is not announced", async () => {
     const { dir } = await strictRepo();
-    const res = runHook(dir, { input: { subagent_type: "devops:frontend", prompt: "Mach den Rand dünner." } });
+    const res = runHook(dir, { input: { subagent_type: "devops:builder", prompt: "Mach den Rand dünner." } });
     expect(res.status).toBe(0);
     expect(res.stdout).toBe("");
   });
@@ -307,9 +307,9 @@ describe("pre.agent.announce under strict mode", () => {
   test("the retry carrying the contract block is announced", async () => {
     const { dir, S } = await strictRepo();
     const res = runHook(dir, {
-      input: { subagent_type: "devops:frontend", prompt: `${S.CONTRACT_BLOCK}\n\nMach den Rand dünner.` },
+      input: { subagent_type: "devops:builder", prompt: `${S.CONTRACT_BLOCK}\n\nMach den Rand dünner.` },
     });
-    expect(line(res)).toBe("frontend · sonnet · medium · background");
+    expect(line(res)).toBe("builder · sonnet · medium · background");
   });
 });
 
@@ -351,8 +351,8 @@ describe("audit model marker", () => {
   const mod = createRequire(import.meta.url)("./pre.agent.announce.js");
 
   test("an invocation override wins and the marker is one parseable line", () => {
-    const m = mod.modelMarker({ subagent_type: "devops:core", model: "haiku" }, os.tmpdir(), null, "toolu_01ABC");
-    expect(m).toMatch(/^\[agent-model\] id=toolu_01ABC type=devops:core model=haiku /);
+    const m = mod.modelMarker({ subagent_type: "devops:builder", model: "haiku" }, os.tmpdir(), null, "toolu_01ABC");
+    expect(m).toMatch(/^\[agent-model\] id=toolu_01ABC type=devops:builder model=haiku /);
     expect(m).not.toMatch(/\n/);
   });
 

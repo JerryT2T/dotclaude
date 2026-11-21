@@ -18,7 +18,7 @@ const transcript = [
     { type: "text", text: "I think it is the handler." },
     { type: "tool_use", name: "Edit", input: { file_path: "C:\\app\\src\\ui\\Login.tsx" } },
     { type: "tool_use", name: "Skill", input: { skill: "devops:auto-fix" } },
-    { type: "tool_use", name: "Agent", input: { subagent_type: "devops:core" } },
+    { type: "tool_use", name: "Agent", input: { subagent_type: "devops:builder" } },
   ] } }),
   line({ type: "user", timestamp: "2026-10-25T10:02:00Z", message: { content: [{ type: "tool_result", is_error: true, content: "npm ERR! code 1\nTypeError: x is not a function\n    at foo (a.js:1)" }] } }),
   user("immer noch nicht, schon wieder kaputt:\n```\nTypeError: x\n  at y\n```", "2026-10-25T10:03:00Z"),
@@ -40,7 +40,7 @@ describe("buildBrief", () => {
   test("files, skills, agents, deduplicated error signatures, window", () => {
     expect(b.filesEdited).toEqual(["C:/app/src/ui/Login.tsx"]);
     expect(b.skills).toEqual(["devops:auto-fix"]);
-    expect(b.agents).toEqual(["devops:core"]);
+    expect(b.agents).toEqual(["devops:builder"]);
     expect(b.errors[0].sig).toMatch(/npm ERR!|TypeError/);
     expect(b.window).toEqual({ first: "2026-10-25T10:00:00Z", last: "2026-10-25T10:05:00Z" });
   });
