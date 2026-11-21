@@ -63,15 +63,19 @@ one note — not an unrecognised argument, and not a request to look at the head
 The same holds for a natural-language invocation: "Sammelmodus an, erste Notiz:
 … zweite: …" activates and seeds; it does not start the work.
 
-**This is the one prompt collection can never catch** — the hook arms the mode
-in this turn, so it lets this prompt through. On an invocation that carries
-content:
+**This is the one prompt collection can never catch** — the mode is armed
+only by Step 2.2 of this turn, so the hook lets this prompt through. On an
+invocation that carries content:
 
 - Do **not** implement, plan, or research it. Do not read code for it.
 - File the content as note #1 in Step 2.4, verbatim.
 
 The hook's guard for these rules is best-effort — its absence is not permission
 to act (`deep-knowledge/activation.md` § Activation guard).
+
+**A mid-turn message is a note too, and the hook never sees it** — file it
+verbatim, never act on it, and finish activation anyway
+(`deep-knowledge/activation.md` § Mid-turn messages).
 
 ## Step 2 — Activate
 
