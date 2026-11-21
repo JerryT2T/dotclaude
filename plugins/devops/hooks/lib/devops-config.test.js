@@ -95,6 +95,22 @@ describe("devops-config — resolution project > global > default", () => {
   });
 });
 
+describe("devops-config — machine-wide keys ignore the project layer", () => {
+  test("apiCredit.enabled and shutdown.busyProcesses from a project file are ignored on read", () => {
+    const { main } = fakeClone();
+    const home = mkTmp("cfg-home-");
+    write(path.join(main, ".claude", "devops-config.json"), { apiCredit: { enabled: true }, shutdown: { busyProcesses: ["x"] } });
+    let r = cfg.load(main, { home });
+    expect(r.values.apiCredit.enabled).toBe(false);
+    expect(r.values.shutdown.busyProcesses).toEqual([]);
+    expect(r.sources["apiCredit.enabled"]).toBe("default");
+    write(path.join(home, ".claude", "devops-config.json"), { apiCredit: { enabled: true } });
+    r = cfg.load(main, { home });
+    expect(r.values.apiCredit.enabled).toBe(true);
+    expect(r.sources["apiCredit.enabled"]).toBe("global");
+  });
+});
+
 describe("devops-config — parse, set, unset", () => {
   test.each([
     ["cleanup.autoClean", "ja", true], ["cleanup.autoClean", "off", false], ["cleanup.nudge", "true", true],
