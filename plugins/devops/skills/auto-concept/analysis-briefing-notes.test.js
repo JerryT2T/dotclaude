@@ -4,7 +4,7 @@ import fs from 'fs';
 import path from 'path';
 
 const dk = f => fs.readFileSync(path.join(__dirname, 'deep-knowledge', f), 'utf8');
-const JS = dk('templates-analysis-js.md');
+const JS = dk('templates-analysis-composer.md');   // the composer and note store
 const CSS = dk('templates-analysis-css.md');
 
 // renderNotes, verbatim from the template, run against a tiny DOM with its collaborators stubbed.
