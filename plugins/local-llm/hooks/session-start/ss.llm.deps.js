@@ -78,6 +78,8 @@ function targetIsIntact(p) {
 }
 
 try {
+  // dangling symlink/junction: existsSync() is false, symlinkSync would hit EEXIST
+  try { if (!existsSync(target) && lstatSync(target).isSymbolicLink()) rmSync(target, { force: true }); } catch { /* absent */ }
   if (existsSync(target)) {
     const stat = lstatSync(target);
     if (stat.isSymbolicLink()) process.exit(0);
