@@ -42,27 +42,46 @@ function markerPath(hookName, sessionId) {
   return path.join(os.tmpdir(), `dotclaude-${hookName}-${key}`);
 }
 
+const CLAIM_MS = 30 * 1000;
+
 function runOnce(hookName, sessionId, opts = {}) {
   const file = markerPath(hookName, sessionId);
   const cooldownMs = opts.cooldownMs || 0;
 
-  try {
-    const stat = fs.statSync(file);
-    if (cooldownMs > 0) {
-      const elapsed = Date.now() - stat.mtimeMs;
-      if (elapsed < cooldownMs) return false;
-      // Cooldown expired — touch the file and allow run
-    } else {
-      // No cooldown — strict once-per-session
-      return false;
+  // true while the marker says "do not run": present (no cooldown) or younger than the cooldown
+  const throttled = () => {
+    try {
+      const stat = fs.statSync(file);
+      return cooldownMs <= 0 || Date.now() - stat.mtimeMs < cooldownMs;
+    } catch {
+      return false; // no marker — first run
     }
-  } catch {
-    // File does not exist — first run
-  }
+  };
+  if (throttled()) return false;
 
-  // Write/touch marker
-  fs.writeFileSync(file, String(Date.now()));
-  return true;
+  // Claim the gate: two sessions starting together must not both pass the check above.
+  // The claim is held only across re-check + marker write; a crashed holder's claim
+  // goes stale after CLAIM_MS.
+  const claim = `${file}.claim`;
+  let claimed = false;
+  try {
+    fs.writeFileSync(claim, String(process.pid), { flag: 'wx' });
+    claimed = true;
+  } catch (e) {
+    if (e.code === 'EEXIST') {
+      let fresh = false;
+      try { fresh = Date.now() - fs.statSync(claim).mtimeMs < CLAIM_MS; } catch { /* vanished */ }
+      if (fresh) return false; // the other session is deciding right now
+      try { fs.writeFileSync(claim, String(process.pid)); claimed = true; } catch { /* ignore */ }
+    } // any other error (read-only tmp): fall through to the plain marker write
+  }
+  try {
+    if (throttled()) return false; // the other session finished between our check and our claim
+    fs.writeFileSync(file, String(Date.now()));
+    return true;
+  } finally {
+    if (claimed) { try { fs.unlinkSync(claim); } catch { /* gone */ } }
+  }
 }
 
 /**

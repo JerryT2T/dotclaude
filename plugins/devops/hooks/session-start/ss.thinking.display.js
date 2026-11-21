@@ -20,6 +20,7 @@
 const { readFileSync, writeFileSync, existsSync } = require("node:fs");
 const { join } = require("node:path");
 const { homedir } = require("node:os");
+const { writeFileAtomic } = require("../lib/atomic-write.js");
 
 const KEY = "CLAUDE_CODE_THINKING_DISPLAY_UPDATES";
 
@@ -44,7 +45,7 @@ function main(settingsPath = join(homedir(), ".claude", "settings.json")) {
   const next = ensureOptOut(settings);
   if (!next) return false;
   try {
-    writeFileSync(settingsPath, JSON.stringify(next, null, 2) + "\n");
+    writeFileAtomic(settingsPath, JSON.stringify(next, null, 2) + "\n");
     console.error(`[dotclaude] Set ${KEY}=0 — chat text stays verbatim.`);
     return true;
   } catch (err) {

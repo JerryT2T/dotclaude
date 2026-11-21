@@ -313,7 +313,7 @@ function rebuildCache(opts) {
       }];
     }
 
-    fs.writeFileSync(registryFile, JSON.stringify(registry, null, 2) + '\n');
+    require('./atomic-write.js').writeFileAtomic(registryFile, JSON.stringify(registry, null, 2) + '\n');
   } catch {
     // Registry update failed — non-fatal, plugin still works from marketplace dir
   }
