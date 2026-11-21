@@ -103,3 +103,51 @@ describe("running marker", () => {
     expect(JSON.parse(fs.readFileSync(`${worker.markerFile(sid)}.result`, "utf8"))).toEqual({});
   });
 });
+
+describe("stop.session.autosave concept close-out (#1163)", () => {
+  const REL = "docs/concepts/2026-11-15-posthog-audit.html";
+  const git = (args) => {
+    const j = args.join(" ");
+    if (j.startsWith("rev-parse --abbrev-ref HEAD")) return "docs/posthog";
+    if (j.startsWith("symbolic-ref")) return "origin/main";
+    if (j.includes("origin/main:")) return null;
+    if (j.includes("HEAD:docs")) return "blob1";
+    if (j.includes("@{u}")) return "origin/docs/posthog";
+    if (j.includes("--merges")) return "2";
+    if (j.includes("--count")) return "3";
+    return null;
+  };
+  const open = () => {
+    fs.mkdirSync(path.join(cwd, ".claude"), { recursive: true });
+    fs.mkdirSync(path.join(cwd, "docs", "concepts"), { recursive: true });
+    fs.writeFileSync(path.join(cwd, ".claude", "concept-active.json"), JSON.stringify({ html_path: REL, slug: "posthog-audit" }));
+    fs.writeFileSync(path.join(cwd, REL), "<section data-final-report></section>");
+  };
+
+  test("final report not in main: the stop names the concept, finalize and the unpushed commits", async () => {
+    open();
+    const out = await main(hook(), { waitMs: 2000, spawn: fakeWorker(50), conceptIo: { git } });
+    const msg = JSON.parse(out).systemMessage;
+    expect(msg).toMatch(/Concept-Abschluss offen|Concept close-out open/);
+    expect(msg).toContain("posthog-audit");
+    expect(msg).toMatch(/3 ungepushte Commits|3 unpushed commits/);
+  });
+
+  test("also when the previous save still runs (throttled), appended to the running line", async () => {
+    open();
+    fs.writeFileSync(worker.markerFile(sid), JSON.stringify({ pid: process.pid, start: Date.now() }));
+    const msg = JSON.parse(await main(hook(), { waitMs: 2000, spawn: () => {}, conceptIo: { git } })).systemMessage;
+    expect(msg).toMatch(/Sicherung|Saving/);
+    expect(msg).toMatch(/Concept-Abschluss offen|Concept close-out open/);
+  });
+
+  test("a turn that shipped, or no active concept: silent", async () => {
+    open();
+    fs.writeFileSync(path.join(dir, "t.jsonl"), `${card("ship-successful")}\n`);
+    // only the plain "Save finished." of a shipped turn, no concept ask
+    expect(JSON.parse(await main(hook(), { waitMs: 2000, spawn: fakeWorker(50), conceptIo: { git } })).systemMessage).toMatch(/^(Sicherung abgeschlossen|Save finished)\.$/);
+    fs.unlinkSync(path.join(cwd, ".claude", "concept-active.json"));
+    fs.writeFileSync(path.join(dir, "t.jsonl"), "");
+    expect(await main(hook(), { waitMs: 2000, spawn: fakeWorker(50), conceptIo: { git } })).toBeNull();
+  });
+});

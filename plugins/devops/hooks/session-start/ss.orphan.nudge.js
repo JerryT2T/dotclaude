@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook ss.orphan.nudge
- * @version 0.4.0
+ * @version 0.5.0
  * @event SessionStart
  * @plugin devops
  * @description One-line nudge when the current repo has unlanded work,
@@ -19,6 +19,8 @@
  *   killed/timed out in more than 5 % of its last 200 runs, at most once a day.
  *   Output: additionalContext asking Claude to show the line, e.g.
  *   "⚠ Hier: 3 Branches nicht in main gemergt (Stand vor 6 h) → „Branches aufräumen“".
+ *   A branch tagged kind:'concept' (orphan-scan, #1163) adds its own point:
+ *   "⚠ Concept-Bericht vom 15.11. nie gelandet → abschließen?" instead of only a count.
  *   ⚠ only for unmerged or uncommitted work in the current repo. It ends in a
  *   prompt, not a slash command: auto-cleanup is not user-invocable.
  */
@@ -94,13 +96,17 @@ function buildCore({ cwd, lang = 'de', report, now = Date.now() }) {
     const n = c ? c.unlanded + c.dirty + c.undecided : 0;
     if (n > 0) { total += n; repos++; }
   }
-  const { unlanded, dirty, undecided } = entry ? counts(entry) : { unlanded: 0, dirty: 0, undecided: 0 };
+  const conceptN = entry ? conceptsOf(entry).length : 0;
+  const c0 = entry ? counts(entry) : { unlanded: 0, dirty: 0, undecided: 0 };
+  // a concept branch is named on its own point, not counted twice
+  const unlanded = Math.max(0, c0.unlanded - conceptN);
+  const { dirty, undecided } = c0;
   const stand = en ? `(as of ${age} ago)` : `(Stand vor ${age})`;
   const arrow = `→ ${en ? PROMPT.en : PROMPT.de}`;
   const machine = en
     ? `whole machine: ${total} open in ${repos} ${repos === 1 ? 'repo' : 'repos'}`
     : `Rechner: ${total} offen in ${repos} ${repos === 1 ? 'Repo' : 'Repos'}`;
-  if (unlanded + dirty + undecided === 0) {
+  if (unlanded + dirty + undecided + conceptN === 0) {
     // nothing here (or a repo the scan does not know): still name what waits elsewhere
     if (total === 0) return null;
     // a repo the scan does not know gets no "nothing open here" claim
@@ -108,6 +114,14 @@ function buildCore({ cwd, lang = 'de', report, now = Date.now() }) {
     return `ℹ ${lead}${machine} ${stand} ${arrow}`;
   }
   const parts = [];
+  const concepts = entry ? conceptsOf(entry) : [];
+  if (concepts.length) {
+    const days = concepts.map((c) => shortDate(c.conceptDate)).filter(Boolean);
+    const when = days.length ? (en ? ` of ${days.join(', ')}` : ` vom ${days.join(', ')}`) : '';
+    parts.push(en
+      ? `${concepts.length === 1 ? 'concept report' : concepts.length + ' concept reports'}${when} never landed → finalize?`
+      : `${concepts.length === 1 ? 'Concept-Bericht' : concepts.length + ' Concept-Berichte'}${when} nie gelandet → abschließen?`);
+  }
   if (unlanded > 0) {
     parts.push(en
       ? `${unlanded} ${unlanded === 1 ? 'branch' : 'branches'} not merged into main`
@@ -124,13 +138,24 @@ function buildCore({ cwd, lang = 'de', report, now = Date.now() }) {
       : `${undecided} ${undecided === 1 ? 'Sicherungskopie' : 'Sicherungskopien'} ohne Entscheidung`);
   }
   // a safety copy is a net, nothing is lost by waiting: only real work at risk warns
-  const icon = unlanded + dirty > 0 ? '⚠' : 'ℹ';
+  const icon = unlanded + dirty + conceptN > 0 ? '⚠' : 'ℹ';
   const totalPart = repos > 1 ? ` · ${machine}` : '';
   return `${icon} ${en ? 'Here' : 'Hier'}: ${parts.join(' / ')}${totalPart} ${stand} ${arrow}`;
 }
 
 /** Copies an autosave or cleanup made count once they are this old — a fresh one is the live session's net. */
 const UNDECIDED_AFTER_DAYS = 3;
+
+/** Not-live, clean at-risk entries carrying an unlanded concept report (orphan-scan kind 'concept'). */
+function conceptsOf(entry) {
+  return (Array.isArray(entry.atRisk) ? entry.atRisk : []).filter((r) => r.kind === 'concept' && !r.live && !(r.dirty > 0));
+}
+
+/** "2026-11-15" -> "15.11." */
+function shortDate(iso) {
+  const m = /^\d{4}-(\d{2})-(\d{2})$/.exec(iso || '');
+  return m ? `${m[2]}.${m[1]}.` : '';
+}
 
 /** At-risk branches, dirty worktrees and undecided safety copies of one report entry. */
 function counts(entry) {
