@@ -74,3 +74,35 @@ describe('workspace slug is URL-encoded (G1)', () => {
     expect(seen).toEqual(['/api/v1/workspace/..%2Fadmin%3Fx%3D1%23y', '/api/v1/workspace/a%2Fb/update']);
   });
 });
+
+describe('saveApiKey', () => {
+  it('keeps other settings, stores baseUrl, and writes the file 0600', () => {
+    const file = path.join(dir, 'cfg', 'config.json');
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, JSON.stringify({ anythingllm: { workspaceSlug: 'mine' }, other: 1 }));
+    C.saveApiKey('KEY', { path: file, baseUrl: 'http://127.0.0.1:4000' });
+    const out = JSON.parse(fs.readFileSync(file, 'utf8'));
+    expect(out).toEqual({ anythingllm: { workspaceSlug: 'mine', apiKey: 'KEY', baseUrl: 'http://127.0.0.1:4000' }, other: 1 });
+    if (process.platform !== 'win32') expect(fs.statSync(file).mode & 0o777).toBe(0o600);
+  });
+  it('refuses to overwrite a file that exists but does not parse', () => {
+    const file = path.join(dir, 'config.json');
+    fs.writeFileSync(file, '{ "anythingllm": { "baseUrl": ');
+    expect(() => C.saveApiKey('KEY', { path: file })).toThrow(/not valid JSON/);
+    expect(fs.readFileSync(file, 'utf8')).toBe('{ "anythingllm": { "baseUrl": ');
+  });
+});
+
+describe('http client URL handling', () => {
+  it('keeps the base URL path', async () => {
+    const seen = [];
+    const srv = http.createServer((req, res) => { seen.push(req.url); res.setHeader('content-type', 'application/json'); res.end('{}'); });
+    await new Promise((r) => srv.listen(0, '127.0.0.1', r));
+    const port = srv.address().port;
+    try {
+      await H.verifyAuth(`http://127.0.0.1:${port}/anythingllm`, 'k');
+      expect(seen).toHaveLength(1);
+      expect(seen[0].startsWith("/anythingllm/api/")).toBe(true);
+    } finally { srv.close(); }
+  });
+});

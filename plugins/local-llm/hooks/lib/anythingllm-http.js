@@ -28,7 +28,7 @@ function requestJson({ baseUrl, path, method = 'GET', apiKey, body, timeoutMs = 
   return new Promise((resolve) => {
     let parsed;
     try {
-      parsed = new URL(path, baseUrl);
+      parsed = new URL(String(path).replace(/^\/+/, ''), String(baseUrl).replace(/\/?$/, '/'));
     } catch {
       resolve({ ok: false, errorType: 'bad_url', error: `Invalid URL: ${baseUrl}${path}` });
       return;
@@ -46,7 +46,7 @@ function requestJson({ baseUrl, path, method = 'GET', apiKey, body, timeoutMs = 
     const req = lib.request(
       {
         protocol: parsed.protocol,
-        hostname: parsed.hostname,
+        hostname: parsed.hostname.replace(/^\[|\]$/g, ''),
         port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
         path: parsed.pathname + parsed.search,
         method,

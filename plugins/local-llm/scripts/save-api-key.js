@@ -8,7 +8,7 @@
  *   local-llm-setup skill.
  *
  * Usage:
- *   node save-api-key.js <api-key> [base-url]
+ *   node save-api-key.js - [base-url]   # key on stdin (never on the command line)
  *
  * Writes to: ~/.claude/local-llm/config.json
  *
@@ -24,12 +24,17 @@ const http = require(path.join(LIB, 'anythingllm-http.js'));
 const lifecycle = require(path.join(LIB, 'anythingllm-lifecycle.js'));
 const { resolveConfig, saveApiKey, USER_CONFIG_PATH } = require(path.join(LIB, 'anythingllm-config.js'));
 
+function readStdin() {
+  try { return require('node:fs').readFileSync(0, 'utf8'); } catch { return ''; }
+}
+
 (async () => {
-  const apiKey = (process.argv[2] || '').trim();
+  // The key comes from stdin so it never reaches a shell command line or the process list.
+  const apiKey = (process.argv[2] === '-' ? readStdin() : '').trim();
   const baseUrlArg = (process.argv[3] || '').trim();
 
   if (!apiKey) {
-    process.stdout.write(JSON.stringify({ ok: false, error: 'No API key provided.' }));
+    process.stdout.write(JSON.stringify({ ok: false, error: 'No API key provided on stdin (usage: save-api-key.js - [base-url]).' }));
     process.exit(1);
   }
 
@@ -38,10 +43,11 @@ const { resolveConfig, saveApiKey, USER_CONFIG_PATH } = require(path.join(LIB, '
   const workspaceSlug = config.anythingllm?.workspaceSlug || 'claude-code';
   const workspaceName = config.anythingllm?.workspaceName || 'Claude Code';
 
-  const savedPath = saveApiKey(apiKey);
+  const save = () => saveApiKey(apiKey, baseUrlArg ? { baseUrl: baseUrlArg } : {});
 
   const health = await http.checkHealth(baseUrl);
   if (!health.online) {
+    const savedPath = save(); // cannot verify while the app is down — keep the key for the next start
     const install = lifecycle.detectInstallation();
     process.stdout.write(JSON.stringify({
       ok: true,
@@ -57,15 +63,26 @@ const { resolveConfig, saveApiKey, USER_CONFIG_PATH } = require(path.join(LIB, '
 
   const auth = await http.verifyAuth(baseUrl, apiKey);
   if (!auth.valid) {
+    if (auth.errorType !== 'auth_failed') {
+      const savedPath = save(); // network problem, not a verdict on the key
+      process.stdout.write(JSON.stringify({
+        ok: true, saved: savedPath, verified: false, phase: 'network_blocked',
+        hint: `Key saved, but it could not be verified: ${auth.error || auth.errorType}.`,
+      }));
+      return;
+    }
+    // rejected key: leave the stored (possibly working) key untouched
     process.stdout.write(JSON.stringify({
       ok: true,
-      saved: savedPath,
+      saved: null,
       verified: false,
-      phase: auth.errorType === 'auth_failed' ? 'auth_failed' : 'network_blocked',
-      hint: `Key saved but AnythingLLM rejected it: ${auth.error || auth.errorType}. Re-run setup with a valid key.`,
+      phase: 'auth_failed',
+      hint: `AnythingLLM rejected the key (nothing saved, the stored key is unchanged): ${auth.error || auth.errorType}. Re-run setup with a valid key.`,
     }));
     return;
   }
+
+  const savedPath = save();
 
   const ws = await http.getWorkspaces(baseUrl, apiKey);
   let workspaceReady = false;

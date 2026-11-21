@@ -46,17 +46,19 @@ Otherwise, treat the user's message as the API key. **Do not echo the key back i
 
 ## Step 3 — Save and verify
 
-Run the save-and-verify script, passing the key via argv:
+Run the save-and-verify script, passing the key on stdin through a quoted heredoc (no shell expansion, key stays off the command line and the process list):
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/save-api-key.js" "<paste-the-key-here>"
+node "${CLAUDE_PLUGIN_ROOT}/scripts/save-api-key.js" - <<'KEY'
+<paste-the-key-here>
+KEY
 ```
 
 The script writes to `~/.claude/local-llm/config.json` and probes AnythingLLM. It prints a single-line JSON result to stdout with these shapes:
 
 - `{ok:true, verified:true, phase:"ready", workspace:"claude-code"}` — green path.
 - `{ok:true, verified:true, phase:"configuring"}` — key valid, workspace creation pending.
-- `{ok:true, verified:false, phase:"auth_failed"}` — key saved but rejected; ask the user to check the key.
+- `{ok:true, verified:false, phase:"auth_failed"}` — key rejected and NOT saved (the stored key stays); ask the user to check the key.
 - `{ok:true, verified:false, phase:"not_running"}` — key saved; AnythingLLM is installed but not running.
 - `{ok:true, verified:false, phase:"not_installed"}` — key saved; AnythingLLM must be installed first.
 
