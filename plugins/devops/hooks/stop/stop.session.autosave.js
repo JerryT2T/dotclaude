@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook stop.session.autosave
- * @version 0.3.0
+ * @version 0.4.0
  * @event Stop
  * @plugin devops
  * @description Safety net for session worktrees: a turn that ends with
@@ -22,6 +22,12 @@
  *   finished." when this turn's last completion card was ship-successful or
  *   released and the save finished in time; otherwise silent. Never blocks,
  *   never fails the stop.
+ *
+ *   Concept close-out (#1163): when .claude/concept-active.json points at a
+ *   page sitting at its unfinalized final report that is not in main
+ *   (lib/concept-unlanded.js), one more line asks for finalize (and push or
+ *   ship for unpushed commits) — on every stop that did not ship, also when
+ *   the autosave is off, throttled or still running. No automatic push.
  */
 
 require('../lib/plugin-guard');
@@ -71,7 +77,7 @@ function spawnWorker(payload) {
  * @param {object} hook
  * @param {{waitMs?:number, delayMs?:number, spawn?:Function}} [opts] test seams
  */
-async function main(hook, opts = {}) {
+async function autosaveMain(hook, opts = {}) {
   if (hook.agent_id) return null;
   const cwd = hook.cwd || process.cwd();
   // A session worktree is the only place the save acts; skip the worker start elsewhere.
@@ -109,7 +115,33 @@ async function main(hook, opts = {}) {
   return JSON.stringify({ systemMessage: RUNNING[lang] || RUNNING.en });
 }
 
-module.exports = { main, lastCardVariant, RUNNING, FINISHED, DECIDE };
+/** The concept close-out ask for this stop, or null (silent when the turn shipped). */
+function conceptAsk(hook, opts = {}) {
+  try {
+    const cu = require('../lib/concept-unlanded');
+    const info = cu.detect(hook.cwd || process.cwd(), opts.conceptIo);
+    if (!info || SHIP_CARDS.has(lastCardVariant(hook.transcript_path))) return null;
+    let lang = 'de';
+    try { lang = require('../lib/locale').getLocale(hook.session_id); } catch { /* default */ }
+    return cu.message(info, lang);
+  } catch { return null; }
+}
+
+/**
+ * @param {object} hook
+ * @param {{waitMs?:number, delayMs?:number, spawn?:Function, conceptIo?:object}} [opts] test seams
+ */
+async function main(hook, opts = {}) {
+  const out = await autosaveMain(hook, opts);
+  if (hook.agent_id) return out;
+  const ask = conceptAsk(hook, opts);
+  if (!ask) return out;
+  let msg = '';
+  try { msg = (out && JSON.parse(out).systemMessage) || ''; } catch { /* keep only the ask */ }
+  return JSON.stringify({ systemMessage: msg ? `${msg}\n${ask}` : ask });
+}
+
+module.exports = { main, conceptAsk, lastCardVariant, RUNNING, FINISHED, DECIDE };
 
 if (require.main === module) {
   let raw = '';

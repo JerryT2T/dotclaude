@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @script orphan-scan
- * @version 0.1.0
+ * @version 0.2.0
  * @plugin devops
  * @description Machine-wide orphan scan. Post-ship hygiene only looks at the
  *   repo that was just shipped; this scans EVERY git repo under a root and
@@ -15,6 +15,9 @@
  *              Every entry also carries `live` (a Claude session uses that
  *              worktree, transcript based) and `idleDays` (days since the last
  *              commit or file change).
+ *              A branch (no PR) whose own commits add a docs/concepts/ page is
+ *              tagged kind:'concept' with conceptDate/conceptFile (#1163): the
+ *              start nudge says "Concept-Bericht vom <date> nie gelandet".
  *   parked   = deliberately set-aside unlanded branches (park-register.js);
  *              older than 30 days they carry a nudge
  *   landedLeftovers = landed branches/worktrees hygiene may remove
@@ -155,11 +158,15 @@ async function scanOne(repo, opts = {}) {
     scan, cls,
     entry: {
       path: repo,
-      atRisk: cls.atRisk.map((r) => ({
-        kind: r.kind, branch: r.branch || null, path: r.path || null, commits: r.commits,
+      atRisk: cls.atRisk.map((r) => {
+        const concept = r.branch && r.state !== 'landed' ? conceptPageOf(repo, r.branch, scan.defaultBranch) : null;
+        return {
+        kind: concept ? 'concept' : r.kind, branch: r.branch || null, path: r.path || null, commits: r.commits,
         state: r.state, filesIn: r.filesIn, filesTotal: r.filesTotal, pushed: r.pushed, dirty: r.dirty,
         live: r.live === true, idleDays: typeof r.idleDays === 'number' ? r.idleDays : null,
-      })),
+        ...(concept ? { conceptDate: concept.date, conceptFile: concept.file } : {}),
+        };
+      }),
       parked,
       stashes: parkRegister.listStashes(repo, now).length,
       landedLeftovers: cls.removable.length,
@@ -169,6 +176,21 @@ async function scanOne(repo, opts = {}) {
       offline: cls.merged === null,
     },
   };
+}
+
+/**
+ * The concept page a branch adds on top of the default branch (docs/concepts/*.html), or null.
+ * Added pages only: a branch that merely edits a landed page is no unlanded report.
+ * One bounded local git call; no PR lookup needed — atRisk already excludes branches with an open PR.
+ */
+function conceptPageOf(repo, branch, defaultBranch) {
+  if (!branch || !defaultBranch) return null;
+  const base = gitOut(['rev-parse', '--verify', '-q', `refs/remotes/origin/${defaultBranch}`], repo) ? `origin/${defaultBranch}` : defaultBranch;
+  const out = gitOut(['diff', '--name-only', '--diff-filter=A', `${base}...${branch}`, '--', 'docs/concepts/'], repo);
+  const file = (out || '').split('\n').map((l) => l.trim()).find((l) => /\.html$/i.test(l));
+  if (!file) return null;
+  const m = /(\d{4})-(\d{2})-(\d{2})/.exec(path.basename(file));
+  return { file, date: m ? `${m[1]}-${m[2]}-${m[3]}` : '' };
 }
 
 /** devops-config `cleanup` defaults for the age/count rule (hooks/lib/devops-config.js is the source). */
@@ -313,4 +335,4 @@ if (require.main === module) {
   main(process.argv.slice(2)).then((c) => process.exit(c), () => process.exit(0));
 }
 
-module.exports = { cleanupRule, isProtectedBranch, findRepos, mainCheckoutOf, scanOne, cleanLanded, parseArgs, defaultReportPath };
+module.exports = { conceptPageOf, cleanupRule, isProtectedBranch, findRepos, mainCheckoutOf, scanOne, cleanLanded, parseArgs, defaultReportPath };

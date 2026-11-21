@@ -427,7 +427,7 @@ items are processed.
 
 ### 6a. Clean up the active-concept state — Cleanup-By-Disposition
 
-Before the card: stop the bridge, the pulser and the waker, remove the state
+Before the card — and before any file move or state-file removal — send the finish signal with the one command `node {PLUGIN_ROOT}/scripts/concept-open.js close --state <state file> --finished '<json>'` (`step6-closeout.md`; it also shuts the bridge down): without it the tab stays on "Wird abgearbeitet". Then stop the bridge, the pulser and the waker, remove the state
 file, and dispose of the on-disk artefacts per the user's disposition. Nothing
 of the concept may still run when the card renders.
 

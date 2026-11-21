@@ -318,6 +318,13 @@ the data its short analysis shows — commit log, diff by file, age, PR status,
 squash cross-check, WIP heuristic and a one-line recommendation. Commands and
 recommendation rules: `deep-knowledge/investigation.md`.
 
+Every ambiguous branch also gets the **content triage** before any question
+(`investigation.md` § Content triage, #1162): its intention, whether main
+already does it by content, what main rebuilt since the branch date, the
+merge-tree conflicts — and one verdict (`LANDED` / `SUPERSEDED` / `MERGE` /
+`REIMPLEMENT` / `ASK`). A `LANDED` verdict with the landed proof moves the
+item to the autonomous class (8a); everything else stays ambiguous.
+
 ## Step 8 — Autonomous removal, then ONE concept page
 
 **8a — Remove the autonomous class** (Steps 1–6 produced it). No page, no
@@ -335,7 +342,8 @@ lists them all.
 Step 11. Otherwise invoke `Skill("devops:auto-concept")` once, with the repo
 context and the items; read `deep-knowledge/page-structure.md` first for the
 shape (one topic per branch: a short analysis, the facts, a recommendation and
-the decision options). Never a second page per group, never a repo-health
+the decision options `Integrieren` / `Neu umsetzen` / `Entfernen` / `Behalten`,
+the verdict's option recommended). Never a second page per group, never a repo-health
 dashboard, never an Apply-Manifest. Open PRs are ambiguous items too
 (`deep-knowledge/open-prs.md`; decision `Shippen` / `Behalten`).
 
@@ -348,8 +356,10 @@ rules and heartbeat); do not build a bridge here.
 
 When the page is submitted (`deep-knowledge/decision-schema.md`):
 
-1. **Read the decisions.** Only items decided "Entfernen" / "Shippen" act;
-   "Behalten" and anything undecided is a no-op.
+1. **Read the decisions.** Only items decided "Entfernen" / "Shippen" /
+   "Integrieren" / "Neu umsetzen" act; "Behalten" and anything undecided is a
+   no-op. "Integrieren" ships the branch through the ship queue, "Neu umsetzen"
+   files a follow-up issue and keeps the branch (`execution.md` Step 10b).
 2. **Re-check worktree branches** — `git worktree list --porcelain` again,
    rebuild the protected set. NEVER trust cached data for deletion.
 3. **Validate** every branch to delete: protected → skip with a warning;

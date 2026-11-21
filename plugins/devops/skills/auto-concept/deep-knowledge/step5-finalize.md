@@ -250,23 +250,15 @@ asks to close out a concept that is closed a minute later. Details:
    `{PLUGIN_ROOT}/deep-knowledge/completion-card-design.md` § 4), `links` the real URLs,
    `left` the 🧪/👉 items of mode `self`:
    ```bash
-   curl -s -X POST -H "Content-Type: application/json" \
-     -d '{"action":"finalize:done","step":"closed","status":"done","artifacts":{"pr":<N|null>,"version":"<vX.Y.Z|null>"}}' \
-     http://localhost:$PORT/progress
-   curl -s -X POST -H "Content-Type: application/json" \
-     -d '{"phase":"closed","finished":{"state":"shipped","sub":"v0.360.0 auf Alpha, Concept abgeschlossen.","misses":[],"links":[{"label":"PR #1060","href":"https://github.com/o/r/pull/1060"}],"next":["Nach Beta heben"],"left":[]}}' \
-     http://localhost:$PORT/status
+   node {PLUGIN_ROOT}/scripts/concept-open.js close --state "$STATE" --version <vX.Y.Z> --pr <N>      --finished '{"state":"shipped","sub":"v0.360.0 auf Alpha, Concept abgeschlossen.","misses":[],"links":[{"label":"PR #1060","href":"https://github.com/o/r/pull/1060"}],"next":["Nach Beta heben"],"left":[]}'
    ```
-   The `/status` answer must echo `"phase": "closed"`; anything else (a 400, an empty
-   phase) means the page did not get its done state and stays armed — fix the body
-   and post again before the shutdown, or the user's next click there reads "keine
-   Antwort mehr". Then wait for the tab, because a hidden one polls only once a minute: a tab that
-   has the result answers `/closed-ack`. No tab open (`browser_tabs` 0 on `/pending`)
-   → skip the wait. The user pays at most a minute on the card, and without this
-   wait the last thing they see is a frozen spinner:
-   ```bash
-   for i in $(seq 1 13); do curl -s http://localhost:$PORT/closed-ack | grep -q true && break; sleep 5; done
-   ```
+   One command sends the `finalize:done` checkpoint and the `/status` closed phase,
+   waits (bounded, 20 s, skipped without an open tab) for the tab's `/closed-ack`
+   and stops the bridge (`step6-closeout.md` § cleanup). It exits 1 when `/status`
+   does not echo `"phase": "closed"` — fix the body and run it again; the page
+   would otherwise stay on the spinner (#1175). Run it BEFORE any file move or
+   state-file removal. The bridge also derives the closed phase from a
+   `finalize:done` checkpoint itself, as a fallback only.
    Keep / gitignore: also stamp `data-finished='{…the same JSON…}'` next to
    `data-closed`, so a reload shows the same page.
 

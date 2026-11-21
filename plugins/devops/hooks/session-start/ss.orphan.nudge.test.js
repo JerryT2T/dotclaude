@@ -18,6 +18,14 @@ describe("ss.orphan.nudge", () => {
       .toBe('⚠ Here: 3 branches not merged into main / 2 worktrees with uncommitted work (as of 6 h ago) → "branch cleanup"');
   });
 
+  test("concept branch gets its own labelled point with the date, not only a count (#1163)", () => {
+    const r = [{ path: "C:/r/app", atRisk: [{ kind: "concept", branch: "docs/p", dirty: 0, conceptDate: "2026-11-15" }, risk()] }];
+    expect(buildNudge({ cwd: "C:/r/app", report: report(r), now: NOW }))
+      .toBe("⚠ Hier: Concept-Bericht vom 15.11. nie gelandet → abschließen? / 1 Branch nicht in main gemergt (Stand vor 6 h) → „Branches aufräumen“");
+    expect(buildNudge({ cwd: "C:/r/app", lang: "en", report: report([{ path: "C:/r/app", atRisk: [r[0].atRisk[0]] }]), now: NOW }))
+      .toContain("concept report of 15.11. never landed → finalize?");
+  });
+
   test("names the report age; minutes below one hour", () => {
     expect(buildNudge({ cwd: "C:/r/app", report: report(repos, "2026-10-19T11:15:00Z"), now: NOW })).toContain("(Stand vor 45 min)");
     expect(buildNudge({ cwd: "C:/r/app", lang: "en", report: report(repos, "2026-10-19T09:00:00Z"), now: NOW })).toContain("(as of 3 h ago)");

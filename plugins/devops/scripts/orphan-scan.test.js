@@ -328,6 +328,17 @@ describe("orphan-scan", () => {
     expect(agentsGone).toHaveLength(1);
   });
 
+  test("a branch adding a docs/concepts page is tagged kind concept with its date (#1163)", async () => {
+    const root = mkRoot();
+    const r = repoIn(root, "app");
+    fs.mkdirSync(path.join(r, "docs", "concepts"), { recursive: true });
+    commitOn(r, "docs/posthog", "docs/concepts/2026-11-15-posthog-audit.html", "<section data-final-report></section>");
+    commitOn(r, "feat/plain", "p.txt", "p\n");
+    const { entry } = await scanOne(r, opts);
+    expect(entry.atRisk.find((a) => a.branch === "docs/posthog")).toMatchObject({ kind: "concept", conceptDate: "2026-11-15", conceptFile: "docs/concepts/2026-11-15-posthog-audit.html" });
+    expect(entry.atRisk.find((a) => a.branch === "feat/plain").kind).toBe("branch");
+  });
+
   test("parseArgs", () => {
     expect(parseArgs(["--clean-landed", "--repo", "x", "--apply", "--no-fetch"])).toMatchObject({ cleanLanded: true, apply: true, repo: "x", fetch: false });
   });

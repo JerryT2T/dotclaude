@@ -287,7 +287,11 @@ function showFinished(raw) {
   const h = closeoutEl('h1', 'fin-h', String(f.headline || copy.h));
   h.tabIndex = -1;
   inner.appendChild(h);
-  const line = String(f.sub || f.reason || copy.s || '');
+  // Never a bare heading: say what landed and what comes next (#1175).
+  const landed = [f.version, f.pr ? 'PR #' + f.pr : ''].filter(Boolean).join(' · ');
+  const fallback = state === 'shipped' && landed ? '{{final.fin_shipped_sub}} ' + landed
+    : (state === 'closed' ? '{{final.fin_closed_sub}}' : '');
+  const line = String(f.sub || f.reason || copy.s || fallback);
   if (line) inner.appendChild(closeoutEl('p', 'fin-s', line));
   const texts = (v) => (Array.isArray(v) ? v.filter(x => typeof x === 'string' && x) : []);
   const misses = texts(f.misses);
@@ -328,7 +332,7 @@ function showFinished(raw) {
     });
     inner.appendChild(back);
   } else {
-    inner.appendChild(closeoutEl('p', 'fin-n', (next.length || left.length) ? '{{final.fin_tab}}' : '{{final.fin_nothing}}'));
+    inner.appendChild(closeoutEl('p', 'fin-n', (next.length || left.length) ? '{{final.fin_tab}}' : (state === 'closed' && !f.sub ? '{{final.fin_tab}}' : '{{final.fin_nothing}}')));
   }
   root.appendChild(inner);
   document.body.appendChild(root);
@@ -367,6 +371,9 @@ function watchFinalizeLost() {
   if (_finLostTicks >= 4 || now - _finLostSince >= FIN_LOST_MS) showFinished({ state: 'lost' });
 }
 document.addEventListener('visibilitychange', () => { if (!document.hidden) watchFinalizeLost(); });
+// After a finalize submit the done phase should land within seconds, not on the 5 s
+// cadence (a hidden tab is also polled by the heartbeat worker, #1175).
+setInterval(() => { if (finalizeInFlight() && typeof pollProcessedState === 'function') pollProcessedState(); }, 2000);
 
 // No "Runden ansehen" link on the sheet: earlier rounds are one click away
 // through the panel head's 🕘 rounds chip.

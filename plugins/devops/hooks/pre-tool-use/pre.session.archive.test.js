@@ -98,3 +98,31 @@ describe("pre.session.archive — the user's refusal", () => {
     expect(r.stderr).toMatch(/not released/);
   });
 });
+
+describe("#1165: an api-request blob after the prompt does not hide it", () => {
+  function runWithBlob(sid, prompt) {
+    const tmp = path.join(dir, ".tmp");
+    const transcript = path.join(dir, "t.jsonl");
+    const blob = JSON.stringify({ type: "api-request-blob", data: "x".repeat(210 * 1024) });
+    const lines = [
+      JSON.stringify({ type: "user", message: { role: "user", content: prompt } }),
+      blob,
+      JSON.stringify({ type: "assistant", message: { role: "assistant", content: [{ type: "text", text: "ok" }] } }),
+    ];
+    fs.writeFileSync(transcript, lines.join("\n") + "\n");
+    return spawnSync(process.execPath, [PRE], {
+      cwd: dir,
+      input: JSON.stringify({ tool_name: ARCHIVE, tool_input: { session_id: "self" }, session_id: sid, cwd: dir, transcript_path: transcript }),
+      encoding: "utf8",
+      env: { ...process.env, TMPDIR: tmp, TEMP: tmp, TMP: tmp },
+    });
+  }
+  test("the request still archives", () => {
+    expect(runWithBlob("s-blob-1", "Archiviere diese Session.").status).toBe(0);
+  });
+  test("the refusal still blocks", () => {
+    const r = runWithBlob("s-blob-2", "Bitte nicht archivieren.");
+    expect(r.status).toBe(2);
+    expect(r.stderr).toMatch(/says not to archive/);
+  });
+});

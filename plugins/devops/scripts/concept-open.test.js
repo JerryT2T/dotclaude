@@ -7,7 +7,7 @@ import { createRequire } from "node:module";
 import { spawn } from "node:child_process";
 
 const require = createRequire(import.meta.url);
-const { prepare, verify, buildLaunch } = require("./concept-open.js");
+const { prepare, verify, close, buildLaunch } = require("./concept-open.js");
 
 const HTML = "docs/concepts/2026-01-01-demo.html";
 let tmp;
@@ -250,5 +250,78 @@ describe("docs name one owner of the open", () => {
   test("step3-open-browser.md and SKILL.md say verify opens Edge itself", () => {
     expect(read("skills/auto-concept/deep-knowledge/step3-open-browser.md")).toMatch(/Fast path → no manual open \(#1030\)/);
     expect(read("skills/auto-concept/SKILL.md")).toMatch(/Exactly one open \(#1030\)/);
+  });
+});
+
+describe("close (#1175)", () => {
+  function fakeBridge({ echoClosed = true } = {}) {
+    const calls = [];
+    const srv = http.createServer((rq, rs) => {
+      let b = "";
+      rq.on("data", (c) => { b += c; });
+      rq.on("end", () => {
+        calls.push(`${rq.method} ${rq.url}${b ? " " + b : ""}`);
+        rs.setHeader("Content-Type", "application/json");
+        if (rq.url === "/pending") rs.end(JSON.stringify({ browser_tabs: 1 }));
+        else if (rq.url === "/closed-ack") rs.end(JSON.stringify({ ack: calls.filter((c) => c.startsWith("GET /closed-ack")).length > 1 }));
+        else if (rq.url === "/status") rs.end(JSON.stringify({ ok: true, phase: echoClosed ? "closed" : "" }));
+        else rs.end(JSON.stringify({ ok: true }));
+      });
+    });
+    return new Promise((res) => srv.listen(0, "127.0.0.1", () => res({ srv, calls, port: srv.address().port })));
+  }
+
+  test("sends reset, finalize:done, closed status, waits for the ack, then shuts down", async () => {
+    const { srv, calls, port } = await fakeBridge();
+    try {
+      const r = await close({ port: String(port), finished: '{"state":"shipped","sub":"v1"}', version: "v1.0.0", pr: "7" }, { sleep: () => Promise.resolve() });
+      expect(r).toMatchObject({ ok: true, acked: true, shutdown: true });
+      const order = calls.map((c) => c.split(" ").slice(0, 2).join(" "));
+      expect(order.indexOf("POST /reset")).toBeLessThan(order.indexOf("POST /progress"));
+      expect(order.indexOf("POST /progress")).toBeLessThan(order.indexOf("POST /status"));
+      expect(order.indexOf("GET /closed-ack")).toBeLessThan(order.indexOf("POST /shutdown"));
+      expect(calls.find((c) => c.startsWith("POST /progress"))).toContain('"action":"finalize:done"');
+      expect(calls.find((c) => c.startsWith("POST /status"))).toContain('"phase":"closed"');
+    } finally { srv.close(); }
+  });
+
+  test("fails loudly - and does not shut down - when /status does not echo closed", async () => {
+    const { srv, calls, port } = await fakeBridge({ echoClosed: false });
+    try {
+      const r = await close({ port: String(port) }, { sleep: () => Promise.resolve() });
+      expect(r.ok).toBe(false);
+      expect(r.error).toMatch(/did not echo/);
+      expect(calls.some((c) => c.includes("/shutdown"))).toBe(false);
+    } finally { srv.close(); }
+  });
+
+  test("--version / --pr reach the page's finished result (the 'Gelandet:' line)", async () => {
+    const { srv, calls, port } = await fakeBridge();
+    try {
+      await close({ port: String(port), finished: '{"state":"shipped"}', version: "v1.0.0", pr: "7" }, { sleep: () => Promise.resolve() });
+      const status = JSON.parse(calls.find((c) => c.startsWith("POST /status")).replace(/^POST \/status /, ""));
+      expect(status.finished).toMatchObject({ state: "shipped", version: "v1.0.0", pr: 7 });
+    } finally { srv.close(); }
+  });
+
+  test("the CLI runs close (the command the skill docs name)", async () => {
+    const { srv, calls, port } = await fakeBridge();
+    try {
+      const script = path.join(import.meta.dirname, "concept-open.js");
+      const out = await new Promise((res) => {
+        const ch = spawn(process.execPath, [script, "close", "--port", String(port), "--ack-wait-s", "1"]);
+        let s = "";
+        ch.stdout.on("data", (d) => { s += d; });
+        ch.on("close", (code) => res({ code, s }));
+      });
+      expect(out.code).toBe(0);
+      expect(JSON.parse(out.s)).toMatchObject({ ok: true, shutdown: true });
+      expect(calls.some((c) => c.startsWith("POST /status"))).toBe(true);
+    } finally { srv.close(); }
+  });
+
+  test("rejects invalid --finished JSON and a missing port", async () => {
+    expect((await close({ port: "1", finished: "{nope" })).error).toMatch(/not valid JSON/);
+    expect((await close({})).error).toMatch(/needs --state/);
   });
 });

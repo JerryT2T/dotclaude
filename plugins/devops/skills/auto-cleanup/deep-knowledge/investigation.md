@@ -87,6 +87,46 @@ Apply rules in order, first match wins:
 Always attach a 1-2 sentence rationale referencing the concrete evidence
 (commit count, file count, dates, PR number).
 
+## Content triage — every ambiguous branch (#1162)
+
+Not being an ancestor of main does not prove a branch did not land:
+squash-merged sub-branches and autosave snapshots usually landed by content,
+and the rest is work that got lost. So before any question, every ambiguous
+branch (or feature group: branches sharing a prefix such as `kw/*`, one
+intention split across agents) gets a content triage. Read-only commands only.
+
+1. **Intention** — one sentence from the commit subjects and the diff:
+   `git log --format='%s' origin/main..<branch>` + `git diff --stat origin/main...<branch>`.
+2. **Landed by content?** — `git cherry origin/main <branch>` (only `-` lines =
+   patch-equal); for squash merges grep the current files for the branch's
+   distinctive added lines / identifiers (`git grep -F -e '<line>' origin/main`),
+   and look for a later PR that names the same intention
+   (`gh pr list --state merged --search '<keyword>'`).
+3. **Main moved on?** — the branch date (`git log -1 --format=%cs <branch>`)
+   against main's churn in the same paths since then:
+   `git log --oneline --since=<date> origin/main -- <paths the branch touches>`.
+4. **Merge distance** — `git merge-tree --write-tree origin/main <branch>`
+   (exit 1 = conflicts; list the conflicted paths).
+
+Verdict, first match wins:
+
+| Verdict | When | Page |
+|---|---|---|
+| `LANDED` | step 2 proves every change is in main (patch-equal, or every distinctive line present) | autonomous class (Step 8a) — the proof is the gate's landed proof; no page |
+| `SUPERSEDED` | main rebuilt the same area since the branch date (step 3) and the intention is visibly done another way | page, `Entfernen` recommended, the superseding commit/PR named as evidence |
+| `MERGE` | not in main, no or small conflicts (step 4), main has not rebuilt the area | page, `Integrieren` recommended |
+| `REIMPLEMENT` | not in main, but heavy conflicts or main rebuilt the area — the idea still counts, the code does not | page, `Neu umsetzen` recommended, with a 2–3 line spec on current main |
+| `ASK` | the evidence cannot tell whether the intention is still wanted | page, `Behalten` recommended, the question asked as content |
+
+`SUPERSEDED` stays a decision, never autonomous: "main does it another way" is
+a judgement, not the gate's landed proof, and the branch still holds unmerged
+commits.
+
+An `ASK` is a content question with its time context, never a storage
+question — e.g. "Am 10.11. wurde die Kamera-Welt für /verse begonnen; seitdem
+hat main den Renderer umgebaut — soll das noch kommen?", never "lokal oder
+remote löschen?".
+
 ## Aktive Session (Worktree) — Data Gathering
 
 For each Aktive Session, gather:

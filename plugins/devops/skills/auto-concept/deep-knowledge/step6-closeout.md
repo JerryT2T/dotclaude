@@ -21,12 +21,21 @@ the implement step. Persisting the HTML in git by default accumulates
 silt in `docs/concepts/`. Power users opt in to `keep` or `gitignore`
 in the sheet's files block.
 
-**Cleanup procedure (always):** after a `finalize`, the `finalize:done`
-checkpoint and `/status {"phase":"closed"}` from `step5-finalize.md` § D went
-out first (#932) — the page shows its done state before the bridge stops.
+**Cleanup procedure (always):** the finish signal goes out FIRST, before any
+file move, store copy or state-file removal (#1175) — one command does the whole
+`/reset` → `/progress finalize:done` → `/status closed` + `finished` → wait for
+`/closed-ack` (20 s) → `/shutdown` sequence and exits 1, printing the reason, when
+`/status` does not echo `closed`:
 
 ```bash
-curl -s -X POST http://localhost:$PORT/shutdown > /dev/null 2>&1 || true
+node {PLUGIN_ROOT}/scripts/concept-open.js close --state "$STATE"   --finished '{"state":"shipped","sub":"v0.360.0 auf Alpha, Concept abgeschlossen.","links":[{"label":"PR #1060","href":"https://github.com/o/r/pull/1060"}],"next":["Nach Beta heben"],"left":[]}'   --version v0.360.0 --pr 1060
+```
+
+`finished` is the result of `step5-finalize.md` § D (state `shipped` only after a
+merged release). A failed `close` is fixed and re-run, never skipped: a skipped one
+leaves the tab on "Wird abgearbeitet". Only then remove your state file (#417):
+
+```bash
 # Only YOUR state file (#417): a sibling session may have written its own
 # since — compare the owner token before deleting.
 node -e "const f='.claude/concept-active.json',fs=require('fs');try{const s=JSON.parse(fs.readFileSync(f,'utf8'));if(!s.owner||s.owner===process.argv[1])fs.unlinkSync(f)}catch{}" "$OWNER"

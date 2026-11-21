@@ -17,6 +17,8 @@ import {
   fableFromLive,
   cleanupApplyPrompt,
   cleanupPlanPrompt,
+  planComplete,
+  planSummary,
   cleanupView,
   compactAdvised,
   compactThreshold,
@@ -275,7 +277,8 @@ test('cleanup button: one press = one read-only opus plan subagent; its answer l
   // While the plan runs the button is a dim text: a second press cannot start another run.
   const busy = await $.ui.mount({ ...BAND, surface: 'desktop' })
   expect(await busy.find({ key: 'cleanup' })).toBeUndefined()
-  expect((await busy.find({ type: 'Text', text: /planning/ }))?.text).toBe('[ Clean up · planning… ]')
+  expect((await busy.find({ type: 'Text', text: /^\[ Clean up/ }))?.text).toBe('[ Clean up · planning… ]')
+  expect(await busy.find({ type: 'Text', text: /planning the cleanup/ })).toBeDefined() // #1161: the band's run row
   await busy.unmount()
   expect(spawns.length).toBe(1)
   expect(spawns[0].model).toBe('opus')
@@ -291,6 +294,104 @@ test('cleanup button: one press = one read-only opus plan subagent; its answer l
   await pane.unmount()
   expect(spawns.length).toBe(2)
   expect(spawns[1].prompt).toMatch(/APPROVED PLAN:\n## Plan\n1\. git worktree remove/)
+})
+
+test('#1161: the cleanup flow stays in the band — no pane opens on its own; status, summary, plan and Apply live in the band row', async ($, on) => {
+  const { seen } = engine(on, {
+    files: { '/.claude/orphan-report.json': ORPHAN_REPORT },
+    agents: [
+      { id: 'c1', description: 'Branch cleanup plan', type: 'general-purpose', status: 'running' },
+      { id: 'c2', description: 'Branch cleanup apply', type: 'general-purpose', status: 'running' },
+    ],
+  })
+  const spawns: string[] = []
+  on('agent.spawn', (_: unknown, e: { prompt: string }) => {
+    spawns.push(e.prompt)
+    return { model: 'claude-opus', agentId: `c${spawns.length}` }
+  })
+  on('session.root', () => ({ value: 'P:/Projects/demo' }))
+  on('turn.complete', (_: unknown, e: { answer: string }) => ({ text: e.answer }))
+  await $.session.start({ cwd: 'P:/Projects/demo', surface: 'desktop', isInteractive: true })
+  const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  await band.press({ key: 'cleanup-fold' })
+  await band.press({ key: 'cleanup' })
+  await band.unmount()
+  const busy = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await busy.find({ type: 'Text', text: /planning the cleanup/ })).toBeDefined()
+  expect(await busy.find({ key: 'cleanup-apply' })).toBeUndefined()
+  await busy.unmount()
+  const planText = '## Plan\n1. git branch -d old (landed)\n2. git worktree remove P:/x (landed, clean)\n\n## Braucht deine Entscheidung\n- feat: 3 unmerged commits'
+  await $.turn.complete({ answer: planText, durationMs: 1000, isAborted: false, turnId: 't1', agentId: 'c1', reason: 'end' } as any)
+  expect(seen.toasts.at(-1)).toMatch(/review it in the band/)
+  const ready = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await ready.find({ type: 'Text', text: '2 actions · 1 need your decision' })).toBeDefined()
+  expect(await ready.find({ key: 'cleanup-run-report' })).toBeUndefined() // folded until Details
+  await ready.press({ key: 'cleanup-details' })
+  await ready.unmount()
+  const open = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect((await open.find({ key: 'cleanup-run-report' }))?.props.text).toBe(planText)
+  await open.press({ key: 'cleanup-apply' })
+  await open.unmount()
+  expect(spawns.length).toBe(2)
+  expect(spawns[1]).toMatch(/APPROVED PLAN:\n## Plan\n1\. git branch -d old/)
+  await $.turn.complete({ answer: '✓ 1\n✓ 2', durationMs: 1000, isAborted: false, turnId: 't2', agentId: 'c2', reason: 'end' } as any)
+  expect(seen.opened).not.toContain('devops-cleanup') // never opened by the flow itself
+  const done = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await done.find({ type: 'Text', text: 'Cleanup applied.' })).toBeDefined()
+  await done.press({ key: 'cleanup-expand' }) // the explicit expand is the one way into the pane
+  expect(seen.opened).toContain('devops-cleanup')
+  await done.press({ key: 'cleanup-discard' })
+  await done.unmount()
+  const after = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await after.find({ key: 'cleanup-run-row' })).toBeUndefined()
+  await after.unmount()
+})
+
+test('#1161: planSummary counts numbered plan actions and listed decision items only', () => {
+  expect(planSummary('## Plan\n1. a\n2) b\nprose\n## Braucht deine Entscheidung\n- x\n* y\n1. z')).toEqual({ actions: 2, decisions: 3 })
+  expect(planSummary('## Plan\nNichts ist sicher zu entfernen.')).toEqual({ actions: 0, decisions: 0 })
+  expect(planSummary('')).toEqual({ actions: 0, decisions: 0 })
+})
+
+test('#1160: a plan run that ends on an interim waiting line fails as "plan incomplete" and offers no Apply', async ($, on) => {
+  const { seen } = engine(on, {
+    files: { '/.claude/orphan-report.json': ORPHAN_REPORT },
+    agents: [{ id: 'c1', description: 'Branch cleanup plan', type: 'general-purpose', status: 'running' }],
+  })
+  const spawns: string[] = []
+  on('agent.spawn', (_: unknown, e: { prompt: string }) => {
+    spawns.push(e.prompt)
+    return { model: 'claude-opus', agentId: `c${spawns.length}` }
+  })
+  on('session.root', () => ({ value: 'P:/Projects/demo' }))
+  on('turn.complete', (_: unknown, e: { answer: string }) => ({ text: e.answer }))
+  await $.session.start({ cwd: 'P:/Projects/demo', surface: 'desktop', isInteractive: true })
+  const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  await band.press({ key: 'cleanup-fold' })
+  await band.press({ key: 'cleanup' })
+  await band.unmount()
+  const waiting = 'Waiting for the ancestor check to finish.'
+  await $.turn.complete({ answer: waiting, durationMs: 1000, isAborted: false, turnId: 't1', agentId: 'c1', reason: 'end' } as any)
+  expect(seen.toasts.at(-1)).not.toMatch(/plan ready/)
+  const pane = await $.ui.mount({ plugin: 'devops', component: 'Pane', requestId: 'devops-cleanup', props: { isFocused: false, bodyColumns: 60, placement: 'dock', scroll: { offset: 0, bodyRows: 20 }, view: {}, title: 'Cleanup' }, surface: 'desktop' } as any)
+  expect(await pane.find({ key: 'cleanup-apply' })).toBeUndefined()
+  const report = (await pane.find({ type: 'Markdown' }))?.props.text as string
+  expect(report).toMatch(/^Plan incomplete/)
+  expect(report.endsWith(waiting)).toBe(true) // the raw answer stays visible below the notice
+  await pane.unmount()
+  expect(spawns.length).toBe(1) // nothing was applied
+})
+
+test('#1160: planComplete needs the ## Plan heading; the plan brief forbids background commands and interim answers', () => {
+  expect(planComplete('## Plan\n1. git branch -d old')).toBe(true)
+  expect(planComplete('Intro\n\n##  Plan — numbered\n1. x')).toBe(true)
+  expect(planComplete('Waiting for the ancestor check to finish.')).toBe(false)
+  expect(planComplete('The ## Plan follows later')).toBe(false)
+  expect(planComplete('')).toBe(false)
+  const plan = cleanupPlanPrompt('P:/r', 'P:/r/.claude/worktrees/me')
+  expect(plan).toMatch(/never use run_in_background/)
+  expect(plan).toMatch(/never wait for or poll background tasks/)
+  expect(plan).toMatch(/finished plan and nothing else/)
 })
 
 test('hygiene ignores the worktree this session works in; zero counts are left out of the line', async ($, on) => {
@@ -760,7 +861,7 @@ test('B15 locales: one table, en de es fr pt ja zh, chosen by the Claude Code la
   expect(tr('de', 'ctx')).toBe('Kontext')
   expect(tr('en', 'ruleCount', { n: 62, t: 50 })).toBe('Trigger: 62 leftovers, more than 50')
   // Every string exists, non-empty and distinct from the placeholder, in all seven languages.
-  const keys: StrKey[] = ['stActive', 'stInactive', 'stNoHooks', 'stNoMcp', 'echoNarrow1', 'echoNarrow2', 'echoLocal', 'infoHead', 'infoHeadNote', 'infoNarrowed', 'infoShipped', 'infoApi', 'infoGuards', 'infoOwn', 'noteMeasuredSince', 'noteMeasured7', 'noteCounted7', 'infoFoot', 'infoEmpty', 'ctx', 'compact', 'cleanupBtn', 'junk', 'last', 'rowAgent', 'rowCopies', 'rowBranches', 'rowBroken', 'ruleInactive', 'ruleCount', 'working', 'ringAlt', 'stBranch1', 'stBranchN', 'stDirty1', 'stDirtyN', 'stCopy1', 'stCopyN', 'asOf', 'toastPlanned', 'toastDone', 'toastFailed', 'toastLearn', 'permission', 'finishedAfter', 'bgCommand', 'paneIdle', 'panePlanning', 'paneApplying', 'panePlanned', 'paneDone', 'paneFailed', 'btnApply', 'btnDiscard', 'btnClose', 'btnPlan', 'btnReview', 'runPlanning', 'runApplying', 'learnOffer', 'learnBtn', 'runBusy']
+  const keys: StrKey[] = ['stActive', 'stInactive', 'stNoHooks', 'stNoMcp', 'echoNarrow1', 'echoNarrow2', 'echoLocal', 'infoHead', 'infoHeadNote', 'infoNarrowed', 'infoShipped', 'infoApi', 'infoGuards', 'infoOwn', 'noteMeasuredSince', 'noteMeasured7', 'noteCounted7', 'infoFoot', 'infoEmpty', 'ctx', 'compact', 'cleanupBtn', 'junk', 'last', 'rowAgent', 'rowCopies', 'rowBranches', 'rowBroken', 'ruleInactive', 'ruleCount', 'working', 'ringAlt', 'stBranch1', 'stBranchN', 'stDirty1', 'stDirtyN', 'stCopy1', 'stCopyN', 'asOf', 'toastPlanned', 'toastDone', 'toastFailed', 'toastLearn', 'permission', 'finishedAfter', 'bgCommand', 'paneIdle', 'panePlanning', 'paneApplying', 'panePlanned', 'paneDone', 'paneFailed', 'btnApply', 'btnDiscard', 'btnClose', 'btnPlan', 'runPlanning', 'runApplying', 'learnOffer', 'learnBtn', 'runBusy']
   for (const loc of LOCALES) for (const k of keys) expect(tr(loc, k, { n: 1, t: 1, p: 1, h: 1, what: 'x', s: 'x', runs: 2, cause: 'c' })).toMatch(/\S/)
   // No placeholder is left unfilled in any language.
   for (const loc of LOCALES) for (const k of keys) expect(tr(loc, k, { n: 1, t: 1, p: 1, h: 1, what: 'x', s: 'x', runs: 2, cause: 'c' })).not.toMatch(/\{\w+\}/)
@@ -768,6 +869,31 @@ test('B15 locales: one table, en de es fr pt ja zh, chosen by the Claude Code la
   expect(lastLine({ title: 'Offene Popup-Punkte erledigt', at: '14:10' }, 'de')).toBe('Zuletzt: Offene Popup-Punkte erledigt · 14:10')
   expect(lastLine(null, 'de')).toBe('')
   expect(hourglassSvg()).toMatch(/⏳/)
+})
+
+test('#1170: the rail is the small fixed context column; the usage bars sit under the zones; all 4 card buttons are in the card column', async ($, on) => {
+  engine(on, { files: { '/.claude/orphan-report.json': ORPHAN_REPORT } })
+  const four = { ...CARD_DATA, pt: ['Erst testen', 'Dann shippen', 'Web-Guide starten'], bt: [
+    { l: 'Promote beta', i: 'rocket', p: 'promote beta', pr: 1 },
+    { l: 'Promote stable', i: 'rocket', p: 'promote stable' },
+    { l: 'Nachbessern', i: 'pencil', p: 'nachbessern' },
+    { l: 'Web-Guide starten', i: 'globe', p: 'guide' },
+  ] }
+  const result = CARD_RESULT.replace(JSON.stringify(CARD_DATA), JSON.stringify(four))
+  on('tool.call', () => ({ result: {}, text: result }))
+  await $.session.start({ cwd: REPO, surface: 'desktop', isInteractive: true })
+  await $.session.measure(MEASURE as any)
+  await $.tool.call({ tool: CARD_TOOL, summary: 'x' } as any)
+  const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  const rail = await band.find({ key: 'rail' })
+  expect(rail?.props.width).toBe(30) // no 34-cell bars column beside the ring any more (was 66)
+  expect(JSON.stringify(rail)).not.toMatch(/bar-5h/)
+  const main = await band.find({ key: 'main' })
+  for (let i = 0; i < 4; i++) expect(JSON.stringify(main)).toContain(`card-button-${i}`)
+  const zones = JSON.stringify(await band.find({ key: 'zones' }))
+  expect(zones).not.toMatch(/bar-5h/)
+  expect(await band.find({ key: 'budget' })).toBeDefined() // the bars row, under the zones
+  await band.unmount()
 })
 
 test('B1 B3 B4 B5 B7 band with a card: left card part, divider, right rail (ring + Compact), time in the top-right corner; CTA points only', async ($, on) => {
@@ -865,10 +991,34 @@ test('B10 idle band is hidden when nothing is due', async ($, on) => {
   engine(on)
   await $.session.start({ cwd: REPO, surface: 'desktop', isInteractive: true })
   await $.session.measure({ context: { window: 200000, tokens: 20000, percent: 10 }, rateLimits: [], changed: ['context'] } as any)
+  const hint = await $.ui.mount({ ...HINT, surface: 'desktop' }) // the host drew the line under the prompt
+  await hint.unmount()
   const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
   expect(await band.find({ type: 'Text', text: /engine/ })).toBeDefined() // the engine own drawing: the mod stepped aside
   expect(await band.find({ key: 'idle' })).toBeUndefined()
   await band.unmount()
+})
+
+test('#1176: while the host has not drawn the line under the prompt, the band carries "● devops"; the first hint draw drops it and marks the load row', async ($, on) => {
+  const { seen } = engine(on)
+  on('session.id', () => ({ value: 'sid-hint' }))
+  await $.session.start({ cwd: REPO, surface: 'desktop', isInteractive: true })
+  await $.session.measure({ context: { window: 200000, tokens: 20000, percent: 10 }, rateLimits: [], changed: ['context'] } as any)
+  const before = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await before.find({ key: 'devops-hint-fallback' })).toBeDefined()
+  expect(await before.find({ key: 'devops-status' })).toBeDefined()
+  await before.unmount()
+  const term = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect(await term.find({ key: 'devops-hint-fallback' })).toBeUndefined() // the terminal keeps its hint tail
+  await term.unmount()
+  const hint = await $.ui.mount({ ...HINT, surface: 'desktop' })
+  await hint.unmount()
+  await new Promise(r => setTimeout(r, 0))
+  const after = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await after.find({ key: 'devops-hint-fallback' })).toBeUndefined()
+  await after.unmount()
+  const marker = seen.writes.filter(w => /devops-mods-loaded\.json$/.test(w.path.replace(/\\/g, '/'))).at(-1)
+  expect(marker && JSON.parse(marker.text).sessions.find((r: { sid: string }) => r.sid === 'sid-hint')).toMatchObject({ hint: true })
 })
 
 test('B11 cleanup block: one collapsed line + button, expands to the breakdown and the rule, state per session', async ($, on) => {
@@ -1344,7 +1494,7 @@ test('defect 4: bar alt, pane bodies, spawn failure and background labels follow
   const cp = await $.ui.mount({ ...pane('devops-cleanup', 'Aufräumen'), surface: 'desktop' })
   expect((await cp.find({ type: 'Markdown' }))?.props.text).toBe('Subagent nicht gestartet: no agent started')
   await cp.unmount()
-  const keys: StrKey[] = ['barAlt', 'dropSaved', 'titleCleanup', 'titleAgents', 'titleShip', 'noAgents', 'noShip', 'shipBranch', 'unknown', 'shipDone', 'shipNone', 'shipNext', 'prLine', 'prNone', 'refresh', 'spawnFailed', 'finishedWord', 'noAnswer']
+  const keys: StrKey[] = ['barAlt', 'dropSaved', 'titleCleanup', 'titleAgents', 'titleShip', 'noAgents', 'noShip', 'shipBranch', 'unknown', 'shipDone', 'shipNone', 'shipNext', 'prLine', 'prNone', 'refresh', 'spawnFailed', 'finishedWord', 'noAnswer', 'planIncomplete']
   for (const loc of LOCALES)
     for (const k of keys) {
       const text = tr(loc, k, { label: 'x', p: 1, w: 'x', b: 'x', steps: 'x', next: 'x', n: 1, state: 'x', pass: 1, fail: 1, pending: 1, why: 'x' })

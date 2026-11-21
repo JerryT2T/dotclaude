@@ -1,4 +1,7 @@
 import { describe, test, expect } from "vitest";
+import fsx from "node:fs";
+import osx from "node:os";
+import px from "node:path";
 import {
   lastAssistantText,
   lastAssistantTextLength,
@@ -34,6 +37,9 @@ import {
   lineBudgetReport,
   cardSignature,
   isDuplicateNotificationCard,
+  textAfterShownCard,
+  safeReadTranscript,
+  TRANSCRIPT_TAIL_BYTES,
   SUBSTANTIAL_CHARS,
   CARD_MARKER,
 } from "./card-guard.js";
@@ -1756,5 +1762,55 @@ describe("card widget recognized by its marker, not only its title (#713)", () =
     const tx = jsonl(userMsg("ship"), render, renderResult, widget("w1", "my_chart", html), ok("w1"));
     expect(cardDelivered(tx)).toBe(false);
     expect(deliveredCardText(tx)).toBe("");
+  });
+});
+
+describe("#1166: generic widget title and the witnessed re-show", () => {
+  const generic = `${CARD_MARKER} Completion card ${CARD_MARKER}`;
+  test("the generic stand-in title is no signature; two such cards are never a duplicate", () => {
+    expect(cardSignature(generic)).toBeNull();
+    expect(isDuplicateNotificationCard(cardSignature(generic), cardSignature(generic))).toBe(false);
+  });
+  test("a real widget title still signs, and two equal titled cards stay duplicates", () => {
+    const titled = `${CARD_MARKER} Filter dialog moved ${CARD_MARKER}`;
+    expect(cardSignature(titled)).toBe(JSON.stringify({ title: "Filter dialog moved" }));
+    expect(isDuplicateNotificationCard(cardSignature(titled), cardSignature(titled))).toBe(true);
+  });
+  const reShown = [
+    { type: "user", message: { role: "user", content: [{ type: "text", text: "ship it" }] } },
+    { type: "assistant", message: { role: "assistant", content: [{ type: "tool_use", id: "w1", name: "mcp__visualize__show_widget", input: { title: "completion_card_body", widget_code: "<div><h3 class=\"card-title\">X</h3></div>" } }] } },
+    { type: "user", message: { role: "user", content: [{ type: "tool_result", tool_use_id: "w1", content: "ok" }] } },
+    { type: "assistant", message: { role: "assistant", content: [{ type: "text", text: "Nachsatz" }] } },
+  ].map((l) => JSON.stringify(l)).join("\n");
+  test("with the relay witness the line before the re-shown widget is not text after the card", () => {
+    expect(textAfterShownCard(reShown, `${CARD_MARKER} X ${CARD_MARKER}`)).toBe(false);
+  });
+  test("without the witness the same transcript still reports the trailing text (#886 kept)", () => {
+    expect(textAfterShownCard(reShown, "")).toBe(true);
+  });
+});
+
+describe("#1165: safeReadTranscript skips api-request blobs", () => {
+  const write = (lines) => {
+    const f = px.join(fsx.mkdtempSync(px.join(osx.tmpdir(), "srt-")), "t.jsonl");
+    fsx.writeFileSync(f, lines.join("\n") + "\n");
+    return f;
+  };
+  const prompt = JSON.stringify({ type: "user", message: { role: "user", content: "Archiviere diese Session." } });
+  const blob = () => JSON.stringify({ type: "api-request-blob", data: "x".repeat(210 * 1024) });
+  test("a >200 KB blob after the prompt is skipped; the prompt stays in the tail", () => {
+    const out = safeReadTranscript(write([prompt, blob(), '{"type":"assistant"}']));
+    expect(out).toContain("Archiviere diese Session.");
+    expect(out).not.toContain("api-request");
+  });
+  test("a transcript without blob lines reads byte-identical to the plain tail", () => {
+    const lines = Array.from({ length: 4000 }, (_, i) => JSON.stringify({ type: "assistant", n: i, pad: "y".repeat(80) }));
+    const f = write(lines);
+    const raw = fsx.readFileSync(f);
+    expect(safeReadTranscript(f)).toBe(raw.subarray(raw.length - TRANSCRIPT_TAIL_BYTES).toString("utf8"));
+  });
+  test("the scan stays bounded on a transcript of blobs only", () => {
+    const f = write(Array.from({ length: 90 }, blob)); // ~19 MB, over the 16 MB cap
+    expect(safeReadTranscript(f)).toBe("");
   });
 });

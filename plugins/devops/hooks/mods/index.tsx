@@ -87,6 +87,8 @@ import {
   checksFrom,
   cleanupApplyPrompt,
   cleanupPlanPrompt,
+  planComplete,
+  planSummary,
   cleanupToast,
   cleanupView,
   compactAdvised,
@@ -194,7 +196,8 @@ const RUN_MARKER = '/.claude/devops-cleanup-run.json'
 const HISTORY_FILE = '/.claude/devops-cleanup-history.json'
 const LOAD_MARKER = '/.claude/devops-mods-loaded.json'
 const LOAD_MARKER_MAX = 30
-type LoadMark = { sid: string; surface: string | null; interactive: boolean; ts: string }
+// #1176: `hint` = the line under the prompt was drawn in this session (load is not render: the Desktop host may never draw it).
+type LoadMark = { sid: string; surface: string | null; interactive: boolean; ts: string; hint?: boolean }
 
 const agents = atom({ plugin: 'devops', key: 'agents' } as const, [] as AgentRow[], { shape: 'agents-1' })
 const budget = atom({ plugin: 'devops', key: 'budget' } as const, null as Budget | null, { shape: 'budget-1' })
@@ -219,8 +222,6 @@ const AMBER = '#e6c36a'
 const VIOLET = '#9d8cd6'
 const DIVIDER = '#353535'
 const RAIL_WIDTH = 30
-/** The budget bars' column in the rail (cells): the 220 px bar (BUDGET_BAR_SIZE) plus its label; fixed, bars or none. */
-const BARS_COL_WIDTH = 34
 // The hover overlay of the batch / mode hints: cells wide, opaque so it covers the buttons under it.
 const HINTS_WIDTH = 56
 // The batch row's unfolded list shows this many notes, then "+N more".
@@ -259,6 +260,8 @@ function startTicker($: EngineInterface): void {
 }
 // The band's cleanup block is expanded (per session; B11).
 const fold = atom({ plugin: 'devops', key: 'fold' } as const, false, { shape: 'fold-1' })
+// #1161: the band's cleanup row shows the full plan / result text (folded by default, reset on every new result).
+const cleanupOpen = atom({ plugin: 'devops', key: 'cleanupOpen' } as const, false, { shape: 'cleanup-open-1' })
 // A ship / released / finished card is on record: no open work until a new edit or an open plan (B7).
 const settled = atom({ plugin: 'devops', key: 'settled' } as const, false, { shape: 'settled-1' })
 // Terminal: the card points the reader expanded past the clamp (indices; spent with the card).
@@ -773,6 +776,20 @@ async function endRun($: EngineInterface): Promise<void> {
 }
 
 /** Starts one cleanup subagent; a press while one runs does nothing (one press = one run, one run per repo machine-wide). */
+/** The B14 learn offer of a finished run: spent once, then sent as the person's `devops learn` prompt. */
+async function pressLearn($: EngineInterface, _shown: CleanupRun): Promise<void> {
+  // Spend the offer from the live state, not the render closure: a double press submits once.
+  let cause = ''
+  let runs = 2
+  await update($, cleanup, s => {
+    cause = s.learn || ''
+    runs = s.learnRuns || 2
+    return cause ? { ...s, learn: undefined, learnRuns: undefined } : s
+  })
+  if (!cause) return
+  await $.prompt.submit({ text: learnPrompt(cause, runs), asUser: true })
+}
+
 async function startCleanup($: EngineInterface, kind: 'plan' | 'apply'): Promise<void> {
   const sh = await sharedNow($, true)
   const root = await repoRoot($)
@@ -822,7 +839,7 @@ async function startCleanup($: EngineInterface, kind: 'plan' | 'apply'): Promise
     }
     if (!agentId) throw new Error('no agent started')
     await update($, cleanup, s => ({ ...s, agentId: agentId as string }))
-    await $.ui.open({ id: CLEANUP_PANE, title: await titleOf($, 'titleCleanup') })
+    // #1161: the run shows in the band; the pane opens only on the band's explicit "Open in pane".
   } catch (err) {
     const why = err instanceof Error ? err.message : 'spawn failed'
     await update($, cleanup, () => ({ phase: 'failed', agentId: null, report: tr(sh.loc, 'spawnFailed', { why }), at: 0 }))
@@ -1007,7 +1024,27 @@ async function writeLoadMarker($: EngineInterface, surface: string | null, inter
   const prev = (await readJson($, file)) as { sessions?: LoadMark[] } | null
   const kept = (prev && Array.isArray(prev.sessions) ? prev.sessions : []).filter(s => s && s.sid !== sid).slice(-(LOAD_MARKER_MAX - 1))
   const row: LoadMark = { sid, surface, interactive, ts: new Date(await $.clock.now()).toISOString() }
+  loadRow = row
   await $.fs.write(file, `${JSON.stringify({ sessions: [...kept, row] }, null, 1)}\n`)
+}
+
+let loadRow: LoadMark | null = null
+/** #1176: the marker row of this session gets `hint: true` once the line under the prompt was drawn. */
+async function markHintDrawn($: EngineInterface): Promise<void> {
+  const home = await homeDir($)
+  if (!home) return
+  const file = home + LOAD_MARKER
+  const sid = await $.session.id()
+  const prev = (await readJson($, file)) as { sessions?: LoadMark[] } | null
+  const rows = prev && Array.isArray(prev.sessions) ? prev.sessions : []
+  const own = rows.find(r => r && r.sid === sid)
+  if (own && own.hint) return
+  // The row this session wrote at session.start, also when the file was rotated or unreadable since.
+  const base = own || (loadRow && loadRow.sid === sid ? loadRow : null)
+  if (!base) return
+  const next = [...rows.filter(r => r && r.sid !== sid).slice(-(LOAD_MARKER_MAX - 1)), { ...base, hint: true }]
+  await $.fs.write(file, `${JSON.stringify({ sessions: next }, null, 1)}
+`)
 }
 
 /** B1 (#2): the band's session marker, read by the card tool to shrink the transcript card. Written while the band draws. */
@@ -1358,7 +1395,10 @@ export const register: Register = on => {
       const run = await read($, cleanup)
       if (run.agentId === e.agentId && (run.phase === 'planning' || run.phase === 'applying')) {
         const answer = (e.answer || '').trim()
-        const phase = e.isAborted || !answer ? 'failed' : run.phase === 'planning' ? 'planned' : 'done'
+        // #1160: a planning answer without the `## Plan` heading (an interim "waiting …" line) is no plan — it
+        // fails instead of offering Apply, so a deletion is only ever offered for a real, reviewable plan.
+        const noPlan = run.phase === 'planning' && !!answer && !planComplete(answer)
+        const phase = e.isAborted || !answer || noPlan ? 'failed' : run.phase === 'planning' ? 'planned' : 'done'
         const now = await $.clock.now()
         const loc = (await sharedNow($)).loc
         // B14: a finished run feeds the history; the same unmerged cause in two runs makes the pane offer `devops learn`.
@@ -1366,7 +1406,7 @@ export const register: Register = on => {
         await update($, cleanup, () => ({
           phase,
           agentId: null,
-          report: answer || tr(loc, 'noAnswer'),
+          report: noPlan ? `${tr(loc, 'planIncomplete')}\n\n${answer}` : answer || tr(loc, 'noAnswer'),
           at: now,
           causes: run.causes,
           ...(offer ? { learn: offer.cause, learnRuns: offer.runs } : {}),
@@ -1374,7 +1414,8 @@ export const register: Register = on => {
         if (phase !== 'planned') await endRun($)
         $.ui.toast(cleanupToast(phase, loc), { timeoutMs: 8000 })
         if (offer) $.ui.toast(tr(loc, 'toastLearn'), { timeoutMs: 10000 })
-        await $.ui.open({ id: CLEANUP_PANE, title: await titleOf($, 'titleCleanup') })
+        // #1161: the result lands in the band's cleanup row; no pane opens on its own.
+        await update($, cleanupOpen, () => false)
       }
     }
     return result
@@ -1564,11 +1605,7 @@ export const register: Register = on => {
                 key="cleanup-learn"
                 variant="primary"
                 label={tr(loc, 'learnBtn')}
-                onPress={async () => {
-                  const cause = run.learn as string
-                  await update($, cleanup, s => ({ ...s, learn: undefined, learnRuns: undefined }))
-                  await $.prompt.submit({ text: learnPrompt(cause, run.learnRuns || 2), asUser: true })
-                }}
+                onPress={() => pressLearn($, run)}
               />
             </Box>
           </Box>
@@ -1607,6 +1644,13 @@ export const register: Register = on => {
     const note = ok ? said : `${tr(loc, 'stInactive')} · ${inactiveReason(state, loc)}`
     if (!hintDrawn) {
       hintDrawn = true
+      // #1176: render evidence for the load marker, and the band drops its fallback status element.
+      void markHintDrawn($).catch(() => undefined)
+      try {
+        $.ui.invalidate('ui.render')
+      } catch {
+        /* the next draw drops it */
+      }
       // The fallback status line would now repeat this line. Drawing may not clear it, so a timer does,
       // and the next turn start does when no timer is to be had.
       try {
@@ -1689,8 +1733,11 @@ export const register: Register = on => {
     // Idle and nothing due (no cleanup, no context worth a glance, no budget bar, no batch collection, no info card): the band stays away.
     // #1150: a stopped turn is a state worth the band on its own — the user must see that nothing runs any more.
     const halt = idle ? await read($, halted) : null
-    if (idle && !cv && !bars.length && !bt && !infoData && !optPopup && !rc && !(halt && halt.aborted) && !(ring !== null && ring >= CONTEXT_SHOW_PERCENT)) return next(e)
-    const { Box, Button, Text } = $.ui.resolve(e)
+    // #1161: a cleanup run in any phase but idle keeps the band up — the whole flow lives here, not in a pane.
+    // #1176: on a graphical surface whose host has not drawn the line under the prompt, the band carries "● devops".
+    const hintFallback = e.surface !== 'terminal' && !hintDrawn
+    if (idle && run.phase === 'idle' && !hintFallback && !cv && !bars.length && !bt && !infoData && !optPopup && !rc && !(halt && halt.aborted) && !(ring !== null && ring >= CONTEXT_SHOW_PERCENT)) return next(e)
+    const { Box, Button, Markdown, Text } = $.ui.resolve(e)
     // Desktop: the card's animated SVG (bars, hourglass, ring) at a fixed size; the terminal has no Svg, so glyphs.
     const desktop = e.surface !== 'terminal'
     const Svg = desktop ? ($.ui.resolve(e) as { Svg?: any }).Svg : null
@@ -1715,6 +1762,16 @@ export const register: Register = on => {
       )
     }
     const toggle = () => update($, fold, v => !v)
+    const hintOk = isActive(hl)
+    const hintEl = hintFallback ? (
+      <Box key="devops-hint-fallback" flexDirection="row" alignItems="center" columnGap={1}>
+        <Button key="devops-status" plain onPress={() => toggleInfo($)}>
+          <Text color={hintOk ? STATUS_GREEN : STATUS_RED}>●</Text>
+          <Text key="devops-word">{' devops'}</Text>
+        </Button>
+        {!hintOk && <Text key="devops-note" color={STATUS_RED}>{`${tr(loc, 'stInactive')} · ${inactiveReason(hl, loc)}`}</Text>}
+      </Box>
+    ) : null
     // Collecting: one persistent row, neutral colour (the confirmation toast carries the event, this the standing state).
     // The count folds the note list open (zero tokens, instead of `/do-batch status`); Go queues the execute marker as the
     // person's prompt, also while a turn runs; Off ends the mode through a script, no turn. Typing go / aus works as before.
@@ -1808,13 +1865,50 @@ export const register: Register = on => {
       )
     })()
 
+    // #1161: once a run exists, its status, plan and buttons are the band's cleanup row; the rail block keeps only the
+    // start button (idle) or the dim running label.
     const cta = !cv ? null : run.phase === 'planning' || run.phase === 'applying' ? (
       <Text key="cleanup-run" dimColor>{`[ ${tr(loc, 'cleanupBtn')} · ${tr(loc, run.phase === 'planning' ? 'runPlanning' : 'runApplying')} ]`}</Text>
-    ) : run.phase === 'planned' ? (
-      <Button key="cleanup-review" label={tr(loc, 'btnReview')} onPress={async () => $.ui.open({ id: CLEANUP_PANE, title: tr(loc, 'titleCleanup') })} />
-    ) : (
+    ) : run.phase === 'idle' ? (
       <Button key="cleanup" label={tr(loc, 'cleanupBtn')} onPress={() => startCleanup($, 'plan')} />
-    )
+    ) : null
+    const runUp = run.phase === 'idle' ? false : await read($, cleanupOpen)
+    const runEl = run.phase === 'idle' ? null : (() => {
+      const busy = run.phase === 'planning' || run.phase === 'applying'
+      const head = tr(loc, run.phase === 'planning' ? 'panePlanning' : run.phase === 'applying' ? 'paneApplying' : run.phase === 'planned' ? 'panePlanned' : run.phase === 'done' ? 'paneDone' : 'paneFailed')
+      const sum = run.phase === 'planned' ? planSummary(run.report) : null
+      const finish = async () => {
+        await update($, cleanup, () => IDLE)
+        await update($, cleanupOpen, () => false)
+        await endRun($)
+      }
+      return (
+        <Box key="cleanup-run-row" flexDirection="column" rowGap={1} paddingX={1} borderStyle="round" borderColor={DIVIDER}>
+          <Box key="cleanup-run-head" flexDirection="row" alignItems="center" columnGap={1} flexWrap="wrap">
+            <Text>🧹</Text>
+            <Text key="cleanup-run-status" bold={!busy} dimColor={busy}>{head}</Text>
+            {sum && <Text key="cleanup-run-summary" {...S.small}>{tr(loc, 'planSummary', { n: sum.actions, d: sum.decisions })}</Text>}
+            {!busy && run.report && (
+              <Button key="cleanup-details" plain label={`${tr(loc, 'cleanupDetails')} ${runUp ? '▾' : '▸'}`} onPress={() => update($, cleanupOpen, v => !v)} />
+            )}
+          </Box>
+          {!busy && runUp && run.report && <Markdown key="cleanup-run-report" text={run.report} />}
+          {run.phase === 'done' && run.learn && (
+            <Box key="cleanup-run-learn" flexDirection="row" alignItems="center" columnGap={1} flexWrap="wrap">
+              <Text {...S.small}>{tr(loc, 'learnOffer', { runs: run.learnRuns || 2, cause: run.learn })}</Text>
+              <Button key="cleanup-learn" label={tr(loc, 'learnBtn')} onPress={() => pressLearn($, run)} />
+            </Box>
+          )}
+          {!busy && (
+            <Box key="cleanup-run-buttons" flexDirection="row" columnGap={1} flexWrap="wrap">
+              {run.phase === 'planned' && <Button key="cleanup-apply" variant="primary" label={tr(loc, 'btnApply')} onPress={() => startCleanup($, 'apply')} />}
+              <Button key="cleanup-discard" label={run.phase === 'planned' ? tr(loc, 'btnDiscard') : tr(loc, 'btnClose')} onPress={finish} />
+              <Button key="cleanup-expand" plain label={tr(loc, 'btnExpand')} onPress={async () => $.ui.open({ id: CLEANUP_PANE, title: tr(loc, 'titleCleanup') })} />
+            </Box>
+          )}
+        </Box>
+      )
+    })()
     const detail = cv && folded && (
       <Box key="cleanup-detail" flexDirection="column">
         {cv.rows.map(r => (
@@ -1878,7 +1972,9 @@ export const register: Register = on => {
           {recapEl}
           {optEl}
           {infoEl}
+          {runEl}
           <Box key="idle" flexDirection="row" alignItems="center" columnGap={2}>
+            {hintEl}
             {batchEl}
             {text && <Text key="idle-last" {...S.small}>{text}</Text>}
             <Box flexGrow={1} />
@@ -1998,6 +2094,7 @@ export const register: Register = on => {
           {optEl}
           {infoEl}
           {batchEl}
+          {runEl}
           {workEl}
           {c && (c.title || c.at) && (
             <Box key="card-title" flexDirection="row" justifyContent="space-between" columnGap={2}>
@@ -2024,9 +2121,10 @@ export const register: Register = on => {
     return (
       <Box key="band" flexDirection="column" rowGap={1}>
         {recapEl}
-          {optEl}
-          {infoEl}
+        {optEl}
+        {infoEl}
         {batchEl}
+        {runEl}
         <Box key="zones" position="relative" flexDirection="row" columnGap={2}>
           <Box key="main" flexDirection="column" flexGrow={1} rowGap={1}>
             {workEl}
@@ -2041,19 +2139,11 @@ export const register: Register = on => {
             {points}
             {buttons}
           </Box>
-          {/* The divider spans the whole zone height; the bars column keeps its width with or without bars, so the divider never moves. */}
+          {/* The divider spans the whole zone height. #1170: the rail is the small fixed context column (ring, Compact,
+              cleanup) only; the usage bars moved under the zones, so the card column gets the band width minus 30 cells
+              instead of ~half of it (the 34-cell bars column beside the ring forced points and buttons to wrap and clip). */}
           <Box key="rail-divider" width={1} backgroundColor={DIVIDER} />
-          <Box key="rail" flexDirection="row" columnGap={2} width={Svg ? BARS_COL_WIDTH + 2 + RAIL_WIDTH : RAIL_WIDTH}>
-            {Svg && (
-              <Box key="rail-bars" flexDirection="column" rowGap={1} width={BARS_COL_WIDTH}>
-                {bars.map(bar => (
-                  <Box key={`bar-${bar.label}`} flexDirection="row" alignItems="center" columnGap={1}>
-                    <Text dimColor>{bar.label}</Text>
-                    <Svg source={budgetBarSvg(bar)} alt={budgetBarAlt(bar, loc)} width={BUDGET_BAR_SIZE.width} height={BUDGET_BAR_SIZE.height} isInteractive />
-                  </Box>
-                ))}
-              </Box>
-            )}
+          <Box key="rail" flexDirection="row" columnGap={2} width={RAIL_WIDTH} flexShrink={0}>
             <Box key="rail-ring" flexDirection="column" rowGap={1} width={RAIL_WIDTH}>
               {ringEl}
               {compactBtn}
@@ -2066,7 +2156,8 @@ export const register: Register = on => {
             </Box>
           )}
         </Box>
-        {!Svg && budgetEl}
+        {budgetEl}
+        {hintEl}
       </Box>
     )
   })

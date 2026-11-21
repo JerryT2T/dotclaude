@@ -91,6 +91,20 @@ present, every `/do-ship` gate stays interactive.
 5. **Re-sync** before the next PR: `git fetch origin main` so the next ship's
    preflight sees the merge that just landed.
 
+**`Integrieren` branches (#1162)** join the same queue after the PRs, oldest
+branch date first. Per branch: `git merge-tree --write-tree origin/main <branch>`
+again — conflicts now → SKIP with „Konflikte mit main: <paths>" and list it
+with a `Neu umsetzen` hint; clean → resolve the working directory exactly as
+for `quelle: lokal` / `nur-remote` above and run the same
+`Skill("devops:do-ship", args: "--cwd=<path> --keep --queued")` — the pipeline
+opens the PR, rebases, builds and merges. Tear-down and re-sync as for a PR.
+
+**`Neu umsetzen` branches** never ship their old code: one
+`Skill("devops:auto-issue")` create per topic with the decision's `intention`,
+`date`, `spec` and the branch name as the source, `type:feature` unless the
+spec is a fix. The branch is kept until that issue is done — record the issue
+URL; nothing is deleted for it in 10c.
+
 **After the last PR:**
 
 1. Run the project ship-extension finalizer exactly once if ≥1 PR merged —

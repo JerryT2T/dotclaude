@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.392.0] — 2026-11-21
+
+### Added
+- **Cleanup lives in the band.** Plan, Apply / Discard, result and the learn offer show in a band row with a one-line summary; the side pane opens only on "Open in pane" (#1161).
+- **Content triage for unlanded branches.** Every ambiguous branch gets its intention, landed-by-content proof, main churn since its date and merge conflicts before any question; the page offers Integrieren / Neu umsetzen / Entfernen / Behalten (#1162).
+- **Warning for an unfinalized concept report.** Stop and session start name a concept page left at its final report on an unlanded branch, and unpushed merge commits (#1163).
+- **"● devops" in the Desktop app.** Until the host draws the line under the prompt, the band carries the status element; the load marker records whether it was drawn (#1176).
+
+### Fixed
+- **Concept pages end on their finished view.** The close-out now runs one command (`concept-open.js close`) instead of prose steps that were skipped; the page names what landed (#1175).
+- **The card gets the band width.** The usage bars moved out of the side rail, so points stay on one line and no button is clipped (#1170).
+- **Cleanup never offers deletion for a waiting line.** A planner answer without a `## Plan` heading ends as "Plan unvollständig" (#1160).
+- **"Archiviere diese Session" works with large request blobs** in the transcript (#1165).
+- **No false card blocks** for compact widgets with an unreadable heading or a witnessed re-show (#1166).
+
 ## [0.391.0] — 2026-11-21
 
 ### Added

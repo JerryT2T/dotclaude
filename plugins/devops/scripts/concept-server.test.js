@@ -607,6 +607,43 @@ describe.skipIf(!PY)("concept-server close-out result for the Fertig-Seite", () 
   }, 30000);
 });
 
+describe.skipIf(!PY)("concept-server finalize:done is the finish signal (#1175)", () => {
+  test("/progress finalize:done sets phase closed with a default finished; /shutdown waits for the ack", async () => {
+    const port = PORT + 11;
+    const url = (p) => `http://127.0.0.1:${port}${p}`;
+    const proc = spawn(PY, [SERVER, String(port), "--store", storeFor(port)], {
+      stdio: ["ignore", "pipe", "pipe"],
+      env: { ...process.env, CONCEPT_SHUTDOWN_ACK_WAIT_S: "3" },
+    });
+    const post = (p, body) => fetch(url(p), { method: "POST", headers: { "Content-Type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body) });
+    const decisions = async () => (await fetch(url("/decisions"))).json();
+    try {
+      const deadline = Date.now() + 10000;
+      while (Date.now() < deadline) {
+        try { if ((await fetch(url("/reload"))).ok) break; } catch { /* not up yet */ }
+        await new Promise(r => setTimeout(r, 150));
+      }
+      await post("/progress", { action: "finalize", step: "ship", status: "running" });
+      expect((await decisions())._phase ?? "").toBe("");
+      expect((await post("/progress", { action: "finalize:done", step: "closed", status: "done" })).ok).toBe(true);
+      expect(await decisions()).toMatchObject({ _phase: "closed", _finished: { state: "closed" } });
+      await post("/status", { phase: "closed", finished: { state: "shipped", sub: "v1" } });
+      await post("/progress", { action: "finalize:done", step: "closed", status: "done" });
+      expect((await decisions())._finished).toEqual({ state: "shipped", sub: "v1" });
+
+      expect((await post("/shutdown")).ok).toBe(true);
+      await new Promise(r => setTimeout(r, 1000));
+      expect(proc.exitCode).toBeNull();
+      expect((await post("/closed-ack")).ok).toBe(true);
+      const t0 = Date.now();
+      while (proc.exitCode === null && Date.now() - t0 < 4000) await new Promise(r => setTimeout(r, 100));
+      expect(proc.exitCode).toBe(0);
+    } finally {
+      if (proc.exitCode === null) await stopServer(proc);
+    }
+  }, 30000);
+});
+
 describe.skipIf(!PY)("concept-server html-gone hold - the page file vanishing mid close-out (B5)", () => {
   const run = (body) => {
     const code = [

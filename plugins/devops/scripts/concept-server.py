@@ -248,6 +248,10 @@ _progress = None
 # page confirmed it holds the result (POST /closed-ack, read via GET /closed-ack).
 _finished = None
 _closed_ack = False
+# True once `/progress {action:"finalize:done"}` landed: the close-out is over, so
+# a /shutdown waits (bounded) for the tab's /closed-ack before the bridge exits.
+_finalize_done = False
+SHUTDOWN_ACK_WAIT_S = float(os.environ.get('CONCEPT_SHUTDOWN_ACK_WAIT_S', '20'))
 # Submission-id de-dup ring (#finding-10). The offline queue's own check
 # (GET /decisions, compare submission_id) only works until Claude POSTs
 # /reset — that clears `_decisions`, so a payload that was already fsynced
@@ -1565,7 +1569,7 @@ class ConceptBridgeHandler(http.server.SimpleHTTPRequestHandler):
             super().do_GET()
 
     def do_POST(self):
-        global _server_ts, _claude_ts, _claude_pulser, _decisions, _version, _processed_at, _reload_counter, _picked_up_at, _phase, _progress, _finished, _closed_ack, _browser_bye_ts, _reload_at_submit
+        global _server_ts, _claude_ts, _claude_pulser, _decisions, _version, _processed_at, _reload_counter, _picked_up_at, _phase, _progress, _finished, _closed_ack, _finalize_done, _browser_bye_ts, _reload_at_submit
         if not self._host_ok():
             self.send_error(403, "forbidden host")
             return
@@ -1667,6 +1671,7 @@ class ConceptBridgeHandler(http.server.SimpleHTTPRequestHandler):
                         _picked_up_at = ''
                         _phase = ''
                         _finished = None
+                        _finalize_done = False
                         _progress = None
                         _reload_at_submit = _reload_counter
                         # Only remember an id once it is actually on disk — a
@@ -1813,6 +1818,21 @@ class ConceptBridgeHandler(http.server.SimpleHTTPRequestHandler):
                     "detail": str(exc),
                 })
                 return
+            if str(payload.get('action') or '') == 'finalize:done':
+                # The close-out finished: the page must switch to its done view
+                # even if no /status closed followed (#1175). A `finished` that
+                # was already posted stays; otherwise the neutral default.
+                with _lock:
+                    first = _phase != 'closed'
+                    _phase = 'closed'
+                    if not isinstance(_finished, dict):
+                        _finished = {'state': 'closed'}
+                    # Only the first transition resets the ack: a repeated
+                    # finalize:done must not make /shutdown wait for a tab
+                    # that already acknowledged.
+                    if first:
+                        _closed_ack = False
+                    _finalize_done = True
             self._json_response({"ok": True, "seq": seq, "durable": _store_ok})
         elif self.path == '/closed-ack':
             with _lock:
@@ -1929,10 +1949,20 @@ class ConceptBridgeHandler(http.server.SimpleHTTPRequestHandler):
             # has time to drain before the socket closes. os._exit skips
             # atexit handlers; that's intentional — we don't want the
             # daemon-thread teardown to hang.
-            threading.Thread(
-                target=lambda: (time.sleep(0.1), os._exit(0)),
-                daemon=True,
-            ).start()
+            def _exit_after_ack():
+                # A finalize is pending its ack: keep the bridge up (bounded) so
+                # the tab can still fetch the closed state (#1175). Runs on its
+                # own thread so the /shutdown response is not held back.
+                if _finalize_done:
+                    _deadline = time.time() + SHUTDOWN_ACK_WAIT_S
+                    while time.time() < _deadline:
+                        with _lock:
+                            if _closed_ack:
+                                break
+                        time.sleep(0.2)
+                time.sleep(0.1)
+                os._exit(0)
+            threading.Thread(target=_exit_after_ack, daemon=True).start()
         elif self.path == '/reset':
             # Optional body: {"version": N}. When present, only reset if N
             # matches the current server version — otherwise a newer submission
@@ -1988,6 +2018,7 @@ class ConceptBridgeHandler(http.server.SimpleHTTPRequestHandler):
                     _picked_up_at = ''
                     _phase = ''
                     _finished = None
+                    _finalize_done = False
                     _progress = None
                     # Durable side of the reset. The journal is append-only,
                     # so the processed submission stays recoverable forever;
