@@ -158,7 +158,9 @@ export function titleStateForKey(key, ctx = {}) {
  * True when the card carries a MANDATORY user step: an open point, a
  * required user test (`userTest`, `userFinalTest`) or a requirement that
  * waits on the user. Raises a 🟩 state to 👉. Optional follow-ups (a
- * promote offer) are no field here and keep 🟩.
+ * promote offer) are no field here and keep 🟩, and so does a
+ * `userFinalTest` item marked `optional: true` — a check the user may skip
+ * because the work is done and verified (a visual sanity look).
  *
  * @param {object} params card params
  * @returns {boolean}
@@ -167,7 +169,8 @@ export function hasMandatoryStep(params) {
   const nonEmpty = (a) => Array.isArray(a) && a.some((x) => (typeof x === "string" ? x.trim() : x && (x.text || x.action)));
   if (nonEmpty(params && params.open)) return true;
   if (nonEmpty(params && params.userTest)) return true;
-  if (nonEmpty(params && params.userFinalTest)) return true;
+  const finalTests = Array.isArray(params && params.userFinalTest) ? params.userFinalTest : [];
+  if (nonEmpty(finalTests.filter((x) => !(x && typeof x === "object" && x.optional === true)))) return true;
   const validation = Array.isArray(params && params.validation) ? params.validation : [];
   return validation.some((v) => v && typeof v === "object" && v.waitsOn === "user" && v.status !== "met");
 }

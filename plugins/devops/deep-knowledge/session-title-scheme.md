@@ -81,7 +81,11 @@ mandatory user step (an open point or question, a required userTest, a
 requirement with `waitsOn: "user"`, red tests, unverified, blocked, ready
 "Ship?", files, a concept waiting, a batch collecting, not deployed) gives
 👉. Optional follow-ups (a promote offer after an alpha release, "noch
-etwas?") stay 🟩.
+etwas?") stay 🟩. A `userFinalTest` item is mandatory unless it carries
+`optional: true`: work that is done and verified, with only a look the user
+may skip (a visual sanity check in the app), passes it as
+`{ action, optional: true }` and keeps 🟩, because 👉 tells the user they
+must act. A plain item is a check without which the work is not done.
 
 **Title = CTA.** The card's CTA heading starts with the same status, keyword and
 activity as the title (`👉 ➜ 📦 Ready ┃ X` →
