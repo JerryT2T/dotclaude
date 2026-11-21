@@ -301,6 +301,7 @@ function startSession($: EngineInterface, ctx: HomeCtx, key: string, cwd: string
         cwd,
         title,
         prompt,
+        // Opening is HOME_PANE_BACKGROUND (hooks/lib/home-pane.js): the start hooks treat it as the person's own press.
         background: 'Started from the devops Home pane by the person pressing its button; no other context belongs to this session.',
       })
       if (res.isError) throw new Error(textOf(res).slice(0, 160))
