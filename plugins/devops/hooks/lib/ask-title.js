@@ -1,6 +1,6 @@
 /**
  * @module ask-title
- * @version 0.4.0
+ * @version 0.5.0
  * @description The session title while a call waits for the user — an
  *   AskUserQuestion, an ExitPlanMode plan approval, or a start_session that
  *   asks the user ("offer", "user_asked": the app's approval card): the card
@@ -26,6 +26,7 @@
 
 const S = require('./title-scheme');
 const { clampTitle } = require('./title-budget');
+const { launchMode, markerMode } = require('./side-sessions');
 const { WORK_PREFIX, stripPrefixes, classify, leadingPrefix, approvalRestoredTitle } = S;
 
 const MARKER = '[ask-title]';
@@ -49,7 +50,10 @@ function isBlockingCall(name, input) {
 
 /** True when `title` already says the session waits on a question. */
 function isQuestionTitle(title) {
-  return typeof title === 'string' && S.startsWithPrefix(title, QUESTION_PREFIX);
+  if (typeof title !== 'string') return false;
+  // A linked sub's 🔗 in front of the head does not change the state.
+  const lead = S.leadingPrefix(title);
+  return !!lead && (lead.sub ? lead.prefix === QUESTION_PREFIX : S.startsWithPrefix(title, QUESTION_PREFIX));
 }
 
 /**
@@ -63,7 +67,7 @@ function questionTitle(current) {
   if (typeof current !== 'string' || !current.trim()) return null;
   if (isQuestionTitle(current) || classify(current) === 'batch') return null;
   const rest = stripPrefixes(current);
-  return rest.trim() ? clampTitle(QUESTION_PREFIX + rest) : null;
+  return rest.trim() ? clampTitle(S.carrySubMark(current, QUESTION_PREFIX + rest)) : null;
 }
 
 /**
@@ -85,7 +89,7 @@ function restoredTitle(current, previous) {
   // A background agent's approval wait before the question: back to its ⏳ head.
   const waited = kind === 'approval' ? approvalRestoredTitle(previous) : null;
   if (waited) head = leadingPrefix(waited).prefix;
-  return clampTitle(head + rest);
+  return clampTitle(S.carrySubMark(current, head + rest));
 }
 
 /** The session handle the app would derive from the title, without the head. */
@@ -94,25 +98,40 @@ function nameFromTitle(title) {
 }
 
 /**
- * The start_session input with the ⏳ head on its title, or null for "leave
- * it": only a local "user_asked" start — an offer and a proposal show the
- * title on a card and may never start, a cloud or SSH session runs no title
- * hook that would ever clear the head. The name is pinned too, or the app
- * would derive it from the head. Only `title` and `name` change, both
- * properties of the tool's schema: Claude Code (2.1.300) drops an unknown key
- * of a hook's updatedInput and denies the call on an input the tool rejects.
+ * The start_session input with its head on the title, or null for "leave
+ * it". Every LOCAL start with a title gets it — except an unmarked offer / own
+ * proposal: those show the title on a card, may never start, and are
+ * independent follow-ups that get their normal head from the title-work hook
+ * (concept 2026-11-21 rows 12, 13). The head is `⏳ ➜ 🤖 Solo ┃ ` — a start the
+ * parent LINKS (brief marker, or `user_asked`: `launchMode`) gets `🔗 ` in front
+ * and, when its brief has no marker, `[devops:handoff]` appended, so the new
+ * session knows it is a sub (`subModeOfTranscript`). A cloud or SSH session runs
+ * no title hook that would ever clear the head. The name is pinned too, or the
+ * app would derive it from the head. Only `title`, `name` and `prompt` change,
+ * all properties of the tool's schema: Claude Code (2.1.300) drops an unknown
+ * key of a hook's updatedInput and denies the call on an input the tool rejects.
+ *
+ * Not covered: a start by `proposal_id` without its own `title` (the card's
+ * title stays) — the new session's first prompt gets the head from the
+ * title-work hook instead, with `🔗` when its brief carries the marker.
  *
  * @param {object} input
  * @returns {object|null}
  */
 function startSessionInput(input) {
-  if (!input || input.initiation !== 'user_asked' || input.proposal_id) return null;
+  if (!input) return null;
+  // Linked = brief marker, or user_asked (counts as handoff). Anything else gets its head from the title-work hook.
+  const mode = launchMode(input);
+  if (!mode) return null;
   if (input.target && input.target !== 'local') return null;
   if (input.host || input.preset) return null;
   const title = typeof input.title === 'string' ? input.title.trim() : '';
-  if (!title || classify(title) !== 'plain') return null;
+  if (!title || S.hasSubMark(title)) return null;
   const name = input.name || nameFromTitle(title);
-  return { ...input, title: clampTitle(WORK_PREFIX + title), ...(name ? { name } : {}) };
+  const headed = classify(title) === 'plain' ? WORK_PREFIX + title : title;
+  const out = { ...input, title: clampTitle(S.withSubMark(headed)), ...(name ? { name } : {}) };
+  if (typeof input.prompt === 'string' && markerMode(input.prompt) === null) out.prompt = `${input.prompt}\n\n[devops:${mode}]`;
+  return out;
 }
 
 function parse(line) {

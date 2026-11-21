@@ -288,11 +288,13 @@ export function currentSessionTitle(sessionId, cwd, home = undefined) {
  * the prefix already in place, or nothing left after stripping. `""` keeps
  * its old rule — the stripped title, only when a prefix was removed.
  */
-function targetTitle(prefix, current) {
+function targetTitle(prefix, current, sub = false) {
   if (prefix === null) return null;
   const stripped = stripTitlePrefix(current);
   if (!stripped.trim()) return null;
-  const next = TITLE_BUDGET.clampTitle(prefix + stripped);
+  // A linked sub keeps its 🔗 in front of whatever head the card leaves (`sub`:
+  // the session's first prompt carried the brief marker, see readSubMode).
+  const next = TITLE_BUDGET.clampTitle(S.carrySubMark(current, prefix + stripped, sub));
   return next === current ? null : next;
 }
 
@@ -308,9 +310,28 @@ function targetTitle(prefix, current) {
  * @param {string|null} current the title now
  * @returns {string|null}
  */
-export function demandedTitle(prefix, current) {
+export function demandedTitle(prefix, current, sub = false) {
   if (typeof prefix !== "string" || typeof current !== "string" || !current.trim()) return null;
-  return targetTitle(prefix, current);
+  return targetTitle(prefix, current, sub);
+}
+
+/**
+ * True when the session is a LINKED sub: its first prompt carries the brief
+ * marker (`[devops:handoff]` / `[devops:deliver]`, hooks/lib/side-sessions.js
+ * `subModeOfTranscript`). The 🔗 then leads every title the card sets. Never throws.
+ *
+ * @param {string|undefined} sessionId
+ * @param {string|undefined} cwd
+ * @param {string} [home] test seam
+ * @returns {boolean}
+ */
+export function isLinkedSub(sessionId, cwd, home = undefined) {
+  try {
+    const T = hookRequire("lib", "session-title.js");
+    return !!hookRequire("lib", "side-sessions.js").subModeOfTranscript(T.findTranscript(sessionId, home, cwd));
+  } catch {
+    return false;
+  }
 }
 
 /** The set call for `title`, exact and JSON-escaped. */
@@ -338,9 +359,9 @@ function setCall(title) {
  * @param {string|null} [current] the title now, `null` when unknown
  * @returns {string}
  */
-export function titleInstruction(prefix, current = null) {
+export function titleInstruction(prefix, current = null, sub = false) {
   if (prefix === null) return "";
-  if (typeof current === "string" && current.trim()) return knownTitleInstruction(prefix, current);
+  if (typeof current === "string" && current.trim()) return knownTitleInstruction(prefix, current, sub);
   const list =
     `every "<status> ➜ <activity> <Word> ┃ " prefix (or the older "<status> ┃ <activity> <Word> " form) whose status icon is one of ${Object.values(S.STATUS).join(" ")} ` +
     `(e.g. "${SESSION_PREFIX.ready}", "${SESSION_PREFIX["released-alpha"]}", "${SESSION_PREFIX["concept-waiting"]}"), ` +
@@ -370,11 +391,11 @@ export function titleInstruction(prefix, current = null) {
 }
 
 /** The block for a known title: the exact set call(s), parallel to the card. */
-function knownTitleInstruction(prefix, current) {
+function knownTitleInstruction(prefix, current, sub = false) {
   let what;
   if (typeof prefix === "object") {
-    const owned = targetTitle(prefix.owned, current);
-    const other = targetTitle(prefix.other, current);
+    const owned = targetTitle(prefix.owned, current, sub);
+    const other = targetTitle(prefix.other, current, sub);
     if (owned === null && other === null) return "";
     const leave = "leave the title (no call)";
     what =
@@ -384,7 +405,7 @@ function knownTitleInstruction(prefix, current) {
       "Otherwise (another session's concept, or this turn closes the concept out): " +
       `${other === null ? leave : setCall(other)}.`;
   } else {
-    const target = targetTitle(prefix, current);
+    const target = targetTitle(prefix, current, sub);
     if (target === null) return "";
     what = setCall(target);
   }

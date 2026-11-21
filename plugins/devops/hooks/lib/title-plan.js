@@ -18,6 +18,7 @@ const {
   classify, nextTitle,
 } = require('./session-title');
 const ask = require('./ask-title');
+const { markerMode } = require('./side-sessions');
 const { STATUS, BARE_WORK } = require('./title-scheme');
 
 /** How the app opens the first prompt of a session another session started. */
@@ -66,6 +67,16 @@ function directInstruction(title, { shipping = false, conceptYields = false, top
 function topicLine() {
   return `First prompt of this session: in that call put a topic label of at most ${TOPIC_MAX} characters in place of the text after the "┃ " — a noun phrase naming the subject, ` +
     "not the prompt's opening words (abbreviations allowed, if needed). Set it once; a longer topic is refused. A title the user set themselves stays untouched.";
+}
+
+/**
+ * True when the prompt is the brief of a LINKED sub (concept 2026-11-21): a
+ * session's first prompt that carries `[devops:handoff]` / `[devops:deliver]` —
+ * `pre.ask.title` adds the marker to a `user_asked` start that has none. Later
+ * prompts keep the 🔗 through the title itself (`carrySubMark`).
+ */
+function isLinkedBrief(prompt, firstPrompt) {
+  return (firstPrompt || isSubSessionBrief(prompt)) && markerMode(ownWords(prompt)) !== null;
 }
 
 /** True when the prompt is a sub-session's brief — its title comes from start_session. */
@@ -164,11 +175,12 @@ function titlePlan({ prompt, current, firstPrompt, fresh, resumesShip = false, b
   const machine = isMachineTurn(prompt);
   // The model names the topic on a user's first prompt (a sub-session's title comes from start_session).
   const topic = firstPrompt && !machine && !isSubSessionBrief(prompt);
+  const sub = isLinkedBrief(prompt, firstPrompt);
   let context;
   if (current === null) {
     context = !machine && fresh ? freshInstruction(prefix, { topic }) : instruction(prefix, { machine });
   } else {
-    const next = nextTitle(current, { prefix, machine, batchArmed });
+    const next = nextTitle(current, { prefix, machine, batchArmed, sub });
     context = next === null ? '' : directInstruction(next, {
       shipping: prefix === SHIPPING_PREFIX,
       conceptYields: classify(current) === 'concept-waiting',
@@ -185,7 +197,7 @@ function titlePlan({ prompt, current, firstPrompt, fresh, resumesShip = false, b
  */
 function earlyTitleOf({ prompt, current, firstPrompt, prefix = prefixOf(prompt), machine = isMachineTurn(prompt) }) {
   if (machine || !firstPrompt || current === null) return null;
-  return nextTitle(current, { prefix });
+  return nextTitle(current, { prefix, sub: isLinkedBrief(prompt, firstPrompt) });
 }
 
 /** The hook's stdout for a plan: plain context, or JSON when it sets the title itself too. */

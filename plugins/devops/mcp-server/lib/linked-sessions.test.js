@@ -53,20 +53,20 @@ describe("linkedPlan - handoff (S1, S2)", () => {
 describe("linkedPlan - deliver (S3, S4)", () => {
   test("running counts finished sessions, real pending rides along", () => {
     const p = plan([L("A", "done", "deliver"), L("B", "running", "deliver"), L("C", "running", "deliver")], "fallback", {}, { pendingWhat: "2 Agenten" });
-    expect(p.head.id).toBe("agents");
+    expect(p.head.id).toBe("linked");
     expect(p.sentence).toBe("noch nicht fertig — 1 von 3 Side-Sessions fertig · 2 Agenten");
   });
 
-  test("one waiting -> 👉 Team plus the count", () => {
+  test("one waiting -> 👉 Linked (not Team) plus the count", () => {
     const p = plan([L("A", "done", "deliver"), L("B", "waiting", "deliver")], "fallback");
-    expect(p.head.id).toBe("agents-waiting");
+    expect(p.head.id).toBe("linked-waiting");
     expect(p.sentence).toBe('„B“ wartet auf dich, dort antworten');
     expect(p.lines[0]).toBe("1 von 2 fertig");
   });
 
-  test("own diff keeps ⏳ Team and offers the early ship button", () => {
+  test("own diff: ⏳ Linked and the early ship button", () => {
     const p = plan([L("A", "done", "deliver"), L("B", "running", "deliver")], "ready");
-    expect(p.head.id).toBe("agents");
+    expect(p.head.id).toBe("linked");
     expect(p.secondary[0].label).toBe("Eigenen Teil jetzt shippen");
     expect(p.secondary[0].prompt).toMatch(/^Ship\b/);
     expect(plan([L("B", "running", "deliver")], "fallback").secondary).toBeUndefined();
@@ -172,5 +172,46 @@ describe("linkedPlan - learned: say where the user stands", () => {
     expect(p.head).toBeNull();
     expect(p.lines).toContain("„Mods“ wurde archiviert, bevor sie fertig war — nicht geshippt");
     expect(hasUnfinishedLinked([L("Mods", "archived")])).toBe(false);
+  });
+});
+
+describe("linkedPlan - parent precedence own > 👉 Linked > own ⏳ > ⏳ Linked (round 6 rows 1-5, 8, 11, 14)", () => {
+  test("rows 4, 5: an own mandatory step leaves no Linked head, the subs are only lines", () => {
+    for (const subs of [[L("S", "running")], [L("S", "waiting")]]) {
+      const p = plan(subs, "ready");
+      expect(p.head).toBeNull();
+      expect(p.lines.length).toBeGreaterThan(0);
+    }
+  });
+  test("row 3: a sub waits on the user -> 👉 Linked even while the parent's own agents run", () => {
+    const p = plan([L("S", "waiting")], "fallback", {}, { ownRunning: true, pendingWhat: "2 Agenten" });
+    expect(p.head).toEqual({ id: "linked-waiting", mandatory: false });
+  });
+  test("row 1: the parent's own running work keeps its own head, running subs are a line", () => {
+    const p = plan([L("A", "running"), L("B", "running")], "fallback", {}, { ownRunning: true, pendingWhat: "1 Agent" });
+    expect(p.head).toBeNull();
+    expect(p.lines[0]).toContain("laufen weiter");
+    const d = plan([L("A", "running", "deliver")], "fallback", {}, { ownRunning: true });
+    expect(d.head).toBeNull();
+  });
+  test("rows 2, 11: own work done, a sub still running (or paused) -> ⏳ Linked, deliver and handoff alike", () => {
+    expect(plan([L("S", "running")], "fallback").head.id).toBe("linked");
+    expect(plan([L("S", "running", "deliver")], "fallback").head.id).toBe("linked");
+    expect(plan([L("S", "running")], "ship-successful", { delivery: { ship: { version: "1.0.0" } } }).head.id).toBe("linked");
+  });
+  test("rows 6, 7: Released only after the last sub finished; a shipped sub is only a line while another runs", () => {
+    const mid = plan([L("A", "shipped", "handoff", { version: "0.394.2" }), L("B", "running")], "fallback");
+    expect(mid.head.id).toBe("linked");
+    expect(mid.lines.join(" ")).toContain("geshippt");
+    const end = plan([L("A", "shipped", "handoff", { version: "0.394.2" }), L("B", "done")], "fallback");
+    expect(end.head.id).toBe("released-alpha");
+  });
+  test("row 10: an archived sub is dropped from the status, a line says so", () => {
+    const p = plan([L("A", "archived"), L("B", "done")], "fallback");
+    expect(p.head).toBeNull();
+    expect(p.lines.join(" ")).toContain("archiviert");
+  });
+  test("the quoted sidebar title of a waiting sub leads with 🔗", () => {
+    expect(plan([L("Doku", "waiting")], "fallback").lines[0]).toContain("„🔗 👉 ➜ ❓ Question ┃ Doku“");
   });
 });

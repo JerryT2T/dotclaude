@@ -18,6 +18,8 @@ const PRE = fileURLToPath(new URL("../pre-tool-use/pre.ask.title.js", import.met
 const POST = fileURLToPath(new URL("../post-tool-use/post.ask.title.js", import.meta.url));
 
 const SOLO = "⏳ ➜ 🤖 Solo ┃ ";
+const SUB = "🔗 ";
+const NL2 = String.fromCharCode(10, 10);
 const SHIP = "⏳ ➜ 🚀 Shipping ┃ ";
 const Q = "👉 ➜ ❓ Question ┃ ";
 const SET = "mcp__ccd_session_mgmt__set_session_title";
@@ -49,20 +51,22 @@ describe("startSessionInput — the new session shows ⏳ from its first moment"
   const base = { initiation: "user_asked", title: "Fix login", prompt: "p" };
 
   test("a local user_asked start gets the head and a name free of it", () => {
-    expect(ask.startSessionInput(base)).toEqual({ ...base, title: SOLO + "Fix login", name: "fix-login" });
-    expect(ask.startSessionInput({ ...base, target: "local" }).title).toBe(SOLO + "Fix login");
+    // user_asked counts as handoff: the head carries the sub marker and the brief the marker.
+    expect(ask.startSessionInput(base)).toEqual({ ...base, title: SUB + SOLO + "Fix login", name: "fix-login", prompt: "p" + NL2 + "[devops:handoff]" });
+    expect(ask.startSessionInput({ ...base, target: "local" }).title).toBe(SUB + SOLO + "Fix login");
     expect(ask.startSessionInput({ ...base, name: "mine" }).name).toBe("mine");
   });
 
-  test("a card, a remote session or a marked title stays as it is", () => {
+  test("an unmarked card, a remote session or a marked title stays as it is", () => {
     for (const input of [
       { ...base, initiation: "offer" },
       { ...base, initiation: "own_initiative" },
       { proposal_id: "t1" },
+      { proposal_id: "t1", initiation: "own_initiative", title: "Fix" },
       { ...base, target: "cloud" },
       { ...base, target: "ssh", host: "box" },
       { ...base, preset: "usual" },
-      { ...base, title: SOLO + "Fix" },
+      { ...base, title: SUB + SOLO + "Fix" },
       { ...base, title: "  " },
       null,
     ]) expect(ask.startSessionInput(input), JSON.stringify(input)).toBeNull();
@@ -77,6 +81,7 @@ describe("startSessionInput — the new session shows ⏳ from its first moment"
     for (const input of [base, long]) {
       const out = ask.startSessionInput(input);
       expect(Object.keys(out).filter((k) => !(k in input))).toEqual(["name"]);
+      expect(Object.keys(out).filter((k) => !["title", "name", "prompt"].includes(k) && out[k] !== input[k])).toEqual([]);
       expect(out.name).toMatch(/^[a-z0-9]([a-z0-9-]{0,22}[a-z0-9])?$/);
       expect(typeof out.title).toBe("string");
     }
@@ -128,11 +133,12 @@ describe("pre.ask.title", () => {
     expect(r.status).toBe(0);
     const out = JSON.parse(r.stdout).hookSpecificOutput;
     expect(out.hookEventName).toBe("PreToolUse");
-    expect(out.updatedInput).toEqual({ ...input, title: SOLO + "Fix login", name: "fix-login" });
+    expect(out.updatedInput).toEqual({ ...input, title: SUB + SOLO + "Fix login", name: "fix-login", prompt: "p" + NL2 + "[devops:handoff]" });
   });
-  test("own_initiative start_session → silent", () => {
+  test("own_initiative start_session without marker → silent", () => {
     const r = run(PRE, [prompt("go"), title(SOLO + "Backlog")], { tool_name: START, tool_input: { initiation: "own_initiative" } });
     expect(r.status).toBe(0);
+    expect(r.stdout.trim()).toBe("");
   });
   test("⏳ title, no set call → refused with the exact set call", () => {
     const r = run(PRE, [prompt("go"), title(SOLO + "Fix X"), toolUse("AskUserQuestion", {}, "q1")]);
@@ -179,3 +185,38 @@ describe("post.ask.title", () => {
     expect(r.stdout).toBe("");
   });
 });
+
+describe("🔗 start head for every linked start (round 6 rows 12, 13)", () => {
+  const brief = "Do it" + NL2 + "[devops:handoff]";
+  test("row 13: a marked proposal / offer / proposal_id start carries 🔗 ⏳ ➜ 🤖 Solo from the start", () => {
+    for (const initiation of ["own_initiative", "offer", "user_asked", undefined]) {
+      const input = { initiation, title: "Dismantle", prompt: brief, ...(initiation ? {} : { proposal_id: "p1" }) };
+      const out = ask.startSessionInput(input);
+      expect(out.title, String(initiation)).toBe(SUB + SOLO + "Dismantle");
+      expect(out.prompt).toBe(brief);
+    }
+  });
+  test("a deliver brief marks the sub too and keeps its own marker", () => {
+    const out = ask.startSessionInput({ initiation: "offer", title: "Part", prompt: "x" + NL2 + "[devops:deliver]" });
+    expect(out.title).toBe(SUB + SOLO + "Part");
+    expect(out.prompt).toBe("x" + NL2 + "[devops:deliver]");
+  });
+  test("row 12: an unmarked own_initiative / offer start stays unlinked (no input rewrite, no 🔗)", () => {
+    for (const initiation of ["own_initiative", "offer"]) expect(ask.startSessionInput({ initiation, title: "Side", prompt: "p" })).toBeNull();
+  });
+  test("a linked start without a title (proposal_id only) cannot carry a head", () => {
+    expect(ask.startSessionInput({ proposal_id: "p1", initiation: "user_asked", prompt: "p" })).toBeNull();
+  });
+  test("the 🔗 head is clamped by the topic, never the head", () => {
+    const out = ask.startSessionInput({ initiation: "user_asked", title: "Rebuild the Whole Billing Export and its Reports", prompt: "p" });
+    expect(out.title.startsWith(SUB + SOLO)).toBe(true);
+    expect(cp(out.title.slice((SUB + SOLO).length))).toBeLessThanOrEqual(42 - 4 - 3 - 2);
+  });
+  test("a question and its restore keep exactly one leading 🔗", () => {
+    const q = ask.questionTitle(SUB + SOLO + "X");
+    expect(q).toBe(SUB + Q + "X");
+    expect(ask.restoredTitle(q, SUB + SOLO + "X")).toBe(SUB + SOLO + "X");
+    expect(ask.questionTitle(SOLO + "X")).toBe(Q + "X");
+  });
+});
+const cp = (s) => Array.from(s).length;

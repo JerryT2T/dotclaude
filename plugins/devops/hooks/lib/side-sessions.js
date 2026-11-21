@@ -1,6 +1,6 @@
 /**
  * @module side-sessions
- * @version 0.1.0
+ * @version 0.2.0
  * @description Side-session notes and linked side-session work.
  *
  *   A Desktop session can start another one (`mcp__ccd_session__start_session`)
@@ -62,6 +62,46 @@ function launchMode(input) {
   const m = MARKER_RE.exec(String((input && input.prompt) || ''));
   if (m) return m[1] === 'deliver' ? 'deliver' : 'handoff';
   return input && input.initiation === 'user_asked' ? 'handoff' : null;
+}
+
+/** The brief marker of a prompt text: 'handoff' | 'deliver' | null. */
+function markerMode(text) {
+  const m = MARKER_RE.exec(String(text || ''));
+  return m ? m[1] : null;
+}
+
+/**
+ * How a session learns it is a linked sub (concept 2026-11-21, 🔗 marker): its
+ * FIRST user prompt carries the brief marker. A start with a marker has it from
+ * the parent; a `user_asked` start without one gets `[devops:handoff]` appended
+ * by `pre.ask.title` (`ask-title.js` startSessionInput). Reads the head of the
+ * transcript only; null = not a linked sub or unknown. Never throws.
+ *
+ * @param {string|undefined} transcriptPath
+ * @returns {'handoff'|'deliver'|null}
+ */
+function subModeOfTranscript(transcriptPath) {
+  if (!transcriptPath) return null;
+  let fd;
+  try {
+    fd = fs.openSync(transcriptPath, 'r');
+    const buf = Buffer.alloc(256 * 1024);
+    const n = fs.readSync(fd, buf, 0, buf.length, 0);
+    for (const line of buf.subarray(0, n).toString('utf8').split('\n')) {
+      if (!line.includes('"type":"user"')) continue;
+      let e; try { e = JSON.parse(line); } catch { continue; }
+      if (!e || e.type !== 'user' || e.isMeta === true || e.isSidechain) continue;
+      const c = e.message && e.message.content;
+      const isPrompt = typeof c === 'string' || (Array.isArray(c) && c.some((b) => b && b.type !== 'tool_result'));
+      if (!isPrompt) continue;
+      return markerMode(strings(c, []).join('\n'));
+    }
+    return null;
+  } catch {
+    return null;
+  } finally {
+    if (fd !== undefined) try { fs.closeSync(fd); } catch { /* ignore */ }
+  }
 }
 
 function isSideSessionTurn(text) {
@@ -205,6 +245,6 @@ function scanLinkedSessionsInFile(transcriptPath, tailBytes) {
 }
 
 module.exports = {
-  SIDE_SESSION_TURN_PATTERN, isSideSessionTurn, parseNotes, reportState,
+  SIDE_SESSION_TURN_PATTERN, isSideSessionTurn, launchMode, markerMode, subModeOfTranscript, parseNotes, reportState,
   scanLinkedSessions, scanLinkedSessionsInFile,
 };

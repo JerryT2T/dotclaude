@@ -136,3 +136,37 @@ describe("card-guard: side-session note turn", () => {
     expect(CG.decideAction({ ...base }).action).toBe("block");
   });
 });
+
+describe("how a session learns it is a linked sub (🔗 marker)", () => {
+  const fs = require("node:fs");
+  const os = require("node:os");
+  const path = require("node:path");
+  const NL = String.fromCharCode(10);
+  const write = (lines) => {
+    const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "sub-mode-")), "t.jsonl");
+    fs.writeFileSync(f, lines.map((l) => JSON.stringify(l)).join(NL) + NL);
+    return f;
+  };
+  const user = (text, extra = {}) => ({ type: "user", message: { content: text }, ...extra });
+
+  test("markerMode reads handoff / deliver, nothing else", () => {
+    expect(S.markerMode("brief [devops:handoff]")).toBe("handoff");
+    expect(S.markerMode("brief [devops:deliver]")).toBe("deliver");
+    expect(S.markerMode("no marker")).toBeNull();
+  });
+  test("the first user prompt's marker makes the session a sub", () => {
+    expect(S.subModeOfTranscript(write([{ type: "summary" }, user("<x>" + NL + "[devops:handoff]")]))).toBe("handoff");
+    expect(S.subModeOfTranscript(write([user("job [devops:deliver]")]))).toBe("deliver");
+  });
+  test("row 12: no marker in the first prompt = not a sub, a later mention does not count", () => {
+    expect(S.subModeOfTranscript(write([user("plain"), user("later [devops:handoff]")]))).toBeNull();
+    expect(S.subModeOfTranscript(write([user("meta [devops:handoff]", { isMeta: true }), user("plain")]))).toBeNull();
+    expect(S.subModeOfTranscript("/no/such/file.jsonl")).toBeNull();
+    expect(S.subModeOfTranscript(undefined)).toBeNull();
+  });
+  test("launchMode: marker, else user_asked = handoff, else independent", () => {
+    expect(S.launchMode({ prompt: "x [devops:deliver]" })).toBe("deliver");
+    expect(S.launchMode({ prompt: "x", initiation: "user_asked" })).toBe("handoff");
+    expect(S.launchMode({ prompt: "x", initiation: "own_initiative" })).toBeNull();
+  });
+});

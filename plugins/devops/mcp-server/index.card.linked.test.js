@@ -57,10 +57,10 @@ describe("side-session cards through the offline renderer", () => {
     expect(r.buttons).toEqual(["Ship"]);
   }, 30000);
 
-  test("S3 step 1: orchestration with an own diff -> ⏳ Team, early-ship button", () => {
+  test("S3 step 1: orchestration with an own diff -> ⏳ Linked, early-ship button", () => {
     const r = render({ variant: "ready", linked: [L("A", "done", "deliver"), L("B", "running", "deliver")] });
-    expect(r.title).toBe("⏳ ➜ 🤖 Team ┃ ");
-    expect(r.heading).toBe("⏳ 🤖 Team — noch nicht fertig — 1 von 2 Side-Sessions fertig");
+    expect(r.title).toBe("⏳ ➜ 🔗 Linked ┃ ");
+    expect(r.heading).toBe("⏳ 🔗 Linked — noch nicht fertig — 1 von 2 Side-Sessions fertig");
     expect(r.buttons).toEqual(["Eigenen Teil jetzt shippen"]);
   }, 30000);
 
