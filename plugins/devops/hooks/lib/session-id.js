@@ -105,12 +105,11 @@ function readSessionFile(prefix, sessionId, opts) {
     const files = fs.readdirSync(tmpdir)
       // AUD-027: an in-flight writeSessionFile() temp is never session state.
       .filter(f => f.startsWith(prefix + '-') && !f.endsWith('.tmp'))
-      .map(f => ({
-        name: f,
-        full: path.join(tmpdir, f),
-        mtime: fs.statSync(path.join(tmpdir, f)).mtimeMs,
-      }))
-      .filter(f => (now - f.mtime) < maxAgeMs)
+      .map(f => {
+        // a file deleted between readdir and stat must not discard the whole lookup
+        try { return { name: f, full: path.join(tmpdir, f), mtime: fs.statSync(path.join(tmpdir, f)).mtimeMs }; } catch { return null; }
+      })
+      .filter(f => f && (now - f.mtime) < maxAgeMs)
       .sort((a, b) => b.mtime - a.mtime); // newest first
 
     if (files.length > 0) {

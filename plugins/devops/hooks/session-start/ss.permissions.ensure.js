@@ -14,9 +14,10 @@
  *   so skills can Write without first running mkdir.
  */
 
-const { readFileSync, writeFileSync, mkdirSync, existsSync } = require("node:fs");
+const { readFileSync, mkdirSync, existsSync } = require("node:fs");
 const { join } = require("node:path");
 const { homedir } = require("node:os");
+const { writeFileAtomic } = require("../lib/atomic-write.js");
 
 const HOME = homedir();
 const SETTINGS_PATH = join(HOME, ".claude", "settings.json");
@@ -66,7 +67,7 @@ if (toAdd.length === 0 && removed === 0) process.exit(0);
 settings.permissions.allow.push(...toAdd);
 
 try {
-  writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2) + "\n");
+  writeFileAtomic(SETTINGS_PATH, JSON.stringify(settings, null, 2) + "\n");
   console.error(
     `[dotclaude] Permission rules for devops report artifacts: +${toAdd.length} / -${removed}.`,
   );

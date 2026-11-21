@@ -328,8 +328,11 @@ for (const marketplace of fs.readdirSync(marketplacesDir)) {
     const pullResult = run('git pull --ff-only origin main 2>&1 || git pull --ff-only origin master 2>&1', mDir);
     newHead = run('git rev-parse HEAD', mDir);
 
-    // If pull failed (dirty tree), reset and retry
-    if (localHead === newHead && !pullResult) {
+    // If pull failed because of a dirty tree, reset and retry. Never when the fetch
+    // already failed (offline, expired token, timeout): run() returns '' on ANY error,
+    // so that would wipe local changes for a network problem. Only a clean fetch plus
+    // a tree that really is dirty justifies the destructive repair.
+    if (localHead === newHead && !pullResult && !fetchError && run('git status --porcelain', mDir)) {
       run('git checkout -- .', mDir);
       run('git clean -fd', mDir);
       run('git pull --ff-only origin main 2>&1 || git pull --ff-only origin master 2>&1', mDir);

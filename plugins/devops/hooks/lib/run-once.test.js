@@ -84,3 +84,17 @@ describe("releaseOnce", () => {
     expect(runOnce(TEST_HOOK, TEST_SESSION)).toBe(true);
   });
 });
+
+describe("runOnce claim", () => {
+  test("a fresh claim by another session blocks the run; a stale one does not", () => {
+    const claim = markerPath() + ".claim";
+    fs.writeFileSync(claim, "other");
+    try {
+      expect(runOnce(TEST_HOOK, TEST_SESSION)).toBe(false);
+      const old = new Date(Date.now() - 120000);
+      fs.utimesSync(claim, old, old);
+      expect(runOnce(TEST_HOOK, TEST_SESSION)).toBe(true);
+      expect(fs.existsSync(claim)).toBe(false);
+    } finally { try { fs.unlinkSync(claim); } catch {} }
+  });
+});

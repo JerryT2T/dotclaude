@@ -111,7 +111,6 @@ function linuxCandidatePaths() {
   const userDirs = [
     path.join(home, 'Applications'),
     path.join(home, '.local', 'share', 'AnythingLLM'),
-    path.join(home, 'Downloads'),
   ];
   for (const dir of userDirs) {
     try {
@@ -199,6 +198,7 @@ function launch(exePath) {
           stdio: 'ignore',
           windowsHide: true,
         });
+        child.on('error', () => {});
         child.unref();
         return { ok: true, pid: child.pid };
       }
@@ -210,6 +210,7 @@ function launch(exePath) {
       stdio: 'ignore',
       windowsHide: false,
     });
+    child.on('error', () => { /* EACCES/ENOENT arrive async; the process just does not start */ });
     child.unref();
     // Windows: poll for the main window and minimize it once it appears.
     // Fire-and-forget; never blocks readiness polling.

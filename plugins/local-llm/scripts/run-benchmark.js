@@ -188,6 +188,7 @@ function classifyTier(avgScore) {
 async function main() {
   if (!hasApiKey(CONFIG)) {
     process.stderr.write('[benchmark] no api key — abort\n');
+    tierCache.clearRunning();
     process.exit(0);
   }
 

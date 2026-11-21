@@ -25,6 +25,9 @@ if (!PLUGIN_DATA) {
 const SOURCE_PKG = join(PLUGIN_ROOT, "mcp-server", "package.json");
 const CACHED_PKG = join(PLUGIN_DATA, "package.json");
 const DATA_MODULES = join(PLUGIN_DATA, "node_modules");
+// Present while npm runs: a hook killed mid-install (timeout) never reaches its catch,
+// and without this marker the stamped package.json + partial node_modules would count as intact.
+const INSTALLING = join(PLUGIN_DATA, ".installing");
 
 // Required top-level deps that must be present after install. Add any new
 // runtime dep here so a corrupt/partial node_modules gets detected and redone.
@@ -36,7 +39,7 @@ function dataModulesIntact() {
 }
 
 function needsInstall() {
-  if (!existsSync(CACHED_PKG) || !dataModulesIntact()) return true;
+  if (existsSync(INSTALLING) || !existsSync(CACHED_PKG) || !dataModulesIntact()) return true;
   try {
     const source = readFileSync(SOURCE_PKG, "utf8");
     const cached = readFileSync(CACHED_PKG, "utf8");
@@ -50,6 +53,7 @@ if (needsInstall()) {
   console.error("[local-llm] Installing MCP dependencies...");
   try {
     mkdirSync(PLUGIN_DATA, { recursive: true });
+    writeFileSync(INSTALLING, String(process.pid));
     writeFileSync(CACHED_PKG, readFileSync(SOURCE_PKG, "utf8"));
 
     execSync("npm install --omit=dev --no-fund --no-audit", {
@@ -59,6 +63,7 @@ if (needsInstall()) {
       windowsHide: true,
     });
 
+    try { unlinkSync(INSTALLING); } catch {}
     console.error("[local-llm] MCP dependencies installed.");
   } catch (err) {
     console.error("[local-llm] Failed to install MCP dependencies:", err.message);
@@ -78,6 +83,8 @@ function targetIsIntact(p) {
 }
 
 try {
+  // dangling symlink/junction: existsSync() is false, symlinkSync would hit EEXIST
+  try { if (!existsSync(target) && lstatSync(target).isSymbolicLink()) rmSync(target, { force: true }); } catch { /* absent */ }
   if (existsSync(target)) {
     const stat = lstatSync(target);
     if (stat.isSymbolicLink()) process.exit(0);

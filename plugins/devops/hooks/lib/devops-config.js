@@ -121,11 +121,11 @@ const SCHEMA = Object.freeze({
   }),
   apiCredit: Object.freeze({
     enabled: Object.freeze({
-      type: 'boolean', default: false,
+      type: 'boolean', default: false, globalOnly: true,
       doc: 'Opt-in: read-only side work (sweeps, research, reviews, audits) runs on the Claude API credit of the linked Console org first (scripts/claude-api-agent.js, claude-api-safe.js), the plan as the fallback. Claude Code itself always stays on the plan.',
     }),
     webGuide: Object.freeze({
-      type: 'boolean', default: false,
+      type: 'boolean', default: false, globalOnly: true,
       doc: 'Opt-in: when apiCredit.enabled is on and no API key is stored, offer the one-time auto-guide through the Claude Console (workspace, spend limit, key).',
     }),
     contextEditing: Object.freeze({
@@ -361,6 +361,7 @@ function load(cwd, opts = {}) {
       let value = spec.default;
       let source = 'default';
       for (const [name, data] of layers) {
+        if (spec.globalOnly && name === 'project') continue; // machine-wide: a committed project file must not set it
         const sec = data && data[section];
         const read = sec && typeof sec === 'object' ? readValue(spec, sec[key]) : undefined;
         if (read !== undefined) {

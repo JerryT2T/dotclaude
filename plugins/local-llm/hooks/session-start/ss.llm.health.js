@@ -285,4 +285,7 @@ function spawnBenchmark(model) {
       `Start the app manually.`
     ));
   }
-})();
+})().catch((err) => {
+  try { process.stderr.write(`[local-llm] health hook failed: ${err && err.message}
+`); } catch { /* ignore */ }
+});

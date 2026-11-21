@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.394.1] — 2026-11-21
+
+### Fixed
+- Home backup fails closed when a blocked file stays staged after `git reset`, so it can never be committed.
+- Machine-wide settings such as `apiCredit.enabled` are read from the global layer only; a project's config can no longer switch on API-credit spending.
+- local-llm: the API key is passed via stdin, saved only after it verifies, written with mode 0600, and a broken config file is never overwritten; base URLs with a path and `[::1]` work; a timed-out request is not retried for minutes.
+- Plugin auto-update no longer wipes a clone after a failed fetch (offline, expired token) or on a clean tree.
+- Parallel sessions no longer corrupt `settings.json` or the plugin registry: writes are atomic and the run-once gate is claimed atomically.
+
 ## [0.394.0] — 2026-11-21
 
 ### Added
