@@ -1670,10 +1670,10 @@ export const register: Register = on => {
   //     top-right corner. The terminal has no columns: the same parts, one column.
   //   working: turning ⏳ + the running step (n/m · text) + the tool; the rail shows the ring only.
   //   idle: one slim row, "Last: {card title} · {time}" left, ring chip + 🧹 N ▸ right; hidden when nothing is due.
-  // The line under the prompt: "● devops", green while the plugin is active, red with the reason otherwise, the last
-  // benefit next to it while it is fresh. A press opens the info card in the band (bottom left, right above the
-  // prompt). The engine's own hint stays: its row is drawn first. Terminal: the hint keeps its live pills and gets
-  // the same words as its tail; the card opens with /devops there.
+  // The line under the prompt: the word "devops", green while the plugin is active, grey otherwise (the reason on
+  // hover), the last benefit next to it while it is fresh. A press opens the devops Home pane. The engine's own hint
+  // stays: its row is drawn first. Terminal: the hint keeps its live pills and gets "● devops" as its tail. Once this
+  // line is drawn, the band's status row drops its own word and keeps the bars (no second "devops").
   on('ui.render', { component: 'PromptHint' }, async ($, e, next) => {
     if (!(await open($))) return next(e)
     if (!(await optNow($)).on) return next(e) // off: the band's chip is the only devops element
@@ -1980,7 +1980,8 @@ export const register: Register = on => {
     // B2: the band's last row, right above the input: the status word, then Wk / Fb / 5h in the card's animated bar at half width.
     const statusRow = !Svg ? null : (
       <Box key="devops-status-row" flexDirection="row" alignItems="center" columnGap={2}>
-        {statusWordEl($, { Box, Button, Text }, isActive(hl), inactiveReason(hl, loc), 'devops-word-wrap')}
+        {/* A host that draws the line under the prompt shows the word there already: the row keeps the bars only. */}
+        {!hintDrawn && statusWordEl($, { Box, Button, Text }, isActive(hl), inactiveReason(hl, loc), 'devops-word-wrap')}
         <Box key="budget" flexDirection="row" alignItems="center" columnGap={2} flexWrap="wrap">
           {bandBars(b, now).map(bar => (
             <Box key={`bar-${bar.label}`} flexDirection="row" alignItems="center" columnGap={1}>
