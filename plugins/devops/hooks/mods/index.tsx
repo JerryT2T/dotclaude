@@ -17,16 +17,15 @@
  *   AbovePrompt band                       working: turning hourglass + running step (update_plan / TodoWrite) + tool;
  *                                          after a card: its template part (title, heading, points, buttons that
  *                                          send the card's own prompts) — copied from render_completion_card's
- *                                          result, the answer stays inline; 5-h / weekly bars + context fill
+ *                                          result, the answer stays inline; context fill; Desktop: the last row is the status word + Wk / Fb / 5h bars
  *                                          (session.measure); branch-hygiene count with a cleanup button
  *                                          (opus subagent: plan, then apply); on a green (🟩) card "Archivieren":
  *                                          the app's archive_session on this session via $.mcp.call, no model turn
  *   Pane `devops-cleanup`                 the cleanup plan / result, Apply and Discard buttons
- *   PromptHint (under the prompt)          "● devops": green while the hooks run and the MCP server is connected, red
- *                                          with the reason otherwise; the last benefit next to it for 90 s; a press
- *                                          opens the info card in the band (what the plugin saved and cost, from its
- *                                          own local logs, no model call). Terminal: the same as the hint's tail
- *   /devops                                opens / closes that info card
+ *   PromptHint (under the prompt)          the word "devops": green while the hooks run and the MCP server is connected, grey
+ *                                          (reason in an overlay) otherwise; the last benefit next to it for 90 s; a press
+ *                                          opens the devops Home pane. Terminal: "● devops" as the hint's tail
+ *   /devops                                toggles the devops Home pane
  *   Status line                            the same state as plain text, only until the line under the prompt was drawn
  *   Toasts                                 permission request waiting, long subagent / background Bash finished, SessionStart notices
  *   /mods-spike-fork                       Spike 1: one $.model.fork, usage logged to ~/.claude/devops-mods-spike.jsonl
@@ -77,6 +76,8 @@ import {
   type Halted,
   archiveOffered,
   archiveRefusal,
+  BAND_BAR_SIZE,
+  bandBars,
   BUDGET_BAR_SIZE,
   budgetBars,
   budgetBarSvg,
@@ -473,6 +474,27 @@ function toggleOptPopup($: EngineInterface, openIt: boolean): void {
  * A press on the status element (or /devops): open the devops Home pane, or close it (concept 20261121-1400-devops-home).
  * The pane took over the info card that used to open above the prompt; a card still open from before closes here.
  */
+/**
+ * The status word: "devops" itself is the state (green while active, grey while not, no dot, no "active" text).
+ * The reason of an inactive state sits in a hover overlay next to the word; the press opens the devops Home pane.
+ */
+function statusWordEl($: EngineInterface, c: { Box: any; Button: any; Text: any }, ok: boolean, reason: string, key: string) {
+  const { Box, Button, Text } = c
+  return (
+    <Box key={key} position="relative" flexDirection="row" alignItems="center">
+      <Button key="devops-status" plain onPress={() => toggleInfo($)}>
+        {/* The word in the engine hint's look (body size), coloured by state; grey = dim. */}
+        <Text key="devops-word" size="body" {...(ok ? { color: STATUS_GREEN } : { dimColor: true })}>{'devops'}</Text>
+      </Button>
+      {!ok && reason && (
+        <Box position="absolute" bottom={1} left={0} display="none" hover={{ display: 'flex' }} paddingX={1} borderStyle="round" borderColor={DIVIDER} backgroundColor={POPOVER_BG}>
+          <Text key="devops-reason-text" size="caption">{reason}</Text>
+        </Box>
+      )}
+    </Box>
+  )
+}
+
 async function toggleInfo($: EngineInterface): Promise<void> {
   if ((await read($, info)).open) await update($, info, i => ({ ...i, open: false }))
   await checkMcp($)
@@ -1687,14 +1709,10 @@ export const register: Register = on => {
     return (
       <Box key="devops-hint" flexDirection="row" alignItems="center" columnGap={2}>
         {engineRow}
-        <Button key="devops-status" plain onPress={() => toggleInfo($)}>
-          <Text color={ok ? STATUS_GREEN : STATUS_RED}>●</Text>
-          {/* The word in the engine hint's look (white, body size), not the plain Button's dimmed label. */}
-          <Text key="devops-word" size="body" color="#ffffff">{' devops'}</Text>
-        </Button>
+        {statusWordEl($, { Box, Button, Text }, ok, inactiveReason(state, loc), 'devops-word-wrap')}
         {/* One press from the visible devops label to the opt-out question (session or project). */}
         <Button key="devops-optout" plain label="⏻" onPress={() => toggleOptPopup($, !optPopup)} />
-        {note && <Text key="devops-note" dimColor={ok} {...(ok ? {} : { color: STATUS_RED })}>{note}</Text>}
+        {ok && note && <Text key="devops-note" dimColor>{note}</Text>}
       </Box>
     )
   })
@@ -1733,7 +1751,7 @@ export const register: Register = on => {
     const w = working ? workingLine(prog) : null
     const b = await read($, budget)
     const now = await $.clock.now()
-    const bars = budgetBars(b, now)
+    const bars = budgetBars(b, now) // terminal glyph line; Desktop draws bandBars in the status row
     const ring = ringPercent(b, sh.env)
     const run = await read($, cleanup)
     const folded = await read($, fold)
@@ -1753,9 +1771,8 @@ export const register: Register = on => {
     // #1150: a stopped turn is a state worth the band on its own — the user must see that nothing runs any more.
     const halt = idle ? await read($, halted) : null
     // #1161: a cleanup run in any phase but idle keeps the band up — the whole flow lives here, not in a pane.
-    // #1176: on a graphical surface whose host has not drawn the line under the prompt, the band carries "● devops".
-    const hintFallback = e.surface !== 'terminal' && !hintDrawn
-    if (idle && run.phase === 'idle' && !hintFallback && !cv && !bars.length && !bt && !infoData && !optPopup && !rc && !(halt && halt.aborted) && !(ring !== null && ring >= CONTEXT_SHOW_PERCENT)) return next(e)
+    // B2: on a graphical surface the band's last row (status word + usage bars) is always there while devops is on, so only the terminal steps aside.
+    if (e.surface === 'terminal' && idle && run.phase === 'idle' && !cv && !bars.length && !bt && !infoData && !optPopup && !rc && !(halt && halt.aborted) && !(ring !== null && ring >= CONTEXT_SHOW_PERCENT)) return next(e)
     const { Box, Button, Markdown, Text } = $.ui.resolve(e)
     // Desktop: the card's animated SVG (bars, hourglass, ring) at a fixed size; the terminal has no Svg, so glyphs.
     const desktop = e.surface !== 'terminal'
@@ -1781,16 +1798,6 @@ export const register: Register = on => {
       )
     }
     const toggle = () => update($, fold, v => !v)
-    const hintOk = isActive(hl)
-    const hintEl = hintFallback ? (
-      <Box key="devops-hint-fallback" flexDirection="row" alignItems="center" columnGap={1}>
-        <Button key="devops-status" plain onPress={() => toggleInfo($)}>
-          <Text color={hintOk ? STATUS_GREEN : STATUS_RED}>●</Text>
-          <Text key="devops-word">{' devops'}</Text>
-        </Button>
-        {!hintOk && <Text key="devops-note" color={STATUS_RED}>{`${tr(loc, 'stInactive')} · ${inactiveReason(hl, loc)}`}</Text>}
-      </Box>
-    ) : null
     // Collecting: one persistent row, neutral colour (the confirmation toast carries the event, this the standing state).
     // The count folds the note list open (zero tokens, instead of `/do-batch status`); Go queues the execute marker as the
     // person's prompt, also while a turn runs; Off ends the mode through a script, no turn. Typing go / aus works as before.
@@ -1969,17 +1976,20 @@ export const register: Register = on => {
       )
     // The same native button as "Aufräumen" (round-4 review: the square amber pill read as foreign); the amber ring carries the urgency.
     const compactBtn = advised && !working ? <Button key="compact" label={tr(loc, 'compact')} onPress={() => $.session.compact()} /> : null
-    const budgetEl = !bars.length ? null : Svg ? (
-      <Box key="budget" flexDirection="row" alignItems="center" columnGap={2} flexWrap="wrap">
-        {bars.map(bar => (
-          <Box key={`bar-${bar.label}`} flexDirection="row" alignItems="center" columnGap={1}>
-            <Text dimColor>{bar.label}</Text>
-            <Svg source={budgetBarSvg(bar)} alt={budgetBarAlt(bar, loc)} width={BUDGET_BAR_SIZE.width} height={BUDGET_BAR_SIZE.height} isInteractive />
-          </Box>
-        ))}
+    const budgetEl = !bars.length || Svg ? null : <Text key="budget" dimColor>{budgetLine(b, now)}</Text>
+    // B2: the band's last row, right above the input: the status word, then Wk / Fb / 5h in the card's animated bar at half width.
+    const statusRow = !Svg ? null : (
+      <Box key="devops-status-row" flexDirection="row" alignItems="center" columnGap={2}>
+        {statusWordEl($, { Box, Button, Text }, isActive(hl), inactiveReason(hl, loc), 'devops-word-wrap')}
+        <Box key="budget" flexDirection="row" alignItems="center" columnGap={2} flexWrap="wrap">
+          {bandBars(b, now).map(bar => (
+            <Box key={`bar-${bar.label}`} flexDirection="row" alignItems="center" columnGap={1}>
+              <Text dimColor>{bar.label}</Text>
+              <Svg source={budgetBarSvg(bar, { width: BAND_BAR_SIZE.width, compact: true })} alt={budgetBarAlt(bar, loc)} width={BAND_BAR_SIZE.width} height={BAND_BAR_SIZE.height} isInteractive />
+            </Box>
+          ))}
+        </Box>
       </Box>
-    ) : (
-      <Text key="budget" dimColor>{budgetLine(b, now)}</Text>
     )
 
     // --- idle: one slim row; the batch chip sits left, the ring + 🧹 right; the expanded breakdown is its own right-aligned column ---
@@ -1992,8 +2002,8 @@ export const register: Register = on => {
           {optEl}
           {infoEl}
           {runEl}
+          {(batchEl || text || cv || compactBtn || (ring !== null && ring >= CONTEXT_SHOW_PERCENT)) && (
           <Box key="idle" flexDirection="row" alignItems="center" columnGap={2}>
-            {hintEl}
             {batchEl}
             {text && <Text key="idle-last" {...S.small}>{text}</Text>}
             <Box flexGrow={1} />
@@ -2006,6 +2016,7 @@ export const register: Register = on => {
             {cv && <Button key="cleanup-fold" plain label={`🧹 ${cv.n} ${folded ? '▾' : '▸'}`} onPress={toggle} />}
             {compactBtn}
           </Box>
+          )}
           {cv && folded && (
             <Box key="cleanup-detail-row" flexDirection="row">
               <Box flexGrow={1} />
@@ -2015,6 +2026,7 @@ export const register: Register = on => {
             </Box>
           )}
           {budgetEl}
+          {statusRow}
         </Box>
       )
     }
@@ -2175,8 +2187,7 @@ export const register: Register = on => {
             </Box>
           )}
         </Box>
-        {budgetEl}
-        {hintEl}
+        {statusRow}
       </Box>
     )
   })
