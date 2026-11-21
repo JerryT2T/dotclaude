@@ -17,7 +17,7 @@
  *   (e.g. "1" to keep progress updates) is never overwritten.
  */
 
-const { readFileSync, writeFileSync, existsSync } = require("node:fs");
+const { readFileSync, existsSync } = require("node:fs");
 const { join } = require("node:path");
 const { homedir } = require("node:os");
 const { writeFileAtomic } = require("../lib/atomic-write.js");

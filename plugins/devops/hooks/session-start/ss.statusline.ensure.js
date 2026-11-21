@@ -15,7 +15,7 @@
  *   current logic) and only adds the statusLine entry when absent.
  */
 
-const { readFileSync, writeFileSync, existsSync } = require("node:fs");
+const { readFileSync, existsSync } = require("node:fs");
 const { join } = require("node:path");
 const { homedir } = require("node:os");
 const { writeFileAtomic } = require("../lib/atomic-write.js");

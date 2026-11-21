@@ -14,7 +14,7 @@
  *   so skills can Write without first running mkdir.
  */
 
-const { readFileSync, writeFileSync, mkdirSync, existsSync } = require("node:fs");
+const { readFileSync, mkdirSync, existsSync } = require("node:fs");
 const { join } = require("node:path");
 const { homedir } = require("node:os");
 const { writeFileAtomic } = require("../lib/atomic-write.js");
