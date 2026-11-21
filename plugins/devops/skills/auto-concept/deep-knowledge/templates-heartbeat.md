@@ -171,7 +171,12 @@ function startHeartbeatWorker() {
     // Same back-off as makeBackoff(5000): 5 s normally, 5 → 10 → … → 60 s while failing.
     const src = 'const u=' + url + ';let f=0;async function p(){let ok=false;try{const r=await fetch(u,{cache:"no-store"});if(r.ok){postMessage(await r.json());ok=true}}catch(e){}f=ok?0:f+1;setTimeout(p,f?Math.min(60000,5000*Math.pow(2,f-1)):5000)}p();';
     const w = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
-    w.onmessage = (ev) => { applyHeartbeat(ev.data); checkClaudeConnection(); };
+    w.onmessage = (ev) => {
+      applyHeartbeat(ev.data); checkClaudeConnection();
+      // A finalize in flight: the worker is unthrottled in a hidden tab, the DOM timers
+      // are not - so it also drives the poll that picks up the closed phase (#1175).
+      if (typeof finalizeInFlight === 'function' && finalizeInFlight()) pollProcessedState();
+    };
     w.onerror = () => { _hbWorker = null; };   // main-thread interval takes over
     _hbWorker = w;
     return true;

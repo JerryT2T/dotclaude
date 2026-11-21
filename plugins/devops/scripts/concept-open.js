@@ -17,6 +17,13 @@
  *     registered on the bridge (/pending browser_tabs > 0): then {already_open:true}. Prints {ok:true,url} or
  *     {ok:false,error} and exits 1. CONCEPT_OPEN_NO_BROWSER=1 skips the open.
  *
+ *   close --state <abs state file> | --port <n>  [--finished '<json>' | --finished-file <path>]
+ *         [--pr <n>] [--version <vX.Y.Z>] [--ack-wait-s 20] [--no-shutdown]
+ *     The deterministic finish signal (#1175): /reset, /progress finalize:done,
+ *     /status {phase:closed, finished}, wait (bounded) for the tab's /closed-ack,
+ *     then /shutdown. Exits 1 and prints {ok:false,error} when /status does not
+ *     echo phase "closed" - run it BEFORE any file move or state-file removal.
+ *
  * Every sibling script is resolved from this file's directory.
  */
 const fs = require('fs');
@@ -201,7 +208,73 @@ async function verify(opts, deps = {}) {
   return { ok: true, url };
 }
 
-module.exports = { prepare, verify, buildLaunch, parseArgs, openBrowser };
+function post(url, body, timeout = 5000) {
+  return new Promise((resolve) => {
+    const data = body === undefined ? '' : JSON.stringify(body);
+    const r = http.request(url, { method: 'POST', timeout, headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) } }, (res) => {
+      let b = '';
+      res.on('data', (c) => { b += c; });
+      res.on('end', () => { let j = null; try { j = JSON.parse(b); } catch { /* not JSON */ } resolve({ status: res.statusCode, body: b, json: j }); });
+    });
+    r.on('timeout', () => { r.destroy(); resolve({ status: 0, body: '', json: null }); });
+    r.on('error', () => resolve({ status: 0, body: '', json: null }));
+    r.end(data);
+  });
+}
+
+async function close(opts, deps = {}) {
+  const sleep = deps.sleep || ((ms) => new Promise((r) => setTimeout(r, ms)));
+  let port = opts.port && opts.port !== true ? Number(opts.port) : 0;
+  if (!port && opts.state && opts.state !== true) {
+    try { port = Number(JSON.parse(fs.readFileSync(opts.state, 'utf8')).port) || 0; } catch (e) {
+      return { ok: false, error: `cannot read state file ${opts.state}: ${e.message}` };
+    }
+  }
+  if (!port) return { ok: false, error: 'close needs --state <abs state file> or --port <n>' };
+  let finished = { state: 'closed' };
+  try {
+    if (opts['finished-file'] && opts['finished-file'] !== true) finished = JSON.parse(fs.readFileSync(opts['finished-file'], 'utf8'));
+    else if (opts.finished && opts.finished !== true) finished = JSON.parse(opts.finished);
+  } catch (e) { return { ok: false, error: `--finished is not valid JSON: ${e.message}` }; }
+  if (!finished || typeof finished !== 'object' || Array.isArray(finished)) return { ok: false, error: '--finished must be a JSON object' };
+  const base = `http://localhost:${port}`;
+  const ver = opts.version && opts.version !== true ? String(opts.version) : null;
+  const pr = opts.pr && opts.pr !== true ? Number(opts.pr) || null : null;
+  // The page's "Gelandet: …" line reads version / pr from `finished` (templates-submit-js-3).
+  if (ver && finished.version === undefined) finished.version = ver;
+  if (pr && finished.pr === undefined) finished.pr = pr;
+
+  // 1. /reset (a pending-submission gate answers 428: this round truly ends here).
+  let rs = await post(`${base}/reset`, {});
+  if (rs.status === 428) rs = await post(`${base}/reset`, { no_round: 'closeout' });
+  if (rs.status === 0) return { ok: false, error: `bridge on port ${port} does not answer /reset` };
+  if (rs.status >= 400) return { ok: false, error: `/reset failed (HTTP ${rs.status})` };
+  // 2. checkpoint, 3. the done phase with the result.
+  const pg = await post(`${base}/progress`, { action: 'finalize:done', step: 'closed', status: 'done', artifacts: { pr, version: ver } });
+  if (!pg.json || pg.json.ok !== true) return { ok: false, error: `/progress finalize:done failed (HTTP ${pg.status})` };
+  const st = await post(`${base}/status`, { phase: 'closed', finished });
+  if (!st.json || st.json.phase !== 'closed') return { ok: false, error: `/status did not echo phase "closed" (HTTP ${st.status}: ${st.body.slice(0, 120)}) - the page would stay on the spinner` };
+  // 4. wait for the tab (skipped without an open tab).
+  let acked = false;
+  const waitMs = (Number(opts['ack-wait-s']) || 20) * 1000;
+  const pend = await req('GET', `${base}/pending`);
+  let tabs = 1;
+  try { const t = JSON.parse(pend.body).browser_tabs; if (typeof t === 'number') tabs = t; } catch { /* older bridge: assume a tab */ }
+  if (tabs > 0) {
+    const end = Date.now() + waitMs;
+    while (Date.now() < end) {
+      const a = await req('GET', `${base}/closed-ack`);
+      try { if (JSON.parse(a.body).ack === true) { acked = true; break; } } catch { /* retry */ }
+      await sleep(500);
+    }
+  }
+  // 5. shutdown.
+  let shutdown = false;
+  if (!opts['no-shutdown']) shutdown = (await post(`${base}/shutdown`)).status === 200;
+  return { ok: true, port, acked, tabs, shutdown };
+}
+
+module.exports = { prepare, verify, close, buildLaunch, parseArgs, openBrowser };
 
 if (require.main === module) {
   (async () => {
@@ -214,8 +287,12 @@ if (require.main === module) {
         const res = await verify(opts);
         process.stdout.write(JSON.stringify(res) + '\n');
         process.exit(res.ok ? 0 : 1);
+      } else if (cmd === 'close') {
+        const res = await close(opts);
+        process.stdout.write(JSON.stringify(res) + '\n');
+        process.exit(res.ok ? 0 : 1);
       } else {
-        process.stderr.write('usage: concept-open.js prepare --cwd <dir> --html <rel> | verify --state <abs path>\n');
+        process.stderr.write('usage: concept-open.js prepare --cwd <dir> --html <rel> | verify --state <abs path> | close --state <abs path>|--port <n> [--finished <json>]\n');
         process.exit(2);
       }
     } catch (e) {

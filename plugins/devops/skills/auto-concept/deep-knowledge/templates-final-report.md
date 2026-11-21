@@ -116,8 +116,8 @@ and the bridge gone.
 
 | `state` | Ring | Heading | Under it |
 |---|---|---|---|
-| `shipped` | success ✓ | Fertig. | `sub`, e.g. "v0.360.0 auf Alpha, Concept abgeschlossen." "Live" only with a proven deploy |
-| `closed` | accent ✓ | Abgeschlossen. | `sub`, e.g. "Nichts geshippt, alles liegt auf Branch X." |
+| `shipped` | success ✓ | Ausgeliefert. | `sub`, e.g. "v0.360.0 auf Alpha, Concept abgeschlossen." "Live" only with a proven deploy |
+| `closed` | accent ✓ | Abgeschlossen. | `sub`, e.g. "Nichts geshippt, alles liegt auf Branch X."; without one the page says the result and next step are in the chat (never a bare heading); `version`/`pr` give a `shipped` page its "Gelandet: …" line |
 | `partial` | warning ! | Fast fertig. | `sub` and up to three "Nicht erreicht: …" (`misses`), also when the ship was green |
 | `blocked` | danger – | Ship blockiert. | `reason`, "Das Concept bleibt offen", and "Zum Bericht", because the sheet stays usable |
 | `lost` | accent – | Verbindung weg. | "Das Ergebnis steht im Chat" and "Zum Bericht". The page sets this itself after a minute without a bridge heartbeat during a finalize, but only when no `/status` phase `implementing`/`shipping` was seen in that minute; never green |

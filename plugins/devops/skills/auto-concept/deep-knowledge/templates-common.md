@@ -262,8 +262,10 @@ must see their own language. The locale hint is authoritative.
 | `final.closeout_done_close`    | Concept closed · close         | Concept abgeschlossen · schließen |
 | `final.closeout_stalled` | Delivered, but nothing is answering any more. Nothing more can be sent from this page — check the chat. | Übermittelt, aber es kommt keine Antwort mehr. Von dieser Seite kann nichts mehr gesendet werden — schau in den Chat. |
 | `final.closeout_stalled_short` | Delivered · no answer any more | Übermittelt · keine Antwort mehr |
-| `final.fin_shipped`            | Done.                          | Fertig. |
+| `final.fin_shipped`            | Shipped.                       | Ausgeliefert. |
+| `final.fin_shipped_sub`        | Landed:                        | Gelandet: |
 | `final.fin_closed`             | Closed.                        | Abgeschlossen. |
+| `final.fin_closed_sub`         | The concept is finished. Details and next steps are in the chat. | Das Concept ist abgeschlossen. Details und der nächste Schritt stehen im Chat. |
 | `final.fin_partial`            | Almost done.                   | Fast fertig. |
 | `final.fin_blocked`            | Ship blocked.                  | Ship blockiert. |
 | `final.fin_blocked_sub`        | The concept stays open.        | Das Concept bleibt offen. |
