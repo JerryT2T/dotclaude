@@ -47,6 +47,8 @@ const TIMING_RE = /\b(welle|wellen|wann\s+(?:\w+\s+){0,2}umsetz\w*|wann\s+einbau
 // A12 — finding text budget (research: NN/g scan studies, Cowan 2001 working memory)
 const FINDING_MAX_WORDS = 40;
 const FINDING_MAX_SENTENCES = 3;
+// ≤ 3 lines at stage width: the column is ~700px of 16px text (~75 characters per line); never clamped in CSS (nothing is cut off), so the gate bounds it
+const FINDING_MAX_CHARS = 220;
 const FINDING_MAX_CODE = 1;
 // Code names: fn(), lower-case file names (not "Node.js"), --css-vars, camelCase (not "iPhone", "eBay", "macOS"), snake_case.
 const CODE_NAME_RE = /\b[A-Za-z_$][\w$]*\(\)|\b[a-z_][\w-]*\.(?:js|mjs|cjs|ts|tsx|jsx|md|json|py|css|html|ya?ml)\b|(?<![\w-])--[a-z][\w-]*|\b[a-z]{2,}[A-Z][a-z][A-Za-z0-9]*\b|\b[a-z]+_[a-z0-9_]+\b/g;
@@ -308,7 +310,8 @@ function findAnalysisIssues(html) {
     const words = text.split(/\s+/).filter(w => /[\p{L}\p{N}]/u.test(w)).length;
     const plain = text.replace(ABBREV_RE, m => m.replace(/\./g, '․'));   // one-dot leader: not a sentence end
     const sentences = (plain.match(/[.!?…](?=\s|$)/g) || []).length || 1;
-    if (words > FINDING_MAX_WORDS || sentences > FINDING_MAX_SENTENCES) warn('finding-length', `decision "${id}": the finding text has ${words} words in ${sentences} sentences (max ${FINDING_MAX_WORDS} / ${FINDING_MAX_SENTENCES}, display and example not counted) — keep consequence + evidence, move detail into the example`, d.start);
+    const chars = text.replace(/\s+/g, ' ').length;
+    if (words > FINDING_MAX_WORDS || sentences > FINDING_MAX_SENTENCES || chars > FINDING_MAX_CHARS) warn('finding-length', `decision "${id}": the finding text has ${words} words / ${chars} characters in ${sentences} sentences (max ${FINDING_MAX_WORDS} / ${FINDING_MAX_CHARS} / ${FINDING_MAX_SENTENCES}, display and example not counted) — the finding is ONE text block of at most 3 lines above the display: merge situation and long-slot prose, keep consequence + evidence, move detail into the example`, d.start);
     const codes = parts.reduce((k, p) => k + doc.nodes.filter(n => n.tag === 'code' && (n === p || inside(p, n))).length, 0);
     const ids = new Set((text.replace(/<[^>]*>/g, ' ').match(CODE_NAME_RE) || []).map(s => s.toLowerCase()));
     const nCodes = Math.max(codes, ids.size);

@@ -378,6 +378,17 @@ describe("chat flow Full round", () => {
     timers.filter(t => t.ms === 220).forEach(t => t.f());
     expect(d.querySelector(".an-m-q").classList.contains("an-dip")).toBe(false);
   });
+  test("the finding is ONE text block above the display: situation + prose merge, nothing stands below the display", () => {
+    const L3 = '<div data-alevel="3" data-title="T-a1"><div data-slot="short"><p>s</p></div><div data-slot="long"><p>l</p></div></div>';
+    const lay = FULL.replace(L3, `<p data-situation>Situation text.</p><div data-alevel="3" data-title="T-a1"><div data-slot="short"><p>s</p></div><div data-slot="long"><div data-viz="bars" data-viz-spec='{"items":[{"label":"A","value":3},{"label":"B","value":9}]}'></div><p>Prose after display.</p></div></div>`);
+    const { doc } = page(lay);
+    const pane = doc.getElementById("a1").querySelector(".an-p-find");
+    const kids = [...pane.children];
+    expect(kids.length).toBe(2);
+    expect(kids[0].textContent).toBe("Situation text. Prose after display.");
+    expect(kids[1].matches("[data-viz]") || !!kids[1].querySelector("[data-viz]")).toBe(true);
+    expect(kids[1].textContent).not.toContain("Prose after display");
+  });
   test("spec.hl pulses once on the first visit", () => {
     const L3 = '<div data-alevel="3" data-title="T-a1"><div data-slot="short"><p>s</p></div><div data-slot="long"><p>l</p></div></div>';
     const hl = FULL.replace(L3, '<div data-alevel="3" data-title="T-a1"><div data-slot="short"><p>s</p></div><div data-slot="long"><div data-viz="bars" data-viz-spec=\'{"items":[{"label":"A","value":3},{"label":"B","value":9}],"hl":"B"}\'></div></div></div>');
