@@ -263,8 +263,15 @@ function stagedEntries(ctx) {
   return entries;
 }
 
+/** Drop `files` from the index; throws when git fails or a file is still staged afterwards (fail closed). */
 function unstage(ctx, files) {
-  for (const group of chunked(files)) git(ctx, ['reset', '-q', '--', ...group]);
+  for (const group of chunked(files)) {
+    const r = git(ctx, ['reset', '-q', '--', ...group]);
+    if (r.status !== 0) throw new Error(`git reset failed: ${oneLine(r.stderr)}`);
+  }
+  const still = new Set(stagedEntries(ctx).map((e) => e.file));
+  const left = files.filter((f) => still.has(f));
+  if (left.length) throw new Error(`${left.length} blocked file(s) are still staged after git reset`);
 }
 
 /** `git add -A`, then drop denylisted and symlinked paths; returns the final staged entries. */
@@ -636,6 +643,7 @@ function runOnce(ctx, s) {
   try {
     entries = stage(ctx);
   } catch (e) {
+    git(ctx, ['reset', '-q']);
     return fail(ctx, 'stage', e.message);
   }
 
@@ -662,7 +670,12 @@ function runOnce(ctx, s) {
         notifyFindings(ctx, seen, fingerprint, `Home-Backup blockiert: ${hits.length} Funde`);
         return { code: 1, status: 'blocked', hits, lines: [`home-backup: blocked, ${hits.length} hits — see ~/.claude/${REPORT_TXT}`] };
       }
-      unstage(ctx, [...bad]);
+      try {
+        unstage(ctx, [...bad]);
+      } catch (e) {
+        git(ctx, ['reset', '-q']);
+        return fail(ctx, 'stage', e.message);
+      }
       entries = rest;
       partial = hits;
     }

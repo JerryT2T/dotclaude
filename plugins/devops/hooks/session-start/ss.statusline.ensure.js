@@ -15,9 +15,10 @@
  *   current logic) and only adds the statusLine entry when absent.
  */
 
-const { readFileSync, writeFileSync, existsSync } = require("node:fs");
+const { readFileSync, existsSync } = require("node:fs");
 const { join } = require("node:path");
 const { homedir } = require("node:os");
+const { writeFileAtomic } = require("../lib/atomic-write.js");
 
 const HOME = homedir();
 const SETTINGS_PATH = join(HOME, ".claude", "settings.json");
@@ -53,7 +54,9 @@ try { const m = require(target); if (m && typeof m.main === 'function') m.main()
 `;
 
 try {
-  writeFileSync(LAUNCHER_PATH, launcherSource);
+  let current = null;
+  try { current = readFileSync(LAUNCHER_PATH, "utf8"); } catch { /* absent */ }
+  if (current !== launcherSource) writeFileAtomic(LAUNCHER_PATH, launcherSource);
 } catch (err) {
   console.error(`[dotclaude] statusline launcher write failed: ${err.message}`);
   process.exit(0);
@@ -91,7 +94,7 @@ settings.statusLine = {
 };
 
 try {
-  writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2) + "\n");
+  writeFileAtomic(SETTINGS_PATH, JSON.stringify(settings, null, 2) + "\n");
   console.error("[dotclaude] Registered native usage statusLine — usage data now minute-fresh, no scrape.");
 } catch (err) {
   console.error(`[dotclaude] Could not update ${SETTINGS_PATH}: ${err.message}`);

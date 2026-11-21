@@ -276,13 +276,15 @@ server.registerTool(
       (typeof result.status === "number" && result.status >= 500) ||
       result.errorType === "timeout"
     );
-    if (isTransient) {
+    // a timeout already burned the full limit - retrying would double it; only 5xx is retried
+    const isRetryable = isTransient && result.errorType !== "timeout";
+    if (isRetryable) {
       result = await trackedCompletion(completionArgs);
     }
 
     if (!result.ok) {
       const baseHint = result.error || result.errorType || "unknown";
-      const guidance = isTransient
+      const guidance = isRetryable
         ? " — retried once, still failing. The local backend likely crashed or is out of VRAM. " +
           "Restart Ollama / AnythingLLM and try again, or fall back to writing the code directly."
         : "";
@@ -293,7 +295,7 @@ server.registerTool(
             error: true,
             phase: "request_failed",
             status: result.status,
-            retried: isTransient,
+            retried: isRetryable,
             hint: baseHint + guidance,
           }),
         }],
@@ -359,7 +361,7 @@ server.registerTool(
     title: "Shutdown (no-op)",
     description:
       "Retained for API compatibility. AnythingLLM Desktop manages its own " +
-      "process lifecycle — this plugin never spawns or kills the app.",
+      "process lifecycle — this plugin never kills the app (the SessionStart hook may launch it when autoLaunch is on).",
     inputSchema: z.object({}),
   },
   async () => ({

@@ -38,6 +38,18 @@ function readJson(p) {
   try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return {}; }
 }
 
+/** Like readJson, but a file that exists and does not parse throws instead of reading as empty. */
+function readJsonStrict(p) {
+  let raw;
+  try { raw = fs.readFileSync(p, 'utf8'); } catch (e) { if (e.code === 'ENOENT') return {}; throw e; }
+  if (!raw.trim()) return {};
+  try {
+    const v = JSON.parse(raw);
+    if (v && typeof v === 'object' && !Array.isArray(v)) return v;
+  } catch { /* fall through */ }
+  throw new Error(`${p} exists but is not valid JSON — fix or remove it, then retry (not overwritten).`);
+}
+
 function deepMerge(base, layer) {
   if (!layer || typeof layer !== 'object') return base;
   const out = { ...base };
@@ -58,7 +70,7 @@ function isLoopbackUrl(url) {
   try { u = new URL(url.trim()); } catch { return false; }
   if (u.protocol !== 'http:' && u.protocol !== 'https:') return false;
   const host = u.hostname.toLowerCase();
-  if (host === 'localhost' || host === '[::1]') return true;
+  if (host === 'localhost' || host === '[::1]' || host === '::1') return true;
   const m = /^127\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
   return !!m && m.slice(1).every((o) => Number(o) <= 255);
 }
@@ -96,15 +108,22 @@ function resolveConfig(opts = {}) {
   return merged;
 }
 
-function saveApiKey(apiKey) {
-  try { fs.mkdirSync(USER_CONFIG_DIR, { recursive: true }); } catch { /* ignore */ }
-  const existing = readJson(USER_CONFIG_PATH);
+/**
+ * @param {string} apiKey
+ * @param {{baseUrl?:string, path?:string}} [opts] `path` is a test seam
+ * @throws {Error} the existing config file is unparsable (it is never overwritten)
+ */
+function saveApiKey(apiKey, opts = {}) {
+  const file = opts.path || USER_CONFIG_PATH;
+  try { fs.mkdirSync(path.dirname(file), { recursive: true }); } catch { /* ignore */ }
+  const existing = readJsonStrict(file);
   const next = {
     ...existing,
-    anythingllm: { ...(existing.anythingllm || {}), apiKey },
+    anythingllm: { ...(existing.anythingllm || {}), apiKey, ...(opts.baseUrl ? { baseUrl: opts.baseUrl } : {}) },
   };
-  fs.writeFileSync(USER_CONFIG_PATH, JSON.stringify(next, null, 2), 'utf8');
-  return USER_CONFIG_PATH;
+  fs.writeFileSync(file, JSON.stringify(next, null, 2), { encoding: 'utf8', mode: 0o600 });
+  try { fs.chmodSync(file, 0o600); } catch { /* best effort (Windows) */ }
+  return file;
 }
 
 function hasApiKey(config) {
