@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.392.1] — 2026-11-21
+
+### Fixed
+- Completion card: a finished card whose only leftover is an optional final check (`userFinalTest` item with `optional: true`) stays 🟩 instead of turning into 👉; the item is listed with "(optional)".
+
 ## [0.392.0] — 2026-11-21
 
 ### Added

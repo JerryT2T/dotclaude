@@ -130,6 +130,13 @@ describe("titleStateForKey / hasMandatoryStep", () => {
     expect(hasMandatoryStep({ validation: [{ waitsOn: "user", status: "unmet" }] })).toBe(true);
     expect(hasMandatoryStep({ validation: [{ waitsOn: "user", status: "met" }] })).toBe(false);
   });
+
+  test("an optional final check keeps 🟩: finished work with only a skippable look is not the user's move", () => {
+    expect(hasMandatoryStep({ userFinalTest: [{ action: "Band-Card ansehen", optional: true }] })).toBe(false);
+    expect(hasMandatoryStep({ userFinalTest: [{ action: "a", optional: true }, "b"] })).toBe(true);
+    expect(titlePrefixFor({ variant: "fallback", userFinalTest: [{ action: "a", optional: true }] }, deps)).toBe(SESSION_PREFIX.system);
+    expect(titlePrefixFor({ variant: "fallback", userFinalTest: ["a"] }, deps)).toBe(TITLE_SCHEME.prefixOf("system", { mandatory: true }));
+  });
 });
 
 describe("titlePrefixFor", () => {
