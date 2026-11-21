@@ -283,6 +283,8 @@ What the code does, in the order of the file:
     const pane = h('div', 'an-pane an-p-find'), sit = d.querySelector('[data-situation]');
     // ONE text block (situation + the long slot's prose, <= 3 lines by the gate) first, the display(s) last: never text below the display.
     const block = sit || h('p'), disp = [];
+    if (!sit) block.setAttribute('data-situation', '');   // same type as an authored situation, with or without one
+
     if (sit) pane.appendChild(sit);
     const slot = src && [...src.children].find(c => c.getAttribute('data-slot') === 'long');
     if (slot) {
