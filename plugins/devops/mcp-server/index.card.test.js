@@ -1189,6 +1189,24 @@ describe("render_completion_card — every input. field lands somewhere", () => 
     expect(text).toContain("Stripe live testen — nach Deployment");
   });
 
+  test("an optional final check keeps the finished card green and is labelled (optional)", async () => {
+    const green = await cardText({
+      variant: "fallback", summary: "x", lang: "de", session_id: "test-fields-finaltest-optional",
+      userFinalTest: [{ action: "Band-Card in der App ansehen", optional: true }],
+    });
+    expect(green).toMatch(/^## 🟩 🖥️ System — /m);
+    const listed = await cardText({
+      variant: "ready", summary: "x", lang: "de", session_id: "test-fields-finaltest-optional-ready",
+      userFinalTest: [{ action: "Band-Card in der App ansehen", optional: true }],
+    });
+    expect(listed).toContain("Band-Card in der App ansehen (optional)");
+    const finger = await cardText({
+      variant: "fallback", summary: "x", lang: "de", session_id: "test-fields-finaltest-required",
+      userFinalTest: ["Band-Card in der App ansehen"],
+    });
+    expect(finger).toMatch(/^## 👉 🖥️ System — /m);
+  });
+
   test("_downgraded (variant-guard) surfaces as the context line", async () => {
     const text = await cardText({
       variant: "ship-successful", summary: "x", lang: "de", session_id: "test-fields-downgrade",

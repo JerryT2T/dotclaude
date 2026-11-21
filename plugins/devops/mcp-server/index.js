@@ -1618,7 +1618,7 @@ function normalizeFinalTestItems(items, lang) {
   const suffix = lang === 'en' ? ' — after deployment' : ' — nach Deployment';
   return items.map(it => {
     if (typeof it === 'string') return it;
-    if (it && typeof it === 'object') return (it.action || '') + (it.afterDeployment ? suffix : '');
+    if (it && typeof it === 'object' && it.action) return it.action + (it.afterDeployment ? suffix : '') + (it.optional ? ' (optional)' : '');
     return '';
   }).filter(Boolean);
 }
@@ -3442,9 +3442,10 @@ server.registerTool(
           z.object({
             action: z.string(),
             afterDeployment: z.boolean().optional(),
+            optional: z.boolean().optional(),
           }),
         ])).optional(),
-      ).describe("Last-step checks automation cannot cover (packaged Electron/Tauri, 3rd-party integrations). Strings for local checks; { action, afterDeployment: true } for items needing deployment first. All variants except test-minimal and test (there: userTest)."),
+      ).describe("Last-step checks automation cannot cover (packaged Electron/Tauri, 3rd-party integrations). Strings for local checks; { action, afterDeployment: true } for items needing deployment first. A plain item is a mandatory user step and turns the card's 🟩 into 👉; { action, optional: true } is a check the user may skip because the work is done and verified (a visual sanity look): it is listed with '(optional)' and keeps 🟩. All variants except test-minimal and test (there: userTest)."),
       open: z.preprocess(
         v => typeof v === 'string' ? tryParse(v) : v,
         z.array(z.union([
