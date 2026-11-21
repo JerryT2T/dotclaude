@@ -13,7 +13,7 @@ Three readers, one source:
 
 | Reader | When | What it does with the rules |
 |---|---|---|
-| `post.design.remind` hook + `agents/frontend.md` / `agents/designer.md` | The moment a UI file is written | Prevention — the rules are in context before the element exists |
+| `post.design.remind` hook + `agents/builder.md` / `agents/designer.md` | The moment a UI file is written | Prevention — the rules are in context before the element exists |
 | `/auto-polish --invoked-by=ship` (called from `/do-ship` Step 1e) | Every ship whose diff touches UI files | Measurement — **static** halves only, diff files only, report-only |
 | `/auto-polish` (direct, `/auto-agents`, `/do-run autonomous`) | A polish pass with a browser | Full check — static **and** runtime halves, whole scope |
 

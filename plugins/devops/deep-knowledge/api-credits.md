@@ -75,7 +75,7 @@ passes. Three passes keep it from taxing work the API agent cannot do:
   message only the first (in message order) can be refused; the rest pass, so a
   parallel wave pays one round trip, not one per spawn. The first spawn that is
   itself exempt (shell, rc) does not use the refusal up.
-- A spawn that cannot be found in the transcript passes (fail open).
+- A spawn that cannot be found in the transcript falls back to the per-turn rule (one refusal per agent type per turn).
 
 ## The API agent — `scripts/claude-api-agent.js`
 

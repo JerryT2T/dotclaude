@@ -3,7 +3,7 @@
      It MUST be written at generation time with the active iteration's
      data-iteration-template value (normalised), otherwise the page paints the
      wrong layout for one frame before showIteration() runs. -->
-<html lang="de" data-theme="dark" data-page-version="2026-11-21T10:56:40" data-template="decision">
+<html lang="de" data-theme="dark" data-page-version="2026-11-21T10:56:40" data-template="free">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -5905,7 +5905,8 @@ html .feedback-dock .feedback-section textarea[data-attachable] { padding-right:
       </header>
 
       <main>
-<section data-iteration="1" data-iteration-template="decision" data-analysis="full" id="iter-1" data-active>
+<section data-iteration="1" data-iteration-template="decision" data-analysis="full" data-baked id="iter-1" hidden>
+  <script type="application/json" data-frozen-feedback>{"general":{"text":"","attachments":[]},"fidelity":"off"}</script>
 
   <div class="iteration-intro">
     <h2>Agent-Einsatz der letzten 3 Tage</h2>
@@ -5952,27 +5953,27 @@ html .feedback-dock .feedback-section textarea[data-attachable] { padding-right:
       <p data-stakes>Rechte-Schnitt, Modellkosten und ob das API-Gate greift.</p>
       <div data-options>
         <label data-opt="scout-sonnet" data-recommended>
-          <input type="radio" name="dm-d-readonly" value="scout-sonnet" checked>
+          <input type="radio" name="dm-d-readonly" value="scout-sonnet" disabled>
           <span data-opt-label>scout übernimmt sie, auf sonnet statt haiku</span>
           <span data-opt-consequence>Kein neuer Agent; scout bekommt einen Triage-Teil, haiku bleibt fürs reine Finden.</span>
         </label>
         <label data-opt="analyst">
-          <input type="radio" name="dm-d-readonly" value="analyst">
+          <input type="radio" name="dm-d-readonly" value="analyst" checked disabled>
           <span data-opt-label>Neuen Lese-Agent „analyst“ anlegen</span>
           <span data-opt-consequence>Eigenes Berichtsformat, aber 13 statt 12 Agents und mehr Routing-Text.</span>
         </label>
         <label data-opt="pox">
-          <input type="radio" name="dm-d-readonly" value="pox">
+          <input type="radio" name="dm-d-readonly" value="pox" disabled>
           <span data-opt-label>pox mit Technik-Linse fest dafür nehmen</span>
           <span data-opt-consequence>Kleinste Änderung; die Produkt-Rolle passt nicht zu Code-Ursachen.</span>
         </label>
       </div>
-      <textarea data-comment="d-readonly-note" placeholder="Notiz (optional)"></textarea>
-      <input type="hidden" name="dm-d-readonly-none" value="">
-      <input type="hidden" name="dm-d-readonly-hes" value="">
-      <input type="hidden" name="dm-d-readonly-touched" value="">
-      <input type="hidden" name="dm-d-readonly-issue" value="">
-      <input type="hidden" name="dm-d-readonly-epic" value="">
+      <textarea data-comment="d-readonly-note" placeholder="Notiz (optional)" readonly disabled></textarea>
+      <input type="hidden" name="dm-d-readonly-none" value="" disabled>
+      <input type="hidden" name="dm-d-readonly-hes" value="{&quot;ms&quot;:147467,&quot;revisits&quot;:2,&quot;median&quot;:32311}" disabled>
+      <input type="hidden" name="dm-d-readonly-touched" value="1" disabled>
+      <input type="hidden" name="dm-d-readonly-issue" value="" disabled>
+      <input type="hidden" name="dm-d-readonly-epic" value="" disabled>
       <div data-alevel="3" data-title="Lese-Aufgaben">
         <div data-slot="short"><div data-viz="text" data-viz-spec='{"text":"Gleiche Aufgabe, vier Agent-Typen, zwei Modelle."}'></div></div>
         <div data-slot="long">
@@ -5999,27 +6000,27 @@ Triage #1170 · Typ pox (Produkt-Owner)
       <p data-stakes>Wie viel Routing-Text jede Session lädt und wie Wellen parallel laufen.</p>
       <div data-options>
         <label data-opt="merge-aix" data-recommended>
-          <input type="radio" name="dm-d-domain" value="merge-aix" checked>
+          <input type="radio" name="dm-d-domain" value="merge-aix" disabled>
           <span data-opt-label>core und frontend behalten, aix in core aufgehen lassen</span>
           <span data-opt-consequence>Die echten Unterschiede bleiben: Browser-Werkzeuge nur bei frontend, Datei-Trennung in Wellen.</span>
         </label>
         <label data-opt="builder">
-          <input type="radio" name="dm-d-domain" value="builder">
+          <input type="radio" name="dm-d-domain" value="builder" checked disabled>
           <span data-opt-label>Alle drei zu einem Agent „builder“ zusammenlegen</span>
           <span data-opt-consequence>Folgt Anthropics Rat am klarsten; jeder Implementierer bekommt dann Browser-Werkzeuge.</span>
         </label>
         <label data-opt="keep">
-          <input type="radio" name="dm-d-domain" value="keep">
+          <input type="radio" name="dm-d-domain" value="keep" disabled>
           <span data-opt-label>Alle drei unverändert lassen</span>
           <span data-opt-consequence>Kein Aufwand; aix bleibt ein toter Eintrag.</span>
         </label>
       </div>
-      <textarea data-comment="d-domain-note" placeholder="Notiz (optional)"></textarea>
-      <input type="hidden" name="dm-d-domain-none" value="">
-      <input type="hidden" name="dm-d-domain-hes" value="">
-      <input type="hidden" name="dm-d-domain-touched" value="">
-      <input type="hidden" name="dm-d-domain-issue" value="">
-      <input type="hidden" name="dm-d-domain-epic" value="">
+      <textarea data-comment="d-domain-note" placeholder="Notiz (optional)" readonly disabled></textarea>
+      <input type="hidden" name="dm-d-domain-none" value="" disabled>
+      <input type="hidden" name="dm-d-domain-hes" value="{&quot;ms&quot;:53167,&quot;revisits&quot;:0,&quot;median&quot;:32311}" disabled>
+      <input type="hidden" name="dm-d-domain-touched" value="1" disabled>
+      <input type="hidden" name="dm-d-domain-issue" value="" disabled>
+      <input type="hidden" name="dm-d-domain-epic" value="" disabled>
       <div data-alevel="3" data-title="Implementierer">
         <div data-slot="short"><div data-viz="text" data-viz-spec='{"text":"frontend und core tragen die Last, aix fast nie."}'></div></div>
         <div data-slot="long">
@@ -6046,28 +6047,28 @@ core.md      → Werkzeuge: Read, Write, Edit, Bash, Glob, Grep</pre></div>
       <p data-stakes>Prompt-Länge und Treffsicherheit bei gesprächslastigen Aufgaben.</p>
       <div data-options>
         <label data-opt="yes" data-recommended>
-          <input type="radio" name="dm-d-fork" value="yes" checked>
+          <input type="radio" name="dm-d-fork" value="yes" checked disabled>
           <span data-opt-label>Fork nehmen, wenn die Aufgabe das Gespräch braucht</span>
           <span data-opt-consequence>Weniger nachgebauter Kontext; nie für Sparläufe, weil ein Fork das Modell der Session behält.</span>
         </label>
         <label data-opt="no">
-          <input type="radio" name="dm-d-fork" value="no">
+          <input type="radio" name="dm-d-fork" value="no" disabled>
           <span data-opt-label>Bei benannten Agents bleiben</span>
           <span data-opt-consequence>Policy bleibt kürzer; Kontext wird weiter im Auftrag nachgebaut.</span>
         </label>
         <label data-opt="alt">
-          <input type="radio" name="dm-d-fork" value="alt">
+          <input type="radio" name="dm-d-fork" value="alt" disabled>
           <span data-opt-label>Anders regeln</span>
           <span data-opt-consequence>Deine Regel im Feld darunter.</span>
-          <input type="text" name="dm-d-fork-alt" placeholder="z. B. Fork nur für Analysen, nie für Implementierung">
+          <input type="text" name="dm-d-fork-alt" placeholder="z. B. Fork nur für Analysen, nie für Implementierung" value="" readonly disabled>
         </label>
       </div>
-      <textarea data-comment="d-fork-note" placeholder="Notiz (optional)"></textarea>
-      <input type="hidden" name="dm-d-fork-none" value="">
-      <input type="hidden" name="dm-d-fork-hes" value="">
-      <input type="hidden" name="dm-d-fork-touched" value="">
-      <input type="hidden" name="dm-d-fork-issue" value="">
-      <input type="hidden" name="dm-d-fork-epic" value="">
+      <textarea data-comment="d-fork-note" placeholder="Notiz (optional)" readonly disabled></textarea>
+      <input type="hidden" name="dm-d-fork-none" value="" disabled>
+      <input type="hidden" name="dm-d-fork-hes" value="{&quot;ms&quot;:22604,&quot;revisits&quot;:0,&quot;median&quot;:32311}" disabled>
+      <input type="hidden" name="dm-d-fork-touched" value="1" disabled>
+      <input type="hidden" name="dm-d-fork-issue" value="" disabled>
+      <input type="hidden" name="dm-d-fork-epic" value="" disabled>
       <div data-alevel="3" data-title="Forks">
         <div data-slot="short"><div data-viz="kpi" data-viz-spec='{"value":"3.173","unit":"Zeichen","label":"Median-Auftrag je Spawn"}'></div></div>
         <div data-slot="long">
@@ -6106,27 +6107,27 @@ Ergänzung (Vorschlag):
       <p data-stakes>Wie oft Triage und Analysen einen Umweg drehen.</p>
       <div data-options>
         <label data-opt="shell" data-recommended>
-          <input type="checkbox" name="dm-d-gate.shell" checked>
+          <input type="checkbox" name="dm-d-gate.shell" checked disabled>
           <span data-opt-label>Durchlassen, wenn der Auftrag Shell-Befehle braucht</span>
           <span data-opt-consequence>Triage und Branch-Analysen laufen sofort; reine Code-Suchen gehen weiter zuerst an die API.</span>
         </label>
         <label data-opt="fanout" data-recommended>
-          <input type="checkbox" name="dm-d-gate.fanout" checked>
+          <input type="checkbox" name="dm-d-gate.fanout" checked disabled>
           <span data-opt-label>Pro Nachricht höchstens einen Spawn abweisen</span>
           <span data-opt-consequence>Aus 8 Abweisungen wird eine; die übrigen Spawns starten.</span>
         </label>
         <label data-opt="off">
-          <input type="checkbox" name="dm-d-gate.off">
+          <input type="checkbox" name="dm-d-gate.off" disabled>
           <span data-opt-label>Gate für scout ganz abschalten</span>
           <span data-opt-consequence>Keine Abweisung mehr; der API-Kredit wird für Suchen kaum noch genutzt.</span>
         </label>
       </div>
-      <textarea data-comment="d-gate-note" placeholder="Notiz (optional)"></textarea>
-      <input type="hidden" name="dm-d-gate-none" value="">
-      <input type="hidden" name="dm-d-gate-hes" value="">
-      <input type="hidden" name="dm-d-gate-touched" value="">
-      <input type="hidden" name="dm-d-gate-issue" value="">
-      <input type="hidden" name="dm-d-gate-epic" value="">
+      <textarea data-comment="d-gate-note" placeholder="Notiz (optional)" readonly disabled></textarea>
+      <input type="hidden" name="dm-d-gate-none" value="" disabled>
+      <input type="hidden" name="dm-d-gate-hes" value="{&quot;ms&quot;:16560,&quot;revisits&quot;:0,&quot;median&quot;:32311}" disabled>
+      <input type="hidden" name="dm-d-gate-touched" value="1" disabled>
+      <input type="hidden" name="dm-d-gate-issue" value="" disabled>
+      <input type="hidden" name="dm-d-gate-epic" value="" disabled>
       <div data-alevel="3" data-title="API-Gate">
         <div data-slot="short"><div data-viz="bar" data-viz-spec='{"value":13,"max":16,"unit":"Spawns","label":"abgewiesen von 16 geprüften"}'></div></div>
         <div data-slot="long">
@@ -6155,28 +6156,28 @@ Auftrag jedes dieser Scouts, Schritt 1:
       <p data-stakes>Vergleichbarkeit der Triagen und ihr Budget.</p>
       <div data-options>
         <label data-opt="yes" data-recommended>
-          <input type="radio" name="dm-d-pin" value="yes" checked>
+          <input type="radio" name="dm-d-pin" value="yes" checked disabled>
           <span data-opt-label>Typ und Modell fest eintragen</span>
           <span data-opt-consequence>Gleiche Triage, gleiche Kosten, vergleichbare Berichte.</span>
         </label>
         <label data-opt="no">
-          <input type="radio" name="dm-d-pin" value="no">
+          <input type="radio" name="dm-d-pin" value="no" disabled>
           <span data-opt-label>Claude wählt weiter frei</span>
           <span data-opt-consequence>Flexibel, aber die Drift bleibt.</span>
         </label>
         <label data-opt="alt">
-          <input type="radio" name="dm-d-pin" value="alt">
+          <input type="radio" name="dm-d-pin" value="alt" disabled>
           <span data-opt-label>Anders regeln</span>
           <span data-opt-consequence>Deine Regel im Feld darunter.</span>
-          <input type="text" name="dm-d-pin-alt" placeholder="z. B. nur den Typ festschreiben, Modell frei">
+          <input type="text" name="dm-d-pin-alt" placeholder="z. B. nur den Typ festschreiben, Modell frei" value="" readonly disabled>
         </label>
       </div>
-      <textarea data-comment="d-pin-note" placeholder="Notiz (optional)"></textarea>
-      <input type="hidden" name="dm-d-pin-none" value="">
-      <input type="hidden" name="dm-d-pin-hes" value="">
-      <input type="hidden" name="dm-d-pin-touched" value="">
-      <input type="hidden" name="dm-d-pin-issue" value="">
-      <input type="hidden" name="dm-d-pin-epic" value="">
+      <textarea data-comment="d-pin-note" placeholder="Notiz (optional)" readonly disabled></textarea>
+      <input type="hidden" name="dm-d-pin-none" value="" disabled>
+      <input type="hidden" name="dm-d-pin-hes" value="{&quot;ms&quot;:50119,&quot;revisits&quot;:0,&quot;median&quot;:32311}" disabled>
+      <input type="hidden" name="dm-d-pin-touched" value="1" disabled>
+      <input type="hidden" name="dm-d-pin-issue" value="" disabled>
+      <input type="hidden" name="dm-d-pin-epic" value="" disabled>
       <div data-alevel="3" data-title="Triage festschreiben">
         <div data-slot="short"><div data-viz="text" data-viz-spec='{"text":"Vier Typen, zwei Modelle für dieselbe Triage."}'></div></div>
         <div data-slot="long">
@@ -6203,27 +6204,27 @@ Vorschlag:
       <p data-stakes>Ob Lücken im Katalog auffallen oder still umgangen werden.</p>
       <div data-options>
         <label data-opt="fallback" data-recommended>
-          <input type="radio" name="dm-d-gp" value="fallback" checked>
+          <input type="radio" name="dm-d-gp" value="fallback" checked disabled>
           <span data-opt-label>Nur wenn kein devops-Typ passt, mit Grund in der Beschreibung</span>
           <span data-opt-consequence>Jeder Einsatz zeigt, wo der Katalog eine Lücke hat.</span>
         </label>
         <label data-opt="never">
-          <input type="radio" name="dm-d-gp" value="never">
+          <input type="radio" name="dm-d-gp" value="never" disabled>
           <span data-opt-label>Per Hook abweisen</span>
           <span data-opt-consequence>Erzwingt den Katalog, blockiert aber echte Sonderfälle.</span>
         </label>
         <label data-opt="free">
-          <input type="radio" name="dm-d-gp" value="free">
+          <input type="radio" name="dm-d-gp" value="free" disabled>
           <span data-opt-label>Frei lassen</span>
           <span data-opt-consequence>Kein Aufwand; Lücken bleiben unsichtbar.</span>
         </label>
       </div>
-      <textarea data-comment="d-gp-note" placeholder="Notiz (optional)"></textarea>
-      <input type="hidden" name="dm-d-gp-none" value="">
-      <input type="hidden" name="dm-d-gp-hes" value="">
-      <input type="hidden" name="dm-d-gp-touched" value="">
-      <input type="hidden" name="dm-d-gp-issue" value="">
-      <input type="hidden" name="dm-d-gp-epic" value="">
+      <textarea data-comment="d-gp-note" placeholder="Notiz (optional)" readonly disabled></textarea>
+      <input type="hidden" name="dm-d-gp-none" value="" disabled>
+      <input type="hidden" name="dm-d-gp-hes" value="{&quot;ms&quot;:6062,&quot;revisits&quot;:0,&quot;median&quot;:32311}" disabled>
+      <input type="hidden" name="dm-d-gp-touched" value="1" disabled>
+      <input type="hidden" name="dm-d-gp-issue" value="" disabled>
+      <input type="hidden" name="dm-d-gp-epic" value="" disabled>
       <div data-alevel="3" data-title="Allzweck-Agent">
         <div data-slot="short"><div data-viz="kpi" data-viz-spec='{"value":"46","unit":"Spawns / 30 Tage","label":"an general-purpose"}'></div></div>
         <div data-slot="long">
@@ -6259,27 +6260,27 @@ Vorschlag:
       <p data-stakes>Wochenbudget pro Fix und Trefferquote bei kniffligen Fällen.</p>
       <div data-options>
         <label data-opt="sonnet" data-recommended>
-          <input type="radio" name="dm-d-opus" value="sonnet" checked>
+          <input type="radio" name="dm-d-opus" value="sonnet" disabled>
           <span data-opt-label>sonnet für Fixes, opus nur für Konzept-Runden und Diagnosen</span>
           <span data-opt-consequence>Deutlich weniger Budget pro Fix; schwierige Fälle behalten opus.</span>
         </label>
         <label data-opt="opus">
-          <input type="radio" name="dm-d-opus" value="opus">
+          <input type="radio" name="dm-d-opus" value="opus" disabled>
           <span data-opt-label>Alles auf opus lassen</span>
           <span data-opt-consequence>Höchste Trefferquote, höchster Verbrauch.</span>
         </label>
         <label data-opt="haiku">
-          <input type="radio" name="dm-d-opus" value="haiku">
+          <input type="radio" name="dm-d-opus" value="haiku" disabled>
           <span data-opt-label>haiku für Kleinstfixes, sonnet für den Rest</span>
           <span data-opt-consequence>Am billigsten; haiku scheitert öfter an Angular-Details.</span>
         </label>
       </div>
-      <textarea data-comment="d-opus-note" placeholder="Notiz (optional)"></textarea>
-      <input type="hidden" name="dm-d-opus-none" value="">
-      <input type="hidden" name="dm-d-opus-hes" value="">
-      <input type="hidden" name="dm-d-opus-touched" value="">
-      <input type="hidden" name="dm-d-opus-issue" value="">
-      <input type="hidden" name="dm-d-opus-epic" value="">
+      <textarea data-comment="d-opus-note" placeholder="Notiz (optional)" readonly disabled>opus mittel und bei komplex angeklickt opus hoch! und den rest dnach den gleichen regeln wie als würd e die nachricht im normalen chat mit devops kommen, sprich agenteneinsätze, concepte erstellen usw...</textarea>
+      <input type="hidden" name="dm-d-opus-none" value="1" disabled>
+      <input type="hidden" name="dm-d-opus-hes" value="{&quot;ms&quot;:114818,&quot;revisits&quot;:2,&quot;median&quot;:32311}" disabled>
+      <input type="hidden" name="dm-d-opus-touched" value="1" disabled>
+      <input type="hidden" name="dm-d-opus-issue" value="" disabled>
+      <input type="hidden" name="dm-d-opus-epic" value="" disabled>
       <div data-alevel="3" data-title="Routine-Modell">
         <div data-slot="short"><div data-viz="kpi" data-viz-spec='{"value":"102","unit":"opus-Fixes / 30 Tage","label":"Feedback-Routine"}'></div></div>
         <div data-slot="long">
@@ -6305,27 +6306,27 @@ Feedback #372 „holo focus rings“   · frontend · opus · 13 Werkzeug-Aufruf
       <p data-stakes>Ob der Hauptagent ein Ergebnis hat oder raten muss.</p>
       <div data-options>
         <label data-opt="rule" data-recommended>
-          <input type="checkbox" name="dm-d-report.rule" checked>
+          <input type="checkbox" name="dm-d-report.rule" checked disabled>
           <span data-opt-label>Pflichtsatz in jedem Agent: die letzte Nachricht ist der Bericht</span>
           <span data-opt-consequence>Billig; wirkt nur, wenn das Modell ihn befolgt.</span>
         </label>
         <label data-opt="hook" data-recommended>
-          <input type="checkbox" name="dm-d-report.hook" checked>
+          <input type="checkbox" name="dm-d-report.hook" checked disabled>
           <span data-opt-label>Stopp-Hook schickt Agents mit Bericht unter 30 Wörtern zurück</span>
           <span data-opt-consequence>Fängt die Fälle sicher ab; kostet einen Zusatz-Turn pro Treffer.</span>
         </label>
         <label data-opt="nobg">
-          <input type="checkbox" name="dm-d-report.nobg">
+          <input type="checkbox" name="dm-d-report.nobg" disabled>
           <span data-opt-label>Hintergrund-Befehle in Agents verbieten</span>
           <span data-opt-consequence>Späte Meldungen stören keinen Bericht mehr; lange Tests im Agent werden schwerer.</span>
         </label>
       </div>
-      <textarea data-comment="d-report-note" placeholder="Notiz (optional)"></textarea>
-      <input type="hidden" name="dm-d-report-none" value="">
-      <input type="hidden" name="dm-d-report-hes" value="">
-      <input type="hidden" name="dm-d-report-touched" value="">
-      <input type="hidden" name="dm-d-report-issue" value="">
-      <input type="hidden" name="dm-d-report-epic" value="">
+      <textarea data-comment="d-report-note" placeholder="Notiz (optional)" readonly disabled></textarea>
+      <input type="hidden" name="dm-d-report-none" value="" disabled>
+      <input type="hidden" name="dm-d-report-hes" value="{&quot;ms&quot;:32311,&quot;revisits&quot;:2,&quot;median&quot;:32311}" disabled>
+      <input type="hidden" name="dm-d-report-touched" value="1" disabled>
+      <input type="hidden" name="dm-d-report-issue" value="" disabled>
+      <input type="hidden" name="dm-d-report-epic" value="" disabled>
       <div data-alevel="3" data-title="Bericht sichern">
         <div data-slot="short"><div data-viz="donut" data-viz-spec='{"parts":[{"label":"mit Bericht","value":85},{"label":"ohne Bericht","value":5}]}'></div></div>
         <div data-slot="long">
@@ -6350,13 +6351,13 @@ Feedback #372 „holo focus rings“   · frontend · opus · 13 Werkzeug-Aufruf
       <h3 data-question>Wie viele Wörter darf ein qax-Bericht höchstens haben?</h3>
       <p data-stakes>Kontext des Hauptagents nach jeder Prüfwelle.</p>
       <div data-options>
-        <input type="range" name="dm-d-limit" min="150" max="1500" step="50" value="400">
+        <input type="range" name="dm-d-limit" min="150" max="1500" step="50" value="400" disabled>
       </div>
-      <textarea data-comment="d-limit-note" placeholder="Notiz (optional)"></textarea>
-      <input type="hidden" name="dm-d-limit-hes" value="">
-      <input type="hidden" name="dm-d-limit-touched" value="">
-      <input type="hidden" name="dm-d-limit-issue" value="">
-      <input type="hidden" name="dm-d-limit-epic" value="">
+      <textarea data-comment="d-limit-note" placeholder="Notiz (optional)" readonly disabled></textarea>
+      <input type="hidden" name="dm-d-limit-hes" value="{&quot;ms&quot;:28122,&quot;revisits&quot;:1,&quot;median&quot;:32311}" disabled>
+      <input type="hidden" name="dm-d-limit-touched" value="1" disabled>
+      <input type="hidden" name="dm-d-limit-issue" value="" disabled>
+      <input type="hidden" name="dm-d-limit-epic" value="" disabled>
       <div data-alevel="3" data-title="Berichtslänge">
         <div data-slot="short"><div data-viz="kpi" data-viz-spec='{"value":"1.554","unit":"Wörter","label":"längster qax-Bericht"}'></div></div>
         <div data-slot="long">
@@ -6370,6 +6371,92 @@ qax [W3] „Prüfung: Gates + Abnahme gegen den Auftrag“
   verlangt: at most ~60 lines   →   geliefert: 103 Zeilen, 1.554 Wörter</pre></div>
       </div>
     </section>
+  </section>
+</section>
+
+<section data-iteration="2" data-iteration-template="free" data-final-report id="iter-2" data-active>
+  <p class="fr-sentence">Der Agent-Katalog ist neu geschnitten: ein Lese-Agent mit Urteil, ein Implementierer statt drei, ein Gate ohne Fehlabweisungen, Berichte gehen nicht mehr verloren.</p>
+
+  <div class="fr-main">
+    <div class="fr-results">
+      <p class="fr-label">Was kam raus</p>
+      <ul class="fr-wins">
+        <li><span class="fr-win-icon" aria-hidden="true">📊</span><span><b>analyst</b> übernimmt Triage und Diagnosen – fest im Backlog-Ablauf.</span></li>
+        <li><span class="fr-win-icon" aria-hidden="true">🔧</span><span><b>builder</b> ersetzt core, frontend und aix als einziger Implementierer.</span></li>
+        <li><span class="fr-win-icon" aria-hidden="true">📨</span><span>Jeder Agent <b>endet mit seinem Bericht</b> – sonst schickt ihn ein Hook zurück.</span></li>
+      </ul>
+    </div>
+    <div class="fr-flow">
+      <p><b>Vorher:</b> Triage auf vier Typen, 13 von 16 Lese-Spawns vom API-Gate abgewiesen, Berichte ohne Ende.</p>
+      <p><b>Jetzt:</b> analyst für Urteile, scout fürs Finden, Shell-Aufträge laufen direkt, pro Nachricht höchstens eine Abweisung, Forks für gesprächslastige Aufgaben.</p>
+      <p><b>SCC-Routine:</b> opus mittel, bei „komplex“ opus hoch, sonst die normalen devops-Regeln – als eigener PR.</p>
+    </div>
+  </div>
+
+  <div class="fr-holds">
+    <p class="fr-label">Was es aushält<small>Balken = wie weit die Anforderung erfüllt ist</small></p>
+    <div class="fr-meters">
+      <div class="fr-meter" data-grade="full" style="--fr-fill: 100%" data-tip="Alle 9 Entscheidungen umgesetzt; die unabhängige Prüfung fand 3 Lücken, die danach geschlossen wurden (geschätzt).">
+        <span class="fr-meter-name">🧱 Stabilität</span>
+        <div class="fr-meter-bar" aria-hidden="true"></div>
+        <b class="fr-meter-value">9 / 9</b>
+      </div>
+      <div class="fr-meter" data-grade="part" style="--fr-fill: 90%" data-tip="Alte Namen core/frontend/aix werden mit Hinweis auf builder abgewiesen; Projekte mit fest verdrahteten Namen brauchen ein Update (geschätzt).">
+        <span class="fr-meter-name">🔗 Kompatibilität</span>
+        <div class="fr-meter-bar" aria-hidden="true"></div>
+        <b class="fr-meter-value">Umleitung</b>
+      </div>
+      <div class="fr-meter" data-grade="full" style="--fr-fill: 100%" data-tip="Agent-Beschreibungen zusammen 3.782 Zeichen, weit unter der 15.000-Token-Warnung (geschätzt).">
+        <span class="fr-meter-name">🧹 Wartbarkeit</span>
+        <div class="fr-meter-bar" aria-hidden="true"></div>
+        <b class="fr-meter-value">11 Agents</b>
+      </div>
+    </div>
+  </div>
+
+  <div class="fr-depth" tabindex="0" data-tip="3 / 7 · ✓ Code-Check · ✓ Trockentest · ✓ Zusammenspiel · ○ Lokal durchgespielt · ◌ Prod-Build geprüft · ◌ Live vertestet · ◌ Von dir abgenommen">
+    <span class="fr-depth-done">✓ Zuletzt bestanden: <b>Zusammenspiel</b></span>
+    <span class="fr-depth-next">○ Noch nicht gemacht: <b>Lokal durchgespielt</b></span>
+  </div>
+
+  <div class="fr-folds">
+  <details class="fr-fold" data-open-questions>
+    <summary>🔍 1 Funde unterwegs</summary>
+    <ul class="fr-funde">
+      <li data-oq-id="oq-cardguard"
+          data-issue-title="[BUG] Stop guard rejects the card's own generated heading"
+          data-issue-type="bug"
+          data-issue-body="stop.flow.guard flags status words ('wartet', 'N Agenten') in the card title, but render_completion_card itself generates the heading 'Concept — wartet auf deine Entscheidungen' (concept phase waiting) and 'in Implementierung. 4 Agenten arbeiten' (pending agents). Re-rendering with a different summary cannot fix it, so the guard demands an impossible re-render. Seen 2026-11-21 in the agent-audit concept session. Fix: the guard should check only the summary/title field, not the generated decision heading (or the heading wording should avoid the gated words)."
+          data-issue-module="completion-card"
+          data-oq-origin="found"
+          data-route-default="now"
+          data-route-reason="im Repo">
+        <span class="oq-label">Card-Guard blockt sich</span>
+        <dl class="fr-fkv">
+          <dt>Was</dt><dd>Der Stop-Guard verlangt ein Neu-Rendern, weil die vom Renderer selbst erzeugte Überschrift „wartet“ bzw. „4 Agenten“ enthält.</dd>
+          <dt>Wo</dt><dd>Completion Card, stop.flow.guard</dd>
+          <dt>Warum vorbelegt</dt><dd>⚡ Jetzt — im Repo, klar umrissen.</dd>
+        </dl>
+      </li>
+    </ul>
+  </details>
+
+  <details class="fr-fold">
+    <summary>🛠 Für Entwickler</summary>
+    <ul class="fr-dev">
+      <li>Branch <code>claude/agent-deployment-quality-403976</code> · Bereiche: agents, policy, hooks</li>
+      <li><code>agents/analyst.md</code>, <code>agents/builder.md</code>, <code>hooks/subagent-stop/substop.agent.report.js</code></li>
+      <li>Tests: 13.463 grün, 2 übersprungen · Lint sauber · Prüfbericht <code>checks/qax-implement.md</code></li>
+      <li>SCC: <a href="https://github.com/StarOrga/Verse-Companion-Web/pull/1227">PR #1227</a> (nicht gemergt)</li>
+      <li>Nachgezogen nach der Prüfung: README-Agententabelle, Test-Erwartung, Gate-Doku, Zeilenenden LF</li>
+    </ul>
+  </details>
+  </div>
+
+  <section data-handoffs hidden aria-label="Du machst danach">
+    <ul>
+      <li data-todo-id="h-scc-install" data-crit="high" data-guide="">SCC-PR #1227 mergen + Watcher neu installieren</li>
+    </ul>
   </section>
 </section>
 </main>
@@ -6460,7 +6547,8 @@ qax [W3] „Prüfung: Gates + Abnahme gegen den Auftrag“
              <section data-iteration="N">, appended by string edit
              (iteration-rules.md § Iteration append checklist). -->
         <nav class="iteration-tabs" role="tablist" aria-label="Runden">
-<button class="iteration-tab" role="tab" data-iteration="1" aria-selected="true" aria-controls="iter-1">Runde 1</button>
+<button class="iteration-tab" role="tab" data-iteration="1" aria-selected="false" aria-controls="iter-1">Runde 1</button>
+<button class="iteration-tab" role="tab" data-final-report data-iteration="2" aria-selected="true" aria-controls="iter-2">Abschlussbericht</button>
 </nav>
 
         <!-- Section TOC — auto-populated from EVERY top-level <section id="..."

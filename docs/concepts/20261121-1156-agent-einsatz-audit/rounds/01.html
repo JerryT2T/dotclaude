@@ -1,4 +1,5 @@
-<section data-iteration="1" data-iteration-template="decision" data-analysis="full">
+<section data-iteration="1" data-iteration-template="decision" data-analysis="full" data-baked>
+  <script type="application/json" data-frozen-feedback>{"general":{"text":"","attachments":[]},"fidelity":"off"}</script>
 
   <div class="iteration-intro">
     <h2>Agent-Einsatz der letzten 3 Tage</h2>
@@ -45,12 +46,12 @@
       <p data-stakes>Rechte-Schnitt, Modellkosten und ob das API-Gate greift.</p>
       <div data-options>
         <label data-opt="scout-sonnet" data-recommended>
-          <input type="radio" name="dm-d-readonly" value="scout-sonnet" checked>
+          <input type="radio" name="dm-d-readonly" value="scout-sonnet">
           <span data-opt-label>scout übernimmt sie, auf sonnet statt haiku</span>
           <span data-opt-consequence>Kein neuer Agent; scout bekommt einen Triage-Teil, haiku bleibt fürs reine Finden.</span>
         </label>
         <label data-opt="analyst">
-          <input type="radio" name="dm-d-readonly" value="analyst">
+          <input type="radio" name="dm-d-readonly" value="analyst" checked>
           <span data-opt-label>Neuen Lese-Agent „analyst“ anlegen</span>
           <span data-opt-consequence>Eigenes Berichtsformat, aber 13 statt 12 Agents und mehr Routing-Text.</span>
         </label>
@@ -62,8 +63,8 @@
       </div>
       <textarea data-comment="d-readonly-note" placeholder="Notiz (optional)"></textarea>
       <input type="hidden" name="dm-d-readonly-none" value="">
-      <input type="hidden" name="dm-d-readonly-hes" value="">
-      <input type="hidden" name="dm-d-readonly-touched" value="">
+      <input type="hidden" name="dm-d-readonly-hes" value="{&quot;ms&quot;:147467,&quot;revisits&quot;:2,&quot;median&quot;:32311}">
+      <input type="hidden" name="dm-d-readonly-touched" value="1">
       <input type="hidden" name="dm-d-readonly-issue" value="">
       <input type="hidden" name="dm-d-readonly-epic" value="">
       <div data-alevel="3" data-title="Lese-Aufgaben">
@@ -92,12 +93,12 @@ Triage #1170 · Typ pox (Produkt-Owner)
       <p data-stakes>Wie viel Routing-Text jede Session lädt und wie Wellen parallel laufen.</p>
       <div data-options>
         <label data-opt="merge-aix" data-recommended>
-          <input type="radio" name="dm-d-domain" value="merge-aix" checked>
+          <input type="radio" name="dm-d-domain" value="merge-aix">
           <span data-opt-label>core und frontend behalten, aix in core aufgehen lassen</span>
           <span data-opt-consequence>Die echten Unterschiede bleiben: Browser-Werkzeuge nur bei frontend, Datei-Trennung in Wellen.</span>
         </label>
         <label data-opt="builder">
-          <input type="radio" name="dm-d-domain" value="builder">
+          <input type="radio" name="dm-d-domain" value="builder" checked>
           <span data-opt-label>Alle drei zu einem Agent „builder“ zusammenlegen</span>
           <span data-opt-consequence>Folgt Anthropics Rat am klarsten; jeder Implementierer bekommt dann Browser-Werkzeuge.</span>
         </label>
@@ -109,8 +110,8 @@ Triage #1170 · Typ pox (Produkt-Owner)
       </div>
       <textarea data-comment="d-domain-note" placeholder="Notiz (optional)"></textarea>
       <input type="hidden" name="dm-d-domain-none" value="">
-      <input type="hidden" name="dm-d-domain-hes" value="">
-      <input type="hidden" name="dm-d-domain-touched" value="">
+      <input type="hidden" name="dm-d-domain-hes" value="{&quot;ms&quot;:53167,&quot;revisits&quot;:0,&quot;median&quot;:32311}">
+      <input type="hidden" name="dm-d-domain-touched" value="1">
       <input type="hidden" name="dm-d-domain-issue" value="">
       <input type="hidden" name="dm-d-domain-epic" value="">
       <div data-alevel="3" data-title="Implementierer">
@@ -152,13 +153,13 @@ core.md      → Werkzeuge: Read, Write, Edit, Bash, Glob, Grep</pre></div>
           <input type="radio" name="dm-d-fork" value="alt">
           <span data-opt-label>Anders regeln</span>
           <span data-opt-consequence>Deine Regel im Feld darunter.</span>
-          <input type="text" name="dm-d-fork-alt" placeholder="z. B. Fork nur für Analysen, nie für Implementierung">
+          <input type="text" name="dm-d-fork-alt" placeholder="z. B. Fork nur für Analysen, nie für Implementierung" value="">
         </label>
       </div>
       <textarea data-comment="d-fork-note" placeholder="Notiz (optional)"></textarea>
       <input type="hidden" name="dm-d-fork-none" value="">
-      <input type="hidden" name="dm-d-fork-hes" value="">
-      <input type="hidden" name="dm-d-fork-touched" value="">
+      <input type="hidden" name="dm-d-fork-hes" value="{&quot;ms&quot;:22604,&quot;revisits&quot;:0,&quot;median&quot;:32311}">
+      <input type="hidden" name="dm-d-fork-touched" value="1">
       <input type="hidden" name="dm-d-fork-issue" value="">
       <input type="hidden" name="dm-d-fork-epic" value="">
       <div data-alevel="3" data-title="Forks">
@@ -216,8 +217,8 @@ Ergänzung (Vorschlag):
       </div>
       <textarea data-comment="d-gate-note" placeholder="Notiz (optional)"></textarea>
       <input type="hidden" name="dm-d-gate-none" value="">
-      <input type="hidden" name="dm-d-gate-hes" value="">
-      <input type="hidden" name="dm-d-gate-touched" value="">
+      <input type="hidden" name="dm-d-gate-hes" value="{&quot;ms&quot;:16560,&quot;revisits&quot;:0,&quot;median&quot;:32311}">
+      <input type="hidden" name="dm-d-gate-touched" value="1">
       <input type="hidden" name="dm-d-gate-issue" value="">
       <input type="hidden" name="dm-d-gate-epic" value="">
       <div data-alevel="3" data-title="API-Gate">
@@ -261,13 +262,13 @@ Auftrag jedes dieser Scouts, Schritt 1:
           <input type="radio" name="dm-d-pin" value="alt">
           <span data-opt-label>Anders regeln</span>
           <span data-opt-consequence>Deine Regel im Feld darunter.</span>
-          <input type="text" name="dm-d-pin-alt" placeholder="z. B. nur den Typ festschreiben, Modell frei">
+          <input type="text" name="dm-d-pin-alt" placeholder="z. B. nur den Typ festschreiben, Modell frei" value="">
         </label>
       </div>
       <textarea data-comment="d-pin-note" placeholder="Notiz (optional)"></textarea>
       <input type="hidden" name="dm-d-pin-none" value="">
-      <input type="hidden" name="dm-d-pin-hes" value="">
-      <input type="hidden" name="dm-d-pin-touched" value="">
+      <input type="hidden" name="dm-d-pin-hes" value="{&quot;ms&quot;:50119,&quot;revisits&quot;:0,&quot;median&quot;:32311}">
+      <input type="hidden" name="dm-d-pin-touched" value="1">
       <input type="hidden" name="dm-d-pin-issue" value="">
       <input type="hidden" name="dm-d-pin-epic" value="">
       <div data-alevel="3" data-title="Triage festschreiben">
@@ -313,8 +314,8 @@ Vorschlag:
       </div>
       <textarea data-comment="d-gp-note" placeholder="Notiz (optional)"></textarea>
       <input type="hidden" name="dm-d-gp-none" value="">
-      <input type="hidden" name="dm-d-gp-hes" value="">
-      <input type="hidden" name="dm-d-gp-touched" value="">
+      <input type="hidden" name="dm-d-gp-hes" value="{&quot;ms&quot;:6062,&quot;revisits&quot;:0,&quot;median&quot;:32311}">
+      <input type="hidden" name="dm-d-gp-touched" value="1">
       <input type="hidden" name="dm-d-gp-issue" value="">
       <input type="hidden" name="dm-d-gp-epic" value="">
       <div data-alevel="3" data-title="Allzweck-Agent">
@@ -352,7 +353,7 @@ Vorschlag:
       <p data-stakes>Wochenbudget pro Fix und Trefferquote bei kniffligen Fällen.</p>
       <div data-options>
         <label data-opt="sonnet" data-recommended>
-          <input type="radio" name="dm-d-opus" value="sonnet" checked>
+          <input type="radio" name="dm-d-opus" value="sonnet">
           <span data-opt-label>sonnet für Fixes, opus nur für Konzept-Runden und Diagnosen</span>
           <span data-opt-consequence>Deutlich weniger Budget pro Fix; schwierige Fälle behalten opus.</span>
         </label>
@@ -367,10 +368,10 @@ Vorschlag:
           <span data-opt-consequence>Am billigsten; haiku scheitert öfter an Angular-Details.</span>
         </label>
       </div>
-      <textarea data-comment="d-opus-note" placeholder="Notiz (optional)"></textarea>
-      <input type="hidden" name="dm-d-opus-none" value="">
-      <input type="hidden" name="dm-d-opus-hes" value="">
-      <input type="hidden" name="dm-d-opus-touched" value="">
+      <textarea data-comment="d-opus-note" placeholder="Notiz (optional)">opus mittel und bei komplex angeklickt opus hoch! und den rest dnach den gleichen regeln wie als würd e die nachricht im normalen chat mit devops kommen, sprich agenteneinsätze, concepte erstellen usw...</textarea>
+      <input type="hidden" name="dm-d-opus-none" value="1">
+      <input type="hidden" name="dm-d-opus-hes" value="{&quot;ms&quot;:114818,&quot;revisits&quot;:2,&quot;median&quot;:32311}">
+      <input type="hidden" name="dm-d-opus-touched" value="1">
       <input type="hidden" name="dm-d-opus-issue" value="">
       <input type="hidden" name="dm-d-opus-epic" value="">
       <div data-alevel="3" data-title="Routine-Modell">
@@ -415,8 +416,8 @@ Feedback #372 „holo focus rings“   · frontend · opus · 13 Werkzeug-Aufruf
       </div>
       <textarea data-comment="d-report-note" placeholder="Notiz (optional)"></textarea>
       <input type="hidden" name="dm-d-report-none" value="">
-      <input type="hidden" name="dm-d-report-hes" value="">
-      <input type="hidden" name="dm-d-report-touched" value="">
+      <input type="hidden" name="dm-d-report-hes" value="{&quot;ms&quot;:32311,&quot;revisits&quot;:2,&quot;median&quot;:32311}">
+      <input type="hidden" name="dm-d-report-touched" value="1">
       <input type="hidden" name="dm-d-report-issue" value="">
       <input type="hidden" name="dm-d-report-epic" value="">
       <div data-alevel="3" data-title="Bericht sichern">
@@ -446,8 +447,8 @@ Feedback #372 „holo focus rings“   · frontend · opus · 13 Werkzeug-Aufruf
         <input type="range" name="dm-d-limit" min="150" max="1500" step="50" value="400">
       </div>
       <textarea data-comment="d-limit-note" placeholder="Notiz (optional)"></textarea>
-      <input type="hidden" name="dm-d-limit-hes" value="">
-      <input type="hidden" name="dm-d-limit-touched" value="">
+      <input type="hidden" name="dm-d-limit-hes" value="{&quot;ms&quot;:28122,&quot;revisits&quot;:1,&quot;median&quot;:32311}">
+      <input type="hidden" name="dm-d-limit-touched" value="1">
       <input type="hidden" name="dm-d-limit-issue" value="">
       <input type="hidden" name="dm-d-limit-epic" value="">
       <div data-alevel="3" data-title="Berichtslänge">

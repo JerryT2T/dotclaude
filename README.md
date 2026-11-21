@@ -26,9 +26,9 @@ keep git clean, block risky moves and stop context waste.
 - **Runs while you are away** — `/do-run` works off a backlog, a task or the leftover weekly budget, and ships each item
 - **Per-project tuning** — extend any skill with a `reference.md`, no fork
 
-<!--devops:count:hooks-->114<!--/devops:count:hooks--> hooks ·
+<!--devops:count:hooks-->115<!--/devops:count:hooks--> hooks ·
 <!--devops:count:skills-->15<!--/devops:count:skills--> skills ·
-<!--devops:count:agents-->12<!--/devops:count:agents--> agents ·
+<!--devops:count:agents-->11<!--/devops:count:agents--> agents ·
 ~0.7M tokens/week overhead (1–4 % of a Max plan), paid back 1.5–6× by the
 token guard alone — see [Token math](#token-math).
 
@@ -460,11 +460,10 @@ or `{"mode":"ask"}` — every agent tier is offered first.
 
 | Agent | Role |
 |---|---|
-| **aix** | AI/ML integration |
-| **core** | Business logic, APIs and platform code |
+| **analyst** | Read-only judgment (sonnet): triage, diagnose-only, cause analysis with `path:line` evidence |
+| **builder** | The one implementer: backend, UI, AI/ML integration (two builders on disjoint files for parallel waves) |
 | **designer** | UX/UI design, tokens, specs |
 | **feature** | One feature end to end: elaborate, build, verify |
-| **frontend** | UI components and styling |
 | **pox** | Product judgment: one lens (customer · tech · business) or the synthesis |
 | **qax** | Test, verify, screenshot |
 | **redteam** | Adversarial review: failure modes, blind spots |
@@ -523,7 +522,7 @@ A different stack: extend the skills per project — see [Customize](#customize)
 </details>
 
 <details>
-<summary><strong>Hooks</strong> — <!--devops:count:hooks-->114<!--/devops:count:hooks--> hooks by lifecycle and by category</summary>
+<summary><strong>Hooks</strong> — <!--devops:count:hooks-->115<!--/devops:count:hooks--> hooks by lifecycle and by category</summary>
 
 ```
 SessionStart  ──>  UserPromptSubmit  ──>  PreToolUse  ──>  PostToolUse  ──>  Stop
@@ -626,6 +625,7 @@ SessionStart  ──>  UserPromptSubmit  ──>  PreToolUse  ──>  PostToolU
 
 - `substop.agent.wip` — A finished agent that ran in an isolated worktree (.claude/worktrees/agent-*) and lef…
 - `substop.approval.clear` — A background agent ended: every permission wait it left in lib/approval-wait.js goes…
+- `substop.agent.report` — A devops agent (`agent_type` devops:*) that stops with a last assistant text of fewer…
 
 #### PermissionRequest — runs when a tool call waits for the user's permission
 
@@ -742,6 +742,7 @@ SessionStart  ──>  UserPromptSubmit  ──>  PreToolUse  ──>  PostToolU
 - `pre.agent.relay` *(PreToolUse, PreToolUse)*
 - `pre.run.contract` *(PreToolUse)*
 - `substop.agent.wip` *(SubagentStop)*
+- `substop.agent.report` *(SubagentStop)*
 - `post.agent.nudge` *(PostToolUse)*
 - `post.run.contract` *(PostToolUse)*
 - `stop.agent.relay` *(Stop)*
@@ -843,9 +844,9 @@ plugins/
 │   ├── .claude-plugin/plugin.json ← Plugin manifest (SemVer, tags v0.x.y)
 │   ├── .mcp.json                  ← MCP servers: completion card, ship, issues
 │   ├── CONVENTIONS.md             ← Naming, versioning, extension rules
-│   ├── hooks/                     ← <!--devops:count:hooks-->114<!--/devops:count:hooks--> hooks (JS) registered in hooks/dispatch/manifest.json
+│   ├── hooks/                     ← <!--devops:count:hooks-->115<!--/devops:count:hooks--> hooks (JS) registered in hooks/dispatch/manifest.json
 │   ├── skills/                    ← <!--devops:count:skills-->15<!--/devops:count:skills--> skill definitions (SKILL.md)
-│   ├── agents/                    ← <!--devops:count:agents-->12<!--/devops:count:agents--> agent definitions
+│   ├── agents/                    ← <!--devops:count:agents-->11<!--/devops:count:agents--> agent definitions
 │   ├── mcp-server/                ← Card renderer + Desktop widget, ship tools, issue matching
 │   ├── deep-knowledge/            ← Cross-cutting reference docs (<!--devops:count:dk-->61<!--/devops:count:dk--> topics)
 │   ├── scheduled-tasks/           ← Runbooks for opt-in background jobs

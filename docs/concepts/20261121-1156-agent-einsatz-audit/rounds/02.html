@@ -1,0 +1,85 @@
+<section data-iteration="2" data-iteration-template="free" data-final-report>
+  <p class="fr-sentence">Der Agent-Katalog ist neu geschnitten: ein Lese-Agent mit Urteil, ein Implementierer statt drei, ein Gate ohne Fehlabweisungen, Berichte gehen nicht mehr verloren.</p>
+
+  <div class="fr-main">
+    <div class="fr-results">
+      <p class="fr-label">{{final.results}}</p>
+      <ul class="fr-wins">
+        <li><span class="fr-win-icon" aria-hidden="true">📊</span><span><b>analyst</b> übernimmt Triage und Diagnosen – fest im Backlog-Ablauf.</span></li>
+        <li><span class="fr-win-icon" aria-hidden="true">🔧</span><span><b>builder</b> ersetzt core, frontend und aix als einziger Implementierer.</span></li>
+        <li><span class="fr-win-icon" aria-hidden="true">📨</span><span>Jeder Agent <b>endet mit seinem Bericht</b> – sonst schickt ihn ein Hook zurück.</span></li>
+      </ul>
+    </div>
+    <div class="fr-flow">
+      <p><b>Vorher:</b> Triage auf vier Typen, 13 von 16 Lese-Spawns vom API-Gate abgewiesen, Berichte ohne Ende.</p>
+      <p><b>Jetzt:</b> analyst für Urteile, scout fürs Finden, Shell-Aufträge laufen direkt, pro Nachricht höchstens eine Abweisung, Forks für gesprächslastige Aufgaben.</p>
+      <p><b>SCC-Routine:</b> opus mittel, bei „komplex“ opus hoch, sonst die normalen devops-Regeln – als eigener PR.</p>
+    </div>
+  </div>
+
+  <div class="fr-holds">
+    <p class="fr-label">{{final.holds}}<small>{{final.holds_hint}}</small></p>
+    <div class="fr-meters">
+      <div class="fr-meter" data-grade="full" style="--fr-fill: 100%" data-tip="Alle 9 Entscheidungen umgesetzt; die unabhängige Prüfung fand 3 Lücken, die danach geschlossen wurden (geschätzt).">
+        <span class="fr-meter-name">🧱 Stabilität</span>
+        <div class="fr-meter-bar" aria-hidden="true"></div>
+        <b class="fr-meter-value">9 / 9</b>
+      </div>
+      <div class="fr-meter" data-grade="part" style="--fr-fill: 90%" data-tip="Alte Namen core/frontend/aix werden mit Hinweis auf builder abgewiesen; Projekte mit fest verdrahteten Namen brauchen ein Update (geschätzt).">
+        <span class="fr-meter-name">🔗 Kompatibilität</span>
+        <div class="fr-meter-bar" aria-hidden="true"></div>
+        <b class="fr-meter-value">Umleitung</b>
+      </div>
+      <div class="fr-meter" data-grade="full" style="--fr-fill: 100%" data-tip="Agent-Beschreibungen zusammen 3.782 Zeichen, weit unter der 15.000-Token-Warnung (geschätzt).">
+        <span class="fr-meter-name">🧹 Wartbarkeit</span>
+        <div class="fr-meter-bar" aria-hidden="true"></div>
+        <b class="fr-meter-value">11 Agents</b>
+      </div>
+    </div>
+  </div>
+
+  <div class="fr-depth" tabindex="0" data-tip="3 / 7 · ✓ {{final.level_code}} · ✓ {{final.level_dry}} · ✓ {{final.level_interplay}} · ○ {{final.level_local}} · ◌ {{final.level_prod}} · ◌ {{final.level_live}} · ◌ {{final.level_accept}}">
+    <span class="fr-depth-done">✓ {{final.depth_done}}: <b>{{final.level_interplay}}</b></span>
+    <span class="fr-depth-next">○ {{final.depth_next}}: <b>{{final.level_local}}</b></span>
+  </div>
+
+  <div class="fr-folds">
+  <details class="fr-fold" data-open-questions>
+    <summary>🔍 1 {{final.funde_fold}}</summary>
+    <ul class="fr-funde">
+      <li data-oq-id="oq-cardguard"
+          data-issue-title="[BUG] Stop guard rejects the card's own generated heading"
+          data-issue-type="bug"
+          data-issue-body="stop.flow.guard flags status words ('wartet', 'N Agenten') in the card title, but render_completion_card itself generates the heading 'Concept — wartet auf deine Entscheidungen' (concept phase waiting) and 'in Implementierung. 4 Agenten arbeiten' (pending agents). Re-rendering with a different summary cannot fix it, so the guard demands an impossible re-render. Seen 2026-11-21 in the agent-audit concept session. Fix: the guard should check only the summary/title field, not the generated decision heading (or the heading wording should avoid the gated words)."
+          data-issue-module="completion-card"
+          data-oq-origin="found"
+          data-route-default="now"
+          data-route-reason="im Repo">
+        <span class="oq-label">Card-Guard blockt sich</span>
+        <dl class="fr-fkv">
+          <dt>{{final.fund_what}}</dt><dd>Der Stop-Guard verlangt ein Neu-Rendern, weil die vom Renderer selbst erzeugte Überschrift „wartet“ bzw. „4 Agenten“ enthält.</dd>
+          <dt>{{final.fund_where}}</dt><dd>Completion Card, stop.flow.guard</dd>
+          <dt>{{final.fund_why}}</dt><dd>⚡ Jetzt — im Repo, klar umrissen.</dd>
+        </dl>
+      </li>
+    </ul>
+  </details>
+
+  <details class="fr-fold">
+    <summary>🛠 {{final.dev_fold}}</summary>
+    <ul class="fr-dev">
+      <li>Branch <code>claude/agent-deployment-quality-403976</code> · Bereiche: agents, policy, hooks</li>
+      <li><code>agents/analyst.md</code>, <code>agents/builder.md</code>, <code>hooks/subagent-stop/substop.agent.report.js</code></li>
+      <li>Tests: 13.463 grün, 2 übersprungen · Lint sauber · Prüfbericht <code>checks/qax-implement.md</code></li>
+      <li>SCC: <a href="https://github.com/StarOrga/Verse-Companion-Web/pull/1227">PR #1227</a> (nicht gemergt)</li>
+      <li>Nachgezogen nach der Prüfung: README-Agententabelle, Test-Erwartung, Gate-Doku, Zeilenenden LF</li>
+    </ul>
+  </details>
+  </div>
+
+  <section data-handoffs hidden aria-label="{{final.group_handoffs}}">
+    <ul>
+      <li data-todo-id="h-scc-install" data-crit="high" data-guide="">SCC-PR #1227 mergen + Watcher neu installieren</li>
+    </ul>
+  </section>
+</section>
