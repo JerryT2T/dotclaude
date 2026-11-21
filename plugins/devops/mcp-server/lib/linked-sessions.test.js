@@ -2,6 +2,7 @@ import { describe, test, expect } from "vitest";
 import { linkedPlan, normalizeLinked, hasUnfinishedLinked } from "./linked-sessions.js";
 import { validateCardInput, CARD_KNOWN_KEYS, CARD_VARIANTS } from "./card-input.js";
 import { buttonsFor } from "./card-widget.js";
+import { demandedTitle, titleInstruction, TITLE_SCHEME } from "./mode-state.js";
 
 const L = (title, state, mode = "handoff", extra = {}) => ({ id: "local_" + title, title, mode, state, ...extra });
 const plan = (linked, key, extra = {}, ctx = {}) => linkedPlan({ linked, ...extra }, key, { lang: "de", ...ctx });
@@ -213,5 +214,23 @@ describe("linkedPlan - parent precedence own > 👉 Linked > own ⏳ > ⏳ Linke
   });
   test("the quoted sidebar title of a waiting sub leads with 🔗", () => {
     expect(plan([L("Doku", "waiting")], "fallback").lines[0]).toContain("„🔗 👉 ➜ ❓ Question ┃ Doku“");
+  });
+});
+
+describe("the card keeps a sub's 🔗 on every title it sets (rows 6, 10, 11, 14)", () => {
+  const rel = TITLE_SCHEME.prefixOf("released-alpha");
+  test("a status swap on a marked title keeps one 🔗", () => {
+    expect(demandedTitle(rel, "🔗 ⏳ ➜ 🤖 Solo ┃ X")).toBe("🔗 🟩 ➜ 🚀 Released Alpha ┃ X");
+    expect(demandedTitle(TITLE_SCHEME.prefixOf("aborted"), "🔗 ⏳ ➜ 🤖 Solo ┃ X")).toBe("🔗 🟥 ➜ 📦 Aborted ┃ X");
+    expect(demandedTitle(TITLE_SCHEME.prefixOf("paused-usage-reset"), "🔗 ⏳ ➜ 🤖 Solo ┃ X")).toBe("🔗 🟦 ➜ 🔋 Limit reset ┃ X");
+    expect(demandedTitle(TITLE_SCHEME.prefixOf("linked"), "🔗 ⏳ ➜ 🤖 Solo ┃ X")).toBe("🔗 ⏳ ➜ 🔗 Linked ┃ X");
+  });
+  test("a sub whose title lacks the 🔗 gets it (sub flag), an unlinked session never does", () => {
+    expect(demandedTitle(rel, "⏳ ➜ 🤖 Solo ┃ X", true)).toBe("🔗 🟩 ➜ 🚀 Released Alpha ┃ X");
+    expect(demandedTitle(rel, "⏳ ➜ 🤖 Solo ┃ X", false)).toBe("🟩 ➜ 🚀 Released Alpha ┃ X");
+    expect(titleInstruction(rel, "⏳ ➜ 🤖 Solo ┃ X", true)).toContain("🔗 🟩 ➜ 🚀 Released Alpha ┃ X");
+  });
+  test("the instruction is empty when the marked title is already right", () => {
+    expect(titleInstruction(rel, "🔗 🟩 ➜ 🚀 Released Alpha ┃ X", true)).toBe("");
   });
 });
