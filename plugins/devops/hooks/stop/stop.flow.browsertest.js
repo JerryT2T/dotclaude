@@ -43,12 +43,23 @@ require('../lib/plugin-guard');
 const fs = require('fs');
 const { sessionFile, readSessionFile, writeSessionFile } = require('../lib/session-id');
 const { decideLightTest, hasSkipJustification, LIGHT_SKIPPED_FLAG } = require('../lib/browsertest-guard');
-const { safeReadTranscript, lastAssistantText, PENDING_TAIL_BYTES } = require('../lib/card-guard');
+const { safeReadTranscript, lastAssistantText, armedWaitsThisTurn, PENDING_TAIL_BYTES } = require('../lib/card-guard');
 const { BGRUN_FLAG, settleRecordedRuns } = require('../lib/light-bgrun');
 const { scanOpenTasks } = require('../lib/pending-tasks');
 
 /** Agent roles that only read, review or research — they never move the tree. */
 const READ_ONLY_AGENT_RE = /(^|:)(research|scout|qax|qa|redteam|pox|po|rethinker|Explore|Plan|claude-code-guide|codex-rescue|scan-\w+|explore)$/i;
+
+/**
+ * #1199: the turn ends waiting on its own live work — a backgrounded Bash
+ * still open (a dev server, `npm ci`) or a Monitor / wake-up this turn armed.
+ * The check belongs to the turn that reaches the end state, not to this one.
+ */
+function waitingOnOwnWork(transcript) {
+  if (!transcript) return false;
+  if (scanOpenTasks(transcript).some(t => t.kind === 'task')) return true;
+  return (armedWaitsThisTurn(transcript) || []).length > 0;
+}
 
 /** A background agent or workflow that may still change files is running. */
 function implementersRunning(transcript) {
@@ -105,8 +116,10 @@ process.stdin.on('end', () => {
     // SKIP-VERIFICATION replies. Defer like an in-flight test run — every
     // flag stays, and the Stop after their results enforces the check.
     if (!inFlight) {
-      try { inFlight = implementersRunning(safeReadTranscript(hook.transcript_path, PENDING_TAIL_BYTES)); }
-      catch { /* unreadable: enforce as usual */ }
+      try {
+        const tail = safeReadTranscript(hook.transcript_path, PENDING_TAIL_BYTES);
+        inFlight = implementersRunning(tail) || waitingOnOwnWork(tail);
+      } catch { /* unreadable: enforce as usual */ }
     }
   }
 

@@ -287,3 +287,64 @@ describe("stop.flow.guard — F5 interrupted title", () => {
     }
   });
 });
+
+// #1199: a turn that ends deliberately waiting on its own live work is neither
+// interrupted nor owes a card; only a turn with no live work and no end state is.
+describe("stop.flow.guard — waiting on own live work (#1199)", () => {
+  /** "ship it" → edits → a backgrounded dev server + a Monitor on it → "Warte auf den Dev-Server." */
+  function waitingTranscript(dir, { monitor = true, bash = true } = {}) {
+    const p = path.join(dir, "transcript.jsonl");
+    const use = (id, name, input) => ({ type: "assistant", message: { role: "assistant", content: [{ type: "tool_use", id, name, input }] } });
+    const res = (id, text) => ({ type: "user", message: { role: "user", content: [{ type: "tool_result", tool_use_id: id, content: [{ type: "text", text }] }] } });
+    const lines = [
+      { type: "user", message: { role: "user", content: "ship it" } },
+      use("toolu_e", "Edit", { file_path: path.join(dir, "a.js"), old_string: "a", new_string: "b" }),
+      res("toolu_e", "ok"),
+    ];
+    if (bash) lines.push(use("toolu_b", "Bash", { command: "ng serve", description: "Start the dev server", run_in_background: true }), res("toolu_b", BASH_BG_TEXT));
+    if (monitor) lines.push(use("toolu_m", "Monitor", { description: "wait for ng serve ready" }), res("toolu_m", "Monitor armed."));
+    lines.push({ type: "assistant", message: { role: "assistant", content: [{ type: "text", text: "Warte auf den Dev-Server." }] } });
+    lines.push({ type: "custom-title", customTitle: "⏳ ➜ 🚀 Starscape-Stage", sessionId: SESSION });
+    lines.push({ type: "custom-title", customTitle: "⏳ Starscape-Stage", sessionId: SESSION });
+    fs.writeFileSync(p, lines.map((l) => JSON.stringify(l)).join("\n") + "\n");
+    return p;
+  }
+
+  test("a live Monitor + backgrounded Bash at turn end → no Interrupted, no card demand", async () => {
+    const dir = project();
+    try {
+      setFlag(dir, "work-happened");
+      const out = await stop(dir, { transcript_path: waitingTranscript(dir) });
+      expect(out).toBe("");
+    } finally {
+      cleanup(dir);
+    }
+  });
+
+  test("a Monitor armed this turn alone also counts as waiting", async () => {
+    const dir = project();
+    try {
+      setFlag(dir, "work-happened");
+      expect(await stop(dir, { transcript_path: waitingTranscript(dir, { bash: false }) })).toBe("");
+    } finally {
+      cleanup(dir);
+    }
+  });
+
+  test("no live work and no end state → the card is still owed / Interrupted still set", async () => {
+    const dir = project();
+    try {
+      setFlag(dir, "work-happened");
+      const out = await stop(dir, { transcript_path: waitingTranscript(dir, { bash: false, monitor: false }) });
+      expect(out).toMatch(/"decision":"block"/);
+      const plain = project();
+      try {
+        expect(await stop(plain, { transcript_path: transcript(plain, "⏳ Refactor") })).toContain("👉 ➜ ⚡ Refactor");
+      } finally {
+        cleanup(plain);
+      }
+    } finally {
+      cleanup(dir);
+    }
+  });
+});

@@ -103,6 +103,7 @@ const {
   safeReadTranscript,
   showWidgetCalledThisTurn,
   editsThisTurn,
+  armedWaitsThisTurn,
   foreignWidgetTitle,
   PENDING_TAIL_BYTES,
 } = require('../lib/card-guard');
@@ -270,7 +271,15 @@ process.stdin.on('end', () => {
   // is still seen; one older than the slice is found by a full streamed scan.
   const transcript = silent ? '' : safeReadTranscript(hook.transcript_path, PENDING_TAIL_BYTES);
   const substantial = isSubstantialAnswer(transcript);
-  const openTasks = silent ? [] : openTaskNames(scanOpenTasksInFile(hook.transcript_path, PENDING_TAIL_BYTES));
+  const openTaskItems = silent ? [] : scanOpenTasksInFile(hook.transcript_path, PENDING_TAIL_BYTES);
+  const openTasks = openTaskNames(openTaskItems);
+  // #1199: the session's own live work it waits on — backgrounded Bash / a
+  // workflow still open, or a Monitor / wake-up this turn armed. Ending the
+  // turn on it is waiting, not an end state and not an interruption.
+  const waitingOn = silent ? [] : [
+    ...openTaskNames(openTaskItems.filter(t => t && (t.kind === 'task' || t.kind === 'workflow'))),
+    ...(armedWaitsThisTurn(transcript) || []),
+  ];
   const notificationTurn = !silent && lastUserEntryIsNotification(transcript);
   // A side-session note turn (marked handoff/deliver sessions report back): title
   // updated always, card only when the user's move changed — card-less end allowed.
@@ -349,6 +358,7 @@ process.stdin.on('end', () => {
     foreignWidgetTitle: foreignTitle,
     guideActive,
     guideLoopLive,
+    waitingOn,
   });
 
   if (decision.resetFlags) {
@@ -419,7 +429,7 @@ process.stdin.on('end', () => {
     const asked = turnState.get(sessionId, INTERRUPT_FLAG) !== null;
     if (asked) {
       try { turnState.del(sessionId, INTERRUPT_FLAG); } catch { /* marker already gone — nothing to clear */ }
-    } else if (!cardRendered && openTasks.length === 0 && openLinked.length === 0) {
+    } else if (!cardRendered && openTasks.length === 0 && openLinked.length === 0 && waitingOn.length === 0) {
       // Background work of this session still runs → the work is not
       // interrupted, whatever the title says (a concept round answering one
       // agent's notification while another one still builds).
