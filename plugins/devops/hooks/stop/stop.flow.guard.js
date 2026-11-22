@@ -186,6 +186,33 @@ function isTreeClean(cwd, sessionId) {
   return Number.isFinite(n) ? n === 0 : null;
 }
 
+/**
+ * #1178: the block reason when an AUTONOMOUS do-run contract of this session
+ * has open obligations at the card gate, else null. Never throws.
+ */
+function autonomousStall(hook, sessionId) {
+  try {
+    const RC = require('../lib/run-contract');
+    const { projectRoot } = require('../lib/project-root');
+    const root = projectRoot(hook.cwd || process.cwd());
+    const c = RC.readContract(root, { sessionId });
+    if (!c || c.flow !== 'autonomous') return null;
+    const evs = RC.events(root);
+    if (!RC.segmentHasWork(evs)) return null;
+    const open = RC.openObligations(c, evs, 'card');
+    if (!open.length) return null;
+    const next = open[0];
+    return [
+      `AUTONOMOUS RUN STILL OPEN — do not end the turn idle (#1178). ${RC.chosenLine(c)}.`,
+      `Open: ${open.map(o => o.ob).join(', ')}. No background agent, task or wake-up is running, so nothing would wake this session again.`,
+      `Continue now with the next open obligation${next.why ? ` (${next.why})` : ''}: ${next.fix || next.ob}`,
+      'Or, if you are deliberately waiting on something, arm a wake-up (ScheduleWakeup / a cron) before ending the turn.',
+    ].join('\n');
+  } catch {
+    return null;
+  }
+}
+
 let inputData = '';
 process.stdin.setEncoding('utf8');
 process.stdin.on('data', d => { inputData += d; });
@@ -422,6 +449,23 @@ process.stdin.on('end', () => {
       decision.gates = ['answer-missing'];
       decision.answerBlock = true;
     } catch { /* unwritable marker → no block, never loop */ }
+  }
+
+  // #1178: an autonomous do-run never ends a turn idle while its run contract
+  // still owes something. With no live background work (agent, task,
+  // workflow, linked session) and no wake-up armed this turn, nothing would
+  // ever wake the session again — the night run froze after its last agent.
+  // Blocked once (stop_hook_active lets the follow-up stop through) with the
+  // next open obligation's exact call.
+  if (decision.action !== 'block' && !silent && !stopHookActive && !scheduledTask && !guideActive
+      && openTasks.length === 0 && openLinked.length === 0 && waitingOn.length === 0) {
+    const stall = autonomousStall(hook, sessionId);
+    if (stall) {
+      decision.action = 'block';
+      decision.reason = stall;
+      decision.gates = ['autonomous-idle'];
+      decision.answerBlock = true; // no card-data pointer: the run continues, it does not close
+    }
   }
 
   let interruptBlock = false;

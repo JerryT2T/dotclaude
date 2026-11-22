@@ -1,9 +1,11 @@
+import { createRequire } from "node:module";
 import { describe, test, expect } from "vitest";
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import TITLE_SCHEME_MOD from "../lib/title-scheme.js";
+const require = createRequire(import.meta.url);
 
 // F5 end to end through the real Stop hook: a turn that ends WITHOUT a card
 // while the session title is still the bare "⏳ " is blocked once with the
@@ -343,6 +345,70 @@ describe("stop.flow.guard — waiting on own live work (#1199)", () => {
       } finally {
         cleanup(plain);
       }
+    } finally {
+      cleanup(dir);
+    }
+  });
+});
+
+// #1178: an autonomous do-run with open run-contract obligations never ends a turn idle.
+describe("stop.flow.guard — autonomous run idle with open obligations (#1178)", () => {
+  const RC = require("../lib/run-contract.js");
+  function autonomousProject() {
+    const dir = project();
+    RC.arm(dir, { mode: "prompt", flow: "autonomous", ship: "auto", passes: ["harden"], sessionId: SESSION });
+    RC.record(dir, { k: "skill", name: "auto-agents" });
+    RC.record(dir, { k: "edit" });
+    return dir;
+  }
+  /** The last background agent reported, the orchestrator ended with plain text. */
+  function idleTranscript(dir, { agentOpen = false, wake = false } = {}) {
+    const p = notificationTranscript(dir, "⏳ ➜ 🤖 Nachtlauf");
+    const lines = fs.readFileSync(p, "utf8").trim().split("\n").map((l) => JSON.parse(l));
+    const at = lines.length - 2; // before the closing assistant text + title
+    if (agentOpen) {
+      lines.splice(3, 0,
+        { type: "assistant", message: { role: "assistant", content: [{ type: "tool_use", id: "toolu_9", name: "Agent", input: { subagent_type: "devops:core", run_in_background: true, description: "x", prompt: "x" } }] } },
+        { type: "user", message: { role: "user", content: [{ type: "tool_result", tool_use_id: "toolu_9", content: [{ type: "text", text: AGENT_LAUNCH_TEXT.replace(AGENT_ID, "a1e64673538029e08") }] }] } });
+    }
+    if (wake) lines.splice(at, 0, { type: "assistant", message: { role: "assistant", content: [{ type: "tool_use", id: "toolu_w", name: "ScheduleWakeup", input: { delaySeconds: 1200 } }] } });
+    fs.writeFileSync(p, lines.map((l) => JSON.stringify(l)).join("\n") + "\n");
+    return p;
+  }
+
+  test("open Harden, nothing running, nothing armed → block naming the next obligation", async () => {
+    const dir = autonomousProject();
+    try {
+      const out = await stop(dir, { transcript_path: idleTranscript(dir) });
+      expect(out).toMatch(/"decision":"block"/);
+      const reason = JSON.parse(out).reason;
+      expect(reason).toMatch(/AUTONOMOUS RUN STILL OPEN/);
+      expect(reason).toMatch(/auto-harden/);
+      // the follow-up stop passes — never a loop
+      expect(await stop(dir, { transcript_path: idleTranscript(dir), stop_hook_active: true })).not.toMatch(/AUTONOMOUS/);
+    } finally {
+      cleanup(dir);
+    }
+  });
+
+  test("a live background agent or an armed wake-up → not blocked for that", async () => {
+    for (const opt of [{ agentOpen: true }, { wake: true }]) {
+      const dir = autonomousProject();
+      try {
+        expect(await stop(dir, { transcript_path: idleTranscript(dir, opt) })).not.toMatch(/AUTONOMOUS RUN STILL OPEN/);
+      } finally {
+        cleanup(dir);
+      }
+    }
+  });
+
+  test("an interactive run is not blocked for that", async () => {
+    const dir = project();
+    try {
+      RC.arm(dir, { mode: "prompt", flow: "interactive", ship: "auto", passes: ["harden"], sessionId: SESSION });
+      RC.record(dir, { k: "skill", name: "auto-agents" });
+      RC.record(dir, { k: "edit" });
+      expect(await stop(dir, { transcript_path: idleTranscript(dir) })).not.toMatch(/AUTONOMOUS RUN STILL OPEN/);
     } finally {
       cleanup(dir);
     }
