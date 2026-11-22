@@ -11,7 +11,7 @@
  *
  * Refuses (`foreign`) when the collection belongs to another session (#841),
  * and `inactive` when there is no mode file: the button then changes nothing.
- * The session title keeps its `📚 Batch ┃` head until the next real prompt:
+ * The session title keeps its `👉 ➜ 📚` head until the next real prompt:
  * a mod has no title API, so prompt.flow.title-work strips it there
  * (`nextTitle` with `batchArmed: false`).
  */

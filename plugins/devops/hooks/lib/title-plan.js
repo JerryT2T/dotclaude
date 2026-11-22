@@ -26,7 +26,7 @@ const SUB_SESSION_BRIEF = /^(Background|Task) \(from the session\b/;
 
 /**
  * The prefix a prompt puts on the title: the process it starts when it
- * starts one (a ship → `⏳ ➜ 🚀 Shipping ┃ `), the bare hourglass otherwise. The
+ * starts one (a ship → `⏳ ➜ 🚀 `), the bare hourglass otherwise. The
  * hourglass is the fallback, never the override. `resumesShip`: an
  * interrupted ship this prompt resumes (the hook reads it off disk).
  */
@@ -65,7 +65,7 @@ function directInstruction(title, { shipping = false, conceptYields = false, top
  * hooks/pre-tool-use/pre.title.topic.js).
  */
 function topicLine() {
-  return `First prompt of this session: in that call put a topic label of at most ${TOPIC_MAX} characters in place of the text after the "┃ " — a noun phrase naming the subject, ` +
+  return `First prompt of this session: in that call put a topic label of at most ${TOPIC_MAX} characters in place of the title text after the head icons — a noun phrase naming the subject, ` +
     "not the prompt's opening words (abbreviations allowed, if needed). Set it once; a longer topic is refused. A title the user set themselves stays untouched.";
 }
 
@@ -117,7 +117,7 @@ function instruction(prefix = WORK_PREFIX, { machine = false } = {}) {
   // Legacy single-icon forms: one "<icon> <Word> – " shape plus the words (the
   // exact list stays in title-scheme.js LEGACY_PREFIXES, which the card shares).
   const legacyWords = [...new Set(LEGACY_PREFIXES.map(p => p.replace(/^\S+\s+/, '').replace(/ – $/, '')))];
-  const known = `a known "<status> ➜ <activity> <Word> ┃ " prefix (status icon one of ${statuses}; also the older "<status> ┃ <activity> <Word> " and "<status> <activity> <Word> – " forms, with ⏸️ too), the bare "${BARE_WORK}", or a legacy "<icon> <Word> – " (Word: ${legacyWords.join(', ')})`;
+  const known = `a known "<status> ➜ <activity> " prefix (status icon one of ${statuses}; <activity> one emoji, or 🤖🤖🤖; also the older "<status> ➜ <activity> <Word> ┃ ", "<status> ┃ <activity> <Word> " and "<status> <activity> <Word> – " forms, with ⏸️ too), the bare "${BARE_WORK}", or a legacy "<icon> <Word> – " (Word: ${legacyWords.join(', ')})`;
   // A machine turn (a task notification — the concept's own watchers exit
   // that way) is no proof of work: it may end without a card, so it keeps its
   // hands off every known prefix (#618). Only a plain title (or the legacy
@@ -134,12 +134,12 @@ function instruction(prefix = WORK_PREFIX, { machine = false } = {}) {
         : [
           `  Else if it already starts with "${SHIPPING_PREFIX}" (or the legacy "🚀 Shipping – "): do nothing — a ship is running and the`,
           '  hourglass is only the fallback for work that is no named process.',
-          '  Else if it starts with any other "⏳ ➜ <activity> <Word> ┃ " prefix (a running named process): do nothing.',
-          `  Else if it already starts with "${WORK_PREFIX}" (or a bare "${BARE_WORK}<title>") and NOT "${LEGACY_PENDING_PREFIX}": do nothing.`,
+          '  Else if it starts with any other "⏳ ➜ <activity> " prefix (a running named process, e.g. 🤖🤖🤖 🧪 🧭 🔗): do nothing.',
+          `  Else if it already starts with "${WORK_PREFIX}" (or a bare "${BARE_WORK}<title>") and NOT "${LEGACY_PENDING_PREFIX}" or the older "${WORK_PREFIX}Solo ┃ ": do nothing.`,
         ]),
     ];
   const tail = shipping
-    ? 'The word is exactly "Shipping" — this is the do-ship skill\'s Pre-Step C done early; the skill finds the title marked and leaves it.'
+    ? 'The head is exactly "⏳ ➜ 🚀 " (no word, no bar) — this is the do-ship skill\'s Pre-Step C done early; the skill finds the title marked and leaves it.'
     : 'The generic prefix names no process — the title text stays as it is.';
   const conceptNote = machine ? [] : [
     `A "${CONCEPT_PREFIX}" title yields too: it means the page waits for the user, and now Claude works.`,

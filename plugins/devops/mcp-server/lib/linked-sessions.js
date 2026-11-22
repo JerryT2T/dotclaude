@@ -141,7 +141,7 @@ export function linkedKeepTokens(raw) {
     .map((e) => e.branch.toLowerCase());
 }
 
-/** Quoted sidebar title of a side session: `„🔗 👉 ➜ ❓ Question ┃ title"` (waiting/failed) or `„title"` (running). */
+/** Quoted sidebar title of a side session: `„🔗 👉 ➜ ❓ title"` (waiting/failed) or `„title"` (running). */
 function sidebarText(e, L) {
   const quote = L === T.en ? qe : q;
   if (e.state === "running") return quote(e.title);
@@ -155,7 +155,7 @@ function sidebarLine(e, L) {
 
 /**
  * Clickable targets: every way a session with an id is named on the card —
- * its quoted sidebar title (`„👉 ➜ ❓ Question ┃ X“`) and its plain quoted title
+ * its quoted sidebar title (`„👉 ➜ ❓ X“`) and its plain quoted title
  * (`„X“`) — whatever its state. The widget turns each `text` into a click;
  * longest first, so a sidebar title is matched before the plain title inside it.
  */

@@ -1,6 +1,6 @@
 /**
  * @module session-title
- * @version 0.7.0
+ * @version 0.8.0
  * @description Reads the session's CURRENT sidebar title straight from the
  *   transcript and computes the next one, so a title instruction can hand
  *   Claude the exact `set_session_title` value instead of a
@@ -28,9 +28,9 @@ const path = require('path');
 const {
   WORK_PREFIX, SHIPPING_PREFIX, BATCH_PREFIX, CONCEPT_PREFIX, CONCEPT_WORKING_PREFIX,
   INTERRUPTED_PREFIX, LEGACY_PREFIXES, LEGACY, stripPrefixes, classify, leadingPrefix,
-  hasSubMark, withSubMark, carrySubMark,
+  hasSubMark, withSubMark, carrySubMark, BAR,
 } = require('./title-scheme');
-const { clampTitle, clampTopic, wordOf } = require('./title-budget');
+const { clampTitle, clampTopic, headWidth } = require('./title-budget');
 const { batchTopic } = require('./batch-topic');
 
 /** Legacy worded hourglass — rewritten to the bare form wherever found. */
@@ -38,6 +38,17 @@ const LEGACY_PENDING_PREFIX = LEGACY.working;
 
 /** Code units of the sub marker and its space. */
 const SUB_LEN = 3;
+
+/**
+ * True when `current` is generic work in a form no code emits any more: the
+ * legacy `⏳ Working – ` or the worded Solo head (keyword + U+2503 bar) of
+ * before title-scheme 3.0. Such a title is re-marked instead of left alone.
+ */
+function isStaleWork(current) {
+  if (classify(current) !== 'work') return false;
+  const { prefix } = leadingPrefix(current);
+  return prefix === LEGACY_PENDING_PREFIX || prefix.includes(BAR);
+}
 
 /** `current` without its leading prefixes, or null when nothing is left. */
 function rest(current) {
@@ -51,14 +62,15 @@ function rest(current) {
  * two-slot grammar (R1) and check the running ship first:
  *
  * User prompt (`prefix` = WORK_PREFIX): the batch title is owned by its
- * skill; a running `⏳ ➜ 🚀 Shipping ┃ ` (or its legacy form) is never
+ * skill; a running `⏳ ➜ 🚀 ` (or its legacy form) is never
  * replaced, nor is any other ⏳ process (Concept working, Agents, Testing);
- * a bare `⏳ ` title is already marked (the legacy `⏳ Working – ` is not).
+ * a title that carries the work prefix or the bare `⏳ ` is already marked
+ * (the legacy `⏳ Working – ` and the worded Solo head before 3.0 are not).
  * Every other prefix — a waiting concept and every outcome — yields to the
  * bare hourglass; the turn's card sets the next state.
  *
  * A ship (`prefix` = SHIPPING_PREFIX): everything but the batch and an
- * already running ship becomes `⏳ ➜ 🚀 Shipping ┃ ` (a legacy
+ * already running ship becomes `⏳ ➜ 🚀 ` (a legacy
  * `🚀 Shipping – ` is upgraded).
  *
  * Machine turn (a task notification): any known prefix stays — only a plain
@@ -67,7 +79,7 @@ function rest(current) {
  * @param {string|null} current the title now (`readCurrentTitle`)
  * @param {{ prefix?: string, machine?: boolean, batchArmed?: boolean, sub?: boolean }} [opts]
  *   `batchArmed`: false only when the collect mode is known to be off — a
- *   `📚 Batch ┃` head is then stale and stripped; unknown keeps it.
+ *   `👉 ➜ 📚` batch head is then stale and stripped; unknown keeps it.
  * @returns {string|null}
  */
 function nextTitle(current, opts = {}) {
@@ -84,7 +96,7 @@ function nextTitle(current, opts = {}) {
 function nextTitleCore(current, { prefix = WORK_PREFIX, machine = false, batchArmed, sub = false } = {}) {
   if (typeof current !== 'string' || !current.trim()) return null;
   const kind = classify(current);
-  const legacyWorking = kind === 'work' && leadingPrefix(current).prefix === LEGACY_PENDING_PREFIX;
+  const legacyWorking = isStaleWork(current);
   const r = rest(current);
   if (r === null) return null;
   let next;
@@ -99,7 +111,7 @@ function nextTitleCore(current, { prefix = WORK_PREFIX, machine = false, batchAr
     if (!topic) return null;
     next = prefix + topic;
   } else if (kind === 'shipping') {
-    if (prefix !== SHIPPING_PREFIX || (hasSubMark(current) ? current.slice(SUB_LEN) : current).startsWith(SHIPPING_PREFIX)) return null;
+    if (prefix !== SHIPPING_PREFIX || leadingPrefix(current).prefix === SHIPPING_PREFIX) return null;
     next = SHIPPING_PREFIX + r;
   } else if (prefix === SHIPPING_PREFIX) {
     next = SHIPPING_PREFIX + r;
@@ -114,7 +126,7 @@ function nextTitleCore(current, { prefix = WORK_PREFIX, machine = false, batchAr
 
 /**
  * The title arming /do-batch leaves (activation.md § Session title prefix):
- * `👉 ➜ 📚 Batch ┃ ` in front, every known prefix stripped first so prefixes
+ * `👉 ➜ 📚 ` in front, every known prefix stripped first so prefixes
  * never stack. `null` when unknown, already marked, or nothing is left.
  *
  * A topic that is only a trigger word ("batch", "/do-batch", "sammelmodus" …)
@@ -129,13 +141,13 @@ function batchTitle(current, ctx = {}) {
   if (typeof current !== 'string' || !current.trim()) return null;
   const r = rest(current);
   if (!r) return null;
-  const next = carrySubMark(current, BATCH_PREFIX + clampTopic(wordOf(BATCH_PREFIX), batchTopic(r.trim(), ctx)));
+  const next = carrySubMark(current, BATCH_PREFIX + clampTopic(batchTopic(r.trim(), ctx), headWidth(BATCH_PREFIX)));
   return next !== current ? next : null;
 }
 
 /**
  * The title retiring /do-batch leaves (merge.md § Retire): exactly the
- * leading batch prefix removed (`👉 ➜ 📚 Batch ┃ `, or the legacy
+ * leading batch prefix removed (`👉 ➜ 📚 `, or the legacy
  * `📥 Batch – `). `null` when the title does not carry it — a title the
  * user renamed meanwhile wins — or nothing would be left.
  *
@@ -155,7 +167,7 @@ function unbatchTitle(current, ctx = {}) {
 /**
  * The title firing a batch (`go` / `/do-batch go`) leaves: the merge and
  * hand-off turn is real work, so the batch prefix gives way to the work
- * prefix (`⏳ ➜ 🤖 Solo ┃ <topic>`), not to the bare topic. Plain
+ * prefix (`⏳ ➜ 🤖 <topic>`), not to the bare topic. Plain
  * deactivation keeps unbatchTitle. `null` when the title carries no batch
  * prefix or nothing would be left.
  *
@@ -171,7 +183,7 @@ function fireTitle(current, ctx = {}) {
 /**
  * F5: the title a turn that ended WITHOUT a completion card leaves. Only a
  * bare `⏳ ` (generic work, or the legacy `⏳ Working – `) becomes
- * `👉 ➜ ⚡ Interrupted ┃ <title>`; a batch, a waiting concept, a running ship
+ * `👉 ➜ ⚡ <title>`; a batch, a waiting concept, a running ship
  * and every other named state stay (`null`).
  *
  * @param {string|null} current
@@ -189,7 +201,7 @@ function interruptedTitle(current) {
  * running ship, Team, Testing) — or a 👉 approval head, whose agent is gone
  * too — is replaced by `terminalPrefix` (the last
  * delegated-ship result's `titlePrefix`, see `lastTitlePrefix`) or, without
- * one, by `👉 ➜ ⚡ Interrupted ┃ `. A working concept page, a batch and every
+ * one, by `👉 ➜ ⚡ `. A working concept page, a batch and every
  * non-⏳ state stay (`null`). The caller proves "no live work".
  *
  * @param {string|null} current
@@ -225,8 +237,8 @@ function lastTitlePrefix(text) {
 
 /**
  * #1156: the prefix of the newest SETTLED title in `text` (a transcript
- * slice) — a `custom-title` entry whose head is an outcome (`👉 ➜ 🚀 Released
- * Alpha ┃ `, `🟩 …`), never ⏳ work, a running process, a batch, a concept
+ * slice) — a `custom-title` entry whose head is an outcome (`👉 ➜ 🚀 `,
+ * `🟩 …`), never ⏳ work, a running process, a batch, a concept
  * page or an open ❓ question. `null` when the slice holds none. The prefix is
  * cut from the title itself, so an older grammar comes back as it was.
  *

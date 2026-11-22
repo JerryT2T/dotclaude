@@ -8,7 +8,7 @@
  *   Titles are set by the main thread only (a subagent cannot rename the
  *   session), and while it idles on background agents nothing woke it when
  *   one of them stopped at a permission dialog: the sidebar said
- *   `⏳ ➜ 🤖 Team ┃ …` while the session waited for the user (2026-10-25).
+ *   `⏳ ➜ 🤖🤖🤖 …` while the session waited for the user (2026-10-25).
  *
  *   perm.approval.flag / perm.approval.watch (PermissionRequest, `asyncRewake`)
  *   record the waiting call here; post.approval.clear (PostToolUse,

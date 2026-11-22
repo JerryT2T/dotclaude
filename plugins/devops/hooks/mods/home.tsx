@@ -58,9 +58,12 @@ export function kindOf(title: string): HomeKind {
   return 'other'
 }
 
-/** A batch session stays a batch while its title still names the collect mode (the implement step renames it). */
+/**
+ * A batch session stays a batch while its title still names the collect mode (the implement step renames it):
+ * the batch icon of its head (`👉 ➜ 📚 `, older 📥), or the word — the start title and the worded heads before 3.0.
+ */
 export function isBatchTitle(title: string): boolean {
-  return /\bBatch\b/u.test(String(title || ''))
+  return /\bBatch\b|📚|📥/u.test(String(title || ''))
 }
 
 export function sessionsFrom(text: string): HomeSession[] {
@@ -332,7 +335,7 @@ function pressBatch($: EngineInterface, ctx: HomeCtx, p: HomeProject): void {
     return
   }
   confirmFor = ''
-  startSession($, ctx, p.path, p.path, `Batch ┃ ${p.name}`, '/do-batch', async id => {
+  startSession($, ctx, p.path, p.path, `Batch ${p.name}`, '/do-batch', async id => {
     const map = await batches($)
     map[p.path] = id
     await $.store.set(STORE_BATCH, map).catch(() => undefined)

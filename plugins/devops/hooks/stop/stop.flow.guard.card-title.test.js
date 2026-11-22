@@ -10,8 +10,8 @@ import path from "node:path";
 // its widget, title block dropped) is blocked once with that set call.
 const STOP_HOOK = path.join(__dirname, "stop.flow.guard.js");
 const SESSION = "card-title-e2e";
-const WAITING = "👉 ➜ 🧭 Concept ┃ Companion Core Refine";
-const WORKING = "⏳ ➜ 🧭 Concept ┃ Companion Core Refine";
+const WAITING = "👉 ➜ 🧭 Companion Core Refine";
+const WORKING = "⏳ ➜ 🧭 Companion Core Refine";
 
 function project() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "card-title-guard-"));

@@ -6,7 +6,7 @@
  * @plugin devops
  * @description Marks a session as "being worked on" in the sidebar: on the
  *   first real prompt of a session — and on the first prompt after every
- *   completion card — it asks Claude to put the generic `⏳ ➜ 🤖 Solo ┃ ` (no
+ *   completion card — it asks Claude to put the generic `⏳ ➜ 🤖 ` (no
  *   word — `SESSION_PREFIX.work` in mcp-server/lib/mode-state.js) in front of
  *   the session title, replacing whatever outcome prefix the last card left
  *   (📦 Ready, 🧪 Test, …). The hourglass is ONE state — "Claude works, not
@@ -67,7 +67,7 @@
  *   table (freshInstruction). The long table stays for an unknown title in
  *   an old session only.
  *   The direct instruction also names the exact question-title call
- *   (`👉 ➜ ❓ Question ┃ <title>`, lib/ask-title.js) to send in the same
+ *   (`👉 ➜ ❓ <title>`, lib/ask-title.js) to send in the same
  *   message as a later AskUserQuestion / ExitPlanMode / start_session that
  *   waits on the user — pre.ask.title then has nothing to refuse, and its
  *   one block per turn stays only for a model that ignored the line.
