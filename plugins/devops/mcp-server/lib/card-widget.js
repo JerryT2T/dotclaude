@@ -308,7 +308,7 @@ export function buttonsFor(buttonsKey, lang = "de", opts = {}) {
       ? buttons.map((a, i) => (i === 0 ? { ...a, prompt: step, tooltip: step.length > 140 ? step.slice(0, 139) + "…" : step } : a))
       : buttons.slice(1);
   }
-  if (opts && Array.isArray(opts.extra)) for (const x of opts.extra) buttons.push({ label: x.label, icon: x.icon, prompt: x.prompt, tooltip: x.tooltip });
+  if (opts && Array.isArray(opts.extra)) for (const x of opts.extra) buttons.push({ label: x.label, icon: x.icon, prompt: x.prompt, tooltip: x.tooltip, ...(x.primary ? { primary: true } : {}) });
   const tidy = conclusionPrompt(opts && opts.cleanup, lang);
   if (tidy && !(opts && Array.isArray(opts.custom) && opts.custom.length)) {
     const c = CLEANUP[lang] || CLEANUP.de;
@@ -422,6 +422,23 @@ export const OPEN_URL_PREFIX = {
   de: "Im Standardbrowser öffnen:",
   en: "Open in default browser:",
 };
+
+/**
+ * #1186: the band's "Concept öffnen" button while a concept page is open. Its prompt is the open-url prompt
+ * (`<prefix> <url>`), which prompt.flow.open-url opens directly — the same token-free path as the context link.
+ */
+const CONCEPT_OPEN = {
+  de: { label: "Concept öffnen", tooltip: "Öffnet die Concept-Seite im Standardbrowser, ohne Claude — kostet keine Tokens." },
+  en: { label: "Open concept", tooltip: "Opens the concept page in your default browser, without Claude — costs no tokens." },
+};
+
+/** #1186: the open button for an open concept page at `url`; null without a usable http(s) url. */
+export function conceptOpenButton(url, lang = "de") {
+  const u = String(url || "").trim();
+  if (!/^https?:\/\/\S+$/.test(u)) return null;
+  const t = CONCEPT_OPEN[lang] || CONCEPT_OPEN.de;
+  return { label: t.label, icon: "external-link", prompt: `${OPEN_URL_PREFIX[lang] || OPEN_URL_PREFIX.de} ${u}`, tooltip: t.tooltip, primary: true };
+}
 
 /** Texts of the open button: its tooltip and its status after a click. */
 const OPEN_TEXT = {

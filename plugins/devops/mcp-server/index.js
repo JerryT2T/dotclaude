@@ -70,7 +70,7 @@ import { summarizeShip, shipDurationTest } from "./ship/lib/ship-timings.js";
 import { CARD_VARIANTS, coerceCardInput, validateCardInput, formatIssues, unknownCardKeys } from "./lib/card-input.js";
 import { batchGuide, conceptCloseoutOnly, conceptUrl, readBatch, readRunContractLine, sameProjectRoot, titlePrefixFor, titleInstruction, demandedTitle, currentSessionTitle, isLinkedSub, titleStateForKey, hasMandatoryStep, TITLE_SCHEME, projectThreadMode, currentThreadTitle, threadTitleInstruction } from "./lib/mode-state.js";
 import { staleServerLine } from "./lib/server-version.js";
-import { canMinimize, cardDataBlock, cardWidgetInstruction, isDesktopSession, safeSessionId, sessionOpenButton, warmCardClient, writeCardWidgetFile } from "./lib/card-widget.js";
+import { canMinimize, cardDataBlock, conceptOpenButton, cardWidgetInstruction, isDesktopSession, safeSessionId, sessionOpenButton, warmCardClient, writeCardWidgetFile } from "./lib/card-widget.js";
 import { bandCarriesCard, writeBandCard } from "./lib/band-marker.js";
 import { detectLaunchPath } from "./lib/launch-path.js";
 import { linkedPlan, linkedKeepTokens } from "./lib/linked-sessions.js";
@@ -2225,7 +2225,11 @@ function baseDecisionBlock(input, lang, key, delivery, state) {
     // Background work of an iterating/implementing concept is listed like the
     // pending block's items — the user sees WHO is working, not only that.
     const pts = pendingPoints(input.pending);
-    return { heading: TITLE_SCHEME.headingOf(conceptHeadState(input.concept), T.concept({ what })), context: url ? '› ' + url : '', points: pts, buttonsKey: null, guideHandoff };
+    // #1186: while the page is open (waiting or iterating) the band gets a real
+    // "Concept öffnen" button; it opens the page token-free like the link.
+    const openUrl = phase === 'waiting' || phase === 'iterating' ? (url || conceptUrl(input.cwd, input.concept)) : '';
+    const open = openUrl ? conceptOpenButton(openUrl, lang) : null;
+    return { heading: TITLE_SCHEME.headingOf(conceptHeadState(input.concept), T.concept({ what })), context: url ? '› ' + url : '', points: pts, buttonsKey: null, guideHandoff, ...(open ? { extraButtons: [open] } : {}) };
   }
   if (batch) {
     const guide = batchGuide(batch, lang);
