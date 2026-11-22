@@ -54,10 +54,7 @@
         "deep-knowledge/project-threads.md"
       ],
       "scripts": [
-        "hooks/lib/project-thread.js",
-        "hooks/lib/run-contract-thread.js",
-        "hooks/pre-tool-use/pre.thread.session.js",
-        "hooks/user-prompt-submit/prompt.thread.notices.js"
+        "hooks/lib/project-thread.js"
       ]
     },
     "claude-mods": {

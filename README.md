@@ -26,7 +26,7 @@ keep git clean, block risky moves and stop context waste.
 - **Runs while you are away** — `/do-run` works off a backlog, a task or the leftover weekly budget, and ships each item
 - **Per-project tuning** — extend any skill with a `reference.md`, no fork
 
-<!--devops:count:hooks-->117<!--/devops:count:hooks--> hooks ·
+<!--devops:count:hooks-->119<!--/devops:count:hooks--> hooks ·
 <!--devops:count:skills-->15<!--/devops:count:skills--> skills ·
 <!--devops:count:agents-->11<!--/devops:count:agents--> agents ·
 ~0.7M tokens/week overhead (1–4 % of a Max plan), paid back 1.5–6× by the
@@ -522,7 +522,7 @@ A different stack: extend the skills per project — see [Customize](#customize)
 </details>
 
 <details>
-<summary><strong>Hooks</strong> — <!--devops:count:hooks-->117<!--/devops:count:hooks--> hooks by lifecycle and by category</summary>
+<summary><strong>Hooks</strong> — <!--devops:count:hooks-->119<!--/devops:count:hooks--> hooks by lifecycle and by category</summary>
 
 ```
 SessionStart  ──>  UserPromptSubmit  ──>  PreToolUse  ──>  PostToolUse  ──>  Stop
@@ -567,6 +567,7 @@ SessionStart  ──>  UserPromptSubmit  ──>  PreToolUse  ──>  PostToolU
 - `prompt.batch.collect` — Collect mode for `/do-batch`: while active, blocks the user prompt (JSON `decision: "…
 - `prompt.run.contract` — Arm, refresh or pre-arm the do-run RUN CONTRACT from the prompt (run-contract spec B,…
 - `prompt.flow.silent-turn` — Detects background/cron-injected prompts and marks the turn as "silent" so post.flow.…
+- `prompt.thread.notices` — Keeps the SessionStart notices for the Desktop user ("Show the user this line verbati…
 - `prompt.flow.title-work` — Marks a session as "being worked on" in the sidebar: on the first real prompt of a se…
 - `prompt.knowledge.dispatch` — On-demand deep-knowledge injection based on prompt keywords.
 - `prompt.knowledge.anchor` — Records the knowledge anchor (Wissensstand) of this worktree: the origin/<base> tip t…
@@ -605,6 +606,7 @@ SessionStart  ──>  UserPromptSubmit  ──>  PreToolUse  ──>  PostToolU
 - `pre.session.archive` — Only the post-ship hand-over archives this session (#632).
 - `pre.title.topic` — Enforces the 20-character session-title topic (user decision d-len, 2026-11-17): a se…
 - `pre.ask.title` — Puts `👉 ➜ ❓ Question ┃ ` on the session title BEFORE a call blocks on the user (a qu…
+- `pre.thread.session` — Fan-out rule of a Claude Projects thread (line C5): a thread may spawn subagents but…
 - `pre.plugin.session` — Refuse once a plugin fix session started from a consumer project before the upstream…
 - `pre.ask.title` — Puts `👉 ➜ ❓ Question ┃ ` on the session title BEFORE a call blocks on the user (a qu…
 - `pre.strict.agent-gate` — While strict mode is active, refuse an Agent spawn whose prompt does not start with t…
@@ -801,11 +803,13 @@ SessionStart  ──>  UserPromptSubmit  ──>  PreToolUse  ──>  PostToolU
 - `ss.setup.firstrun` *(SessionStart)*
 - `ss.backup.stale` *(SessionStart)*
 - `ss.ci.workflows.sweep` *(SessionStart)*
+- `prompt.thread.notices` *(UserPromptSubmit)*
 - `prompt.hook.hardend` *(UserPromptSubmit)*
 - `pre.thread.rights` *(PreToolUse, PreToolUse)*
 - `pre.test.fullguard` *(PreToolUse)*
 - `pre.merge.guard` *(PreToolUse)*
 - `pre.redirect.scope` *(PreToolUse)*
+- `pre.thread.session` *(PreToolUse)*
 - `pre.waitloop.guard` *(PreToolUse)*
 - `pre.visible-browser.guard` *(PreToolUse)*
 - `post.backup.routine` *(PostToolUse)*
@@ -847,7 +851,7 @@ plugins/
 │   ├── .claude-plugin/plugin.json ← Plugin manifest (SemVer, tags v0.x.y)
 │   ├── .mcp.json                  ← MCP servers: completion card, ship, issues
 │   ├── CONVENTIONS.md             ← Naming, versioning, extension rules
-│   ├── hooks/                     ← <!--devops:count:hooks-->117<!--/devops:count:hooks--> hooks (JS) registered in hooks/dispatch/manifest.json
+│   ├── hooks/                     ← <!--devops:count:hooks-->119<!--/devops:count:hooks--> hooks (JS) registered in hooks/dispatch/manifest.json
 │   ├── skills/                    ← <!--devops:count:skills-->15<!--/devops:count:skills--> skill definitions (SKILL.md)
 │   ├── agents/                    ← <!--devops:count:agents-->11<!--/devops:count:agents--> agent definitions
 │   ├── mcp-server/                ← Card renderer + Desktop widget, ship tools, issue matching
