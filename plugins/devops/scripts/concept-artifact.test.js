@@ -98,6 +98,41 @@ describe("wrapper runtime", () => {
     expect(await res.json()).toEqual({ durable: false, reason: "not_granted" });
   });
 
+  test("POST /draft is stored durably and GET /draft hands back the recovered notes", async () => {
+    const s = sandbox();
+    expect(await (await s.fetch("/draft?slug=x")).json()).toEqual({ found: false });
+    const post = (state, cleared = []) => s.fetch("/draft", { method: "POST", body: JSON.stringify({ slug: "x", page_version: "v1", state, cleared }) });
+    const res = await post({ "text:i1:a": "hallo", "text:i1:b": "weg", _activeView: "y" });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ durable: true });
+    // a blank autosave never erases, a deliberate clear does
+    await post({ "text:i1:a": "", "text:i1:b": "" }, ["text:i1:b"]);
+    const back = await (await s.fetch("/draft?slug=x", { cache: "no-store" })).json();
+    expect(back).toEqual({ found: true, page_version: "v1", recovered: { "text:i1:a": "hallo" } });
+    expect(s.calls).toHaveLength(0);
+  });
+
+  test("no db namespace → POST /draft 507, never a durable ack", async () => {
+    const s = sandbox({ db: null });
+    const res = await s.fetch("/draft", { method: "POST", body: '{"slug":"x","state":{}}' });
+    expect(res.status).toBe(507);
+    expect((await res.json()).durable).toBe(false);
+  });
+
+  test("a /draft beacon is routed through the db, other beacons are left alone", async () => {
+    const beacons = [];
+    const store = new Map();
+    const db = { doc: (p) => ({ set: async (d) => { store.set(p, d); }, get: async () => ({ exists: store.has(p), data: () => store.get(p) }) }) };
+    const window = { fetch: () => Promise.resolve(new Response("{}", { status: 404 })), navigator: { sendBeacon: (u) => { beacons.push(u); return true; } } };
+    window.claude = { use: async () => db };
+    vm.runInNewContext(WRAPPER_JS, { window, location: { href: "https://example.claude.ai/a/x" }, Response, URL, Promise, JSON, Date, TypeError, String });
+    expect(window.navigator.sendBeacon("/draft", new Blob(['{"slug":"x","state":{"text:a":"b"}}']))).toBe(true);
+    window.navigator.sendBeacon("/other", "z");
+    await new Promise((r) => setTimeout(r, 20));
+    expect(beacons).toEqual(["/other"]);
+    expect(store.get("concept/draft").recovered).toEqual({ "text:a": "b" });
+  });
+
   test("every other endpoint goes to the real fetch (heartbeat stays not connected)", async () => {
     const s = sandbox();
     await s.fetch("/heartbeat");
