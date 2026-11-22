@@ -48,7 +48,7 @@ const WAKE_PATTERN = /^\s*<wake\b[^>]*>\s*<project\b[^>]*\bid="chan_/;
 /** A note from the coordinator or another thread: a colleague's request, not the person's prompt. */
 const RELAY_PATTERN = /^\s*<(?:coordinator-relay\b|relay\s+from=|project_claude_message\b)/;
 /** The message of a wake that triggered the turn. */
-const TRIGGER_MESSAGE = /<message\b[^>]*\btrigger="true"[^>]*>([\s\S]*?)<\/message>/;
+const TRIGGER_MESSAGE = /<message\b[^>]*?\strigger="true"[^>]*>([\s\S]*?)<\/message>/;
 
 /** Transcript bytes read for the fallbacks below. */
 const HEAD_BYTES = 256 * 1024;
@@ -77,8 +77,8 @@ function decodeEntities(text) {
  */
 function personWords(prompt) {
   if (!isWakePrompt(prompt)) return '';
-  const m = TRIGGER_MESSAGE.exec(prompt);
-  return m ? decodeEntities(m[1]).trim() : '';
+  const m = findTrigger(prompt);
+  return m ? decodeEntities(m[2]).trim() : '';
 }
 
 /**
@@ -112,6 +112,12 @@ function personWords(prompt) {
  * they never satisfy a user-word gate (batch collect, frustration, an
  * affirmation of a card). `machine` keeps what it always had.
  *
+ * Fail-closed by design: a typed prompt that STARTS with a relay tag (`<relay from=`,
+ * `<project_claude_message`, `<coordinator-relay`) is classed `coordinator` — a colleague,
+ * its text rewritten to the note — even on Desktop. `turnRights` is the one rights decision
+ * (`person` | `colleague`) every rights hook uses: a machine prompt continues the last
+ * non-machine prompt's rights, and an unreadable prompt in a marked thread is a colleague.
+ *
  * For a hook that runs outside the dispatcher (a direct run, a test) the same
  * fields come from `promptFields(hook)` — the one shared function, a no-op
  * on an already normalised payload. A NON-prompt hook (PreToolUse, Stop) learns
@@ -121,9 +127,22 @@ function personWords(prompt) {
  */
 const ORIGINS = Object.freeze(['person', 'coordinator', 'thread', 'machine', 'typed']);
 /** The message of a wake that triggered the turn, with its attributes. */
-const TRIGGER_TAG = /<message\b([^>]*\btrigger="true"[^>]*)>([\s\S]*?)<\/message>/;
+const TRIGGER_TAG = /<message\b([^>]*?\strigger="true"[^>]*)>([\s\S]*?)<\/message>/;
 const RELAY_BLOCK = /<relay\b([^>]*)>([\s\S]*?)<\/relay>/;
 const NOTE_BLOCK = /<note\b[^>]*>([\s\S]*?)<\/note>/g;
+
+/**
+ * The wake's triggering <message> match ([1] attributes, [2] text), or null. A message
+ * that lies INSIDE a <relay> block is a colleague's text, never the person's turn: null,
+ * the relay decides. (`trigger` must be its own attribute: `data-trigger` does not count.)
+ */
+function findTrigger(raw) {
+  const t = TRIGGER_TAG.exec(raw);
+  if (!t) return null;
+  const r = RELAY_BLOCK.exec(raw);
+  if (r && t.index >= r.index && t.index < r.index + r[0].length) return null;
+  return t;
+}
 
 function tagAttr(attrs, name) {
   const m = new RegExp(`(?:^|\\s)${name}="([^"]*)"`).exec(attrs || '');
@@ -158,7 +177,7 @@ function classifyPrompt(prompt) {
   const out = (origin, words) => ({ prompt: words, prompt_raw: raw, prompt_origin: origin });
   try {
     if (isWakePrompt(raw)) {
-      const t = TRIGGER_TAG.exec(raw);
+      const t = findTrigger(raw);
       if (t) {
         const from = tagAttr(t[1], 'from');
         const words = decodeEntities(t[2]).trim();
@@ -217,6 +236,60 @@ function turnOrigin(transcriptContent) {
   return turnPrompt(transcriptContent).prompt_origin;
 }
 
+/** Transcript text of one user entry (string content, or its text blocks). */
+function entryText(entry) {
+  const content = entry && entry.message && entry.message.content;
+  if (typeof content === 'string') return content;
+  if (!Array.isArray(content)) return '';
+  return content.filter((b) => b && b.type === 'text' && typeof b.text === 'string').map((b) => b.text).join('');
+}
+
+/**
+ * The newest prompt of the transcript that is not a machine prompt (a task notification,
+ * a cron tick ...), classified; `null` when none can be found. Never throws.
+ */
+function lastHumanSidePrompt(transcriptContent) {
+  if (typeof transcriptContent !== 'string' || !transcriptContent) return null;
+  let isPromptEntry;
+  try { ({ isPromptEntry } = require('./skill-invocations')); } catch { return null; }
+  const lines = transcriptContent.split('\n');
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    let entry;
+    try { entry = JSON.parse(line); } catch { continue; } // a partial first line of a tail
+    if (!entry || entry.type !== 'user' || entry.isSidechain === true || !isPromptEntry(entry)) continue;
+    const text = entryText(entry);
+    if (!text.trim()) continue;
+    const view = classifyPrompt(text);
+    if (view.prompt_origin === 'machine') continue; // it continues earlier work: that prompt decides
+    return view;
+  }
+  return null;
+}
+
+/**
+ * THE rights decision of a tool call: whose word is this turn? `colleague` (a coordinator
+ * note or another thread's message) may order work and an alpha ship, never a promote,
+ * force-push, session archive or destructive delete; `person` may.
+ *   - origin coordinator / thread -> colleague;
+ *   - a machine prompt -> the last non-machine prompt decides;
+ *   - no readable prompt in a marked thread -> colleague (fail closed); in any other
+ *     session -> person (a Desktop session behaves as before);
+ *   - anything else -> person.
+ * A subagent's call carries the PARENT's transcript_path (its own transcript is a separate
+ * file), so the parent turn's prompt decides: no subagent exemption.
+ *
+ * @param {{ session_id?: string }} hook
+ * @param {string} transcriptContent raw JSONL tail
+ * @returns {'person'|'colleague'}
+ */
+function turnRights(hook, transcriptContent) {
+  const view = lastHumanSidePrompt(transcriptContent);
+  if (view) return isColleagueOrigin(view.prompt_origin) ? 'colleague' : 'person';
+  return hook && isMarked(hook.session_id) ? 'colleague' : 'person';
+}
+
 /** Leave the sticky marker; a failed write only costs the fallback detection. */
 function markThread(sessionId) {
   if (!sessionId) return;
@@ -228,6 +301,11 @@ function markThread(sessionId) {
     // lag counts from now on. Not under a test runner — the marker lives in the real home folder.
     if (!process.env.VITEST) require('./thread-seen').recordThreadSeen({ force: true });
   } catch { /* advisory */ }
+}
+
+/** The prompt is ONE wake envelope, start to end (what the runtime sends); a paste inside a prompt is not. */
+function isWholeWake(prompt) {
+  return isWakePrompt(prompt) && /<\/wake>\s*$/.test(prompt);
 }
 
 function isMarked(sessionId) {
@@ -272,10 +350,12 @@ function isThread(hook, { deep = false } = {}) {
   if (!hook || typeof hook !== 'object') return false;
   if (isMarked(hook.session_id)) return true;
   const raw = typeof hook.prompt_raw === 'string' ? hook.prompt_raw : hook.prompt; // the dispatcher unwraps `prompt`
-  const yes = isWakePrompt(raw) || isHearthbotTool(hook.tool_name) ||
-    (deep && transcriptSaysThread(hook.transcript_path));
-  if (yes) markThread(hook.session_id);
-  return yes;
+  const wake = isWakePrompt(raw);
+  // A wake envelope pasted into a Desktop prompt reads as a thread for this prompt only; the
+  // sticky marker needs the whole prompt to be one envelope (or other evidence).
+  const other = isHearthbotTool(hook.tool_name) || (deep && transcriptSaysThread(hook.transcript_path));
+  if (other || (wake && isWholeWake(raw))) markThread(hook.session_id);
+  return wake || other;
 }
 
 /** The gated half: thread titles and posted cards, alpha channel only. */
@@ -384,6 +464,8 @@ module.exports = {
   isColleagueOrigin,
   turnPrompt,
   turnOrigin,
+  turnRights,
+  isWholeWake,
   isHearthbotTool,
   personWords,
   markThread,

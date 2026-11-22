@@ -478,7 +478,9 @@ process.stdin.on('end', () => {
     try {
       const budget = readBudget({ sessionId });
       budget.refreshing = maybeRefreshUsage(budget, { pluginRoot, unattended });
-      budgetSuffix = unattended ? unattendedSuffix(budget) : nudgeSuffix(budget);
+      let inThread = false;
+      try { inThread = require('../lib/project-thread').threadMode(hook) === 'on'; } catch { /* Desktop output */ }
+      budgetSuffix = unattended ? unattendedSuffix(budget) : nudgeSuffix(budget, { thread: inThread });
       if (budget.announce) {
         const line = budgetLine(budget);
         if (changedSinceLast(BUDGET_LINE_MARKER, sessionId, line)) announce.push(line);

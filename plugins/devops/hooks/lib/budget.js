@@ -434,8 +434,8 @@ function deferSuffix(b) {
 }
 
 /** Short suffix for the per-prompt nudge; empty when nothing changes. */
-function nudgeSuffix(b) {
-  return classSuffix(b) + deferSuffix(b);
+function nudgeSuffix(b, opts) {
+  return classSuffix(b, opts) + deferSuffix(b);
 }
 
 /**
@@ -450,7 +450,16 @@ function unattendedSuffix(b) {
   return ` · budget: ${b.cls} (unattended do-run: opus roles → sonnet, analysis agents ≤${calls} calls, one agent at a time, no question)`;
 }
 
-function classSuffix(b) {
+/**
+ * @param {object} b budget
+ * @param {{ thread?: boolean }} [opts] `thread`: a Claude Projects thread — nobody
+ *   there can answer "ask once", so the class applies *spare the window* unasked.
+ */
+function classSuffix(b, opts) {
+  if (opts && opts.thread && (b.cls === 'sonnet-only' || b.cls === 'ask-before-parallel')) {
+    const calls = b.cls === 'sonnet-only' ? 5 : 10;
+    return ` · budget: ${b.cls} (thread: apply *spare the window* unasked, never ask in a thread — 1 sonnet agent ≤${calls} calls, one agent at a time, in a do-run analysis roles only)`;
+  }
   if (b.cls === 'sonnet-only') {
     const reset = b.binding === 'week'
       ? (b.weeklyResetInMinutes != null ? `, week resets in ${Math.round(b.weeklyResetInMinutes / 60)} h` : ', week is the binding limit')
