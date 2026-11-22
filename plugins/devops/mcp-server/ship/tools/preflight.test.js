@@ -73,7 +73,12 @@ vi.mock("../lib/github.js", () => ({
   findExistingPR: vi.fn(() => null),
 }));
 
+// The rules-file commit is a side effect on the branch: only its call and the
+// `blocked` it is given matter here (the lib has its own suite).
+vi.mock("../lib/cloud-rules.js", () => ({ cloudRulesStep: vi.fn(() => null) }));
+
 import { handler } from "./preflight.js";
+import { cloudRulesStep } from "../lib/cloud-rules.js";
 import { gitArgs } from "../lib/git.js";
 import { createPR, findExistingPR } from "../lib/github.js";
 import * as quotaLib from "../lib/ci-quota.js";
@@ -292,6 +297,25 @@ describe("ship_preflight — components hint (#695)", () => {
       gitTry.mockImplementation(() => "");
       rmSync(cwd, { recursive: true, force: true });
     }
+  });
+});
+
+describe("ship_preflight — rules-file commit only when the whole preflight passes", () => {
+  test("a ship blocked by a LATE hard gate (conflict markers) hands the rules step blocked: true", async () => {
+    scanConflictMarkers.mockReturnValue({
+      ...CLEAN_SCAN, clean: false, scanned: 3,
+      offenders: [{ file: "CHANGELOG.md", count: 1, hits: [{ line: 109, marker: "|||||||" }] }],
+    });
+    const result = await handler({ cwd: CWD });
+    expect(result.ready).toBe(false);
+    expect(cloudRulesStep).toHaveBeenCalledTimes(1);
+    expect(cloudRulesStep.mock.calls[0][0].blocked).toBe(true);
+  });
+
+  test("a ship that passes every gate lets the rules step run unblocked", async () => {
+    const result = await handler({ cwd: CWD });
+    expect(result.ready).toBe(true);
+    expect(cloudRulesStep.mock.calls[0][0].blocked).toBe(false);
   });
 });
 
