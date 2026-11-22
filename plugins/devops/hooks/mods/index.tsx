@@ -509,6 +509,7 @@ async function homeCtx($: EngineInterface): Promise<HomeCtx> {
     root: await repoRoot($),
     loadInfo: () => loadInfo($),
     switchDevops: v => pressOpt($, v ? 'on' : 'off', 'session'),
+    startCleanup: () => startCleanup($, 'plan'),
   }
 }
 

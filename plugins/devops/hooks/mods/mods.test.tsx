@@ -2070,6 +2070,54 @@ test('home: "🛏 Ins Bett gehen" asks once, then starts the shutdown watcher an
   expect(seen.prompts).toEqual([]) // no session, no prompt: the watcher runs outside Claude
 })
 
+test('home: the open pane settles (no render loop under the pointer); 🧹 runs the band cleanup, a state tile opens its session in the app', async ($, on) => {
+  const { seen } = engine(on, { files: { ...LOG_FILES, '/.claude/orphan-report.json': ORPHAN_REPORT } })
+  on('clock.after', () => new Promise(() => undefined)) // the refresh tick never fires here
+  let redraws = 0
+  on('ui.invalidate', () => (redraws++, { value: undefined }))
+  const mcp: Array<{ server: string; tool: string; args: Record<string, unknown> }> = []
+  on('mcp.call', (_: unknown, e: { server: string; tool: string; args: Record<string, unknown> }) => {
+    mcp.push(e)
+    if (e.tool === 'list_sessions') {
+      const rows = [{ sessionId: 'local_w1', title: '👉 ➜ ❓ Question ┃ Karten', cwd: 'P:/Projects/demo', lastActivityAt: '2026-11-21T09:00:00Z' }]
+      return { value: { isError: false, content: [{ type: 'text', text: JSON.stringify(rows) }] } }
+    }
+    return { value: { isError: false, content: [{ type: 'text', text: 'ok' }] } }
+  })
+  const spawns: string[] = []
+  on('agent.spawn', (_: unknown, e: { description: string }) => (spawns.push(e.description), { model: 'claude-opus', agentId: 'c1' }))
+  await $.session.start({ cwd: 'P:/Projects/demo', surface: 'desktop', isInteractive: true })
+  let home = await $.ui.mount({ ...pane('devops-home', 'devops Home'), surface: 'desktop' } as any)
+  const settle = async () => { for (let j = 0; j < 400; j++) await Promise.resolve() }
+  let tiles: unknown
+  for (let i = 0; i < 40 && !tiles; i++) {
+    await home.unmount()
+    await settle()
+    home = await $.ui.mount({ ...pane('devops-home', 'devops Home'), surface: 'desktop' } as any)
+    tiles = await home.find({ key: 't-wait-btn' })
+  }
+  expect(tiles).toBeDefined()
+  // A draw of an up-to-date pane asks for no redraw: the old refresh did on every draw, a loop that reset each hover.
+  await settle()
+  const before = redraws
+  for (let i = 0; i < 3; i++) {
+    await home.unmount()
+    home = await $.ui.mount({ ...pane('devops-home', 'devops Home'), surface: 'desktop' } as any)
+    await settle()
+  }
+  expect(redraws).toBe(before)
+  expect(mcp.filter(c => c.tool === 'list_sessions')).toHaveLength(1)
+  await home.press({ key: 't-wait-btn' })
+  await settle()
+  expect(mcp.find(c => c.tool === 'open_session_in')?.args).toEqual({ session_id: 'local_w1', target: 'focus' })
+  await home.press({ key: 't-clean-btn' })
+  await settle()
+  expect(spawns).toEqual(['Branch cleanup plan'])
+  expect(mcp.some(c => c.tool === 'start_session')).toBe(false)
+  expect(seen.prompts).toEqual([])
+  await home.unmount()
+})
+
 test('the fallback status line goes once the line under the prompt is drawn, at the next turn start at the latest', async ($, on) => {
   const { seen } = engine(on, { files: LOG_FILES })
   on('turn.start', () => ({ turnId: 't' }))

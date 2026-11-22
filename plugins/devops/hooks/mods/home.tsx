@@ -3,7 +3,7 @@
  * The Desktop app's own New page runs no session, so no mod can draw there; this pane is the substitute.
  *
  * Übersicht: budget rings with a pace tick, four clickable state tiles (👉 opens the session waiting longest, ⏳ the
- * newest running one, 🟩 the oldest finished one, 🧹 starts a cleanup session), one row per project with its non-zero
+ * newest running one, 🟩 the oldest finished one, 🧹 starts the branch cleanup run of the band), one row per project with its non-zero
  * state chips and "＋ Batch" (a new session in that project in collect mode; while that batch session is alive and
  * still a batch, the row links to it instead), and the bedtime row: "🛏 Ins Bett gehen" arms the shutdown watcher
  * (scripts/bedtime-shutdown.js — the PC powers off once no session works any more), shows whom it waits for and
@@ -247,6 +247,11 @@ export type HomeCtx = {
   root: string
   loadInfo: () => Promise<InfoData>
   switchDevops: (on: boolean) => Promise<void>
+  /**
+   * The branch cleanup of this repo: the same run as the band's 🧹 button (an Opus subagent plans, the band shows the
+   * plan with Apply). No session start: docs/dev/mods.md § Branch cleanup button, no mod API starts a session reliably.
+   */
+  startCleanup: () => Promise<void>
 }
 
 type Snap = { at: number; model: HomeModel; rings: HomeRing[]; reset: string; info: InfoData | null; error: string; bed: HomeBed | null }
@@ -256,6 +261,7 @@ let loading = false
 let tab: 'overview' | 'settings' = 'overview'
 let openInfo = ''
 let confirmFor = ''
+const CLEANUP_KEY = '__cleanup__'
 const busy = new Map<string, 'starting' | 'started' | 'failed'>()
 let paneOpen = false
 let bedConfirm = false
@@ -302,20 +308,45 @@ async function load($: EngineInterface, ctx: HomeCtx): Promise<void> {
   snap = { at, model: homeModel(sessions, cleanup, await batches($)), rings: ringsFrom(live), reset: resetText(live), info, error, bed }
 }
 
+/**
+ * Loads a fresh snapshot when it is due and redraws ONLY then. The pane's own draw calls this, so a redraw on every
+ * call was a render loop: draw → refresh → invalidate → draw …, dozens of times a second, which reset every hover
+ * state and made the pane flicker under the pointer. A fresh snapshot is all that warrants a redraw here.
+ */
 export function refreshHome($: EngineInterface, ctx: HomeCtx, force = false): void {
   if (loading) return
   loading = true
   void (async () => {
+    let loaded = false
     try {
       const now = await $.clock.now()
-      if (force || !snap || now - snap.at >= STALE_MS) await load($, ctx)
+      if (force || !snap || now - snap.at >= STALE_MS) {
+        loaded = true
+        await load($, ctx)
+      }
     } catch {
       /* the last snapshot stands */
     } finally {
       loading = false
     }
-    $.ui.invalidate('ui.render')
+    if (loaded) $.ui.invalidate('ui.render')
   })()
+}
+
+let tickArmed = false
+
+/** While the pane is open, one timer at a time brings the figures (and the "vor … s") up to date every STALE_MS. */
+function armTick($: EngineInterface, ctx: HomeCtx): void {
+  if (tickArmed || !paneOpen) return
+  tickArmed = true
+  try {
+    $.clock.after(STALE_MS, () => {
+      tickArmed = false
+      if (paneOpen) refreshHome($, ctx)
+    })
+  } catch {
+    tickArmed = false
+  }
 }
 
 /** The status element's press: open the pane (fresh figures), or close it when it is open. */
@@ -337,17 +368,32 @@ function startSession($: EngineInterface, ctx: HomeCtx, key: string, cwd: string
   $.ui.invalidate('ui.render')
   void (async () => {
     try {
-      const res = await $.mcp.call('ccd_session', 'start_session', {
-        initiation: 'user_asked',
+      const args = {
         context: 'fresh',
         cwd,
         title,
         prompt,
         // Opening is HOME_PANE_BACKGROUND (hooks/lib/home-pane.js): the start hooks treat it as the person's own press.
         background: 'Started from the devops Home pane by the person pressing its button; no other context belongs to this session.',
-      })
-      if (res.isError) throw new Error(textOf(res).slice(0, 160))
-      const id = (/\blocal_[0-9a-f-]{8,}/.exec(textOf(res)) || [''])[0]
+      }
+      // `user_asked` waits on the app's approval card, which a mod call outside any turn may not get: a refusal (an
+      // isError answer or a denied call) is retried once as a proposal (`own_initiative`), a start card in the chat.
+      const call = async (initiation: string): Promise<{ ok: boolean; text: string }> => {
+        try {
+          const r = await $.mcp.call('ccd_session', 'start_session', { initiation, ...args })
+          return { ok: !r.isError, text: textOf(r) }
+        } catch (err) {
+          return { ok: false, text: err instanceof Error ? err.message : String(err) }
+        }
+      }
+      let res = await call('user_asked')
+      if (!res.ok) {
+        const first = res.text.slice(0, 120) || 'abgelehnt'
+        res = await call('own_initiative')
+        if (!res.ok) throw new Error(`${first} / ${res.text.slice(0, 120) || 'abgelehnt'}`)
+        if (!/\blocal_[0-9a-f-]{8,}/.test(res.text)) $.ui.toast('Start-Karte im Chat – ein Klick darauf startet die Sitzung', { timeoutMs: 8000 })
+      }
+      const id = (/\blocal_[0-9a-f-]{8,}/.exec(res.text) || [''])[0]
       if (id && onStarted) await onStarted(id)
       busy.set(key, 'started')
       if (id) void $.mcp.call('ccd_window', 'open_session_in', { session_id: id, target: 'focus' }).catch(() => undefined)
@@ -381,8 +427,44 @@ function pressBatch($: EngineInterface, ctx: HomeCtx, p: HomeProject): void {
   })
 }
 
-function pressCleanup($: EngineInterface, ctx: HomeCtx, cwd: string): void {
-  startSession($, ctx, '__cleanup__', cwd, 'Branches aufräumen', 'Branches aufräumen')
+function pressCleanup($: EngineInterface, ctx: HomeCtx): void {
+  if (busy.get(CLEANUP_KEY) === 'starting') return
+  busy.set(CLEANUP_KEY, 'starting')
+  $.ui.invalidate('ui.render')
+  void (async () => {
+    try {
+      await ctx.startCleanup()
+      busy.set(CLEANUP_KEY, 'started')
+      $.ui.toast('🧹 Aufräumen gestartet – Plan und Fortschritt stehen über der Eingabe', { timeoutMs: 6000 })
+    } catch (err) {
+      busy.set(CLEANUP_KEY, 'failed')
+      $.ui.toast(`🧹 Aufräumen fehlgeschlagen: ${err instanceof Error ? err.message : 'unbekannt'}`, { timeoutMs: 8000 })
+    }
+    $.ui.invalidate('ui.render')
+    try {
+      $.clock.after(6000, () => {
+        busy.delete(CLEANUP_KEY)
+        $.ui.invalidate('ui.render')
+      })
+    } catch {
+      busy.delete(CLEANUP_KEY)
+    }
+  })()
+}
+
+/**
+ * A state tile: bring that session to the front through the app's own window tool. The session's `link` as an
+ * anchor hands the click to the OS instead of the app, so the press goes through the app's own tool.
+ */
+function pressOpen($: EngineInterface, s: HomeSession): void {
+  void (async () => {
+    try {
+      const res = await $.mcp.call('ccd_window', 'open_session_in', { session_id: s.id, target: 'focus' })
+      if (res.isError) throw new Error(textOf(res).slice(0, 160))
+    } catch (err) {
+      $.ui.toast(`Sitzung „${s.title.replace(/^\S+\s+➜\s+/u, '').slice(0, 40)}“ lässt sich nicht öffnen: ${err instanceof Error ? err.message : 'unbekannt'}`, { timeoutMs: 8000 })
+    }
+  })()
 }
 
 /**
@@ -434,12 +516,12 @@ export function homeClosed(): void {
 export async function renderHome($: EngineInterface, e: any, ctx: HomeCtx): Promise<any> {
   {
     paneOpen = true
-    const { Box, Button, Link, Svg, Text } = $.ui.resolve(e)
+    const { Box, Button, Svg, Text } = $.ui.resolve(e)
     refreshHome($, ctx)
+    armTick($, ctx)
     const loc = ctx.loc
     const now = await $.clock.now()
     const s = snap
-    const cwd = projectOf(ctx.root)
 
     const tabs = (
       <Box key="home-top" flexDirection="row" alignItems="center" columnGap={1}>
@@ -489,14 +571,14 @@ export async function renderHome($: EngineInterface, e: any, ctx: HomeCtx): Prom
     }
 
     const m = s.model
-    const tile = (key: string, n: number, label: string, color: string, target: HomeSession | undefined, action?: () => void) => (
+    const cleanBusy = busy.get(CLEANUP_KEY)
+    const tile = (key: string, n: number, label: string, color: string, action?: () => void) => (
       <Box key={key} flexDirection="column" flexGrow={1} borderStyle="round" borderColor={n ? color : undefined} paddingX={1}>
         <Text bold color={n ? color : undefined}>{String(n)}</Text>
-        {target && target.link ? <Link key={`${key}-link`} href={target.link}>{label}</Link>
-          : action && n ? <Button key={`${key}-btn`} plain label={label} onPress={action} />
-          : <Text dimColor>{label}</Text>}
+        {action && n ? <Button key={`${key}-btn`} plain label={label} onPress={action} /> : <Text dimColor>{label}</Text>}
       </Box>
     )
+    const opener = (target: HomeSession | undefined) => (target ? () => pressOpen($, target) : undefined)
     return (
       <Box flexDirection="column" rowGap={1}>
         {tabs}
@@ -516,10 +598,10 @@ export async function renderHome($: EngineInterface, e: any, ctx: HomeCtx): Prom
         )}
         {s.reset && <Text key="home-reset" dimColor>{`${s.reset} · Strich = verstrichene Woche`}</Text>}
         <Box key="home-tiles" flexDirection="row" columnGap={1}>
-          {tile('t-wait', m.waiting.length, '👉 wartet', STATE_COLOR.waiting, m.waiting[0])}
-          {tile('t-run', m.running.length, '⏳ läuft', STATE_COLOR.running, m.running[0])}
-          {tile('t-done', m.done.length, '🟩 fertig', STATE_COLOR.done, m.done[0])}
-          {tile('t-clean', m.cleanup, '🧹 aufräumen', STATE_COLOR.cleanup, undefined, () => pressCleanup($, ctx, cwd))}
+          {tile('t-wait', m.waiting.length, '👉 wartet', STATE_COLOR.waiting, opener(m.waiting[0]))}
+          {tile('t-run', m.running.length, '⏳ läuft', STATE_COLOR.running, opener(m.running[0]))}
+          {tile('t-done', m.done.length, '🟩 fertig', STATE_COLOR.done, opener(m.done[0]))}
+          {tile('t-clean', m.cleanup, cleanBusy === 'starting' ? '🧹 startet …' : cleanBusy === 'started' ? '🧹 Plan läuft' : '🧹 aufräumen', STATE_COLOR.cleanup, () => pressCleanup($, ctx))}
         </Box>
         {m.waiting[0] && <Text key="home-oldest" dimColor>{`Am längsten offen: ${nameOf(m.waiting[0].project)} · ${m.waiting[0].title.replace(/^\S+\s+➜\s+/u, '')}`}</Text>}
         <Box key="home-bed" flexDirection="row" alignItems="center" columnGap={1}>
@@ -542,7 +624,7 @@ export async function renderHome($: EngineInterface, e: any, ctx: HomeCtx): Prom
               <Box flexGrow={1} />
               {b === 'starting' ? <Text key={`pb-${p.path}`} dimColor>⏳ startet …</Text>
                 : b === 'started' ? <Text key={`pb-${p.path}`} color={STATE_COLOR.done}>✓ Batch gestartet</Text>
-                : p.batch && p.batch.link ? <Link key={`pb-${p.path}`} href={p.batch.link}>→ Batch</Link>
+                : p.batch ? <Button key={`pb-${p.path}`} plain label="→ Batch" onPress={() => pressOpen($, p.batch as HomeSession)} />
                 : <Button key={`pb-${p.path}`} variant="primary" label={confirmFor === p.path ? `Woche ${s.rings[0]?.pct ?? ''} % – trotzdem?` : '＋ Batch'} onPress={() => pressBatch($, ctx, p)} />}
             </Box>
           )
