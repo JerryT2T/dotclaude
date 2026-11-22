@@ -182,6 +182,10 @@ export type BudgetBar = {
   elapsedPct: number
   level: 'white' | 'yellow' | 'red'
   watermark: string
+  /** Hours-only reset text for the narrow band bar ("19 h", "45 m"); the full text stays in `watermark` / the alt. */
+  short?: string
+  /** No data for this window: the bar is drawn empty with a "–" watermark and no usage marker. */
+  empty?: boolean
 }
 
 function clampPct(v: number): number {
@@ -204,6 +208,32 @@ export function formatResetSpaced(minutes: number | null): string {
   if (minutes == null || !Number.isFinite(minutes)) return '—'
   if (minutes >= 1440) return `${Math.floor(minutes / 1440)} d ${Math.floor((minutes % 1440) / 60)} h`
   return `${Math.floor(minutes / 60)} h ${minutes % 60} m`
+}
+
+/** "6 d" / "19 h" / "45 m" / "–": the reset watermark of the half-width band bar (the largest unit only). */
+export function formatResetShort(minutes: number | null): string {
+  if (minutes == null || !Number.isFinite(minutes)) return '–'
+  if (minutes >= 1440) return `${Math.floor(minutes / 1440)} d`
+  if (minutes >= 60) return `${Math.floor(minutes / 60)} h`
+  return `${Math.max(0, Math.floor(minutes))} m`
+}
+
+/**
+ * The status row's bars (Desktop band): Wk, Fb (only while the Fable counter exists), 5h, always shown, no due-rules.
+ * A window without data is an empty bar with a "–" watermark, drawn in the same style.
+ */
+export function bandBars(b: Budget | null, now: number): BudgetBar[] {
+  const minsTo = (t: number | null | undefined) => (typeof t === 'number' ? Math.max(0, Math.round((t - now) / 60_000)) : null)
+  const make = (label: BudgetBar['label'], pct: number | null | undefined, resetsAt: number | null | undefined, windowMin: number): BudgetBar => {
+    if (typeof pct !== 'number' || !Number.isFinite(pct)) return { label, pct: 0, elapsedPct: 0, level: 'white', watermark: '–', short: '–', empty: true }
+    const r = minsTo(resetsAt)
+    const e = elapsedOf(r, windowMin)
+    return { label, pct, elapsedPct: e, level: r == null ? 'white' : markerLevel(pct, e), watermark: formatResetSpaced(r), short: formatResetShort(r) }
+  }
+  const bars = [make('Wk', b?.weekly, b?.weeklyResetsAt, WINDOW_WK_MIN)]
+  if (b && typeof b.fable === 'number' && b.fable > 0) bars.push(make('Fb', b.fable, b.fableResetsAt, WINDOW_WK_MIN))
+  bars.push(make('5h', b?.fiveHour, b?.fiveHourResetsAt, WINDOW_5H_MIN))
+  return bars
 }
 
 /** The bars the card would draw for this budget at `now`; empty when every window is omitted. */
@@ -245,20 +275,22 @@ export function budgetGlyphBar(pct: number, elapsedPct: number, width = BUDGET_B
 const BAR = { w: 220, h: 12, track: '#2b2d3a', fill: '#4a5384', watermark: '#7d84a8', white: '#ffffff', yellow: '#e6c36a', red: '#e07a7a' }
 
 /** The card's bar as SVG: lilac time fill with the moving sheen, usage marker, reset watermark. */
-export function budgetBarSvg(bar: BudgetBar): string {
-  const fillW = Math.round((clampPct(bar.elapsedPct) / 100) * BAR.w)
-  const x = Math.min(BAR.w - 3, Math.round((clampPct(bar.pct) / 100) * BAR.w))
+export function budgetBarSvg(bar: BudgetBar, opts: { width?: number; compact?: boolean } = {}): string {
+  const W = opts.width ?? BAR.w
+  const mark = opts.compact ? bar.short ?? bar.watermark : bar.watermark
+  const fillW = Math.round((clampPct(bar.elapsedPct) / 100) * W)
+  const x = Math.min(W - 3, Math.round((clampPct(bar.pct) / 100) * W))
   const y = 6
   const h = BAR.h + 12
   return (
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${BAR.w}" height="${h}" viewBox="0 0 ${BAR.w} ${h}">` +
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${h}" viewBox="0 0 ${W} ${h}">` +
     `<defs><clipPath id="f"><rect x="0" y="${y}" width="${fillW}" height="${BAR.h}" rx="5"/></clipPath></defs>` +
-    `<rect x="0" y="${y}" width="${BAR.w}" height="${BAR.h}" rx="5" fill="${BAR.track}"/>` +
+    `<rect x="0" y="${y}" width="${W}" height="${BAR.h}" rx="5" fill="${BAR.track}"/>` +
     `<rect x="0" y="${y}" width="${fillW}" height="${BAR.h}" rx="5" fill="${BAR.fill}"/>` +
     `<g clip-path="url(#f)"><rect x="-24" y="${y}" width="24" height="${BAR.h}" fill="#ffffff" fill-opacity="0.12">` +
-    `<animate attributeName="x" from="-24" to="${BAR.w}" dur="4s" repeatCount="indefinite"/></rect></g>` +
-    `<text x="${BAR.w - 6}" y="${y + 10}" text-anchor="end" font-size="11" font-family="system-ui,sans-serif" fill="${BAR.watermark}">${bar.watermark}</text>` +
-    `<rect x="${x}" y="0" width="3" height="${h}" rx="2" fill="${BAR[bar.level]}"/>` +
+    `<animate attributeName="x" from="-24" to="${W}" dur="4s" repeatCount="indefinite"/></rect></g>` +
+    `<text x="${W - 6}" y="${y + 10}" text-anchor="end" font-size="11" font-family="system-ui,sans-serif" fill="${BAR.watermark}">${mark}</text>` +
+    (bar.empty ? '' : `<rect x="${x}" y="0" width="3" height="${h}" rx="2" fill="${BAR[bar.level]}"/>`) +
     `</svg>`
   )
 }
@@ -266,8 +298,12 @@ export function budgetBarSvg(bar: BudgetBar): string {
 /** The bar's drawn size in CSS px: an interactive Svg sits in a frame that takes no size from the markup. */
 export const BUDGET_BAR_SIZE = { width: BAR.w, height: BAR.h + 12 } as const
 
+/** The half-width bar of the Desktop status row (~110 px, same height, same animation). */
+export const BAND_BAR_SIZE = { width: 110, height: BAR.h + 12 } as const
+
 /** Screen-reader text of one bar, as the card's tooltip. */
 export function budgetBarAlt(bar: BudgetBar, loc: Locale = 'en'): string {
+  if (bar.empty) return `${bar.label}: –`
   return tr(loc, 'barAlt', { label: bar.label, p: Math.round(bar.pct), w: bar.watermark })
 }
 

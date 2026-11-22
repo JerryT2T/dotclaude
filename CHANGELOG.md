@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.395.0] — 2026-11-22
+
+### Added
+- Mod band: status row as the last Desktop row — `devops` green when running, grey when not, Wk / Fb / 5h usage bars always shown at half width with the same animation
+- Session titles: linked sub sessions lead with `🔗` in front of their full head; every linked start (user_asked, offer, marked proposal) shows `🔗 ⏳ ➜ 🤖 Solo` from the start, and a sub remembers itself so a reset title gets its `🔗` back
+
+### Changed
+- Parent session title precedence: own user step > a sub waits (`👉 ➜ 🔗 Linked`) > own running activity > `⏳ ➜ 🔗 Linked` > done; deliver subs also use `🔗 Linked`, `🤖 Team` names background agents only
+- Concept analysis page: no dwell bars in the closing view, own answers are never auto-flagged for sharpening, room under the floating pill, hotkey badges only on visible controls
+- Band reset watermark shows the largest unit (`6 d`, `19 h`)
+
+### Fixed
+- Concept analysis chat: no doubled answer after Enter + TOC jump; a deleted message returns to the question's draft and survives a reload
+- The band no longer shows the devops word twice when the host draws the prompt hint
+
 ## [0.394.3] — 2026-11-22
 
 ### Fixed

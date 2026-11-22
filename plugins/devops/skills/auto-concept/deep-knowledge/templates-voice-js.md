@@ -1,4 +1,4 @@
-# Concept templates, part 52 of 52: Shared systems — voice input (mic buttons + notes voice mode)
+# Concept templates, part 53 of 53: Shared systems — voice input (mic buttons + notes voice mode)
 
 ## Voice input
 

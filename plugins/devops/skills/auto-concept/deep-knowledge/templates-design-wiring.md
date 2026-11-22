@@ -1,4 +1,4 @@
-# Concept templates, part 15 of 52: Template: design — annotation JS, click-through handler
+# Concept templates, part 15 of 53: Template: design — annotation JS, click-through handler
 
 ## Annotation Layer JS — `wireAnnotationLayer()`
 
