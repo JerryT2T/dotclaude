@@ -4,6 +4,7 @@ import { mkdtempSync, writeFileSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { randomUUID } from "node:crypto";
 
 // Side-session cards end to end through the offline renderer (concept
 // 2026-11-07 subsession-cards, scenarios S1-S5): title prefix, heading, `›`
@@ -47,6 +48,21 @@ describe("side-session cards through the offline renderer", () => {
     expect(r.heading).toBe('⏳ 🔗 Linked — läuft in Side-Session „Doku-Umbau“, sie shippt selbst');
     expect(r.buttons).toEqual([]);
   }, 30000);
+
+  test("row 14 end to end: a recorded sub with its own running sub -> 🔗 ⏳ ➜ 🔗 Linked", () => {
+    const sid = randomUUID();
+    const mark = join(tmpdir(), `dotclaude-devops-linked-sub-${sid}`);
+    writeFileSync(mark, "handoff");
+    try {
+      const r = render({ session_id: sid, variant: "fallback", linked: [L("Teilaufgabe", "running")] });
+      expect(r.title).toBe("🔗 ⏳ ➜ 🔗 Linked ┃ ");
+      // A recorded sub whose title was reset still gets its 🔗 on the card's outcome head.
+      const own = render({ session_id: sid, variant: "ready" });
+      expect(own.title).toBe("🔗 👉 ➜ 📦 Ready ┃ ");
+    } finally {
+      rmSync(mark, { force: true });
+    }
+  }, 60000);
 
   test("S2: own diff -> normal Ready with the note, Ship stays", () => {
     const r = render({ variant: "ready", linked: [L("Doku-Umbau", "running")] });

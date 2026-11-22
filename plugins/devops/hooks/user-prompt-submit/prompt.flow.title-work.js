@@ -154,11 +154,33 @@ function planFor(hook, prompt, cwd) {
   return titlePlan({
     prompt,
     current,
+    knownSub: knownSub(hook, prompt, current),
     firstPrompt: isFirstPrompt(hook.transcript_path),
     fresh: current === null ? isFreshSession(hook.transcript_path) : false,
     resumesShip: prefixFor(prompt, cwd) === SHIPPING_PREFIX,
     batchArmed: batchArmedIn(cwd),
   });
+}
+
+/**
+ * True when this session is a recorded linked sub; records it the first time
+ * its title carries the 🔗 or its prompt the brief marker, so a reset title gets
+ * the 🔗 back (side-sessions.js rememberSub). Never throws.
+ */
+function knownSub(hook, prompt, current) {
+  try {
+    const S = require('../lib/side-sessions');
+    const id = hook && hook.session_id;
+    if (S.rememberedSub(id)) return true;
+    // The brief marker counts on the first prompt only (a later prompt may quote a brief).
+    const marker = isFirstPrompt(hook.transcript_path) ? S.markerMode(require('../lib/prompt-text').ownWords(prompt)) : null;
+    const titled = typeof current === 'string' && require('../lib/title-scheme').hasSubMark(current);
+    const mode = marker || (titled ? 'handoff' : null);
+    if (mode) S.rememberSub(id, mode);
+    return false;
+  } catch {
+    return false;
+  }
 }
 
 /** Collect mode state for the title: false only when known off (no mode file / expired), undefined when unreadable. */
@@ -169,7 +191,8 @@ function batchArmedIn(cwd) {
 
 /** The title the hook sets itself, without the model, or null (see 0.9.0 above). */
 function earlyTitle(hook, prompt, cwd) {
-  return earlyTitleOf({ prompt, current: currentTitle(hook), firstPrompt: isFirstPrompt(hook.transcript_path), prefix: prefixFor(prompt, cwd) });
+  const current = currentTitle(hook);
+  return earlyTitleOf({ prompt, current, firstPrompt: isFirstPrompt(hook.transcript_path), prefix: prefixFor(prompt, cwd), knownSub: knownSub(hook, prompt, current) });
 }
 
 /** The hook's stdout: plain context, or JSON when it sets the title itself too. */

@@ -170,12 +170,13 @@ function instruction(prefix = WORK_PREFIX, { machine = false } = {}) {
  *   `firstPrompt`: no transcript yet; `fresh`: isFreshSession of the transcript.
  * @returns {{ context: string, sessionTitle: string|null }} `context` '' = nothing to do.
  */
-function titlePlan({ prompt, current, firstPrompt, fresh, resumesShip = false, batchArmed }) {
+function titlePlan({ prompt, current, firstPrompt, fresh, resumesShip = false, batchArmed, knownSub = false }) {
   const prefix = prefixOf(prompt, resumesShip);
   const machine = isMachineTurn(prompt);
   // The model names the topic on a user's first prompt (a sub-session's title comes from start_session).
   const topic = firstPrompt && !machine && !isSubSessionBrief(prompt);
-  const sub = isLinkedBrief(prompt, firstPrompt);
+  // knownSub: recorded earlier (side-sessions.js rememberSub) — brings a reset title's 🔗 back.
+  const sub = knownSub || isLinkedBrief(prompt, firstPrompt);
   let context;
   if (current === null) {
     context = !machine && fresh ? freshInstruction(prefix, { topic }) : instruction(prefix, { machine });
@@ -195,9 +196,9 @@ function titlePlan({ prompt, current, firstPrompt, fresh, resumesShip = false, b
  * first prompt from the user, and only the prefix on the app's own title — never a
  * topic derived from the prompt (d-who: the model names the topic).
  */
-function earlyTitleOf({ prompt, current, firstPrompt, prefix = prefixOf(prompt), machine = isMachineTurn(prompt) }) {
+function earlyTitleOf({ prompt, current, firstPrompt, prefix = prefixOf(prompt), machine = isMachineTurn(prompt), knownSub = false }) {
   if (machine || !firstPrompt || current === null) return null;
-  return nextTitle(current, { prefix, sub: isLinkedBrief(prompt, firstPrompt) });
+  return nextTitle(current, { prefix, sub: knownSub || isLinkedBrief(prompt, firstPrompt) });
 }
 
 /** The hook's stdout for a plan: plain context, or JSON when it sets the title itself too. */

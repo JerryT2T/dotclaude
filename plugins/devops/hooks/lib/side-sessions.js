@@ -244,7 +244,45 @@ function scanLinkedSessionsInFile(transcriptPath, tailBytes) {
   }
 }
 
+/** Marker file of a linked sub: `<tmpdir>/dotclaude-devops-linked-sub-<session>`, content 'handoff' | 'deliver'. */
+function subRecordFile(sessionId) {
+  return require('path').join(require('os').tmpdir(), `dotclaude-devops-linked-sub-${sessionId}`);
+}
+
+/**
+ * Remember that this session is a linked sub (concept 2026-11-21, Fund
+ * oq-submark-title-only). A sub started without a brief (an offer: title only;
+ * a `proposal_id` start) carries the 🔗 only in its title — reset that title and
+ * nothing would bring it back. The title-work hook records the sub the first
+ * time it sees the 🔗 or the brief marker, so `rememberedSub` answers from then
+ * on without either. Its own marker file, not turn-state: a lost key there would
+ * drop the 🔗. Never throws.
+ *
+ * @param {string|undefined} sessionId
+ * @param {'handoff'|'deliver'} mode
+ */
+function rememberSub(sessionId, mode) {
+  if (!sessionId || (mode !== 'handoff' && mode !== 'deliver')) return;
+  try {
+    const file = subRecordFile(sessionId);
+    if (fs.existsSync(file)) return;
+    require('./session-id').writeSessionFile(file, mode);
+  } catch { /* best effort: the title still carries the 🔗 */ }
+}
+
+/** The recorded sub mode of `sessionId`: 'handoff' | 'deliver' | null. Never throws. */
+function rememberedSub(sessionId) {
+  if (!sessionId) return null;
+  try {
+    const v = fs.readFileSync(subRecordFile(sessionId), 'utf8').trim();
+    return v === 'handoff' || v === 'deliver' ? v : null;
+  } catch {
+    return null;
+  }
+}
+
 module.exports = {
   SIDE_SESSION_TURN_PATTERN, isSideSessionTurn, launchMode, markerMode, subModeOfTranscript, parseNotes, reportState,
+  rememberSub, rememberedSub, subRecordFile,
   scanLinkedSessions, scanLinkedSessionsInFile,
 };

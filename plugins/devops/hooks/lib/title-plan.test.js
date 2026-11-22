@@ -77,3 +77,12 @@ describe('titlePlan - the 🔗 of a linked sub (concept 2026-11-21 rows 1, 12, 1
     expect(plan.context).not.toContain('🔗');
   });
 });
+
+describe("titlePlan - a recorded sub gets its 🔗 back (Fund oq-submark-title-only)", () => {
+  it("knownSub re-adds the 🔗 to a reset title, and nothing changes without it", () => {
+    const plan = (current, knownSub) => titlePlan({ prompt: "weiter", current, firstPrompt: false, fresh: false, knownSub }).context;
+    expect(plan("Neuer Titel", true)).toContain('title:"🔗 ⏳ ➜ 🤖 Solo ┃ Neuer Titel"');
+    expect(plan("⏳ ➜ 🤖 Solo ┃ #1058 Dismantle", true)).toContain('title:"🔗 ⏳ ➜ 🤖 Solo ┃ #1058 Dismantle"');
+    expect(plan("Neuer Titel", false)).not.toContain("🔗");
+  });
+});

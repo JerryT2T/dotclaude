@@ -318,7 +318,9 @@ export function demandedTitle(prefix, current, sub = false) {
 /**
  * True when the session is a LINKED sub: its first prompt carries the brief
  * marker (`[devops:handoff]` / `[devops:deliver]`, hooks/lib/side-sessions.js
- * `subModeOfTranscript`). The 🔗 then leads every title the card sets. Never throws.
+ * `subModeOfTranscript`), or the session was recorded as a sub before
+ * (`rememberedSub` — a sub started without a brief, whose title once carried
+ * the 🔗). The 🔗 then leads every title the card sets. Never throws.
  *
  * @param {string|undefined} sessionId
  * @param {string|undefined} cwd
@@ -327,8 +329,12 @@ export function demandedTitle(prefix, current, sub = false) {
  */
 export function isLinkedSub(sessionId, cwd, home = undefined) {
   try {
+    const S = hookRequire("lib", "side-sessions.js");
+    if (S.rememberedSub(sessionId)) return true;
     const T = hookRequire("lib", "session-title.js");
-    return !!hookRequire("lib", "side-sessions.js").subModeOfTranscript(T.findTranscript(sessionId, home, cwd));
+    const mode = S.subModeOfTranscript(T.findTranscript(sessionId, home, cwd));
+    if (mode) S.rememberSub(sessionId, mode);
+    return !!mode;
   } catch {
     return false;
   }
@@ -367,8 +373,9 @@ export function titleInstruction(prefix, current = null, sub = false) {
     `(e.g. "${SESSION_PREFIX.ready}", "${SESSION_PREFIX["released-alpha"]}", "${SESSION_PREFIX["concept-waiting"]}"), ` +
     `the generic "${S.WORK_PREFIX}", the older "<status> <activity> <Word> – " two-icon form, the bare "${S.BARE_WORK}", and the legacy ` + LEGACY_PREFIXES.map((p) => `"${p}"`).join(", ") +
     ` — never free text that only looks like one`;
+  // A linked sub's exact head already carries its one leading 🔗 (strip it with the prefix first).
   const setFor = (p) => (p
-    ? `set the title to "${p}" + <stripped title>`
+    ? `set the title to "${sub ? S.withSubMark(p) : p}" + <stripped title>`
     : "set the stripped title (no prefix) — only if a prefix was actually removed");
   const set = typeof prefix === "object"
     ? "— this project has an open concept page (.claude/concept-active.json). " +
@@ -383,7 +390,7 @@ export function titleInstruction(prefix, current = null, sub = false) {
     'mcp__ccd_session_mgmt__get_session {session_id:"self"} → ' +
     `strip every leading prefix (${list}) → ` +
     `${SET_TOOL} {session_id:"self"} and ${set} ` +
-    (sub ? "This session is a linked sub: the new title keeps one leading \"🔗 \" (strip it with the prefix, then put it back in front). " : "") +
+    (sub ? "This session is a linked sub: strip a leading \"🔗 \" with the prefix — the head above already carries it, exactly once. " : "") +
     "Deferred is not unavailable: if either tool is only in the deferred-tools list, load both once with ToolSearch `select:mcp__ccd_session_mgmt__get_session,mcp__ccd_session_mgmt__set_session_title`, then call them. " +
     "An input-validation error (session_id missing) is yours: resend once with session_id:\"self\". " +
     "If either tool is truly unavailable (not even deferred) or fails otherwise: skip silently — no retry, no note, no fallback. " +

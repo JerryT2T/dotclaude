@@ -170,3 +170,22 @@ describe("how a session learns it is a linked sub (🔗 marker)", () => {
     expect(S.launchMode({ prompt: "x", initiation: "own_initiative" })).toBeNull();
   });
 });
+
+describe("rememberSub / rememberedSub (Fund oq-submark-title-only)", () => {
+  test("records a sub once, reads it back, ignores junk; never throws", () => {
+    const id = `t-${process.pid}-${Date.now()}`;
+    const fs = require("fs");
+    try {
+      expect(S.rememberedSub(id)).toBeNull();
+      S.rememberSub(id, "deliver");
+      expect(S.rememberedSub(id)).toBe("deliver");
+      S.rememberSub(id, "handoff"); // first record wins
+      expect(S.rememberedSub(id)).toBe("deliver");
+      S.rememberSub(id, "bogus");
+      expect(S.rememberedSub(undefined)).toBeNull();
+      expect(() => S.rememberSub(undefined, "handoff")).not.toThrow();
+    } finally {
+      try { fs.unlinkSync(S.subRecordFile(id)); } catch { /* none */ }
+    }
+  });
+});
