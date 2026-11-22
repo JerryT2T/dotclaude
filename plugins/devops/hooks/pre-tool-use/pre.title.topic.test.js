@@ -7,7 +7,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 /**
- * pre.title.topic — the model's own session-title topic is at most 20
+ * pre.title.topic — the model's own session-title topic is at most 30
  * characters (d-len l20). A status-prefix swap that keeps the existing topic
  * (every other title hook's call) must never be refused.
  */
@@ -17,8 +17,8 @@ const hook = require("./pre.title.topic.js");
 const HOOK = fileURLToPath(new URL("./pre.title.topic.js", import.meta.url));
 
 const SET = "mcp__ccd_session_mgmt__set_session_title";
-const SOLO = "⏳ ➜ 🤖 Solo ┃ ";
-const CONCEPT = "⏳ ➜ 🧭 Concept ┃ ";
+const SOLO = "⏳ ➜ 🤖 ";
+const CONCEPT = "⏳ ➜ 🧭 ";
 const BATCH = "👉 ➜ 📥 Batch ┃ ";
 const LONG = "Anmeldung nach dem Update kaputt";
 
@@ -44,24 +44,30 @@ function run(lines, newTitle, extra = {}) {
 }
 
 describe("pre.title.topic", () => {
-  test("a NEW topic longer than 20 characters is refused with the reason and the length", () => {
+  test("a NEW topic longer than 30 characters is refused with the reason and the length", () => {
     const r = run([prompt("go"), title(SOLO + "Fix login")], SOLO + LONG);
     expect(r.status).toBe(2);
     expect(r.stderr).toContain(hook.MARKER);
     expect(r.stderr).toContain(`«${LONG}»`);
     expect(r.stderr).toContain(`${Array.from(LONG).length} characters`);
-    expect(r.stderr).toContain("limit is 20");
+    expect(r.stderr).toContain("limit is 30");
   });
 
-  test("exactly 20 characters passes", () => {
-    expect(run([prompt("go"), title(SOLO + "Fix login")], SOLO + "x".repeat(20)).status).toBe(0);
+  test("exactly 30 characters passes, 31 are refused", () => {
+    expect(run([prompt("go"), title(SOLO + "Fix login")], SOLO + "x".repeat(30)).status).toBe(0);
+    expect(run([prompt("go"), title(SOLO + "Fix login")], SOLO + "x".repeat(31)).status).toBe(2);
   });
 
-  test("the trap: a status swap that keeps a 21-character topic is never refused", () => {
-    const topic = "Feedback zu dotclaude";
-    expect(Array.from(topic)).toHaveLength(21);
+  test("a Team head (three robots) counts as a head: its topic is measured the same way", () => {
+    expect(run([prompt("go"), title(SOLO + "Fix login")], "⏳ ➜ 🤖🤖🤖 " + "x".repeat(30)).status).toBe(0);
+    expect(run([prompt("go"), title(SOLO + "Fix login")], "⏳ ➜ 🤖🤖🤖 " + "x".repeat(31)).status).toBe(2);
+  });
+
+  test("the trap: a status swap that keeps a 34-character topic is never refused", () => {
+    const topic = "Feedback zu dotclaude und local-llm";
+    expect(Array.from(topic).length).toBeGreaterThan(30);
     expect(run([prompt("go"), title(CONCEPT + topic)], SOLO + topic).status).toBe(0);
-    expect(run([prompt("go"), title(CONCEPT + topic)], "👉 ➜ ❓ Question ┃ " + topic).status).toBe(0);
+    expect(run([prompt("go"), title(CONCEPT + topic)], "👉 ➜ ❓ " + topic).status).toBe(0);
   });
 
   test("the app's own long title on the first prompt: a shortened topic passes, a changed long one is refused", () => {

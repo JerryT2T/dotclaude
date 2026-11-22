@@ -8,6 +8,8 @@ import {
   formatResetShort,
   archiveOffered,
   archiveRefusal,
+  isLimitStop,
+  limitTitle,
   agentRows,
   batchDropReason,
   batchMaybeCollectable,
@@ -18,6 +20,10 @@ import {
   bandBars,
   budgetBarSvg,
   fableFromLive,
+  budgetForBand,
+  restoredCardText,
+  rollBudget,
+  windowsFromLive,
   cleanupApplyPrompt,
   cleanupPlanPrompt,
   planComplete,
@@ -567,6 +573,48 @@ test('card band: a typed prompt spends the card, a textless continuation keeps i
   await $.turn.start({ text: 'next task', turnId: 't3' } as any)
   band = await $.ui.mount({ ...BAND, surface: 'desktop' })
   expect(await has(band, 'Committed')).toBeUndefined()
+  await band.unmount()
+})
+
+test('#1203 card band: every card render is kept per session; a typed prompt or a press marks it spent', async ($, on) => {
+  const { seen } = engine(on)
+  on('session.id', () => ({ value: 'sid-res' }))
+  on('tool.call', () => ({ result: {}, text: CARD_RESULT }))
+  on('turn.start', (_: unknown, e: { turnId: string }) => ({ turnId: e.turnId || 't' }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.tool.call({ tool: CARD_TOOL, summary: 'x' } as any)
+  const kept = () => seen.writes.filter(w => w.path.replace(/\\/g, '/').endsWith('/.claude/devops-band/last-sid-res.json')).map(w => JSON.parse(w.text))
+  expect(kept().at(-1)).toMatchObject({ sid: 'sid-res', text: CARD_RESULT })
+  await $.turn.start({ text: 'next task', turnId: 't2' } as any)
+  expect(kept().at(-1)).toMatchObject({ sid: 'sid-res', text: null })
+})
+
+test('#1203 resume: a new process (empty atoms) + SessionStart resume shows the session\'s last card again; a spent or foreign one does not', async ($, on) => {
+  const last = (o: Record<string, unknown>) => JSON.stringify({ writtenAt: new Date(NOW - 3 * 3_600_000).toISOString(), ...o })
+  engine(on, { files: { '/.claude/devops-band/last-sid-res.json': last({ sid: 'sid-res', text: CARD_RESULT }) } })
+  on('session.id', () => ({ value: 'sid-res' }))
+  on('classic.SessionStart', () => ({}))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.classic.SessionStart({ source: 'resume' } as any)
+  const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(svgIn(await band.find({ key: 'card-heading' }))?.props.alt).toBe('👉 📦 Committed — fertig — shippen?')
+  expect((await band.find({ key: 'card-button-1' }))?.props.label).toBe('Nachbessern')
+  expect(await band.find({ type: 'Text', text: /^Doku/ })).toBeDefined()
+  await band.unmount()
+  expect(restoredCardText({ sid: 'sid-res', text: null }, 'sid-res')).toBeNull()
+  expect(restoredCardText({ sid: 'other', text: CARD_RESULT }, 'sid-res')).toBeNull()
+  expect(restoredCardText({ sid: 'sid-res', text: CARD_RESULT }, 'sid-res')).toBe(CARD_RESULT)
+  expect(restoredCardText(null, 'sid-res')).toBeNull()
+})
+
+test('#1203 resume: a session whose last turn ended without a card shows the idle row', async ($, on) => {
+  engine(on, { files: { '/.claude/devops-band/last-sid-res.json': JSON.stringify({ sid: 'sid-res', text: null, writtenAt: new Date(NOW).toISOString() }) } })
+  on('session.id', () => ({ value: 'sid-res' }))
+  on('classic.SessionStart', () => ({}))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.classic.SessionStart({ source: 'resume' } as any)
+  const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await band.find({ key: 'card-heading' })).toBeUndefined()
   await band.unmount()
 })
 
@@ -2016,6 +2064,54 @@ test('under the prompt: "● devops" beside the engine hint; a press opens the d
   expect(seen.writes).toEqual([])
 })
 
+test('Home → Einstellungen: the browser dropdown offers the installed browsers plus In-App; a pick is written by the plugin script', async ($, on) => {
+  const { seen } = engine(on, { files: LOG_FILES })
+  const options = [{ id: 'edge', label: 'Microsoft Edge' }, { id: 'chrome', label: 'Google Chrome' }, { id: 'in-app', label: 'In-App (Claude Desktop)' }]
+  const runs: string[][] = []
+  let stored = 'auto'
+  on('process.run', (_: unknown, e: { argv: string[] }) => {
+    const at = e.argv.findIndex(a => /browser-choice\.js$/.test(a))
+    if (at < 0) return { value: { exitCode: 1, stdout: '', stderr: '' } }
+    const args = e.argv.slice(at + 1)
+    runs.push(args)
+    if (args[0] === 'set') stored = args[1]!
+    const effective = options.find(o => o.id === stored) ?? options[0]
+    return { value: { exitCode: 0, stdout: JSON.stringify({ effective, stored, options }), stderr: '' } }
+  })
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  const mount = () => $.ui.mount({ ...pane('devops-home', 'devops Home'), surface: 'desktop' } as any)
+  const until = async (key: string, text: RegExp) => {
+    let home = await mount()
+    for (let i = 0; i < 40; i++) {
+      if (text.test(JSON.stringify((await home.find({ key })) ?? ''))) break
+      await home.unmount()
+      for (let j = 0; j < 200; j++) await Promise.resolve()
+      home = await mount()
+    }
+    return home
+  }
+  let home = await mount()
+  await home.press({ key: 'home-tab-settings' })
+  await home.press({ key: 'home-refresh' }) // an earlier test's answer may still count as fresh
+  await home.unmount()
+  home = await until('home-browser-toggle', /Microsoft Edge ▾/)
+  expect(JSON.stringify(await home.find({ key: 'home-browser-toggle' }))).toMatch(/Microsoft Edge ▾/)
+  expect(await home.find({ key: 'home-browser-chrome' })).toBeUndefined() // closed: no list
+  await home.press({ key: 'home-browser-toggle' })
+  await home.unmount()
+  home = await until('home-browser-edge', /● Microsoft Edge/)
+  expect(JSON.stringify(await home.find({ key: 'home-browser-chrome' }))).toMatch(/○ Google Chrome/)
+  expect(JSON.stringify(await home.find({ key: 'home-browser-in-app' }))).toMatch(/○ In-App/)
+  await home.press({ key: 'home-browser-in-app' })
+  await home.unmount()
+  home = await until('home-browser-toggle', /In-App \(Claude Desktop\) ▾/)
+  expect(JSON.stringify(await home.find({ key: 'home-browser-toggle' }))).toMatch(/In-App \(Claude Desktop\) ▾/)
+  expect(await home.find({ key: 'home-browser-edge' })).toBeUndefined() // a pick closes the list
+  expect(runs.at(-1)).toEqual(['set', 'in-app', '--json'])
+  await home.unmount()
+  expect(seen.prompts).toEqual([])
+})
+
 test('/devops toggles the devops Home pane with a one-line answer; the terminal hint carries the state as its tail', async ($, on) => {
   const { seen } = engine(on, { files: LOG_FILES })
   await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
@@ -2707,9 +2803,55 @@ test('archive helpers: offered only on a green card while idle; isError text bec
   expect(archiveOffered({ heading: '🟩 🚀 Released Alpha — v1 — fertig.' }, true)).toBe(false)
   expect(archiveOffered({ heading: '👉 Ready — shippen?' }, false)).toBe(false)
   expect(archiveOffered(null, false)).toBe(false)
+  // #1200: a landed release that only asks to promote is archivable too
+  expect(archiveOffered({ heading: '👉 🚀 Released Alpha — v0.293.0 — nach Beta promoten +1 weitere?' }, false)).toBe(true)
+  expect(archiveOffered({ heading: '👉 🚀 Released Alpha — v0.293.0 — nach Beta promoten +1 weitere?' }, true)).toBe(false)
+  expect(archiveOffered({ heading: '⏳ 🚀 Shipping — v0.293.0' }, false)).toBe(false)
+  expect(archiveOffered({ heading: '🟥 🚀 Release blocked — v0.293.0' }, false)).toBe(false)
   expect(archiveRefusal({ isError: false, content: [] })).toBeNull()
   expect(archiveRefusal({ isError: true, content: [{ type: 'text', text: 'Session is pinned.\n' }] })).toBe('Session is pinned.')
   expect(archiveRefusal({ isError: true })).toBe('archive_session failed')
+})
+
+test('limit stop: the band renames the session to "🟦 ➜ 🔋 …" itself; an ordinary answer and a card title are left alone', async ($, on) => {
+  const LIMIT = "You've hit your weekly limit · resets 10:50pm (Europe/Berlin)"
+  expect(isLimitStop(LIMIT)).toBe(true)
+  expect(isLimitStop('', 'rate_limit')).toBe(true)
+  expect(isLimitStop('The weekly limit reached · is a phrase I explain here.\nSecond line.')).toBe(false)
+  expect(isLimitStop('Done.')).toBe(false)
+  expect(isLimitStop("You've hit your usage limit on the GitHub API, so I cached the answer.")).toBe(false) // no reset named: not Claude Code's line
+  expect(isLimitStop('5-hour limit reached ∙ resets 3pm')).toBe(true)
+  expect(limitTitle('⏳ ➜ 🤖🤖🤖 Home Browser-Wahl')).toBe('🟦 ➜ 🔋 Home Browser-Wahl')
+  expect(limitTitle('🔗 ⏳ ➜ 🤖 Titel ohne Vortext')).toBe('🔗 🟦 ➜ 🔋 Titel ohne Vortext')
+  expect(limitTitle('⏳ ➜ 🚀 v0.400.0 shippen')).toBe('🟦 ➜ 🔋 v0.400.0 shippen')
+  expect(limitTitle('⏳ ➜ 🤖 Team ┃ Home Browser-Wahl')).toBe('🟦 ➜ 🔋 Home Browser-Wahl') // the worded head up to 2.8
+  expect(limitTitle('⏳ Übungen')).toBe('🟦 ➜ 🔋 Übungen')
+  expect(limitTitle('👉 ➜ 📦 Fertig')).toBe(null)
+  expect(limitTitle('🟦 ➜ 🔋 Schon gesetzt')).toBe(null)
+  expect(limitTitle('⏳ ')).toBe(null)
+
+  engine(on)
+  let title = '⏳ ➜ 🤖🤖🤖 Home Browser-Wahl'
+  const sets: Array<Record<string, unknown>> = []
+  on('mcp.call', (_: unknown, e: { server: string; tool: string; args: Record<string, unknown> }) => {
+    if (e.tool === 'get_session') return { value: { content: [{ type: 'text', text: JSON.stringify({ sessionId: 'local_x', title }) }] } }
+    if (e.tool === 'set_session_title') sets.push(e.args)
+    return { value: { content: [{ type: 'text', text: 'ok' }] } }
+  })
+  on('turn.start', (_: unknown, e: { turnId: string }) => ({ turnId: e.turnId || 't' }))
+  on('turn.complete', (_: unknown, e: { answer: string }) => ({ text: e.answer }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.turn.start({ text: 'build it', turnId: 't1' } as any)
+  await $.turn.complete({ answer: 'All done.', durationMs: 1, isAborted: false, turnId: 't1', reason: 'end' } as any)
+  expect(sets).toEqual([]) // a normal turn end renames nothing
+  await $.turn.start({ text: 'weiter', turnId: 't2' } as any)
+  await $.turn.complete({ answer: LIMIT, durationMs: 1, isAborted: false, turnId: 't2', reason: 'end' } as any)
+  expect(sets).toEqual([{ session_id: 'self', title: '🟦 ➜ 🔋 Home Browser-Wahl' }])
+  // A card already named the outcome: the limit line that follows changes nothing.
+  title = '👉 ➜ 📦 Home Browser-Wahl'
+  await $.turn.start({ text: 'noch was', turnId: 't3' } as any)
+  await $.turn.complete({ answer: LIMIT, durationMs: 1, isAborted: false, turnId: 't3', reason: 'end' } as any)
+  expect(sets).toHaveLength(1)
 })
 
 test('archive button: a green card offers it; a press calls the app archive_session on self, a refusal is a toast', async ($, on) => {
@@ -2768,6 +2910,43 @@ test('budget bars: Wk, Fb, 5h in that order; Fable follows the weekly show rule;
   for (const bad of [null, undefined, 'x', {}, live(null), live([]), live([{ name: 'Fable', pct: 'a' }]), live([{ name: 'Fable', pct: 0, resetInMinutes: 100 }]), live([{ name: 'Fable', pct: 50, resetInMinutes: 0 }], new Date(NOW - 3_600_000).toISOString()), { scoped: [{ name: 'Fable', pct: 50, resetInMinutes: 100 }] }, live([{ name: 'Fable', pct: 50 }], new Date(NOW - 4 * 3_600_000).toISOString())]) {
     expect(fableFromLive(bad, NOW)).toBeNull()
   }
+})
+
+test('#1204 budget after a resume: a fresh usage-live.json fills empty windows, a pre-reset window reads 0 %, no fresh source keeps the dash', () => {
+  const live = (o: Record<string, unknown>, ageMs = 60_000) => ({ timestamp: new Date(NOW - ageMs).toISOString(), ...o })
+  const fresh = live({ weekly: { pct: 2, resetInMinutes: 9921 }, session: { pct: 7, resetInMinutes: 200 } })
+  expect(windowsFromLive(fresh, NOW)).toEqual({ weekly: 2, weeklyResetsAt: NOW - 60_000 + 9921 * 60_000, fiveHour: 7, fiveHourResetsAt: NOW - 60_000 + 200 * 60_000 })
+  for (const bad of [null, 'x', {}, live({ weekly: { pct: 'a' } }), live({ weekly: { pct: 2, resetInMinutes: 9921 } }, 16 * 60_000)]) expect(windowsFromLive(bad, NOW)).toBeNull()
+  // Empty session usage (no stored budget) + fresh live → Wk 2 % with its reset.
+  const b = budgetForBand(null, fresh, NOW)
+  expect(b?.weekly).toBe(2)
+  const bars = bandBars(b, NOW)
+  expect(bars[0]).toMatchObject({ label: 'Wk', pct: 2, short: '6 d' })
+  expect(bars[0].empty).toBeFalsy()
+  // A stored snapshot from before the weekly reset: the fresh live value wins.
+  const stale = { weekly: 88, weeklyResetsAt: NOW - 3 * 3_600_000, fiveHour: 40, fiveHourResetsAt: NOW - 60_000, context: null }
+  expect(budgetForBand(stale, fresh, NOW)).toMatchObject({ weekly: 2, fiveHour: 7 })
+  // …and without live data it rolls over to 0 % with the next weekly reset, never a dash.
+  const rolled = budgetForBand(stale, null, NOW)
+  expect(rolled).toMatchObject({ weekly: 0, weeklyResetsAt: NOW - 3 * 3_600_000 + 7 * 86_400_000, fiveHour: 0, fiveHourResetsAt: null })
+  expect(bandBars(rolled, NOW)[0]).toMatchObject({ pct: 0, short: '6 d' })
+  expect(rollBudget(null, NOW)).toBeNull()
+  // A current stored budget is kept as it is; no source at all still draws the dash.
+  const cur = { weekly: 30, weeklyResetsAt: NOW + 86_400_000, fiveHour: 10, fiveHourResetsAt: NOW + 3_600_000, context: null }
+  expect(budgetForBand(cur, fresh, NOW)).toEqual(cur)
+  expect(bandBars(budgetForBand(null, null, NOW), NOW).map(x => x.empty)).toEqual([true, true])
+})
+
+test('#1204 band after a resume: no measure yet, a fresh usage-live.json → the Wk bar shows its reset, not "–"', async ($, on) => {
+  const usage = JSON.stringify({ timestamp: new Date(NOW - 60_000).toISOString(), weekly: { pct: 2, resetInMinutes: 9921 }, session: { pct: 7, resetInMinutes: 200 } })
+  const { tick } = engine(on, { files: { '/.claude/usage-live.json': usage } })
+  tick(10 * 60_000) // past any cache of an earlier test; the file is still fresh (11 min)
+  await $.session.start({ cwd: REPO, surface: 'desktop', isInteractive: true })
+  const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  const wk = await svgIn(await band.find({ key: 'bar-Wk' }))
+  expect(wk?.props.source).toMatch(/>6 d</)
+  expect(wk?.props.source).not.toMatch(/>–</)
+  await band.unmount()
 })
 
 // --- devops off / on in the band (concept 20261120-1805-devops-optout; contract: briefs/contract.md) ---

@@ -31,7 +31,7 @@ texts carry only the call-time rules. The reasoning behind them lives here.
   test and ready cards unless they end in `?`. The promote nudge belongs in
   `delivery.promote.stableLag` (it replaces the old userFinalTest item).
 - **`paused`** (#583): title and heading name the reason (`🔌 Restart`,
-  `💻 Reboot`, `🔋 Limit reset`); the context line names the resuming action.
+  `💻 Reboot`, `🔋 Limit`); the context line names the resuming action.
 - **`verification`** (#612): the skip renders `⚠ unverified — skipped: <reason>`
   plus a decision point; the Stop gate accepts it.
 - **`delivery.promote`**: `betaLag`/`stableLag` render as `−N · D d` after the

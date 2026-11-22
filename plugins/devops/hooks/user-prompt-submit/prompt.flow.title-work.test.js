@@ -16,7 +16,7 @@ import BATCH_STATE from "../lib/batch-state.js";
 describe("prompt.flow.title-work", () => {
   test("the generic prefix is SESSION_PREFIX.work — Solo, no named process", () => {
     expect(WORK_PREFIX).toBe(SESSION_PREFIX.work);
-    expect(WORK_PREFIX).toBe("⏳ ➜ 🤖 Solo ┃ ");
+    expect(WORK_PREFIX).toBe("⏳ ➜ 🤖 ");
   });
 
   test("the worded hourglass is legacy only; the hook and the card share one legacy list", () => {
@@ -29,7 +29,7 @@ describe("prompt.flow.title-work", () => {
     expect(CONCEPT_PREFIX).toBe(SESSION_PREFIX["concept-waiting"]);
     expect(BATCH_PREFIX).toBe(SESSION_PREFIX.batch);
     expect(SHIPPING_PREFIX).toBe(SESSION_PREFIX.shipping);
-    expect(SHIPPING_PREFIX).toBe("⏳ ➜ 🚀 Shipping ┃ ");
+    expect(SHIPPING_PREFIX).toBe("⏳ ➜ 🚀 ");
   });
 
   test("the instruction names both session-mgmt tools, the hourglass, and the silent-skip rule", () => {
@@ -55,7 +55,7 @@ describe("prompt.flow.title-work", () => {
     expect(text).toMatch(/strip every leading/);
     // every legacy word is named; the exact list lives in title-scheme.js
     for (const p of LEGACY_PREFIXES) expect(text).toContain(p.replace(/^\S+\s+/, "").replace(/ – $/, ""));
-    expect(text).toContain(`already starts with "${WORK_PREFIX}" (or a bare "⏳ <title>") and NOT "${LEGACY_PENDING_PREFIX}": do nothing`);
+    expect(text).toContain(`already starts with "${WORK_PREFIX}" (or a bare "⏳ <title>") and NOT "${LEGACY_PENDING_PREFIX}" or the older "${WORK_PREFIX}Solo ┃ ": do nothing`);
     // F6: free text is never stripped.
     expect(text).toMatch(/never free text such as "Fix Login – "/);
   });
@@ -106,7 +106,7 @@ describe("prompt.flow.title-work", () => {
     const text = instruction();
     expect(text).toContain(`already starts with "${SHIPPING_PREFIX}" (or the legacy "🚀 Shipping – "): do nothing`);
     expect(text).toMatch(/hourglass is only the fallback/);
-    expect(text).toMatch(/any other "⏳ ➜ <activity> <Word> ┃ " prefix \(a running named process\): do nothing/);
+    expect(text).toMatch(/any other "⏳ ➜ <activity> " prefix \(a running named process, e\.g\. 🤖🤖🤖 🧪 🧭 🔗\): do nothing/u);
     expect(text).toContain(`"${WORK_PREFIX}" + <stripped title>`);
     expect(instruction(WORK_PREFIX)).toBe(text);
   });
@@ -249,33 +249,33 @@ describe("prompt.flow.title-work — title known from the transcript", () => {
   test("batch head: kept while the mode collects, stripped once it is known off (band Off button, no turn)", () => {
     BATCH_STATE.activate(dir);
     try {
-      expect(out("👉 ➜ 📚 Batch ┃ Queue")).toBe("");
+      expect(out("👉 ➜ 📚 Queue")).toBe("");
       expect(out("📥 Batch – Queue")).toBe("");
     } finally {
       BATCH_STATE.deactivate(dir);
     }
-    expect(out("👉 ➜ 📚 Batch ┃ Queue")).toBe(directInstruction(WORK_PREFIX + "Queue"));
+    expect(out("👉 ➜ 📚 Queue")).toBe(directInstruction(WORK_PREFIX + "Queue"));
     expect(out("📥 Batch – Queue")).toBe(directInstruction(WORK_PREFIX + "Queue"));
   });
 
   test("a title that is already right → no output at all", () => {
     expect(out("⏳ Login")).toBe("");
-    expect(out("⏳ ➜ 🚀 Shipping ┃ Login")).toBe("");
+    expect(out("⏳ ➜ 🚀 Login")).toBe("");
     expect(out("🚀 Shipping – Login")).toBe("");
     // R1: every ⏳ two-slot process stays — the bare-⏳ shortcut is not what keeps them.
-    expect(out("⏳ ➜ 🧭 Concept ┃ Login")).toBe("");
-    expect(out("⏳ ➜ 🤖 Team ┃ Login")).toBe("");
-    expect(out("⏳ ➜ 🧪 Testing ┃ Login")).toBe("");
+    expect(out("⏳ ➜ 🧭 Login")).toBe("");
+    expect(out("⏳ ➜ 🤖🤖🤖 Login")).toBe("");
+    expect(out("⏳ ➜ 🧪 Login")).toBe("");
   });
 
   test("a ship prompt gets the Shipping title and the Pre-Step C note", () => {
     const text = out("⏳ Login", "/do-ship");
-    expect(text).toContain("title:" + JSON.stringify("⏳ ➜ 🚀 Shipping ┃ Login"));
+    expect(text).toContain("title:" + JSON.stringify("⏳ ➜ 🚀 Login"));
     expect(text).toMatch(/Pre-Step C/);
   });
 
   test("a waiting concept title yields and names the card that restores it", () => {
-    for (const cur of ["👉 ➜ 🧭 Concept ┃ Dashboard", "🧭 Concept – Dashboard"]) {
+    for (const cur of ["👉 ➜ 🧭 Dashboard", "🧭 Concept – Dashboard"]) {
       const text = out(cur);
       expect(text, cur).toContain("title:" + JSON.stringify(WORK_PREFIX + "Dashboard"));
       expect(text, cur).toMatch(/sets it again/);
@@ -283,20 +283,20 @@ describe("prompt.flow.title-work — title known from the transcript", () => {
   });
 
   test("a message from another session leaves an outcome alone (#1049)", () => {
-    expect(out("🟩 ➜ 🚀 Released Alpha ┃ Login", '<cross-session-message from="local_1">\nStatus?\n</cross-session-message>')).toBe("");
+    expect(out("🟩 ➜ 🚀 Login", '<cross-session-message from="local_1">\nStatus?\n</cross-session-message>')).toBe("");
   });
 
   test("a machine turn leaves an outcome alone", () => {
-    expect(out("🟩 ➜ 🚀 Released Alpha ┃ Login", "<task-notification>\n<status>completed</status>\n</task-notification>")).toBe("");
+    expect(out("🟩 ➜ 🚀 Login", "<task-notification>\n<status>completed</status>\n</task-notification>")).toBe("");
   });
 
   test("a cross-session message keeps a finished session's title (#1049)", () => {
     const peer = '<cross-session-message from="s1">status?</cross-session-message>';
-    for (const cur of ["🟩 ➜ 🚀 Released Alpha ┃ Login", "👉 ➜ 📦 Ready ┃ Login", "👉 ➜ 🧭 Concept ┃ Login"]) {
+    for (const cur of ["🟩 ➜ 🚀 Login", "👉 ➜ 📦 Login", "👉 ➜ 🧭 Login"]) {
       expect(out(cur, peer), cur).toBe("");
     }
     // a typed prompt still marks work
-    expect(out("🟩 ➜ 🚀 Released Alpha ┃ Login", "status?")).toContain(WORK_PREFIX);
+    expect(out("🟩 ➜ 🚀 Login", "status?")).toContain(WORK_PREFIX);
   });
 
   test("title unknown (no entry, no transcript) → the get_session fallback", () => {
@@ -321,7 +321,7 @@ describe("prompt.flow.title-work — title known from the transcript", () => {
         releaseTitleWork(sid);
       }
     };
-    expect(run("👉 ➜ 📦 Ready ┃ Login")).toContain("title:" + JSON.stringify(WORK_PREFIX + "Login"));
+    expect(run("👉 ➜ 📦 Login")).toContain("title:" + JSON.stringify(WORK_PREFIX + "Login"));
     expect(run("📦 Ready – Login")).toContain("title:" + JSON.stringify(WORK_PREFIX + "Login"));
     expect(run("⏳ Login")).toBe("");
   });

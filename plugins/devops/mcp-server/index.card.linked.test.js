@@ -44,7 +44,7 @@ afterAll(() => { rmSync(dir, { recursive: true, force: true }); });
 describe("side-session cards through the offline renderer", () => {
   test("S1 step 1: handoff running -> ⏳ Linked title and heading, no buttons", () => {
     const r = render({ variant: "fallback", linked: [L("Doku-Umbau", "running")] });
-    expect(r.title).toBe("⏳ ➜ 🔗 Linked ┃ ");
+    expect(r.title).toBe("⏳ ➜ 🔗 ");
     expect(r.heading).toBe('⏳ 🔗 Linked — läuft in Side-Session „Doku-Umbau“, sie shippt selbst');
     expect(r.buttons).toEqual([]);
   }, 30000);
@@ -55,10 +55,10 @@ describe("side-session cards through the offline renderer", () => {
     writeFileSync(mark, "handoff");
     try {
       const r = render({ session_id: sid, variant: "fallback", linked: [L("Teilaufgabe", "running")] });
-      expect(r.title).toBe("🔗 ⏳ ➜ 🔗 Linked ┃ ");
+      expect(r.title).toBe("🔗 ⏳ ➜ 🔗 ");
       // A recorded sub whose title was reset still gets its 🔗 on the card's outcome head.
       const own = render({ session_id: sid, variant: "ready" });
-      expect(own.title).toBe("🔗 👉 ➜ 📦 Ready ┃ ");
+      expect(own.title).toBe("🔗 👉 ➜ 📦 ");
     } finally {
       rmSync(mark, { force: true });
     }
@@ -66,7 +66,7 @@ describe("side-session cards through the offline renderer", () => {
 
   test("S2: own diff -> normal Ready with the note, Ship stays", () => {
     const r = render({ variant: "ready", linked: [L("Doku-Umbau", "running")] });
-    expect(r.title).toBe("👉 ➜ 📦 Ready ┃ ");
+    expect(r.title).toBe("👉 ➜ 📦 ");
     expect(r.heading).toBe("👉 📦 Ready — Shippen?");
     expect(r.context.join(" ")).toContain('„Doku-Umbau“ läuft weiter und shippt selbst');
     expect(r.context.join(" ")).toContain('Läuft in: „Doku-Umbau“');
@@ -75,14 +75,14 @@ describe("side-session cards through the offline renderer", () => {
 
   test("S3 step 1: orchestration with an own diff -> ⏳ Linked, early-ship button", () => {
     const r = render({ variant: "ready", linked: [L("A", "done", "deliver"), L("B", "running", "deliver")] });
-    expect(r.title).toBe("⏳ ➜ 🔗 Linked ┃ ");
+    expect(r.title).toBe("⏳ ➜ 🔗 ");
     expect(r.heading).toBe("⏳ 🔗 Linked — noch nicht fertig — 1 von 2 Side-Sessions fertig");
     expect(r.buttons).toEqual(["Eigenen Teil jetzt shippen"]);
   }, 30000);
 
   test("S4: a failed part -> 👉 Question with three prepared replies", () => {
     const r = render({ variant: "fallback", linked: [L("A", "done", "deliver"), L("C", "failed", "deliver")] });
-    expect(r.title).toBe("👉 ➜ ❓ Question ┃ ");
+    expect(r.title).toBe("👉 ➜ ❓ ");
     expect(r.heading).toContain('„C“ ist gescheitert — ohne C integrieren, C neu starten oder abbrechen?');
     expect(r.buttons).toHaveLength(3);
   }, 30000);
@@ -106,11 +106,11 @@ describe("side-session cards through the offline renderer", () => {
 
   test("delivered: 🟩 Delivered, no Ship button, 👉 only with an open point", () => {
     const plain = render({ variant: "delivered" });
-    expect(plain.title).toBe("🟩 ➜ 📦 Delivered ┃ ");
+    expect(plain.title).toBe("🟩 ➜ 📦 ");
     expect(plain.heading).toBe("🟩 📦 Delivered — Teil fertig — der Haupt-Chat integriert und shippt.");
     expect(plain.buttons).toEqual([]);
     const open = render({ variant: "delivered", open: ["Naming klären?"] });
-    expect(open.title).toBe("👉 ➜ 📦 Delivered ┃ ");
+    expect(open.title).toBe("👉 ➜ 📦 ");
     expect(open.buttons).not.toContain("Ship");
   }, 30000);
 });
@@ -120,7 +120,7 @@ describe("hand-off to an existing session (#1085)", () => {
 
   test("docs-only hand-off: heading names it, only 'Session öffnen'", () => {
     const r = render({ variant: "ready", handoff: H });
-    expect(r.title).toBe("👉 ➜ 📦 Ready ┃ ");
+    expect(r.title).toBe("👉 ➜ 📦 ");
     expect(r.heading).toBe("👉 📦 Ready — an Session „Nachschub HQ“ übergeben");
     expect(r.buttons).toEqual(["Session öffnen"]);
     expect(r.headingLinks.join(" ")).toContain("local_abc-123");

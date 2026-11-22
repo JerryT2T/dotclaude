@@ -137,9 +137,11 @@ The script:
 - Filters tracked entries to those that were under `$WORKTREE_PATH`.
 - Maps each filtered entry to the main-repo equivalent (`relative
   path within worktree` → `<main-repo>/<relative>`).
-- Opens every still-existing file in Edge via the standard
-  `start "" msedge "file:///…"` pattern.
-- Prints a JSON summary `{ reopened: [...], missing: [...], consumed }`.
+- Opens every still-existing file in the user's browser (Edge by default,
+  `start "" msedge "file:///…"`; `browser-tool-strategy.md` § The user's browser).
+- Prints a JSON summary `{ reopened: [...], missing: [...], consumed }`. With
+  the browser choice "in-app" it opens nothing and lists the files under
+  `openInPane`: open each in the Desktop app's browser pane.
 
 Treat the summary as informational. Any entries listed under `missing`
 mean the file did not survive the merge (likely deleted during the

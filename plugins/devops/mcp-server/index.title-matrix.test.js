@@ -146,7 +146,7 @@ const CASES = [
   ["paused user", { variant: "paused", pause: { reason: "user" } }, ["🟦", "Paused", "✋"]],
   ["paused restart", { variant: "paused", pause: { reason: "restart" } }, ["🟦", "Restart", "🔌"]],
   ["paused reboot", { variant: "paused", pause: { reason: "reboot" } }, ["🟦", "Reboot", "💻"]],
-  ["paused usage-reset", { variant: "paused", pause: { reason: "usage-reset", resetAt: "14:00" } }, ["🟦", "Limit reset", "🔋"]],
+  ["paused usage-reset", { variant: "paused", pause: { reason: "usage-reset", resetAt: "14:00" } }, ["🟦", "Limit", "🔋"]],
   ["paused + open (stays ⏸️)", { variant: "paused", pause: { reason: "restart" }, open: OPEN }, ["🟦", "Restart", "🔌"]],
   // pending override
   ["pending on ready", { variant: "ready", pending: [{ name: "qa", kind: "agent", doing: "prüft" }] }, ["⏳", "Team", "🤖"]],
@@ -180,9 +180,11 @@ function evaluate(params, lang) {
 describe("title = CTA — every completion-card variant × every heading/prefix flag", () => {
   for (const [name, params, [status, word, activity], opts = {}] of CASES) {
     for (const lang of ["de", "en"]) {
-      test(`${name} (${lang}) → ${status} ➜ ${activity} ${word} ┃`, () => {
+      // The title head carries no keyword (title-scheme 3.0); Team shows three robots there.
+      const titleIcon = TITLE_SCHEME.titleActivity(word, activity);
+      test(`${name} (${lang}) → ${status} ➜ ${titleIcon} (${word})`, () => {
         const { heading, title } = evaluate(params, lang);
-        const head = `${status} ➜ ${activity} ${word} ┃`;
+        const head = `${status} ➜ ${titleIcon}`;
         const prefix = (head + " ");
         if (opts.titleOwnedBySkill) {
           // An armed batch owns the title (the card leaves it alone) — and the
@@ -191,15 +193,16 @@ describe("title = CTA — every completion-card variant × every heading/prefix 
           expect(BATCH_PREFIX).toBe(prefix);
         } else {
           expect(typeof title, JSON.stringify(title)).toBe("string");
-          const m = /^(\S+) ➜ (\S+) (.+?) ┃ $/u.exec(title.split(TITLE_SCHEME.HAIR).join(""));
+          const m = /^(\S+) ➜ (\S+) $/u.exec(title.split(TITLE_SCHEME.HAIR).join(""));
           expect(m, JSON.stringify(title)).not.toBeNull();
           expect(m[1], "status icon").toBe(status);
-          expect(m[2], "activity icon").toBe(activity);
-          expect(m[3], "keyword").toBe(word);
+          expect(m[2], "activity icon").toBe(titleIcon);
           expect(title).toBe(prefix);
+          expect(title).not.toContain(word);
+          expect(title).not.toContain("┃");
         }
-        // Title = CTA: the heading starts with the same two icons and keyword,
-        // without the title's ┃ bar (it read as a line starting with "|").
+        // Title = CTA: the heading starts with the same status and activity, and
+        // spells the keyword the title dropped (a single robot for Team).
         expect(heading.startsWith(`${status} ${activity} ${word} — `), heading).toBe(true);
         expect(heading).not.toContain("┃");
         expect(heading).not.toMatch(/LIVE/);
@@ -209,16 +212,16 @@ describe("title = CTA — every completion-card variant × every heading/prefix 
   }
 
   test("the matrix reaches every scheme state but the card-less F5 one", () => {
-    const reached = new Set(CASES.map(([, , [s, w, a]]) => `${s} ➜ ${a} ${w} ┃`));
+    const reached = new Set(CASES.map(([, , [s, w, a]]) => `${s} ${a} ${w}`));
     for (const [id, [statusKey, word, act]] of Object.entries(TITLE_SCHEME.STATES)) {
       // F5 (stop hook), /do-ship Pre-Step C and ss.title.sweep (concept offline) set these
       if (id === "interrupted" || id === "shipping" || id === "concept-offline") continue;
       const status = TITLE_SCHEME.STATUS[statusKey];
-      expect(reached.has(`${status} ➜ ${act} ${word} ┃`), id).toBe(true);
+      expect(reached.has(`${status} ${act} ${word}`), id).toBe(true);
     }
     // Both statuses of a done state are exercised: 🟩 and the 👉 a mandatory step raises.
-    expect(reached.has("🟩 ➜ 🚀 Released Alpha ┃")).toBe(true);
-    expect(reached.has("👉 ➜ 🚀 Released Alpha ┃")).toBe(true);
+    expect(reached.has("🟩 🚀 Released Alpha")).toBe(true);
+    expect(reached.has("👉 🚀 Released Alpha")).toBe(true);
   });
 
   test("an optional promote offer keeps 🟩, a mandatory step makes it 👉 — the heading follows", () => {
@@ -226,7 +229,7 @@ describe("title = CTA — every completion-card variant × every heading/prefix 
     expect(optional.heading).toBe("🟩 🚀 Released Alpha — v0.1.0 — nach Beta promoten?");
     const mandatory = evaluate({ variant: "ship-successful", state: SHIPPED, delivery: ring("alpha"), userFinalTest: FINAL }, "en");
     expect(mandatory.heading).toBe("👉 🚀 Released Alpha — v0.1.0 — promote to beta?");
-    expect(mandatory.title).toBe("👉 ➜ 🚀 Released Alpha ┃ ");
+    expect(mandatory.title).toBe("👉 ➜ 🚀 ");
   });
 
   test("worked examples from the concept read exactly", () => {
@@ -234,7 +237,7 @@ describe("title = CTA — every completion-card variant × every heading/prefix 
     expect(evaluate({ variant: "ready" }, "en").heading).toBe("👉 📦 Ready — Ship?");
     expect(evaluate({ variant: "test-minimal" }, "de").heading).toBe("🟩 ✨ Started — viel Spaß");
     expect(evaluate({ variant: "paused", pause: { reason: "usage-reset", resetAt: "14:00" } }, "de").heading)
-      .toBe("🟦 🔋 Limit reset — weiter nach dem Limit-Reset (14:00)");
+      .toBe("🟦 🔋 Limit — weiter nach dem Limit-Reset (14:00)");
     expect(evaluate({ variant: "aborted", cta: { reason: "Konflikt", activity: "ship" } }, "en").heading)
       .toBe("🟥 🚀 Ship — aborted because of Konflikt — try differently?");
   });

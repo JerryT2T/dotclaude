@@ -17,6 +17,30 @@ not repeat it. When to test at all and on which surface: [test-autonomy.md](test
 Older tool names stay valid: `mcp__Claude_Preview__preview_*` (the pane's former
 server) and `mcp__Claude_in_Chrome__*` (older extension installs).
 
+## The user's browser
+
+"Edge" in this doc and every other devops doc means the browser the user chose
+in the devops Home pane (Einstellungen → Browser; setting `browser.default`,
+machine-wide). Edge is the default while it is installed, so nothing changes
+until a `[browser] …` line at session start names another one.
+
+| Choice | Pages opened for the user (concept page, re-opened files, guide tab) | Claude-in-Chrome |
+|---|---|---|
+| Edge (default) | as written in the docs: `start "" msedge "{url}"` | the extension in Edge |
+| Another installed browser (Chrome, Firefox, Brave, Vivaldi, Opera) | `node "{PLUGIN_ROOT}/scripts/browser-choice.js" open "{url}"` in place of every `start "" msedge` — never Edge | the extension in that browser, where it exists (Chromium browsers); § Edge rules apply to it by name |
+| In-App (`in-app`: chosen, or no browser installed) | the Desktop app's browser pane: `preview_start` / `navigate` with the URL, pane shown to the user. No pane in this session (terminal) → `browser-choice.js open "{url}" --external` | unchanged for logged-in external sites; without the extension the pane, the user signs in there |
+
+- The scripts that open pages themselves (`concept-open.js verify`,
+  `concept-watch.js`, `session-open-tracker.js reopen-main`) already follow the
+  choice. With in-app they start nothing and say so (`open_in: "pane"`,
+  `openInPane`): open those URLs in the pane.
+- `node "{PLUGIN_ROOT}/scripts/browser-choice.js" list` shows what is installed
+  and in effect; "nimm Chrome als Browser" → `browser-choice.js set chrome`
+  (only installed browsers, `in-app` and `auto` are accepted).
+- In-app and the concept token check (auto-concept step 3): the user's tab and
+  the verification read share the pane profile, so run the check in the tab the
+  user gets, before handing it over — no second tab.
+
 ## Probe order — follows the use case
 
 Probe the tool the table names first; on failure swap to the other one, then
@@ -64,7 +88,7 @@ blocks, DOM state, form values and attributes are read with `javascript_tool` /
 
 ## Scripts that start their own browser
 
-A visible window is always Edge, also when a script starts the browser itself
+A visible window is always Edge (or the user's browser, § The user's browser), also when a script starts the browser itself
 (Playwright, Puppeteer, `chrome.exe`) and no browser tool is involved:
 
 - **Headless is the default**, also for a real-GPU benchmark: a headed window

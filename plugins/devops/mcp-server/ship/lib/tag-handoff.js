@@ -22,12 +22,20 @@ const PERMANENT_PATTERNS = [
   /pre-receive hook declined/i,
   /write access to repository not granted/i,
   /authentication failed/i,
+  /write access to this github api path is not permitted/i, // the cloud session's GitHub proxy (#1202)
 ];
 
+/** A claude.ai cloud session: its GitHub proxy refuses every tag write (environment policy, #1202). */
+export function isCloudSession(env = process.env) {
+  return env.CLAUDE_CODE_REMOTE === "true";
+}
+
 /** True when the push error is one a retry cannot fix. */
-export function isPermanentPushError(err) {
+export function isPermanentPushError(err, env = process.env) {
   const text = String((err && (err.stderr || err.message)) || err || "");
-  return PERMANENT_PATTERNS.some((re) => re.test(text));
+  if (PERMANENT_PATTERNS.some((re) => re.test(text))) return true;
+  // In a cloud session a tag push ends with "unexpected disconnect": the proxy, not the network.
+  return isCloudSession(env) && /unexpected disconnect|the remote end hung up/i.test(text);
 }
 
 /**
@@ -37,7 +45,7 @@ export function isPermanentPushError(err) {
  *
  * @param {{ channelTag: string, channel: string, version: string, sha?: string|null, base: string, permanent: boolean, error?: string }} p
  */
-export function tagHandoff({ channelTag, channel, version, sha, base, permanent, error }) {
+export function tagHandoff({ channelTag, channel, version, sha, base, permanent, error }, env = process.env) {
   const target = sha || `origin/${base}`;
   const message = JSON.stringify({ channel, version });
   const quoted = `'${message.replace(/'/g, "'\\''")}'`;
@@ -45,9 +53,11 @@ export function tagHandoff({ channelTag, channel, version, sha, base, permanent,
     tag: channelTag,
     target,
     permanent: !!permanent,
-    reason: permanent
-      ? "The remote refused the tag push for this session (permission) — no retry changes that."
-      : "The tag push kept failing after its retries.",
+    reason: permanent && isCloudSession(env)
+      ? "Cloud sessions cannot push tags: the session's GitHub proxy refuses every tag write (environment policy). Set it once on your PC."
+      : permanent
+        ? "The remote refused the tag push for this session (permission) — no retry changes that."
+        : "The tag push kept failing after its retries.",
     error: error ? String(error).slice(0, 200) : undefined,
     commands: [
       `git fetch origin ${base}`,

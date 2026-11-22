@@ -86,6 +86,150 @@
         ]
       }
     ],
+    "completion-card-design.md›paused usage-reset›card word": [
+      {
+        "ship": "claude/devops-browser-setting-c04118",
+        "by": "JerryT2T",
+        "value": "\"Limit\" instead of \"Limit reset\" — user decision in this session (\"limit einfach nur nennen, nicht limit reset\"): the card word is \"Limit\"",
+        "decided": true,
+        "at": "2026-11-22T11:50:45.243Z",
+        "hunks": [
+          "a5ca71a05669"
+        ]
+      }
+    ],
+    "plugins/devops/deep-knowledge/project-threads.md›thread title head›keyword and bar": [
+      {
+        "ship": "claude/chat-title-emoticons-separator-b41eeb",
+        "by": "Jerry",
+        "value": "`<status> ➜ <icon> ` — no keyword, no bar (title-scheme 3.0)",
+        "decided": true,
+        "at": "2026-11-22T10:22:42.269Z",
+        "hunks": [
+          "7c9675d53a60"
+        ]
+      }
+    ],
+    "plugins/devops/deep-knowledge/session-title-scheme.md›early head›keyword and bar": [
+      {
+        "ship": "claude/chat-title-emoticons-separator-b41eeb",
+        "by": "Jerry",
+        "value": "`<status> ➜ <icon> ` — no keyword, no bar (title-scheme 3.0)",
+        "decided": true,
+        "at": "2026-11-22T10:22:42.269Z",
+        "hunks": [
+          "6cd1357f39b1"
+        ]
+      }
+    ],
+    "plugins/devops/deep-knowledge/session-title-scheme.md›side sessions›keyword and bar": [
+      {
+        "ship": "claude/chat-title-emoticons-separator-b41eeb",
+        "by": "Jerry",
+        "value": "`<status> ➜ <icon> ` — no keyword, no bar (title-scheme 3.0)",
+        "decided": true,
+        "at": "2026-11-22T10:22:42.269Z",
+        "hunks": [
+          "1cf3216228ec"
+        ]
+      }
+    ],
+    "plugins/devops/deep-knowledge/session-title-scheme.md›state table›keyword and bar": [
+      {
+        "ship": "claude/chat-title-emoticons-separator-b41eeb",
+        "by": "Jerry",
+        "value": "`<status> ➜ <icon> ` — no keyword, no bar (title-scheme 3.0)",
+        "decided": true,
+        "at": "2026-11-22T10:22:42.269Z",
+        "hunks": [
+          "c597502f8430"
+        ]
+      }
+    ],
+    "plugins/devops/hooks/lib/ask-title.js›start head comment›keyword and bar": [
+      {
+        "ship": "claude/chat-title-emoticons-separator-b41eeb",
+        "by": "Jerry",
+        "value": "`⏳ ➜ 🤖 ` — no keyword, no bar",
+        "decided": true,
+        "at": "2026-11-22T10:22:42.269Z",
+        "hunks": [
+          "2744b19d524c"
+        ]
+      }
+    ],
+    "plugins/devops/hooks/lib/ask-title.test.js›sub head clamp›budget": [
+      {
+        "ship": "claude/chat-title-emoticons-separator-b41eeb",
+        "by": "Jerry",
+        "value": "42 − 2 (no word, no bar)",
+        "decided": true,
+        "at": "2026-11-22T10:22:42.269Z",
+        "hunks": [
+          "71321c6dc128"
+        ]
+      }
+    ],
+    "plugins/devops/hooks/lib/project-thread.e2e.test.js›thread title head›keyword and bar": [
+      {
+        "ship": "claude/chat-title-emoticons-separator-b41eeb",
+        "by": "Jerry",
+        "value": "`<status> ➜ <icon> ` — no keyword, no bar",
+        "decided": true,
+        "at": "2026-11-22T10:22:42.269Z",
+        "hunks": [
+          "db45f26d70ab"
+        ]
+      }
+    ],
+    "plugins/devops/hooks/lib/project-thread.js›renameCallUnknown›head wording": [
+      {
+        "ship": "claude/chat-title-emoticons-separator-b41eeb",
+        "by": "Jerry",
+        "value": "`<status> ➜ <activity> ` head, older worded form named as older",
+        "decided": true,
+        "at": "2026-11-22T10:22:42.269Z",
+        "hunks": [
+          "6f3c81617ce7"
+        ]
+      }
+    ],
+    "plugins/devops/hooks/lib/project-thread.test.js›thread title head›keyword and bar": [
+      {
+        "ship": "claude/chat-title-emoticons-separator-b41eeb",
+        "by": "Jerry",
+        "value": "`<status> ➜ <icon> ` — no keyword, no bar",
+        "decided": true,
+        "at": "2026-11-22T10:22:42.269Z",
+        "hunks": [
+          "9641a1a03414"
+        ]
+      }
+    ],
+    "plugins/devops/hooks/lib/session-title.js›batchTitle›clamp call": [
+      {
+        "ship": "claude/chat-title-emoticons-separator-b41eeb",
+        "by": "Jerry",
+        "value": "clampTopic(topic, headWidth(BATCH_PREFIX))",
+        "decided": true,
+        "at": "2026-11-22T10:22:42.269Z",
+        "hunks": [
+          "4793ea589247"
+        ]
+      }
+    ],
+    "plugins/devops/hooks/lib/session-title.js›module›version": [
+      {
+        "ship": "claude/chat-title-emoticons-separator-b41eeb",
+        "by": "Jerry",
+        "value": "0.8.0",
+        "decided": true,
+        "at": "2026-11-22T10:22:42.269Z",
+        "hunks": [
+          "f6da0885886b"
+        ]
+      }
+    ],
     "plugins/devops/hooks/lib/session-title.js›nextTitleCore›final-clamp": [
       {
         "ship": "claude/projects-chat-completion-cards-321de4",
@@ -95,6 +239,18 @@
         "at": "2026-11-22T02:07:33.619Z",
         "hunks": [
           "a2587fe7060b"
+        ]
+      }
+    ],
+    "plugins/devops/hooks/lib/session-title.js›nextTitleCore›running-ship check": [
+      {
+        "ship": "claude/chat-title-emoticons-separator-b41eeb",
+        "by": "Jerry",
+        "value": "leadingPrefix(current).prefix === SHIPPING_PREFIX (a worded ship head is upgraded)",
+        "decided": true,
+        "at": "2026-11-22T10:22:42.269Z",
+        "hunks": [
+          "4701db407eb0"
         ]
       }
     ],
@@ -119,6 +275,138 @@
         "at": "2026-11-22T02:07:33.619Z",
         "hunks": [
           "642fc905b24c"
+        ]
+      }
+    ],
+    "plugins/devops/hooks/lib/session-title.js›title-scheme import›names": [
+      {
+        "ship": "claude/chat-title-emoticons-separator-b41eeb",
+        "by": "Jerry",
+        "value": "hasSubMark, withSubMark, carrySubMark, BAR",
+        "decided": true,
+        "at": "2026-11-22T10:22:42.269Z",
+        "hunks": [
+          "46068ca4b4c2"
+        ]
+      }
+    ],
+    "plugins/devops/hooks/lib/title-budget.js›clampTitle›clamp call": [
+      {
+        "ship": "claude/chat-title-emoticons-separator-b41eeb",
+        "by": "Jerry",
+        "value": "clampTopic(rest, headWidth + sub marker)",
+        "decided": true,
+        "at": "2026-11-22T10:22:42.269Z",
+        "hunks": [
+          "693f1a4cba72"
+        ]
+      }
+    ],
+    "plugins/devops/hooks/lib/title-budget.js›clampTopic›signature": [
+      {
+        "ship": "claude/chat-title-emoticons-separator-b41eeb",
+        "by": "Jerry",
+        "value": "clampTopic(topic, taken = 0): max = TITLE_BUDGET − taken",
+        "decided": true,
+        "at": "2026-11-22T10:22:42.269Z",
+        "hunks": [
+          "fb407ad0c3e7"
+        ]
+      }
+    ],
+    "plugins/devops/hooks/lib/title-budget.js›clampTopic›signature doc": [
+      {
+        "ship": "claude/chat-title-emoticons-separator-b41eeb",
+        "by": "Jerry",
+        "value": "clampTopic(topic, taken)",
+        "decided": true,
+        "at": "2026-11-22T10:22:42.269Z",
+        "hunks": [
+          "356cfdd58b56"
+        ]
+      }
+    ],
+    "plugins/devops/hooks/lib/title-budget.js›title-scheme import›names": [
+      {
+        "ship": "claude/chat-title-emoticons-separator-b41eeb",
+        "by": "Jerry",
+        "value": "leadingPrefix, SUB_MARK_WIDTH, ARROW, HAIR, FE0F",
+        "decided": true,
+        "at": "2026-11-22T10:22:42.269Z",
+        "hunks": [
+          "33cb8cc3ebe9"
+        ]
+      }
+    ],
+    "plugins/devops/hooks/lib/title-plan.js›threadInstruction›head wording": [
+      {
+        "ship": "claude/chat-title-emoticons-separator-b41eeb",
+        "by": "Jerry",
+        "value": "The leading `<status> ➜ <icon> ` head is the devops status prefix",
+        "decided": true,
+        "at": "2026-11-22T10:22:42.269Z",
+        "hunks": [
+          "44613ff366e4"
+        ]
+      }
+    ],
+    "plugins/devops/hooks/lib/title-plan.test.js›sub titles›keyword and bar": [
+      {
+        "ship": "claude/chat-title-emoticons-separator-b41eeb",
+        "by": "Jerry",
+        "value": "`🔗 ⏳ ➜ 🤖 ` — no keyword, no bar",
+        "decided": true,
+        "at": "2026-11-22T10:22:42.269Z",
+        "hunks": [
+          "dc172fb24ac8"
+        ]
+      }
+    ],
+    "plugins/devops/hooks/lib/title-plan.thread.test.js›thread title head›keyword and bar": [
+      {
+        "ship": "claude/chat-title-emoticons-separator-b41eeb",
+        "by": "Jerry",
+        "value": "`<status> ➜ <icon> ` — no keyword, no bar",
+        "decided": true,
+        "at": "2026-11-22T10:22:42.269Z",
+        "hunks": [
+          "28f3aab1840b"
+        ]
+      }
+    ],
+    "plugins/devops/hooks/lib/title-scheme.js›module›version": [
+      {
+        "ship": "claude/chat-title-emoticons-separator-b41eeb",
+        "by": "Jerry",
+        "value": "3.0.0",
+        "decided": true,
+        "at": "2026-11-22T10:22:42.269Z",
+        "hunks": [
+          "45cdb2e4b90f"
+        ]
+      }
+    ],
+    "plugins/devops/hooks/lib/title-scheme.js›sub marker comment›keyword and bar": [
+      {
+        "ship": "claude/chat-title-emoticons-separator-b41eeb",
+        "by": "Jerry",
+        "value": "`🔗 ⏳ ➜ 🚀 X`",
+        "decided": true,
+        "at": "2026-11-22T10:22:42.269Z",
+        "hunks": [
+          "88b18b9d879b"
+        ]
+      }
+    ],
+    "plugins/devops/hooks/lib/title-scheme.linked.test.js›sub marker titles›keyword and bar": [
+      {
+        "ship": "claude/chat-title-emoticons-separator-b41eeb",
+        "by": "Jerry",
+        "value": "`<status> ➜ <icon> ` — no keyword, no bar",
+        "decided": true,
+        "at": "2026-11-22T10:22:42.269Z",
+        "hunks": [
+          "6d5e1c91d61b"
         ]
       }
     ],
@@ -175,6 +463,30 @@
         ]
       }
     ],
+    "plugins/devops/mcp-server/index.card.linked.test.js›linked title›keyword and bar": [
+      {
+        "ship": "claude/chat-title-emoticons-separator-b41eeb",
+        "by": "Jerry",
+        "value": "`⏳ ➜ 🔗 `",
+        "decided": true,
+        "at": "2026-11-22T10:22:42.269Z",
+        "hunks": [
+          "d38c2b3f4026"
+        ]
+      }
+    ],
+    "plugins/devops/mcp-server/index.card.linked.test.js›sub card titles›keyword and bar": [
+      {
+        "ship": "claude/chat-title-emoticons-separator-b41eeb",
+        "by": "Jerry",
+        "value": "`🔗 ⏳ ➜ 🔗 ` / `🔗 👉 ➜ 📦 `",
+        "decided": true,
+        "at": "2026-11-22T10:22:42.269Z",
+        "hunks": [
+          "a5e994f65592"
+        ]
+      }
+    ],
     "plugins/devops/mcp-server/index.js›import:mode-state›names": [
       {
         "ship": "claude/projects-chat-completion-cards-321de4",
@@ -184,6 +496,54 @@
         "at": "2026-11-22T02:07:33.619Z",
         "hunks": [
           "d196fbe330fc"
+        ]
+      }
+    ],
+    "plugins/devops/mcp-server/lib/linked-sessions.js›quoted title comment›keyword and bar": [
+      {
+        "ship": "claude/chat-title-emoticons-separator-b41eeb",
+        "by": "Jerry",
+        "value": "`„🔗 👉 ➜ ❓ title\"`",
+        "decided": true,
+        "at": "2026-11-22T10:22:42.269Z",
+        "hunks": [
+          "8a1d1745e41a"
+        ]
+      }
+    ],
+    "plugins/devops/mcp-server/lib/linked-sessions.test.js›linked titles›keyword and bar": [
+      {
+        "ship": "claude/chat-title-emoticons-separator-b41eeb",
+        "by": "Jerry",
+        "value": "`<status> ➜ <icon> ` — no keyword, no bar",
+        "decided": true,
+        "at": "2026-11-22T10:22:42.269Z",
+        "hunks": [
+          "78c64c25c597"
+        ]
+      }
+    ],
+    "plugins/devops/scripts/sessions-active.js›shortName›head strip": [
+      {
+        "ship": "claude/chat-title-emoticons-separator-b41eeb",
+        "by": "Jerry",
+        "value": "title-scheme stripPrefixes (every head generation) instead of a cut at the bar",
+        "decided": true,
+        "at": "2026-11-22T10:22:42.269Z",
+        "hunks": [
+          "ced308f281a8"
+        ]
+      }
+    ],
+    "plugins/devops/scripts/sessions-active.test.js›session names›keyword and bar": [
+      {
+        "ship": "claude/chat-title-emoticons-separator-b41eeb",
+        "by": "Jerry",
+        "value": "`<status> ➜ <icon> ` — no keyword, no bar",
+        "decided": true,
+        "at": "2026-11-22T10:22:42.269Z",
+        "hunks": [
+          "5988e7567ab0"
         ]
       }
     ],
@@ -1155,6 +1515,30 @@
         "at": "2026-11-17T16:22:07.924Z",
         "hunks": [
           "b2dfc77cc7bc"
+        ]
+      }
+    ],
+    "session-title-scheme.md›paused usage-reset›card word": [
+      {
+        "ship": "claude/devops-browser-setting-c04118",
+        "by": "JerryT2T",
+        "value": "\"Limit\" instead of \"Limit reset\" — user decision in this session (\"limit einfach nur nennen, nicht limit reset\"): the card word is \"Limit\"",
+        "decided": true,
+        "at": "2026-11-22T11:50:45.243Z",
+        "hunks": [
+          "4f855cba2778"
+        ]
+      }
+    ],
+    "session-title.test.js›stripPrefixes›worded limit heads": [
+      {
+        "ship": "claude/devops-browser-setting-c04118",
+        "by": "JerryT2T",
+        "value": "kept on purpose: the worded \"Limit reset ┃\" head of older versions must still be stripped (regression check)",
+        "decided": true,
+        "at": "2026-11-22T11:50:45.243Z",
+        "hunks": [
+          "46c6081acf02"
         ]
       }
     ],

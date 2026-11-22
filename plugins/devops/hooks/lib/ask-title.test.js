@@ -17,11 +17,11 @@ const ask = require("./ask-title.js");
 const PRE = fileURLToPath(new URL("../pre-tool-use/pre.ask.title.js", import.meta.url));
 const POST = fileURLToPath(new URL("../post-tool-use/post.ask.title.js", import.meta.url));
 
-const SOLO = "⏳ ➜ 🤖 Solo ┃ ";
+const SOLO = "⏳ ➜ 🤖 ";
 const SUB = "🔗 ";
 const NL2 = String.fromCharCode(10, 10);
-const SHIP = "⏳ ➜ 🚀 Shipping ┃ ";
-const Q = "👉 ➜ ❓ Question ┃ ";
+const SHIP = "⏳ ➜ 🚀 ";
+const Q = "👉 ➜ ❓ ";
 const SET = "mcp__ccd_session_mgmt__set_session_title";
 const START = "mcp__ccd_session__start_session";
 
@@ -97,13 +97,13 @@ describe("questionTitle / restoredTitle", () => {
   });
   test("already a question, a batch, or unknown → leave it", () => {
     expect(ask.questionTitle(Q + "Fix X")).toBeNull();
-    expect(ask.questionTitle("👉 ➜ 📚 Batch ┃ Fix X")).toBeNull();
+    expect(ask.questionTitle("👉 ➜ 📚 Fix X")).toBeNull();
     expect(ask.questionTitle(null)).toBeNull();
   });
   test("restore keeps a running ship's head, else Solo", () => {
     expect(ask.restoredTitle(Q + "Fix X", SHIP + "Fix X")).toBe(SHIP + "Fix X");
     expect(ask.restoredTitle(Q + "Fix X", SOLO + "Fix X")).toBe(SOLO + "Fix X");
-    expect(ask.restoredTitle(Q + "Fix X", "👉 ➜ 📦 Ready ┃ Fix X")).toBe(SOLO + "Fix X");
+    expect(ask.restoredTitle(Q + "Fix X", "👉 ➜ 📦 Fix X")).toBe(SOLO + "Fix X");
     expect(ask.restoredTitle(SOLO + "Fix X", null)).toBeNull();
   });
 });
@@ -219,7 +219,7 @@ describe("🔗 start head for every linked start (round 6 rows 12, 13)", () => {
   test("the 🔗 head is clamped by the topic, never the head", () => {
     const out = ask.startSessionInput({ initiation: "user_asked", title: "Rebuild the Whole Billing Export and its Reports", prompt: "p" });
     expect(out.title.startsWith(SUB + SOLO)).toBe(true);
-    expect(cp(out.title.slice((SUB + SOLO).length))).toBeLessThanOrEqual(42 - 4 - 3 - 2);
+    expect(cp(out.title.slice((SUB + SOLO).length))).toBeLessThanOrEqual(42 - 2);
   });
   test("a question and its restore keep exactly one leading 🔗", () => {
     const q = ask.questionTitle(SUB + SOLO + "X");

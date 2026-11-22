@@ -296,22 +296,29 @@ function readState(statePath) {
 /**
  * Re-open the concept page in the user's browser (#363). Detached and
  * fire-and-forget: a browser that refuses to start must not take the waker
- * down with it. Windows opens Edge explicitly — the page is a localhost URL
- * and `start` would otherwise pick whatever handles http://.
+ * down with it. The browser is the user's choice (hooks/lib/browser-choice.js,
+ * Edge by default), named explicitly — the page is a localhost URL and `start`
+ * alone would pick whatever handles http://. Null for the choice "in-app":
+ * no process can open the Desktop app's pane, so nothing is re-opened. In-app
+ * only because no browser was found falls back to the OS opener.
  */
-function reopenCommand(url, platform = process.platform) {
+function reopenCommand(url, platform = process.platform, browser = undefined) {
+  const choice = require('../hooks/lib/browser-choice');
   // /min: the waker re-opens while the user may be working elsewhere; a
   // minimized window does not steal focus (best effort, Windows only).
-  if (platform === 'win32') return { cmd: 'cmd', args: ['/c', 'start', '', '/min', 'msedge', url] };
-  if (platform === 'darwin') return { cmd: 'open', args: [url] };
-  return { cmd: 'xdg-open', args: [url] };
+  const b = browser === undefined ? choice.resolveBrowser({ platform }) : browser;
+  const plan = choice.openCommand(b, url, { platform, minimized: true });
+  // In-app only because no browser was found (not chosen): the waker has no pane, so the OS opener it is.
+  return plan || (b && b.fallback ? choice.systemOpenCommand(url, platform) : null);
 }
 
 function reopen(url) {
   const { spawn } = require('child_process');
-  const { cmd, args } = reopenCommand(url);
   try {
-    spawn(cmd, args, { detached: true, stdio: 'ignore', windowsHide: true }).on('error', () => {}).unref();
+    const plan = reopenCommand(url);
+    if (!plan) return;
+    // windowsHide: opt-out spawnOptions() hides the cmd launcher; only a browser started directly shows its window
+    spawn(plan.cmd, plan.args, require('../hooks/lib/browser-choice').spawnOptions(plan)).on('error', () => {}).unref();
   } catch { /* best effort */ }
 }
 

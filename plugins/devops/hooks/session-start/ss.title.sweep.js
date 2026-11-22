@@ -11,11 +11,11 @@
  *   rename sessions — this one finds the candidates on disk (lib/stale-titles:
  *   ⏳ title sidecar, transcript idle ≥ 2 min, no live governor pid) and hands
  *   Claude the exact old → new titles; Claude renames those whose
- *   list_sessions row says `isRunning:false` to `👉 ➜ ⚡ Interrupted ┃ <title>`.
+ *   list_sessions row says `isRunning:false` to `👉 ➜ ⚡ <title>`.
  *   Reported sessions go into ~/.claude/title-sweep-seen.json (session id →
  *   transcript mtime) so the next session start does not repeat them.
  *   0.3.0: a concept title (👉 waiting or ⏳ working) whose bridge server is
- *   gone (reboot, crash) becomes `🔴 ➜ 🧭 Concept ┃ <title>` instead —
+ *   gone (reboot, crash) becomes `🔴 ➜ 🧭 <title>` instead —
  *   resuming that session relaunches the bridge (ss.concept.resume).
  *   The scan walks every project's sessions (1–5 s under session-start load, it
  *   hit its budget), so it runs detached (lib/deferred-results) and its rename
@@ -55,7 +55,8 @@ function buildContext(stale) {
   return [
     '[ss.title.sweep] Desktop app only, once, silently, in this turn\'s first tool batch: these sessions still',
     'show ⏳ although their transcript has been idle — the app or Claude Code was closed or crashed mid-turn —',
-    'or show a concept page whose bridge server is gone (🔴: resuming the session reconnects it).',
+    'a usage limit cut their turn (🟦 ➜ 🔋),',
+    'or they show a concept page whose bridge server is gone (🔴: resuming the session reconnects it).',
     `Call mcp__ccd_session_mgmt__list_sessions {limit: 50}; for every row with isRunning:false whose title`,
     'equals a left-hand title below, call mcp__ccd_session_mgmt__set_session_title {session_id: <its sessionId>,',
     'title: <the right-hand title>}. Leave running rows, rows not listed and archived sessions alone.',

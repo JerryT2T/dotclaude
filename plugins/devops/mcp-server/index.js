@@ -70,7 +70,7 @@ import { summarizeShip, shipDurationTest } from "./ship/lib/ship-timings.js";
 import { CARD_VARIANTS, coerceCardInput, validateCardInput, formatIssues, unknownCardKeys } from "./lib/card-input.js";
 import { batchGuide, conceptCloseoutOnly, conceptUrl, readBatch, readRunContractLine, sameProjectRoot, titlePrefixFor, titleInstruction, demandedTitle, currentSessionTitle, isLinkedSub, titleStateForKey, hasMandatoryStep, TITLE_SCHEME, projectThreadMode, currentThreadTitle, threadTitleInstruction } from "./lib/mode-state.js";
 import { staleServerLine } from "./lib/server-version.js";
-import { canMinimize, cardDataBlock, cardWidgetInstruction, isDesktopSession, safeSessionId, sessionOpenButton, warmCardClient, writeCardWidgetFile } from "./lib/card-widget.js";
+import { canMinimize, cardDataBlock, conceptOpenButton, cardWidgetInstruction, isDesktopSession, safeSessionId, sessionOpenButton, warmCardClient, writeCardWidgetFile } from "./lib/card-widget.js";
 import { bandCarriesCard, writeBandCard } from "./lib/band-marker.js";
 import { detectLaunchPath } from "./lib/launch-path.js";
 import { linkedPlan, linkedKeepTokens } from "./lib/linked-sessions.js";
@@ -1445,7 +1445,7 @@ function renderChannelLadderMd(ladder, lang) {
 // The localized SENTENCE of each heading. The head in front of it — status
 // icon, activity icon, English keyword — comes from the title scheme
 // (hooks/lib/title-scheme.js) via `cardHead`, the same state id the session
-// title gets: title `👉 ➜ 📦 Ready ┃ X` ↔ heading `👉 📦 Ready — Shippen?`.
+// title gets: title `👉 ➜ 📦 X` ↔ heading `👉 📦 Ready — Shippen?`.
 const HEADINGS = {
   de: {
     // #714: ship is offered only when nothing is open — an `open` point or a
@@ -1597,9 +1597,9 @@ const CONCEPT_HEADING = {
   de: { waiting: 'wartet auf deine Entscheidungen', tail: ' — ich melde mich' },
   en: { waiting: 'waiting for your decisions', tail: ' — I will report back' },
 };
-// The heading head mirrors the session title: `👉 ➜ 🧭 Concept ┃` only while
+// The heading head mirrors the session title: `👉 ➜ 🧭` only while
 // the page waits for the user; iterating / implementing means Claude works,
-// so the card shows `⏳ ➜ 🧭 Concept ┃` like the title (concept 2026-10-19).
+// so the card shows `⏳ ➜ 🧭` like the title (concept 2026-10-19).
 function conceptHeadState(concept) {
   const { phase } = normalizeConcept(concept) || { phase: 'waiting' };
   return phase === 'waiting' ? 'concept-waiting' : 'concept-working';
@@ -2225,7 +2225,11 @@ function baseDecisionBlock(input, lang, key, delivery, state) {
     // Background work of an iterating/implementing concept is listed like the
     // pending block's items — the user sees WHO is working, not only that.
     const pts = pendingPoints(input.pending);
-    return { heading: TITLE_SCHEME.headingOf(conceptHeadState(input.concept), T.concept({ what })), context: url ? '› ' + url : '', points: pts, buttonsKey: null, guideHandoff };
+    // #1186: while the page is open (waiting or iterating) the band gets a real
+    // "Concept öffnen" button; it opens the page token-free like the link.
+    const openUrl = phase === 'waiting' || phase === 'iterating' ? (url || conceptUrl(input.cwd, input.concept)) : '';
+    const open = openUrl ? conceptOpenButton(openUrl, lang) : null;
+    return { heading: TITLE_SCHEME.headingOf(conceptHeadState(input.concept), T.concept({ what })), context: url ? '› ' + url : '', points: pts, buttonsKey: null, guideHandoff, ...(open ? { extraButtons: [open] } : {}) };
   }
   if (batch) {
     const guide = batchGuide(batch, lang);

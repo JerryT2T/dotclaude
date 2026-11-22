@@ -2,7 +2,7 @@ import { describe, test, expect, beforeEach, afterEach } from "vitest";
 import fs from "fs";
 import os from "os";
 import path from "path";
-import { findStaleTitles, interruptedFor, offlineFor } from "../lib/stale-titles.js";
+import { findStaleTitles, interruptedFor, limitFor, offlineFor } from "../lib/stale-titles.js";
 import { buildContext, nextSeen } from "./ss.title.sweep.js";
 import { spawnSync } from "child_process";
 import { fileURLToPath } from "url";
@@ -38,17 +38,17 @@ afterEach(() => fs.rmSync(tmp, { recursive: true, force: true }));
 
 describe("interruptedFor", () => {
   test("every ⏳ form becomes Interrupted on the bare title", () => {
-    expect(interruptedFor("⏳ ➜ 🤖 Solo ┃ Fix login")).toBe("👉 ➜ ⚡ Interrupted ┃ Fix login");
-    expect(interruptedFor("⏳ ➜ 🤖 Team ┃ Phase 1")).toBe("👉 ➜ ⚡ Interrupted ┃ Phase 1");
-    expect(interruptedFor("⏳ ➜ 🚀 Shipping ┃ Ship it")).toBe("👉 ➜ ⚡ Interrupted ┃ Ship it");
-    expect(interruptedFor("⏳ ┃ 🧭 Concept ➜ 🤖 Solo ┃ Phase 3")).toBe("👉 ➜ ⚡ Interrupted ┃ Phase 3");
-    expect(interruptedFor("⏳ Übungen")).toBe("👉 ➜ ⚡ Interrupted ┃ Übungen");
+    expect(interruptedFor("⏳ ➜ 🤖 Fix login")).toBe("👉 ➜ ⚡ Fix login");
+    expect(interruptedFor("⏳ ➜ 🤖🤖🤖 Phase 1")).toBe("👉 ➜ ⚡ Phase 1");
+    expect(interruptedFor("⏳ ➜ 🚀 Ship it")).toBe("👉 ➜ ⚡ Ship it");
+    expect(interruptedFor("⏳ ┃ 🧭 Concept ➜ 🤖 Phase 3")).toBe("👉 ➜ ⚡ Phase 3");
+    expect(interruptedFor("⏳ Übungen")).toBe("👉 ➜ ⚡ Übungen");
   });
 
   test("non-⏳ and empty titles stay", () => {
-    expect(interruptedFor("👉 ➜ 🧭 Concept ┃ Page")).toBeNull();
-    expect(interruptedFor("🔴 ➜ 🧭 Concept ┃ Page")).toBeNull();
-    expect(interruptedFor("🟩 ➜ 📊 Analysis ┃ X")).toBeNull();
+    expect(interruptedFor("👉 ➜ 🧭 Page")).toBeNull();
+    expect(interruptedFor("🔴 ➜ 🧭 Page")).toBeNull();
+    expect(interruptedFor("🟩 ➜ 📊 X")).toBeNull();
     expect(interruptedFor("Plain title")).toBeNull();
     expect(interruptedFor("⏳ ")).toBeNull();
     expect(interruptedFor(null)).toBeNull();
@@ -57,30 +57,59 @@ describe("interruptedFor", () => {
 
 describe("offlineFor", () => {
   test("concept heads get the red status, everything else stays", () => {
-    expect(offlineFor("👉 ➜ 🧭 Concept ┃ Page")).toBe("🔴 ➜ 🧭 Concept ┃ Page");
-    expect(offlineFor("⏳ ➜ 🧭 Concept ┃ Page")).toBe("🔴 ➜ 🧭 Concept ┃ Page");
-    expect(offlineFor("🔴 ➜ 🧭 Concept ┃ Page")).toBeNull();
-    expect(offlineFor("⏳ ➜ 🤖 Solo ┃ Page")).toBeNull();
-    expect(offlineFor("👉 ➜ 🧭 Concept ┃ ")).toBeNull();
+    expect(offlineFor("👉 ➜ 🧭 Page")).toBe("🔴 ➜ 🧭 Page");
+    expect(offlineFor("⏳ ➜ 🧭 Page")).toBe("🔴 ➜ 🧭 Page");
+    expect(offlineFor("🔴 ➜ 🧭 Page")).toBeNull();
+    expect(offlineFor("⏳ ➜ 🤖 Page")).toBeNull();
+    expect(offlineFor("👉 ➜ 🧭 ")).toBeNull();
   });
 });
 
 describe("findStaleTitles", () => {
   test("finds an idle ⏳ session, skips idle-too-briefly, non-⏳ and self", () => {
-    session("C--r-app", "aaa", "⏳ ➜ 🤖 Solo ┃ Crashed work", 30);
-    session("C--r-app", "bbb", "⏳ ➜ 🤖 Solo ┃ Just now", 1);
-    session("C--r-app", "ccc", "🟩 ➜ 📦 Ready ┃ Done", 30);
-    session("C--r-app", "self", "⏳ ➜ 🤖 Solo ┃ Me", 30);
+    session("C--r-app", "aaa", "⏳ ➜ 🤖 Crashed work", 30);
+    session("C--r-app", "bbb", "⏳ ➜ 🤖 Just now", 1);
+    session("C--r-app", "ccc", "🟩 ➜ 📦 Done", 30);
+    session("C--r-app", "self", "⏳ ➜ 🤖 Me", 30);
     expect(find({ selfId: "self" }).map((s) => [s.sessionId, s.next]))
-      .toEqual([["aaa", "👉 ➜ ⚡ Interrupted ┃ Crashed work"]]);
+      .toEqual([["aaa", "👉 ➜ ⚡ Crashed work"]]);
   });
 
   test("a live governor pid keeps the session (process still there)", () => {
-    session("C--r-app", "live", "⏳ ➜ 🤖 Team ┃ Agents running", 30);
+    session("C--r-app", "live", "⏳ ➜ 🤖🤖🤖 Agents running", 30);
     fs.writeFileSync(path.join(gov, "live.json"), JSON.stringify({ claudePid: process.pid }));
-    session("C--r-app", "dead", "⏳ ➜ 🤖 Solo ┃ Gone", 30);
+    session("C--r-app", "dead", "⏳ ➜ 🤖 Gone", 30);
     fs.writeFileSync(path.join(gov, "dead.json"), JSON.stringify({ claudePid: 2 ** 22 + 12345 }));
     expect(find().map((s) => s.sessionId)).toEqual(["dead"]);
+  });
+
+  test("a turn the usage limit cut reads Limit, not Interrupted — also while its process still lives", () => {
+    const limitLine = JSON.stringify({ type: "assistant", error: "rate_limit", isApiErrorMessage: true, timestamp: "2026-10-23T11:30:00Z", message: { model: "<synthetic>", content: [{ type: "text", text: "You've hit your weekly limit · resets 10:50pm (Europe/Berlin)" }] } });
+    const write = (id, lines) => {
+      const jsonl = path.join(root, "C--r-app", id + ".jsonl");
+      fs.writeFileSync(jsonl, lines.join("\n") + "\n");
+      const at = new Date(NOW - 30 * MIN);
+      fs.utimesSync(jsonl, at, at);
+    };
+    session("C--r-app", "cut", "⏳ ➜ 🤖🤖🤖 Home Browser-Wahl", 30);
+    write("cut", ['{"type":"user"}', limitLine]);
+    session("C--r-app", "cutlive", "🔗 ⏳ ➜ 🤖 Titel ohne Vortext", 30);
+    fs.writeFileSync(path.join(gov, "cutlive.json"), JSON.stringify({ claudePid: process.pid }));
+    write("cutlive", [limitLine]);
+    // Answered normally since the stop: the limit is history, the crash rule applies.
+    session("C--r-app", "past", "⏳ ➜ 🤖 Weiter", 30);
+    write("past", [limitLine, JSON.stringify({ type: "assistant", message: { content: [{ type: "text", text: "ok" }] } })]);
+    // A finished title is never touched, whatever the transcript ends on.
+    session("C--r-app", "done", "🟩 ➜ 📦 Fertig", 30);
+    write("done", [limitLine]);
+    expect(Object.fromEntries(find().map((s) => [s.sessionId, s.next]))).toEqual({
+      cut: "🟦 ➜ 🔋 Home Browser-Wahl",
+      cutlive: "🔗 🟦 ➜ 🔋 Titel ohne Vortext",
+      past: "👉 ➜ ⚡ Weiter",
+    });
+    expect(limitFor("🟩 ➜ 📦 Fertig")).toBeNull();
+    // A title an older version left on the worded head loses the word with the rename.
+    expect(limitFor("⏳ ➜ 🤖 Team ┃ Home Browser-Wahl")).toBe("🟦 ➜ 🔋 Home Browser-Wahl");
   });
 
   test("#964: a live session idle for an hour with only a dev server open is handed on; real open work keeps it", () => {
@@ -89,7 +118,7 @@ describe("findStaleTitles", () => {
       { type: "user", message: { role: "user", content: [{ type: "tool_result", tool_use_id: id, content: [{ type: "text", text: "Command running in background with ID: " + id + ". Output is being written to: C:\t\\" + id + ".output. You will be notified when it completes." }] }] } },
     ].map((l) => JSON.stringify(l)).join("\n") + "\n";
     for (const [id, cmd] of [["srv", "ng serve"], ["tst", "npm test"]]) {
-      session("C--r-app", id, "⏳ ➜ 🤖 Team ┃ Work", 90);
+      session("C--r-app", id, "⏳ ➜ 🤖🤖🤖 Work", 90);
       fs.writeFileSync(path.join(gov, id + ".json"), JSON.stringify({ claudePid: process.pid }));
       const jsonl = path.join(root, "C--r-app", id + ".jsonl");
       fs.writeFileSync(jsonl, launch("bg" + id, cmd));
@@ -100,16 +129,16 @@ describe("findStaleTitles", () => {
   });
 
   test("a session under several slugs: newest sidecar wins, newest transcript decides idleness", () => {
-    session("C--r-app", "moved", "⏳ ➜ 🤖 Solo ┃ Old name", 600);
-    session("C--r-app--claude-worktrees-x", "moved", "⏳ ➜ 🤖 Solo ┃ New name", 20);
-    expect(find().map((s) => s.title)).toEqual(["⏳ ➜ 🤖 Solo ┃ New name"]);
-    session("C--r-app--claude-worktrees-y", "moved", "⏳ ➜ 🤖 Solo ┃ Old", 1, { sidecarAgeMin: 900 });
+    session("C--r-app", "moved", "⏳ ➜ 🤖 Old name", 600);
+    session("C--r-app--claude-worktrees-x", "moved", "⏳ ➜ 🤖 New name", 20);
+    expect(find().map((s) => s.title)).toEqual(["⏳ ➜ 🤖 New name"]);
+    session("C--r-app--claude-worktrees-y", "moved", "⏳ ➜ 🤖 Old", 1, { sidecarAgeMin: 900 });
     expect(find()).toEqual([]);
   });
 
   test("sidecars older than 7 days and already-seen transcripts are skipped", () => {
-    session("C--r-app", "old", "⏳ ➜ 🤖 Solo ┃ Ancient", 8 * 24 * 60);
-    session("C--r-app", "seen", "⏳ ➜ 🤖 Solo ┃ Reported", 30);
+    session("C--r-app", "old", "⏳ ➜ 🤖 Ancient", 8 * 24 * 60);
+    session("C--r-app", "seen", "⏳ ➜ 🤖 Reported", 30);
     const seenMtime = NOW - 30 * MIN;
     expect(find({ seen: { seen: seenMtime } })).toEqual([]);
     expect(find({ seen: { seen: seenMtime - 1 } }).map((s) => s.sessionId)).toEqual(["seen"]);
@@ -131,33 +160,33 @@ describe("findStaleTitles", () => {
     beforeEach(() => { reg = path.join(tmp, "bridges"); fs.mkdirSync(reg, { recursive: true }); });
 
     test("a waiting concept without a bridge turns red", () => {
-      session("C--r-app", "cw", "👉 ➜ 🧭 Concept ┃ Review page", 30);
+      session("C--r-app", "cw", "👉 ➜ 🧭 Review page", 30);
       withCwd("cw", WT);
-      expect(findB().map((s) => [s.sessionId, s.next])).toEqual([["cw", "🔴 ➜ 🧭 Concept ┃ Review page"]]);
+      expect(findB().map((s) => [s.sessionId, s.next])).toEqual([["cw", "🔴 ➜ 🧭 Review page"]]);
     });
 
     test("a working concept without a bridge turns red, not Interrupted", () => {
-      session("C--r-app", "cx", "⏳ ➜ 🧭 Concept ┃ Round 3", 30);
+      session("C--r-app", "cx", "⏳ ➜ 🧭 Round 3", 30);
       withCwd("cx", WT);
-      expect(findB().map((s) => s.next)).toEqual(["🔴 ➜ 🧭 Concept ┃ Round 3"]);
+      expect(findB().map((s) => s.next)).toEqual(["🔴 ➜ 🧭 Round 3"]);
     });
 
     test("a live bridge for the worktree keeps the title", () => {
-      session("C--r-app", "cl", "👉 ➜ 🧭 Concept ┃ Live", 30);
+      session("C--r-app", "cl", "👉 ➜ 🧭 Live", 30);
       withCwd("cl", WT);
       bridgeEntry(8800);
       expect(findB()).toEqual([]);
     });
 
     test("a registry entry from before the last boot is dead even if its pid is reused", () => {
-      session("C--r-app", "cb", "👉 ➜ 🧭 Concept ┃ Rebooted", 30);
+      session("C--r-app", "cb", "👉 ➜ 🧭 Rebooted", 30);
       withCwd("cb", WT);
       bridgeEntry(8801, { started_at: new Date(NOW - 120 * MIN).toISOString() });
       expect(findB().map((s) => s.sessionId)).toEqual(["cb"]);
     });
 
     test("an entry for another worktree or a dead pid does not count", () => {
-      session("C--r-app", "co", "👉 ➜ 🧭 Concept ┃ Other", 30);
+      session("C--r-app", "co", "👉 ➜ 🧭 Other", 30);
       withCwd("co", WT);
       bridgeEntry(8802, { worktree: "P:\\Projects\\other" });
       bridgeEntry(8803, { pid: 1 });
@@ -165,7 +194,7 @@ describe("findStaleTitles", () => {
     });
 
     test("the concept checkout from the watcher pointer counts too (#1090)", () => {
-      session("C--r-app", "cp", "👉 ➜ 🧭 Concept ┃ Elsewhere", 30);
+      session("C--r-app", "cp", "👉 ➜ 🧭 Elsewhere", 30);
       withCwd("cp", "P:\\Projects\\launcher");
       fs.writeFileSync(path.join(tmp, "dotclaude-devops-concept-state-cp"), WT + "\\.claude\\concept-active.json");
       bridgeEntry(8804);
@@ -173,7 +202,7 @@ describe("findStaleTitles", () => {
     });
 
     test("no known cwd keeps a waiting concept as it is", () => {
-      session("C--r-app", "cn", "👉 ➜ 🧭 Concept ┃ Unknown", 30);
+      session("C--r-app", "cn", "👉 ➜ 🧭 Unknown", 30);
       expect(findB()).toEqual([]);
     });
   });
@@ -189,10 +218,10 @@ describe("ss.title.sweep context", () => {
   });
 
   test("lists exact old → new titles and the isRunning:false guard", () => {
-    const ctx = buildContext([{ sessionId: "a", title: "⏳ ➜ 🤖 Solo ┃ X", next: "👉 ➜ ⚡ Interrupted ┃ X", mtimeMs: 1 }]);
+    const ctx = buildContext([{ sessionId: "a", title: "⏳ ➜ 🤖 X", next: "👉 ➜ ⚡ X", mtimeMs: 1 }]);
     expect(ctx).toContain("isRunning:false");
     expect(ctx).toContain("list_sessions");
-    expect(ctx).toContain('"⏳ ➜ 🤖 Solo ┃ X" → "👉 ➜ ⚡ Interrupted ┃ X"');
+    expect(ctx).toContain('"⏳ ➜ 🤖 X" → "👉 ➜ ⚡ X"');
   });
 
   test("seen map records new entries and drops ones past the TTL", () => {
@@ -207,7 +236,7 @@ describe("the scan runs detached", () => {
     const sess = path.join(tmp, ".claude", "projects", "slug");
     const id = "11111111-1111-1111-1111-111111111111";
     fs.mkdirSync(path.join(sess, id), { recursive: true });
-    fs.writeFileSync(path.join(sess, id, "custom-title.json"), JSON.stringify({ customTitle: "⏳ ➜ 🤖 Solo ┃ Stale" }));
+    fs.writeFileSync(path.join(sess, id, "custom-title.json"), JSON.stringify({ customTitle: "⏳ ➜ 🤖 Stale" }));
     fs.writeFileSync(path.join(sess, id + ".jsonl"), "{}\n");
     const old = new Date(Date.now() - 60 * MIN);
     fs.utimesSync(path.join(sess, id + ".jsonl"), old, old);
@@ -220,6 +249,6 @@ describe("the scan runs detached", () => {
   test("the worker prints the plain rename list that is stored for the next prompt", () => {
     const out = runPhase("bg");
     expect(out).toMatch(/^\[ss\.title\.sweep\]/);
-    expect(out).toMatch(/Interrupted/);
+    expect(out).toMatch(/👉 ➜ ⚡ /u);
   }, 30_000);
 });

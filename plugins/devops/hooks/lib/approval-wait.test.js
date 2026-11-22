@@ -7,7 +7,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 // Regression (2026-10-25): a background agent waited on a tool permission
-// dialog while the title still said `⏳ ➜ 🤖 Team ┃ …` — nothing woke the idle
+// dialog while the title still said `⏳ ➜ 🤖🤖🤖 …` — nothing woke the idle
 // main thread to show the user it was their move.
 
 const require = createRequire(import.meta.url);
@@ -20,8 +20,8 @@ const flag = require("../permission-request/perm.approval.flag.js");
 const watch = require("../permission-request/perm.approval.watch.js");
 const STOP = fileURLToPath(new URL("../stop/stop.flow.guard.js", import.meta.url));
 
-const TEAM = "⏳ ➜ 🤖 Team ┃ Concept analysis";
-const TEAM_WAIT = "👉 ➜ 🤖 Team ┃ Concept analysis";
+const TEAM = "⏳ ➜ 🤖🤖🤖 Concept analysis";
+const TEAM_WAIT = "👉 ➜ 🤖🤖🤖 Concept analysis";
 
 let dir;
 let sid;
@@ -50,33 +50,46 @@ const endedTurn = { type: "assistant", timestamp: ago(60_000), message: { conten
 const req = (extra = {}) => ({ session_id: sid, agent_id: "agent-1", tool_name: "Bash", tool_input: { command: "npm test" }, ...extra });
 
 describe("title-scheme: the approval head", () => {
-  test("⏳ Team / Solo / Testing → 👉 with the activity kept", () => {
+  test("⏳ Team / Solo → 👉 with the activity kept", () => {
     expect(S.approvalTitle(TEAM)).toBe(TEAM_WAIT);
-    expect(S.approvalTitle("⏳ ➜ 🤖 Solo ┃ X")).toBe("👉 ➜ 🤖 Solo ┃ X");
-    expect(S.approvalTitle("⏳ ➜ 🧪 Testing ┃ X")).toBe("👉 ➜ 🧪 Testing ┃ X");
-    expect(S.approvalTitle("⏳ X")).toBe("👉 ➜ 🤖 Solo ┃ X");
+    expect(S.approvalTitle("⏳ ➜ 🤖 X")).toBe("👉 ➜ 🤖 X");
+    expect(S.approvalTitle("⏳ X")).toBe("👉 ➜ 🤖 X");
+  });
+
+  test("Testing keeps its ⏳: without the keyword 👉 ➜ 🧪 is the Test outcome (3.0)", () => {
+    expect(S.approvalTitle("⏳ ➜ 🧪 X")).toBeNull();
+    expect(S.classify("👉 ➜ 🧪 X")).toBe("outcome");
+    expect(S.approvalRestoredTitle("👉 ➜ 🧪 X")).toBeNull();
+  });
+
+  test("a worded head from before 3.0 swaps into the current head", () => {
+    expect(S.approvalTitle("⏳ ➜ 🤖 Team ┃ Concept analysis")).toBe(TEAM_WAIT);
+    expect(S.approvalTitle("⏳ ➜ 🤖 Solo ┃ X")).toBe("👉 ➜ 🤖 X");
+    expect(S.classify("👉 ➜ 🤖 Team ┃ X")).toBe("approval");
+    expect(S.approvalRestoredTitle("👉 ➜ 🤖 Team ┃ Concept analysis")).toBe(TEAM);
+    expect(S.approvalRestoredTitle("👉 ➜ 🤖 Solo ┃ X")).toBe("⏳ ➜ 🤖 X");
   });
 
   test("ship, concept, batch, outcomes, questions and unknown titles stay", () => {
-    for (const t of ["⏳ ➜ 🚀 Shipping ┃ X", "⏳ ➜ 🧭 Concept ┃ X", "👉 ➜ 🧭 Concept ┃ X", "👉 ➜ 📚 Batch ┃ X",
-      "🟩 ➜ 🚀 Released Alpha ┃ X", "👉 ➜ ❓ Question ┃ X", TEAM_WAIT, "X", "", null]) {
+    for (const t of ["⏳ ➜ 🚀 X", "⏳ ➜ 🧭 X", "👉 ➜ 🧭 X", "👉 ➜ 📚 X",
+      "🟩 ➜ 🚀 X", "👉 ➜ ❓ X", TEAM_WAIT, "X", "", null]) {
       expect(S.approvalTitle(t), String(t)).toBeNull();
     }
   });
 
   test("👉 → ⏳ restores the same head; classify and strip know it", () => {
     expect(S.approvalRestoredTitle(TEAM_WAIT)).toBe(TEAM);
-    expect(S.approvalRestoredTitle("👉 ➜ 🤖 Solo ┃ X")).toBe("⏳ ➜ 🤖 Solo ┃ X");
+    expect(S.approvalRestoredTitle("👉 ➜ 🤖 X")).toBe("⏳ ➜ 🤖 X");
     expect(S.approvalRestoredTitle(TEAM)).toBeNull();
-    expect(S.approvalRestoredTitle("👉 ➜ 📦 Ready ┃ X")).toBeNull();
+    expect(S.approvalRestoredTitle("👉 ➜ 📦 X")).toBeNull();
     expect(S.classify(TEAM_WAIT)).toBe("approval");
     expect(S.stripPrefixes(TEAM_WAIT)).toBe("Concept analysis");
   });
 
   test("crash sweep, stale notification turn and a question after the wait know the head", () => {
-    expect(interruptedFor(TEAM_WAIT)).toBe("👉 ➜ ⚡ Interrupted ┃ Concept analysis");
-    expect(staleWorkTitle(TEAM_WAIT)).toBe("👉 ➜ ⚡ Interrupted ┃ Concept analysis");
-    expect(ask.restoredTitle("👉 ➜ ❓ Question ┃ Concept analysis", TEAM_WAIT)).toBe(TEAM);
+    expect(interruptedFor(TEAM_WAIT)).toBe("👉 ➜ ⚡ Concept analysis");
+    expect(staleWorkTitle(TEAM_WAIT)).toBe("👉 ➜ ⚡ Concept analysis");
+    expect(ask.restoredTitle("👉 ➜ ❓ Concept analysis", TEAM_WAIT)).toBe(TEAM);
   });
 });
 
@@ -185,7 +198,7 @@ describe("perm.approval.flag / perm.approval.watch", () => {
   });
 
   test("ship title, main-thread prompt and unknown title stay silent (fail-open)", () => {
-    expect(flag.main({ ...req(), transcript_path: transcript([titleEntry("⏳ ➜ 🚀 Shipping ┃ X"), endedTurn]) })).toBeNull();
+    expect(flag.main({ ...req(), transcript_path: transcript([titleEntry("⏳ ➜ 🚀 X"), endedTurn]) })).toBeNull();
     expect(flag.main({ ...req(), agent_id: undefined, transcript_path: transcript([titleEntry(TEAM)]) })).toBeNull();
     expect(flag.main({ ...req(), transcript_path: path.join(dir, "missing", `${sid}.jsonl`) })).toBeNull();
   });

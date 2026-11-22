@@ -33,3 +33,16 @@ describe("tagHandoff", () => {
     expect(h.error).toBeUndefined();
   });
 });
+
+describe("cloud sessions (#1202)", () => {
+  test("the proxy's refusal and a cloud 'unexpected disconnect' are permanent; the reason names the cloud", async () => {
+    const { isPermanentPushError, tagHandoff } = await import("./tag-handoff.js");
+    const cloud = { CLAUDE_CODE_REMOTE: "true" };
+    expect(isPermanentPushError("HTTP 403: Write access to this GitHub API path is not permitted through this proxy", {})).toBe(true);
+    expect(isPermanentPushError("fatal: unexpected disconnect while reading sideband packet", cloud)).toBe(true);
+    expect(isPermanentPushError("fatal: unexpected disconnect while reading sideband packet", {})).toBe(false);
+    const h = tagHandoff({ channelTag: "alpha/v1.2.3", channel: "alpha", version: "1.2.3", sha: "abc", base: "main", permanent: true }, cloud);
+    expect(h.reason).toMatch(/Cloud sessions cannot push tags/);
+    expect(tagHandoff({ channelTag: "alpha/v1.2.3", channel: "alpha", version: "1.2.3", base: "main", permanent: true }, {}).reason).toMatch(/permission/);
+  });
+});

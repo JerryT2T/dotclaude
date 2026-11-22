@@ -163,7 +163,7 @@ function renameCall(title) {
 
 /** The rename call when the hook does not know the thread's title: the model does. */
 function renameCallUnknown(prefix) {
-  return `${RENAME_TOOL} {title:${JSON.stringify(prefix)} + <this thread's current title, without a leading "<status> ➜ <activity> <Word> ┃ " head>}`;
+  return `${RENAME_TOOL} {title:${JSON.stringify(prefix)} + <this thread's current title, without a leading "<status> ➜ <activity> " head (older: "<status> ➜ <activity> <Word> ┃ ")>}`;
 }
 
 /** The title of a `rename_thread` call in one transcript line, or undefined. */

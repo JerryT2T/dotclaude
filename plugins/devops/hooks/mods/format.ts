@@ -165,6 +165,85 @@ export function fableFromLive(live: unknown, nowMs: number): { pct: number; rese
   }
 }
 
+const LIVE_WINDOW_FRESH_MS = 15 * 60 * 1000
+const WK_MS = 7 * 24 * 60 * 60 * 1000
+
+/**
+ * #1204: a window past its reset is 0 % used, not "no data". The weekly window rolls on by whole weeks, so its new
+ * reset is known; the 5-hour window starts only with the next request, so its reset stays unknown.
+ */
+export function rollBudget(b: Budget | null, nowMs: number): Budget | null {
+  if (!b) return b
+  const out: Budget = { ...b }
+  if (typeof out.weekly === 'number' && typeof out.weeklyResetsAt === 'number' && out.weeklyResetsAt <= nowMs) {
+    let t = out.weeklyResetsAt
+    while (t <= nowMs) t += WK_MS
+    out.weekly = 0
+    out.weeklyResetsAt = t
+  }
+  if (typeof out.fiveHour === 'number' && typeof out.fiveHourResetsAt === 'number' && out.fiveHourResetsAt <= nowMs) {
+    out.fiveHour = 0
+    out.fiveHourResetsAt = null
+  }
+  return out
+}
+
+/**
+ * #1204: the Wk / 5h windows from the parsed `~/.claude/usage-live.json` (`weekly`, `session` = 5 h), used only
+ * while it is fresh (≤ 15 min). Anything missing or malformed is no reading (null); never throws.
+ */
+export function windowsFromLive(live: unknown, nowMs: number): Pick<Budget, 'weekly' | 'weeklyResetsAt' | 'fiveHour' | 'fiveHourResetsAt'> | null {
+  try {
+    const o = live as { timestamp?: unknown; weekly?: unknown; session?: unknown } | null
+    if (!o || typeof o !== 'object') return null
+    const ts = typeof o.timestamp === 'string' ? Date.parse(o.timestamp) : NaN
+    if (!Number.isFinite(ts) || nowMs - ts > LIVE_WINDOW_FRESH_MS || ts - nowMs > LIVE_WINDOW_FRESH_MS) return null
+    const win = (w: unknown): { pct: number | null; resetsAt: number | null } => {
+      const x = w as { pct?: unknown; resetInMinutes?: unknown } | null
+      if (!x || typeof x !== 'object' || typeof x.pct !== 'number' || !Number.isFinite(x.pct)) return { pct: null, resetsAt: null }
+      const r = typeof x.resetInMinutes === 'number' && Number.isFinite(x.resetInMinutes) ? ts + x.resetInMinutes * 60_000 : null
+      return { pct: Math.max(0, Math.min(100, Math.round(x.pct))), resetsAt: r }
+    }
+    const wk = win(o.weekly)
+    const fh = win(o.session)
+    if (wk.pct == null && fh.pct == null) return null
+    return { weekly: wk.pct, weeklyResetsAt: wk.resetsAt, fiveHour: fh.pct, fiveHourResetsAt: fh.resetsAt }
+  } catch {
+    return null
+  }
+}
+
+/** #1204: the stored windows the band can draw as they are: a number whose reset has not passed. */
+export function bandWindowsCurrent(b: Budget | null, nowMs: number): { weekly: boolean; fiveHour: boolean } {
+  const cur = (pct: number | null | undefined, r: number | null | undefined) => typeof pct === 'number' && Number.isFinite(pct) && !(typeof r === 'number' && r <= nowMs)
+  return { weekly: !!b && cur(b.weekly, b.weeklyResetsAt), fiveHour: !!b && cur(b.fiveHour, b.fiveHourResetsAt) }
+}
+
+/**
+ * #1204: the budget the band draws. A current stored window stays; a missing one or one past its reset comes from a
+ * fresh usage-live.json (right after a resume `$.session.usage()` is empty until the first API answer), else a window
+ * past its reset reads 0 % (rolled over) and a missing one stays empty (the "–" bar).
+ */
+export function budgetForBand(b: Budget | null, live: unknown, nowMs: number): Budget | null {
+  const cur = bandWindowsCurrent(b, nowMs)
+  const rolled = rollBudget(b, nowMs)
+  if (cur.weekly && cur.fiveHour) return rolled
+  const l = windowsFromLive(live, nowMs)
+  if (!l) return rolled
+  const base: Budget = rolled || { fiveHour: null, weekly: null, context: null }
+  const lr = rollBudget({ ...base, ...l }, nowMs) as Budget
+  const out: Budget = { ...base }
+  if (!cur.weekly && typeof lr.weekly === 'number') {
+    out.weekly = lr.weekly
+    out.weeklyResetsAt = lr.weeklyResetsAt
+  }
+  if (!cur.fiveHour && typeof lr.fiveHour === 'number') {
+    out.fiveHour = lr.fiveHour
+    out.fiveHourResetsAt = lr.fiveHourResetsAt
+  }
+  return out
+}
+
 // --- Budget bars: the completion card's rules (mcp-server/index.js § 2.4), mirrored. ---
 // Bar = time elapsed in the window, marker = usage, marker colour = usage ahead of time.
 // 5h shows from 50 % used or 1 h before reset; Wk once usage is > 10 pp ahead of time
@@ -1220,6 +1299,33 @@ export function answerHead(answer: unknown, max = 80): string {
   return line.length > max ? `${line.slice(0, max - 1).trimEnd()}…` : line
 }
 
+/** Claude Code's own "limit hit" line — the phrases of LIMIT_TEXT_RX in hooks/lib/burn-state.js; keep both in step. */
+const LIMIT_TEXT_RX = /hit your (?:session|weekly|usage|opus|sonnet)?\s*limit|usage limit reached|(?:5-hour|weekly|session|opus) limit reached|limit reached\s*[∙·•|]/i
+
+/**
+ * True when a main turn ended on the usage limit: its whole answer is that one short line, which always names the
+ * reset (or the engine names the limit as the reason). An answer that merely talks about a limit is not one.
+ */
+export function isLimitStop(answer: unknown, reason?: unknown): boolean {
+  if (typeof reason === 'string' && /rate.?limit|usage.?limit/i.test(reason)) return true
+  if (typeof answer !== 'string') return false
+  const t = answer.trim()
+  return t.length > 0 && t.length <= 200 && !t.includes('\n') && LIMIT_TEXT_RX.test(t) && /\breset/i.test(t)
+}
+
+/**
+ * The sidebar title after a limit stop: `🟦 ➜ 🔋 <topic>` (head: hooks/lib/title-scheme.js `paused-usage-reset`),
+ * a 🔗 sub marker kept. Only a ⏳ title changes — a card's outcome says more than "Limit". Read: the 3.0 head
+ * (`⏳ ➜ 🤖 X`, `⏳ ➜ 🤖🤖🤖 X`), the worded one up to 2.8 (`⏳ ➜ 🤖 Team ┃ X`) and a bare `⏳ X`.
+ * Null = leave the title.
+ */
+export function limitTitle(title: unknown): string | null {
+  if (typeof title !== 'string') return null
+  const m = /^(🔗\s+)?⏳\s*(?:➜\s*\S+\s+)?(?:[^┃]{1,30}┃\s*)?(.*)$/u.exec(title.trim())
+  const topic = m ? m[2]!.trim() : ''
+  return topic ? `${m![1] ? '🔗 ' : ''}🟦 ➜ 🔋 ${topic}` : null
+}
+
 /** #1150: the idle row's status after a card-less turn: "⏸ Stopped — waiting for you · 14:02" or "Last: {answer} · 14:02". */
 export function haltedLine(h: Halted | null, loc: Locale): string {
   if (!h) return ''
@@ -1245,6 +1351,22 @@ export function isOfflineCardRender(tool: unknown, command: unknown): boolean {
 /** #1150: where the offline renderer leaves the card's band data for the session (under the home dir). */
 export function bandCardFile(home: string, sid: string): string {
   return `${home}/.claude/devops-band/card-${String(sid).replace(/[^\w.-]/g, '_')}.json`
+}
+
+/**
+ * #1203: the session's last card as the band last drew it (any render path: MCP or offline), so a resumed process
+ * can draw it again. `text: null` = the card was spent (a typed prompt, a button press): nothing to restore.
+ */
+export function bandLastCardFile(home: string, sid: string): string {
+  return `${home}/.claude/devops-band/last-${String(sid).replace(/[^\w.-]/g, '_')}.json`
+}
+
+/** #1203: the stored last card's text when it belongs to `sid` and was not spent; else null. Never throws. */
+export function restoredCardText(j: unknown, sid: string): string | null {
+  if (!j || typeof j !== 'object' || !sid) return null
+  const { text, sid: owner } = j as { text?: unknown; sid?: unknown }
+  if (owner !== sid || typeof text !== 'string' || !text) return null
+  return text
 }
 
 /**
@@ -1335,11 +1457,12 @@ export function releaseLine(heading: string): string {
 }
 
 /**
- * The band offers "Archive" for a green card (shipped, released, finished analysis) while nothing runs.
+ * The band offers "Archive" for a green card (shipped, released, finished analysis) while nothing runs,
+ * and for a landed release card whose only open point is the promote question (👉 🚀 … vX.Y.Z, #1200).
  * The press calls the Desktop app's own archive_session through $.mcp.call — no model turn.
  */
 export function archiveOffered(c: { heading: string } | null, working: boolean): boolean {
-  return !working && isShippedCard(c)
+  return !working && (isShippedCard(c) || isReleaseCard(c))
 }
 
 /** archive_session's answer: null = archived; else the app's reason (pinned, still working, …), one line. */
