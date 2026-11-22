@@ -301,6 +301,21 @@ describe("prices and cost view", () => {
     expect(s.byCostType.input).toBeCloseTo(Math.round(200_000 * 0.1 / 1e6 * 100) / 100, 6);
     fs.rmSync(h, { recursive: true, force: true });
   });
+  test("E4: the usage row carries thread + claudeProject only for a marked thread session; project stays the repo name", () => {
+    const pt = require("../hooks/lib/project-thread.js");
+    const sid = `safe-thread-${process.pid}-${Date.now()}`;
+    pt.markThread(sid);
+    const h = fs.mkdtempSync(path.join(os.tmpdir(), "safe-thr-"));
+    const base = { home: h, tool: "safe", cwd: "/x/proj", model: "claude-haiku-5-5", usage: { input_tokens: 10 }, rc: 0 };
+    api.logUsage({ ...base, sessionId: sid, claudeProject: "chan_abc" });
+    api.logUsage({ ...base, sessionId: "not-a-thread-session" });
+    const rows = fs.readFileSync(path.join(h, ".claude", "api-credit-usage.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+    expect(rows[0]).toMatchObject({ project: "proj", thread: true, claudeProject: "chan_abc" });
+    expect(rows[1]).toMatchObject({ project: "proj" });
+    expect(rows[1]).not.toHaveProperty("thread");
+    expect(rows[1]).not.toHaveProperty("claudeProject");
+    fs.rmSync(h, { recursive: true, force: true });
+  });
   test("--usage adds $ per cost type, top 3 calls, >10M cache-read warning and context-editing totals", async () => {
     const now = Date.parse("2026-10-20T12:00:00Z");
     const log = (o) => api.logUsage({ home, now, tool: "agent", tag: "scout", cwd: "/x/proj", rc: 0, ...o });

@@ -87,6 +87,16 @@ const SCHEMA = Object.freeze({
       doc: 'auto-concept: write each follow-up round (2+) in a sub-agent, so the session context stays small over many rounds.',
     }),
   }),
+  cloud: Object.freeze({
+    rulesFile: Object.freeze({
+      type: 'boolean', default: true,
+      doc: 'Keep the managed .claude/rules/devops.md (branch, commit, ship and result rules for sessions without the plugin) in a repo: written by project setup in a new repo, added to the ship diff of an established one (scripts/cloud-rules.js).',
+    }),
+    autoUpdate: Object.freeze({
+      type: 'boolean', default: true, globalOnly: true,
+      doc: 'When the claude.ai copy of devops lags behind the installed plugin, the session starts the cloud update itself (once per version, one updater at a time) as part of a turn that runs anyway, instead of only telling you.',
+    }),
+  }),
   sessionEnd: Object.freeze({
     autosave: Object.freeze({
       type: 'enum', values: Object.freeze(['push', 'local', 'off']), default: 'local',

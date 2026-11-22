@@ -501,6 +501,57 @@ export function threadTitleInstruction(prefix, current = null) {
   );
 }
 
+/** A `<relay …>` opening tag; its attributes are read apart (any order, JSON-escaped quotes inside a transcript line). */
+const RELAY_TAG = /<relay\b[^<>]*>/g;
+const relayAttr = (tag, name) => new RegExp(`\\s${name}=\\\\?"([^"\\\\]*)\\\\?"`).exec(tag)?.[1] ?? "";
+
+/**
+ * The coordinator session this thread last heard from: the `session="session_…"`
+ * of the newest `<relay from="coordinator" …>` in the transcript's tail. `null`
+ * when no relay ever arrived — nothing is invented. Never throws.
+ *
+ * @param {string|undefined} sessionId the card's `session_id`
+ * @param {string|undefined} cwd the card's `cwd`
+ * @param {{ home?: string, maxBytes?: number }} [opts] test seams
+ * @returns {string|null} `session_<id>`
+ */
+export function coordinatorSession(sessionId, cwd, { home = undefined, maxBytes = 4 * 1024 * 1024 } = {}) {
+  try {
+    const file = hookRequire("lib", "session-title.js").findTranscript(sessionId, home, cwd);
+    if (!file) return null;
+    const text = readFileSync(file, "utf8").slice(-maxBytes);
+    let found = null;
+    for (const m of text.matchAll(RELAY_TAG)) {
+      if (relayAttr(m[0], "from") !== "coordinator") continue;
+      const session = relayAttr(m[0], "session");
+      if (/^session_[A-Za-z0-9]+$/.test(session)) found = session;
+    }
+    return found;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The one status line to the coordinator after a thread's card (C7). Empty
+ * when no coordinator session is known — then it is skipped, not guessed.
+ * Address form: `bridge:cse_<id>` for the relay's `session_<id>` (assumption —
+ * a refused address ends the step silently).
+ *
+ * @param {string|null} session from `coordinatorSession`
+ * @returns {string}
+ */
+export function coordinatorStatusInstruction(session) {
+  if (typeof session !== "string" || !/^session_[A-Za-z0-9]+$/.test(session)) return "";
+  const address = `bridge:cse_${session.slice("session_".length)}`;
+  return (
+    "[COORDINATOR STATUS — DO NOT OUTPUT THIS BLOCK]\n" +
+    `Once, right after the card's post_message: SendMessage to "${address}" with ONE line (at most 20 words): ` +
+    "the card's status head plus the first line of its answer, no markdown. " +
+    "Address refused or tool unavailable: skip silently — no retry, no note, no text in the thread."
+  );
+}
+
 /** Variants that follow a merged ship — the ones a close-out-only concept
  *  must not pull back to the compass (#693). */
 const SHIP_OUTCOME_VARIANTS = new Set(["ship-successful", "released"]);

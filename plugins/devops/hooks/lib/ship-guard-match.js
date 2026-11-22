@@ -1,6 +1,6 @@
 /**
  * @module ship-guard-match
- * @version 0.4.0
+ * @version 0.5.0
  * @description Pure matcher for pre.ship.guard — decides whether a Bash command
  *   is a REAL manual PR create/merge invocation that must go through /do-ship.
  *
@@ -22,6 +22,10 @@
  *     2. The patterns are anchored to a command position (start of command or
  *        right after a shell separator) so only real command tokens match, not
  *        arbitrary substrings.
+ *
+ *   gitSegments also follows shell wrappers (`bash -c '…'`, `cmd /c …`,
+ *   `pwsh -c …`, a here-doc fed to a bare shell; lib/shell-inner.js, depth 3):
+ *   their inner git calls are returned with the directory in effect there.
  *
  *   This is a nudge, not a security boundary — over-stripping quotes is fine; the
  *   goal is zero false positives on documentation/quoted text while still
@@ -131,6 +135,9 @@ function maskQuotedToken(s) {
 // `--git-dir[=]<p>`, `--work-tree[=]<p>`, `--no-pager` and friends. Leading
 // `VAR=value` assignments are a command prefix as well.
 const ENV_PREFIX = String.raw`(?:[A-Za-z_]\w*=\S*\s+)*`;
+// A git call also stands after a backtick substitution and behind a shell keyword
+// (`then git commit`, `do …`, `else …`, `! …`, `time …`).
+const GIT_BOUNDARY = String.raw`(?:^|[\n;&|(){}\x60])\s*(?:(?:then|do|else|elif|if|while|until|time|!)\s+)*`;
 const GIT_GLOBAL_OPTS = String.raw`(?:\s+(?:-C\s+\S+|-c\s+\S+|--(?:git-dir|work-tree|namespace)(?:=\S+|\s+\S+)|--no-pager|--paginate|-p|--bare|--no-replace-objects|--literal-pathspecs))*`;
 /** The end of a subcommand word: whitespace, a separator, or the end. */
 const WORD_END = String.raw`(?=[\s;&|(){}]|$)`;
@@ -143,7 +150,7 @@ const WORD_END = String.raw`(?=[\s;&|(){}]|$)`;
  * @returns {RegExp}
  */
 function gitCommandRe(rest) {
-  return new RegExp(BOUNDARY + ENV_PREFIX + String.raw`git(?:\.exe)?` + GIT_GLOBAL_OPTS + String.raw`\s+` + rest, 'm');
+  return new RegExp(GIT_BOUNDARY + ENV_PREFIX + String.raw`git(?:\.exe)?` + GIT_GLOBAL_OPTS + String.raw`\s+` + rest, 'm');
 }
 
 /**
@@ -188,6 +195,202 @@ function isManualShipCommand(cmd) {
     if (API_MERGE_PATH_RE.test(args) && isApiWrite(args)) return true;
   }
   return false;
+}
+
+// ── the directory a git command acts on ─────────────────────────────────────
+
+const { SHELLS, MAX_DEPTH, headName, innerCommand, shellHeredocBody } = require('./shell-inner');
+
+const WRAPPERS = new Set(['env', 'command', 'exec', 'sudo', 'time', 'nohup']);
+// Shell keywords that stand in front of a command (`then git commit`).
+const KEYWORDS = new Set(['then', 'do', 'else', 'elif', 'if', 'while', 'until', '!']);
+
+/** Index of the command word in `toks`: past env assignments and wrapper commands. */
+function skipPrefix(toks) {
+  let i = 0;
+  while (i < toks.length && (/^[A-Za-z_]\w*=/.test(toks[i]) || WRAPPERS.has(toks[i].toLowerCase()) || KEYWORDS.has(toks[i].toLowerCase()))) i++;
+  return i;
+}
+const DIR_CHANGERS = new Set(['cd', 'chdir', 'pushd', 'set-location', 'sl', 'push-location', 'popd', 'pop-location']);
+const DIR_PUSHERS = new Set(['pushd', 'push-location']);
+const DIR_POPPERS = new Set(['popd', 'pop-location']);
+
+/** Directory a `--git-dir` / `GIT_DIR` value stands for: `<work tree>/.git` → the work tree. */
+function gitDirTarget(base, value) {
+  const d = resolveDir(base, value);
+  if (!d) return null;
+  return /^\.git$/i.test(require('path').basename(d)) ? require('path').dirname(d) : d;
+}
+
+/**
+ * Is this git segment a pure fast-forward of main/master to its remote
+ * (`git merge --ff-only <remote>/main`, `git pull --ff-only [<remote> [main]]`)?
+ * That moves the ref to what the remote already has and is no own work on
+ * main — the post-ship "local main up to date" step. Everything else (another
+ * branch, no --ff-only, extra options) is not.
+ * @param {string} text one command segment as typed
+ * @returns {boolean}
+ */
+function isFastForwardOfMain(text, isRemote) {
+  const toks = shellTokens(text || '');
+  let i = 0;
+  while (i < toks.length && (/^[A-Za-z_]\w*=/.test(toks[i]) || WRAPPERS.has(toks[i].toLowerCase()))) i++;
+  if (!/^git(?:\.exe)?$/i.test((toks[i] || '').replace(/^.*[\\/]/, ''))) return false;
+  i++;
+  for (; i < toks.length && toks[i].startsWith('-'); i++) {
+    if (toks[i] === '-C' || toks[i] === '-c') i++;
+    else if (/^--(?:git-dir|work-tree|namespace)$/.test(toks[i])) i++;
+  }
+  const sub = (toks[i] || '').toLowerCase();
+  if (sub !== 'merge' && sub !== 'pull') return false;
+  const rest = toks.slice(i + 1);
+  if (!rest.includes('--ff-only')) return false;
+  const args = rest.filter(t => !t.startsWith('-'));
+  if (rest.some(t => t.startsWith('-') && !['--ff-only', '-q', '--quiet', '-v', '--verbose'].includes(t))) return false;
+  const NAME = /^[A-Za-z0-9._-]+$/;
+  const BRANCH = /^(?:main|master)$/i;
+  if (sub === 'merge') {
+    const full = args.length === 1 ? /^refs\/remotes\/([A-Za-z0-9._-]+)\/(.+)$/.exec(args[0]) : null;
+    if (full) return BRANCH.test(full[2]);
+    const m = args.length === 1 ? /^([A-Za-z0-9._-]+)\/(.+)$/.exec(args[0]) : null;
+    // `<x>/main` is a fast-forward of the remote's main only when <x> IS a remote: a local branch
+    // `feature/main` carrying own commits is not. No answer from the caller means not one.
+    return Boolean(m) && NAME.test(m[1]) && BRANCH.test(m[2]) && typeof isRemote === 'function' && isRemote(m[1]) === true;
+  }
+  if (args.length > 2 || args.some(a => !NAME.test(a))) return false;
+  return args.length < 2 || BRANCH.test(args[1]);
+}
+
+/** Quote-aware whitespace split; quotes are stripped, backslashes stay (Windows paths). */
+function shellTokens(text) {
+  const out = [];
+  let cur = '';
+  let q = null;
+  let has = false;
+  for (const ch of text) {
+    if (q) { if (ch === q) q = null; else cur += ch; continue; }
+    if (ch === '"' || ch === "'") { q = ch; has = true; continue; }
+    if (/\s/.test(ch)) { if (cur || has) out.push(cur); cur = ''; has = false; continue; }
+    cur += ch;
+  }
+  if (cur || has) out.push(cur);
+  return out;
+}
+
+/**
+ * `arg` relative to `base`; null when the shell, not this parser, decides it
+ * (variable, substitution, `cd -`, glob, unknown base for a relative path).
+ */
+function resolveDir(base, arg) {
+  if (typeof arg !== 'string' || !arg || /[$%\x60*?]/.test(arg) || arg === '-') return null;
+  const path = require('path');
+  let a = arg;
+  if (a === '~' || a.startsWith('~/') || a.startsWith('~\\')) a = require('os').homedir() + a.slice(1);
+  // Git Bash writes drive paths as /c/dir.
+  if (process.platform === 'win32') a = a.replace(/^\/([A-Za-z])(?=\/|$)/, (_m, d) => `${d.toUpperCase()}:`);
+  if (!path.isAbsolute(a) && !base) return null;
+  const full = path.resolve(base || '/', a);
+  // A target that does not exist is unknown, not a place: the failed `cd typo`
+  // leaves the shell where it was, so the write must fall back to the cwd.
+  try { if (!require('fs').statSync(full).isDirectory()) return null; } catch { return null; }
+  return full;
+}
+
+/**
+ * Every command segment of `cmd` with the directory it acts on: the session's
+ * `cwd` moved by earlier `cd <dir>` / `pushd <dir>` / `Set-Location <dir>`
+ * segments, then by the `-C <dir>` options of the git call itself. `dir` is
+ * null when it cannot be read (variable, `--git-dir`, `cd -` …); the caller
+ * then falls back to the cwd. Only segments with a git call are returned;
+ * `text` is the segment as typed, for the caller's own matchers.
+ *
+ * @param {string} cmd
+ * @param {string} cwd
+ * @returns {{text: string, dir: string|null}[]}
+ */
+function gitSegments(cmd, cwd, depth = 0) {
+  if (!cmd || typeof cmd !== 'string') return [];
+  const joined = joinContinuations(cmd);
+  const masked = maskQuotedToken(joined);
+  const sep = /[\n;&|(){}\x60]/g;
+  const spans = [];
+  let start = 0;
+  let opener = '';
+  for (let m; (m = sep.exec(masked)); start = m.index + 1) { spans.push([start, m.index, opener]); opener = m[0]; }
+  spans.push([start, masked.length, opener]);
+  let shellDir = cwd || null;
+  // A `cd` inside `( … )` ends with the subshell: the directory before it is back.
+  const saved = [];
+  const dirStack = [];
+  const out = [];
+  for (const [a, b, before] of spans) {
+    if (before === '(') saved.push(shellDir);
+    else if (before === ')' && saved.length) shellDir = saved.pop();
+    const text = joined.slice(a, b);
+    const toks = shellTokens(text);
+    const i = skipPrefix(toks);
+    const env = {};
+    for (let k = 0; k < i; k++) {
+      const em = /^(GIT_DIR|GIT_WORK_TREE)=(.*)$/.exec(toks[k]);
+      if (em) env[em[1]] = em[2];
+    }
+    // A shell that runs another command: the inner command is judged on its own,
+    // starting in the directory in effect here; a `cd` inside does not leak out.
+    if (depth < MAX_DEPTH) {
+      const shell = headName(toks[i]);
+      const inner = SHELLS.has(shell) ? innerCommand(toks.slice(i), shell) : null;
+      const body = inner || shellHeredocBody(text, shellTokens, skipPrefix);
+      if (body) { out.push(...gitSegments(body, shellDir, depth + 1).map((x) => ({ text: x.text, dir: x.dir }))); continue; } // offsets of the inner body mean nothing here
+    }
+    const head = (toks[i] || '').replace(/^.*[\\/]/, '').toLowerCase();
+    if (DIR_POPPERS.has(head)) { shellDir = dirStack.length ? dirStack.pop() : null; continue; }
+    if (DIR_CHANGERS.has(head)) {
+      if (DIR_PUSHERS.has(head)) dirStack.push(shellDir);
+      const arg = toks.slice(i + 1).find((t) => !t.startsWith('-') && !/^\/[a-z]$/i.test(t));
+      shellDir = arg === undefined ? null : resolveDir(shellDir, arg);
+      continue;
+    }
+    if (head !== 'git' && head !== 'git.exe') continue;
+    let dir = shellDir;
+    let j = i + 1;
+    let workTree = null;
+    let gitDir = null;
+    for (; j < toks.length && toks[j].startsWith('-'); j++) {
+      const t = toks[j];
+      if (t === '-C') { dir = resolveDir(dir, toks[++j]); } else if (t === '-c') j++;
+      else if (/^--(?:git-dir|work-tree)/.test(t)) {
+        const eq = t.indexOf('=');
+        const val = eq === -1 ? toks[++j] : t.slice(eq + 1);
+        if (t.startsWith('--work-tree')) workTree = val; else gitDir = val;
+      } else if (t === '--namespace') j++;
+    }
+    // The option beats the env var; a work tree beats a git dir. A value that
+    // cannot be read leaves the directory unknown (the caller uses the cwd).
+    workTree = workTree !== null ? workTree : env.GIT_WORK_TREE;
+    gitDir = gitDir !== null ? gitDir : env.GIT_DIR;
+    if (workTree !== undefined && workTree !== null) dir = resolveDir(dir, workTree);
+    else if (gitDir !== undefined && gitDir !== null) dir = gitDirTarget(dir, gitDir);
+    out.push({ text, dir, start: a });
+  }
+  return out;
+}
+
+/**
+ * Does `cmd` still hold a git call matching one of `res` once the text of the
+ * attributed `segments` is blanked out? Then a write exists that gitSegments did
+ * not account for (exotic syntax): the caller checks the session's folder too.
+ * @param {string} cmd
+ * @param {{text: string, start?: number}[]} segments from gitSegments(cmd, …)
+ * @param {RegExp[]} res built by gitCommandRe
+ * @returns {boolean}
+ */
+function unattributedGitWrite(cmd, segments, res) {
+  let s = joinContinuations(cmd || '');
+  for (const seg of segments) {
+    if (typeof seg.start !== 'number') continue;
+    s = s.slice(0, seg.start) + ' '.repeat(seg.text.length) + s.slice(seg.start + seg.text.length);
+  }
+  return matchesGitCommand(s, res);
 }
 
 // Options `git push` may carry in a pure remote-branch delete. Anything else
@@ -271,5 +474,5 @@ function remoteDeleteTargets(cmd) {
 module.exports = {
   isManualShipCommand, stripQuoted, maskQuoted, maskQuotedToken,
   ghVerbRe, ghApiRe, joinContinuations, segmentBounds, isApiWrite,
-  BOUNDARY, WORD_END, gitCommandRe, matchesGitCommand, remoteDeleteRefs, remoteDeleteTargets,
+  gitSegments, unattributedGitWrite, isFastForwardOfMain, BOUNDARY, WORD_END, gitCommandRe, matchesGitCommand, remoteDeleteRefs, remoteDeleteTargets,
 };

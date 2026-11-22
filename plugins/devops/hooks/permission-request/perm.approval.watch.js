@@ -12,7 +12,8 @@
  *   (`👉 ➜ 🤖🤖🤖 X` → `⏳ ➜ 🤖🤖🤖 X`). Silent when the title no longer
  *   carries the approval head (a card or a rename won meanwhile), for a
  *   main-thread prompt, and past its deadline (the hook timeout kills it
- *   anyway). Fail-open.
+ *   anyway). In a Claude Projects thread the ⏳ head goes back on the thread
+ *   title (`rename_thread`, lib/approval-wait.js `threadRestoreText`). Fail-open.
  */
 
 const { sessionOptedOut } = require('../lib/plugin-guard');
@@ -44,6 +45,13 @@ async function main(hook, { pollMs = POLL_MS, deadlineMs = DEADLINE_MS } = {}) {
     await sleep(pollMs);
   }
   if (W.readEntries(hook.session_id).length) return null;
+  const thread = W.threadView(hook);
+  if (thread) {
+    const text = W.threadRestoreText(thread.current);
+    if (!text) return null;
+    if (W.isMainIdle(require('../lib/agent-card-relay').readTail(thread.transcript))) W.markWake(hook.session_id);
+    return { block: text };
+  }
   const transcript = W.mainTranscript(hook);
   const { readCurrentTitle } = require('../lib/session-title');
   const next = require('../lib/title-scheme').approvalRestoredTitle(readCurrentTitle(transcript));

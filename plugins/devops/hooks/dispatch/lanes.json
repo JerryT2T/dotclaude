@@ -101,10 +101,16 @@
         "pre.main.guard"
       ],
       [
+        "pre.thread.rights"
+      ],
+      [
         "pre.worktree.split-guard"
       ],
       [
         "pre.test.fullguard"
+      ],
+      [
+        "pre.thread.rights"
       ],
       [
         "pre.bash.output-filter"
@@ -182,6 +188,9 @@
       ],
       [
         "pre.title.topic"
+      ],
+      [
+        "pre.thread.session"
       ],
       [
         "pre.plugin.session"
@@ -336,6 +345,9 @@
       ],
       [
         "prompt.flow.silent-turn"
+      ],
+      [
+        "prompt.thread.notices"
       ],
       [
         "prompt.flow.title-work"

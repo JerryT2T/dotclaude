@@ -18,6 +18,7 @@ import { detectOutOfBandDeploys, DEFAULT_OUT_OF_BAND_GLOBS, globToRegExp } from 
 import { scanConflictMarkers, describeMarkers } from "../lib/conflict-markers.js";
 import { detectComponents } from "../lib/components.js";
 import { claudeIgnoreCheck, touchesIgnorePolicy } from "../lib/claude-ignore.js";
+import { cloudRulesStep } from "../lib/cloud-rules.js";
 import { scanWorkflows } from "../lib/workflow-hygiene.js";
 import { quotaKey, repoKey, readRecord, describeRecord } from "../lib/ci-quota.js";
 import { pauseWorkflows, sweepOverdue, pausedLine, resumedLine } from "../lib/ci-workflow-guard.js";
@@ -568,8 +569,22 @@ export async function handler(params) {
     checks.push(parts.length ? { name: "concept-pages-landed", ok: true, warning: `Concept pages not landed: ${parts.join("; ")}.` } : { name: "concept-pages-landed", ok: true });
   }
 
+  // 9d2. The managed .claude/rules/devops.md (scripts/cloud-rules.js): an
+  //      established repo gets it with its next ship — staged with the work
+  //      commit or committed on this branch, reported here. Only when the ship
+  //      is otherwise able to land; never a separate migration step. It runs
+  //      AFTER every hard gate above (conflict markers, version, worktree,
+  //      ...), so a ship that is blocked leaves no stray commit on the branch.
+  {
+    const rulesCheck = cloudRulesStep({
+      cwd, state, ahead, mode: repoMode,
+      blocked: errors.some((e) => e !== dirtyError),
+    });
+    if (rulesCheck) checks.push(rulesCheck); // a failure carries `warning`, collected below
+  }
+
   // Collect warnings from checks (non-blocking issues resolved autonomously)
-  const warnings = checks.filter(c => c.warning).map(c => c.warning);
+  const warnings =checks.filter(c => c.warning).map(c => c.warning);
   if (noRemote) warnings.push("No origin remote — push, PR creation, and merge will be skipped");
   // #1202: say up front how a cloud ship lands.
   else if (process.env.CLAUDE_CODE_REMOTE === "true") warnings.push("Cloud session: PR and merge go through the GitHub REST API; the release tag is handed to the owner (the cloud proxy refuses tag writes)");

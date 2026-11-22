@@ -42,7 +42,7 @@ machine's state on purpose — CLAUDE.md files in scope, MCP servers and tool
 deferral (`ENABLE_TOOL_SEARCH`, proxy base URLs), pinned model/effort and model
 switches in the newest session, PreToolUse output filters, subagent model pins,
 scheduled tasks against `promptCacheTtl`, the newest session's cache split, and
-the alpha token log `~/.claude/devops-token-log.jsonl` (#1002). `--skip-tests` skips `npm test` + `npm run lint` (a full audit runs them).
+the alpha token log `~/.claude/devops-token-log.jsonl` (#1002), which also yields the start cost per Claude Projects thread (SessionStart and per-wake characters of every session whose rows carry `thread`). `--skip-tests` skips `npm test` + `npm run lint` (a full audit runs them).
 Exit 0 unless the arguments are invalid.
 
 ## Step 2 — Claude-Code currency (one `devops:research` agent, `model: sonnet`)

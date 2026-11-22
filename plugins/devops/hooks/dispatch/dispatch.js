@@ -2,7 +2,7 @@
 'use strict';
 /**
  * @hook dispatch
- * @version 0.4.0
+ * @version 0.5.0
  * @event SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, PostToolUseFailure, Stop, SubagentStart, SubagentStop
  * @plugin devops
  * @description One process per hook event. `node dispatch.js <Event>` is the
@@ -360,6 +360,26 @@ function runProcess(mod, raw, budgetMs) {
 }
 
 /**
+ * Session-start notices for the Desktop user stay out of a Claude Projects thread
+ * (lib/thread-notice-hold.js): SessionStart keeps them aside, the next
+ * UserPromptSubmit hands them to a typed prompt and to nothing else. Every other
+ * event, and a payload without a session, is returned as it came.
+ */
+function withNoticeHold(o, results) {
+  if (o.event !== 'SessionStart' && o.event !== 'UserPromptSubmit') return results;
+  try {
+    const hold = require('../lib/thread-notice-hold');
+    let payload = o.payload;
+    if (payload === undefined) payload = require('../lib/hook-input').parseHookInput(o.raw);
+    if (o.event === 'SessionStart') return hold.holdSessionStart(results, payload);
+    const text = hold.releaseOnPrompt(payload);
+    if (!text) return results;
+    const stdout = JSON.stringify({ hookSpecificOutput: { hookEventName: 'UserPromptSubmit', additionalContext: text } });
+    return [{ name: 'thread-notice-hold', code: 0, stdout, stderr: '', ms: 0 }, ...results];
+  } catch { return results; }
+}
+
+/**
  * Run the selected modules and merge.
  * @param {{event:string, raw:string, payload?:object|null, modules:Array, budgetS:number, startedAt?:number, processMode?:boolean, tele?:object, lanes?:string[][]}} o
  * @returns {Promise<{code:number, stdout:string, stderr:string, results:Array}>}
@@ -422,7 +442,7 @@ async function runEvent(o) {
   };
   await Promise.all(lanes.map(runLane));
   await Promise.all(procRuns);
-  const merged = mergeResults(o.event, results.map((r, i) => failClosed(o.event, o.modules[i], r)));
+  const merged = mergeResults(o.event, withNoticeHold(o, results.map((r, i) => failClosed(o.event, o.modules[i], r))));
   // Alpha `token-log` (#1002): what each module handed the model, written to
   // a local file only. Gated, silent, never changes the merged result.
   try {
@@ -443,6 +463,21 @@ function readStdin() {
   });
 }
 
+/**
+ * The one place a UserPromptSubmit prompt is unwrapped (lib/project-thread.js, PROMPT INTAKE
+ * CONTRACT): `prompt` becomes the words to act on, `prompt_raw` keeps the runtime's prompt,
+ * `prompt_origin` says who spoke. A typed prompt keeps its bytes. Any other event, or a
+ * payload without a string prompt, is returned as it came.
+ * @returns {{ raw: string, payload: object|null }}
+ */
+function normalizeInput(event, raw, payload) {
+  if (event !== 'UserPromptSubmit' || !payload || typeof payload.prompt !== 'string') return { raw, payload };
+  try {
+    const next = require('../lib/project-thread').normalizePromptInput(payload);
+    return next === payload ? { raw, payload } : { raw: JSON.stringify(next), payload: next };
+  } catch { return { raw, payload }; }
+}
+
 async function main() {
   const startedAt = Date.now() - Math.round(process.uptime() * 1000);
   const event = String(process.argv[2] || '');
@@ -450,7 +485,7 @@ async function main() {
   const laneKey = fast ? `${event}:fast` : event;
   const tele = telemetry();
   if (tele) tele.setHook(`dispatch:${laneKey}`);
-  const raw = await readStdin();
+  let raw = await readStdin();
   let payload = null;
   try { payload = require('../lib/hook-input').parseHookInput(raw); } catch { /* matcher falls back to all */ }
   // "devops off for this session": silent from this event on (lib/devops-optout.js)
@@ -460,6 +495,7 @@ async function main() {
   if (payload === null && /^(?:null|true|false|-?\d[\d.eE+-]*|\[[\s\S]*\]|"[\s\S]*")$/.test(String(raw || '').replace(/^\uFEFF/, '').trim())) return { code: 0, stdout: '', stderr: '' };
   let manifest;
   try { manifest = loadManifest(); } catch { return unchecked(event, fast, 'the hook manifest could not be read'); }
+  ({ raw, payload } = normalizeInput(event, raw, payload));
   const all = laneModules(manifest, event, PLUGIN_ROOT, { fast });
   if (!all.length) return { code: 0, stdout: '', stderr: '' };
   const modules = selectModules(manifest, event, payload, PLUGIN_ROOT, { fast });
@@ -558,6 +594,6 @@ if (require.main === module) {
 }
 
 module.exports = {
-  moduleFile, loadManifest, loadLanes, laneGroups, eventModules, laneModules, eventBudgetS, selectModules, runEvent, dispatchDisabled, hardExitStdout, guardFailOpen, guardFailure, failClosed, guardedLane, finalReply, unchecked, recordHardEnd,
+  normalizeInput, moduleFile, loadManifest, loadLanes, laneGroups, eventModules, laneModules, eventBudgetS, selectModules, runEvent, dispatchDisabled, hardExitStdout, guardFailOpen, guardFailure, failClosed, guardedLane, finalReply, unchecked, recordHardEnd,
   HARD_END_TEXT, DEFAULT_TIMEOUT_S, FAST_DEFAULT_TIMEOUT_S, HEADROOM_S, MIN_START_MS, TERMINATE_GRACE_MS, MANIFEST,
 };

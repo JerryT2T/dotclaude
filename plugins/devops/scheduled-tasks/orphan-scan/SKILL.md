@@ -12,6 +12,12 @@ Post-ship hygiene only checks the repo that was just shipped. This task looks
 at every repo under one root and records what would be lost if a folder were
 deleted tomorrow.
 
+## Stays local
+
+This task reads this machine's worktrees and branches, so it stays local. A Claude
+Project's routines are cloud threads without the plugin that stop at a usage limit;
+they cannot see these checkouts and are no replacement.
+
 ## What it does
 
 `node scripts/orphan-scan.js` (read-only apart from `git fetch --prune` with a

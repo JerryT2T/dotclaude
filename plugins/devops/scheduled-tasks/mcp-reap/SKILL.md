@@ -25,6 +25,12 @@ fire-and-forget, windowless** (`{ detached: true, stdio: 'ignore',
 windowsHide: true }` + `.unref()`) and exit immediately — reaping never
 delays a session start or a response turn.
 
+## Stays local
+
+This task acts on this machine's processes, so it stays local. A Claude Project's
+routines are cloud threads without the plugin that stop at a usage limit; they
+cannot reap processes here and are no replacement.
+
 ## Safety model
 
 The scan-and-kill logic lives in `hooks/lib/mcp-reaper.js` (fully unit

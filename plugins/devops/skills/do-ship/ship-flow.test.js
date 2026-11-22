@@ -223,7 +223,21 @@ describe("do-ship — manual checklist without the ship MCP server", () => {
   test("the tag step points at the #566 hand-off instead of restating it", () => {
     expect(MANUAL).toContain("release-flow.md` § owner hand-off");
     expect(FLOW).toMatch(/### When the session cannot push the tag — owner hand-off/);
-    expect(MANUAL).not.toMatch(/git tag -a/);
+    // Only the cloud section carries the commands: a cloud thread without the
+    // plugin has no release-flow.md on disk, so the pointer alone cannot be followed there.
+    const [checklist, cloud] = MANUAL.split("## Cloud thread");
+    expect(checklist).not.toMatch(/git tag -a/);
+    expect(cloud).toContain("release-flow.md` § owner hand-off");
+  });
+
+  test("the cloud section ships through REST: PR, checks, squash merge, and hands the tag over", () => {
+    const [, cloud] = MANUAL.split("## Cloud thread");
+    expect(cloud).toMatch(/-X POST repos\/\{owner\}\/\{repo\}\/pulls/);
+    expect(cloud).toMatch(/commits\/\$SHA\/check-runs/);
+    expect(cloud).toMatch(/-X PUT repos\/\{owner\}\/\{repo\}\/pulls\/<N>\/merge -f merge_method=squash/);
+    expect(cloud).toMatch(/proxy rejects a tag push/);
+    expect(cloud).toMatch(/tag is pending the owner/);
+    expect(cloud).not.toMatch(/gh pr (create|merge|view|checks)/);
   });
 });
 

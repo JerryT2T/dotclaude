@@ -117,7 +117,11 @@ function armFromPending(hook, root, RC, C, sessionId, budget) {
   // own sub-run) never replaces the contract the user already chose.
   if (RC.readContract(root, { sessionId })) { RC.clearPendingArm(root); return null; }
   const info = { stoppedOnBudget: false };
-  const found = C.routerFromTranscript(hook.transcript_path, marker.at, RC, budget, info);
+  let found = C.routerFromTranscript(hook.transcript_path, marker.at, RC, budget, info);
+  // A Claude Projects thread asks the router as a numbered reply (C1): the person's next message is the answer.
+  if (!found && !info.stoppedOnBudget && require('../lib/project-thread').isThread(hook, { deep: true })) {
+    try { found = require('../lib/run-contract-thread').routerFromThreadTranscript(hook.transcript_path, marker.at, RC); } catch { found = null; }
+  }
   // R2 (red-team round 2 Q5): the budget cut the transcript walk short — arming
   // now would either use an incomplete router chain (found but partial) or
   // fall through to the click-through defaults though the real answers may

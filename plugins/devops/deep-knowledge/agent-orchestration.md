@@ -191,8 +191,8 @@ The count follows the work, not a fixed number. Parallel **implementers**
 4. **Budget class** — `ask-before-parallel` → at most 3 implementers per wave;
    `sonnet-only` → at most 2. An explicit run skill (`/do-run burn`, a ceremony
    yes) is exempt from the budget class and keeps the ceilings of 3. Any other
-   do-run obeys it, and *spare the window* or an unattended run means one
-   implementer at a time.
+   do-run obeys it, and *spare the window*, an unattended run or a Claude
+   Projects thread (never asked there) means one implementer at a time.
 5. **Read-only lens agents** (research, scout, analyst, qa, redteam, po) are not
    implementers: up to ~8 in parallel, limited by cost only — they cannot
    conflict, and more independent lenses keep adding signal.

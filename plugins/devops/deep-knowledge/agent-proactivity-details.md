@@ -106,6 +106,27 @@ agent prompt; `effort` at spawn only per `agent-orchestration.md`.
   all → `get_usage` once, read `budget.cls`; on error keep the last line,
   with none treat it as ask-before-parallel.
 
+## Thread (a Claude Projects thread: `<wake …>` prompt, `mcp__hearthbot__*` tools)
+
+A thread is one worker among several under a coordinator; the split into
+threads is the coordinator's, not the thread's. Feature `project-threads`
+(alpha); a Desktop or terminal session keeps everything above unchanged.
+
+- **Fan-out.** Subagents (the Agent tool, `auto-agents` tiers) are allowed.
+  `start_session` side sessions are not: `pre.thread.session` refuses the call.
+  A part that is too big for subagents is reported to the coordinator
+  (`post_message`: the parts, which to start first); the thread carries on with
+  its own part. A Desktop session keeps its side sessions.
+- **Budget.** The budget question is never asked in a thread — nobody answers a
+  card there. The class applies silently: `free` → tiers as above;
+  `ask-before-parallel` and `sonnet-only` → take *spare the window* unasked
+  (1 sonnet agent, the call ceilings above, one agent at a time), exactly like
+  an unattended run; a hard go ("agents", "full") from the person's own message
+  still wins. Do-run and `auto-agents` read this the same way.
+- **Questions** are not budget questions: any other question of a skill goes out
+  as a numbered `post_message` reply, not an AskUserQuestion
+  (`pre.ask.title` redirects; `run-contract.md` § In a thread).
+
 Details: `agent-orchestration.md` (roster, models, waves, QA, budget),
 `agent-collaboration.md` (handoffs), auto-agents skill.
 

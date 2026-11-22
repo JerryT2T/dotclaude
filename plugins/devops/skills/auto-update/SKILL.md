@@ -31,10 +31,25 @@ HOOK_SCRIPT = ${PLUGIN_ROOT}/hooks/session-start/ss.plugin.update.js
 
 ## "Cloud updaten" / "update cloud"
 
-The claude.ai account copy, the one cloud sessions run, syncs only on claude.ai.
-Start `auto-guide` for: claude.ai → Customize → Plugins → Manage marketplaces →
-dotclaude "…" → Check for updates. Tell the user to keep the account copy: it is
-the only way devops reaches cloud sessions. Then stop; skip the steps below.
+The claude.ai account copy, the one cloud sessions and cloud threads run, syncs
+only on claude.ai: Customize → Plugins → Manage marketplaces → dotclaude "…" →
+Check for updates. Tell the user to keep the account copy: it is the only way
+devops reaches cloud sessions. Then stop; skip the steps below.
+
+**Automatic path (default).** `ss.project.setup` / `ss.catalog.remote` start the
+update by themselves when it is needed: switch devops-config `cloud.autoUpdate`
+on (default; global), a Claude Project thread ran on this machine
+(`~/.claude/devops-thread-seen.json`, written from the thread flag), and the
+copy trails the install. The session that wins the claim
+(`hooks/lib/cloud-update.js`: one updater at a time, once per version, retried
+after 3 h unfinished / 24 h manual / 48 h done) gets an `[ss.cloud.update]`
+block and clicks the steps above itself with its browser tool for logged-in
+sites, inside a turn that runs anyway — not as a turn of its own and not in a
+thread. It never automates a login: at a login, captcha or blocked step it runs
+`node "{PLUGIN_ROOT}/scripts/cloud-update.js" manual <version>` and tells the
+person the one click that is left. A manual request ("Cloud updaten") from the
+person is the guided path: start `auto-guide` for the same steps. Without a
+thread marker the lag is only mentioned, not started.
 
 ## Step 0a — Which copy runs
 

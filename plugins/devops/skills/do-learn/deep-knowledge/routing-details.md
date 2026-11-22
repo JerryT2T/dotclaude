@@ -175,13 +175,42 @@ Prefer the largest fitting container: **deep-knowledge > skill > CLAUDE.md**.
   under `.claude/` so all project-level Claude config sits in one place
   (`{PLUGIN_ROOT}/deep-knowledge/claude-directory-structure.md`). Create the
   directory if missing; append under a short heading.
-- **Behavioral rule (when X, do Y)** → a project skill. Append to a matching
-  `{project}/.claude/skills/<skill>/reference.md` if one exists. Otherwise ask via
-  AskUserQuestion: create a new project skill, or fall back to deep-knowledge.
+- **A rule about how Claude works in this repo (when X, do Y)** → the repo's
+  root `{repo-root}/.claude/rules/<topic>.md`. Claude Code loads that folder in
+  local sessions and in cloud threads of a Claude Project, so nothing has to be
+  migrated when a Claude Project or a cloud thread appears later. One topic per
+  file, kebab-case name, the rule as 1–3 lines with its why; Grep the folder
+  first and extend a file that already covers the topic. Never `devops.md` —
+  that file is the plugin's managed block (`scripts/cloud-rules.js`). Optional
+  `paths:` frontmatter scopes a rule to files. The root of the repo, not the
+  session's folder: a session in a subfolder or a worktree writes to the repo
+  root of its own checkout.
+- **A rule that is a skill's own procedure** (it only makes sense inside a
+  project skill that exists) → that skill's `reference.md`. A skill extension
+  stays an extension (C-override below): it does **not** load in a cloud thread
+  without the project plugin — the report says so.
+- **A rule that spans repos** (a Claude Project with several repos, "fürs
+  Projekt" meaning all of them) → no file. Hand it over as ready text for the
+  Claude Project's instructions (Project settings > Memory > Project
+  instructions; 16,000 characters), in the report, and tell the person to paste
+  it there. Never write the same rule into every repo.
 
 Append a one-line pointer to `{project}/CLAUDE.md` only as a last resort, so the
 new file gets discovered. The `post.claude.budget` hook measures the result;
 relay what it says rather than counting lines yourself.
+
+### Which project is meant in a thread
+
+In a thread of a Claude Project, "fürs Projekt" / "for the project" can mean
+this repo, another repo of the Claude Project, or the whole Claude Project. A
+thread answers with a reply, not with `AskUserQuestion`: post ONE numbered reply
+(`post_message`) — 1 this repo (name it), 2 another repo of the project (name
+them when known), 3 the whole Claude Project, a rule across repos — and take the
+person's next message as the answer. 1 → the rules file above; 2 → Q3's other-
+project path (branch D); 3 → "A rule that spans repos". A rule that names its
+repo, or a Claude Project with a single repo, needs no question. A Desktop or
+terminal session keeps the normal Q3. The thread channel itself (numbered reply,
+title head) is the thread rules' business, not this skill's.
 
 ### Scheduled-task rules — the runbook is the home
 

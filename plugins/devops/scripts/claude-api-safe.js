@@ -251,8 +251,11 @@ function halve(p) {
 }
 
 /** Append one call to the usage log. Best effort — logging never fails a call. */
-function logUsage({ home, now = Date.now(), tool, tag = null, cwd, model, usage, usd = 0, rc, turns = null, parts = null, ctx = null, batch = false, extra = null }) {
+function logUsage({ home, now = Date.now(), tool, tag = null, cwd, model, usage, usd = 0, rc, turns = null, parts = null, ctx = null, batch = false, extra = null, sessionId = null, claudeProject = null }) {
   const u = usage || {};
+  // E4: a call made for a Claude Projects thread says so; `project` stays the repo name
+  let thread = false;
+  try { thread = Boolean(sessionId) && require('../hooks/lib/project-thread').isMarked(sessionId); } catch { /* absent = not a thread */ }
   // batch: Message Batches API bills 50 % of input and output (cache multipliers stack) —
   // the caller passes the normal-path $, the line stores half and the saving.
   if (batch) usd = usd / 2;
@@ -260,6 +263,8 @@ function logUsage({ home, now = Date.now(), tool, tag = null, cwd, model, usage,
     fs.mkdirSync(claudeDir(home), { recursive: true });
     const row = {
       ts: new Date(now).toISOString(), tool, tag, project: path.basename(cwd || process.cwd()) || null, model,
+      ...(thread ? { thread: true } : {}),
+      ...(thread && /^chan_/.test(claudeProject || '') ? { claudeProject } : {}),
       in: u.input_tokens || 0, out: u.output_tokens || 0,
       cacheRead: u.cache_read_input_tokens || 0, cacheWrite: u.cache_creation_input_tokens || 0,
       usd: Math.round(usd * 1e6) / 1e6, // micro-dollars: many tiny calls must still add up

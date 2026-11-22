@@ -30,6 +30,7 @@ const os = require('os');
 const path = require('path');
 const { compareVersions, latestVisible, readChannelPin } = require('./channels');
 const { getVersion } = require('./cache-rebuild');
+const { threadSeen: readThreadSeen } = require('./thread-seen');
 
 const RPM_DIR = /[\\/]rpm[\\/][^\\/]+[\\/][^\\/]+[\\/]plugin_[^\\/]+[\\/]?$/i;
 
@@ -284,7 +285,7 @@ const CLOUD_PROMPT = { de: 'Cloud updaten', en: 'update cloud' };
  * an install behind its channel (channelLag).
  * A cloud session has no local install: ss.catalog.remote speaks there.
  */
-function versionNotice({ pluginRoot, home = os.homedir(), lang = 'de' }) {
+function versionNotice({ pluginRoot, home = os.homedir(), lang = 'de', threadSeen = readThreadSeen(home) }) {
   const en = lang === 'en';
   const inst = localInstall(home);
   if (!inst) return null;
@@ -301,6 +302,13 @@ function versionNotice({ pluginRoot, home = os.homedir(), lang = 'de' }) {
       : `ℹ devops: ${local}, Desktop zieht ab der nächsten Session nach · Cloud ${cloud} updaten ${arrow}`;
   }
   const note = desktop ? (en ? ' (Desktop already runs local)' : ' (Desktop nutzt schon lokal)') : '';
+  // A Claude Project thread ran on this machine: cloud threads run the account
+  // copy, so its lag is no longer harmless.
+  if (threadSeen) {
+    return en
+      ? `ℹ devops: ${local} · Cloud ${cloud} is behind${note} — cloud threads run it, so it matters ${arrow}`
+      : `ℹ devops: ${local} · Cloud ${cloud} hinkt hinterher${note} — Cloud-Threads laufen damit, nicht unkritisch ${arrow}`;
+  }
   return en
     ? `ℹ devops: ${local} · update Cloud ${cloud}${note}, not urgent ${arrow}`
     : `ℹ devops: ${local} · Cloud ${cloud} updaten${note}, unkritisch ${arrow}`;

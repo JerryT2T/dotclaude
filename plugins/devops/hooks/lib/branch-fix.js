@@ -44,9 +44,10 @@ function enterLine(base) {
  *   the target is in another work tree of the repo than the session's own
  * @returns {string[]} remedy lines, without a prefix
  */
-function branchFix({ branch = 'main', remote = true, mainCheckout = true, relPath = '', subagent = false, elsewhere = null, ownWorktree = false } = {}) {
+function branchFix({ branch = 'main', remote = true, mainCheckout = true, relPath = '', subagent = false, elsewhere = null, ownWorktree = false, threadWorktree = null } = {}) {
   const slash = (p) => String(p || '').replace(/\\/g, '/');
   const rel = slash(relPath);
+  if (threadWorktree && !subagent) return threadFix({ branch, remote, rel, ...threadWorktree });
   if (elsewhere && elsewhere.ownIsWorktree) {
     // Already in its own worktree (typically: moved there, then edited a path
     // remembered from the main checkout). Another EnterWorktree would nest a
@@ -100,6 +101,66 @@ function branchFix({ branch = 'main', remote = true, mainCheckout = true, relPat
   return lines;
 }
 
+/**
+ * The `threadWorktree` argument for branchFix: set only for a Claude Projects
+ * thread (feature on) whose session folder is no work tree of the repo at
+ * `repoTop` — null for a Desktop or terminal session, and for a thread that
+ * sits in a work tree of that repo (today's remedies stay).
+ *
+ * @param {object} hook  PreToolUse payload (session_id, cwd, …)
+ * @param {string} repoTop  work-tree root of the repo the blocked write targets
+ * @returns {{repo: string, sessionId: string, startDir: string}|null}
+ */
+function threadWorktreeFor(hook, repoTop) {
+  try {
+    if (!hook || !hook.session_id || !repoTop) return null;
+    if (require('./project-thread').threadMode(hook) !== 'on') return null;
+    const { findRepoRoot, gitCommonDir, samePath } = require('./project-root');
+    const common = gitCommonDir(repoTop);
+    const startRoot = hook.cwd ? findRepoRoot(hook.cwd) : null;
+    const startCommon = startRoot ? gitCommonDir(startRoot) : null;
+    if (common && startCommon && samePath(common, startCommon)) return null;
+    const path = require('path');
+    const repo = common && path.basename(common) === '.git' ? path.dirname(common) : repoTop;
+    return { repo, sessionId: hook.session_id, startDir: hook.cwd || '' };
+  } catch {
+    return null;
+  }
+}
+
+/** First 8 characters of a session id, filesystem- and ref-safe. */
+function shortId(sessionId) {
+  return String(sessionId || '').replace(/[^A-Za-z0-9]/g, '').slice(0, 8).toLowerCase() || 'session';
+}
+
+/**
+ * The remedy of a Claude Projects thread whose start folder is NOT a work tree
+ * of the repo it must change (a collecting folder such as P:\Projects, or
+ * another repo). EnterWorktree needs the session to sit in the repo, so it is
+ * not offered; the thread makes one worktree per repo itself and works by
+ * absolute path inside it. The short session id is in both the worktree and
+ * the branch name, so two threads of one folder never collide and one thread
+ * gets one worktree per repo (the path lives under that repo).
+ *
+ * @param {object} p
+ * @param {string} p.repo       the repo's main checkout (absolute)
+ * @param {string} p.sessionId  the thread's session id
+ * @param {string} [p.startDir] the session's start folder, for the explanation
+ */
+function threadFix({ branch, remote, rel, repo, sessionId, startDir = '' }) {
+  const id = shortId(sessionId);
+  const root = String(repo).replace(/\\/g, '/').replace(/\/+$/, '');
+  const wt = `${root}/.claude/worktrees/thread-${id}`;
+  const base = remote ? `origin/${branch}` : branch;
+  const fetch = remote ? `git -C ${root} fetch origin && ` : '';
+  return [
+    `Why a thread worktree: this session started in ${String(startDir).replace(/\\/g, '/') || 'a folder'}, which is not a work tree of ${root} — EnterWorktree needs the session to sit inside the repo, so it is not available here. ${root} may be shared (other threads, the person's own checkout): leave it on ${branch}.`,
+    `Fix: ${fetch}git -C ${root} worktree add ${wt} -b claude/thread-${id}-<slug> ${base}  (<slug>: a few words of the topic; the session id keeps parallel threads on distinct names; if ${wt} already exists this thread made it earlier — reuse it).`,
+    `Then work by absolute path inside it${rel ? ` (${wt}/${rel})` : ` (${wt}/…)`} and run git as \`git -C ${wt} …\` or \`cd ${wt} && git …\` — never ${root} itself. Touching another repo? It gets its own worktree: the same command with that repo's path (one worktree and branch per repo and thread). Hand subagents ${wt} paths only.`,
+    'Do not switch the branch of a shared checkout and do not use EnterWorktree here; if `git worktree add` fails, report the error in the thread instead of working around it.',
+  ];
+}
+
 const OWN_WORKTREE_LINE = "This project's handling is decided (devops-config workspace.ownWorktree): do NOT ask the user where to continue — move now. Files THIS session created in the main checkout (e.g. a concept page and its source folder written by concept-build.js) move into the worktree: copy them over, remove the originals, and restart a running concept bridge from the worktree path. Changes you did not make stay exactly as they are.";
 
 /**
@@ -117,4 +178,4 @@ function ownWorktreeDecided(root) {
   try { return require('./devops-config').load(root).values.workspace.ownWorktree === true; } catch { return false; }
 }
 
-module.exports = { branchFix, enterLine, ownWorktreeDecided, RULE_CLAUSE, BYPASS, OWN_WORKTREE_LINE };
+module.exports = { branchFix, threadFix, threadWorktreeFor, shortId, enterLine, ownWorktreeDecided, RULE_CLAUSE, BYPASS, OWN_WORKTREE_LINE };

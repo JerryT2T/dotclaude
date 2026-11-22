@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook pre.main.guard
- * @version 0.4.0
+ * @version 0.6.0
  * @event PreToolUse
  * @plugin devops
  * @matcher Bash|PowerShell
@@ -13,7 +13,7 @@
  *     git revert, git apply, git am
  *
  *   Bypass conditions (any one of them → exit 0):
- *     - Not inside a git repo
+ *     - The directory the command acts on is not inside a git repo
  *     - HEAD is NOT main/master
  *     - Sentinel file .claude/.ship-in-progress exists (ship pipeline active)
  *     - DEVOPS_ALLOW_MAIN=1 in environment
@@ -27,6 +27,14 @@
  *   --force/--mirror/--all/--prune, plain ref names only); any other write
  *   command chained in (`&& git commit`) still blocks. Bash only: a
  *   PowerShell command keeps the plain block.
+ *
+ *   Shell wrappers are unwrapped (lib/shell-inner.js, up to 3 levels): the
+ *   inner command of `bash|sh|zsh|dash|ksh -c '…'` (also `-lc`), `cmd /c …`,
+ *   `pwsh|powershell -c|-Command …` and the body of a here-doc fed to a bare
+ *   shell (`bash <<'EOF'`, `bash -s <<EOF`) is judged like a plain command,
+ *   with the directory in effect at the wrapper and its own `cd`s (which do
+ *   not leak out). A here-doc that is content (`cat > f <<EOF`) is not.
+ *   Not seen: `ssh host '…'`, `xargs git …`, `eval "…"`, `cat <<EOF | bash`.
  *
  *   Read-only git commands (status, log, diff, fetch, branch listing) pass
  *   through untouched.
@@ -45,14 +53,14 @@
 // A lib that fails to load (half-written during a plugin update, version skew)
 // makes this hook a silent no-op instead of a hook error on every Bash call
 // (AUD-028).
-let gitOut, sentinelActive, isLinkedWorktree, branchFix, ownWorktreeDecided, BYPASS, gitCommandRe, matchesGitCommand, WORD_END, remoteDeleteTargets;
+let gitOut, sentinelActive, isLinkedWorktree, gitCommonDir, samePath, isFastForwardOfMain, branchFix, threadWorktreeFor, ownWorktreeDecided, BYPASS, gitCommandRe, matchesGitCommand, gitSegments, unattributedGitWrite, WORD_END, remoteDeleteTargets;
 try {
   require('../lib/plugin-guard');
-  ({ gitCommandRe, matchesGitCommand, WORD_END, remoteDeleteTargets } = require('../lib/ship-guard-match'));
+  ({ gitCommandRe, matchesGitCommand, gitSegments, unattributedGitWrite, isFastForwardOfMain, WORD_END, remoteDeleteTargets } = require('../lib/ship-guard-match'));
   ({ gitOut } = require('../lib/git-timeout'));
   ({ isActive: sentinelActive } = require('../lib/ship-sentinel'));
-  ({ isLinkedWorktree } = require('../lib/project-root'));
-  ({ branchFix, ownWorktreeDecided, BYPASS } = require('../lib/branch-fix'));
+  ({ isLinkedWorktree, gitCommonDir, samePath } = require('../lib/project-root'));
+  ({ branchFix, threadWorktreeFor, ownWorktreeDecided, BYPASS } = require('../lib/branch-fix'));
 } catch (err) {
   // Silent to the user and the model (exit 0), but not traceless: the line
   // lands in the hook log, so a persistent load error can be found (AUD-068).
@@ -108,19 +116,66 @@ process.stdin.on('end', () => {
   const cmd = (hook.tool_input || {}).command || '';
   if (!cmd) process.exit(0);
 
-  const otherWrite = matchesGitCommand(cmd, WRITE_PATTERNS);
-  const push = matchesGitCommand(cmd, [PUSH_PATTERN]);
-  if (!otherWrite && !push) process.exit(0);
+  // Cheap exit: no word "git" anywhere (quoted wrapper commands and here-docs
+  // included) → nothing to check. The real decision is made per segment below.
+  if (!/git/i.test(cmd)) process.exit(0);
 
   const cwd = hook.cwd || process.cwd();
 
   if (process.env.DEVOPS_ALLOW_MAIN === '1') process.exit(0);
-  if (!isGitRepo(cwd)) process.exit(0);
-  if (sentinelActive(cwd)) process.exit(0);
+
+  // Each git write is checked against the directory IT acts on (`git -C`,
+  // `cd <dir> &&`, `pushd`, `Set-Location`), not only the session's start
+  // folder: a session started in a non-repo folder such as P:\Projects used to
+  // pass every write. An unreadable directory falls back to the cwd, as before.
+  const targets = new Map();
+  const remoteCache = new Map();
+  /** Is `name` a configured remote of the repo at `dir`? No answer (timeout, no repo) reads as no. */
+  const remoteOf = (dir) => (name) => {
+    if (!remoteCache.has(dir)) {
+      const out = gitOut(dir, ['remote']);
+      remoteCache.set(dir, out === null ? [] : out.split(/\r?\n/).map(l => l.trim()).filter(Boolean));
+    }
+    return remoteCache.get(dir).includes(name);
+  };
+  const segments = gitSegments(cmd, cwd);
+  for (const seg of segments) {
+    const other = matchesGitCommand(seg.text, WRITE_PATTERNS);
+    const push = matchesGitCommand(seg.text, [PUSH_PATTERN]);
+    if (!other && !push) continue;
+    // Post-ship cleanup: a pure fast-forward of main/master to its remote is no own work on main.
+    if (isFastForwardOfMain(seg.text, remoteOf(seg.dir || cwd))) continue;
+    const dir = seg.dir || cwd;
+    const prev = targets.get(dir) || { otherWrite: false };
+    targets.set(dir, { otherWrite: prev.otherWrite || other });
+  }
+  // A write no attributed segment accounts for (exotic syntax): the session's folder is checked too,
+  // also when other segments were attributed or a fast-forward was seen.
+  const strayOther = unattributedGitWrite(cmd, segments, WRITE_PATTERNS);
+  if (strayOther || unattributedGitWrite(cmd, segments, [PUSH_PATTERN])) {
+    const prev = targets.get(cwd) || { otherWrite: false };
+    targets.set(cwd, { otherWrite: prev.otherWrite || strayOther });
+  }
+
+  for (const [dir, { otherWrite }] of targets) checkDir(hook, tool, cmd, dir, otherWrite);
+  process.exit(0);
+});
+
+/** Exits 2 with the reason when a write in `cmd` acting on `cwd` lands on main/master of its repo. */
+function checkDir(hook, tool, cmd, cwd, otherWrite) {
+  if (!isGitRepo(cwd)) return;
+  if (sentinelActive(cwd)) return;
+  // The ship pipeline of THIS session's checkout also covers a write in another
+  // worktree of the SAME repository (same git common dir) — never another repo.
+  if (hook.cwd && sentinelActive(hook.cwd)) {
+    const own = gitCommonDir(hook.cwd);
+    const target = gitCommonDir(cwd);
+    if (own && target && samePath(own, target)) return;
+  }
 
   const branch = currentBranch(cwd);
-  if (!branch) process.exit(0);
-  if (branch !== 'main' && branch !== 'master') process.exit(0);
+  if (!branch) return;
+  if (branch !== 'main' && branch !== 'master') return;
 
   // Only a push matched: a pure delete of non-default remote branches is fine.
   // Bash syntax only — PowerShell parses arguments differently, so it keeps
@@ -136,7 +191,7 @@ process.stdin.on('end', () => {
         if (!head || !head.startsWith(`${remote}/`)) { known = false; break; }
         protectedRefs.add(head.slice(remote.length + 1).toLowerCase());
       }
-      if (known && !t.refs.some(r => protectedRefs.has(r.toLowerCase()))) process.exit(0);
+      if (known && !t.refs.some(r => protectedRefs.has(r.toLowerCase()))) return;
     }
   }
 
@@ -154,6 +209,7 @@ process.stdin.on('end', () => {
     mainCheckout: !(top && isLinkedWorktree(top)),
     subagent: Boolean(hook.agent_id),
     ownWorktree: ownWorktreeDecided(top || cwd),
+    threadWorktree: threadWorktreeFor(hook, top || cwd),
   });
 
   process.stderr.write(
@@ -163,4 +219,4 @@ process.stdin.on('end', () => {
     `[pre.main.guard] ${BYPASS}\n`
   );
   process.exit(2);
-});
+}

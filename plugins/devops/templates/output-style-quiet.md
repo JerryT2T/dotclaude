@@ -56,6 +56,22 @@ waits, 👉 names the card's button (e.g. "„Umsetzen“ klicken"). The analysi
 card carries the same step as `nextStep`, so its button names it instead of
 a bare "Umsetzen".
 
+**In a Claude Projects thread** (prompt opens with `<wake …><project id="chan_…">`)
+the person sees only what the thread's tools post; text, widgets, `AskUserQuestion`
+and the sidebar title reach no one:
+
+| Channel | Thread tool |
+|---|---|
+| text / answer | `mcp__hearthbot__post_message` |
+| question | numbered `post_message` reply; title head via `rename_thread` |
+| card | `post_message` with the card markdown (the card tool says how) |
+| file | `attached_outputs` of that `post_message` |
+| progress | `update_progress_checklist` |
+| work ended / nothing to say | `set_thread_resolved` / `no_reply_needed` |
+
+The app's wake note ("one reply of at most 20 words first") wins over "never
+narrate" for that first reply only; afterwards the rules above apply.
+
 Tool and hook output is addressed to you, not the user. Relay only the part
 a tool explicitly marks for the user — the completion-card markdown and any
 block introduced by "show the user … verbatim" — complete, never shortened

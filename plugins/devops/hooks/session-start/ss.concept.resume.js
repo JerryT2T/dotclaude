@@ -517,6 +517,14 @@ function buildResumeInstructions(state, pendingState, statePath = STATE_PATH, st
  * hit — Claude ran out of budget, the watchdog reaped the bridge 30 min later,
  * and the next session had no idea anything had ever been submitted.
  */
+/** ` --in-app-browser` when the person chose the Desktop app's pane: its tab is theirs, not a probe (concept-server.py). */
+function inAppFlag() {
+  try {
+    const choice = require('../lib/browser-choice');
+    return choice.resolveBrowser().id === choice.IN_APP ? ' --in-app-browser' : '';
+  } catch { return ''; }
+}
+
 function buildDeadBridgeRecovery(state, store) {
   const server = path.join(__dirname, '..', '..', 'scripts', 'concept-server.py');
   const bg = buildBackgroundTasks(state.port, STATE_PATH, state.owner || '');
@@ -524,7 +532,7 @@ function buildDeadBridgeRecovery(state, store) {
     buildVerificationMandate(store),
     `The bridge process itself is gone. Relaunch it on the SAME port so the open tab and the ` +
     `state file stay valid — it restores the pending submission from the store automatically: ` +
-    `\`python "${server}" ${state.port} "${cwd}" --html "${state.html_path}"\` ` +
+    `\`python "${server}" ${state.port} "${cwd}" --html "${state.html_path}"${inAppFlag()}\` ` +
     `(Bash tool, run_in_background: true — no trailing &, no nohup).`,
     `Then confirm the recovery with \`curl -s http://localhost:${state.port}/recovery\`, ` +
     `re-arm the keepalive pulser (${bg.pulser}) and the pickup waker (${bg.waker}), ` +
@@ -556,7 +564,7 @@ function buildDeadBridgeRelaunch(state, statePath = STATE_PATH) {
     `slug ${state.slug || '?'}), but the bridge does not answer /heartbeat — the previous Claude session took ` +
     `the server and both watchers with it. Nothing is pending on disk. Relaunch the bridge now, on the SAME ` +
     `port so the open tab and the state file stay valid: ` +
-    `\`python "${server}" ${state.port} "${cwd}" --html "${state.html_path}"\` ` +
+    `\`python "${server}" ${state.port} "${cwd}" --html "${state.html_path}"${inAppFlag()}\` ` +
     `(Bash tool, run_in_background: true — no trailing &, no nohup). If it exits because the port is already ` +
     `bound, another session brought the bridge back — skip the relaunch and only re-arm the watchers.`,
     `Then verify the heartbeat round-trips (POST /heartbeat, then GET /heartbeat must return a non-zero ` +

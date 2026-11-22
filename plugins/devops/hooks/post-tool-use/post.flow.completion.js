@@ -136,7 +136,7 @@ const path = require('path');
 // PostToolUse call error. Guarded the way post.agent.nudge.js does it: a load
 // error makes main() a silent no-op, same as every other failure path.
 let sessionFile, readSessionFile, writeSessionFile, projectRoot, inOwnWorkTree, gitRun,
-  isMcpServerAliveForSession, NO_OUTPUT_NUDGE_REPLY, isCardWidgetCall, getLocale, t,
+  completionMcpState, NO_OUTPUT_NUDGE_REPLY, isCardWidgetCall, getLocale, t,
   responseLaunch, responseTaskId, labelFor, isConceptInfra,
   BGRUN_FLAG, recordBackgroundRun, settleRecordedRuns,
   SPAWN_TOOL_RE, DISMISS_TOOL_RE, recordSpawn, recordDismiss, chipReminder,
@@ -154,7 +154,7 @@ try {
   ({ projectRoot, inOwnWorkTree } = guardedRequire('../lib/project-root'));
   ({ gitRun } = guardedRequire('../lib/git-timeout'));
   ({ inRepoTree } = guardedRequire('../lib/repo-tree'));
-  ({ isMcpServerAliveForSession } = guardedRequire('../lib/mcp-heartbeat'));
+  ({ completionMcpDown: completionMcpState } = guardedRequire('../lib/mcp-heartbeat'));
   ({ NO_OUTPUT_NUDGE_REPLY, isCardWidgetCall, CARD_MARKER } = guardedRequire('../lib/card-guard'));
   projectThread = guardedRequire('../lib/project-thread');
   ({ getLocale, t } = guardedRequire('../lib/locale'));
@@ -1025,7 +1025,7 @@ function cardContractLines(hook, scheduledTask, threadMode = 'off') {
   const lines = [];
   // Offline-first when the completion MCP's heartbeat is dead (#371): each
   // failed rung of the ladder costs a turn, so name the working one first.
-  const completionDown = !isMcpServerAliveForSession('dotclaude');
+  const completionDown = completionMcpState('dotclaude');
   const offline = `node "${OFFLINE_RENDERER}" --render-card <payload.json> (same JSON args, relay stdout verbatim)`;
 
   if (scheduledTask) {
@@ -1041,7 +1041,8 @@ function cardContractLines(hook, scheduledTask, threadMode = 'off') {
   );
   // Server alive → its tool description carries the offline fallback; only a
   // dead heartbeat (description possibly never loaded) needs the path here.
-  if (completionDown) lines.push(`The completion MCP server is NOT running (heartbeat dead) — render offline FIRST: ${offline}.`);
+  if (completionDown === 'foreign') lines.push(`No completion MCP server is attributed to this session (the live ones belong to other sessions): if the tool is in your tool list, call it; otherwise render offline: ${offline}.`);
+  else if (completionDown) lines.push(`The completion MCP server is NOT running (heartbeat dead) — render offline FIRST: ${offline}.`);
   // A project thread: the render's result (stderr on the offline path) says how the card is posted.
   if (threadMode === 'on') {
     lines.push('Project thread: the card is your result reply — post it with mcp__hearthbot__post_message as its result says (no show_widget, no wrap_up, no second summary).');
@@ -1123,6 +1124,22 @@ function backgroundLaunchLines(hook) {
 }
 
 /**
+ * Does a git work tree enclose the edited file itself? Unlike inRepoTree (which
+ * answers true without any repo, for the gates), this is false then: the SHIP and
+ * desktop-testing nudges have nothing to point at. An unreadable input stays true.
+ */
+function editInGitRepo(hook) {
+  try {
+    const file = hook.tool_input && hook.tool_input.file_path;
+    if (typeof file !== 'string' || !file) return true;
+    const abs = path.resolve(hook.cwd || process.cwd(), file);
+    return !!require('../lib/project-root').findRepoRoot(path.dirname(abs));
+  } catch {
+    return true;
+  }
+}
+
+/**
  * 2e. Edit milestones fire on the edit that reaches them — the counter stays
  * at its value on every later call, and "=== 1" / ">= 5" on the count alone
  * repeated the same block after each of them.
@@ -1146,7 +1163,9 @@ function editMilestoneLines(hook, isCodeEdit, editCount) {
     );
   }
 
-  if (isCodeEdit && editCount === SHIP_NUDGE_EDITS) {
+  // B4: a file in no git repo has nothing to ship — neither the release hint nor the
+  // desktop-test question (the edit still counts for the gates, as before).
+  if (isCodeEdit && editCount === SHIP_NUDGE_EDITS && editInGitRepo(hook)) {
     lines.push(
       '',
       `SHIP: ${editCount} code edits this session. Recommend /do-ship when task is done.`,
@@ -1235,6 +1254,9 @@ function appendIssueStatusInstruction(hook, lines, cardContract) {
  * order and all behaviour below are unchanged.
  * @returns {string|{context: string}|null}
  */
+/** The tools of the send-to-project command (SendToProjectContext / SendToProject). */
+const SEND_TO_PROJECT_TOOL = /^SendToProject(?:Context)?$/;
+
 function main(hook) {
   if (loadError) return null;
   if (isSilentTurn(hook)) return null;
@@ -1260,6 +1282,9 @@ function main(hook) {
   }
 
   const toolName = hook.tool_name || '';
+  // E5: the /send-to-project turn hands a note to the project's coordinator and has no result of
+  // its own to report: no card contract, and no work-happened flag for the Stop gate to read.
+  if (SEND_TO_PROJECT_TOOL.test(toolName)) return null;
   // An Edit/Write outside the git work tree of the cwd (scratchpad, %TEMP%,
   // ~/.claude) is no code edit: no counter, no SHIP / test-autonomy nudge, no gate.
   const isCodeEdit = (toolName === 'Edit' || toolName === 'Write') &&

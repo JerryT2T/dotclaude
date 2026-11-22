@@ -45,6 +45,28 @@ const JOB_NAME = 'session-grader';
 const JOB_TIME = '09:00';
 
 /**
+ * Claude Projects threads (deep-knowledge/project-threads.md): the person sees only what
+ * `post_message` posts, so the thread card rule is "a turn with work posts the card
+ * (✨✨✨ marker) via mcp__hearthbot__post_message". Thread sessions are graded against
+ * that rule alone and reported as their own group; the Desktop card rules do not apply.
+ */
+const THREAD_POST_TOOL = 'mcp__hearthbot__post_message';
+const THREAD_CARD_MARKER = '✨✨✨';
+const THREAD_WAKE = /^\s*<wake\b[^>]*>\s*<project\b[^>]*\bid="chan_/;
+const WORK_TOOLS = new Set(['Edit', 'Write', 'NotebookEdit', 'Bash', 'PowerShell']);
+
+/** The thread group of a report: how many thread sessions owed a posted card and how many posted one. */
+function threadSummary(sessions) {
+  const owed = sessions.filter((s) => s.threadCard && s.threadCard.owed);
+  const missing = owed.filter((s) => !s.threadCard.posted);
+  return {
+    sessions: sessions.length, owed: owed.length, posted: owed.length - missing.length,
+    rate: owed.length ? round(missing.length / owed.length) : null,
+    missing: missing.map((s) => s.id),
+  };
+}
+
+/**
  * Checkable plugin rules. `signals` are regexes over guard/hook texts found in
  * the transcript (deterministic layer); rules without signals are model-only.
  */
@@ -189,6 +211,9 @@ function createDigester(rules, { cap = DIGEST_CAP } = {}) {
   let turn = 0;
   let toolCalls = 0;
   let inWorktree = false;
+  let thread = false;
+  let workCalls = 0;
+  let cardPosted = false;
   const bump = (id) => { if (ruleIds.has(id)) signals[id] = (signals[id] || 0) + 1; };
 
   function guard(raw, source) {
@@ -209,6 +234,8 @@ function createDigester(rules, { cap = DIGEST_CAP } = {}) {
     if (!o || typeof o !== 'object' || o.isSidechain) return;
     if (typeof o.cwd === 'string' && /[\\/]\.claude[\\/]worktrees[\\/]/.test(o.cwd)) inWorktree = true;
     const m = o.message;
+    if (o.type === 'user' && o.projectsUserTurn === true) thread = true;
+    if (o.type === 'user' && m && !thread && THREAD_WAKE.test(textOfContent(m.content))) thread = true;
     if (o.type === 'attachment' && o.attachment) {
       const a = o.attachment;
       if (a.type === 'hook_blocking_error') {
@@ -252,6 +279,9 @@ function createDigester(rules, { cap = DIGEST_CAP } = {}) {
           const name = String(c.name || '');
           const short = name.replace(/^mcp__[^_]+(?:_[^_]+)*?__/, 'mcp:');
           toolCalls++;
+          if (name === THREAD_POST_TOOL) {
+            if (require('../hooks/lib/run-contract-thread').postedText(c.input).includes(THREAD_CARD_MARKER)) cardPosted = true;
+          } else if (WORK_TOOLS.has(name)) workCalls++;
           lines.push(`T: ${short} ${toolArgs(name, c.input || {})}`);
           if ((name === 'Bash' || name === 'PowerShell') && inWorktree && STASH_RE.test(String((c.input || {}).command || ''))) {
             bump('no-stash-in-worktree');
@@ -269,7 +299,7 @@ function createDigester(rules, { cap = DIGEST_CAP } = {}) {
       const tail = cap - head - 60;
       digest = `${digest.slice(0, head)}\n[… ${digest.length - head - tail} chars omitted …]\n${digest.slice(-tail)}`;
     }
-    return { digest, signals, prompts };
+    return { digest, signals, prompts, thread, threadCard: { owed: thread && workCalls > 0, posted: cardPosted } };
   }
 
   return { add, finish };
@@ -454,6 +484,11 @@ function renderMarkdown(report) {
   L.push('', '## Strengthen first', '');
   if (!report.top.length) L.push('Nothing violated in this window.');
   report.top.forEach((id, i) => L.push(`${i + 1}. **${id}** — ${report.rules[id].description} (rate ${(report.rules[id].rate * 100).toFixed(0)}%, ${report.trend[id]})`));
+  if (report.threads) {
+    const t = report.threads;
+    L.push('', '## Thread sessions (Claude Projects)', '',
+      `${t.sessions} thread session(s), graded apart from the rows above against the thread card rule: ${t.owed} owed a card, ${t.posted} posted one via post_message${t.missing.length ? `; missing: ${t.missing.map((i) => i.slice(0, 8)).join(', ')}` : ''}.`);
+  }
   if (report.mode === 'deterministic-only') L.push('', '_Deterministic counts only — rules without guard signals show n/a (not evaluated)._');
   if (report.errors.length) L.push('', '## Grading errors', '', ...report.errors.map((e) => `- ${e}`));
   return L.join('\n') + '\n';
@@ -505,11 +540,12 @@ async function run(argv, {
   const apiImpl = api || defaultApi({ env, home, cwd });
   const files = listSessions({ projectsDir: opts.projectsDir, days: opts.days, maxSessions: opts.maxSessions, now });
   const sessions = [];
+  const threadSessions = [];
   for (const f of files) {
     try {
       const d = await digestFile(f.file, rules);
       if (!d.prompts) continue; // no user prompt: nothing to judge
-      sessions.push({ ...f, ...d, grade: null });
+      (d.thread ? threadSessions : sessions).push({ ...f, ...d, grade: null });
     } catch (e) { err(`session-grader: skip ${f.id}: ${e.message}\n`); }
   }
 
@@ -564,6 +600,7 @@ async function run(argv, {
     mode: agg.graded ? 'model-graded' : 'deterministic-only', apiReason,
     sessions: agg.sessions, graded: agg.graded,
     sessionIds: sessions.map((s) => s.id),
+    ...(threadSessions.length ? { threads: threadSummary(threadSessions) } : {}),
     previousDate: previous ? previous.date : null,
     rules: agg.rules, trend: trend(agg, previous), top: topToStrengthen(agg),
     cost: { usd: Math.round(usd * 1e4) / 1e4, inTokens: usage.input_tokens, outTokens: usage.output_tokens },
@@ -583,7 +620,7 @@ async function run(argv, {
 module.exports = {
   DEFAULT_RULES, DEFAULT_MODEL, DIGEST_CAP,
   parseArgs, loadRules, listSessions, createDigester, digestFile,
-  buildPrompt, parseGrade, aggregate, trend, loadPrevious, topToStrengthen, renderMarkdown, defaultApi, run,
+  threadSummary, buildPrompt, parseGrade, aggregate, trend, loadPrevious, topToStrengthen, renderMarkdown, defaultApi, run,
 };
 
 if (require.main === module) {

@@ -426,16 +426,18 @@ function deferInfo(b) {
   return { minutes: b.resetInMinutes, soon: b.resetInMinutes <= DEFER_SOON_MIN };
 }
 
-function deferSuffix(b) {
+function deferSuffix(b, opts = {}) {
   const d = deferInfo(b);
   if (!d) return '';
+  // A Claude Projects thread is never asked (nobody answers a card there): it works on, sparingly.
+  if (opts.thread) return ` · defer: window ${b.fivePct}%, resets in ${d.minutes} min → in a thread do not ask: work inline, one agent at a time`;
   const pick = d.soon ? 'after the reset (Recommended) / now inline' : 'now inline (Recommended) / after the reset';
   return ` · defer: window ${b.fivePct}%, resets in ${d.minutes} min → before multi-file work ask once: ${pick} / park as issue — deep-knowledge/defer-to-reset.md`;
 }
 
 /** Short suffix for the per-prompt nudge; empty when nothing changes. */
-function nudgeSuffix(b) {
-  return classSuffix(b) + deferSuffix(b);
+function nudgeSuffix(b, opts) {
+  return classSuffix(b, opts) + deferSuffix(b, opts);
 }
 
 /**
@@ -450,7 +452,16 @@ function unattendedSuffix(b) {
   return ` · budget: ${b.cls} (unattended do-run: opus roles → sonnet, analysis agents ≤${calls} calls, one agent at a time, no question)`;
 }
 
-function classSuffix(b) {
+/**
+ * @param {object} b budget
+ * @param {{ thread?: boolean }} [opts] `thread`: a Claude Projects thread — nobody
+ *   there can answer "ask once", so the class applies *spare the window* unasked.
+ */
+function classSuffix(b, opts) {
+  if (opts && opts.thread && (b.cls === 'sonnet-only' || b.cls === 'ask-before-parallel')) {
+    const calls = b.cls === 'sonnet-only' ? 5 : 10;
+    return ` · budget: ${b.cls} (thread: apply *spare the window* unasked, never ask in a thread — 1 sonnet agent ≤${calls} calls, one agent at a time, in a do-run analysis roles only)`;
+  }
   if (b.cls === 'sonnet-only') {
     const reset = b.binding === 'week'
       ? (b.weeklyResetInMinutes != null ? `, week resets in ${Math.round(b.weeklyResetInMinutes / 60)} h` : ', week is the binding limit')

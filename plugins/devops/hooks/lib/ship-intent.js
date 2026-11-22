@@ -263,6 +263,26 @@ function parseShipRequest(prompt) {
 }
 
 /**
+ * The rights of a colleague's note (Claude Projects, d-trust "alpha"): a coordinator
+ * note may order a ship to alpha, never a promotion to beta or stable — that needs
+ * the person's own message (origin `person` or `typed`, lib/project-thread.js).
+ * "ship stable" keeps its ship half (the unshipped work goes to alpha, the first
+ * step of a promotion anyway); a bare "promote" or a named version is only a promotion
+ * and becomes no order at all.
+ *
+ * @param {{ ship: boolean, promote: boolean, channel: string|null, version?: string|null }} request parseShipRequest's result
+ * @returns {{ request: object, refused: null|{ channel: string|null, version: string|null } }}
+ */
+function limitToAlpha(request) {
+  if (!request || !request.promote) return { request, refused: null };
+  const keepsShip = (request.channel === 'beta' || request.channel === 'stable') && !request.version;
+  return {
+    request: { ship: keepsShip, promote: false, channel: keepsShip ? 'alpha' : null, version: null },
+    refused: { channel: request.channel || null, version: request.version || null },
+  };
+}
+
+/**
  * True when the prompt asks for a ship — a slash invocation, one of the
  * direct keywords, or a promotion (a promotion is a do-ship run now). Pure,
  * no session state.
@@ -299,5 +319,5 @@ function isDeferredShip(prompt) {
 
 module.exports = {
   SHIP_SLASH, PROMOTE_SLASH, SHIP_KEYWORDS, KEYWORD_MAX_CHARS, CHANNELS,
-  isShipIntent, isDeferredShip, parseShipRequest,
+  isShipIntent, isDeferredShip, parseShipRequest, limitToAlpha,
 };

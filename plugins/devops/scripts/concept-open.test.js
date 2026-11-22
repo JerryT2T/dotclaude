@@ -7,7 +7,7 @@ import { createRequire } from "node:module";
 import { spawn } from "node:child_process";
 
 const require = createRequire(import.meta.url);
-const { prepare, verify, close, buildLaunch } = require("./concept-open.js");
+const { prepare, verify, close, buildLaunch, openUrl } = require("./concept-open.js");
 
 const HTML = "docs/concepts/2026-01-01-demo.html";
 let tmp;
@@ -187,6 +187,12 @@ test("buildLaunch quotes paths and uses forward slashes", () => {
   expect(l.server).toContain('8800 "C:/a b" --html "d/x.html"');
 });
 
+test("buildLaunch tells the bridge when the in-app pane is the chosen browser", () => {
+  const a = { port: 8800, cwd: "C:/a", html: "d/x.html", state: "C:/a/.claude/concept-active.json", owner: "ab12cd34" };
+  expect(buildLaunch(a).server).not.toContain("--in-app-browser");
+  expect(buildLaunch({ ...a, inApp: true }).server).toMatch(/--html "d\/x\.html" --in-app-browser$/);
+});
+
 // #1030: verify owns the open on the fast path — the docs must not tell the
 // model to run the manual `start msedge` on top of it (page opened twice).
 describe("the real open in its own process", () => {
@@ -335,5 +341,23 @@ describe("close (#1175)", () => {
   test("rejects invalid --finished JSON and a missing port", async () => {
     expect((await close({ port: "1", finished: "{nope" })).error).toMatch(/not valid JSON/);
     expect((await close({})).error).toMatch(/needs --state/);
+  });
+});
+
+describe("open-url (artifact in a thread on this computer)", () => {
+  test("opens a plain https url in Edge", async () => {
+    const opened = [];
+    const r = await openUrl({ url: "https://claude.ai/artifacts/abc" }, { env: {}, openBrowser: (u) => { opened.push(u); return null; } });
+    expect(r).toMatchObject({ ok: true, opened: true });
+    expect(opened).toEqual(["https://claude.ai/artifacts/abc"]);
+  });
+  test("a cloud session has no local browser: link only, nothing opened", async () => {
+    const r = await openUrl({ url: "https://claude.ai/artifacts/abc" }, { env: { CLAUDE_CODE_REMOTE: "true" }, openBrowser: () => { throw new Error("must not open"); } });
+    expect(r).toMatchObject({ ok: true, opened: false });
+  });
+  test("refuses anything but a plain https url", async () => {
+    for (const url of ["http://x.y", "https://x.y/a b", 'https://x.y/"&calc', undefined]) {
+      expect((await openUrl({ url }, { env: {}, openBrowser: () => null })).ok).toBe(false);
+    }
   });
 });

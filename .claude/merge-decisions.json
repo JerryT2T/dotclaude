@@ -98,6 +98,18 @@
         ]
       }
     ],
+    "docs/dev/feature-flags.md›project-threads row›text": [
+      {
+        "ship": "claude/claude-code-project-structure-4aa260",
+        "by": "JerryT2T",
+        "value": "this branch's row: the successor of #1193's own feature, extended (questions, worktree per thread, notice hold, setup hint)",
+        "decided": true,
+        "at": "2026-11-22T16:13:42.383Z",
+        "hunks": [
+          "1cdd727cd227"
+        ]
+      }
+    ],
     "plugins/devops/deep-knowledge/project-threads.md›thread title head›keyword and bar": [
       {
         "ship": "claude/chat-title-emoticons-separator-b41eeb",
@@ -107,6 +119,18 @@
         "at": "2026-11-22T10:22:42.269Z",
         "hunks": [
           "7c9675d53a60"
+        ]
+      }
+    ],
+    "plugins/devops/deep-knowledge/project-threads.md›whole doc›structure": [
+      {
+        "ship": "claude/claude-code-project-structure-4aa260",
+        "by": "JerryT2T",
+        "value": "this branch's rewrite: every section of #1193 is kept and extended (rights, worktrees, ship, backlog, testing)",
+        "decided": true,
+        "at": "2026-11-22T16:13:42.383Z",
+        "hunks": [
+          "7a4bde1861dc"
         ]
       }
     ],
@@ -146,6 +170,18 @@
         ]
       }
     ],
+    "plugins/devops/features.json›project-threads›summary+scripts": [
+      {
+        "ship": "claude/claude-code-project-structure-4aa260",
+        "by": "JerryT2T",
+        "value": "this branch's entry: same feature key and channel, summary and gated scripts extended",
+        "decided": true,
+        "at": "2026-11-22T16:13:42.383Z",
+        "hunks": [
+          "d08495f4d4c3"
+        ]
+      }
+    ],
     "plugins/devops/hooks/lib/ask-title.js›start head comment›keyword and bar": [
       {
         "ship": "claude/chat-title-emoticons-separator-b41eeb",
@@ -179,6 +215,18 @@
         "at": "2026-11-22T10:22:42.269Z",
         "hunks": [
           "db45f26d70ab"
+        ]
+      }
+    ],
+    "plugins/devops/hooks/lib/project-thread.js›module›logic": [
+      {
+        "ship": "claude/claude-code-project-structure-4aa260",
+        "by": "JerryT2T",
+        "value": "this branch's module: every export of #1193 is kept, the prompt intake contract, rights and project id are added",
+        "decided": true,
+        "at": "2026-11-22T16:13:42.383Z",
+        "hunks": [
+          "af82d4aa66e4"
         ]
       }
     ],

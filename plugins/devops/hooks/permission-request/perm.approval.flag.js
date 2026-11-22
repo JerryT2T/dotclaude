@@ -12,7 +12,10 @@
  *   (lib/approval-wait.js); perm.approval.watch restores the ⏳ once it is
  *   answered. Main-thread prompts, a title with no Solo/Team ⏳ head
  *   (ship, concept, testing, batch, outcome) and an unknown title (no Desktop app) stay
- *   silent. Never decides the permission. Fail-open.
+ *   silent. In a Claude Projects thread (feature `project-threads`) the 👉 goes
+ *   on the THREAD title with `rename_thread` instead (lib/approval-wait.js
+ *   `threadWaitText`); a main-thread dialog cannot be flagged (the model is
+ *   blocked on it). Never decides the permission. Fail-open.
  */
 
 const { sessionOptedOut } = require('../lib/plugin-guard');
@@ -22,6 +25,14 @@ const W = require('../lib/approval-wait');
 function main(hook) {
   if (sessionOptedOut(hook.session_id)) return null; // devops off for this session
   if (!W.record(hook)) return null;
+  const thread = W.threadView(hook);
+  if (thread) {
+    // A Claude Projects thread: the title the person sees is the thread's (rename_thread).
+    const text = W.threadWaitText(thread.current);
+    if (!text) return null;
+    if (W.isMainIdle(require('../lib/agent-card-relay').readTail(thread.transcript))) W.markWake(hook.session_id);
+    return { block: text };
+  }
   const transcript = W.mainTranscript(hook);
   const { readCurrentTitle } = require('../lib/session-title');
   const next = require('../lib/title-scheme').approvalTitle(readCurrentTitle(transcript));

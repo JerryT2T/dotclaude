@@ -37,29 +37,56 @@ function gh(args, opts = {}) {
 }
 
 // --- #1202: REST path for hosts that block GraphQL -------------------------
-// claude.ai cloud sessions answer every GraphQL call (all `gh pr …` commands)
-// with HTTP 403 "GitHub GraphQL is not available from Claude Code sessions".
-// There the PR operations go through `gh api` REST calls instead: in a cloud
-// session (CLAUDE_CODE_REMOTE=true) from the start, elsewhere after the first
-// GraphQL 403 (sticky for the process).
+// claude.ai cloud sessions answer every GraphQL call (all `gh pr …`) with HTTP 403
+// "GitHub GraphQL is not available from Claude Code sessions". There the PR
+// operations go through `gh api` REST calls instead: in a cloud session
+// (CLAUDE_CODE_REMOTE=true) from the start, elsewhere after the first refused
+// GraphQL call. One mechanism: restMode() decides, viaGh() runs and falls back.
+//
+// Env: DEVOPS_SHIP_GH_TRANSPORT=graphql pins the CLI path (never REST);
+// DEVOPS_SHIP_GH_TRANSPORT=rest or DEVOPS_GH_REST=1 force REST.
+//
+// Refusal test: the measured proxy text (GRAPHQL_BLOCKED_RE) or the wider
+// REST_REFUSAL_RE — and never when NOT_A_REFUSAL_RE matches. A working CLI also
+// prefixes its own errors with "GraphQL:" ("Merge commits are not allowed"), and
+// a bare "proxy" (a corporate `proxyconnect tcp` error) or "403" (a secondary
+// rate limit) is an unrelated failure: those never switch.
 const GRAPHQL_BLOCKED_RE = /GraphQL is not available|graphql[^\n]{0,80}\b403\b|\b403\b[^\n]{0,80}graphql/i;
-let graphqlBlocked = false;
+const REST_REFUSAL_RE = /graphql[^\n]*(?:forbidden|blocked|rejected by|refused|denied|not supported|disabled)|(?:forbidden|blocked|rejected by|refused|denied)[^\n]*(?:graphql|\bgh pr\b)/i;
+const NOT_A_REFUSAL_RE = /rate limit|too quickly|abuse detection|proxyconnect/i;
+// A remembered refusal lasts one ship run's worth of time, not the MCP process:
+// a single misread error must not pin every later ship of a long-lived server.
+const GRAPHQL_BLOCKED_TTL_MS = 15 * 60 * 1000;
+let graphqlBlockedUntil = 0;
 
-/** Whether PR operations use the REST API (#1202). */
-export function restMode() {
-  return graphqlBlocked || process.env.CLAUDE_CODE_REMOTE === "true" || process.env.DEVOPS_GH_REST === "1";
+/** Whether PR operations use the REST API (#1202). `env` is injectable for tests. */
+export function restMode(env = process.env) {
+  const pin = env.DEVOPS_SHIP_GH_TRANSPORT;
+  if (pin === "graphql") return false;
+  return Date.now() < graphqlBlockedUntil || pin === "rest" || env.CLAUDE_CODE_REMOTE === "true" || env.DEVOPS_GH_REST === "1";
 }
 
-/** Tests: forget a sticky GraphQL 403. */
+/** Alias of {@link restMode} (earlier name). */
+export function useRestTransport(env = process.env) {
+  return restMode(env);
+}
+
+/** Tests: forget a remembered GraphQL refusal. */
 export function resetRestMode() {
-  graphqlBlocked = false;
+  graphqlBlockedUntil = 0;
 }
 
-/** Remember a GraphQL 403; true when `e` was one. */
+/** Alias of {@link resetRestMode} (earlier name). */
+export function resetGhTransport() {
+  resetRestMode();
+}
+
+/** Remember a GraphQL refusal (for 15 minutes); true when `e` was one. */
 function noteGraphqlBlocked(e) {
   const text = `${e?.stderr?.toString() || ""} ${e?.message || ""}`;
-  if (!GRAPHQL_BLOCKED_RE.test(text)) return false;
-  graphqlBlocked = true;
+  if (process.env.DEVOPS_SHIP_GH_TRANSPORT === "graphql" || NOT_A_REFUSAL_RE.test(text)) return false;
+  if (!GRAPHQL_BLOCKED_RE.test(text) && !REST_REFUSAL_RE.test(text)) return false;
+  graphqlBlockedUntil = Date.now() + GRAPHQL_BLOCKED_TTL_MS;
   return true;
 }
 

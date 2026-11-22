@@ -19,7 +19,9 @@ Two facts decide everything: **is this session the plugin source repo**, and
 | Plugin source repo    | that repo's own workflow | Its `.claude/` instructions — the repo dogfoods its own extensions. |
 | Consumer project      | plugin              | **Issue in the plugin source repo.** Nothing local.     |
 | Consumer project      | this project        | **This project's own `.claude/` instructions.**          |
-| Consumer project      | deliberate override | Local skill extension — only with a stated reason.       |
+| Either                | how Claude works in the repo | **The repo's root `.claude/rules/<topic>.md`** — loads in local sessions and cloud threads, nothing to migrate when a Claude Project appears later. |
+| Either                | a rule across the repos of a Claude Project | **Ready text for the project instructions** (Project settings > Memory) — no file written. |
+| Consumer project      | deliberate override | Local skill extension — only with a stated reason; it does not load in a cloud thread without the project plugin. |
 
 Row 2 is a real distinction, not a formality: being inside the plugin's repo
 does not make every rule a plugin rule. "This repo runs `npm test` before every
@@ -86,6 +88,18 @@ Build commands, architecture rules, business-logic conventions, and file layout
 belong to the project that owns them. Persist inside that project's `.claude/`,
 preferring the largest fitting container first: **deep-knowledge > skill
 extension > CLAUDE.md** (sizing rules: `content-conventions.md`).
+
+A rule about **how Claude works in the repo** ("run lint before a commit",
+"migrations get their own commit") goes to the repo's root
+`.claude/rules/<topic>.md`: Claude Code loads that folder in local sessions and
+in cloud threads of a Claude Project, which load no repo skills, agents, hooks
+or `.mcp.json`. Everything stored there works the day a Claude Project or a
+cloud thread appears — no migration. `devops.md` in that folder is the plugin's
+managed file (`scripts/cloud-rules.js`); never hand-edit its block. A skill
+extension stays an extension, and the report says it does not load in a cloud
+thread without the project plugin. A rule that spans several repos of a Claude
+Project is handed over as ready text for the project instructions (Project
+settings > Memory), never written into every repo.
 
 ## Deliberate override — the narrow exception
 

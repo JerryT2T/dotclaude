@@ -36,6 +36,14 @@ after a working session, with nothing committed yet. Those edits ARE the ship:
 
 Untracked files never land here; they keep § Dirty tree from untracked files.
 
+`detail.files` may name `.claude/rules/devops.md`: preflight wrote and staged
+the managed working-rules file of the repo (`checks[].name == "cloud-rules"`,
+`scripts/cloud-rules.js`) so cloud threads, which load no plugin, follow the
+same branch, commit and result rules. It belongs to this work commit — stage it
+with the rest and do not undo it. On a clean tree preflight commits it itself
+as `chore(rules): …` on the shipping branch. Switch: devops-config
+`cloud.rulesFile`.
+
 ## Merge loop
 
 Step 1b, only when `needsRebase: true` (the flag keeps its name; the ship

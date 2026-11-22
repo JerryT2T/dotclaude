@@ -577,6 +577,18 @@ against the shipped diff before the version bump. Proportional (trivial changes
 need none), non-blocking, and it never rewrites dated specs/concepts. Rules and
 the trigger matrix: `deep-knowledge/documentation-maintenance.md`.
 
+## Glossary — "project" and Claude Projects
+
+- **project** (in plugin texts, skills, switches such as `project-setup`): the repository /
+  consumer project. This stays; nothing is renamed.
+- **Claude Project** (de: **Claude-Projekt**): the Claude Code feature (project → coordinator
+  → thread → session). Always written with "Claude", never bare "project", wherever the feature
+  is meant.
+- Its parts: **coordinator** (the project chat that delegates) and **thread** (one session
+  working a task). Where "main thread" could be confused, write **Projects thread**.
+- Fixed UI strings name one thing one way. When a text must name both, use "repository" for
+  the code project and "Claude Project" for the feature.
+
 ## General Rules
 
 - All code is JavaScript (Node.js), no Bash scripts
