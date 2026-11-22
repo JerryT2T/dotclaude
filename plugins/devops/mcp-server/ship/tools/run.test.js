@@ -388,3 +388,24 @@ describe("ship_run — survival gate (needs merge-decisions)", () => {
     expect(res.warnings.join(" ")).toMatch(/survival check skipped \(preflight\): no-anchor/);
   });
 });
+
+// #1191: resume after a blocked release + ship_cleanup (no checkpoint): the branch's own release commit is reused.
+describe("bump already on the branch (#1191)", () => {
+  test("no checkpoint bump, landedBump finds v1.3.0 → ship_version_bump is not called, the release ships 1.3.0", async () => {
+    const h = harness();
+    h.deps.landedBump = vi.fn(() => ({ vNew: "1.3.0", vOld: "1.2.3", commit: "c0ffee0000000000000000000000000000000000" }));
+    const r = await handler({ cwd: "/repo", bump: "minor", changelogEntry: "- x" }, h.deps);
+    expect(r.ok).toBe(true);
+    expect(h.names()).not.toContain("ship_version_bump");
+    const rel = h.calls.find((c) => c[0] === "ship_release")[1];
+    expect(rel.commitMessage).toBe("chore(release): v1.3.0");
+    expect(r.warnings.join(" ")).toMatch(/bump reused, not repeated/);
+    expect(fs.writeFileSync).not.toHaveBeenCalled(); // no second CHANGELOG heading
+  });
+  test("nothing landed → the bump runs as usual", async () => {
+    const h = harness();
+    h.deps.landedBump = vi.fn(() => null);
+    await handler({ cwd: "/repo", bump: "minor", changelogEntry: "- x" }, h.deps);
+    expect(h.names()).toContain("ship_version_bump");
+  });
+});
