@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeEach } from "vitest";
+import { describe, test, expect, vi, beforeEach, afterAll } from "vitest";
 
 vi.mock("node:child_process", () => ({
   execSync: vi.fn(),
@@ -6,10 +6,19 @@ vi.mock("node:child_process", () => ({
 }));
 
 import { execSync, execFileSync } from "node:child_process";
-import { createPR, mergePR, findExistingPR, watchPRChecks, deleteRemoteBranch, markPRReady, readPRForLand, landEligibility } from "./github.js";
+import { createPR, mergePR, findExistingPR, watchPRChecks, deleteRemoteBranch, markPRReady, readPRForLand, landEligibility, restMode, resetRestMode } from "./github.js";
 
+// The GraphQL (`gh pr …`) path is the default; a cloud session (CLAUDE_CODE_REMOTE) or a GraphQL 403 switches to REST (#1202).
+const ENV_KEYS = ["CLAUDE_CODE_REMOTE", "DEVOPS_GH_REST"];
+const savedEnv = Object.fromEntries(ENV_KEYS.map((k) => [k, process.env[k]]));
 beforeEach(() => {
   vi.resetAllMocks();
+  for (const k of ENV_KEYS) delete process.env[k];
+  resetRestMode();
+});
+afterAll(() => {
+  for (const k of ENV_KEYS) { if (savedEnv[k] === undefined) delete process.env[k]; else process.env[k] = savedEnv[k]; }
+  resetRestMode();
 });
 
 describe("createPR", () => {
@@ -604,5 +613,101 @@ describe("mergePR — rebase refused falls back to a merge commit, then squash",
     });
     expect(() => mergePR(42, "main", undefined, { ...noSleep, strategy: "rebase" })).toThrow(/not mergeable/);
     expect(execFileSync.mock.calls.filter(([b, a]) => b === "gh" && a[1] === "merge")).toHaveLength(1);
+  });
+});
+
+// #1202: cloud sessions block GraphQL (every `gh pr …`). PR, merge and checks go through `gh api` REST.
+describe("REST path when GraphQL is blocked (#1202)", () => {
+  const GRAPHQL_403 = Object.assign(new Error("Command failed"), { stderr: "HTTP 403: GitHub GraphQL is not available from Claude Code sessions; use the REST API" });
+  /** gh api calls by method + endpoint; everything else by binary + first two args. */
+  function routeApi(api, other = {}) {
+    const calls = [];
+    execFileSync.mockImplementation((bin, args, o) => {
+      if (bin === "gh" && args[0] === "api") {
+        const method = args[args.indexOf("-X") + 1];
+        const endpoint = args[args.indexOf("-X") + 2];
+        calls.push({ method, endpoint, body: o && o.input ? JSON.parse(o.input) : undefined });
+        for (const [k, v] of Object.entries(api)) {
+          const [m, re] = k.split(" ");
+          if (m === method && new RegExp(re).test(endpoint)) return typeof v === "function" ? v() : JSON.stringify(v);
+        }
+        throw new Error(`unexpected api: ${method} ${endpoint}`);
+      }
+      const key = `${bin} ${args.slice(0, 2).join(" ")}`;
+      const r = other[key];
+      if (r === undefined) throw new Error(`unexpected exec: ${key}`);
+      return typeof r === "function" ? r() : r;
+    });
+    return calls;
+  }
+
+  test("a GraphQL 403 on gh pr create switches to REST for the rest of the process", () => {
+    const calls = routeApi({ "POST pulls$": { number: 7, html_url: "https://github.com/o/r/pull/7" } }, { "gh pr create": () => { throw GRAPHQL_403; } });
+    expect(restMode()).toBe(false);
+    expect(createPR({ title: "T", body: "B", base: "main", head: "feat/x" })).toEqual({ number: 7, url: "https://github.com/o/r/pull/7" });
+    expect(calls[0]).toMatchObject({ method: "POST", body: { title: "T", body: "B", base: "main", head: "feat/x", draft: false } });
+    expect(restMode()).toBe(true);
+  });
+
+  test("cloud session: an already open PR is found over REST, merged with PUT …/merge, merged:true, no GraphQL call", () => {
+    process.env.CLAUDE_CODE_REMOTE = "true";
+    let merged = false;
+    const calls = routeApi({
+      "GET pulls\\?state=open": [{ number: 9, html_url: "https://github.com/o/r/pull/9", draft: false }],
+      "PUT pulls/9/merge$": () => { merged = true; return JSON.stringify({ merged: true, sha: "a".repeat(40) }); },
+      "GET pulls/9$": () => JSON.stringify(merged ? { state: "closed", merged: true, merge_commit_sha: "b".repeat(40) } : { state: "open", mergeable: true, draft: false }),
+      "DELETE git/refs/heads/feat/x$": "",
+    }, { "git fetch origin": "", "git rev-parse --short": "abc1234\n" });
+    const existing = findExistingPR({ base: "main", head: "feat/x" });
+    expect(existing).toEqual({ number: 9, url: "https://github.com/o/r/pull/9", mergeable: "MERGEABLE", isDraft: false });
+    expect(calls[0].endpoint).toMatch(/head=\{owner\}:feat%2Fx&base=main/);
+    const r = mergePR(9, "main", {}, { strategy: "squash", headBranch: "feat/x", sleep: () => {} });
+    expect(r).toMatchObject({ verified: true, sha: "abc1234", fullSha: "b".repeat(40) });
+    expect(calls.find((c) => c.method === "PUT").body).toEqual({ merge_method: "squash" });
+    expect(calls.some((c) => c.method === "DELETE")).toBe(true);
+    expect(execFileSync.mock.calls.some(([bin, args]) => bin === "gh" && args[0] === "pr")).toBe(false);
+  });
+
+  test("a REST merge GitHub refuses throws (not merged)", () => {
+    process.env.CLAUDE_CODE_REMOTE = "true";
+    routeApi({
+      "PUT pulls/3/merge$": () => { throw Object.assign(new Error("fail"), { stderr: "HTTP 405: Pull Request is not mergeable" }); },
+      "GET pulls/3$": { state: "open" },
+    });
+    expect(() => mergePR(3, "main", {}, { sleep: () => {} })).toThrow(/merge failed: HTTP 405/);
+  });
+
+  test("checks over REST: pending → poll → passed; a failed run fails fast; none → no-checks", () => {
+    process.env.CLAUDE_CODE_REMOTE = "true";
+    let round = 0;
+    routeApi({
+      "GET pulls/5$": { head: { sha: "c".repeat(40) } },
+      "GET check-runs": () => JSON.stringify({ check_runs: [{ name: "test", status: round++ === 0 ? "in_progress" : "completed", conclusion: "success", app: { name: "GitHub Actions" } }] }),
+      "GET /status$": { statuses: [] },
+    });
+    let t = 0;
+    const r = watchPRChecks(5, {}, { timeoutSec: 600, intervalSec: 1, noChecksGraceMs: 0, sleep: (ms) => { t += ms; }, now: () => t });
+    expect(r.status).toBe("passed");
+    expect(r.checks[0]).toMatchObject({ name: "test", bucket: "pass" });
+
+    routeApi({
+      "GET pulls/5$": { head: { sha: "c".repeat(40) } },
+      "GET check-runs": { check_runs: [{ name: "lint", status: "completed", conclusion: "failure" }, { name: "e2e", status: "queued" }] },
+      "GET /status$": { statuses: [{ context: "vercel", state: "success" }] },
+    });
+    const f = watchPRChecks(5, {}, { noChecksGraceMs: 0, sleep: () => {}, now: () => 0 });
+    expect(f.status).toBe("failed");
+    expect(f.failed.map((c) => c.name)).toEqual(["lint"]);
+
+    routeApi({ "GET pulls/5$": { head: { sha: "c".repeat(40) } }, "GET check-runs": { check_runs: [] }, "GET /status$": { statuses: [] } });
+    expect(watchPRChecks(5, {}, { noChecksGraceMs: 0, sleep: () => {}, now: () => 0 }).status).toBe("no-checks");
+  });
+
+  test("markPRReady over REST: the cloud ready_for_review route for a draft, then PATCH title/body", () => {
+    process.env.CLAUDE_CODE_REMOTE = "true";
+    const calls = routeApi({ "GET pulls/4$": { draft: true }, "POST pulls/4/ccr/ready_for_review$": "", "PATCH pulls/4$": {} });
+    expect(markPRReady(4, { title: "T", body: "B" })).toEqual({ ok: true });
+    expect(calls.map((c) => `${c.method} ${c.endpoint.replace("repos/{owner}/{repo}/", "")}`)).toEqual(["GET pulls/4", "POST pulls/4/ccr/ready_for_review", "PATCH pulls/4"]);
+    expect(calls[2].body).toEqual({ title: "T", body: "B" });
   });
 });

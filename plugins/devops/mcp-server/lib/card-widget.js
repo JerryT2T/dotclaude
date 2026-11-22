@@ -184,6 +184,9 @@ export const CLEANUP = {
 };
 
 /** Label of the analysis card's primary button when the card names its recommended next step (`nextStep`). */
+/** #1185: a `nextStep` that asks for the web guide (de/en), e.g. "Führ mich per Web-Guide durch …". */
+export const WEB_GUIDE_STEP_RE = /\b(?:web[- ]?guide|auto-guide)\b/i;
+
 export const NEXT_STEP = {
   de: { label: "Empfehlung umsetzen" },
   en: { label: "Do recommended step" },
@@ -296,9 +299,16 @@ export function buttonsFor(buttonsKey, lang = "de", opts = {}) {
   // An analysis names its one recommended step: "Umsetzen" alone left the user
   // guessing what a click would start.
   const step = String((opts && opts.nextStep) || "").trim().replace(/^\/+/, "");
+  // #1185: a recommended step that names the web guide is the guide button
+  // (its label and compass), never the generic "Empfehlung umsetzen".
+  const guideStep = buttonsKey === "analysis" && step && WEB_GUIDE_STEP_RE.test(step);
   if (buttonsKey === "analysis" && step && buttons.length && !(opts && opts.readOnly)) {
     const n = NEXT_STEP[lang] || NEXT_STEP.de;
-    buttons[0] = { ...buttons[0], label: n.label, prompt: step, tooltip: step.length > 140 ? step.slice(0, 139) + "…" : step };
+    const g = GUIDE_HANDOFF_BUTTON[lang] || GUIDE_HANDOFF_BUTTON.de;
+    const tooltip = step.length > 140 ? step.slice(0, 139) + "…" : step;
+    buttons[0] = guideStep
+      ? { ...buttons[0], label: g.label, icon: g.icon, prompt: step, tooltip }
+      : { ...buttons[0], label: n.label, prompt: step, tooltip };
   }
   // A kept branch's Weiter sends the announced follow-up, never a generic
   // "what's next?"; with nothing named the button goes (the card falls back
@@ -308,7 +318,7 @@ export function buttonsFor(buttonsKey, lang = "de", opts = {}) {
       ? buttons.map((a, i) => (i === 0 ? { ...a, prompt: step, tooltip: step.length > 140 ? step.slice(0, 139) + "…" : step } : a))
       : buttons.slice(1);
   }
-  if (opts && Array.isArray(opts.extra)) for (const x of opts.extra) buttons.push({ label: x.label, icon: x.icon, prompt: x.prompt, tooltip: x.tooltip });
+  if (opts && Array.isArray(opts.extra)) for (const x of opts.extra) buttons.push({ label: x.label, icon: x.icon, prompt: x.prompt, tooltip: x.tooltip, ...(x.primary ? { primary: true } : {}) });
   const tidy = conclusionPrompt(opts && opts.cleanup, lang);
   if (tidy && !(opts && Array.isArray(opts.custom) && opts.custom.length)) {
     const c = CLEANUP[lang] || CLEANUP.de;
@@ -316,7 +326,7 @@ export function buttonsFor(buttonsKey, lang = "de", opts = {}) {
   }
   if (opts && opts.appStart) buttons.push(appStartButton(lang));
   const handoff = opts && opts.guideHandoff;
-  if (handoff && handoff.service) buttons.push(guideHandoffButton(handoff.service, lang));
+  if (handoff && handoff.service && !(guideStep && !(opts && opts.readOnly))) buttons.push(guideHandoffButton(handoff.service, lang));
   return buttons;
 }
 
@@ -422,6 +432,23 @@ export const OPEN_URL_PREFIX = {
   de: "Im Standardbrowser öffnen:",
   en: "Open in default browser:",
 };
+
+/**
+ * #1186: the band's "Concept öffnen" button while a concept page is open. Its prompt is the open-url prompt
+ * (`<prefix> <url>`), which prompt.flow.open-url opens directly — the same token-free path as the context link.
+ */
+const CONCEPT_OPEN = {
+  de: { label: "Concept öffnen", tooltip: "Öffnet die Concept-Seite im Standardbrowser, ohne Claude — kostet keine Tokens." },
+  en: { label: "Open concept", tooltip: "Opens the concept page in your default browser, without Claude — costs no tokens." },
+};
+
+/** #1186: the open button for an open concept page at `url`; null without a usable http(s) url. */
+export function conceptOpenButton(url, lang = "de") {
+  const u = String(url || "").trim();
+  if (!/^https?:\/\/\S+$/.test(u)) return null;
+  const t = CONCEPT_OPEN[lang] || CONCEPT_OPEN.de;
+  return { label: t.label, icon: "external-link", prompt: `${OPEN_URL_PREFIX[lang] || OPEN_URL_PREFIX.de} ${u}`, tooltip: t.tooltip, primary: true };
+}
 
 /** Texts of the open button: its tooltip and its status after a click. */
 const OPEN_TEXT = {

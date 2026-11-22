@@ -192,7 +192,7 @@ describe("page — the dock switch", () => {
     expect(box.textContent).not.toMatch(/\{\{fidelity\./);
   });
 
-  test("default off; switching on is remembered per Etappe and shown on the FAB", async () => {
+  test("default off; switching on is remembered per Etappe; the FAB carries no status dot (#1180)", async () => {
     const html = built([designRound(1)]);
     let w = await boot(html);
     const input = w.document.getElementById("fidelity-toggle");
@@ -201,12 +201,46 @@ describe("page — the dock switch", () => {
     input.checked = true;
     input.dispatchEvent(new w.Event("change", { bubbles: true }));
     expect(w.fidelityPayload()).toBe("live");
-    expect(w.document.getElementById("feedback-toggle").dataset.fidelity).toBe("live");
+    const fab = w.document.getElementById("feedback-toggle");
+    expect(fab.hasAttribute("data-fidelity")).toBe(false);
+    // no rule draws a dot on the FAB in any state (connected or not, switch on or off)
+    const css = [...w.document.querySelectorAll("style")].map(s => s.textContent).join("\n");
+    expect(css).not.toMatch(/\.feedback-fab\[data-fidelity[^\]]*\]::(?:after|before)/);
     expect(JSON.parse(w.localStorage.getItem("concept-fidelity-20261120-2200-gallery"))).toEqual({ _: "live" });
     // A rebuilt page (new page version) still knows it.
     w = await boot(html, { _: "live" });
     expect(w.document.getElementById("fidelity-toggle").checked).toBe(true);
     expect(w.fidelityPayload("B")).toBe("off");
+  });
+
+  test("#1179: the two explanation lines are not shown at rest; they are the switch's app tooltip on hover and keyboard focus", async () => {
+    const w = await boot(built([designRound(1)]));
+    const d = w.document;
+    const box = d.getElementById("dock-fidelity");
+    expect(box.textContent).not.toContain("Nächste Runden");
+    expect(box.textContent).not.toContain("Gilt für Design-Runden");
+    expect(box.querySelector("small")).toBeNull();
+    const sw = box.querySelector(".fidelity-switch");
+    expect(sw.hasAttribute("title")).toBe(false);
+    expect(sw.dataset.tip).toContain("Nächste Runden");
+    expect(sw.dataset.tip).toContain("Gilt für Design-Runden");
+    const tipText = () => [...d.querySelectorAll(".app-tooltip, [role=tooltip]")].filter(t => !t.hidden).map(t => t.textContent).join(" ");
+    expect(tipText()).not.toContain("Nächste Runden");
+    // keyboard focus opens it at once
+    d.dispatchEvent(new w.KeyboardEvent("keydown", { key: "Tab", bubbles: true }));
+    d.getElementById("fidelity-toggle").dispatchEvent(new w.FocusEvent("focusin", { bubbles: true }));
+    await new Promise(r => setTimeout(r, 10));
+    expect(tipText()).toContain("Nächste Runden");
+    expect(tipText()).toContain("Gilt für Design-Runden");
+    d.dispatchEvent(new w.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    expect(tipText()).toBe("");
+    // hover (a mouse pointer) opens it after the info delay
+    const PointerEv = w.PointerEvent || w.MouseEvent;
+    const over = new PointerEv("pointerover", { bubbles: true });
+    Object.defineProperty(over, "pointerType", { value: "mouse" });
+    sw.querySelector("strong").dispatchEvent(over);
+    await new Promise(r => setTimeout(r, 1700));
+    expect(tipText()).toContain("Nächste Runden");
   });
 
   test("without storage the last frozen round of the Etappe answers (sticky)", async () => {

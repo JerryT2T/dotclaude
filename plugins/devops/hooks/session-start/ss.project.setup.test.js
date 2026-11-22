@@ -111,16 +111,27 @@ describe("ss.project.setup — the managed block lives in .gitignore; info/exclu
     expect(setupProject({ cwd: repo, home: mkTmp("ps-home-") }).gitignore).toBe("skipped");
   });
 
-  test("a linked worktree writes its own .gitignore", () => {
+  // #1182: a stale block in a linked worktree is no stray diff in the tracked
+  // file; the current block lands in the clone's shared info/exclude.
+  test("a linked worktree leaves its tracked .gitignore clean; the current block goes into info/exclude", () => {
     const repo = initRepo();
     fs.writeFileSync(path.join(repo, ".gitignore"), `${BLOCK_START}\n${BLOCK_END}\n`);
     git(repo, "add", "-A");
     git(repo, "commit", "-q", "-m", "block");
     const wt = path.join(mkTmp("ps-wt-"), "w1");
     git(repo, "worktree", "add", "-q", "-b", "w1", wt);
-    expect(setupProject({ cwd: wt, home: mkTmp("ps-home-") }).gitignore).toBe("written");
-    expect(gitignoreOf(wt)).toContain("**/.claude/batch.md");
-    expect(blocks(gitignoreOf(repo))).toBe(1);
+    expect(setupProject({ cwd: wt, home: mkTmp("ps-home-") }).gitignore).toBe("fallback");
+    expect(git(wt, "status", "--porcelain", "--", ".gitignore")).toBe("");
+    expect(gitignoreOf(wt)).not.toContain("**/.claude/batch.md");
+    const exclude = fs.readFileSync(path.join(repo, ".git", "info", "exclude"), "utf8");
+    expect(exclude).toContain("**/.claude/batch.md");
+    // the entries are in effect in the worktree
+    fs.mkdirSync(path.join(wt, ".claude"), { recursive: true });
+    fs.writeFileSync(path.join(wt, ".claude", "batch.md"), "x");
+    expect(git(wt, "status", "--porcelain", "--untracked-files=all")).not.toContain("batch.md");
+    expect(setupProject({ cwd: wt, home: mkTmp("ps-home-") }).gitignore).toBe("current");
+    // the main checkout still refreshes its own file
+    expect(setupProject({ cwd: repo, home: mkTmp("ps-home-") }).gitignore).toBe("written");
   });
 
   test("a git repo at ~/.claude (the home backup) is never touched", () => {

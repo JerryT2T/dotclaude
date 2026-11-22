@@ -8,7 +8,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import { bumpTargetDrift, insertChangelogEntry } from "./run.js";
+import { bumpTargetDrift, insertChangelogEntry, landedBump } from "./run.js";
 import { readVersion } from "../lib/version.js";
 
 let root;
@@ -42,5 +42,47 @@ describe("bumpTargetDrift — every bump target, not just the one readVersion na
     const once = insertChangelogEntry("## [1.2.0] — 2026-10-01\n", "1.3.0", "- x");
     expect(once).toContain("## [1.3.0]");
     expect(insertChangelogEntry(once, "1.3.0", "- x")).toBeNull();
+  });
+});
+
+// #1191: after a blocked exit + ship_cleanup the checkpoint is gone; the bump is read from git state instead.
+describe("landedBump — the branch already carries an unreleased bump", () => {
+  const git = (...a) => execFileSync("git", ["-c", "user.name=t", "-c", "user.email=t@t", ...a], { cwd: root, encoding: "utf8" });
+  const setVersion = (v) => {
+    put(".claude-plugin/marketplace.json", { metadata: { version: v }, plugins: [{ name: "a", source: "plugins/a", version: v }] });
+    put("plugins/a/.claude-plugin/plugin.json", { name: "a", version: v });
+  };
+  beforeEach(() => {
+    git("add", "-A");
+    git("commit", "-qm", "base");
+    git("update-ref", "refs/remotes/origin/main", "HEAD");
+    git("checkout", "-qb", "feat/x");
+    put("src.js", "x");
+    git("add", "-A");
+    git("commit", "-qm", "feat: x");
+  });
+
+  test("a release commit for the current version above the base's → reused", () => {
+    setVersion("1.4.0");
+    git("commit", "-qam", "chore(release): v1.4.0");
+    const r = landedBump(root, "main", "1.4.0");
+    expect(r).toMatchObject({ vNew: "1.4.0", vOld: "1.3.0" });
+    expect(r.commit).toMatch(/^[0-9a-f]{40}$/);
+  });
+
+  test("no release commit on the branch → null (bump as usual)", () => {
+    expect(landedBump(root, "main", "1.3.0")).toBeNull();
+  });
+
+  test("a custom commit message is recognised too", () => {
+    setVersion("1.3.1");
+    git("commit", "-qam", "release 1.3.1");
+    expect(landedBump(root, "main", "1.3.1", "release 1.3.1")).toMatchObject({ vNew: "1.3.1" });
+    expect(landedBump(root, "main", "1.3.1")).toBeNull();
+  });
+
+  test("the base already at that version → null (a leftover commit, not this ship's bump)", () => {
+    git("commit", "-q", "--allow-empty", "-m", "chore(release): v1.3.0");
+    expect(landedBump(root, "main", "1.3.0")).toBeNull();
   });
 });

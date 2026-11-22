@@ -371,7 +371,8 @@ must see their own language. The locale hint is authoritative.
 | `fidelity.hint`                | Next rounds: untouched parts exactly as live, changed and new parts fully polished | Nächste Runden: Unverändertes exakt wie live, Geändertes und Neues voll ausgearbeitet |
 | `fidelity.scope`               | Applies to design rounds of this stage until you switch it off · implementing ignores it | Gilt für Design-Runden dieser Etappe, bis du ihn ausschaltest · Umsetzen ignoriert ihn |
 | `fidelity.chip`                | Live fidelity                   | Live-Treue |
-| `fidelity.chip_approx`         | approximated                    | angenähert || `anno.open_count`              | {n} open notes                  | {n} offene Notizen |
+| `fidelity.chip_approx`         | approximated                    | angenähert |
+| `anno.open_count`              | {n} open notes                  | {n} offene Notizen |
 | `view.compare_favourite`       | Favourite                       | Favorit |
 | `view.compare_no_preference`   | No preference                   | Keine Präferenz |
 | `view.compare_criteria`        | Criteria                        | Kriterien |

@@ -20,6 +20,10 @@ import {
   bandBars,
   budgetBarSvg,
   fableFromLive,
+  budgetForBand,
+  restoredCardText,
+  rollBudget,
+  windowsFromLive,
   cleanupApplyPrompt,
   cleanupPlanPrompt,
   planComplete,
@@ -569,6 +573,48 @@ test('card band: a typed prompt spends the card, a textless continuation keeps i
   await $.turn.start({ text: 'next task', turnId: 't3' } as any)
   band = await $.ui.mount({ ...BAND, surface: 'desktop' })
   expect(await has(band, 'Committed')).toBeUndefined()
+  await band.unmount()
+})
+
+test('#1203 card band: every card render is kept per session; a typed prompt or a press marks it spent', async ($, on) => {
+  const { seen } = engine(on)
+  on('session.id', () => ({ value: 'sid-res' }))
+  on('tool.call', () => ({ result: {}, text: CARD_RESULT }))
+  on('turn.start', (_: unknown, e: { turnId: string }) => ({ turnId: e.turnId || 't' }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.tool.call({ tool: CARD_TOOL, summary: 'x' } as any)
+  const kept = () => seen.writes.filter(w => w.path.replace(/\\/g, '/').endsWith('/.claude/devops-band/last-sid-res.json')).map(w => JSON.parse(w.text))
+  expect(kept().at(-1)).toMatchObject({ sid: 'sid-res', text: CARD_RESULT })
+  await $.turn.start({ text: 'next task', turnId: 't2' } as any)
+  expect(kept().at(-1)).toMatchObject({ sid: 'sid-res', text: null })
+})
+
+test('#1203 resume: a new process (empty atoms) + SessionStart resume shows the session\'s last card again; a spent or foreign one does not', async ($, on) => {
+  const last = (o: Record<string, unknown>) => JSON.stringify({ writtenAt: new Date(NOW - 3 * 3_600_000).toISOString(), ...o })
+  engine(on, { files: { '/.claude/devops-band/last-sid-res.json': last({ sid: 'sid-res', text: CARD_RESULT }) } })
+  on('session.id', () => ({ value: 'sid-res' }))
+  on('classic.SessionStart', () => ({}))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.classic.SessionStart({ source: 'resume' } as any)
+  const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(svgIn(await band.find({ key: 'card-heading' }))?.props.alt).toBe('👉 📦 Committed — fertig — shippen?')
+  expect((await band.find({ key: 'card-button-1' }))?.props.label).toBe('Nachbessern')
+  expect(await band.find({ type: 'Text', text: /^Doku/ })).toBeDefined()
+  await band.unmount()
+  expect(restoredCardText({ sid: 'sid-res', text: null }, 'sid-res')).toBeNull()
+  expect(restoredCardText({ sid: 'other', text: CARD_RESULT }, 'sid-res')).toBeNull()
+  expect(restoredCardText({ sid: 'sid-res', text: CARD_RESULT }, 'sid-res')).toBe(CARD_RESULT)
+  expect(restoredCardText(null, 'sid-res')).toBeNull()
+})
+
+test('#1203 resume: a session whose last turn ended without a card shows the idle row', async ($, on) => {
+  engine(on, { files: { '/.claude/devops-band/last-sid-res.json': JSON.stringify({ sid: 'sid-res', text: null, writtenAt: new Date(NOW).toISOString() }) } })
+  on('session.id', () => ({ value: 'sid-res' }))
+  on('classic.SessionStart', () => ({}))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.classic.SessionStart({ source: 'resume' } as any)
+  const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await band.find({ key: 'card-heading' })).toBeUndefined()
   await band.unmount()
 })
 
@@ -2709,6 +2755,11 @@ test('archive helpers: offered only on a green card while idle; isError text bec
   expect(archiveOffered({ heading: '🟩 🚀 Released Alpha — v1 — fertig.' }, true)).toBe(false)
   expect(archiveOffered({ heading: '👉 Ready — shippen?' }, false)).toBe(false)
   expect(archiveOffered(null, false)).toBe(false)
+  // #1200: a landed release that only asks to promote is archivable too
+  expect(archiveOffered({ heading: '👉 🚀 Released Alpha — v0.293.0 — nach Beta promoten +1 weitere?' }, false)).toBe(true)
+  expect(archiveOffered({ heading: '👉 🚀 Released Alpha — v0.293.0 — nach Beta promoten +1 weitere?' }, true)).toBe(false)
+  expect(archiveOffered({ heading: '⏳ 🚀 Shipping — v0.293.0' }, false)).toBe(false)
+  expect(archiveOffered({ heading: '🟥 🚀 Release blocked — v0.293.0' }, false)).toBe(false)
   expect(archiveRefusal({ isError: false, content: [] })).toBeNull()
   expect(archiveRefusal({ isError: true, content: [{ type: 'text', text: 'Session is pinned.\n' }] })).toBe('Session is pinned.')
   expect(archiveRefusal({ isError: true })).toBe('archive_session failed')
@@ -2811,6 +2862,43 @@ test('budget bars: Wk, Fb, 5h in that order; Fable follows the weekly show rule;
   for (const bad of [null, undefined, 'x', {}, live(null), live([]), live([{ name: 'Fable', pct: 'a' }]), live([{ name: 'Fable', pct: 0, resetInMinutes: 100 }]), live([{ name: 'Fable', pct: 50, resetInMinutes: 0 }], new Date(NOW - 3_600_000).toISOString()), { scoped: [{ name: 'Fable', pct: 50, resetInMinutes: 100 }] }, live([{ name: 'Fable', pct: 50 }], new Date(NOW - 4 * 3_600_000).toISOString())]) {
     expect(fableFromLive(bad, NOW)).toBeNull()
   }
+})
+
+test('#1204 budget after a resume: a fresh usage-live.json fills empty windows, a pre-reset window reads 0 %, no fresh source keeps the dash', () => {
+  const live = (o: Record<string, unknown>, ageMs = 60_000) => ({ timestamp: new Date(NOW - ageMs).toISOString(), ...o })
+  const fresh = live({ weekly: { pct: 2, resetInMinutes: 9921 }, session: { pct: 7, resetInMinutes: 200 } })
+  expect(windowsFromLive(fresh, NOW)).toEqual({ weekly: 2, weeklyResetsAt: NOW - 60_000 + 9921 * 60_000, fiveHour: 7, fiveHourResetsAt: NOW - 60_000 + 200 * 60_000 })
+  for (const bad of [null, 'x', {}, live({ weekly: { pct: 'a' } }), live({ weekly: { pct: 2, resetInMinutes: 9921 } }, 16 * 60_000)]) expect(windowsFromLive(bad, NOW)).toBeNull()
+  // Empty session usage (no stored budget) + fresh live → Wk 2 % with its reset.
+  const b = budgetForBand(null, fresh, NOW)
+  expect(b?.weekly).toBe(2)
+  const bars = bandBars(b, NOW)
+  expect(bars[0]).toMatchObject({ label: 'Wk', pct: 2, short: '6 d' })
+  expect(bars[0].empty).toBeFalsy()
+  // A stored snapshot from before the weekly reset: the fresh live value wins.
+  const stale = { weekly: 88, weeklyResetsAt: NOW - 3 * 3_600_000, fiveHour: 40, fiveHourResetsAt: NOW - 60_000, context: null }
+  expect(budgetForBand(stale, fresh, NOW)).toMatchObject({ weekly: 2, fiveHour: 7 })
+  // …and without live data it rolls over to 0 % with the next weekly reset, never a dash.
+  const rolled = budgetForBand(stale, null, NOW)
+  expect(rolled).toMatchObject({ weekly: 0, weeklyResetsAt: NOW - 3 * 3_600_000 + 7 * 86_400_000, fiveHour: 0, fiveHourResetsAt: null })
+  expect(bandBars(rolled, NOW)[0]).toMatchObject({ pct: 0, short: '6 d' })
+  expect(rollBudget(null, NOW)).toBeNull()
+  // A current stored budget is kept as it is; no source at all still draws the dash.
+  const cur = { weekly: 30, weeklyResetsAt: NOW + 86_400_000, fiveHour: 10, fiveHourResetsAt: NOW + 3_600_000, context: null }
+  expect(budgetForBand(cur, fresh, NOW)).toEqual(cur)
+  expect(bandBars(budgetForBand(null, null, NOW), NOW).map(x => x.empty)).toEqual([true, true])
+})
+
+test('#1204 band after a resume: no measure yet, a fresh usage-live.json → the Wk bar shows its reset, not "–"', async ($, on) => {
+  const usage = JSON.stringify({ timestamp: new Date(NOW - 60_000).toISOString(), weekly: { pct: 2, resetInMinutes: 9921 }, session: { pct: 7, resetInMinutes: 200 } })
+  const { tick } = engine(on, { files: { '/.claude/usage-live.json': usage } })
+  tick(10 * 60_000) // past any cache of an earlier test; the file is still fresh (11 min)
+  await $.session.start({ cwd: REPO, surface: 'desktop', isInteractive: true })
+  const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  const wk = await svgIn(await band.find({ key: 'bar-Wk' }))
+  expect(wk?.props.source).toMatch(/>6 d</)
+  expect(wk?.props.source).not.toMatch(/>–</)
+  await band.unmount()
 })
 
 // --- devops off / on in the band (concept 20261120-1805-devops-optout; contract: briefs/contract.md) ---

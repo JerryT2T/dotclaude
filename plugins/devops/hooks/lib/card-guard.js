@@ -416,6 +416,33 @@ function editsThisTurn(transcriptContent) {
   return n;
 }
 
+/**
+ * #1199: the wake-ups THIS turn armed on purpose — a Monitor on its own
+ * background work, a ScheduleWakeup / CronCreate, a remote `send_later` or a
+ * `watch_url`. A turn that ends right after arming one waits on its own live
+ * work: it reached no end state yet, and it is not interrupted either.
+ * Counted since the last prompt entry (a typed prompt or a notification).
+ * @returns {string[]|null} tool names, in order; null without a transcript
+ */
+const ARMED_WAIT_RE = /^(?:Monitor|ScheduleWakeup|CronCreate|mcp__[\w-]+__(?:send_later|watch_url))$/;
+function armedWaitsThisTurn(transcriptContent) {
+  if (!transcriptContent) return null;
+  const lines = transcriptContent.split('\n');
+  const out = [];
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const raw = lines[i].trim();
+    if (!raw) continue;
+    let entry;
+    try { entry = JSON.parse(raw); } catch { continue; }
+    if (entry.type === 'user' && isPromptEntry(entry)) break;
+    if (entry.type !== 'assistant') continue;
+    const content = entry.message && entry.message.content;
+    if (!Array.isArray(content)) continue;
+    for (const b of content) if (b && b.type === 'tool_use' && ARMED_WAIT_RE.test(String(b.name || ''))) out.unshift(b.name);
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------------------
 // Card content gates (design § 5.1 - § 5.4)
 // ---------------------------------------------------------------------------
@@ -698,6 +725,7 @@ function decideAction({
   scheduledTask, treeClean, turnEdits, shipped, completionMcpDown,
   notificationTurn, sideSessionTurn, cardText, prevCardSignature, desktopClient, cardRelayed,
   widgetFile, widgetCalled, guideActive, guideLoopLive, foreignWidgetTitle: foreignTitle,
+  waitingOn,
 }) {
   if (silent) {
     // Background tick (cron git-sync, concept bridge poll, autonomous loop).
@@ -765,6 +793,15 @@ function decideAction({
       return { action: 'block', resetFlags: false, reason: buildGuideLoopReason(), gates: ['guide-loop'] };
     }
     return { action: 'pass', resetFlags: true, exempt: 'guide-active' };
+  }
+
+  // #1199: a turn that ends deliberately waiting on its own live work (a
+  // backgrounded Bash or workflow, a Monitor or wake-up it armed) reached no
+  // end state yet: no card now — the turn that reaches the end state owes it.
+  // Flags stay, so that turn still sees this work. A running background AGENT
+  // is not a wait: its turn keeps the card with `pending` (Gate 5).
+  if (!cardRendered && !shipped && Array.isArray(waitingOn) && waitingOn.length > 0) {
+    return { action: 'pass', resetFlags: false, exempt: 'waiting-own-work' };
   }
 
   // Gate 1 — completion card must exist.
@@ -1375,6 +1412,7 @@ module.exports = {
   buildWidgetSkippedReason,
   showWidgetCalledThisTurn,
   editsThisTurn,
+  armedWaitsThisTurn,
   foreignWidgetTitle,
   isCardWidgetCall,
   widgetRelayText,
