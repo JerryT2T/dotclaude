@@ -998,7 +998,7 @@ describe("render_completion_card — § 3 per-variant table (de + en)", () => {
     for (const [lang, reason, resetAt, heading, hint] of [
       ["de", "restart", undefined, "🟦 🔌 Restart — Claude Code neu starten", "› Claude Code neu starten, dann hier schreiben, um weiterzumachen."],
       ["en", "reboot", undefined, "🟦 💻 Reboot — restart the PC", "› Restart the PC, then open this session and write here to continue."],
-      ["de", "usage-reset", "23:40", "🟦 🔋 Limit reset — weiter nach dem Limit-Reset (23:40)", "› Nach dem Limit-Reset um 23:40 hier schreiben, um weiterzumachen."],
+      ["de", "usage-reset", "23:40", "🟦 🔋 Limit — weiter nach dem Limit-Reset (23:40)", "› Nach dem Limit-Reset um 23:40 hier schreiben, um weiterzumachen."],
     ]) {
       const text = await cardText({
         variant: "paused", summary: "Plugin-Update wartet", lang, session_id: "test-paused-reason-" + reason,

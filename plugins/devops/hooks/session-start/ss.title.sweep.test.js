@@ -2,7 +2,7 @@ import { describe, test, expect, beforeEach, afterEach } from "vitest";
 import fs from "fs";
 import os from "os";
 import path from "path";
-import { findStaleTitles, interruptedFor, offlineFor } from "../lib/stale-titles.js";
+import { findStaleTitles, interruptedFor, limitFor, offlineFor } from "../lib/stale-titles.js";
 import { buildContext, nextSeen } from "./ss.title.sweep.js";
 import { spawnSync } from "child_process";
 import { fileURLToPath } from "url";
@@ -81,6 +81,33 @@ describe("findStaleTitles", () => {
     session("C--r-app", "dead", "⏳ ➜ 🤖 Solo ┃ Gone", 30);
     fs.writeFileSync(path.join(gov, "dead.json"), JSON.stringify({ claudePid: 2 ** 22 + 12345 }));
     expect(find().map((s) => s.sessionId)).toEqual(["dead"]);
+  });
+
+  test("a turn the usage limit cut reads Limit, not Interrupted — also while its process still lives", () => {
+    const limitLine = JSON.stringify({ type: "assistant", error: "rate_limit", isApiErrorMessage: true, timestamp: "2026-10-23T11:30:00Z", message: { model: "<synthetic>", content: [{ type: "text", text: "You've hit your weekly limit · resets 10:50pm (Europe/Berlin)" }] } });
+    const write = (id, lines) => {
+      const jsonl = path.join(root, "C--r-app", id + ".jsonl");
+      fs.writeFileSync(jsonl, lines.join("\n") + "\n");
+      const at = new Date(NOW - 30 * MIN);
+      fs.utimesSync(jsonl, at, at);
+    };
+    session("C--r-app", "cut", "⏳ ➜ 🤖 Team ┃ Home Browser-Wahl", 30);
+    write("cut", ['{"type":"user"}', limitLine]);
+    session("C--r-app", "cutlive", "🔗 ⏳ ➜ 🤖 Solo ┃ Titel ohne Vortext", 30);
+    fs.writeFileSync(path.join(gov, "cutlive.json"), JSON.stringify({ claudePid: process.pid }));
+    write("cutlive", [limitLine]);
+    // Answered normally since the stop: the limit is history, the crash rule applies.
+    session("C--r-app", "past", "⏳ ➜ 🤖 Solo ┃ Weiter", 30);
+    write("past", [limitLine, JSON.stringify({ type: "assistant", message: { content: [{ type: "text", text: "ok" }] } })]);
+    // A finished title is never touched, whatever the transcript ends on.
+    session("C--r-app", "done", "🟩 ➜ 📦 Ready ┃ Fertig", 30);
+    write("done", [limitLine]);
+    expect(Object.fromEntries(find().map((s) => [s.sessionId, s.next]))).toEqual({
+      cut: "🟦 ➜ 🔋 Limit ┃ Home Browser-Wahl",
+      cutlive: "🔗 🟦 ➜ 🔋 Limit ┃ Titel ohne Vortext",
+      past: "👉 ➜ ⚡ Interrupted ┃ Weiter",
+    });
+    expect(limitFor("🟩 ➜ 📦 Ready ┃ Fertig")).toBeNull();
   });
 
   test("#964: a live session idle for an hour with only a dev server open is handed on; real open work keeps it", () => {

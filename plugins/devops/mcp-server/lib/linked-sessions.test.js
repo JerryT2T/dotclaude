@@ -222,7 +222,7 @@ describe("the card keeps a sub's 🔗 on every title it sets (rows 6, 10, 11, 14
   test("a status swap on a marked title keeps one 🔗", () => {
     expect(demandedTitle(rel, "🔗 ⏳ ➜ 🤖 Solo ┃ X")).toBe("🔗 🟩 ➜ 🚀 Released Alpha ┃ X");
     expect(demandedTitle(TITLE_SCHEME.prefixOf("aborted"), "🔗 ⏳ ➜ 🤖 Solo ┃ X")).toBe("🔗 🟥 ➜ 📦 Aborted ┃ X");
-    expect(demandedTitle(TITLE_SCHEME.prefixOf("paused-usage-reset"), "🔗 ⏳ ➜ 🤖 Solo ┃ X")).toBe("🔗 🟦 ➜ 🔋 Limit reset ┃ X");
+    expect(demandedTitle(TITLE_SCHEME.prefixOf("paused-usage-reset"), "🔗 ⏳ ➜ 🤖 Solo ┃ X")).toBe("🔗 🟦 ➜ 🔋 Limit ┃ X");
     expect(demandedTitle(TITLE_SCHEME.prefixOf("linked"), "🔗 ⏳ ➜ 🤖 Solo ┃ X")).toBe("🔗 ⏳ ➜ 🔗 Linked ┃ X");
   });
   test("a sub whose title lacks the 🔗 gets it (sub flag), an unlinked session never does", () => {

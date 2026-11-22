@@ -8,6 +8,8 @@ import {
   formatResetShort,
   archiveOffered,
   archiveRefusal,
+  isLimitStop,
+  limitTitle,
   agentRows,
   batchDropReason,
   batchMaybeCollectable,
@@ -2710,6 +2712,43 @@ test('archive helpers: offered only on a green card while idle; isError text bec
   expect(archiveRefusal({ isError: false, content: [] })).toBeNull()
   expect(archiveRefusal({ isError: true, content: [{ type: 'text', text: 'Session is pinned.\n' }] })).toBe('Session is pinned.')
   expect(archiveRefusal({ isError: true })).toBe('archive_session failed')
+})
+
+test('limit stop: the band renames the session to "🟦 ➜ 🔋 Limit ┃ …" itself; an ordinary answer and a card title are left alone', async ($, on) => {
+  const LIMIT = "You've hit your weekly limit · resets 10:50pm (Europe/Berlin)"
+  expect(isLimitStop(LIMIT)).toBe(true)
+  expect(isLimitStop('', 'rate_limit')).toBe(true)
+  expect(isLimitStop('The weekly limit reached · is a phrase I explain here.\nSecond line.')).toBe(false)
+  expect(isLimitStop('Done.')).toBe(false)
+  expect(limitTitle('⏳ ➜ 🤖 Team ┃ Home Browser-Wahl')).toBe('🟦 ➜ 🔋 Limit ┃ Home Browser-Wahl')
+  expect(limitTitle('🔗 ⏳ ➜ 🤖 Solo ┃ Titel ohne Vortext')).toBe('🔗 🟦 ➜ 🔋 Limit ┃ Titel ohne Vortext')
+  expect(limitTitle('⏳ Übungen')).toBe('🟦 ➜ 🔋 Limit ┃ Übungen')
+  expect(limitTitle('👉 ➜ 📦 Ready ┃ Fertig')).toBe(null)
+  expect(limitTitle('🟦 ➜ 🔋 Limit ┃ Schon gesetzt')).toBe(null)
+  expect(limitTitle('⏳ ')).toBe(null)
+
+  engine(on)
+  let title = '⏳ ➜ 🤖 Team ┃ Home Browser-Wahl'
+  const sets: Array<Record<string, unknown>> = []
+  on('mcp.call', (_: unknown, e: { server: string; tool: string; args: Record<string, unknown> }) => {
+    if (e.tool === 'get_session') return { value: { content: [{ type: 'text', text: JSON.stringify({ sessionId: 'local_x', title }) }] } }
+    if (e.tool === 'set_session_title') sets.push(e.args)
+    return { value: { content: [{ type: 'text', text: 'ok' }] } }
+  })
+  on('turn.start', (_: unknown, e: { turnId: string }) => ({ turnId: e.turnId || 't' }))
+  on('turn.complete', (_: unknown, e: { answer: string }) => ({ text: e.answer }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.turn.start({ text: 'build it', turnId: 't1' } as any)
+  await $.turn.complete({ answer: 'All done.', durationMs: 1, isAborted: false, turnId: 't1', reason: 'end' } as any)
+  expect(sets).toEqual([]) // a normal turn end renames nothing
+  await $.turn.start({ text: 'weiter', turnId: 't2' } as any)
+  await $.turn.complete({ answer: LIMIT, durationMs: 1, isAborted: false, turnId: 't2', reason: 'end' } as any)
+  expect(sets).toEqual([{ session_id: 'self', title: '🟦 ➜ 🔋 Limit ┃ Home Browser-Wahl' }])
+  // A card already named the outcome: the limit line that follows changes nothing.
+  title = '👉 ➜ 📦 Ready ┃ Home Browser-Wahl'
+  await $.turn.start({ text: 'noch was', turnId: 't3' } as any)
+  await $.turn.complete({ answer: LIMIT, durationMs: 1, isAborted: false, turnId: 't3', reason: 'end' } as any)
+  expect(sets).toHaveLength(1)
 })
 
 test('archive button: a green card offers it; a press calls the app archive_session on self, a refusal is a toast', async ($, on) => {

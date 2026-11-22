@@ -75,7 +75,8 @@ describe("session-title — prefixes mirror mode-state.js", () => {
     // A selector where the canonical form has none is tolerated too.
     expect(stripPrefixes("👉 📦" + FE0F + " Ready – Job")).toBe("Job");
     expect(classify("🟦 ➜ ✋ Paused ┃ Job")).toBe("outcome");
-    expect(stripPrefixes("🟦 ➜ 🔋 Limit reset ┃ Job")).toBe("Job");
+    expect(stripPrefixes("🟦 ➜ 🔋 Limit ┃ Job")).toBe("Job");
+    expect(stripPrefixes("🟦 ➜ 🔋 Limit reset ┃ Job")).toBe("Job"); // the label before it was shortened
     expect(stripPrefixes("🟩 ➜ 🖥️ System ┃ Job")).toBe("Job");
     expect(stripPrefixes("👉 ➜ ⚠️ Red tests ┃ Job")).toBe("Job");
     expect(stripPrefixes("🟩 ▶ Started – Job")).toBe("Job");

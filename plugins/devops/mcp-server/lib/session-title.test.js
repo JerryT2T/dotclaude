@@ -173,7 +173,7 @@ describe("titlePrefixFor", () => {
   test("a paused card names its reason, and the prefix strips cleanly", () => {
     expect(pausedPrefix("restart")).toBe("🟦 ➜ 🔌 Restart ┃ ");
     expect(pausedPrefix("reboot")).toBe("🟦 ➜ 💻 Reboot ┃ ");
-    expect(pausedPrefix("usage-reset")).toBe("🟦 ➜ 🔋 Limit reset ┃ ");
+    expect(pausedPrefix("usage-reset")).toBe("🟦 ➜ 🔋 Limit ┃ ");
     expect(pausedPrefix("user")).toBe(SESSION_PREFIX["paused-user"]);
     expect(pausedPrefix(undefined)).toBe(SESSION_PREFIX["paused-user"]);
     expect(titlePrefixFor({ variant: "paused", pause: { reason: "restart" } }, deps)).toBe("🟦 ➜ 🔌 Restart ┃ ");

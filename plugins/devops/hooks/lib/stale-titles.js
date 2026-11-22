@@ -1,6 +1,6 @@
 /**
  * @module stale-titles
- * @version 0.3.0
+ * @version 0.4.0
  * @description Finds sessions whose sidebar title still says ⏳ although no
  *   Claude process works on them any more — left behind when the Desktop app
  *   or Claude Code crashed or was quit mid-turn, so no Stop hook (F5) could
@@ -23,14 +23,19 @@
  *   alive only when a registry entry (`~/.claude/concept-bridges/<port>.json`)
  *   for the session's worktree names a live pid that started after the last
  *   boot — Windows reuses pids, and after a reboot every entry is stale.
+ *
+ *   0.4.0 — limit stop: a ⏳ title whose transcript ends on Claude Code's
+ *   "limit hit" record (lib/burn-state limitEvidence) becomes
+ *   `🟦 ➜ 🔋 Limit ┃`, not Interrupted. Until then only the paused card set
+ *   that title, so a session the limit cut mid-turn kept its ⏳ for good.
  */
 
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const {
-  STATUS, INTERRUPTED_PREFIX, CONCEPT_PREFIX, CONCEPT_WORKING_PREFIX, CONCEPT_OFFLINE_PREFIX,
-  stripPrefixes, classify, startsWithPrefix,
+  STATUS, INTERRUPTED_PREFIX, LIMIT_PREFIX, CONCEPT_PREFIX, CONCEPT_WORKING_PREFIX, CONCEPT_OFFLINE_PREFIX,
+  stripPrefixes, classify, startsWithPrefix, SUB_MARK,
 } = require('./title-scheme');
 
 const IDLE_MS = 2 * 60_000;
@@ -72,6 +77,27 @@ function interruptedFor(title) {
   if (!title.startsWith(STATUS.work) && classify(title) !== 'approval') return null;
   const rest = stripPrefixes(title).trim();
   return rest ? INTERRUPTED_PREFIX + rest : null;
+}
+
+/**
+ * The title a session becomes whose turn a usage limit cut: `🟦 ➜ 🔋 Limit ┃`
+ * in front of its bare text (a sub marker kept), or null. Entry rule as
+ * interruptedFor — a limit stop runs no model turn, so no card could set this
+ * title itself.
+ */
+function limitFor(title) {
+  if (typeof title !== 'string') return null;
+  // A linked side session carries `🔗 ` in front of its head; the limit cuts it like any other.
+  const core = title.startsWith(SUB_MARK) ? title.slice(SUB_MARK.length).trimStart() : title;
+  if (!core.startsWith(STATUS.work) && classify(core) !== 'approval') return null;
+  const rest = stripPrefixes(core).trim();
+  if (!rest) return null;
+  return (core === title ? '' : SUB_MARK + ' ') + LIMIT_PREFIX + rest;
+}
+
+/** True when the transcript's newest answer is Claude Code's own "limit hit" record. */
+function limitStopped(jsonl) {
+  try { return require('./burn-state').limitEvidence(jsonl).limited === true; } catch { return false; }
 }
 
 /** True for a concept head that promises a live page (waiting or working). */
@@ -205,6 +231,13 @@ function findStaleTitles({
       continue;
     }
     const next = interruptedFor(title);
+    // A usage limit ended the turn: the process is still there and waits, and
+    // "Interrupted" would hide why. Say Limit, whether or not the process lives.
+    const limit = limitFor(title);
+    if (limit && limitStopped(jsonl)) {
+      out.push({ sessionId, title, next: limit, mtimeMs: tm });
+      continue;
+    }
     if (!next) continue;
     // A live process normally keeps the title; only a long idle session whose
     // transcript holds no open work (a dev server does not count) is handed on.
@@ -214,4 +247,4 @@ function findStaleTitles({
   return out.sort((a, b) => b.mtimeMs - a.mtimeMs);
 }
 
-module.exports = { findStaleTitles, interruptedFor, offlineFor, bridgeAlive, conceptRoots, transcriptCwd, IDLE_MS, LIVE_IDLE_MS };
+module.exports = { findStaleTitles, interruptedFor, limitFor, offlineFor, bridgeAlive, conceptRoots, transcriptCwd, IDLE_MS, LIVE_IDLE_MS };
