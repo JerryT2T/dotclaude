@@ -123,6 +123,13 @@ describe("thread fields (E4)", () => {
     expect(second).toMatchObject({ thread: true, claudeProject: "chan_abc123" });
   });
 
+  test("the id is read from prompt_raw when the dispatcher unwrapped prompt to the person's text", () => {
+    const file = logFile("unwrapped");
+    const id = `${sid}-unwrapped`;
+    TL.recordEvent("UserPromptSubmit", { session_id: id, prompt: "ship it as stable", prompt_raw: WAKE, prompt_origin: "human" }, [{ name: "p.a", stdout: "hello" }], { allowed: true, file });
+    expect(lines(file)[0]).toMatchObject({ thread: true, claudeProject: "chan_abc123" });
+  });
+
   test("an ordinary session's row has neither field (Desktop path unchanged)", () => {
     const file = logFile("plain");
     TL.recordEvent("PostToolUse", { session_id: `${sid}-plain`, tool_name: "Bash", tool_response: "r" }, [{ name: "post.a", stdout: ctx("12") }], { allowed: true, file });
