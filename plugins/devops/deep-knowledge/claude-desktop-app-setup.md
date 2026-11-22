@@ -214,3 +214,14 @@ Desktop session mirrored once (`~/.claude/plugins/.desktop-mirror.json`). The li
 nothing about the channel; on the cooldown path `ss.plugin.update` compares the install
 with the newest remote tag its own pin sees and prints `⚠ devops: lokal X hinter <channel>,
 Y ist draußen → „devops update“`, delivered with the next prompt.
+
+**Once a Claude Project thread ran on this machine** the lag is no longer "unkritisch":
+cloud threads run the account copy. The marker is `~/.claude/devops-thread-seen.json`
+(`hooks/lib/thread-seen.js`, copied from the thread flag by `ss.project.setup`); the line
+then reads `… Cloud Y hinkt hinterher — Cloud-Threads laufen damit, nicht unkritisch`, and
+the session starts the claude.ai update itself (`hooks/lib/cloud-update.js`, switch
+devops-config `cloud.autoUpdate`, `auto-update` § "Cloud updaten" → Automatic path).
+Automatic: the decision, the claim (one updater at a time, once per version) and the
+instruction to click Customize → Plugins → Manage marketplaces → dotclaude → Check for
+updates with the session's browser tool. Manual, always: a login, a captcha, a blocked
+step, and the sync itself (claude.ai runs it on its own schedule; 17 h were observed).
