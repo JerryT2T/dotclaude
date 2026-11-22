@@ -13,9 +13,12 @@
  *
  *   verify --state <abs state file>
  *     Heartbeat round-trip (claude_ts must advance), 200 gate on the page URL,
- *     then opens Edge (Windows: start "" msedge <url>) unless a tab is already
+ *     then opens the user's browser (hooks/lib/browser-choice.js; Edge by default,
+ *     Windows: start "" msedge <url>) unless a tab is already
  *     registered on the bridge (/pending browser_tabs > 0): then {already_open:true}. Prints {ok:true,url} or
- *     {ok:false,error} and exits 1. CONCEPT_OPEN_NO_BROWSER=1 skips the open.
+ *     {ok:false,error} and exits 1. The choice "in-app" opens nothing and prints
+ *     {ok:true,url,open_in:"pane"}: the caller opens the URL in the Desktop app's
+ *     browser pane. CONCEPT_OPEN_NO_BROWSER=1 skips the open.
  *
  *   close --state <abs state file> | --port <n>  [--finished '<json>' | --finished-file <path>]
  *         [--pr <n>] [--version <vX.Y.Z>] [--ack-wait-s 20] [--no-shutdown]
@@ -31,6 +34,7 @@ const path = require('path');
 const http = require('http');
 const crypto = require('crypto');
 const { spawnSync, spawn } = require('child_process');
+const choice = require('../hooks/lib/browser-choice');
 
 const DIR = __dirname;
 const fwd = (p) => String(p).replace(/\\/g, '/');
@@ -128,22 +132,25 @@ async function claudeTs(base) {
 // browser itself can stay in the foreground for its whole life.
 const OPEN_SETTLE_MS = 5000;
 
-function openBrowser(url, { command = null, settleMs = OPEN_SETTLE_MS } = {}) {
+function openBrowser(url, { command = null, settleMs = OPEN_SETTLE_MS, browser = null } = {}) {
   if (!command && process.env.CONCEPT_OPEN_NO_BROWSER === '1') return null;
-  let cmd; let args;
+  let cmd; let args; let verbatim = false;
   if (command) { [cmd, ...args] = command; }
-  else if (process.platform === 'win32') { cmd = 'cmd.exe'; args = ['/c', 'start', '""', 'msedge', url]; }
-  else if (process.platform === 'darwin') { cmd = 'open'; args = ['-a', 'Microsoft Edge', url]; }
-  else { cmd = 'microsoft-edge'; args = [url]; }
+  else {
+    // The user's browser (devops Home → Einstellungen); in-app has no process to start.
+    const plan = choice.openCommand(browser || choice.resolveBrowser(), url);
+    if (!plan) return null;
+    ({ cmd, args, verbatim } = plan);
+  }
   return new Promise((resolve) => {
-    const c = spawn(cmd, args, { stdio: 'ignore', detached: true, windowsHide: true, windowsVerbatimArguments: !command && process.platform === 'win32' });
+    const c = spawn(cmd, args, { stdio: 'ignore', detached: true, windowsHide: true, windowsVerbatimArguments: verbatim });
     // The child is unref'd so a long-lived browser cannot hold this process, and
     // an unref'd child alone does not keep the event loop alive: without this
     // timer node exits with 0 before 'exit' fires, so the caller's result is never
     // printed and opened_for_run is never written.
     const settle = setTimeout(() => resolve(null), settleMs);
     const done = (result) => { clearTimeout(settle); resolve(result); };
-    c.on('error', (e) => done(`could not open Edge (${cmd}): ${e.message}`));
+    c.on('error', (e) => done(`could not open the browser (${cmd}): ${e.message}`));
     c.on('exit', (code) => done(code ? `${cmd} exited with ${code}` : null));
     c.unref();
   });
@@ -202,7 +209,12 @@ async function verify(opts, deps = {}) {
     }
   } catch { /* older bridge: no registry */ }
   if (tabs > 0) return { ok: true, url, already_open: true };
-  const err = await open(url);
+  // In-app (devops Home → Einstellungen, or no browser installed): no process
+  // can open the Desktop app's pane, so the caller does. Not recorded as opened:
+  // until the pane tab registers with the bridge, a repeated verify says so again.
+  const browser = deps.browser || (deps.openBrowser ? null : choice.resolveBrowser());
+  if (browser && browser.id === choice.IN_APP && process.env.CONCEPT_OPEN_NO_BROWSER !== '1') return { ok: true, url, open_in: 'pane' };
+  const err = await open(url, { browser });
   if (err) return { ok: false, error: err, url };
   try { fs.writeFileSync(opts.state, JSON.stringify({ ...st, opened_for_run: run }, null, 2)); } catch { /* the page is open; only a later verify would repeat it */ }
   return { ok: true, url };

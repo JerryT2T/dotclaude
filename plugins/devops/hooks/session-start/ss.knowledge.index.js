@@ -89,6 +89,11 @@ function buildContext(pluginRoot, sessionId = null, cwd = process.cwd()) {
     const apiLine = require('../../scripts/claude-api-safe').sessionLine({ cwd });
     if (apiLine) head.push(apiLine);
   } catch { /* never let the API-credit probe break the index injection */ }
+  try {
+    // The user's browser (devops Home → Einstellungen): one line, only when it is not Edge.
+    const browser = require('../lib/browser-choice').browserLine({ cwd });
+    if (browser) head.push(browser);
+  } catch { /* never let the browser probe break the index injection */ }
 
   // Channel feature flags: docs of features this channel may not use stay out.
   const featureOpts = { pluginRoot };

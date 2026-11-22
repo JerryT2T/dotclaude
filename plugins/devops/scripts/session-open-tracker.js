@@ -259,6 +259,7 @@ function cmdReopenMain(argv) {
   const reopened = [];
   const missing = [];
   const launchFailed = [];
+  const pane = [];
 
   const surviving = [];
   for (const entry of store.files) {
@@ -296,7 +297,11 @@ function cmdReopenMain(argv) {
       continue;
     }
 
-    if (openInBrowser(mainPath)) {
+    const opened = openInBrowser(mainPath);
+    if (opened === "pane") {
+      // In-app: consumed here, opened by the caller in the Desktop app's pane.
+      pane.push(mainPath);
+    } else if (opened) {
       reopened.push(mainPath);
       // Successful open — drop the entry from the store (consumed).
     } else {
@@ -318,7 +323,9 @@ function cmdReopenMain(argv) {
     reopened,
     missing,
     launchFailed,
-    consumed: reopened.length + missing.length
+    // Browser choice "in-app": not opened by this script — open each in the Desktop app's browser pane.
+    ...(pane.length ? { openInPane: pane } : {}),
+    consumed: reopened.length + missing.length + pane.length
   };
   console.log(JSON.stringify(summary, null, 2));
 }
@@ -328,33 +335,26 @@ function cmdReopenMain(argv) {
 // ---------------------------------------------------------------------------
 
 /**
- * Open `absPath` as a file:// URL in Microsoft Edge. Returns true on success.
- * Strategy by platform:
- *   - win32: `cmd /c start "" msedge "file:///<windows-path>"`
- *   - darwin: `open -a "Microsoft Edge" "file://<path>"`
- *   - linux: `microsoft-edge "file://<path>"` (best-effort)
+ * Open `absPath` as a file:// URL in the user's browser (hooks/lib/browser-choice.js;
+ * Edge by default: win32 `cmd /c start "" msedge "file:///<windows-path>"`,
+ * darwin `open -a "Microsoft Edge" …`, linux `microsoft-edge …`).
+ * Returns true on success, false when the launch failed, and "pane" for the
+ * choice "in-app": nothing is started, the caller opens the path in the
+ * Desktop app's browser pane.
  */
 function openInBrowser(absPath) {
   const fileUrl = toFileUrl(absPath);
   try {
-    if (process.platform === "win32") {
-      // Resolve any worktree-mountpoint quirks via a plain Windows path.
-      child_process.spawn("cmd.exe", ["/c", "start", "", "msedge", fileUrl], {
-        detached: true,
-        stdio: "ignore",
-        windowsHide: true
-      }).unref();
-    } else if (process.platform === "darwin") {
-      child_process.spawn("open", ["-a", "Microsoft Edge", fileUrl], { windowsHide: true,
-        detached: true,
-        stdio: "ignore"
-      }).unref();
-    } else {
-      child_process.spawn("microsoft-edge", [fileUrl], { windowsHide: true,
-        detached: true,
-        stdio: "ignore"
-      }).unref();
-    }
+    const choice = require("../hooks/lib/browser-choice");
+    const plan = choice.openCommand(choice.resolveBrowser(), fileUrl);
+    // In-app: no process can open the Desktop app's pane; the caller gets the path back.
+    if (!plan) return "pane";
+    child_process.spawn(plan.cmd, plan.args, {
+      detached: true,
+      stdio: "ignore",
+      windowsHide: true,
+      windowsVerbatimArguments: plan.verbatim
+    }).on("error", () => {}).unref();
     return true;
   } catch {
     return false;

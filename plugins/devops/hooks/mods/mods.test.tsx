@@ -2016,6 +2016,54 @@ test('under the prompt: "● devops" beside the engine hint; a press opens the d
   expect(seen.writes).toEqual([])
 })
 
+test('Home → Einstellungen: the browser dropdown offers the installed browsers plus In-App; a pick is written by the plugin script', async ($, on) => {
+  const { seen } = engine(on, { files: LOG_FILES })
+  const options = [{ id: 'edge', label: 'Microsoft Edge' }, { id: 'chrome', label: 'Google Chrome' }, { id: 'in-app', label: 'In-App (Claude Desktop)' }]
+  const runs: string[][] = []
+  let stored = 'auto'
+  on('process.run', (_: unknown, e: { argv: string[] }) => {
+    const at = e.argv.findIndex(a => /browser-choice\.js$/.test(a))
+    if (at < 0) return { value: { exitCode: 1, stdout: '', stderr: '' } }
+    const args = e.argv.slice(at + 1)
+    runs.push(args)
+    if (args[0] === 'set') stored = args[1]!
+    const effective = options.find(o => o.id === stored) ?? options[0]
+    return { value: { exitCode: 0, stdout: JSON.stringify({ effective, stored, options }), stderr: '' } }
+  })
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  const mount = () => $.ui.mount({ ...pane('devops-home', 'devops Home'), surface: 'desktop' } as any)
+  const until = async (key: string, text: RegExp) => {
+    let home = await mount()
+    for (let i = 0; i < 40; i++) {
+      if (text.test(JSON.stringify((await home.find({ key })) ?? ''))) break
+      await home.unmount()
+      for (let j = 0; j < 200; j++) await Promise.resolve()
+      home = await mount()
+    }
+    return home
+  }
+  let home = await mount()
+  await home.press({ key: 'home-tab-settings' })
+  await home.press({ key: 'home-refresh' }) // an earlier test's answer may still count as fresh
+  await home.unmount()
+  home = await until('home-browser-toggle', /Microsoft Edge ▾/)
+  expect(JSON.stringify(await home.find({ key: 'home-browser-toggle' }))).toMatch(/Microsoft Edge ▾/)
+  expect(await home.find({ key: 'home-browser-chrome' })).toBeUndefined() // closed: no list
+  await home.press({ key: 'home-browser-toggle' })
+  await home.unmount()
+  home = await until('home-browser-edge', /● Microsoft Edge/)
+  expect(JSON.stringify(await home.find({ key: 'home-browser-chrome' }))).toMatch(/○ Google Chrome/)
+  expect(JSON.stringify(await home.find({ key: 'home-browser-in-app' }))).toMatch(/○ In-App/)
+  await home.press({ key: 'home-browser-in-app' })
+  await home.unmount()
+  home = await until('home-browser-toggle', /In-App \(Claude Desktop\) ▾/)
+  expect(JSON.stringify(await home.find({ key: 'home-browser-toggle' }))).toMatch(/In-App \(Claude Desktop\) ▾/)
+  expect(await home.find({ key: 'home-browser-edge' })).toBeUndefined() // a pick closes the list
+  expect(runs.at(-1)).toEqual(['set', 'in-app', '--json'])
+  await home.unmount()
+  expect(seen.prompts).toEqual([])
+})
+
 test('/devops toggles the devops Home pane with a one-line answer; the terminal hint carries the state as its tail', async ($, on) => {
   const { seen } = engine(on, { files: LOG_FILES })
   await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })

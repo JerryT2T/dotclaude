@@ -296,22 +296,24 @@ function readState(statePath) {
 /**
  * Re-open the concept page in the user's browser (#363). Detached and
  * fire-and-forget: a browser that refuses to start must not take the waker
- * down with it. Windows opens Edge explicitly — the page is a localhost URL
- * and `start` would otherwise pick whatever handles http://.
+ * down with it. The browser is the user's choice (hooks/lib/browser-choice.js,
+ * Edge by default), named explicitly — the page is a localhost URL and `start`
+ * alone would pick whatever handles http://. Null for the choice "in-app":
+ * no process can open the Desktop app's pane, so nothing is re-opened.
  */
-function reopenCommand(url, platform = process.platform) {
+function reopenCommand(url, platform = process.platform, browser = undefined) {
+  const choice = require('../hooks/lib/browser-choice');
   // /min: the waker re-opens while the user may be working elsewhere; a
   // minimized window does not steal focus (best effort, Windows only).
-  if (platform === 'win32') return { cmd: 'cmd', args: ['/c', 'start', '', '/min', 'msedge', url] };
-  if (platform === 'darwin') return { cmd: 'open', args: [url] };
-  return { cmd: 'xdg-open', args: [url] };
+  return choice.openCommand(browser === undefined ? choice.resolveBrowser({ platform }) : browser, url, { platform, minimized: true });
 }
 
 function reopen(url) {
   const { spawn } = require('child_process');
-  const { cmd, args } = reopenCommand(url);
   try {
-    spawn(cmd, args, { detached: true, stdio: 'ignore', windowsHide: true }).on('error', () => {}).unref();
+    const plan = reopenCommand(url);
+    if (!plan) return;
+    spawn(plan.cmd, plan.args, { detached: true, stdio: 'ignore', windowsHide: true, windowsVerbatimArguments: plan.verbatim }).on('error', () => {}).unref();
   } catch { /* best effort */ }
 }
 

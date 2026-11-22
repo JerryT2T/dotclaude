@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 
 const require = createRequire(import.meta.url);
-const { main } = require("./pre.visible-browser.guard.js");
+const { main, check } = require("./pre.visible-browser.guard.js");
 const dispatch = require("../dispatch/dispatch.js");
 
 const HOOK = fileURLToPath(new URL("./pre.visible-browser.guard.js", import.meta.url));
@@ -26,6 +26,13 @@ describe("main", () => {
     expect(main(write("chromium.launch({ channel: 'msedge', headless: false })"))).toBeNull();
     expect(main(write("chromium.launch({ executablePath: CHROME, headless: true })"))).toBeNull();
     expect(main(bash("npx playwright test"))).toBeNull();
+  });
+
+  test("Chrome chosen as the user's browser: starting it passes, a headed test run still does not", () => {
+    const start = bash('start "" chrome "http://localhost:3000"');
+    expect(check(start, () => "edge").block).toContain("chrome");
+    expect(check(start, () => "chrome")).toBeNull();
+    expect(check(bash("npx playwright test --headed"), () => "chrome").block).toContain("--headed");
   });
 
   test("the marker overrides", () => {

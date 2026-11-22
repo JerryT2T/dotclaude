@@ -47,7 +47,11 @@ no crons, no Edge start. The steps, the wrapper contract and the card:
 
 **Fast path → no manual open (#1030).** When the page is opened through
 `concept-open.js verify` (§ Bridge server below), `verify` already opens Edge
-once after its 200 check. Running the command below as well opens the page
+once after its 200 check (Edge, or the browser the user chose —
+`{PLUGIN_ROOT}/deep-knowledge/browser-tool-strategy.md` § The user's browser).
+When it answers `open_in: "pane"` (choice in-app) it opened nothing: open the
+printed `url` in the Desktop app's browser pane (`preview_start` / `navigate`)
+and show the pane; that is the user's tab. Running the command below as well opens the page
 twice. The command is for the non-fast path only. A repeated `verify` on the
 same bridge run opens nothing and answers `already_open: true`.
 

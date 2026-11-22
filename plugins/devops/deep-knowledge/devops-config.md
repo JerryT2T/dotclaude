@@ -141,6 +141,19 @@ cleanup" / "branches aufräumen" — the auto-cleanup skill).
 (tokens, fonts, CSP) is no setting: it lives in a `head.html` (per concept, or
 per project at `.claude/skills/auto-concept/head.html`).
 
+### `browser` — where pages for the user open (global only)
+
+| Key | Default | Meaning |
+|---|---|---|
+| `default` | `auto` | `auto` = Edge when installed, else the first installed browser, else in-app. A browser id (`edge`, `chrome`, `firefox`, `brave`, `vivaldi`, `opera`) = that browser; one that is not installed falls back like `auto`. `in-app` = the Desktop app's browser pane. |
+
+The devops Home pane (Einstellungen → Browser) offers the installed browsers
+plus In-App and writes this key. In words ("nimm Chrome als Browser", "Seiten
+in der App öffnen") → `node "{PLUGIN_ROOT}/scripts/browser-choice.js" set
+chrome|in-app|auto` (it refuses a browser that is not installed), not
+`devops-config.js set`. What follows the choice:
+`deep-knowledge/browser-tool-strategy.md` § The user's browser.
+
 ### `deployParity` — the deploy-parity build before a ship merges
 
 | Key | Default | Meaning |
