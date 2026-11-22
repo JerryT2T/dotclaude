@@ -1,6 +1,6 @@
 /**
  * @module session-title
- * @version 0.6.0
+ * @version 0.7.0
  * @description Reads the session's CURRENT sidebar title straight from the
  *   transcript and computes the next one, so a title instruction can hand
  *   Claude the exact `set_session_title` value instead of a
@@ -28,12 +28,16 @@ const path = require('path');
 const {
   WORK_PREFIX, SHIPPING_PREFIX, BATCH_PREFIX, CONCEPT_PREFIX, CONCEPT_WORKING_PREFIX,
   INTERRUPTED_PREFIX, LEGACY_PREFIXES, LEGACY, stripPrefixes, classify, leadingPrefix,
+  hasSubMark, withSubMark, carrySubMark,
 } = require('./title-scheme');
 const { clampTitle, clampTopic, wordOf } = require('./title-budget');
 const { batchTopic } = require('./batch-topic');
 
 /** Legacy worded hourglass — rewritten to the bare form wherever found. */
 const LEGACY_PENDING_PREFIX = LEGACY.working;
+
+/** Code units of the sub marker and its space. */
+const SUB_LEN = 3;
 
 /** `current` without its leading prefixes, or null when nothing is left. */
 function rest(current) {
@@ -61,12 +65,23 @@ function rest(current) {
  * title or the legacy worded hourglass is marked.
  *
  * @param {string|null} current the title now (`readCurrentTitle`)
- * @param {{ prefix?: string, machine?: boolean, batchArmed?: boolean }} [opts]
+ * @param {{ prefix?: string, machine?: boolean, batchArmed?: boolean, sub?: boolean }} [opts]
  *   `batchArmed`: false only when the collect mode is known to be off — a
  *   `📚 Batch ┃` head is then stale and stripped; unknown keeps it.
  * @returns {string|null}
  */
-function nextTitle(current, { prefix = WORK_PREFIX, machine = false, batchArmed } = {}) {
+function nextTitle(current, opts = {}) {
+  const next = nextTitleCore(current, opts);
+  // A linked sub (`opts.sub`, the brief marker of its first prompt) whose title
+  // lacks the 🔗 yet gets it even when the head stays.
+  if (next === null && opts.sub && typeof current === 'string' && !hasSubMark(current)) {
+    const marked = withSubMark(current);
+    return marked !== current ? clampTitle(marked) : null;
+  }
+  return next;
+}
+
+function nextTitleCore(current, { prefix = WORK_PREFIX, machine = false, batchArmed, sub = false } = {}) {
   if (typeof current !== 'string' || !current.trim()) return null;
   const kind = classify(current);
   const legacyWorking = kind === 'work' && leadingPrefix(current).prefix === LEGACY_PENDING_PREFIX;
@@ -84,7 +99,7 @@ function nextTitle(current, { prefix = WORK_PREFIX, machine = false, batchArmed 
     if (!topic) return null;
     next = prefix + topic;
   } else if (kind === 'shipping') {
-    if (prefix !== SHIPPING_PREFIX || current.startsWith(SHIPPING_PREFIX)) return null;
+    if (prefix !== SHIPPING_PREFIX || (hasSubMark(current) ? current.slice(SUB_LEN) : current).startsWith(SHIPPING_PREFIX)) return null;
     next = SHIPPING_PREFIX + r;
   } else if (prefix === SHIPPING_PREFIX) {
     next = SHIPPING_PREFIX + r;
@@ -93,7 +108,7 @@ function nextTitle(current, { prefix = WORK_PREFIX, machine = false, batchArmed 
   } else {
     next = prefix + r;
   }
-  next = clampTitle(next);
+  next = clampTitle(carrySubMark(current, next, sub));
   return next !== current ? next : null;
 }
 
@@ -114,7 +129,7 @@ function batchTitle(current, ctx = {}) {
   if (typeof current !== 'string' || !current.trim()) return null;
   const r = rest(current);
   if (!r) return null;
-  const next = BATCH_PREFIX + clampTopic(wordOf(BATCH_PREFIX), batchTopic(r.trim(), ctx));
+  const next = carrySubMark(current, BATCH_PREFIX + clampTopic(wordOf(BATCH_PREFIX), batchTopic(r.trim(), ctx)));
   return next !== current ? next : null;
 }
 
@@ -150,7 +165,7 @@ function unbatchTitle(current, ctx = {}) {
  */
 function fireTitle(current, ctx = {}) {
   const topic = unbatchTitle(current, ctx);
-  return topic ? clampTitle(WORK_PREFIX + topic) : null;
+  return topic ? clampTitle(carrySubMark(current, WORK_PREFIX + topic)) : null;
 }
 
 /**
@@ -165,7 +180,7 @@ function fireTitle(current, ctx = {}) {
 function interruptedTitle(current) {
   if (typeof current !== 'string' || classify(current) !== 'work') return null;
   const r = rest(current);
-  return r ? clampTitle(INTERRUPTED_PREFIX + r) : null;
+  return r ? clampTitle(carrySubMark(current, INTERRUPTED_PREFIX + r)) : null;
 }
 
 /**
@@ -185,9 +200,9 @@ function staleWorkTitle(current, terminalPrefix = null) {
   if (typeof current !== 'string') return null;
   const kind = classify(current);
   if (kind !== 'work' && kind !== 'shipping' && kind !== 'process' && kind !== 'approval') return null;
-  if (current.startsWith(CONCEPT_WORKING_PREFIX)) return null;
+  if ((hasSubMark(current) ? current.slice(SUB_LEN) : current).startsWith(CONCEPT_WORKING_PREFIX)) return null;
   const r = rest(current);
-  return r ? clampTitle((terminalPrefix || INTERRUPTED_PREFIX) + r) : null;
+  return r ? clampTitle(carrySubMark(current, (terminalPrefix || INTERRUPTED_PREFIX) + r)) : null;
 }
 
 /**

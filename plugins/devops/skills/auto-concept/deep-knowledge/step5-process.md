@@ -146,8 +146,9 @@ compact state strings.
 
 An analysis decision entry carries `hesitation: { ms, noteWords, revisits, flagged }`
 (`templates-analysis.md` § Payload). It is a hint about where the user struggled,
-never an answer. `flagged` is the page's rule (at least two of: dwell over twice the
-analysis median and ≥ 20 s, a note over 12 words, ≥ 2 revisits/changes) after the
+never an answer. `flagged` is the page's rule (both of: dwell over twice the
+analysis median and ≥ 20 s, and ≥ 2 revisits/changes — never for a question the user clarified
+themselves with a note over 12 words or an own answer: "Keine passt", custom wording, own alternative) after the
 user's own "Nachschärfen" toggle in the closing. Consumers read it like this:
 
 - **iterate** — a flagged question is asked again in the next round, adapted

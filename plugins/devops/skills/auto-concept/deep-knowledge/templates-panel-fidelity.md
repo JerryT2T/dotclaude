@@ -1,4 +1,4 @@
-# Concept templates, part 06 of 52: Panel chrome — Live-Treue switch
+# Concept templates, part 06 of 53: Panel chrome — Live-Treue switch
 
 ## Live-Treue switch (fidelity)
 

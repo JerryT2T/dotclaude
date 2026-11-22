@@ -56,3 +56,33 @@ describe('title-plan parity with prompt.flow.title-work (#1102 Part A)', () => {
     }
   });
 });
+
+describe('titlePlan - the 🔗 of a linked sub (concept 2026-11-21 rows 1, 12, 13)', () => {
+  const NL = String.fromCharCode(10);
+  const brief = 'Background (from the session "Backlog"): do it' + NL + '[devops:handoff]';
+  it('a sub brief on the first prompt: the app title gets 🔗 ⏳ ➜ 🤖 Solo ┃', () => {
+    const plan = titlePlan({ prompt: brief, current: 'Dismantle', firstPrompt: true, fresh: false });
+    expect(plan.sessionTitle).toBe('🔗 ⏳ ➜ 🤖 Solo ┃ Dismantle');
+  });
+  it('a later prompt keeps the 🔗 through the title', () => {
+    const plan = titlePlan({ prompt: 'weiter', current: '🔗 🟩 ➜ 🚀 Released Alpha ┃ X', firstPrompt: false, fresh: false });
+    expect(plan.context).toContain('🔗 ⏳ ➜ 🤖 Solo ┃ X');
+  });
+  it('an unmarked first prompt gets the normal head without 🔗', () => {
+    const plan = titlePlan({ prompt: 'Fix the login', current: 'Fix', firstPrompt: true, fresh: false });
+    expect(plan.sessionTitle).toBe('⏳ ➜ 🤖 Solo ┃ Fix');
+  });
+  it('a marker mentioned in a later user prompt does not make a sub', () => {
+    const plan = titlePlan({ prompt: 'explain [devops:handoff]', current: '🟩 ➜ 📦 Committed ┃ X', firstPrompt: false, fresh: false });
+    expect(plan.context).not.toContain('🔗');
+  });
+});
+
+describe("titlePlan - a recorded sub gets its 🔗 back (Fund oq-submark-title-only)", () => {
+  it("knownSub re-adds the 🔗 to a reset title, and nothing changes without it", () => {
+    const plan = (current, knownSub) => titlePlan({ prompt: "weiter", current, firstPrompt: false, fresh: false, knownSub }).context;
+    expect(plan("Neuer Titel", true)).toContain('title:"🔗 ⏳ ➜ 🤖 Solo ┃ Neuer Titel"');
+    expect(plan("⏳ ➜ 🤖 Solo ┃ #1058 Dismantle", true)).toContain('title:"🔗 ⏳ ➜ 🤖 Solo ┃ #1058 Dismantle"');
+    expect(plan("Neuer Titel", false)).not.toContain("🔗");
+  });
+});

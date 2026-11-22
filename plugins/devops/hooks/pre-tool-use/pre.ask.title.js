@@ -42,8 +42,9 @@ function startReply(hook) {
 }
 
 function main(hook) {
-  if (hook.tool_name && !ask.isBlockingCall(hook.tool_name, hook.tool_input)) return null;
   if (hook.agent_id) return null;
+  // A non-blocking own_initiative / proposal start still carries its head (🔗 ⏳ ➜ 🤖 Solo).
+  if (hook.tool_name && !ask.isBlockingCall(hook.tool_name, hook.tool_input)) return startReply(hook);
   return refusal(hook) || startReply(hook);
 }
 

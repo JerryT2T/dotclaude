@@ -1,4 +1,4 @@
-# Concept templates, part 13 of 52: Template: design — layout CSS (continued 2)
+# Concept templates, part 13 of 53: Template: design — layout CSS (continued 2)
 
 ```css
 /* ── Screen navigation inside the ☰ panel ── */

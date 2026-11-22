@@ -1,4 +1,4 @@
-# Concept templates, part 45 of 52: Template: analysis — Full + Lite contract, decision modes, collect
+# Concept templates, part 45 of 53: Template: analysis — Full + Lite contract, decision modes, collect
 
 ## Analysis presentation (Full + Lite) — engine fit
 
@@ -228,9 +228,10 @@ as "not looked at", not as "agreed".
 the stage is visible AND the window focused (timestamps, back-and-forth
 summed); `noteWords` the words of the note;
 `revisits` the returns to the stage plus every change of the answer after the
-first. `flagged` is true when at least TWO of: dwell > 2× the median of this
-analysis and ≥ 20 s · note > 12 words · ≥ 2 revisits/changes
-(`hesitationFlag()` below). The closing preset its "Nachschärfen" toggles from
+first. `flagged` is true only when BOTH dwell > 2× the median of this
+analysis and ≥ 20 s AND ≥ 2 revisits/changes — and never for a decision the user
+already clarified themselves: an own note > 12 words or an own answer ("Keine
+passt", custom wording, own alternative, fix text) (`hesitationFlag()` below). The closing preset its "Nachschärfen" toggles from
 it; the user's toggle (`sharpen`) overrides the rule. Consumers: `step5-process.md`
 § Hesitation signal.
 
@@ -320,7 +321,7 @@ function collectModeDecision(el) {
   // Hesitation: the page writes { ms, revisits, median[, sharpen] } into dm-{id}-hes.
   let hs = {};
   try { hs = JSON.parse(text(n + '-hes') || '{}') || {}; } catch (e) { hs = {}; }
-  const hz = { ms: Math.max(0, Math.round(Number(hs.ms) || 0)), noteWords: typeof noteWordCount === 'function' ? noteWordCount(entry.note) : String(entry.note).split(/\s+/).filter(Boolean).length, revisits: Math.max(0, Math.round(Number(hs.revisits) || 0)), flagged: false };
+  const hz = { own: typeof ownAnswer === 'function' && ownAnswer(entry), ms: Math.max(0, Math.round(Number(hs.ms) || 0)), noteWords: typeof noteWordCount === 'function' ? noteWordCount(entry.note) : String(entry.note).split(/\s+/).filter(Boolean).length, revisits: Math.max(0, Math.round(Number(hs.revisits) || 0)), flagged: false };
   hz.flagged = typeof hs.sharpen === 'boolean' ? hs.sharpen : (typeof hesitationFlag === 'function' && hesitationFlag(hz, Number(hs.median) || 0));
   entry.hesitation = hz;
   return entry;
@@ -331,12 +332,22 @@ function noteWordCount(note) {
   return String(note || '').split(/\s+/).filter(Boolean).length;
 }
 
-/** Hesitation flag: at least TWO of — dwell over 2x the analysis median and >= 20 s, a note over 12 words, >= 2 revisits / changes. */
+/** An answer the user wrote or chose themselves: "Keine passt", custom wording, an own alternative (yesnoalt), a fix text (verify). */
+function ownAnswer(entry) {
+  if (!entry) return false;
+  if (entry.none || entry.choice === 'custom') return true;
+  const v = entry.value;
+  if (entry.mode === 'yesnoalt' && v && v.answer === 'alt' && String(v.alt || '').trim()) return true;
+  return entry.mode === 'verify' && !!String(entry.fix || '').trim();
+}
+
+/** Hesitation flag. An own note (> 12 words) or an own answer counts as clarified - never flagged (the user already
+ *  dealt with it there). Otherwise BOTH of: dwell over 2x the analysis median and >= 20 s, AND >= 2 revisits / changes. */
 function hesitationFlag(hz, medianMs) {
+  if (hz.own || hz.noteWords > 12) return false;
   const slow = hz.ms >= 20000 && hz.ms > 2 * (medianMs || 0);
-  const wordy = hz.noteWords > 12;
   const back = hz.revisits >= 2;
-  return [slow, wordy, back].filter(Boolean).length >= 2;
+  return slow && back;
 }
 
 function collectModeDecisions(scope) {

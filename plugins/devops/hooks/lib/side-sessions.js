@@ -1,6 +1,6 @@
 /**
  * @module side-sessions
- * @version 0.1.0
+ * @version 0.2.0
  * @description Side-session notes and linked side-session work.
  *
  *   A Desktop session can start another one (`mcp__ccd_session__start_session`)
@@ -61,7 +61,47 @@ const RUNNING_RE = /\b(?:läuft (?:noch|jetzt|gerade|weiter)|laufen noch|noch (?
 function launchMode(input) {
   const m = MARKER_RE.exec(String((input && input.prompt) || ''));
   if (m) return m[1] === 'deliver' ? 'deliver' : 'handoff';
-  return input && input.initiation === 'user_asked' ? 'handoff' : null;
+  return input && (input.initiation === 'user_asked' || input.initiation === 'offer') ? 'handoff' : null;
+}
+
+/** The brief marker of a prompt text: 'handoff' | 'deliver' | null. */
+function markerMode(text) {
+  const m = MARKER_RE.exec(String(text || ''));
+  return m ? m[1] : null;
+}
+
+/**
+ * How a session learns it is a linked sub (concept 2026-11-21, 🔗 marker): its
+ * FIRST user prompt carries the brief marker. A start with a marker has it from
+ * the parent; a `user_asked` start without one gets `[devops:handoff]` appended
+ * by `pre.ask.title` (`ask-title.js` startSessionInput). Reads the head of the
+ * transcript only; null = not a linked sub or unknown. Never throws.
+ *
+ * @param {string|undefined} transcriptPath
+ * @returns {'handoff'|'deliver'|null}
+ */
+function subModeOfTranscript(transcriptPath) {
+  if (!transcriptPath) return null;
+  let fd;
+  try {
+    fd = fs.openSync(transcriptPath, 'r');
+    const buf = Buffer.alloc(256 * 1024);
+    const n = fs.readSync(fd, buf, 0, buf.length, 0);
+    for (const line of buf.subarray(0, n).toString('utf8').split('\n')) {
+      if (!line.includes('"type":"user"')) continue;
+      let e; try { e = JSON.parse(line); } catch { continue; }
+      if (!e || e.type !== 'user' || e.isMeta === true || e.isSidechain) continue;
+      const c = e.message && e.message.content;
+      const isPrompt = typeof c === 'string' || (Array.isArray(c) && c.some((b) => b && b.type !== 'tool_result'));
+      if (!isPrompt) continue;
+      return markerMode(strings(c, []).join('\n'));
+    }
+    return null;
+  } catch {
+    return null;
+  } finally {
+    if (fd !== undefined) try { fs.closeSync(fd); } catch { /* ignore */ }
+  }
 }
 
 function isSideSessionTurn(text) {
@@ -204,7 +244,45 @@ function scanLinkedSessionsInFile(transcriptPath, tailBytes) {
   }
 }
 
+/** Marker file of a linked sub: `<tmpdir>/dotclaude-devops-linked-sub-<session>`, content 'handoff' | 'deliver'. */
+function subRecordFile(sessionId) {
+  return require('path').join(require('os').tmpdir(), `dotclaude-devops-linked-sub-${sessionId}`);
+}
+
+/**
+ * Remember that this session is a linked sub (concept 2026-11-21, Fund
+ * oq-submark-title-only). A sub started without a brief (an offer: title only;
+ * a `proposal_id` start) carries the 🔗 only in its title — reset that title and
+ * nothing would bring it back. The title-work hook records the sub the first
+ * time it sees the 🔗 or the brief marker, so `rememberedSub` answers from then
+ * on without either. Its own marker file, not turn-state: a lost key there would
+ * drop the 🔗. Never throws.
+ *
+ * @param {string|undefined} sessionId
+ * @param {'handoff'|'deliver'} mode
+ */
+function rememberSub(sessionId, mode) {
+  if (!sessionId || (mode !== 'handoff' && mode !== 'deliver')) return;
+  try {
+    const file = subRecordFile(sessionId);
+    if (fs.existsSync(file)) return;
+    require('./session-id').writeSessionFile(file, mode);
+  } catch { /* best effort: the title still carries the 🔗 */ }
+}
+
+/** The recorded sub mode of `sessionId`: 'handoff' | 'deliver' | null. Never throws. */
+function rememberedSub(sessionId) {
+  if (!sessionId) return null;
+  try {
+    const v = fs.readFileSync(subRecordFile(sessionId), 'utf8').trim();
+    return v === 'handoff' || v === 'deliver' ? v : null;
+  } catch {
+    return null;
+  }
+}
+
 module.exports = {
-  SIDE_SESSION_TURN_PATTERN, isSideSessionTurn, parseNotes, reportState,
+  SIDE_SESSION_TURN_PATTERN, isSideSessionTurn, launchMode, markerMode, subModeOfTranscript, parseNotes, reportState,
+  rememberSub, rememberedSub, subRecordFile,
   scanLinkedSessions, scanLinkedSessionsInFile,
 };
