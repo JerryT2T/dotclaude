@@ -499,6 +499,7 @@ describe("post.flow.completion — reaches the model, and only when it changes s
 
   test("the 5th code edit brings the ship nudge and [desktop-testing]; the 6th does not", () => {
     const dir = project();
+    fs.mkdirSync(path.join(dir, ".git")); // the edited file sits in a git repo (B4)
     const sid = "s-gate-edit5";
     fs.writeFileSync(flag(dir, "work-happened", sid), "Read");
     fs.writeFileSync(flag(dir, "edits", sid), "4");
@@ -508,6 +509,37 @@ describe("post.flow.completion — reaches the model, and only when it changes s
     const sixth = runHook(dir, sid, "Edit");
     expect(sixth).not.toContain("[desktop-testing]");
     expect(sixth).not.toContain("SHIP:");
+    cleanup(dir);
+  });
+
+  test("B4: the 5th edit of a file in no git repo brings neither the ship nudge nor [desktop-testing]", () => {
+    const dir = project(); // no .git anywhere above the temp folder
+    const sid = "s-gate-edit5-norepo";
+    fs.writeFileSync(flag(dir, "work-happened", sid), "Read");
+    fs.writeFileSync(flag(dir, "edits", sid), "4");
+    const fifth = runHook(dir, sid, "Edit");
+    expect(fifth).not.toContain("SHIP:");
+    expect(fifth).not.toContain("[desktop-testing]");
+    // the edit still counts for the gates, as before
+    expect(fs.readFileSync(flag(dir, "edits", sid), "utf8")).toBe("5");
+    cleanup(dir);
+  });
+
+  // E5: before this exemption the contract fired on the first tool call of a send-to-project
+  // turn like on any other (verified: any non-silent first call carries it).
+  test("E5: a turn whose only tool is SendToProject(Context) gets no contract and claims no work", () => {
+    const dir = project();
+    for (const tool of ["SendToProjectContext", "SendToProject"]) {
+      const sid = `s-e5-${tool}`;
+      expect(runHookRaw(dir, sid, tool, { tool_input: { text: "hello" } })).toBe("");
+      expect(fs.existsSync(flag(dir, "work-happened", sid))).toBe(false);
+    }
+    cleanup(dir);
+  });
+
+  test("E5 pin: any other tool as first call of a turn still carries the contract (Desktop path unchanged)", () => {
+    const dir = project();
+    expect(runHook(dir, "s-e5-other", "Read")).toContain("COMPLETION CARD");
     cleanup(dir);
   });
 

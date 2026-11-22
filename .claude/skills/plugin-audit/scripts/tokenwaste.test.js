@@ -133,6 +133,19 @@ describe('token log (#1002): summary and prune', () => {
     expect(s.lastTs).toBe('2026-11-01T10:02:00.000Z');
   });
 
+  it('measures the start cost per Claude Projects thread, SessionStart rows included', () => {
+    const t = [
+      rec('2026-11-01T10:00:00.000Z', { sid: 'th1', event: 'SessionStart', ctx: 3000, hooks: { 'ss.a': 3000 } }),
+      rec('2026-11-01T10:00:05.000Z', { sid: 'th1', event: 'UserPromptSubmit', ctx: 400, hooks: { 'p.a': 400 }, thread: true, claudeProject: 'chan_1' }),
+      rec('2026-11-01T10:05:00.000Z', { sid: 'th1', event: 'UserPromptSubmit', ctx: 200, hooks: { 'p.a': 200 }, thread: true }),
+      rec('2026-11-01T10:06:00.000Z', { sid: 'desk', event: 'SessionStart', ctx: 9000, hooks: { 'ss.a': 9000 } }),
+    ];
+    const s = TW.summarizeTokenLog(t.join('\n'));
+    expect(s.threads).toMatchObject({ sessions: 1, startChars: 3000, wakes: 2, perWakeChars: 300 });
+    expect(s.threads.startTokens).toBeGreaterThan(0);
+    expect(TW.summarizeTokenLog(lines.join('\n')).threads).toBeNull();
+  });
+
   it('prune drops what was read and keeps lines written later', () => {
     const file = path.join(TMP, 'prune.jsonl');
     fs.writeFileSync(file, `${[...lines, rec('2026-11-01T10:05:00.000Z', { event: 'Stop', ctx: 1 })].join('\n')}\n`);

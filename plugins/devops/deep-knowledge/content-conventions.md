@@ -4,6 +4,9 @@ How to size and structure project-persistent content (CLAUDE.md, skills,
 agents, deep-knowledge). Referenced by `/do-learn`, `project-setup.md`, the
 `post.claude.budget` hook, and all skill authoring.
 
+Wording: "project" means the repository; the Claude Code feature is "Claude Project"
+(glossary in `plugins/devops/CONVENTIONS.md` § Glossary).
+
 These are **soft caps** — they bias routing decisions, they don't hard-fail.
 When content genuinely needs more space, re-route to the next-larger container
 instead of cramming.

@@ -172,6 +172,8 @@ async function scanOne(repo, opts = {}) {
       landedLeftovers: cls.removable.length,
       mainOnLanded: cls.mainOnLanded[0] ? cls.mainOnLanded[0].branch : null,
       landedOutside: cls.landedOutside.length,
+      // Claude Projects thread work: its own group, never counted as orphaned
+      threadWork: (cls.threadWork || []).map((t) => ({ kind: t.kind, branch: t.branch, path: t.path, idleDays: Math.floor(t.ageDays || 0) })),
       remoteOnly: hy.remoteUnlanded(cls.ctx, scan.defaultBranch, now).map((b) => ({ branch: b.name, ageDays: b.ageDays, state: b.state })),
       offline: cls.merged === null,
     },

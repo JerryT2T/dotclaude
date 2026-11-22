@@ -110,6 +110,28 @@ describe("usage per turn (Stop)", () => {
   });
 });
 
+describe("thread fields (E4)", () => {
+  const WAKE = '<wake reason="message"><project id="chan_abc123" type="project"><message trigger="true">hi</message></project></wake>';
+  const sid = `tl-thread-${process.pid}-${Date.now()}`;
+
+  test("a thread row carries thread:true and the chan_ id, and keeps it on later events without the prompt", () => {
+    const file = logFile("thread");
+    TL.recordEvent("UserPromptSubmit", { session_id: sid, prompt: WAKE }, [{ name: "p.a", stdout: "hello" }], { allowed: true, file });
+    TL.recordEvent("PostToolUse", { session_id: sid, tool_name: "Bash", tool_response: "r" }, [{ name: "post.a", stdout: ctx("12") }], { allowed: true, file });
+    const [first, second] = lines(file);
+    expect(first).toMatchObject({ thread: true, claudeProject: "chan_abc123" });
+    expect(second).toMatchObject({ thread: true, claudeProject: "chan_abc123" });
+  });
+
+  test("an ordinary session's row has neither field (Desktop path unchanged)", () => {
+    const file = logFile("plain");
+    TL.recordEvent("PostToolUse", { session_id: `${sid}-plain`, tool_name: "Bash", tool_response: "r" }, [{ name: "post.a", stdout: ctx("12") }], { allowed: true, file });
+    const [row] = lines(file);
+    expect(row).not.toHaveProperty("thread");
+    expect(row).not.toHaveProperty("claudeProject");
+  });
+});
+
 describe("cap", () => {
   test("a file over the cap drops its oldest half before the next append", () => {
     const file = logFile("cap");

@@ -138,6 +138,40 @@ function append(file, rec) {
   fs.appendFileSync(file, `${JSON.stringify(rec)}\n`);
 }
 
+/** The Claude Project id a wake envelope names (`<project id="chan_…">`), or null. */
+function chanOf(prompt) {
+  const m = typeof prompt === 'string' ? /^\s*<wake\b[^>]*>\s*<project\b[^>]*\bid="(chan_[^"]+)"/.exec(prompt) : null;
+  return m ? m[1] : null;
+}
+
+const CHAN_FLAG = 'dotclaude-token-log-chan';
+
+/**
+ * `{thread: true, claudeProject?}` when the session is a Claude Projects thread, else `{}` —
+ * the field is absent for every other session. The `chan_…` id comes from the wake prompt
+ * and is kept per session for the events that carry no prompt. Never throws.
+ * @param {object} p parsed hook input
+ */
+function threadFields(p) {
+  try {
+    const pt = require('./project-thread');
+    if (!pt.isThread(p)) return {};
+    const out = { thread: true };
+    const { sessionFile, readSessionFile, writeSessionFile } = require('./session-id');
+    let chan = chanOf(p.prompt);
+    if (chan) {
+      try { writeSessionFile(sessionFile(CHAN_FLAG, p.session_id), chan); } catch { /* advisory */ }
+    } else if (p.session_id) {
+      const saved = readSessionFile(CHAN_FLAG, p.session_id, { exact: true });
+      chan = saved ? String(saved.content || '').trim() : null;
+    }
+    if (chan) out.claudeProject = chan;
+    return out;
+  } catch {
+    return {};
+  }
+}
+
 function allowed(opts) {
   if (opts && typeof opts.allowed === 'boolean') return opts.allowed;
   try { return require('./features').featureAllowed('token-log'); } catch { return false; }
@@ -163,6 +197,7 @@ function recordEvent(event, payload, results, opts = {}) {
       if (n > 0) { hooks[r.name] = n; ctx += n; }
     }
     const rec = { v: 1, ts: new Date().toISOString(), sid: p.session_id || null, event, ctx, hooks };
+    Object.assign(rec, threadFields(p));
     if (event === 'PostToolUse' || event === 'PreToolUse') rec.tool = p.tool_name || null;
     if (event === 'PostToolUse') rec.result = sizeOf(p.tool_response);
     if (event === 'Stop' && p.transcript_path && p.session_id) {
@@ -185,4 +220,4 @@ function recordEvent(event, payload, results, opts = {}) {
   }
 }
 
-module.exports = { recordEvent, modelChars, usageSince, filePath, MAX_BYTES };
+module.exports = { recordEvent, modelChars, usageSince, filePath, threadFields, chanOf, MAX_BYTES };

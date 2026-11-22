@@ -95,16 +95,20 @@ describe("orphan-scan", () => {
     expect(entry.landedLeftovers).toBe(0);
   });
 
-  test("a remote-only branch with unlanded work and no PR is reported, whatever its age", async () => {
+  test("a remote-only branch with unlanded work and no PR is reported once it idled 7 days, not before", async () => {
     const root = mkRoot();
     const r = repoIn(root, "app");
     commitOn(r, "claude/cloud-session", "c.txt", "cloud\n");
     git(r, "update-ref", "refs/remotes/origin/claude/cloud-session", git(r, "rev-parse", "claude/cloud-session"));
     git(r, "checkout", "-q", "main");
     git(r, "branch", "-q", "-D", "claude/cloud-session");
-    const { entry } = await scanOne(r, { ...opts, fetchOpen: () => ({ names: new Set(), shas: new Set() }) });
+    const noPr = () => ({ names: new Set(), shas: new Set() });
+    const young = await scanOne(r, { ...opts, fetchOpen: noPr });
+    expect(young.entry.remoteOnly).toEqual([]);
+    const later = Date.now() + 8 * 86_400_000;
+    const { entry } = await scanOne(r, { ...opts, now: later, fetchOpen: noPr });
     expect(entry.remoteOnly).toEqual([expect.objectContaining({ branch: "claude/cloud-session", state: "unlanded" })]);
-    const withPr = await scanOne(r, { ...opts, fetchOpen: () => ({ names: new Set(["claude/cloud-session"]), shas: new Set() }) });
+    const withPr = await scanOne(r, { ...opts, now: later, fetchOpen: () => ({ names: new Set(["claude/cloud-session"]), shas: new Set() }) });
     expect(withPr.entry.remoteOnly).toEqual([]);
   }, 240_000);
 
