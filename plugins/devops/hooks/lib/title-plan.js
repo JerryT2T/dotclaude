@@ -211,7 +211,7 @@ function earlyTitleOf({ prompt, current, firstPrompt, prefix = prefixOf(prompt),
 function threadInstruction(call) {
   return [
     `[prompt.flow.title-work] Project thread, once: ${call} in the SAME message as this turn's first other tool call (parallel, no message of its own).`,
-    'The head before "┃ " is the devops status prefix, not part of the thread\'s name: keep it if you rename the thread yourself; the completion card that ends the turn replaces it.',
+    'The leading "<status> ➜ <icon> " head is the devops status prefix, not part of the thread\'s name: keep it if you rename the thread yourself; the completion card that ends the turn replaces it.',
     'A turn that only acknowledges (no_reply_needed, a reaction) needs no rename. Tool missing or failing: skip silently. Do not mention this to the person.',
   ].join('\n');
 }

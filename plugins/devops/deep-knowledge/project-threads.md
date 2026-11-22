@@ -37,10 +37,10 @@ With the feature (`on`):
 
 | Moment | What happens |
 |---|---|
-| A wake starts work | `prompt.flow.title-work` names one `rename_thread` call: `⏳ ➜ 🤖 Solo ┃ <thread title>` (a ship order in the person's words: `⏳ ➜ 🚀 Shipping ┃`). First wake: the model prefixes the title it sees; later the hook knows the title from the transcript's last `rename_thread` and names it exactly |
+| A wake starts work | `prompt.flow.title-work` names one `rename_thread` call: `⏳ ➜ 🤖 <thread title>` (a ship order in the person's words: `⏳ ➜ 🚀`). First wake: the model prefixes the title it sees; later the hook knows the title from the transcript's last `rename_thread` and names it exactly |
 | First tool call | the card contract plus one line: the card is the result reply |
 | Checklist with every step done | one "card now" line |
-| `render_completion_card` (tool or `--render-card`) | the full markdown card, to be posted verbatim as the text of ONE `post_message`, plus the exact `rename_thread` to the outcome head (`👉 ➜ 📦 Ready ┃ …`). No widget, no `wrap_up`, no archive |
+| `render_completion_card` (tool or `--render-card`) | the full markdown card, to be posted verbatim as the text of ONE `post_message`, plus the exact `rename_thread` to the outcome head (`👉 ➜ 📦 …`). No widget, no `wrap_up`, no archive |
 | The card is posted | "turn over", only `set_thread_resolved` may follow |
 | A reply without the card while the title says ⏳ | once per prompt: the exact rename that takes the head off, for a turn that ends there |
 
@@ -60,7 +60,7 @@ Threads on my computer end their work with a devops completion card: a reply
 whose heading reads "✨✨✨ <title> ✨✨✨", followed by a line that starts with a
 status icon (👉 🟩 🟥 🟦 ⏳). When you report such a thread's result in the
 project chat, quote that status line and the numbered points under it as they
-are. A thread title may start with "<status> ➜ <icon> <Word> ┃ ": keep that head
+are. A thread title may start with "<status> ➜ <icon> ": keep that head
 when you link or rename the thread.
 ```
 
