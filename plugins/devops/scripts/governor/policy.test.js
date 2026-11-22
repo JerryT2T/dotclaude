@@ -599,3 +599,35 @@ describe('priority app vs many short builds and tests (#1115)', () => {
     expect(P.admit({ command: 'dotnet test', now: now + cfg.admission.reserveMs, state, kinds, cfg }).decision).toBe('allow');
   });
 });
+
+describe('spawn storm at 100 % CPU without a priority app', () => {
+  const now = 1000 * S;
+  const base = { heartbeat: now - S, pressure: { priority: [], over: ['cpu'] }, priorityBy: null, sys: { freeMB: 20000 }, jobs: [], admitted: [] };
+  it('CPU over budget: parallel test suites share slotsOverBudget slots', () => {
+    const state = { ...base, admitted: [] };
+    const res = [];
+    for (let i = 0; i < 4; i++) {
+      const r = P.admit({ command: 'npx vitest run', now, state, cfg });
+      res.push(r);
+      if (r.decision === 'allow') state.admitted.push({ at: now, kind: r.kind, mb: r.expectedMB });
+    }
+    expect(res.filter((r) => r.decision === 'allow')).toHaveLength(1);
+    expect(res.filter((r) => r.decision === 'defer').every((r) => r.reason === 'budget:cpu')).toBe(true);
+    const jobs = [{ id: 'a', name: 'node.exe', kind: 'foreground', heavy: false, cmdKind: 'vitest', cpuPct: 1 }];
+    expect(P.admit({ command: 'npm test', now, state: { ...base, jobs }, cfg })).toMatchObject({ decision: 'defer', reason: 'budget:cpu' });
+    expect(P.admit({ command: 'npm test', now, state: { ...base, jobs, pressure: { priority: [], over: ['gpu'] } }, cfg }).decision).toBe('allow');
+    expect(P.admit({ command: 'npm test', now, state: { ...base, jobs }, cfg: merge(cfg, { admission: { slotsOverBudget: 2 } }) }).decision).toBe('allow');
+  });
+  it('a job forking many short-lived children turns heavy on CPU although its measured CPU is ~0', () => {
+    const at = (s, n) => new Map([['j', { id: 'j', rootPid: 1, startMs: 0, pids: [{ pid: 1, startMs: 0 }, ...Array.from({ length: n }, (_, i) => ({ pid: s * 100 + i + 2, startMs: s * S }))], cpuPct: 0.4, gpuPct: 0, ioBps: 0, memMB: 0, listening: false, session: 's1' }]]);
+    let t = {};
+    // a fresh scan every 15 s with 10 new children, reused lists (same pids) on the ticks between
+    for (let s = 0; s <= 45; s += 3) t = P.trackJobs(t, at(Math.floor(s / 15) * 15, 10), s * S, cfg);
+    expect(t.j.churn).toBe(10);
+    expect(t.j.heavy).toBe(true);
+    expect(t.j.res).toContain('cpu');
+    let q = {};
+    for (let s = 0; s <= 45; s += 3) q = P.trackJobs(q, at(Math.floor(s / 15) * 15, 2), s * S, cfg);
+    expect(q.j.heavy).toBe(false);
+  });
+});
