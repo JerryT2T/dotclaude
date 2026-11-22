@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.402.1] — 2026-11-22
+
+### Fixed
+- Completion card: before every render each linked side session passed as running/waiting is read with `get_session`; a child that already finished or shipped is passed as done/shipped instead of keeping a stale ⏳ Linked card.
+
 ## [0.402.0] — 2026-11-22
 
 ### Added
