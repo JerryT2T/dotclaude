@@ -5,7 +5,9 @@
  * Übersicht: budget rings with a pace tick, four clickable state tiles (👉 opens the session waiting longest, ⏳ the
  * newest running one, 🟩 the oldest finished one, 🧹 starts a cleanup session), one row per project with its non-zero
  * state chips and "＋ Batch" (a new session in that project in collect mode; while that batch session is alive and
- * still a batch, the row links to it instead). Einstellungen: the devops switch for this session, the info card's
+ * still a batch, the row links to it instead), and the bedtime row: "🛏 Ins Bett gehen" arms the shutdown watcher
+ * (scripts/bedtime-shutdown.js — the PC powers off once no session works any more), shows whom it waits for and
+ * cancels it. Einstellungen: the devops switch for this session, the info card's
  * figures as tiles with an "i" toggle, measured facts in place of a token gain that is not there, the version.
  *
  * Pure helpers are exported for the tests; the engine side reaches the rest of the mod only through `HomeDeps`.
@@ -22,6 +24,9 @@ const STORE_BATCH = 'homeBatch'
 const STALE_MS = 20_000
 const WEEK_MIN = 7 * 24 * 60
 const CONFIRM_PCT = 85
+/** Twin of scripts/bedtime-shutdown.js STALE_MS: a waiting state not updated this long has no watcher behind it. */
+const BED_STALE_MS = 3 * 60_000
+const BED_NAMES = 3
 
 // ── pure ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -29,6 +34,8 @@ export type HomeSession = { id: string; title: string; project: string; link: st
 export type HomeKind = 'waiting' | 'running' | 'done' | 'other'
 export type HomeProject = { path: string; name: string; waiting: number; running: number; done: number; cleanup: number; batch: HomeSession | null; last: string }
 export type HomeRing = { label: string; pct: number; elapsed: number | null }
+/** The bedtime watcher as the pane shows it; `names` = the sessions it still waits for. */
+export type HomeBed = { phase: 'waiting' | 'person' | 'busy-job' | 'shutdown'; names: string[]; more: number; note: string; shutdownAt: number }
 export type HomeModel = {
   waiting: HomeSession[]
   running: HomeSession[]
@@ -193,6 +200,34 @@ export function infoTiles(d: InfoData | null, loc: Locale): { tiles: InfoRow[]; 
   return { tiles: noGain ? rows : [infoHeadline(d, loc), ...rows], noGain }
 }
 
+/**
+ * `~/.claude/bedtime-shutdown.json` → what is armed right now, or null: a final phase (cancelled, expired, failed),
+ * a waiting state whose watcher stopped updating it, and a shutdown whose time has passed all show the button again.
+ */
+export function bedFrom(state: unknown, now: number): HomeBed | null {
+  if (!state || typeof state !== 'object') return null
+  const o = state as Record<string, unknown>
+  const phase = o.phase
+  const shutdownAt = typeof o.shutdownAt === 'number' ? o.shutdownAt : 0
+  if (phase === 'shutdown') {
+    if (shutdownAt <= now) return null
+  } else if (phase === 'waiting' || phase === 'person' || phase === 'busy-job') {
+    if (typeof o.updatedAt !== 'number' || now - o.updatedAt > BED_STALE_MS) return null
+  } else return null
+  const all = (Array.isArray(o.active) ? o.active : [])
+    .map(a => (a && typeof a === 'object' ? String((a as { name?: unknown }).name || '').trim() : ''))
+    .filter(Boolean)
+  return { phase, names: all.slice(0, BED_NAMES), more: Math.max(0, all.length - BED_NAMES), note: typeof o.note === 'string' ? o.note : '', shutdownAt }
+}
+
+export function bedText(b: HomeBed, now: number): string {
+  if (b.phase === 'shutdown') return `🛏 PC fährt in ${Math.max(0, Math.round((b.shutdownAt - now) / 1000))} s herunter`
+  if (b.phase === 'person') return '🛏 Alles fertig – PC fährt herunter, sobald du 5 min weg bist'
+  if (b.phase === 'busy-job') return `🛏 Wartet auf ${b.note || 'einen laufenden Job'}`
+  if (!b.names.length) return '🛏 Keine Sitzung arbeitet mehr – PC fährt in wenigen Minuten herunter'
+  return `🛏 PC fährt herunter, sobald fertig: ${b.names.join(' · ')}${b.more ? ` (+${b.more})` : ''}`
+}
+
 export function agoText(ms: number): string {
   const s = Math.max(0, Math.round(ms / 1000))
   return s < 60 ? `vor ${s} s` : `vor ${Math.round(s / 60)} min`
@@ -211,7 +246,7 @@ export type HomeCtx = {
   switchDevops: (on: boolean) => Promise<void>
 }
 
-type Snap = { at: number; model: HomeModel; rings: HomeRing[]; reset: string; info: InfoData | null; error: string }
+type Snap = { at: number; model: HomeModel; rings: HomeRing[]; reset: string; info: InfoData | null; error: string; bed: HomeBed | null }
 
 let snap: Snap | null = null
 let loading = false
@@ -220,6 +255,8 @@ let openInfo = ''
 let confirmFor = ''
 const busy = new Map<string, 'starting' | 'started' | 'failed'>()
 let paneOpen = false
+let bedConfirm = false
+let bedBusy = false
 
 async function readJson($: EngineInterface, path: string): Promise<unknown> {
   try {
@@ -257,7 +294,9 @@ async function load($: EngineInterface, ctx: HomeCtx): Promise<void> {
   const cleanup = home ? cleanupFrom(await readJson($, `${home}/.claude/orphan-report.json`)) : {}
   const live = home ? await readJson($, `${home}/.claude/usage-live.json`) : null
   const info = await ctx.loadInfo().catch(() => null)
-  snap = { at: await $.clock.now(), model: homeModel(sessions, cleanup, await batches($)), rings: ringsFrom(live), reset: resetText(live), info, error }
+  const at = await $.clock.now()
+  const bed = bedFrom(home ? await readJson($, `${home}/.claude/bedtime-shutdown.json`) : null, at)
+  snap = { at, model: homeModel(sessions, cleanup, await batches($)), rings: ringsFrom(live), reset: resetText(live), info, error, bed }
 }
 
 export function refreshHome($: EngineInterface, ctx: HomeCtx, force = false): void {
@@ -341,6 +380,44 @@ function pressBatch($: EngineInterface, ctx: HomeCtx, p: HomeProject): void {
 
 function pressCleanup($: EngineInterface, ctx: HomeCtx, cwd: string): void {
   startSession($, ctx, '__cleanup__', cwd, 'Branches aufräumen', 'Branches aufräumen')
+}
+
+/**
+ * The bedtime row. Arming asks once (it ends in a power-off), then starts the detached watcher; the same script
+ * cancels it, a shutdown already counting down included. The watcher's own first look fills the row at once.
+ */
+function pressBed($: EngineInterface, ctx: HomeCtx, cmd: 'start' | 'cancel'): void {
+  if (bedBusy) return
+  if (cmd === 'start' && !bedConfirm) {
+    bedConfirm = true
+    $.ui.invalidate('ui.render')
+    try {
+      $.clock.after(8000, () => {
+        bedConfirm = false
+        $.ui.invalidate('ui.render')
+      })
+    } catch {
+      /* the next press answers it */
+    }
+    return
+  }
+  bedConfirm = false
+  bedBusy = true
+  $.ui.invalidate('ui.render')
+  void (async () => {
+    try {
+      const r = await $.process.run(['node', `${$.plugin.root}/scripts/bedtime-shutdown.js`, cmd], { timeoutMs: 20_000 })
+      const line = (r.stdout || '').trim().split('\n').filter(Boolean).pop() || ''
+      const j = JSON.parse(line) as { ok?: unknown; skipped?: unknown; error?: unknown }
+      if (j.ok !== true) throw new Error(j.skipped === true ? 'nur unter Windows' : typeof j.error === 'string' ? j.error.slice(0, 120) : 'unbekannt')
+      if (snap) snap = { ...snap, bed: cmd === 'start' ? bedFrom(j, await $.clock.now()) : null }
+      if (cmd === 'cancel') $.ui.toast('🛏 Abgebrochen – der PC bleibt an', { timeoutMs: 5000 })
+    } catch (err) {
+      $.ui.toast(`🛏 ${cmd === 'start' ? 'Start' : 'Abbrechen'} fehlgeschlagen: ${err instanceof Error ? err.message : 'unbekannt'}`, { timeoutMs: 8000 })
+    }
+    bedBusy = false
+    $.ui.invalidate('ui.render')
+  })()
 }
 
 const STATE_COLOR = { waiting: '#d29922', running: '#1f6feb', done: '#3fb950', cleanup: '#8b949e' } as const
@@ -442,6 +519,14 @@ export async function renderHome($: EngineInterface, e: any, ctx: HomeCtx): Prom
           {tile('t-clean', m.cleanup, '🧹 aufräumen', STATE_COLOR.cleanup, undefined, () => pressCleanup($, ctx, cwd))}
         </Box>
         {m.waiting[0] && <Text key="home-oldest" dimColor>{`Am längsten offen: ${nameOf(m.waiting[0].project)} · ${m.waiting[0].title.replace(/^\S+\s+➜\s+/u, '')}`}</Text>}
+        <Box key="home-bed" flexDirection="row" alignItems="center" columnGap={1}>
+          {s.bed ? <Text key="home-bed-text" color={STATE_COLOR.waiting}>{bedText(s.bed, now)}</Text>
+            : <Text key="home-bed-text" dimColor>PC ausschalten, sobald keine Sitzung mehr arbeitet</Text>}
+          <Box flexGrow={1} />
+          {bedBusy ? <Text key="home-bed-btn" dimColor>⏳ …</Text>
+            : s.bed ? <Button key="home-bed-btn" label="Abbrechen" onPress={() => pressBed($, ctx, 'cancel')} />
+            : <Button key="home-bed-btn" variant={bedConfirm ? 'primary' : undefined} label={bedConfirm ? 'Sicher? PC fährt dann herunter' : '🛏 Ins Bett gehen'} onPress={() => pressBed($, ctx, 'start')} />}
+        </Box>
         <Text key="home-projects-h" bold>Projekte</Text>
         {m.projects.length === 0 && <Text key="home-projects-empty" dimColor>Keine Sitzungen gefunden.</Text>}
         {m.projects.map(p => {

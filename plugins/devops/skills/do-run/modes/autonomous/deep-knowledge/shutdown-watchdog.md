@@ -216,40 +216,47 @@ second `shutdown /s` errors with "a shutdown is already scheduled"). A
 
 ### 8a — Wait for Other Active Claude Sessions (shutdown mode only)
 
-Never cut off another running Claude session — any project, any worktree. Before
-the shutdown command, poll `~/.claude/projects/**/*.jsonl` mtimes. A jsonl
-modified within the last 2 minutes means that session is mid-thought or
-mid-tool-call. Exclude our own project tree entirely (our main session + any
-subagents we spawned).
+Never cut off another working Claude session — any project, any worktree.
+`scripts/sessions-active.js` decides who works: it reads the record every Claude
+process keeps about itself (`~/.claude/sessions/<pid>.json`, `status: busy | idle`),
+not transcript mtimes. A session is **active** when it is busy (with a sign of
+life in the last hour), when its turn ended but background work is still open
+(agents, backgrounded commands, workflows) or a wake-up it scheduled is due
+within 30 min, or when it asked a question less than 5 min ago. **Not** active:
+an ended turn, an open concept page (bridge server, pulser, pickup waker), a
+dev server, a heartbeat, a title rename, a question nobody answers, a wedged or
+crashed process, and a session that itself only waits for other sessions. The
+calling session is excluded by its id (the script reads
+`CLAUDE_CODE_SESSION_ID`), not by its project folder — a sibling session in the
+same checkout counts.
 
-Self-detection: env vars like `CLAUDE_SESSION_ID` are not exposed to Bash.
-Reconstruct the encoded project-dir name from `$PWD` — Claude encodes the Windows
-path under `~/.claude/projects/` by replacing `\`, `:`, `.` with `-`
-(e.g. `C:\…\eager-rubin-98f8d6` → `C--…--claude-worktrees-eager-rubin-98f8d6`).
-
-Loop max 30 minutes, then proceed regardless (avoid indefinite hang):
+Run the wait **with `run_in_background: true`** (it can take hours; a foreground
+call is cut at the Bash timeout):
 
 ```bash
-PROJECTS="$HOME/.claude/projects"
-ENCODED=$(cygpath -w "$PWD" 2>/dev/null | sed 's/[\\:.]/-/g')
-[ -z "$ENCODED" ] && ENCODED=$(basename "$PWD")  # non-Windows fallback
-SELF_DIR="$PROJECTS/$ENCODED"
-[ -d "$SELF_DIR" ] || SELF_DIR=""
-# Sentinel prevents grep -vF '/' from filtering ALL absolute paths when SELF_DIR is empty
-SELF_PATTERN="${SELF_DIR:+${SELF_DIR}/}"
-[ -z "$SELF_PATTERN" ] && SELF_PATTERN="@@NO_SELF_MATCH@@"
-for i in $(seq 1 60); do
-  active=$(find "$PROJECTS" -name '*.jsonl' -newermt '2 minutes ago' 2>/dev/null \
-            | grep -vF -- "$SELF_PATTERN" | head -1)
-  [ -z "$active" ] && break
-  sleep 30
-done
+node "{PLUGIN_ROOT}/scripts/sessions-active.js" wait --cap-min 120
 ```
 
-Failure mode: if encoding doesn't match (unexpected path layout), `SELF_DIR`
-stays empty and the sentinel falls through. The loop then waits on its own
-session too — burns the full 30 min cap before shutdown. Safer than cutting off
-other sessions by accident.
+It returns once no session was active for 4 minutes in a row. Act on its
+completion notice:
+
+- exit 0 → quiet, continue with 8a-bis.
+- exit 3 (cap reached, `active` names who still works), exit 1 (the check itself
+  failed, `{"error":…}`) or no exit at all (killed, timed out) — never read as
+  quiet → **skip 8b** and hand the wait over to the bedtime watcher, which
+  needs no session and powers off once everything is quiet (sessions, the
+  person, busy jobs — up to 10 h, then the PC stays on):
+
+  ```bash
+  node "{PLUGIN_ROOT}/scripts/bedtime-shutdown.js" start
+  ```
+
+  Write `PC fährt herunter, sobald <name> fertig ist` (name from `active[0].name`)
+  to the run log, the report and the completion card, then do 8c as if shutdown
+  were not requested (flag written — the watcher owns the power-off now).
+
+`node "{PLUGIN_ROOT}/scripts/sessions-active.js" check` prints one snapshot (exit 0
+none active, 3 some active) — use it to answer "who is still running?".
 
 ### 8a-bis — Busy-Job Check (shutdown mode only)
 
@@ -281,7 +288,9 @@ locks the snapshot returns 0 at once.
 The OS fail-safe timer (`shutdown /t`, 8.0) stays unconditional by design: it is
 cancelled before this wait so it cannot cut the job, and Step 5.0 re-arming is
 not needed. The watchdog's forced shutdown (`autonomous-watchdog.js`) runs the
-same check once and skips the power-off when busy.
+same check once and skips the power-off when busy; it also runs
+`sessions-active.js check --all` and, while another session still works, hands
+the power-off to `bedtime-shutdown.js start` instead of forcing it.
 
 ### 8b — Execute Shutdown (COMPLETED / INTERRUPTED, shutdown mode)
 

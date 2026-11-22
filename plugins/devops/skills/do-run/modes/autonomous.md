@@ -733,8 +733,11 @@ Harmless no-op if nothing was scheduled. Then proceed by `$WATCHDOG_ACTION`:
   run is not wedged, so the health-watchdog is no longer needed (no
   `AUTONOMOUS-STALLED.txt`, no dead task left in Task Scheduler).
 - **shutdown mode** (shutdown=yes), status COMPLETED or INTERRUPTED:
-  1. **8a** — wait (max 30 min) for other active Claude sessions to go idle (any
-     project/worktree; exclude our own tree). Never cut off another session.
+  1. **8a** — wait for every other working Claude session
+     (`scripts/sessions-active.js wait --cap-min 120`, `run_in_background`; busy,
+     open background work or a wake-up due soon counts — an open concept page or
+     a heartbeat does not). Never cut off another session: at the cap, hand over
+     to `scripts/bedtime-shutdown.js start` and skip 8b (shutdown-watchdog.md § 8a).
      Then the **busy check** (`scripts/autonomous-busy-check.js check`, config
      `shutdown.busyProcesses` + `%LOCALAPPDATA%\dotclaude\busy\*.lock`): busy →
      `… wait` (polls every 10 min up to 6 h) as a `run_in_background` task; still

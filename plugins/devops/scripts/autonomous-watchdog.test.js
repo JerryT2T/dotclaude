@@ -115,6 +115,19 @@ describe("buildRecoveryScript — mode-specific recovery", () => {
     expect(s).toContain("PC bleibt an");
   });
 
+  test("shutdown mode hands the power-off to the bedtime watcher while another session works", () => {
+    const s = buildRecoveryScript({ ...base, action: "shutdown" });
+    const guard = s.indexOf("sessions-active.js");
+    expect(guard).toBeGreaterThan(-1);
+    expect(guard).toBeLessThan(s.indexOf("shutdown.exe"));
+    expect(s).toContain("check --all");
+    expect(s).toContain("$sessExit -eq 3");
+    // the hand-over sits in its own branch, before the forced power-off
+    const handover = s.indexOf("bedtime-shutdown.js' start");
+    expect(handover).toBeGreaterThan(s.indexOf("$sessExit -eq 3"));
+    expect(handover).toBeLessThan(s.indexOf("shutdown.exe"));
+  });
+
   test("notify mode writes a visible stalled marker and never powers off", () => {
     const s = buildRecoveryScript({ ...base, action: "notify" });
     expect(s).toContain("Set-Content -Path 'C:\\proj\\AUTONOMOUS-STALLED.txt'");

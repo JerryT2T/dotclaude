@@ -304,12 +304,23 @@ function buildRecoveryScript({
     // on. Exit 3 = busy; any other result (incl. check failure) fails open.
     const nodePs = process.execPath.replace(/'/g, "''");
     const busyPs = path.join(__dirname, 'autonomous-busy-check.js').replace(/'/g, "''");
+    // Session guard: the run this task watches is wedged, but ANOTHER session may
+    // be working (sessions-active.js, exit 3). Then the power-off is handed to the
+    // bedtime watcher, which waits for it instead of cutting it off. A wedged run
+    // stops counting after an hour without a sign of life, so the hand-over ends.
+    const sessionsPs = path.join(__dirname, 'sessions-active.js').replace(/'/g, "''");
+    const bedtimePs = path.join(__dirname, 'bedtime-shutdown.js').replace(/'/g, "''");
     recoveryPs = `  Add-Content -Path $logPath -Value "[$ts] flag MISSING at $flag — forcing shutdown"
   Remove-WatchdogTask
   $busyOut = ''
   try { $busyOut = (& '${nodePs}' '${busyPs}' check) -join ' '; $busyExit = $LASTEXITCODE } catch { $busyExit = 1 }
+  $sessOut = ''
+  try { $sessOut = (& '${nodePs}' '${sessionsPs}' check --all) -join ' '; $sessExit = $LASTEXITCODE } catch { $sessExit = 1 }
   if ($busyExit -eq 3) {
     Add-Content -Path $logPath -Value "[$ts] PC bleibt an: busy job still running — shutdown skipped ($busyOut)"
+  } elseif ($sessExit -eq 3) {
+    Add-Content -Path $logPath -Value "[$ts] another session still works — power-off handed to the bedtime watcher ($sessOut)"
+    try { & '${nodePs}' '${bedtimePs}' start | Out-Null } catch { Add-Content -Path $logPath -Value "[$ts] bedtime watcher could not be started: $_" }
   } else {
     & "$env:SystemRoot\\System32\\shutdown.exe" /s /t 0 /c "Claude autonomous watchdog: session unresponsive after ${hours}h, forcing shutdown"
   }`;
