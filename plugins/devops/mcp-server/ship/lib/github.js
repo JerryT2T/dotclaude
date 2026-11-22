@@ -36,6 +36,93 @@ function gh(args, opts = {}) {
   }).trim();
 }
 
+// --- #1202: REST path for hosts that block GraphQL -------------------------
+// claude.ai cloud sessions answer every GraphQL call (all `gh pr …` commands)
+// with HTTP 403 "GitHub GraphQL is not available from Claude Code sessions".
+// There the PR operations go through `gh api` REST calls instead: in a cloud
+// session (CLAUDE_CODE_REMOTE=true) from the start, elsewhere after the first
+// GraphQL 403 (sticky for the process).
+const GRAPHQL_BLOCKED_RE = /GraphQL is not available|graphql[^\n]{0,80}\b403\b|\b403\b[^\n]{0,80}graphql/i;
+let graphqlBlocked = false;
+
+/** Whether PR operations use the REST API (#1202). */
+export function restMode() {
+  return graphqlBlocked || process.env.CLAUDE_CODE_REMOTE === "true" || process.env.DEVOPS_GH_REST === "1";
+}
+
+/** Tests: forget a sticky GraphQL 403. */
+export function resetRestMode() {
+  graphqlBlocked = false;
+}
+
+/** Remember a GraphQL 403; true when `e` was one. */
+function noteGraphqlBlocked(e) {
+  const text = `${e?.stderr?.toString() || ""} ${e?.message || ""}`;
+  if (!GRAPHQL_BLOCKED_RE.test(text)) return false;
+  graphqlBlocked = true;
+  return true;
+}
+
+/** Run the GraphQL (`gh pr …`) path; on a GraphQL 403 switch to REST and run `rest` instead. */
+function viaGh(graphql, rest) {
+  if (restMode()) return rest();
+  try {
+    return graphql();
+  } catch (e) {
+    if (noteGraphqlBlocked(e)) return rest();
+    throw e;
+  }
+}
+
+/** One REST call through `gh api`; a JSON body goes over stdin. Returns the parsed JSON (null on an empty answer). */
+function ghApi(method, endpoint, body, opts = {}) {
+  const { cwd = process.cwd(), timeout = DEFAULT_TIMEOUT } = opts;
+  const args = ["api", "-X", method, endpoint, "-H", "Accept: application/vnd.github+json"];
+  if (body !== undefined) args.push("--input", "-");
+  const out = execFileSync("gh", args, { windowsHide: true, cwd, encoding: "utf8", timeout,
+    input: body !== undefined ? JSON.stringify(body) : undefined, stdio: ["pipe", "pipe", "pipe"] }).trim();
+  return out ? JSON.parse(out) : null;
+}
+
+/** REST `mergeable` (true / false / null while GitHub computes it) in GraphQL words. */
+function mergeableWord(v) {
+  return v === true ? "MERGEABLE" : v === false ? "CONFLICTING" : "UNKNOWN";
+}
+
+/** REST `state` + `merged` in GraphQL words (OPEN / CLOSED / MERGED). */
+function stateWord(pr) {
+  if (!pr) return "";
+  if (pr.merged || pr.merged_at) return "MERGED";
+  return String(pr.state || "").toUpperCase();
+}
+
+function restPR(prNumber, opts) {
+  return ghApi("GET", `repos/{owner}/{repo}/pulls/${prNumber}`, undefined, opts);
+}
+
+/**
+ * The PR's checks over REST in the shape of `gh pr checks --json bucket,state,name,workflow,link`:
+ * check runs and commit statuses of the PR head.
+ */
+function restChecks(prNumber, opts) {
+  const pr = restPR(prNumber, opts);
+  const sha = pr?.head?.sha;
+  if (!sha) return [];
+  const runs = ghApi("GET", `repos/{owner}/{repo}/commits/${sha}/check-runs?per_page=100`, undefined, opts)?.check_runs || [];
+  const statuses = ghApi("GET", `repos/{owner}/{repo}/commits/${sha}/status`, undefined, opts)?.statuses || [];
+  const RUN_BUCKET = { success: "pass", neutral: "pass", skipped: "skipping", failure: "fail", timed_out: "fail", action_required: "fail", startup_failure: "fail", stale: "fail", cancelled: "cancel" };
+  const STATUS_BUCKET = { success: "pass", failure: "fail", error: "fail", pending: "pending" };
+  const out = runs.map((r) => ({
+    name: r.name || "",
+    workflow: r.app?.name || "",
+    link: r.html_url || "",
+    state: String(r.status === "completed" ? r.conclusion || "" : r.status || "").toUpperCase(),
+    bucket: r.status === "completed" ? RUN_BUCKET[r.conclusion] || "fail" : "pending",
+  }));
+  for (const st of statuses) out.push({ name: st.context || "", workflow: "", link: st.target_url || "", state: String(st.state || "").toUpperCase(), bucket: STATUS_BUCKET[st.state] || "pending" });
+  return out;
+}
+
 /**
  * Delete a branch on origin after its PR merged (#442). Used where
  * `gh pr merge --delete-branch` is deliberately skipped — inside a worktree gh
@@ -73,6 +160,13 @@ export function deleteRemoteBranch(branch, opts = {}) {
  * Body is passed via stdin to avoid shell escaping issues.
  */
 export function createPR({ title, body, base = "main", head, draft = false }, opts) {
+  return viaGh(() => createPRGh({ title, body, base, head, draft }, opts), () => {
+    const pr = ghApi("POST", "repos/{owner}/{repo}/pulls", { title, body: body || "", base, head, draft: !!draft }, opts);
+    return { number: pr?.number ?? null, url: pr?.html_url || "" };
+  });
+}
+
+function createPRGh({ title, body, base, head, draft }, opts) {
   const cwd = opts?.cwd || process.cwd();
   // gh pr create does not support --json; parse URL from stdout instead
   const url = execFileSync(
@@ -99,10 +193,12 @@ export function createPR({ title, body, base = "main", head, draft = false }, op
  * @returns {{ ok: boolean, error?: string }}
  */
 export function markPRReady(prNumber, { title, body } = {}, opts = {}) {
+  if (restMode()) return markPRReadyRest(prNumber, { title, body }, opts);
   const cwd = opts?.cwd || process.cwd();
   try {
     gh(["pr", "ready", String(prNumber)], opts);
   } catch (e) {
+    if (noteGraphqlBlocked(e)) return markPRReadyRest(prNumber, { title, body }, opts);
     return { ok: false, error: sanitizeError(e) };
   }
   if (title || body) {
@@ -111,6 +207,32 @@ export function markPRReady(prNumber, { title, body } = {}, opts = {}) {
       if (title) args.push("--title", title);
       if (body) args.push("--body-file", "-");
       execFileSync("gh", args, { windowsHide: true, cwd, encoding: "utf8", input: body || undefined, timeout: DEFAULT_TIMEOUT, stdio: ["pipe", "pipe", "pipe"] });
+    } catch (e) {
+      return { ok: true, editError: sanitizeError(e) };
+    }
+  }
+  return { ok: true };
+}
+
+/**
+ * REST variant of markPRReady (#1202). The ready-for-review flip itself is a
+ * GraphQL mutation on GitHub; the cloud proxy offers it as its own route
+ * (`POST …/pulls/{n}/ccr/ready_for_review`). Title and body go through the
+ * plain PR update.
+ */
+function markPRReadyRest(prNumber, { title, body } = {}, opts = {}) {
+  try {
+    const pr = restPR(prNumber, opts);
+    if (pr?.draft) ghApi("POST", `repos/{owner}/{repo}/pulls/${prNumber}/ccr/ready_for_review`, undefined, opts);
+  } catch (e) {
+    return { ok: false, error: sanitizeError(e) };
+  }
+  if (title || body) {
+    try {
+      const patch = {};
+      if (title) patch.title = title;
+      if (body) patch.body = body;
+      ghApi("PATCH", `repos/{owner}/{repo}/pulls/${prNumber}`, patch, opts);
     } catch (e) {
       return { ok: true, editError: sanitizeError(e) };
     }
@@ -135,7 +257,10 @@ export function sleepSync(ms) {
 
 /** Read a PR's state via gh; returns the state string or throws. */
 function readPRState(prNumber, opts) {
-  return gh(["pr", "view", String(prNumber), "--json", "state", "-q", ".state"], opts);
+  return viaGh(
+    () => gh(["pr", "view", String(prNumber), "--json", "state", "-q", ".state"], opts),
+    () => stateWord(restPR(prNumber, opts)),
+  );
 }
 
 /** Sanitize a gh error for inclusion in a message: no ANSI, capped length. */
@@ -174,6 +299,19 @@ function pollPRState(prNumber, opts, { attempts = 3, sleep = sleepSync } = {}) {
  * @returns {{ author: string, isDraft: boolean, mergeable: string, statusCheckRollup: object[], headRefName: string, baseRefName: string, state: string }}
  */
 export function readPRForLand(prNumber, opts) {
+  if (restMode()) {
+    const pr = restPR(prNumber, opts);
+    const rollup = restChecks(prNumber, opts).map((c) => ({ name: c.name, status: c.bucket === "pending" ? "IN_PROGRESS" : "COMPLETED", conclusion: { pass: "SUCCESS", skipping: "SKIPPED", fail: "FAILURE", cancel: "CANCELLED" }[c.bucket] }));
+    return {
+      author: pr?.user?.login || "",
+      isDraft: !!pr?.draft,
+      mergeable: mergeableWord(pr?.mergeable),
+      statusCheckRollup: rollup,
+      headRefName: pr?.head?.ref || "",
+      baseRefName: pr?.base?.ref || "main",
+      state: stateWord(pr),
+    };
+  }
   const raw = gh(["pr", "view", String(prNumber), "--json", "author,isDraft,mergeable,statusCheckRollup,headRefName,baseRefName,state"], opts);
   const j = JSON.parse(raw);
   return {
@@ -274,8 +412,14 @@ function mergePRWith(prNumber, base, opts, flags) {
   if (!flags.skipDeleteBranch) args.push("--delete-branch");
 
   let mergeCmdError = null;
+  let restMerged = false;
   try {
-    gh(args, opts);
+    viaGh(() => gh(args, opts), () => {
+      // REST merge (#1202): PUT …/merge, then the branch delete gh's --delete-branch did.
+      const r = ghApi("PUT", `repos/{owner}/{repo}/pulls/${prNumber}/merge`, { merge_method: strategy }, opts);
+      if (r && r.merged === false) throw new Error(r.message || "merge refused");
+      restMerged = true;
+    });
   } catch (e) {
     // A client-side timeout can fire AFTER GitHub performed the merge. Do not
     // conclude "not merged" from the throw alone — the state poll below decides.
@@ -284,6 +428,10 @@ function mergePRWith(prNumber, base, opts, flags) {
 
   const { state, lastError } = pollPRState(prNumber, opts, { sleep });
   const warnings = [];
+  if (restMerged && state === "MERGED" && !flags.skipDeleteBranch && flags.headBranch) {
+    const del = deleteRemoteBranch(flags.headBranch, opts);
+    if (!del.ok) warnings.push(`merged, but the head branch was not deleted (${del.error})`);
+  }
 
   if (state !== "MERGED") {
     if (mergeCmdError !== null) {
@@ -331,7 +479,10 @@ function mergePRWith(prNumber, base, opts, flags) {
   let fullSha = null;
   if (verified) {
     try {
-      const oid = gh(["pr", "view", String(prNumber), "--json", "mergeCommit", "-q", ".mergeCommit.oid"], opts);
+      const oid = viaGh(
+        () => gh(["pr", "view", String(prNumber), "--json", "mergeCommit", "-q", ".mergeCommit.oid"], opts),
+        () => String(restPR(prNumber, opts)?.merge_commit_sha || ""),
+      );
       if (/^[0-9a-f]{40}$/.test(oid)) fullSha = oid;
     } catch {
       /* best effort — callers fall back to origin/<base> */
@@ -351,6 +502,7 @@ function mergePRWith(prNumber, base, opts, flags) {
  */
 export function findExistingPR({ base, head }, opts) {
   try {
+    if (restMode()) return findExistingPRRest({ base, head }, opts);
     const raw = gh(
       ["pr", "list", "--head", head, "--base", base, "--state", "open", "--json", "number,url,mergeable,isDraft", "--limit", "1"],
       opts,
@@ -360,9 +512,22 @@ export function findExistingPR({ base, head }, opts) {
     const pr = list[0];
     // mergeable: "MERGEABLE", "CONFLICTING", "UNKNOWN"
     return { number: pr.number, url: pr.url, mergeable: pr.mergeable || "UNKNOWN", isDraft: pr.isDraft === true };
-  } catch {
+  } catch (e) {
+    if (noteGraphqlBlocked(e)) {
+      try { return findExistingPRRest({ base, head }, opts); } catch { return null; }
+    }
     return null; // Network error or no PR — safe to proceed
   }
+}
+
+/** REST variant (#1202): list by `head=<owner>:<branch>`, then read mergeable from the PR itself. */
+function findExistingPRRest({ base, head }, opts) {
+  const list = ghApi("GET", `repos/{owner}/{repo}/pulls?state=open&head={owner}:${encodeURIComponent(head)}&base=${encodeURIComponent(base)}&per_page=1`, undefined, opts) || [];
+  if (!Array.isArray(list) || list.length === 0) return null;
+  const pr = list[0];
+  let mergeable = "UNKNOWN";
+  try { mergeable = mergeableWord(restPR(pr.number, opts)?.mergeable); } catch { /* UNKNOWN */ }
+  return { number: pr.number, url: pr.html_url, mergeable, isDraft: pr.draft === true };
 }
 
 /**
@@ -377,8 +542,9 @@ export function findExistingPR({ base, head }, opts) {
  */
 function hadRecentChecks(prNumber, opts) {
   try {
-    const raw = gh(["pr", "view", String(prNumber), "--json", "commits"], opts);
-    const commits = JSON.parse(raw)?.commits || [];
+    const commits = restMode()
+      ? (ghApi("GET", `repos/{owner}/{repo}/pulls/${prNumber}/commits?per_page=100`, undefined, opts) || []).map((c) => ({ oid: c.sha }))
+      : JSON.parse(gh(["pr", "view", String(prNumber), "--json", "commits"], opts))?.commits || [];
     // Exclude the current head (last entry); look at up to 5 earlier commits,
     // most recent first.
     const earlier = commits.slice(0, -1).slice(-5).reverse();
@@ -430,10 +596,19 @@ export function watchPRChecks(prNumber, opts, {
   // pending). gh exits non-zero with "no checks reported" when nothing is
   // wired up, and exit 8 when checks are pending.
   function probeOnce() {
+    if (restMode()) {
+      try {
+        const checks = restChecks(prNumber, opts);
+        return checks.length ? { kind: "checks", checks } : { kind: "no-checks", checks: [] };
+      } catch (e) {
+        return { kind: "probe-error", error: `PR checks probe failed (REST): ${sanitizeError(e).slice(0, 300)}` };
+      }
+    }
     let raw;
     try {
       raw = gh(["pr", "checks", String(prNumber), "--json", "bucket,state,name,workflow,link"], opts);
     } catch (e) {
+      if (noteGraphqlBlocked(e)) return probeOnce();
       const stderr = (e.stderr?.toString() || e.message || "").replace(ANSI_PATTERN, "");
       if (/no checks/i.test(stderr) || /no required checks/i.test(stderr)) {
         return { kind: "no-checks", checks: [] };
@@ -495,6 +670,26 @@ export function watchPRChecks(prNumber, opts, {
     }
     // Checks showed up during the grace window — fall through to the watch
     // loop below exactly as if the very first probe had seen them.
+  }
+
+  // REST (#1202): no `gh pr checks --watch` — poll the same snapshot until
+  // nothing is pending, a check failed (fail-fast) or the budget is spent.
+  if (restMode()) {
+    const deadline = startedAt + timeoutSec * 1000;
+    let checks = probe.checks || [];
+    for (;;) {
+      const failed = checks.filter((c) => c.bucket === "fail" || c.bucket === "cancel");
+      const pending = checks.filter((c) => c.bucket === "pending");
+      if (failed.length) return { status: "failed", checks, failed, pending, error: `${failed.length} check(s) failed: ${failed.map((c) => c.name || c.workflow).join(", ")}` };
+      if (!pending.length) return { status: "passed", checks };
+      if (now() >= deadline) return { status: "timeout", checks, failed, pending, error: `PR checks did not complete within ${timeoutSec}s (${pending.length} still pending)` };
+      sleep(Math.min(intervalSec * 1000, Math.max(0, deadline - now())));
+      try {
+        checks = restChecks(prNumber, opts);
+      } catch (e) {
+        return { status: "probe-error", error: `PR checks probe failed (REST): ${sanitizeError(e).slice(0, 300)}` };
+      }
+    }
   }
 
   // Block on gh's own --watch loop. Wrap with our own timeout to bound it hard.
