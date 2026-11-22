@@ -1,7 +1,7 @@
 'use strict';
 /**
  * @module project-thread
- * @version 0.1.0
+ * @version 0.2.0
  * @plugin devops
  * @description Claude Projects threads that run on this computer ("Work
  *   locally", a Claude Code session started over Remote Control). Feature
@@ -53,6 +53,12 @@ const TAIL_BYTES = 8 * 1024 * 1024;
 
 function isWakePrompt(prompt) {
   return typeof prompt === 'string' && WAKE_PATTERN.test(prompt);
+}
+
+/** The `chan_…` id of the project in a wake envelope, or '' (not a wake, no id). */
+function projectId(prompt) {
+  const m = /^\s*<wake\b[^>]*>\s*<project\b[^>]*\bid="(chan_[A-Za-z0-9_-]+)"/.exec(typeof prompt === 'string' ? prompt : '');
+  return m ? m[1] : '';
 }
 
 function isRelayPrompt(prompt) {
@@ -452,6 +458,7 @@ module.exports = {
   POST_TOOL,
   CHECKLIST_TOOL,
   isWakePrompt,
+  projectId,
   isRelayPrompt,
   ORIGINS,
   classifyPrompt,

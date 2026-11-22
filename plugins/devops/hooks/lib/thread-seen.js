@@ -1,7 +1,7 @@
 'use strict';
 /**
  * @module thread-seen
- * @version 0.1.0
+ * @version 0.2.0
  * @plugin devops
  * @description "A Claude Project thread ran on this machine" — a persisted
  *   marker, so the cloud-copy lag is judged by whether cloud threads exist, not
@@ -13,6 +13,10 @@
  *   into `~/.claude/devops-thread-seen.json` (written by ss.project.setup at
  *   every session start, and by anything that knows better — pass `force`).
  *   `threadSeen` only reads that file: no tmp scan, hermetic in tests.
+ *
+ *   The same file records which Claude Projects (`chan_…` ids) already got the
+ *   one-time setup hint (`projects`: id → ISO time, `projectHinted` /
+ *   `markProjectHinted`); `recordThreadSeen` keeps that map when it rewrites.
  *
  *   Pure fs, no dependencies — desktop-copy.js and cloud-update.js both read it.
  */
@@ -63,9 +67,31 @@ function recordThreadSeen({ home = os.homedir(), tmpDir = os.tmpdir(), now = Dat
   if (known && now - Date.parse(known.lastSeen || known.firstSeen) < 24 * 60 * 60 * 1000) return true;
   try {
     fs.mkdirSync(path.dirname(stateFile(home)), { recursive: true });
-    fs.writeFileSync(stateFile(home), JSON.stringify({ firstSeen: known ? known.firstSeen : iso, lastSeen: iso }) + '\n');
+    fs.writeFileSync(stateFile(home), JSON.stringify({ ...(known || {}), firstSeen: known ? known.firstSeen : iso, lastSeen: iso }) + '\n');
   } catch { /* advisory: the next session tries again */ }
   return true;
 }
 
-module.exports = { FILE, FLAG_PREFIX, readMarker, threadSeen, recordThreadSeen, liveFlag };
+/** Did this project already get the setup hint? */
+function projectHinted(id, home = os.homedir()) {
+  const m = readMarker(home);
+  return !!(id && m && m.projects && typeof m.projects === 'object' && Object.prototype.hasOwnProperty.call(m.projects, id));
+}
+
+/**
+ * Record `id` as hinted (keeps everything else in the file; creates the marker when absent).
+ * @returns {boolean} whether the record was written
+ */
+function markProjectHinted(id, { home = os.homedir(), now = Date.now() } = {}) {
+  if (!id) return false;
+  const iso = new Date(now).toISOString();
+  const known = readMarker(home) || { firstSeen: iso, lastSeen: iso };
+  const projects = known.projects && typeof known.projects === 'object' ? known.projects : {};
+  try {
+    fs.mkdirSync(path.dirname(stateFile(home)), { recursive: true });
+    fs.writeFileSync(stateFile(home), JSON.stringify({ ...known, projects: { ...projects, [id]: iso } }) + '\n');
+    return true;
+  } catch { return false; }
+}
+
+module.exports = { FILE, FLAG_PREFIX, readMarker, threadSeen, recordThreadSeen, liveFlag, projectHinted, markProjectHinted };

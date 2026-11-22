@@ -27,6 +27,16 @@ describe("cloud-rules block", () => {
     expect(text).toMatch(/cannot push tags/);
   });
 
+  test("the rules carry the one-line note for a Claude Project thread without the plugin, and only for that case", () => {
+    const text = cr.applyBlock("");
+    expect(text).toMatch(/## Claude Project thread without the devops plugin/);
+    expect(text).toMatch(/no skill named `devops:…` is loaded/);
+    expect(text).toMatch(/<wake …><project …>/);
+    expect(text).toMatch(/not\s+active in this project/);
+    expect(text).toMatch(/Project settings > Plugins/);
+    expect(text).toMatch(/Anywhere else, say nothing/);
+  });
+
   test("applyBlock keeps outside text, replaces a stale block in place, drops a duplicate", () => {
     const stale = `intro\n\n${cr.BLOCK_START}\nold\n${cr.BLOCK_END}\n\nmine\n\n${cr.BLOCK_START}\nold2\n${cr.BLOCK_END}\n`;
     const out = cr.applyBlock(stale);

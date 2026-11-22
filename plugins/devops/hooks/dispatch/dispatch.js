@@ -2,7 +2,7 @@
 'use strict';
 /**
  * @hook dispatch
- * @version 0.4.0
+ * @version 0.5.0
  * @event SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, PostToolUseFailure, Stop, SubagentStart, SubagentStop
  * @plugin devops
  * @description One process per hook event. `node dispatch.js <Event>` is the
@@ -360,6 +360,26 @@ function runProcess(mod, raw, budgetMs) {
 }
 
 /**
+ * Session-start notices for the Desktop user stay out of a Claude Projects thread
+ * (lib/thread-notice-hold.js): SessionStart keeps them aside, the next
+ * UserPromptSubmit hands them to a typed prompt and to nothing else. Every other
+ * event, and a payload without a session, is returned as it came.
+ */
+function withNoticeHold(o, results) {
+  if (o.event !== 'SessionStart' && o.event !== 'UserPromptSubmit') return results;
+  try {
+    const hold = require('../lib/thread-notice-hold');
+    let payload = o.payload;
+    if (payload === undefined) payload = require('../lib/hook-input').parseHookInput(o.raw);
+    if (o.event === 'SessionStart') return hold.holdSessionStart(results, payload);
+    const text = hold.releaseOnPrompt(payload);
+    if (!text) return results;
+    const stdout = JSON.stringify({ hookSpecificOutput: { hookEventName: 'UserPromptSubmit', additionalContext: text } });
+    return [{ name: 'thread-notice-hold', code: 0, stdout, stderr: '', ms: 0 }, ...results];
+  } catch { return results; }
+}
+
+/**
  * Run the selected modules and merge.
  * @param {{event:string, raw:string, payload?:object|null, modules:Array, budgetS:number, startedAt?:number, processMode?:boolean, tele?:object, lanes?:string[][]}} o
  * @returns {Promise<{code:number, stdout:string, stderr:string, results:Array}>}
@@ -422,7 +442,7 @@ async function runEvent(o) {
   };
   await Promise.all(lanes.map(runLane));
   await Promise.all(procRuns);
-  const merged = mergeResults(o.event, results.map((r, i) => failClosed(o.event, o.modules[i], r)));
+  const merged = mergeResults(o.event, withNoticeHold(o, results.map((r, i) => failClosed(o.event, o.modules[i], r))));
   // Alpha `token-log` (#1002): what each module handed the model, written to
   // a local file only. Gated, silent, never changes the merged result.
   try {
