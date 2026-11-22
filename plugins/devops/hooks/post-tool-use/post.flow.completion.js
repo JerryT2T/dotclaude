@@ -1123,6 +1123,22 @@ function backgroundLaunchLines(hook) {
 }
 
 /**
+ * Does a git work tree enclose the edited file itself? Unlike inRepoTree (which
+ * answers true without any repo, for the gates), this is false then: the SHIP and
+ * desktop-testing nudges have nothing to point at. An unreadable input stays true.
+ */
+function editInGitRepo(hook) {
+  try {
+    const file = hook.tool_input && hook.tool_input.file_path;
+    if (typeof file !== 'string' || !file) return true;
+    const abs = path.resolve(hook.cwd || process.cwd(), file);
+    return !!require('../lib/project-root').findRepoRoot(path.dirname(abs));
+  } catch {
+    return true;
+  }
+}
+
+/**
  * 2e. Edit milestones fire on the edit that reaches them — the counter stays
  * at its value on every later call, and "=== 1" / ">= 5" on the count alone
  * repeated the same block after each of them.
@@ -1146,7 +1162,9 @@ function editMilestoneLines(hook, isCodeEdit, editCount) {
     );
   }
 
-  if (isCodeEdit && editCount === SHIP_NUDGE_EDITS) {
+  // B4: a file in no git repo has nothing to ship — neither the release hint nor the
+  // desktop-test question (the edit still counts for the gates, as before).
+  if (isCodeEdit && editCount === SHIP_NUDGE_EDITS && editInGitRepo(hook)) {
     lines.push(
       '',
       `SHIP: ${editCount} code edits this session. Recommend /do-ship when task is done.`,
@@ -1235,6 +1253,9 @@ function appendIssueStatusInstruction(hook, lines, cardContract) {
  * order and all behaviour below are unchanged.
  * @returns {string|{context: string}|null}
  */
+/** The tools of the send-to-project command (SendToProjectContext / SendToProject). */
+const SEND_TO_PROJECT_TOOL = /^SendToProject(?:Context)?$/;
+
 function main(hook) {
   if (loadError) return null;
   if (isSilentTurn(hook)) return null;
@@ -1260,6 +1281,9 @@ function main(hook) {
   }
 
   const toolName = hook.tool_name || '';
+  // E5: the /send-to-project turn hands a note to the project's coordinator and has no result of
+  // its own to report: no card contract, and no work-happened flag for the Stop gate to read.
+  if (SEND_TO_PROJECT_TOOL.test(toolName)) return null;
   // An Edit/Write outside the git work tree of the cwd (scratchpad, %TEMP%,
   // ~/.claude) is no code edit: no counter, no SHIP / test-autonomy nudge, no gate.
   const isCodeEdit = (toolName === 'Edit' || toolName === 'Write') &&
