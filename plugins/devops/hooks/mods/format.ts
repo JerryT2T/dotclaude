@@ -1335,11 +1335,12 @@ export function releaseLine(heading: string): string {
 }
 
 /**
- * The band offers "Archive" for a green card (shipped, released, finished analysis) while nothing runs.
+ * The band offers "Archive" for a green card (shipped, released, finished analysis) while nothing runs,
+ * and for a landed release card whose only open point is the promote question (👉 🚀 … vX.Y.Z, #1200).
  * The press calls the Desktop app's own archive_session through $.mcp.call — no model turn.
  */
 export function archiveOffered(c: { heading: string } | null, working: boolean): boolean {
-  return !working && isShippedCard(c)
+  return !working && (isShippedCard(c) || isReleaseCard(c))
 }
 
 /** archive_session's answer: null = archived; else the app's reason (pinned, still working, …), one line. */

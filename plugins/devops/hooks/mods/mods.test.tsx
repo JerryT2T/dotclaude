@@ -2659,6 +2659,11 @@ test('archive helpers: offered only on a green card while idle; isError text bec
   expect(archiveOffered({ heading: '🟩 🚀 Released Alpha — v1 — fertig.' }, true)).toBe(false)
   expect(archiveOffered({ heading: '👉 Ready — shippen?' }, false)).toBe(false)
   expect(archiveOffered(null, false)).toBe(false)
+  // #1200: a landed release that only asks to promote is archivable too
+  expect(archiveOffered({ heading: '👉 🚀 Released Alpha — v0.293.0 — nach Beta promoten +1 weitere?' }, false)).toBe(true)
+  expect(archiveOffered({ heading: '👉 🚀 Released Alpha — v0.293.0 — nach Beta promoten +1 weitere?' }, true)).toBe(false)
+  expect(archiveOffered({ heading: '⏳ 🚀 Shipping — v0.293.0' }, false)).toBe(false)
+  expect(archiveOffered({ heading: '🟥 🚀 Release blocked — v0.293.0' }, false)).toBe(false)
   expect(archiveRefusal({ isError: false, content: [] })).toBeNull()
   expect(archiveRefusal({ isError: true, content: [{ type: 'text', text: 'Session is pinned.\n' }] })).toBe('Session is pinned.')
   expect(archiveRefusal({ isError: true })).toBe('archive_session failed')
