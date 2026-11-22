@@ -273,8 +273,62 @@ function restoreText(title) {
   return instruction('The permission dialog was answered — the background agent works again.', title);
 }
 
+/**
+ * Claude Projects thread (line C4): the title the person sees is the THREAD's,
+ * set with `rename_thread`, not the session's. `{ transcript, current }` for a
+ * thread with the feature `project-threads` (`current`: the title this session
+ * last gave the thread, null when it never renamed it), else null — a Desktop
+ * session keeps the set_session_title path above.
+ */
+function threadView(hook) {
+  const T = require('./project-thread');
+  if (T.threadMode(hook, { deep: true }) !== 'on') return null;
+  const transcript = mainTranscript(hook);
+  return { transcript, current: T.lastThreadTitle(transcript) };
+}
+
+function threadInstruction(lead, call) {
+  const T = require('./project-thread');
+  return [
+    `${MARKER} ${lead}`,
+    `Project thread — a subagent reading this ignores it: ${call} — on the thread's title, not the session's.`,
+    `Only deferred → ToolSearch "select:${T.RENAME_TOOL}" first. Failing or unavailable: skip silently, no retry.`,
+    'Your turn had ended → send only this call, then end the turn: no text, no card. Mid-turn → put it into your next tool batch and carry on.',
+    'Do not mention this to the person.',
+  ].join('\n');
+}
+
+/** The wake text in a thread; null when the known title takes no approval head (a card or a rename won). */
+function threadWaitText(current) {
+  const S = require('./title-scheme');
+  const T = require('./project-thread');
+  const lead = 'A background agent waits for the person to approve a tool call (permission dialog) — the thread title says whose move it is.';
+  if (current === null) {
+    const head = (S.approvalTitle(S.WORK_PREFIX + 'x') || '').replace(/x$/, '');
+    return head ? threadInstruction(lead, T.renameCallUnknown(head)) : null;
+  }
+  const next = S.approvalTitle(current);
+  return next ? threadInstruction(lead, T.renameCall(next)) : null;
+}
+
+/** The wake text in a thread once every dialog is answered; null when the title carries no approval head. */
+function threadRestoreText(current) {
+  const S = require('./title-scheme');
+  const T = require('./project-thread');
+  const lead = 'The permission dialog was answered — the background agent works again.';
+  if (current === null) {
+    const head = (S.approvalRestoredTitle(S.approvalTitle(S.WORK_PREFIX + 'x')) || '').replace(/x$/, '');
+    return head ? threadInstruction(`${lead} Only if the thread title still starts with 👉.`, T.renameCallUnknown(head)) : null;
+  }
+  const next = S.approvalRestoredTitle(current);
+  return next ? threadInstruction(lead, T.renameCall(next)) : null;
+}
+
 module.exports = {
   MARKER,
+  threadView,
+  threadWaitText,
+  threadRestoreText,
   STATE_PREFIX,
   WAKE_PREFIX,
   MAX_AGE_MS,

@@ -101,6 +101,9 @@
         "pre.main.guard"
       ],
       [
+        "pre.thread.rights"
+      ],
+      [
         "pre.worktree.split-guard"
       ],
       [
@@ -182,6 +185,9 @@
       ],
       [
         "pre.title.topic"
+      ],
+      [
+        "pre.thread.session"
       ],
       [
         "pre.plugin.session"

@@ -53,6 +53,7 @@
         "hooks": [
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.ship.guard.js\"", "onFailure": "block", "commandFilter": "\\b[Gg][Hh]\\b" },
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.main.guard.js\"", "onFailure": "block", "commandFilter": "\\b[Gg][Ii][Tt]\\b" },
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.thread.rights.js\"", "commandFilter": "\\b(?:[Gg][Ii][Tt]|[Gg][Hh]|rm|Remove-Item|ri)\\b" },
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.worktree.split-guard.js\"", "commandFilter": "\\b[Gg][Ii][Tt]\\b" },
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.test.fullguard.js\"", "commandFilter": "\\b(?:npm|vitest)\\b" }
         ],
@@ -139,6 +140,7 @@
       },
       {
         "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.thread.session.js\"", "timeout": 5, "dispatch": "fast" },
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.plugin.session.js\"", "timeout": 10, "dispatch": "fast" },
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.ask.title.js\"", "timeout": 5, "dispatch": "fast" }
         ],

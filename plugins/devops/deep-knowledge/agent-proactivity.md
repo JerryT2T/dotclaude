@@ -57,6 +57,8 @@ into skill args or agent prompts from memory. Class other than `free` → before
 parallel spawn or ceremony read `agent-proactivity-details.md` § Budget (the
 once-per-session question and its three options).
 
+**Claude Projects thread** (wake note / hearthbot tools): subagents yes, `start_session` side sessions no (report the split to the coordinator); the budget question is never asked, the class applies silently (`agent-proactivity-details.md` § Thread).
+
 **Web hand-offs.** Next step = "user, go to `<site>` and do X" (marketplace, API
 key, OAuth, account, terms, cron-job.org) → start `auto-guide` first, never a
 step list (#519, #617). More: `agent-proactivity-details.md`, `agent-orchestration.md`.
