@@ -134,16 +134,17 @@ const OPEN_SETTLE_MS = 5000;
 
 function openBrowser(url, { command = null, settleMs = OPEN_SETTLE_MS, browser = null } = {}) {
   if (!command && process.env.CONCEPT_OPEN_NO_BROWSER === '1') return null;
-  let cmd; let args; let verbatim = false;
+  let cmd; let args; let options = { stdio: 'ignore', detached: true, windowsHide: true };
   if (command) { [cmd, ...args] = command; }
   else {
     // The user's browser (devops Home → Einstellungen); in-app has no process to start.
     const plan = choice.openCommand(browser || choice.resolveBrowser(), url);
     if (!plan) return null;
-    ({ cmd, args, verbatim } = plan);
+    ({ cmd, args } = plan);
+    options = choice.spawnOptions(plan);
   }
   return new Promise((resolve) => {
-    const c = spawn(cmd, args, { stdio: 'ignore', detached: true, windowsHide: true, windowsVerbatimArguments: verbatim });
+    const c = spawn(cmd, args, options);
     // The child is unref'd so a long-lived browser cannot hold this process, and
     // an unref'd child alone does not keep the event loop alive: without this
     // timer node exits with 0 before 'exit' fires, so the caller's result is never

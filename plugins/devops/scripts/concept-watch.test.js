@@ -882,6 +882,9 @@ describe("reopenCommand", () => {
     expect(reopenCommand("u", "darwin", chrome)).toEqual({ cmd: "open", args: ["-a", "Google Chrome", "u"], verbatim: false });
     expect(reopenCommand("u", "linux", { id: "firefox", exe: "/usr/bin/firefox" })).toEqual({ cmd: "/usr/bin/firefox", args: ["u"], verbatim: false });
     expect(reopenCommand("u", "win32", { id: "in-app", exe: "" })).toBe(null);
+    // In-app only because no browser was found: the waker has no pane, the OS opener re-opens as before.
+    expect(reopenCommand("u", "darwin", { id: "in-app", exe: "", fallback: true })).toEqual({ cmd: "open", args: ["u"], verbatim: false });
+    expect(reopenCommand("u", "linux", { id: "in-app", exe: "", fallback: true })).toEqual({ cmd: "xdg-open", args: ["u"], verbatim: false });
   });
 });
 

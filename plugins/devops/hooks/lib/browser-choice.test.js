@@ -48,7 +48,8 @@ describe("resolveBrowser", () => {
     expect(lib.resolveBrowser({ ...win(CHROME, EDGE), stored: "auto" }).id).toBe("edge");
     expect(lib.resolveBrowser({ ...win(CHROME), stored: "auto" }).id).toBe("chrome");
     const none = lib.resolveBrowser({ ...win(), stored: "auto" });
-    expect(none).toMatchObject({ id: "in-app", exe: "" });
+    expect(none).toMatchObject({ id: "in-app", exe: "", fallback: true });
+    expect(lib.resolveBrowser({ ...win(EDGE), stored: "in-app" }).fallback).toBe(false);
     expect(none.options).toEqual([{ id: "in-app", label: lib.IN_APP_LABEL }]);
   });
 
@@ -81,6 +82,17 @@ describe("openCommand", () => {
       .toEqual({ cmd: "cmd.exe", args: ["/c", "start", '""', "msedge", '"http://localhost:1/a.html"'], verbatim: true });
     expect(lib.openCommand({ id: "chrome", exe: CHROME }, "u", { platform: "win32", minimized: true }).args)
       .toEqual(["/c", "start", '""', "/min", `"${CHROME}"`, '"u"']);
+  });
+
+  test("Windows: a URL cmd would read as syntax starts the executable itself, no shell", () => {
+    for (const url of ['http://x/"&calc&"', "http://x/%CD%B0", "file:///C:/a b.html", "http://x/?a=1&b=2", "http://x/^y"]) {
+      expect(lib.openCommand({ id: "edge", exe: EDGE }, url, { platform: "win32", minimized: true })).toEqual({ cmd: EDGE, args: [url], verbatim: false, show: true });
+      expect(lib.systemOpenCommand(url, "win32")).toEqual({ cmd: "explorer.exe", args: [url], verbatim: false, show: true });
+    }
+    expect(lib.openCommand({ id: "chrome", exe: "" }, 'http://x/"', { platform: "win32" })).toBe(null);
+    expect(lib.systemOpenCommand("http://localhost:1/a.html", "win32").cmd).toBe("cmd.exe");
+    expect(lib.spawnOptions({ verbatim: true })).toEqual({ detached: true, stdio: "ignore", windowsHide: true, windowsVerbatimArguments: true });
+    expect(lib.spawnOptions({ verbatim: false, show: true })).toEqual({ detached: true, stdio: "ignore", windowsHide: false, windowsVerbatimArguments: false });
   });
 
   test("macOS opens the app by name, Linux the binary; in-app has no command", () => {

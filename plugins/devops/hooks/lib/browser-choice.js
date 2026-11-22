@@ -120,14 +120,27 @@ function resolveBrowser(o = {}) {
   const options = [...installed.map((b) => ({ id: b.id, label: b.label })), { id: IN_APP, label: IN_APP_LABEL }];
   let hit = null;
   if (stored !== IN_APP) hit = installed.find((b) => b.id === stored) || installed[0] || null;
+  // `fallback`: in-app only because nothing is installed — a script without a
+  // pane (the concept waker) then uses the OS opener instead of opening nothing.
   return hit
     ? { id: hit.id, label: hit.label, exe: hit.exe, stored, installed, options }
-    : { id: IN_APP, label: IN_APP_LABEL, exe: '', stored, installed, options };
+    : { id: IN_APP, label: IN_APP_LABEL, exe: '', stored, installed, options, fallback: stored !== IN_APP };
 }
+
+/**
+ * URLs `cmd /c start` can take as they are. Anything else — a quote, `%VAR%`,
+ * `&`, `^`, a space — would be read by cmd as syntax (a `"` closes the quoting,
+ * `%CD%` expands even inside it), so those start the executable directly.
+ */
+const CMD_SAFE_URL = /^[A-Za-z0-9:/?#@$'*+,;=._~()[\]-]+$/;
 
 /** The OS opener for whatever handles the URL (no browser of ours to name). */
 function systemOpenCommand(url, platform = process.platform) {
-  if (platform === 'win32') return { cmd: 'cmd.exe', args: ['/c', 'start', '""', `"${url}"`], verbatim: true };
+  if (platform === 'win32') {
+    return CMD_SAFE_URL.test(url)
+      ? { cmd: 'cmd.exe', args: ['/c', 'start', '""', `"${url}"`], verbatim: true }
+      : { cmd: 'explorer.exe', args: [url], verbatim: false, show: true };
+  }
   if (platform === 'darwin') return { cmd: 'open', args: [url], verbatim: false };
   return { cmd: 'xdg-open', args: [url], verbatim: false };
 }
@@ -136,19 +149,26 @@ function systemOpenCommand(url, platform = process.platform) {
  * The spawn that opens `url` in `browser` (a resolveBrowser() result or an
  * installedBrowsers() entry). Windows goes through `start` so the launcher
  * returns at once; `minimized` adds `/min` there (best effort, Windows only).
- * Spawn with `windowsVerbatimArguments: verbatim`.
- * @returns {{cmd:string, args:string[], verbatim:boolean}|null} null for in-app: no process can open the Desktop app's pane
+ * Spawn with `spawnOptions(plan)`.
+ * @returns {{cmd:string, args:string[], verbatim:boolean, show?:boolean}|null} null for in-app: no process can open the Desktop app's pane
  */
 function openCommand(browser, url, { platform = process.platform, minimized = false } = {}) {
   if (!browser || browser.id === IN_APP) return null;
   const def = BROWSERS.find((b) => b.id === browser.id);
   if (!def) return null;
   if (platform === 'win32') {
+    // No shell for a URL cmd would misread: the executable takes it as one argument.
+    if (!CMD_SAFE_URL.test(url)) return browser.exe ? { cmd: browser.exe, args: [url], verbatim: false, show: true } : null;
     const target = def.start || `"${browser.exe}"`;
     return { cmd: 'cmd.exe', args: ['/c', 'start', '""', ...(minimized ? ['/min'] : []), target, `"${url}"`], verbatim: true };
   }
   if (platform === 'darwin') return { cmd: 'open', args: ['-a', def.mac, url], verbatim: false };
   return { cmd: browser.exe || def.linux[0], args: [url], verbatim: false };
+}
+
+/** The spawn options for an openCommand() / systemOpenCommand() plan: detached, silent, the browser's own window shown. */
+function spawnOptions(plan) {
+  return { detached: true, stdio: 'ignore', windowsHide: !plan.show, windowsVerbatimArguments: !!plan.verbatim };
 }
 
 /**
@@ -167,5 +187,5 @@ function browserLine(o = {}) {
 
 module.exports = {
   BROWSERS, SETTING_VALUES, IN_APP, AUTO, IN_APP_LABEL,
-  locate, installedBrowsers, storedChoice, resolveBrowser, openCommand, systemOpenCommand, browserLine,
+  locate, installedBrowsers, storedChoice, resolveBrowser, openCommand, systemOpenCommand, spawnOptions, browserLine,
 };

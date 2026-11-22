@@ -1224,14 +1224,14 @@ export function answerHead(answer: unknown, max = 80): string {
 const LIMIT_TEXT_RX = /hit your (?:session|weekly|usage|opus|sonnet)?\s*limit|usage limit reached|(?:5-hour|weekly|session|opus) limit reached|limit reached\s*[∙·•|]/i
 
 /**
- * True when a main turn ended on the usage limit: its whole answer is that one short line (or the engine names the
- * limit as the reason). A longer answer that merely talks about limits is not one.
+ * True when a main turn ended on the usage limit: its whole answer is that one short line, which always names the
+ * reset (or the engine names the limit as the reason). An answer that merely talks about a limit is not one.
  */
 export function isLimitStop(answer: unknown, reason?: unknown): boolean {
   if (typeof reason === 'string' && /rate.?limit|usage.?limit/i.test(reason)) return true
   if (typeof answer !== 'string') return false
   const t = answer.trim()
-  return t.length > 0 && t.length <= 200 && !t.includes('\n') && LIMIT_TEXT_RX.test(t)
+  return t.length > 0 && t.length <= 200 && !t.includes('\n') && LIMIT_TEXT_RX.test(t) && /\breset/i.test(t)
 }
 
 /**

@@ -33,6 +33,7 @@ describe("main", () => {
     expect(check(start, () => "edge").block).toContain("chrome");
     expect(check(start, () => "chrome")).toBeNull();
     expect(check(bash("npx playwright test --headed"), () => "chrome").block).toContain("--headed");
+    expect(check(write(LAUNCH), () => "chrome").block).toContain("executablePath: CHROME"); // automation with a window stays blocked
   });
 
   test("the marker overrides", () => {

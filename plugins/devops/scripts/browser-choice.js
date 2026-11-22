@@ -62,7 +62,7 @@ function open(url, opts) {
   const plan = openPlan(url, opts);
   if (!plan) return { ok: true, open_in: 'pane', url };
   try {
-    spawn(plan.cmd, plan.args, { detached: true, stdio: 'ignore', windowsHide: true, windowsVerbatimArguments: plan.verbatim }).on('error', () => {}).unref();
+    spawn(plan.cmd, plan.args, lib.spawnOptions(plan)).on('error', () => {}).unref();
     return { ok: true, open_in: 'external', url };
   } catch (e) {
     return { ok: false, error: e.message, url };

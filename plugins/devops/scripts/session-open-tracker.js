@@ -349,12 +349,7 @@ function openInBrowser(absPath) {
     const plan = choice.openCommand(choice.resolveBrowser(), fileUrl);
     // In-app: no process can open the Desktop app's pane; the caller gets the path back.
     if (!plan) return "pane";
-    child_process.spawn(plan.cmd, plan.args, {
-      detached: true,
-      stdio: "ignore",
-      windowsHide: true,
-      windowsVerbatimArguments: plan.verbatim
-    }).on("error", () => {}).unref();
+    child_process.spawn(plan.cmd, plan.args, choice.spawnOptions(plan)).on("error", () => {}).unref();
     return true;
   } catch {
     return false;

@@ -2720,6 +2720,8 @@ test('limit stop: the band renames the session to "🟦 ➜ 🔋 Limit ┃ …" 
   expect(isLimitStop('', 'rate_limit')).toBe(true)
   expect(isLimitStop('The weekly limit reached · is a phrase I explain here.\nSecond line.')).toBe(false)
   expect(isLimitStop('Done.')).toBe(false)
+  expect(isLimitStop("You've hit your usage limit on the GitHub API, so I cached the answer.")).toBe(false) // no reset named: not Claude Code's line
+  expect(isLimitStop('5-hour limit reached ∙ resets 3pm')).toBe(true)
   expect(limitTitle('⏳ ➜ 🤖 Team ┃ Home Browser-Wahl')).toBe('🟦 ➜ 🔋 Limit ┃ Home Browser-Wahl')
   expect(limitTitle('🔗 ⏳ ➜ 🤖 Solo ┃ Titel ohne Vortext')).toBe('🔗 🟦 ➜ 🔋 Limit ┃ Titel ohne Vortext')
   expect(limitTitle('⏳ Übungen')).toBe('🟦 ➜ 🔋 Limit ┃ Übungen')

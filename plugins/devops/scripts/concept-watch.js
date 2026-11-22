@@ -299,13 +299,17 @@ function readState(statePath) {
  * down with it. The browser is the user's choice (hooks/lib/browser-choice.js,
  * Edge by default), named explicitly — the page is a localhost URL and `start`
  * alone would pick whatever handles http://. Null for the choice "in-app":
- * no process can open the Desktop app's pane, so nothing is re-opened.
+ * no process can open the Desktop app's pane, so nothing is re-opened. In-app
+ * only because no browser was found falls back to the OS opener.
  */
 function reopenCommand(url, platform = process.platform, browser = undefined) {
   const choice = require('../hooks/lib/browser-choice');
   // /min: the waker re-opens while the user may be working elsewhere; a
   // minimized window does not steal focus (best effort, Windows only).
-  return choice.openCommand(browser === undefined ? choice.resolveBrowser({ platform }) : browser, url, { platform, minimized: true });
+  const b = browser === undefined ? choice.resolveBrowser({ platform }) : browser;
+  const plan = choice.openCommand(b, url, { platform, minimized: true });
+  // In-app only because no browser was found (not chosen): the waker has no pane, so the OS opener it is.
+  return plan || (b && b.fallback ? choice.systemOpenCommand(url, platform) : null);
 }
 
 function reopen(url) {
@@ -313,7 +317,7 @@ function reopen(url) {
   try {
     const plan = reopenCommand(url);
     if (!plan) return;
-    spawn(plan.cmd, plan.args, { detached: true, stdio: 'ignore', windowsHide: true, windowsVerbatimArguments: plan.verbatim }).on('error', () => {}).unref();
+    spawn(plan.cmd, plan.args, require('../hooks/lib/browser-choice').spawnOptions(plan)).on('error', () => {}).unref();
   } catch { /* best effort */ }
 }
 
