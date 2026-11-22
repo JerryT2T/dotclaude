@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.395.1] — 2026-11-22
+
+### Fixed
+- Concept pages: the „Notizen liegen nur in diesem Browser“ strip sits right above the notes field instead of covering the text being typed
+- Artifact concept pages save the notes autosave in the artifact's own store, so the false „die Bridge hat sie nicht gespeichert“ strip no longer appears there
+
 ## [0.395.0] — 2026-11-22
 
 ### Added
