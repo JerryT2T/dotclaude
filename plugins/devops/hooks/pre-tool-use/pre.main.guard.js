@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook pre.main.guard
- * @version 0.4.0
+ * @version 0.5.0
  * @event PreToolUse
  * @plugin devops
  * @matcher Bash|PowerShell
@@ -27,6 +27,14 @@
  *   --force/--mirror/--all/--prune, plain ref names only); any other write
  *   command chained in (`&& git commit`) still blocks. Bash only: a
  *   PowerShell command keeps the plain block.
+ *
+ *   Shell wrappers are unwrapped (lib/shell-inner.js, up to 3 levels): the
+ *   inner command of `bash|sh|zsh|dash|ksh -c '…'` (also `-lc`), `cmd /c …`,
+ *   `pwsh|powershell -c|-Command …` and the body of a here-doc fed to a bare
+ *   shell (`bash <<'EOF'`, `bash -s <<EOF`) is judged like a plain command,
+ *   with the directory in effect at the wrapper and its own `cd`s (which do
+ *   not leak out). A here-doc that is content (`cat > f <<EOF`) is not.
+ *   Not seen: `ssh host '…'`, `xargs git …`, `eval "…"`, `cat <<EOF | bash`.
  *
  *   Read-only git commands (status, log, diff, fetch, branch listing) pass
  *   through untouched.
@@ -108,7 +116,9 @@ process.stdin.on('end', () => {
   const cmd = (hook.tool_input || {}).command || '';
   if (!cmd) process.exit(0);
 
-  if (!matchesGitCommand(cmd, WRITE_PATTERNS) && !matchesGitCommand(cmd, [PUSH_PATTERN])) process.exit(0);
+  // Cheap exit: no word "git" anywhere (quoted wrapper commands and here-docs
+  // included) → nothing to check. The real decision is made per segment below.
+  if (!/git/i.test(cmd)) process.exit(0);
 
   const cwd = hook.cwd || process.cwd();
 
@@ -131,7 +141,10 @@ process.stdin.on('end', () => {
     targets.set(dir, { otherWrite: prev.otherWrite || other });
   }
   // A write the segment parser did not attribute (exotic syntax): today's check on the cwd.
-  if (!targets.size && !sawFastForward) targets.set(cwd, { otherWrite: matchesGitCommand(cmd, WRITE_PATTERNS) });
+  if (!targets.size && !sawFastForward) {
+    const other = matchesGitCommand(cmd, WRITE_PATTERNS);
+    if (other || matchesGitCommand(cmd, [PUSH_PATTERN])) targets.set(cwd, { otherWrite: other });
+  }
 
   for (const [dir, { otherWrite }] of targets) checkDir(hook, tool, cmd, dir, otherWrite);
   process.exit(0);
