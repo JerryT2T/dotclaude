@@ -1,4 +1,4 @@
-# Concept templates, part 47 of 53: Template: analysis — engine UI JS (palette, chat flow, rail)
+# Concept templates, part 48 of 54: Template: analysis — engine UI JS (palette, chat flow, rail)
 
 ## Engine UI — palette, chat flow, rail (JS; the composer and note store continue in templates-analysis-composer.md)
 
