@@ -1,4 +1,4 @@
-# Concept templates, part 19 of 52: Template: design — variant overview CSS (≥2 designs) (continued 2)
+# Concept templates, part 19 of 53: Template: design — variant overview CSS (≥2 designs) (continued 2)
 
 ```css
 /* ── Side-tile label: neighbours only. The variant icon — exactly the

@@ -4,6 +4,7 @@ import { mkdtempSync, writeFileSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { randomUUID } from "node:crypto";
 
 // Side-session cards end to end through the offline renderer (concept
 // 2026-11-07 subsession-cards, scenarios S1-S5): title prefix, heading, `›`
@@ -48,6 +49,21 @@ describe("side-session cards through the offline renderer", () => {
     expect(r.buttons).toEqual([]);
   }, 30000);
 
+  test("row 14 end to end: a recorded sub with its own running sub -> 🔗 ⏳ ➜ 🔗 Linked", () => {
+    const sid = randomUUID();
+    const mark = join(tmpdir(), `dotclaude-devops-linked-sub-${sid}`);
+    writeFileSync(mark, "handoff");
+    try {
+      const r = render({ session_id: sid, variant: "fallback", linked: [L("Teilaufgabe", "running")] });
+      expect(r.title).toBe("🔗 ⏳ ➜ 🔗 Linked ┃ ");
+      // A recorded sub whose title was reset still gets its 🔗 on the card's outcome head.
+      const own = render({ session_id: sid, variant: "ready" });
+      expect(own.title).toBe("🔗 👉 ➜ 📦 Ready ┃ ");
+    } finally {
+      rmSync(mark, { force: true });
+    }
+  }, 60000);
+
   test("S2: own diff -> normal Ready with the note, Ship stays", () => {
     const r = render({ variant: "ready", linked: [L("Doku-Umbau", "running")] });
     expect(r.title).toBe("👉 ➜ 📦 Ready ┃ ");
@@ -57,10 +73,10 @@ describe("side-session cards through the offline renderer", () => {
     expect(r.buttons).toEqual(["Ship"]);
   }, 30000);
 
-  test("S3 step 1: orchestration with an own diff -> ⏳ Team, early-ship button", () => {
+  test("S3 step 1: orchestration with an own diff -> ⏳ Linked, early-ship button", () => {
     const r = render({ variant: "ready", linked: [L("A", "done", "deliver"), L("B", "running", "deliver")] });
-    expect(r.title).toBe("⏳ ➜ 🤖 Team ┃ ");
-    expect(r.heading).toBe("⏳ 🤖 Team — noch nicht fertig — 1 von 2 Side-Sessions fertig");
+    expect(r.title).toBe("⏳ ➜ 🔗 Linked ┃ ");
+    expect(r.heading).toBe("⏳ 🔗 Linked — noch nicht fertig — 1 von 2 Side-Sessions fertig");
     expect(r.buttons).toEqual(["Eigenen Teil jetzt shippen"]);
   }, 30000);
 

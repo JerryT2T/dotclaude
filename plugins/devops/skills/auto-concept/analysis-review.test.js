@@ -127,13 +127,13 @@ describe("R3 / R4 / R5 frozen rounds and baking", () => {
     expect(html).toMatch(/name="dm-xa2-none"[^>]*value="1"/);
     expect(html).toMatch(/name="dm-xa1-hes"[^>]*value="[^"]*42000/);
   });
-  test("R4: the closing of a baked round shows the baked dwell and sharpen", () => {
+  test("R4: the closing of a baked round shows the baked sharpen choice (no dwell bar)", () => {
     const { ca, doc, inst } = page(baked());
     expect(inst.hes.xa1.ms).toBe(42000);
     review(ca, inst);
     const tg = [...doc.querySelectorAll(".an-sigrow")][0].querySelector(".an-tg");
     expect(tg.getAttribute("aria-pressed")).toBe("true");
-    expect(doc.querySelector(".an-sigrow .an-dw").getAttribute("data-tip")).toContain("42 s");
+    expect(doc.querySelector(".an-sigrow .an-dw")).toBeNull();   // no dwell bar: dwell is an internal signal
   });
   test("R3: nothing in a frozen round can be changed", () => {
     const { w, ca, doc, inst } = page(cb.freezeFragment(baked()));

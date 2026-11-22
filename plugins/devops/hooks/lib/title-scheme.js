@@ -1,6 +1,6 @@
 /**
  * @module title-scheme
- * @version 2.7.0
+ * @version 2.8.0
  * @description The ONE table behind the session title and the completion
  *   card's CTA heading (concept 2026-10-21 "title-iconography").
  *
@@ -33,6 +33,10 @@
  *   stays, only the status says whose move it is (`approvalTitle`,
  *   `approvalRestoredTitle`; hooks: perm.approval.*). classify() reads those
  *   heads as 'approval'.
+ *
+ *   Sub marker (2.8): a linked side session's title starts with `🔗 ` in front
+ *   of its normal head; the parent's waiting heads (`⏳/👉 ➜ 🔗 Linked`) are
+ *   states, the marker is not (`carrySubMark`).
  *
  *   CJS so hooks `require` it; mcp-server (ESM) loads it through
  *   `hookRequire("lib", "title-scheme.js")` in mcp-server/lib/mode-state.js.
@@ -77,9 +81,8 @@ const STATES = Object.freeze({
   linked: ['work', 'Linked', '🔗'],
   'concept-working': ['work', 'Concept', '🧭'],
   // 👉 the user's move.
-  // A side session waits on the user: Linked (handoff) / Team (deliver).
+  // A side session (handoff or deliver) waits on the user: Linked.
   'linked-waiting': ['user', 'Linked', '🔗'],
-  'agents-waiting': ['user', 'Team', '🤖'],
   'concept-waiting': ['user', 'Concept', '🧭'],
   batch: ['user', 'Batch', '📚'],
   test: ['user', 'Test', '🧪'],
@@ -393,18 +396,69 @@ function canonical(prefix) {
 }
 
 /**
- * The leading known prefix of `title`: `{ prefix, length }` (the canonical
- * prefix string, fill-less, and how many code units of `title` it covers),
- * the bare ⏳ as `{ prefix: BARE_WORK, … }`, or null for a plain title.
+ * The sub marker (2.8): a LINKED side session carries `🔗 ` in front of its
+ * normal head (`🔗 ⏳ ➜ 🚀 Shipping ┃ X`). It is no state of its own — every
+ * helper below sees through it, and `carrySubMark` puts it back wherever a
+ * head is rebuilt, so a status swap never loses it and it never stacks.
  */
-function leadingPrefix(title) {
+const SUB_MARK = '🔗';
+/** Sidebar width the marker takes from the topic (the icon and its space). */
+const SUB_MARK_WIDTH = 2;
+
+/** Length of a leading sub marker + space in `t` (0 = none); only before a known head. */
+function subMarkLength(t) {
+  const s = String(t ?? '');
+  if (!s.startsWith(SUB_MARK)) return 0;
+  const n = matchLength(s, SUB_MARK + ' ');
+  return n > 0 && leadingPrefixOf(s.slice(n)) ? n : 0;
+}
+
+/** True when `title` starts with the sub marker in front of a known head. */
+function hasSubMark(title) {
+  return subMarkLength(title) > 0;
+}
+
+/**
+ * `title` with exactly one leading sub marker: added when missing, never
+ * stacked. A title without a known head stays as it is.
+ */
+function withSubMark(title) {
   const t = String(title ?? '');
+  if (hasSubMark(t)) return t;
+  return leadingPrefixOf(t) ? SUB_MARK + ' ' + t : t;
+}
+
+/**
+ * `next` carries the sub marker when `current` does, or when the caller knows
+ * the session is a linked sub (`sub`). A `null` next stays null.
+ */
+function carrySubMark(current, next, sub = false) {
+  if (typeof next !== 'string') return next;
+  return sub || hasSubMark(current) ? withSubMark(next) : next;
+}
+
+function leadingPrefixOf(t) {
   for (const p of KNOWN_PREFIXES) {
     const n = matchLength(t, p);
     if (n >= 0) return { prefix: p, length: n };
   }
   const n = matchLength(t, BARE_WORK);
   return n >= 0 ? { prefix: BARE_WORK, length: n } : null;
+}
+
+/**
+ * The leading known prefix of `title`: `{ prefix, length }` (the canonical
+ * prefix string, fill-less, and how many code units of `title` it covers),
+ * the bare ⏳ as `{ prefix: BARE_WORK, … }`, or null for a plain title. A
+ * leading sub marker is covered by `length` (and flagged `sub: true`) but is
+ * not part of `prefix`.
+ */
+function leadingPrefix(title) {
+  const t = String(title ?? '');
+  const m = subMarkLength(t);
+  const lead = leadingPrefixOf(t.slice(m));
+  if (!lead) return null;
+  return m ? { prefix: lead.prefix, length: m + lead.length, sub: true } : lead;
 }
 
 /**
@@ -468,10 +522,10 @@ function approvalTitle(title) {
   const kind = classify(title);
   const rest = stripPrefixes(title);
   if (!rest.trim()) return null;
-  if (kind === 'work') return compose(STATUS.user, 'Solo', '🤖') + ' ' + rest;
+  if (kind === 'work') return carrySubMark(title, compose(STATUS.user, 'Solo', '🤖') + ' ' + rest);
   if (kind !== 'process') return null;
   const pair = approvalHead(leadingPrefix(title).prefix, STATUS.work);
-  return pair ? compose(STATUS.user, pair[0], pair[1]) + ' ' + rest : null;
+  return pair ? carrySubMark(title, compose(STATUS.user, pair[0], pair[1]) + ' ' + rest) : null;
 }
 
 /**
@@ -487,7 +541,7 @@ function approvalRestoredTitle(title) {
   const rest = stripPrefixes(title);
   if (!rest.trim()) return null;
   const pair = approvalHead(leadingPrefix(title).prefix, STATUS.user);
-  return pair ? compose(STATUS.work, pair[0], pair[1]) + ' ' + rest : null;
+  return pair ? carrySubMark(title, compose(STATUS.work, pair[0], pair[1]) + ' ' + rest) : null;
 }
 
 /** Every prefix a state can leave on a title (status raised included). */
@@ -535,4 +589,9 @@ module.exports = {
   APPROVAL_HEADS,
   approvalTitle,
   approvalRestoredTitle,
+  SUB_MARK,
+  SUB_MARK_WIDTH,
+  hasSubMark,
+  withSubMark,
+  carrySubMark,
 };
