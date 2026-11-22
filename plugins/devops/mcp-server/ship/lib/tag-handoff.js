@@ -22,6 +22,12 @@ const PERMANENT_PATTERNS = [
   /pre-receive hook declined/i,
   /write access to repository not granted/i,
   /authentication failed/i,
+  // The claude.ai cloud GitHub proxy takes branch pushes only: a tag push (and a
+  // branch deletion) is rejected there, the same way on every attempt.
+  /proxy.*(?:reject|refus|den(?:y|ied)|not allowed|blocked)/i,
+  /(?:reject|refus|den(?:y|ied)|block)\w*.*\b(?:tag|tags)\b.*\bproxy\b/i,
+  /only (?:branch(?:es)?|branch pushes) (?:can|may|are)/i,
+  /(?:tags?|refs\/tags\/\S*) (?:is|are) not (?:allowed|supported|permitted)/i,
 ];
 
 /** True when the push error is one a retry cannot fix. */
@@ -37,13 +43,16 @@ export function isPermanentPushError(err) {
  *
  * @param {{ channelTag: string, channel: string, version: string, sha?: string|null, base: string, permanent: boolean, error?: string }} p
  */
-export function tagHandoff({ channelTag, channel, version, sha, base, permanent, error }) {
+export function tagHandoff({ channelTag, channel, version, sha, base, permanent, error, cloud = process.env.CLAUDE_CODE_REMOTE === "true" }) {
   const target = sha || `origin/${base}`;
   const message = JSON.stringify({ channel, version });
   const quoted = `'${message.replace(/'/g, "'\\''")}'`;
   return {
     tag: channelTag,
     target,
+    // A cloud session never pushes a tag (the GitHub proxy takes branches only): the
+    // owner runs the commands in a clone on their own computer.
+    ...(cloud && { runWhere: "in a local clone of the repository (Desktop app or terminal) — a cloud session cannot push tags" }),
     permanent: !!permanent,
     reason: permanent
       ? "The remote refused the tag push for this session (permission) — no retry changes that."
