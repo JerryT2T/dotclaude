@@ -1,6 +1,25 @@
 import { describe, test, expect } from "vitest";
 import { isPermanentPushError, tagHandoff } from "./tag-handoff.js";
 
+describe("isPermanentPushError: a transient network error is never permanent", () => {
+  test("errors that name the proxy but are connection failures stay retryable", () => {
+    for (const m of [
+      "fatal: unable to access 'https://github.com/o/r.git/': proxyconnect tcp: dial tcp 127.0.0.1:3128: connect: connection refused",
+      "fatal: unable to access: Failed to connect to proxy: Connection reset by peer",
+      "fatal: unable to access: Could not resolve proxy: proxy.internal",
+      "error: proxy connection timed out, request blocked by timeout",
+    ]) expect(isPermanentPushError(new Error(m), {}), m).toBe(false);
+  });
+  test("real refusals stay permanent", () => {
+    for (const m of [
+      "remote: proxy rejected the tag push",
+      "HTTP 403 from proxy",
+      "remote: protected ref",
+      "Write access to this GitHub API path is not permitted through this proxy",
+    ]) expect(isPermanentPushError(new Error(m), {}), m).toBe(true);
+  });
+});
+
 describe("isPermanentPushError (#566)", () => {
   test("permission refusals are permanent", () => {
     for (const m of [
