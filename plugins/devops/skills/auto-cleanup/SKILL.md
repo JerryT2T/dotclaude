@@ -235,12 +235,13 @@ entries):
 | 🟢 **Autonomous** | LANDED by proof 1, checked out nowhere; a worktree registration whose directory is gone | removed in Step 8a |
 | 🟡 **Ambiguous** | UNMERGED / unproven / partly landed branches, open PRs, idle session worktrees with own commits | concept page (Step 8b) |
 | 🔒 **Protected** | worktree branches of sessions, the current and the default branch | never touched |
+| 🧵 **Thread-Arbeit** | work of a Claude Projects thread: worktree `…/.claude/worktrees/thread-*`, branch `claude/thread-*`, or a session carrying the thread marker (`hygiene.js` `isThreadWork`, `threadWork` in the hygiene and orphan-scan result) | its own group on the page, **never preselected** for deletion, never autonomous; the user decides per entry |
 
 **Consistency check (mandatory, end of Step 3):** every local branch must land
 in exactly one bucket, so
 
 ```
-|Autonomous| + |Ambiguous| + |Protected| == |git branch --format='%(refname:short)'|
+|Autonomous| + |Ambiguous| + |Protected| + |Thread-Arbeit| == |git branch --format='%(refname:short)'|
 ```
 
 If the sums differ, do NOT continue silently: print a warning naming the count
@@ -269,7 +270,10 @@ present in `refs/heads`:
 
 - Check if merged into `origin/main` or has a merged PR
 - Classify as Autonomous (same proof against the remote tip) or Ambiguous
-- Track separately as remote-only branches (Ort = "nur-remote")
+- Track separately as remote-only branches (Ort = "nur-remote"). Without a PR
+  such a branch counts as orphaned only after **7 idle days** (last commit date;
+  `REMOTE_ORPHAN_IDLE_DAYS` in `hygiene.js`) — a thread or cloud session may
+  still come back to it. A younger one is not listed as abandoned.
 
 ## Step 5 — PR Cross-Reference + Open-PR Inventory
 
