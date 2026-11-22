@@ -91,23 +91,25 @@ describe("findStaleTitles", () => {
       const at = new Date(NOW - 30 * MIN);
       fs.utimesSync(jsonl, at, at);
     };
-    session("C--r-app", "cut", "⏳ ➜ 🤖 Team ┃ Home Browser-Wahl", 30);
+    session("C--r-app", "cut", "⏳ ➜ 🤖🤖🤖 Home Browser-Wahl", 30);
     write("cut", ['{"type":"user"}', limitLine]);
-    session("C--r-app", "cutlive", "🔗 ⏳ ➜ 🤖 Solo ┃ Titel ohne Vortext", 30);
+    session("C--r-app", "cutlive", "🔗 ⏳ ➜ 🤖 Titel ohne Vortext", 30);
     fs.writeFileSync(path.join(gov, "cutlive.json"), JSON.stringify({ claudePid: process.pid }));
     write("cutlive", [limitLine]);
     // Answered normally since the stop: the limit is history, the crash rule applies.
-    session("C--r-app", "past", "⏳ ➜ 🤖 Solo ┃ Weiter", 30);
+    session("C--r-app", "past", "⏳ ➜ 🤖 Weiter", 30);
     write("past", [limitLine, JSON.stringify({ type: "assistant", message: { content: [{ type: "text", text: "ok" }] } })]);
     // A finished title is never touched, whatever the transcript ends on.
-    session("C--r-app", "done", "🟩 ➜ 📦 Ready ┃ Fertig", 30);
+    session("C--r-app", "done", "🟩 ➜ 📦 Fertig", 30);
     write("done", [limitLine]);
     expect(Object.fromEntries(find().map((s) => [s.sessionId, s.next]))).toEqual({
-      cut: "🟦 ➜ 🔋 Limit ┃ Home Browser-Wahl",
-      cutlive: "🔗 🟦 ➜ 🔋 Limit ┃ Titel ohne Vortext",
-      past: "👉 ➜ ⚡ Interrupted ┃ Weiter",
+      cut: "🟦 ➜ 🔋 Home Browser-Wahl",
+      cutlive: "🔗 🟦 ➜ 🔋 Titel ohne Vortext",
+      past: "👉 ➜ ⚡ Weiter",
     });
-    expect(limitFor("🟩 ➜ 📦 Ready ┃ Fertig")).toBeNull();
+    expect(limitFor("🟩 ➜ 📦 Fertig")).toBeNull();
+    // A title an older version left on the worded head loses the word with the rename.
+    expect(limitFor("⏳ ➜ 🤖 Team ┃ Home Browser-Wahl")).toBe("🟦 ➜ 🔋 Home Browser-Wahl");
   });
 
   test("#964: a live session idle for an hour with only a dev server open is handed on; real open work keeps it", () => {

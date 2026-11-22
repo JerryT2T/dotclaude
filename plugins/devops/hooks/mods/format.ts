@@ -1235,15 +1235,16 @@ export function isLimitStop(answer: unknown, reason?: unknown): boolean {
 }
 
 /**
- * The sidebar title after a limit stop: `🟦 ➜ 🔋 Limit ┃ <topic>` (head: hooks/lib/title-scheme.js
- * `paused-usage-reset`), a 🔗 sub marker kept. Only a ⏳ title changes — a card's outcome says more than "Limit".
+ * The sidebar title after a limit stop: `🟦 ➜ 🔋 <topic>` (head: hooks/lib/title-scheme.js `paused-usage-reset`),
+ * a 🔗 sub marker kept. Only a ⏳ title changes — a card's outcome says more than "Limit". Read: the 3.0 head
+ * (`⏳ ➜ 🤖 X`, `⏳ ➜ 🤖🤖🤖 X`), the worded one up to 2.8 (`⏳ ➜ 🤖 Team ┃ X`) and a bare `⏳ X`.
  * Null = leave the title.
  */
 export function limitTitle(title: unknown): string | null {
   if (typeof title !== 'string') return null
-  const m = /^(🔗\s+)?⏳\s*(?:➜\s*\S+\s+[^┃]{1,30}┃\s*)?(.*)$/u.exec(title.trim())
+  const m = /^(🔗\s+)?⏳\s*(?:➜\s*\S+\s+)?(?:[^┃]{1,30}┃\s*)?(.*)$/u.exec(title.trim())
   const topic = m ? m[2]!.trim() : ''
-  return topic ? `${m![1] ? '🔗 ' : ''}🟦 ➜ 🔋 Limit ┃ ${topic}` : null
+  return topic ? `${m![1] ? '🔗 ' : ''}🟦 ➜ 🔋 ${topic}` : null
 }
 
 /** #1150: the idle row's status after a card-less turn: "⏸ Stopped — waiting for you · 14:02" or "Last: {answer} · 14:02". */

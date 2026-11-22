@@ -543,7 +543,7 @@ async function pressArchive($: EngineInterface, loc: Locale): Promise<void> {
 }
 
 /**
- * The sidebar title of a session the usage limit just stopped: `⏳ … ┃ X` → `🟦 ➜ 🔋 Limit ┃ X`, through the app's own
+ * The sidebar title of a session the usage limit just stopped: `⏳ ➜ 🤖 X` → `🟦 ➜ 🔋 X`, through the app's own
  * session tools — no model turn (there is none left; until now only a paused card set this title, so a turn the limit
  * cut kept its ⏳). Terminal, older app, a refusal: the title stays, ss.title.sweep renames it from another session.
  */

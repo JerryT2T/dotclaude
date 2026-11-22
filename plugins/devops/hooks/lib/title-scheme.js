@@ -126,7 +126,7 @@ const STATES = Object.freeze({
   'aborted-agents': ['aborted', 'Team', '🤖'],
   // 🟦 paused, per reason.
   'paused-user': ['paused', 'Paused', '✋'],
-  // "Limit", not "Limit reset": the sidebar names the state, the card says when it ends.
+  // "Limit", not "Limit reset": the card heading names the state, its sentence says when it ends.
   'paused-usage-reset': ['paused', 'Limit', '🔋'],
   'paused-restart': ['paused', 'Restart', '🔌'],
   'paused-reboot': ['paused', 'Reboot', '💻'],
@@ -345,7 +345,7 @@ const KNOWN = [];
   for (const [, word, act] of Object.values(STATES)) pairs.set(word + ' ' + act, [word, act]);
   pairs.set('Solo 🤖', ['Solo', '🤖']);
   // Words retired by 2.3 ("Alpha 🚀" before "Released Alpha"), both orders.
-  // "Limit reset 🔋" became "Limit" — titles in the wild still carry it.
+  // "Limit reset 🔋" became "Limit" — worded titles in the wild still carry it.
   const retired = [['Alpha', '🚀'], ['Beta', '🚀'], ['Stable', '🚀'], ['Limit reset', '🔋']];
   const current = new Map([...pairs, ...retired.map((wa) => [wa.join(' '), wa])]);
   // The 2.0/2.1 word-first order, with the icons it used (Started 💡).

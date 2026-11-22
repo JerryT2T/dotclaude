@@ -26,7 +26,7 @@
  *
  *   0.4.0 — limit stop: a ⏳ title whose transcript ends on Claude Code's
  *   "limit hit" record (lib/burn-state limitEvidence) becomes
- *   `🟦 ➜ 🔋 Limit ┃`, not Interrupted. Until then only the paused card set
+ *   `🟦 ➜ 🔋`, not Interrupted. Until then only the paused card set
  *   that title, so a session the limit cut mid-turn kept its ⏳ for good.
  */
 
@@ -80,7 +80,7 @@ function interruptedFor(title) {
 }
 
 /**
- * The title a session becomes whose turn a usage limit cut: `🟦 ➜ 🔋 Limit ┃`
+ * The title a session becomes whose turn a usage limit cut: `🟦 ➜ 🔋`
  * in front of its bare text (a sub marker kept), or null. Entry rule as
  * interruptedFor — a limit stop runs no model turn, so no card could set this
  * title itself.

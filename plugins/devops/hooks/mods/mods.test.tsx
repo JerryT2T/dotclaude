@@ -2714,7 +2714,7 @@ test('archive helpers: offered only on a green card while idle; isError text bec
   expect(archiveRefusal({ isError: true })).toBe('archive_session failed')
 })
 
-test('limit stop: the band renames the session to "🟦 ➜ 🔋 Limit ┃ …" itself; an ordinary answer and a card title are left alone', async ($, on) => {
+test('limit stop: the band renames the session to "🟦 ➜ 🔋 …" itself; an ordinary answer and a card title are left alone', async ($, on) => {
   const LIMIT = "You've hit your weekly limit · resets 10:50pm (Europe/Berlin)"
   expect(isLimitStop(LIMIT)).toBe(true)
   expect(isLimitStop('', 'rate_limit')).toBe(true)
@@ -2722,15 +2722,17 @@ test('limit stop: the band renames the session to "🟦 ➜ 🔋 Limit ┃ …" 
   expect(isLimitStop('Done.')).toBe(false)
   expect(isLimitStop("You've hit your usage limit on the GitHub API, so I cached the answer.")).toBe(false) // no reset named: not Claude Code's line
   expect(isLimitStop('5-hour limit reached ∙ resets 3pm')).toBe(true)
-  expect(limitTitle('⏳ ➜ 🤖 Team ┃ Home Browser-Wahl')).toBe('🟦 ➜ 🔋 Limit ┃ Home Browser-Wahl')
-  expect(limitTitle('🔗 ⏳ ➜ 🤖 Solo ┃ Titel ohne Vortext')).toBe('🔗 🟦 ➜ 🔋 Limit ┃ Titel ohne Vortext')
-  expect(limitTitle('⏳ Übungen')).toBe('🟦 ➜ 🔋 Limit ┃ Übungen')
-  expect(limitTitle('👉 ➜ 📦 Ready ┃ Fertig')).toBe(null)
-  expect(limitTitle('🟦 ➜ 🔋 Limit ┃ Schon gesetzt')).toBe(null)
+  expect(limitTitle('⏳ ➜ 🤖🤖🤖 Home Browser-Wahl')).toBe('🟦 ➜ 🔋 Home Browser-Wahl')
+  expect(limitTitle('🔗 ⏳ ➜ 🤖 Titel ohne Vortext')).toBe('🔗 🟦 ➜ 🔋 Titel ohne Vortext')
+  expect(limitTitle('⏳ ➜ 🚀 v0.400.0 shippen')).toBe('🟦 ➜ 🔋 v0.400.0 shippen')
+  expect(limitTitle('⏳ ➜ 🤖 Team ┃ Home Browser-Wahl')).toBe('🟦 ➜ 🔋 Home Browser-Wahl') // the worded head up to 2.8
+  expect(limitTitle('⏳ Übungen')).toBe('🟦 ➜ 🔋 Übungen')
+  expect(limitTitle('👉 ➜ 📦 Fertig')).toBe(null)
+  expect(limitTitle('🟦 ➜ 🔋 Schon gesetzt')).toBe(null)
   expect(limitTitle('⏳ ')).toBe(null)
 
   engine(on)
-  let title = '⏳ ➜ 🤖 Team ┃ Home Browser-Wahl'
+  let title = '⏳ ➜ 🤖🤖🤖 Home Browser-Wahl'
   const sets: Array<Record<string, unknown>> = []
   on('mcp.call', (_: unknown, e: { server: string; tool: string; args: Record<string, unknown> }) => {
     if (e.tool === 'get_session') return { value: { content: [{ type: 'text', text: JSON.stringify({ sessionId: 'local_x', title }) }] } }
@@ -2745,9 +2747,9 @@ test('limit stop: the band renames the session to "🟦 ➜ 🔋 Limit ┃ …" 
   expect(sets).toEqual([]) // a normal turn end renames nothing
   await $.turn.start({ text: 'weiter', turnId: 't2' } as any)
   await $.turn.complete({ answer: LIMIT, durationMs: 1, isAborted: false, turnId: 't2', reason: 'end' } as any)
-  expect(sets).toEqual([{ session_id: 'self', title: '🟦 ➜ 🔋 Limit ┃ Home Browser-Wahl' }])
+  expect(sets).toEqual([{ session_id: 'self', title: '🟦 ➜ 🔋 Home Browser-Wahl' }])
   // A card already named the outcome: the limit line that follows changes nothing.
-  title = '👉 ➜ 📦 Ready ┃ Home Browser-Wahl'
+  title = '👉 ➜ 📦 Home Browser-Wahl'
   await $.turn.start({ text: 'noch was', turnId: 't3' } as any)
   await $.turn.complete({ answer: LIMIT, durationMs: 1, isAborted: false, turnId: 't3', reason: 'end' } as any)
   expect(sets).toHaveLength(1)
