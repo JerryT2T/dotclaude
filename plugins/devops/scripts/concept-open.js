@@ -24,6 +24,11 @@
  *     then /shutdown. Exits 1 and prints {ok:false,error} when /status does not
  *     echo phase "closed" - run it BEFORE any file move or state-file removal.
  *
+ *   open-url --url <https url>
+ *     Opens one https URL (a published artifact) in Edge - no bridge. For a
+ *     thread on this computer; a cloud session (CLAUDE_CODE_REMOTE=true) has no
+ *     browser and answers {ok:true,opened:false}. Same Edge launcher as verify.
+ *
  * Every sibling script is resolved from this file's directory.
  */
 const fs = require('fs');
@@ -274,7 +279,16 @@ async function close(opts, deps = {}) {
   return { ok: true, port, acked, tabs, shutdown };
 }
 
-module.exports = { prepare, verify, close, buildLaunch, parseArgs, openBrowser };
+/** Open a published artifact URL in Edge (thread on this computer); never throws. */
+async function openUrl(opts, deps = {}) {
+  const url = typeof opts.url === 'string' ? opts.url : '';
+  if (!/^https:\/\/[^\s"'<>^&|]+$/.test(url)) return { ok: false, error: 'open-url needs a plain https url' };
+  if ((deps.env || process.env).CLAUDE_CODE_REMOTE === 'true') return { ok: true, opened: false, reason: 'cloud session: no local browser', url };
+  const err = await (deps.openBrowser || openBrowser)(url);
+  return err ? { ok: false, error: err, url } : { ok: true, opened: true, url };
+}
+
+module.exports = { prepare, verify, close, buildLaunch, parseArgs, openBrowser, openUrl };
 
 if (require.main === module) {
   (async () => {
@@ -287,12 +301,16 @@ if (require.main === module) {
         const res = await verify(opts);
         process.stdout.write(JSON.stringify(res) + '\n');
         process.exit(res.ok ? 0 : 1);
+      } else if (cmd === 'open-url') {
+        const res = await openUrl(opts);
+        process.stdout.write(JSON.stringify(res) + '\n');
+        process.exit(res.ok ? 0 : 1);
       } else if (cmd === 'close') {
         const res = await close(opts);
         process.stdout.write(JSON.stringify(res) + '\n');
         process.exit(res.ok ? 0 : 1);
       } else {
-        process.stderr.write('usage: concept-open.js prepare --cwd <dir> --html <rel> | verify --state <abs path> | close --state <abs path>|--port <n> [--finished <json>]\n');
+        process.stderr.write('usage: concept-open.js prepare --cwd <dir> --html <rel> | verify --state <abs path> | open-url --url <https url> | close --state <abs path>|--port <n> [--finished <json>]\n');
         process.exit(2);
       }
     } catch (e) {

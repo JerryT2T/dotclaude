@@ -197,7 +197,7 @@ See `deep-knowledge/step3-open-browser.md` § Hand-off fallback. Only when the o
 
 ### No reachable bridge, owner decides remotely — artifact fallback (#589)
 
-See `deep-knowledge/step3-open-browser.md` § Artifact fallback. Second tier: only when the hand-off applies AND the owner wants to decide now from a remote device AND the Artifact tool exists; build, publish and read back.
+See `deep-knowledge/step3-open-browser.md` § Artifact fallback. Second tier: only when the hand-off applies AND the owner wants to decide now from a remote device AND the Artifact tool exists; build, publish and read back. In a Claude Projects thread this tier is the default (nothing else reaches the person): link posted in the thread, Edge on a local thread, `iterate` / `implement` via the read-back (`artifact-fallback.md` § In a Claude Projects thread).
 
 ### MANDATORY — Real Edge browser only
 

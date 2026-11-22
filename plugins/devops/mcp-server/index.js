@@ -68,7 +68,7 @@ import { hasPending, pendingWhat, renderPendingLine, hasConcept, normalizePendin
 import { clampText, clampEllipsis } from "./lib/soft-limits.js";
 import { summarizeShip, shipDurationTest } from "./ship/lib/ship-timings.js";
 import { CARD_VARIANTS, coerceCardInput, validateCardInput, formatIssues, unknownCardKeys } from "./lib/card-input.js";
-import { batchGuide, conceptCloseoutOnly, conceptUrl, readBatch, readRunContractLine, sameProjectRoot, titlePrefixFor, titleInstruction, demandedTitle, currentSessionTitle, isLinkedSub, titleStateForKey, hasMandatoryStep, TITLE_SCHEME, projectThreadMode, currentThreadTitle, threadTitleInstruction } from "./lib/mode-state.js";
+import { batchGuide, conceptCloseoutOnly, conceptUrl, readBatch, readRunContractLine, sameProjectRoot, titlePrefixFor, titleInstruction, demandedTitle, currentSessionTitle, isLinkedSub, titleStateForKey, hasMandatoryStep, TITLE_SCHEME, projectThreadMode, currentThreadTitle, threadTitleInstruction, coordinatorSession, coordinatorStatusInstruction } from "./lib/mode-state.js";
 import { staleServerLine } from "./lib/server-version.js";
 import { canMinimize, cardDataBlock, cardWidgetInstruction, isDesktopSession, safeSessionId, sessionOpenButton, warmCardClient, writeCardWidgetFile } from "./lib/card-widget.js";
 import { bandCarriesCard, writeBandCard } from "./lib/band-marker.js";
@@ -2725,9 +2725,9 @@ function isThreadCard(params) {
 }
 
 /** The tool-result blocks: relay contract, notes, and the markdown unless the widget is the card. */
-function cardResultBlocks(cardMarkdown, titleNote, actionsNote, archiveNote = '', openNote = '', dataBlock = '', { thread = false } = {}) {
+function cardResultBlocks(cardMarkdown, titleNote, actionsNote, archiveNote = '', openNote = '', dataBlock = '', { thread = false, statusNote = '' } = {}) {
   let texts;
-  if (thread) texts = [THREAD_RELAY_INSTRUCTION, titleNote, openNote, threadCardText(cardMarkdown)];
+  if (thread) texts = [THREAD_RELAY_INSTRUCTION, titleNote, statusNote, openNote, threadCardText(cardMarkdown)];
   else if (actionsNote) texts = [titleNote, archiveNote, openNote, dataBlock, actionsNote];
   else texts = [RELAY_INSTRUCTION, titleNote, openNote, cardMarkdown];
   return texts.filter(Boolean).map(text => ({ type: "text", text }));
@@ -3225,6 +3225,10 @@ function runRenderCardCli(source) {
   process.stdout.write(actionsNote ? '' : (threadCard ? threadCardText(cardMarkdown) : cardMarkdown) + '\n'); // stdout-ok
   if (threadCard) process.stderr.write(THREAD_RELAY_INSTRUCTION + '\n');
   if (titleNote) process.stderr.write(titleNote + '\n');
+  if (threadCard) {
+    const statusNote = coordinatorStatusInstruction(coordinatorSession(params.session_id, params.cwd));
+    if (statusNote) process.stderr.write(statusNote + '\n');
+  }
   const archiveNote = sessionArchiveNote(params, actionsNote);
   if (archiveNote) process.stderr.write(archiveNote + '\n');
   if (actionsNote) process.stderr.write(actionsNote + '\n');
@@ -3664,7 +3668,7 @@ server.registerTool(
     // from the result text: the full card data rides as its own block.
     const dataBlock = params._cardMinimal ? cardDataBlock(params._cardModel, params._repoUrl || '') : '';
 
-    return { content: cardResultBlocks(cardMarkdown, titleNote, actionsNote, archiveNote, [openDropNote(params), openRefuseNote(params)].filter(Boolean).join("\n"), dataBlock, { thread: isThreadCard(params) }) };
+    return { content: cardResultBlocks(cardMarkdown, titleNote, actionsNote, archiveNote, [openDropNote(params), openRefuseNote(params)].filter(Boolean).join("\n"), dataBlock, { thread: isThreadCard(params), statusNote: isThreadCard(params) ? coordinatorStatusInstruction(coordinatorSession(params.session_id, params.cwd)) : '' }) };
   }
 );
 

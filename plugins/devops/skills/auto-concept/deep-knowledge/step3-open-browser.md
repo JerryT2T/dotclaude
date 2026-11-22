@@ -41,7 +41,9 @@ Build the copy with `node "{PLUGIN_ROOT}/scripts/concept-artifact.js"
 --artifact docs/concepts/<file>.html`, publish it with `capabilities: {db: {}}`,
 and read the decisions back on the next turn with `ArtifactData` — no bridge,
 no crons, no Edge start. The steps, the wrapper contract and the card:
-`deep-knowledge/artifact-fallback.md`.
+`deep-knowledge/artifact-fallback.md`. In a Claude Projects thread this is the
+only tier (no bridge page reaches the person there): link in the thread, Edge via
+`concept-open.js open-url` on a local thread, link only in the cloud.
 
 ## Open command, 200 gate, token check
 

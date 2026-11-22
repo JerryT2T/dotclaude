@@ -159,6 +159,15 @@ describe("run — CLI", () => {
     expect(res.readBack).toEqual({ tool: "ArtifactData", action: "get", collection: "concept", doc_id: "decisions" });
   });
 
+  test("the next-round and implement actions travel in the stored payload unchanged (C8)", async () => {
+    for (const action of ["iterate", "implement"]) {
+      const s = sandbox();
+      await s.fetch("/decisions", { method: "POST", body: JSON.stringify({ submitted: true, action, implement: { run: true } }) });
+      const doc = await (await s.fetch("/decisions")).json();
+      expect(doc).toMatchObject({ submitted: true, action, implement: { run: true } });
+    }
+  });
+
   test("missing or unreadable input is an error, not a silent no-op", () => {
     expect(run({}).ok).toBe(false);
     expect(run({ artifact: path.join(dir, "nope.html") }).reason).toBe("unreadable");
