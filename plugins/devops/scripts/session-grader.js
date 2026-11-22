@@ -280,7 +280,7 @@ function createDigester(rules, { cap = DIGEST_CAP } = {}) {
           const short = name.replace(/^mcp__[^_]+(?:_[^_]+)*?__/, 'mcp:');
           toolCalls++;
           if (name === THREAD_POST_TOOL) {
-            if (String((c.input || {}).text || '').includes(THREAD_CARD_MARKER)) cardPosted = true;
+            if (require('../hooks/lib/run-contract-thread').postedText(c.input).includes(THREAD_CARD_MARKER)) cardPosted = true;
           } else if (WORK_TOOLS.has(name)) workCalls++;
           lines.push(`T: ${short} ${toolArgs(name, c.input || {})}`);
           if ((name === 'Bash' || name === 'PowerShell') && inWorktree && STASH_RE.test(String((c.input || {}).command || ''))) {
