@@ -180,6 +180,7 @@ describe("B1 — the command's own repo decides, not the start folder", () => {
   test("gitSegments: cd, pushd, -C chain, quoted and relative", () => {
     const s = (cmd, cwd) => gitSegments(cmd, cwd).map((x) => x.dir);
     const base = join(root, "q");
+    for (const d of ["sub", "my dir/inner", "../x"]) mkdirSync(join(base, d), { recursive: true });
     expect(s("cd sub && git commit", base)).toEqual([join(base, "sub")]);
     expect(s('git -C "my dir" -C inner commit', base)).toEqual([join(base, "my dir", "inner")]);
     expect(s("pushd ../x; git commit; popd", base)).toEqual([join(root, "x")]);
@@ -187,6 +188,77 @@ describe("B1 — the command's own repo decides, not the start folder", () => {
     expect(s("git --git-dir=.git commit", base)).toEqual([null]);
     expect(s("echo hi && ls", base)).toEqual([]);
   });
+});
+
+describe("R2 — post-ship cleanup, and directory attribution of gitSegments", () => {
+  let wt; // a linked worktree of repo a on a feature branch (the ship session's own checkout)
+
+  beforeAll(() => {
+    wt = join(coll, "a-feat");
+    execFileSync("git", ["worktree", "add", "-q", "-b", "feat/r2", wt], { cwd: repos.a, stdio: "ignore" });
+  }, TIMEOUT);
+
+  const sentinel = (dir) => {
+    mkdirSync(join(dir, ".claude"), { recursive: true });
+    writeFileSync(join(dir, ".claude", ".ship-in-progress"), JSON.stringify({ ts: Date.now(), pid: process.pid }));
+    return () => rmSync(join(dir, ".claude", ".ship-in-progress"), { force: true });
+  };
+  const inA = (rest) => `git -C "${repos.a}" ${rest}`;
+
+  test("finding #5: the cleanup fast-forward of main passes from a feature worktree, other writes stay blocked", () => {
+    expect(sh(inA("merge --ff-only origin/main"), wt).status).toBe(0);
+    expect(sh(inA("merge --ff-only origin/master"), wt).status).toBe(0);
+    expect(sh(inA("pull --ff-only"), wt).status).toBe(0);
+    expect(sh(inA("pull --ff-only origin main"), wt).status).toBe(0);
+    expect(sh(inA("merge feat/r2"), wt).status).toBe(2);
+    expect(sh(inA("merge origin/feat/x"), wt).status).toBe(2);
+    expect(sh(inA("merge --ff-only origin/feat/x"), wt).status).toBe(2);
+    expect(sh(inA("merge --ff-only origin/main --no-verify"), wt).status).toBe(2);
+    expect(sh(inA("commit -m x"), wt).status).toBe(2);
+    expect(sh(`${inA("merge --ff-only origin/main")} && ${inA("commit -m x")}`, wt).status).toBe(2);
+    expect(sh("git merge --ff-only origin/main", repos.a).status).toBe(0);
+  }, TIMEOUT);
+
+  test("finding #5: the ship sentinel of the session's own worktree covers the SAME repo, not another", () => {
+    const off = sentinel(wt);
+    try {
+      expect(sh(inA("merge feat/r2"), wt).status).toBe(0);
+      expect(sh(`git -C "${repos.b}" commit -m x`, wt).status).toBe(2); // another repository
+      expect(sh(inA("commit -m x"), coll).status).toBe(2); // session is not the ship's checkout
+    } finally { off(); }
+    expect(sh(inA("merge feat/r2"), wt).status).toBe(2);
+  }, TIMEOUT);
+
+  test("finding #6: a cd target that does not exist is unknown, so the cwd decides", () => {
+    expect(sh("cd typo; git commit -m x", repos.a).status).toBe(2);
+    expect(sh("pushd typo && git commit -m x", repos.a).status).toBe(2);
+    expect(sh("git -C typo commit -m x", repos.a).status).toBe(2);
+    expect(sh("Set-Location typo; git commit -m x", repos.a, {}, undefined, "PowerShell").status).toBe(2);
+    expect(sh("cd typo; git commit -m x", repos.c).status).toBe(0);
+  }, TIMEOUT);
+
+  test("finding #6: popd / Pop-Location restore the directory before the pushd", () => {
+    const s = (cmd, cwd) => gitSegments(cmd, cwd).map((x) => x.dir);
+    expect(s("pushd ../c; popd; git commit", repos.a)).toEqual([repos.a]);
+    expect(s("Push-Location ../c; Pop-Location; git commit", repos.a)).toEqual([repos.a]);
+    expect(s("pushd ../c; git commit; popd; git commit", repos.a)).toEqual([repos.c, repos.a]);
+    expect(sh("pushd ../c; popd; git commit -m x", repos.a).status).toBe(2);
+  }, TIMEOUT);
+
+  test("finding #6: GIT_WORK_TREE / GIT_DIR / --work-tree / --git-dir name the directory", () => {
+    const s = (cmd, cwd) => gitSegments(cmd, cwd).map((x) => x.dir);
+    const a = repos.a;
+    expect(s(`GIT_WORK_TREE="${a}" git commit`, coll)).toEqual([a]);
+    expect(s(`GIT_DIR="${join(a, ".git")}" git commit`, coll)).toEqual([a]);
+    expect(s(`git --work-tree="${a}" commit`, coll)).toEqual([a]);
+    expect(s(`git --work-tree "${a}" commit`, coll)).toEqual([a]);
+    expect(s(`git --git-dir=${join(a, ".git")} commit`, coll)).toEqual([a]);
+    expect(s(`git --git-dir ${join(a, ".git")} commit`, coll)).toEqual([a]);
+    expect(s("git --git-dir=nowhere/.git commit", coll)).toEqual([null]);
+    expect(sh(`GIT_DIR="${join(a, ".git")}" GIT_WORK_TREE="${a}" git commit -m x`, coll).status).toBe(2);
+    expect(sh(`git --git-dir "${join(a, ".git")}" commit -m x`, coll).status).toBe(2);
+    expect(sh(`git --work-tree=${a} commit -m x`, coll).status).toBe(2);
+  }, TIMEOUT);
 });
 
 describe("B2 — the remedy of a thread outside the repo's work tree", () => {

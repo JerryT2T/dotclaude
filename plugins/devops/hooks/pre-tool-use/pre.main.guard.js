@@ -45,13 +45,13 @@
 // A lib that fails to load (half-written during a plugin update, version skew)
 // makes this hook a silent no-op instead of a hook error on every Bash call
 // (AUD-028).
-let gitOut, sentinelActive, isLinkedWorktree, branchFix, threadWorktreeFor, ownWorktreeDecided, BYPASS, gitCommandRe, matchesGitCommand, gitSegments, WORD_END, remoteDeleteTargets;
+let gitOut, sentinelActive, isLinkedWorktree, gitCommonDir, samePath, isFastForwardOfMain, branchFix, threadWorktreeFor, ownWorktreeDecided, BYPASS, gitCommandRe, matchesGitCommand, gitSegments, WORD_END, remoteDeleteTargets;
 try {
   require('../lib/plugin-guard');
-  ({ gitCommandRe, matchesGitCommand, gitSegments, WORD_END, remoteDeleteTargets } = require('../lib/ship-guard-match'));
+  ({ gitCommandRe, matchesGitCommand, gitSegments, isFastForwardOfMain, WORD_END, remoteDeleteTargets } = require('../lib/ship-guard-match'));
   ({ gitOut } = require('../lib/git-timeout'));
   ({ isActive: sentinelActive } = require('../lib/ship-sentinel'));
-  ({ isLinkedWorktree } = require('../lib/project-root'));
+  ({ isLinkedWorktree, gitCommonDir, samePath } = require('../lib/project-root'));
   ({ branchFix, threadWorktreeFor, ownWorktreeDecided, BYPASS } = require('../lib/branch-fix'));
 } catch (err) {
   // Silent to the user and the model (exit 0), but not traceless: the line
@@ -119,16 +119,19 @@ process.stdin.on('end', () => {
   // folder: a session started in a non-repo folder such as P:\Projects used to
   // pass every write. An unreadable directory falls back to the cwd, as before.
   const targets = new Map();
+  let sawFastForward = false;
   for (const seg of gitSegments(cmd, cwd)) {
     const other = matchesGitCommand(seg.text, WRITE_PATTERNS);
     const push = matchesGitCommand(seg.text, [PUSH_PATTERN]);
     if (!other && !push) continue;
+    // Post-ship cleanup: a pure fast-forward of main/master to its remote is no own work on main.
+    if (isFastForwardOfMain(seg.text)) { sawFastForward = true; continue; }
     const dir = seg.dir || cwd;
     const prev = targets.get(dir) || { otherWrite: false };
     targets.set(dir, { otherWrite: prev.otherWrite || other });
   }
   // A write the segment parser did not attribute (exotic syntax): today's check on the cwd.
-  if (!targets.size) targets.set(cwd, { otherWrite: matchesGitCommand(cmd, WRITE_PATTERNS) });
+  if (!targets.size && !sawFastForward) targets.set(cwd, { otherWrite: matchesGitCommand(cmd, WRITE_PATTERNS) });
 
   for (const [dir, { otherWrite }] of targets) checkDir(hook, tool, cmd, dir, otherWrite);
   process.exit(0);
@@ -138,6 +141,13 @@ process.stdin.on('end', () => {
 function checkDir(hook, tool, cmd, cwd, otherWrite) {
   if (!isGitRepo(cwd)) return;
   if (sentinelActive(cwd)) return;
+  // The ship pipeline of THIS session's checkout also covers a write in another
+  // worktree of the SAME repository (same git common dir) — never another repo.
+  if (hook.cwd && sentinelActive(hook.cwd)) {
+    const own = gitCommonDir(hook.cwd);
+    const target = gitCommonDir(cwd);
+    if (own && target && samePath(own, target)) return;
+  }
 
   const branch = currentBranch(cwd);
   if (!branch) return;
