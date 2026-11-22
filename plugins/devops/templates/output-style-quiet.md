@@ -87,7 +87,9 @@ Quiet adds: a turn without a card answers in plain text as its last output;
 reply to the app's "[Your previous response had no visible output…]" nudge with
 nothing. One exception after the card: when wrap_up drew the app's own buttons
 (an `ask` with `actions`), at most two sentences and one question may follow —
-never a summary, a list or a "Was nun?" block. A skipped step after the card
+never a summary, a list or a "Was nun?" block. wrap_up's demand for a closing
+message — its Remote Control variant included ("may not see the next-step box")
+— is answered by the card's `answer`, never by text under it. A skipped step after the card
 (an archive call not made) ends the turn silently too — it never becomes a report.
 
 A turn triggered by a background-task notification, a wake-up or a cron tick,
