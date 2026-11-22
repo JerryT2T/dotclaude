@@ -84,6 +84,7 @@ test('home: the bedtime row shows only a watcher that is really armed', () => {
   expect(bedText(bedFrom({ ...waiting, active: [] }, now)!, now)).toBe('🛏 Keine Sitzung arbeitet mehr – PC fährt in wenigen Minuten herunter')
   expect(bedText(bedFrom({ ...waiting, phase: 'busy-job', note: 'ffmpeg.exe' }, now)!, now)).toBe('🛏 Wartet auf ffmpeg.exe')
   expect(bedText(bedFrom({ ...waiting, phase: 'person' }, now)!, now)).toContain('sobald du 5 min weg bist')
+  expect(bedFrom({ ...waiting, active: [{ name: 'Ein sehr langer Sitzungstitel, der die Zeile sprengt' }] }, now)!.names).toEqual(['Ein sehr langer Sitzung…'])
   // a watcher that stopped updating its state, a final phase, a shutdown already past, no file
   expect(bedFrom({ ...waiting, updatedAt: now - 181_000 }, now)).toBe(null)
   expect(bedFrom({ ...waiting, phase: 'cancelled' }, now)).toBe(null)

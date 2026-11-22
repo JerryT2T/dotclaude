@@ -27,6 +27,7 @@ const CONFIRM_PCT = 85
 /** Twin of scripts/bedtime-shutdown.js STALE_MS: a waiting state not updated this long has no watcher behind it. */
 const BED_STALE_MS = 3 * 60_000
 const BED_NAMES = 3
+const BED_NAME_MAX = 24
 
 // ── pure ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -217,6 +218,8 @@ export function bedFrom(state: unknown, now: number): HomeBed | null {
   const all = (Array.isArray(o.active) ? o.active : [])
     .map(a => (a && typeof a === 'object' ? String((a as { name?: unknown }).name || '').trim() : ''))
     .filter(Boolean)
+    // R8: three full titles would push the row's button out of a narrow pane.
+    .map(n => (n.length > BED_NAME_MAX ? `${n.slice(0, BED_NAME_MAX - 1)}…` : n))
   return { phase, names: all.slice(0, BED_NAMES), more: Math.max(0, all.length - BED_NAMES), note: typeof o.note === 'string' ? o.note : '', shutdownAt }
 }
 
