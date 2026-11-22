@@ -78,6 +78,8 @@ describe("session-title — prefixes mirror mode-state.js", () => {
     expect(stripPrefixes("👉 📦" + FE0F + " Ready – Job")).toBe("Job");
     expect(classify("🟦 ➜ ✋ Job")).toBe("outcome");
     expect(stripPrefixes("🟦 ➜ 🔋 Job")).toBe("Job");
+    expect(stripPrefixes("🟦 ➜ 🔋 Limit ┃ Job")).toBe("Job"); // the worded heads up to 2.8, either word
+    expect(stripPrefixes("🟦 ➜ 🔋 Limit reset ┃ Job")).toBe("Job");
     expect(stripPrefixes("🟩 ➜ 🖥️ Job")).toBe("Job");
     expect(stripPrefixes("👉 ➜ ⚠️ Job")).toBe("Job");
     expect(stripPrefixes("🟩 ▶ Started – Job")).toBe("Job");

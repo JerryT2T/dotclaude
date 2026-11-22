@@ -8,6 +8,8 @@ import {
   formatResetShort,
   archiveOffered,
   archiveRefusal,
+  isLimitStop,
+  limitTitle,
   agentRows,
   batchDropReason,
   batchMaybeCollectable,
@@ -2062,6 +2064,54 @@ test('under the prompt: "● devops" beside the engine hint; a press opens the d
   expect(seen.writes).toEqual([])
 })
 
+test('Home → Einstellungen: the browser dropdown offers the installed browsers plus In-App; a pick is written by the plugin script', async ($, on) => {
+  const { seen } = engine(on, { files: LOG_FILES })
+  const options = [{ id: 'edge', label: 'Microsoft Edge' }, { id: 'chrome', label: 'Google Chrome' }, { id: 'in-app', label: 'In-App (Claude Desktop)' }]
+  const runs: string[][] = []
+  let stored = 'auto'
+  on('process.run', (_: unknown, e: { argv: string[] }) => {
+    const at = e.argv.findIndex(a => /browser-choice\.js$/.test(a))
+    if (at < 0) return { value: { exitCode: 1, stdout: '', stderr: '' } }
+    const args = e.argv.slice(at + 1)
+    runs.push(args)
+    if (args[0] === 'set') stored = args[1]!
+    const effective = options.find(o => o.id === stored) ?? options[0]
+    return { value: { exitCode: 0, stdout: JSON.stringify({ effective, stored, options }), stderr: '' } }
+  })
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  const mount = () => $.ui.mount({ ...pane('devops-home', 'devops Home'), surface: 'desktop' } as any)
+  const until = async (key: string, text: RegExp) => {
+    let home = await mount()
+    for (let i = 0; i < 40; i++) {
+      if (text.test(JSON.stringify((await home.find({ key })) ?? ''))) break
+      await home.unmount()
+      for (let j = 0; j < 200; j++) await Promise.resolve()
+      home = await mount()
+    }
+    return home
+  }
+  let home = await mount()
+  await home.press({ key: 'home-tab-settings' })
+  await home.press({ key: 'home-refresh' }) // an earlier test's answer may still count as fresh
+  await home.unmount()
+  home = await until('home-browser-toggle', /Microsoft Edge ▾/)
+  expect(JSON.stringify(await home.find({ key: 'home-browser-toggle' }))).toMatch(/Microsoft Edge ▾/)
+  expect(await home.find({ key: 'home-browser-chrome' })).toBeUndefined() // closed: no list
+  await home.press({ key: 'home-browser-toggle' })
+  await home.unmount()
+  home = await until('home-browser-edge', /● Microsoft Edge/)
+  expect(JSON.stringify(await home.find({ key: 'home-browser-chrome' }))).toMatch(/○ Google Chrome/)
+  expect(JSON.stringify(await home.find({ key: 'home-browser-in-app' }))).toMatch(/○ In-App/)
+  await home.press({ key: 'home-browser-in-app' })
+  await home.unmount()
+  home = await until('home-browser-toggle', /In-App \(Claude Desktop\) ▾/)
+  expect(JSON.stringify(await home.find({ key: 'home-browser-toggle' }))).toMatch(/In-App \(Claude Desktop\) ▾/)
+  expect(await home.find({ key: 'home-browser-edge' })).toBeUndefined() // a pick closes the list
+  expect(runs.at(-1)).toEqual(['set', 'in-app', '--json'])
+  await home.unmount()
+  expect(seen.prompts).toEqual([])
+})
+
 test('/devops toggles the devops Home pane with a one-line answer; the terminal hint carries the state as its tail', async ($, on) => {
   const { seen } = engine(on, { files: LOG_FILES })
   await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
@@ -2713,6 +2763,47 @@ test('archive helpers: offered only on a green card while idle; isError text bec
   expect(archiveRefusal({ isError: false, content: [] })).toBeNull()
   expect(archiveRefusal({ isError: true, content: [{ type: 'text', text: 'Session is pinned.\n' }] })).toBe('Session is pinned.')
   expect(archiveRefusal({ isError: true })).toBe('archive_session failed')
+})
+
+test('limit stop: the band renames the session to "🟦 ➜ 🔋 …" itself; an ordinary answer and a card title are left alone', async ($, on) => {
+  const LIMIT = "You've hit your weekly limit · resets 10:50pm (Europe/Berlin)"
+  expect(isLimitStop(LIMIT)).toBe(true)
+  expect(isLimitStop('', 'rate_limit')).toBe(true)
+  expect(isLimitStop('The weekly limit reached · is a phrase I explain here.\nSecond line.')).toBe(false)
+  expect(isLimitStop('Done.')).toBe(false)
+  expect(isLimitStop("You've hit your usage limit on the GitHub API, so I cached the answer.")).toBe(false) // no reset named: not Claude Code's line
+  expect(isLimitStop('5-hour limit reached ∙ resets 3pm')).toBe(true)
+  expect(limitTitle('⏳ ➜ 🤖🤖🤖 Home Browser-Wahl')).toBe('🟦 ➜ 🔋 Home Browser-Wahl')
+  expect(limitTitle('🔗 ⏳ ➜ 🤖 Titel ohne Vortext')).toBe('🔗 🟦 ➜ 🔋 Titel ohne Vortext')
+  expect(limitTitle('⏳ ➜ 🚀 v0.400.0 shippen')).toBe('🟦 ➜ 🔋 v0.400.0 shippen')
+  expect(limitTitle('⏳ ➜ 🤖 Team ┃ Home Browser-Wahl')).toBe('🟦 ➜ 🔋 Home Browser-Wahl') // the worded head up to 2.8
+  expect(limitTitle('⏳ Übungen')).toBe('🟦 ➜ 🔋 Übungen')
+  expect(limitTitle('👉 ➜ 📦 Fertig')).toBe(null)
+  expect(limitTitle('🟦 ➜ 🔋 Schon gesetzt')).toBe(null)
+  expect(limitTitle('⏳ ')).toBe(null)
+
+  engine(on)
+  let title = '⏳ ➜ 🤖🤖🤖 Home Browser-Wahl'
+  const sets: Array<Record<string, unknown>> = []
+  on('mcp.call', (_: unknown, e: { server: string; tool: string; args: Record<string, unknown> }) => {
+    if (e.tool === 'get_session') return { value: { content: [{ type: 'text', text: JSON.stringify({ sessionId: 'local_x', title }) }] } }
+    if (e.tool === 'set_session_title') sets.push(e.args)
+    return { value: { content: [{ type: 'text', text: 'ok' }] } }
+  })
+  on('turn.start', (_: unknown, e: { turnId: string }) => ({ turnId: e.turnId || 't' }))
+  on('turn.complete', (_: unknown, e: { answer: string }) => ({ text: e.answer }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.turn.start({ text: 'build it', turnId: 't1' } as any)
+  await $.turn.complete({ answer: 'All done.', durationMs: 1, isAborted: false, turnId: 't1', reason: 'end' } as any)
+  expect(sets).toEqual([]) // a normal turn end renames nothing
+  await $.turn.start({ text: 'weiter', turnId: 't2' } as any)
+  await $.turn.complete({ answer: LIMIT, durationMs: 1, isAborted: false, turnId: 't2', reason: 'end' } as any)
+  expect(sets).toEqual([{ session_id: 'self', title: '🟦 ➜ 🔋 Home Browser-Wahl' }])
+  // A card already named the outcome: the limit line that follows changes nothing.
+  title = '👉 ➜ 📦 Home Browser-Wahl'
+  await $.turn.start({ text: 'noch was', turnId: 't3' } as any)
+  await $.turn.complete({ answer: LIMIT, durationMs: 1, isAborted: false, turnId: 't3', reason: 'end' } as any)
+  expect(sets).toHaveLength(1)
 })
 
 test('archive button: a green card offers it; a press calls the app archive_session on self, a refusal is a toast', async ($, on) => {

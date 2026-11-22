@@ -55,7 +55,8 @@ function buildContext(stale) {
   return [
     '[ss.title.sweep] Desktop app only, once, silently, in this turn\'s first tool batch: these sessions still',
     'show ⏳ although their transcript has been idle — the app or Claude Code was closed or crashed mid-turn —',
-    'or show a concept page whose bridge server is gone (🔴: resuming the session reconnects it).',
+    'a usage limit cut their turn (🟦 ➜ 🔋),',
+    'or they show a concept page whose bridge server is gone (🔴: resuming the session reconnects it).',
     `Call mcp__ccd_session_mgmt__list_sessions {limit: 50}; for every row with isRunning:false whose title`,
     'equals a left-hand title below, call mcp__ccd_session_mgmt__set_session_title {session_id: <its sessionId>,',
     'title: <the right-hand title>}. Leave running rows, rows not listed and archived sessions alone.',

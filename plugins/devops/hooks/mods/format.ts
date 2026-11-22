@@ -1299,6 +1299,33 @@ export function answerHead(answer: unknown, max = 80): string {
   return line.length > max ? `${line.slice(0, max - 1).trimEnd()}…` : line
 }
 
+/** Claude Code's own "limit hit" line — the phrases of LIMIT_TEXT_RX in hooks/lib/burn-state.js; keep both in step. */
+const LIMIT_TEXT_RX = /hit your (?:session|weekly|usage|opus|sonnet)?\s*limit|usage limit reached|(?:5-hour|weekly|session|opus) limit reached|limit reached\s*[∙·•|]/i
+
+/**
+ * True when a main turn ended on the usage limit: its whole answer is that one short line, which always names the
+ * reset (or the engine names the limit as the reason). An answer that merely talks about a limit is not one.
+ */
+export function isLimitStop(answer: unknown, reason?: unknown): boolean {
+  if (typeof reason === 'string' && /rate.?limit|usage.?limit/i.test(reason)) return true
+  if (typeof answer !== 'string') return false
+  const t = answer.trim()
+  return t.length > 0 && t.length <= 200 && !t.includes('\n') && LIMIT_TEXT_RX.test(t) && /\breset/i.test(t)
+}
+
+/**
+ * The sidebar title after a limit stop: `🟦 ➜ 🔋 <topic>` (head: hooks/lib/title-scheme.js `paused-usage-reset`),
+ * a 🔗 sub marker kept. Only a ⏳ title changes — a card's outcome says more than "Limit". Read: the 3.0 head
+ * (`⏳ ➜ 🤖 X`, `⏳ ➜ 🤖🤖🤖 X`), the worded one up to 2.8 (`⏳ ➜ 🤖 Team ┃ X`) and a bare `⏳ X`.
+ * Null = leave the title.
+ */
+export function limitTitle(title: unknown): string | null {
+  if (typeof title !== 'string') return null
+  const m = /^(🔗\s+)?⏳\s*(?:➜\s*\S+\s+)?(?:[^┃]{1,30}┃\s*)?(.*)$/u.exec(title.trim())
+  const topic = m ? m[2]!.trim() : ''
+  return topic ? `${m![1] ? '🔗 ' : ''}🟦 ➜ 🔋 ${topic}` : null
+}
+
 /** #1150: the idle row's status after a card-less turn: "⏸ Stopped — waiting for you · 14:02" or "Last: {answer} · 14:02". */
 export function haltedLine(h: Halted | null, loc: Locale): string {
   if (!h) return ''

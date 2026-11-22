@@ -9,6 +9,8 @@
  * (scripts/bedtime-shutdown.js — the PC powers off once no session works any more), shows whom it waits for and
  * cancels it. Einstellungen: the devops switch for this session, the info card's
  * figures as tiles with an "i" toggle, measured facts in place of a token gain that is not there, the version.
+ * Einstellungen also holds the browser for pages devops opens: a dropdown of the installed ones plus In-App
+ * (scripts/browser-choice.js).
  *
  * Pure helpers are exported for the tests; the engine side reaches the rest of the mod only through `HomeDeps`.
  */
@@ -206,6 +208,35 @@ export function infoTiles(d: InfoData | null, loc: Locale): { tiles: InfoRow[]; 
   return { tiles: noGain ? rows : [infoHeadline(d, loc), ...rows], noGain }
 }
 
+export type BrowserOption = { id: string; label: string }
+export type BrowserState = { effective: BrowserOption; stored: string; options: BrowserOption[] }
+
+/** `scripts/browser-choice.js list --json`: the browser in effect, the stored choice, installed browsers plus In-App. */
+export function browsersFrom(text: string): BrowserState | null {
+  let v: unknown
+  try {
+    v = JSON.parse(text)
+  } catch {
+    return null
+  }
+  const o = v && typeof v === 'object' ? (v as { effective?: unknown; stored?: unknown; options?: unknown }) : null
+  const opt = (x: unknown): BrowserOption | null => {
+    const r = x && typeof x === 'object' ? (x as { id?: unknown; label?: unknown }) : null
+    return r && typeof r.id === 'string' && r.id && typeof r.label === 'string' ? { id: r.id, label: r.label || r.id } : null
+  }
+  const effective = o ? opt(o.effective) : null
+  if (!o || !effective || !Array.isArray(o.options)) return null
+  const options = o.options.map(opt).filter((x): x is BrowserOption => !!x)
+  return options.length ? { effective, stored: typeof o.stored === 'string' ? o.stored : 'auto', options } : null
+}
+
+/** Why the browser in effect is not the stored choice; '' while it is (or nothing was chosen and Edge is there). */
+export function browserNote(b: BrowserState): string {
+  if (b.stored === b.effective.id) return ''
+  if (b.stored === 'auto') return b.effective.id === 'edge' ? '' : b.effective.id === 'in-app' ? 'Kein Browser installiert – Seiten öffnen in der App.' : 'Edge ist nicht installiert.'
+  return `Gewählt war „${b.stored}“, ist aber nicht mehr installiert.`
+}
+
 /**
  * `~/.claude/bedtime-shutdown.json` → what is armed right now, or null: a final phase (cancelled, expired, failed),
  * a waiting state whose watcher stopped updating it, and a shutdown whose time has passed all show the button again.
@@ -263,6 +294,13 @@ let openInfo = ''
 let confirmFor = ''
 const busy = new Map<string, 'starting' | 'started' | 'failed'>()
 let paneOpen = false
+let browsers: BrowserState | null = null
+let browsersAt = 0
+let browsersLoading = false
+let browserOpen = false
+let browserSaving = ''
+const BROWSER_TIMEOUT_MS = 8000
+const BROWSER_FRESH_MS = 300_000
 let bedConfirm = false
 let bedBusy = false
 
@@ -305,6 +343,47 @@ async function load($: EngineInterface, ctx: HomeCtx): Promise<void> {
   const at = await $.clock.now()
   const bed = bedFrom(home ? await readJson($, `${home}/.claude/bedtime-shutdown.json`) : null, at)
   snap = { at, model: homeModel(sessions, cleanup, await batches($)), rings: ringsFrom(live), reset: resetText(live), info, error, bed }
+}
+
+/** Installed browsers and the choice, from the plugin's own script (the engine has no way to look for executables). */
+async function browserScript($: EngineInterface, args: string[]): Promise<BrowserState | null> {
+  try {
+    const r = await $.process.run(['node', `${$.plugin.root}/scripts/browser-choice.js`, ...args, '--json'], { timeoutMs: BROWSER_TIMEOUT_MS })
+    return r.exitCode === 0 ? browsersFrom(String(r.stdout || '')) : null
+  } catch {
+    return null
+  }
+}
+
+/** The Einstellungen tab is the only reader: a good answer holds 5 min, a failed one is retried after 20 s, ↻ asks now. */
+function loadBrowsers($: EngineInterface, now: number, force = false): void {
+  if (browsersLoading || (!force && browsersAt && now - browsersAt < (browsers ? BROWSER_FRESH_MS : STALE_MS))) return
+  browsersLoading = true
+  browsersAt = now || 1
+  void (async () => {
+    const b = await browserScript($, ['list'])
+    if (b) browsers = b
+    browsersLoading = false
+    $.ui.invalidate('ui.render')
+  })()
+}
+
+/** A press answers inside its budget: the write runs on, its outcome redraws the row. */
+function pickBrowser($: EngineInterface, id: string): void {
+  browserOpen = false
+  if (!browsers || browserSaving || id === browsers.stored) {
+    $.ui.invalidate('ui.render')
+    return
+  }
+  browserSaving = id
+  $.ui.invalidate('ui.render')
+  void (async () => {
+    const b = await browserScript($, ['set', id])
+    if (b) browsers = b
+    else $.ui.toast('Browser konnte nicht gespeichert werden.', { timeoutMs: 8000 })
+    browserSaving = ''
+    $.ui.invalidate('ui.render')
+  })()
 }
 
 export function refreshHome($: EngineInterface, ctx: HomeCtx, force = false): void {
@@ -452,7 +531,7 @@ export async function renderHome($: EngineInterface, e: any, ctx: HomeCtx): Prom
         <Button key="home-tab-settings" variant={tab === 'settings' ? 'primary' : undefined} label="Einstellungen" onPress={() => { tab = 'settings'; $.ui.invalidate('ui.render') }} />
         <Box flexGrow={1} />
         {s && <Text key="home-age" dimColor>{agoText(now - s.at)}</Text>}
-        <Button key="home-refresh" plain label="↻" onPress={() => refreshHome($, ctx, true)} />
+        <Button key="home-refresh" plain label="↻" onPress={() => { if (tab === 'settings') loadBrowsers($, now, true); refreshHome($, ctx, true) }} />
       </Box>
     )
     if (!s) return <Box flexDirection="column" rowGap={1}>{tabs}<Text dimColor>Lädt …</Text></Box>
@@ -462,6 +541,9 @@ export async function renderHome($: EngineInterface, e: any, ctx: HomeCtx): Prom
       const { tiles, noGain } = infoTiles(s.info, loc)
       const facts = s.info ? infoRows(s.info, loc).filter(r => r.key !== 'info-own') : []
       const version = s.info ? s.info.version : ''
+      loadBrowsers($, now)
+      const br = browsers
+      const note = br ? browserNote(br) : ''
       return (
         <Box flexDirection="column" rowGap={1}>
           {tabs}
@@ -470,6 +552,19 @@ export async function renderHome($: EngineInterface, e: any, ctx: HomeCtx): Prom
             <Box flexGrow={1} />
             <Button key="home-devops-switch" variant={isOn ? 'primary' : undefined} label={isOn ? '● an' : '○ aus'} onPress={() => ctx.switchDevops(!isOn)} />
           </Box>
+          {br && (
+            <Box key="home-browser" flexDirection="column" borderStyle="round" paddingX={1}>
+              <Box flexDirection="row" alignItems="center" columnGap={1}>
+                <Text><Text bold>Browser</Text> für Seiten, die devops öffnet</Text>
+                <Box flexGrow={1} />
+                <Button key="home-browser-toggle" label={browserSaving ? '⏳ speichert …' : `${br.effective.label} ${browserOpen ? '▴' : '▾'}`} onPress={() => { browserOpen = !browserOpen; $.ui.invalidate('ui.render') }} />
+              </Box>
+              {browserOpen && br.options.map(o => (
+                <Button key={`home-browser-${o.id}`} plain label={`${o.id === br.effective.id ? '●' : '○'} ${o.label}`} onPress={() => pickBrowser($, o.id)} />
+              ))}
+              {note && <Text key="home-browser-note" dimColor>{note}</Text>}
+            </Box>
+          )}
           {noGain && (
             <Box key="home-quality" flexDirection="column" borderStyle="round" borderColor={STATE_COLOR.done} paddingX={1}>
               <Text bold color={STATE_COLOR.done}>✓ Nutzen diese Woche: Qualität statt Tokens</Text>

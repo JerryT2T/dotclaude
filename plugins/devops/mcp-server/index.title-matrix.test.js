@@ -146,7 +146,7 @@ const CASES = [
   ["paused user", { variant: "paused", pause: { reason: "user" } }, ["🟦", "Paused", "✋"]],
   ["paused restart", { variant: "paused", pause: { reason: "restart" } }, ["🟦", "Restart", "🔌"]],
   ["paused reboot", { variant: "paused", pause: { reason: "reboot" } }, ["🟦", "Reboot", "💻"]],
-  ["paused usage-reset", { variant: "paused", pause: { reason: "usage-reset", resetAt: "14:00" } }, ["🟦", "Limit reset", "🔋"]],
+  ["paused usage-reset", { variant: "paused", pause: { reason: "usage-reset", resetAt: "14:00" } }, ["🟦", "Limit", "🔋"]],
   ["paused + open (stays ⏸️)", { variant: "paused", pause: { reason: "restart" }, open: OPEN }, ["🟦", "Restart", "🔌"]],
   // pending override
   ["pending on ready", { variant: "ready", pending: [{ name: "qa", kind: "agent", doing: "prüft" }] }, ["⏳", "Team", "🤖"]],
@@ -237,7 +237,7 @@ describe("title = CTA — every completion-card variant × every heading/prefix 
     expect(evaluate({ variant: "ready" }, "en").heading).toBe("👉 📦 Ready — Ship?");
     expect(evaluate({ variant: "test-minimal" }, "de").heading).toBe("🟩 ✨ Started — viel Spaß");
     expect(evaluate({ variant: "paused", pause: { reason: "usage-reset", resetAt: "14:00" } }, "de").heading)
-      .toBe("🟦 🔋 Limit reset — weiter nach dem Limit-Reset (14:00)");
+      .toBe("🟦 🔋 Limit — weiter nach dem Limit-Reset (14:00)");
     expect(evaluate({ variant: "aborted", cta: { reason: "Konflikt", activity: "ship" } }, "en").heading)
       .toBe("🟥 🚀 Ship — aborted because of Konflikt — try differently?");
   });
