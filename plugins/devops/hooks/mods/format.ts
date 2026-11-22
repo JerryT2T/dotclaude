@@ -165,6 +165,85 @@ export function fableFromLive(live: unknown, nowMs: number): { pct: number; rese
   }
 }
 
+const LIVE_WINDOW_FRESH_MS = 15 * 60 * 1000
+const WK_MS = 7 * 24 * 60 * 60 * 1000
+
+/**
+ * #1204: a window past its reset is 0 % used, not "no data". The weekly window rolls on by whole weeks, so its new
+ * reset is known; the 5-hour window starts only with the next request, so its reset stays unknown.
+ */
+export function rollBudget(b: Budget | null, nowMs: number): Budget | null {
+  if (!b) return b
+  const out: Budget = { ...b }
+  if (typeof out.weekly === 'number' && typeof out.weeklyResetsAt === 'number' && out.weeklyResetsAt <= nowMs) {
+    let t = out.weeklyResetsAt
+    while (t <= nowMs) t += WK_MS
+    out.weekly = 0
+    out.weeklyResetsAt = t
+  }
+  if (typeof out.fiveHour === 'number' && typeof out.fiveHourResetsAt === 'number' && out.fiveHourResetsAt <= nowMs) {
+    out.fiveHour = 0
+    out.fiveHourResetsAt = null
+  }
+  return out
+}
+
+/**
+ * #1204: the Wk / 5h windows from the parsed `~/.claude/usage-live.json` (`weekly`, `session` = 5 h), used only
+ * while it is fresh (≤ 15 min). Anything missing or malformed is no reading (null); never throws.
+ */
+export function windowsFromLive(live: unknown, nowMs: number): Pick<Budget, 'weekly' | 'weeklyResetsAt' | 'fiveHour' | 'fiveHourResetsAt'> | null {
+  try {
+    const o = live as { timestamp?: unknown; weekly?: unknown; session?: unknown } | null
+    if (!o || typeof o !== 'object') return null
+    const ts = typeof o.timestamp === 'string' ? Date.parse(o.timestamp) : NaN
+    if (!Number.isFinite(ts) || nowMs - ts > LIVE_WINDOW_FRESH_MS || ts - nowMs > LIVE_WINDOW_FRESH_MS) return null
+    const win = (w: unknown): { pct: number | null; resetsAt: number | null } => {
+      const x = w as { pct?: unknown; resetInMinutes?: unknown } | null
+      if (!x || typeof x !== 'object' || typeof x.pct !== 'number' || !Number.isFinite(x.pct)) return { pct: null, resetsAt: null }
+      const r = typeof x.resetInMinutes === 'number' && Number.isFinite(x.resetInMinutes) ? ts + x.resetInMinutes * 60_000 : null
+      return { pct: Math.max(0, Math.min(100, Math.round(x.pct))), resetsAt: r }
+    }
+    const wk = win(o.weekly)
+    const fh = win(o.session)
+    if (wk.pct == null && fh.pct == null) return null
+    return { weekly: wk.pct, weeklyResetsAt: wk.resetsAt, fiveHour: fh.pct, fiveHourResetsAt: fh.resetsAt }
+  } catch {
+    return null
+  }
+}
+
+/** #1204: the stored windows the band can draw as they are: a number whose reset has not passed. */
+export function bandWindowsCurrent(b: Budget | null, nowMs: number): { weekly: boolean; fiveHour: boolean } {
+  const cur = (pct: number | null | undefined, r: number | null | undefined) => typeof pct === 'number' && Number.isFinite(pct) && !(typeof r === 'number' && r <= nowMs)
+  return { weekly: !!b && cur(b.weekly, b.weeklyResetsAt), fiveHour: !!b && cur(b.fiveHour, b.fiveHourResetsAt) }
+}
+
+/**
+ * #1204: the budget the band draws. A current stored window stays; a missing one or one past its reset comes from a
+ * fresh usage-live.json (right after a resume `$.session.usage()` is empty until the first API answer), else a window
+ * past its reset reads 0 % (rolled over) and a missing one stays empty (the "–" bar).
+ */
+export function budgetForBand(b: Budget | null, live: unknown, nowMs: number): Budget | null {
+  const cur = bandWindowsCurrent(b, nowMs)
+  const rolled = rollBudget(b, nowMs)
+  if (cur.weekly && cur.fiveHour) return rolled
+  const l = windowsFromLive(live, nowMs)
+  if (!l) return rolled
+  const base: Budget = rolled || { fiveHour: null, weekly: null, context: null }
+  const lr = rollBudget({ ...base, ...l }, nowMs) as Budget
+  const out: Budget = { ...base }
+  if (!cur.weekly && typeof lr.weekly === 'number') {
+    out.weekly = lr.weekly
+    out.weeklyResetsAt = lr.weeklyResetsAt
+  }
+  if (!cur.fiveHour && typeof lr.fiveHour === 'number') {
+    out.fiveHour = lr.fiveHour
+    out.fiveHourResetsAt = lr.fiveHourResetsAt
+  }
+  return out
+}
+
 // --- Budget bars: the completion card's rules (mcp-server/index.js § 2.4), mirrored. ---
 // Bar = time elapsed in the window, marker = usage, marker colour = usage ahead of time.
 // 5h shows from 50 % used or 1 h before reset; Wk once usage is > 10 pp ahead of time

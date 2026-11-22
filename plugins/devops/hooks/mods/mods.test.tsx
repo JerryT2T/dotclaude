@@ -18,6 +18,9 @@ import {
   bandBars,
   budgetBarSvg,
   fableFromLive,
+  budgetForBand,
+  rollBudget,
+  windowsFromLive,
   cleanupApplyPrompt,
   cleanupPlanPrompt,
   planComplete,
@@ -2725,6 +2728,43 @@ test('budget bars: Wk, Fb, 5h in that order; Fable follows the weekly show rule;
   for (const bad of [null, undefined, 'x', {}, live(null), live([]), live([{ name: 'Fable', pct: 'a' }]), live([{ name: 'Fable', pct: 0, resetInMinutes: 100 }]), live([{ name: 'Fable', pct: 50, resetInMinutes: 0 }], new Date(NOW - 3_600_000).toISOString()), { scoped: [{ name: 'Fable', pct: 50, resetInMinutes: 100 }] }, live([{ name: 'Fable', pct: 50 }], new Date(NOW - 4 * 3_600_000).toISOString())]) {
     expect(fableFromLive(bad, NOW)).toBeNull()
   }
+})
+
+test('#1204 budget after a resume: a fresh usage-live.json fills empty windows, a pre-reset window reads 0 %, no fresh source keeps the dash', () => {
+  const live = (o: Record<string, unknown>, ageMs = 60_000) => ({ timestamp: new Date(NOW - ageMs).toISOString(), ...o })
+  const fresh = live({ weekly: { pct: 2, resetInMinutes: 9921 }, session: { pct: 7, resetInMinutes: 200 } })
+  expect(windowsFromLive(fresh, NOW)).toEqual({ weekly: 2, weeklyResetsAt: NOW - 60_000 + 9921 * 60_000, fiveHour: 7, fiveHourResetsAt: NOW - 60_000 + 200 * 60_000 })
+  for (const bad of [null, 'x', {}, live({ weekly: { pct: 'a' } }), live({ weekly: { pct: 2, resetInMinutes: 9921 } }, 16 * 60_000)]) expect(windowsFromLive(bad, NOW)).toBeNull()
+  // Empty session usage (no stored budget) + fresh live → Wk 2 % with its reset.
+  const b = budgetForBand(null, fresh, NOW)
+  expect(b?.weekly).toBe(2)
+  const bars = bandBars(b, NOW)
+  expect(bars[0]).toMatchObject({ label: 'Wk', pct: 2, short: '6 d' })
+  expect(bars[0].empty).toBeFalsy()
+  // A stored snapshot from before the weekly reset: the fresh live value wins.
+  const stale = { weekly: 88, weeklyResetsAt: NOW - 3 * 3_600_000, fiveHour: 40, fiveHourResetsAt: NOW - 60_000, context: null }
+  expect(budgetForBand(stale, fresh, NOW)).toMatchObject({ weekly: 2, fiveHour: 7 })
+  // …and without live data it rolls over to 0 % with the next weekly reset, never a dash.
+  const rolled = budgetForBand(stale, null, NOW)
+  expect(rolled).toMatchObject({ weekly: 0, weeklyResetsAt: NOW - 3 * 3_600_000 + 7 * 86_400_000, fiveHour: 0, fiveHourResetsAt: null })
+  expect(bandBars(rolled, NOW)[0]).toMatchObject({ pct: 0, short: '6 d' })
+  expect(rollBudget(null, NOW)).toBeNull()
+  // A current stored budget is kept as it is; no source at all still draws the dash.
+  const cur = { weekly: 30, weeklyResetsAt: NOW + 86_400_000, fiveHour: 10, fiveHourResetsAt: NOW + 3_600_000, context: null }
+  expect(budgetForBand(cur, fresh, NOW)).toEqual(cur)
+  expect(bandBars(budgetForBand(null, null, NOW), NOW).map(x => x.empty)).toEqual([true, true])
+})
+
+test('#1204 band after a resume: no measure yet, a fresh usage-live.json → the Wk bar shows its reset, not "–"', async ($, on) => {
+  const usage = JSON.stringify({ timestamp: new Date(NOW - 60_000).toISOString(), weekly: { pct: 2, resetInMinutes: 9921 }, session: { pct: 7, resetInMinutes: 200 } })
+  const { tick } = engine(on, { files: { '/.claude/usage-live.json': usage } })
+  tick(10 * 60_000) // past any cache of an earlier test; the file is still fresh (11 min)
+  await $.session.start({ cwd: REPO, surface: 'desktop', isInteractive: true })
+  const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  const wk = await svgIn(await band.find({ key: 'bar-Wk' }))
+  expect(wk?.props.source).toMatch(/>6 d</)
+  expect(wk?.props.source).not.toMatch(/>–</)
+  await band.unmount()
 })
 
 // --- devops off / on in the band (concept 20261120-1805-devops-optout; contract: briefs/contract.md) ---

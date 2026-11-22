@@ -83,6 +83,8 @@ import {
   budgetBarSvg,
   budgetFrom,
   fableFromLive,
+  budgetForBand,
+  bandWindowsCurrent,
   budgetLine,
   cardFromResult,
   checksFrom,
@@ -911,6 +913,25 @@ async function readJson($: EngineInterface, path: string): Promise<unknown> {
   } catch {
     return null
   }
+}
+
+// #1204: usage-live.json is read only when the stored budget lacks a window (right after a resume), at most every 30 s.
+let liveCache: { at: number; live: unknown } | null = null
+const LIVE_CACHE_MS = 30_000
+async function bandBudget($: EngineInterface, stored: Budget | null, now: number): Promise<Budget | null> {
+  const cur = bandWindowsCurrent(stored, now)
+  if (cur.weekly && cur.fiveHour) return budgetForBand(stored, null, now)
+  if (!liveCache || now - liveCache.at > LIVE_CACHE_MS || now < liveCache.at) {
+    let live: unknown = null
+    try {
+      const home = await homeDir($)
+      live = home ? await readJson($, `${home}/.claude/usage-live.json`) : null
+    } catch {
+      live = null
+    }
+    liveCache = { at: now, live }
+  }
+  return budgetForBand(stored, liveCache.live, now)
 }
 
 async function usageNow($: EngineInterface): Promise<Budget | null> {
@@ -1749,8 +1770,8 @@ export const register: Register = on => {
     // #1157: a later non-ship card keeps the session's release visible above its own heading.
     const rel = c && !isReleaseCard(c) ? await read($, released) : null
     const w = working ? workingLine(prog) : null
-    const b = await read($, budget)
     const now = await $.clock.now()
+    const b = await bandBudget($, await read($, budget), now)
     const bars = budgetBars(b, now) // terminal glyph line; Desktop draws bandBars in the status row
     const ring = ringPercent(b, sh.env)
     const run = await read($, cleanup)
