@@ -7,9 +7,10 @@
  * state chips and "＋ Batch" (a new session in that project in collect mode; while that batch session is alive and
  * still a batch, the row links to it instead), and the bedtime row: "🛏 Ins Bett gehen" arms the shutdown watcher
  * (scripts/bedtime-shutdown.js — the PC powers off once no session works any more), shows whom it waits for and
- * cancels it. Einstellungen: the devops switch for this session, the browser for pages devops opens (a dropdown of
- * the installed ones plus In-App; scripts/browser-choice.js), the info card's
+ * cancels it. Einstellungen: the devops switch for this session, the info card's
  * figures as tiles with an "i" toggle, measured facts in place of a token gain that is not there, the version.
+ * Einstellungen also holds the browser for pages devops opens: a dropdown of the installed ones plus In-App
+ * (scripts/browser-choice.js).
  *
  * Pure helpers are exported for the tests; the engine side reaches the rest of the mod only through `HomeDeps`.
  */

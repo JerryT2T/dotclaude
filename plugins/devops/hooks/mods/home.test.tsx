@@ -1,7 +1,8 @@
 // devops Home pane (concept docs/concepts/20261121-1400-devops-home): the pure model behind the pane.
 import { expect, test } from 'claude-code/testing'
 
-import { agoText, bedFrom, bedText, browserNote, browsersFrom, cleanupFrom, homeModel, infoTiles, isBatchTitle, kindOf, needsConfirm, paceWord, projectOf, ringSvgSource, ringsFrom, resetText, sessionsFrom } from './home'
+import { agoText, bedFrom, bedText, cleanupFrom, homeModel, infoTiles, isBatchTitle, kindOf, needsConfirm, paceWord, projectOf, ringSvgSource, ringsFrom, resetText, sessionsFrom } from './home'
+import { browserNote, browsersFrom } from './home'
 
 const rows = [
   { sessionId: 'local_a', title: '👉 ➜ 📥 Batch ┃ Feedback', cwd: 'P:\\Projects\\dotclaude\\.claude\\worktrees\\x', isRunning: false, lastActivityAt: '2026-11-21T09:00:00Z' },
