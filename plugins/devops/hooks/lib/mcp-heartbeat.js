@@ -1,6 +1,6 @@
 /**
  * @module mcp-heartbeat
- * @version 0.5.0
+ * @version 0.6.0
  * @description Best-effort liveness probe for the plugin's MCP servers, read
  *   from the PID files each server writes on boot (mcp-server/lib/heartbeat.js).
  *
@@ -152,16 +152,73 @@ function isMcpServerAlive(serverName) {
  * @param {{ ppid?: number }} [opts] the session's Claude Code pid (default env CLAUDE_PID)
  */
 function isMcpServerAliveForSession(serverName, opts = {}) {
+  const detail = sessionLiveness(serverName, opts);
+  if (detail.verdict === 'foreign-only' && opts.trace !== false) traceForeignOnly(serverName, detail);
+  return detail.alive;
+}
+
+/**
+ * The per-session answer with its evidence. `foreign-only` is the one verdict
+ * that can be wrong in both directions: live servers exist, every one names a
+ * parent other than this session's. In an ordinary Desktop session that is a
+ * neighbour's server (correctly "not mine"); in a session started another way
+ * (a Remote Control project thread) the server's parent and CLAUDE_PID may
+ * simply differ while the tools are connected. Callers word their reminder by
+ * the verdict instead of claiming "dead".
+ * @param {string} serverName
+ * @param {{ ppid?: number }} [opts] the session's Claude Code pid (default env CLAUDE_PID)
+ * @returns {{ alive: boolean, verdict: 'own'|'unattributed'|'machine-wide'|'foreign-only'|'none', own: number|null, servers: Array<{ pid: number, ppid: number|null }> }}
+ */
+function sessionLiveness(serverName, opts = {}) {
   const own = opts.ppid === undefined ? parseInt(process.env.CLAUDE_PID, 10) : opts.ppid;
-  if (!(own > 1)) return isMcpServerAlive(serverName);
+  if (!(own > 1)) {
+    const alive = isMcpServerAlive(serverName);
+    return { alive, verdict: alive ? 'machine-wide' : 'none', own: null, servers: [] };
+  }
   const all = heartbeats(serverName).filter((h) => h.pid && isProcessAlive(h.pid));
   // A current server also writes the shared legacy file (pid only): it is the
   // same server as its per-process entry, not an unattributable one.
   const perProcess = new Set(all.filter((h) => !h.legacy).map((h) => h.pid));
   const live = all.filter((h) => !(h.legacy && perProcess.has(h.pid)));
-  if (live.length === 0) return false;
-  if (live.some((h) => h.ppid === own)) return true;
-  return live.some((h) => !h.ppid);
+  const servers = live.map((h) => ({ pid: h.pid, ppid: h.ppid }));
+  if (live.length === 0) return { alive: false, verdict: 'none', own, servers };
+  if (live.some((h) => h.ppid === own)) return { alive: true, verdict: 'own', own, servers };
+  if (live.some((h) => !h.ppid)) return { alive: true, verdict: 'unattributed', own, servers };
+  return { alive: false, verdict: 'foreign-only', own, servers };
+}
+
+/** Where `foreign-only` verdicts are recorded (one line per distinct picture). */
+function livenessLogFile() {
+  return path.join(os.tmpdir(), HEARTBEAT_DIR, 'liveness.log');
+}
+
+const LIVENESS_LOG_MAX_LINES = 200;
+
+/**
+ * Record a `foreign-only` verdict: CLAUDE_PID next to every live server's
+ * parent, plus what tells a project thread or cloud session apart. The line is
+ * the evidence a later check needs to decide whether the per-session match
+ * misreads a session kind; without it the mismatch leaves no trace at all.
+ * A picture identical to the last recorded one is not written again.
+ * Best-effort: a failed write never reaches the hook.
+ */
+function traceForeignOnly(serverName, detail) {
+  try {
+    const signature = `server=${serverName} own=${detail.own} servers=${detail.servers.map((s) => `${s.pid}:${s.ppid}`).sort().join(',')}`;
+    const kind = [
+      process.env.CLAUDE_CODE_ENTRYPOINT ? `entrypoint=${process.env.CLAUDE_CODE_ENTRYPOINT}` : '',
+      process.env.CLAUDE_CODE_REMOTE ? 'remote=1' : '',
+      process.env.CLAUDE_CODE_SESSION_ID ? `session=${process.env.CLAUDE_CODE_SESSION_ID}` : '',
+    ].filter(Boolean).join(' ');
+    const file = livenessLogFile();
+    let lines = [];
+    try { lines = fs.readFileSync(file, 'utf8').split('\n').filter(Boolean); } catch { /* first record */ }
+    const last = lines[lines.length - 1] || '';
+    if (last.includes(signature)) return;
+    lines.push(`${new Date().toISOString()} foreign-only ${signature}${kind ? ` ${kind}` : ''}`);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, `${lines.slice(-LIVENESS_LOG_MAX_LINES).join('\n')}\n`);
+  } catch { /* diagnostics only */ }
 }
 
 /** The one devops MCP server (mcp-server/index.js, .mcp.json key). */
@@ -170,4 +227,5 @@ const SERVER_NAME = 'dotclaude';
 module.exports = {
   PREFIX, HEARTBEAT_DIR, SERVER_NAME, pidFileFor, processPidFileFor, isProcessAlive,
   heartbeats, heartbeatState, isMcpServerAlive, isMcpServerAliveForSession,
+  sessionLiveness, livenessLogFile,
 };

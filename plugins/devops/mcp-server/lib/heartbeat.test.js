@@ -194,6 +194,42 @@ describe("per-session liveness (isMcpServerAliveForSession)", () => {
   test("nothing alive is false", () => {
     withTmp(() => expect(reader.isMcpServerAliveForSession(NAME, { ppid: 4242 })).toBe(false));
   });
+  test("sessionLiveness names the verdict and its evidence", () => {
+    withTmp((dir) => {
+      expect(reader.sessionLiveness(NAME, { ppid: 4242 })).toMatchObject({ alive: false, verdict: "none", own: 4242 });
+      writeHeartbeat(NAME, other.pid, dir, 9999);
+      expect(reader.sessionLiveness(NAME, { ppid: 4242 })).toEqual({
+        alive: false, verdict: "foreign-only", own: 4242, servers: [{ pid: other.pid, ppid: 9999 }],
+      });
+      expect(reader.sessionLiveness(NAME, { ppid: 0 })).toMatchObject({ alive: true, verdict: "machine-wide", own: null });
+      writeHeartbeat(NAME, process.pid, dir, 4242);
+      expect(reader.sessionLiveness(NAME, { ppid: 4242 })).toMatchObject({ alive: true, verdict: "own" });
+    });
+    withTmp((dir) => {
+      writeHeartbeat(NAME, other.pid, dir, 0);
+      expect(reader.sessionLiveness(NAME, { ppid: 4242 })).toMatchObject({ alive: true, verdict: "unattributed" });
+    });
+  });
+  test("a foreign-only verdict leaves one trace line per distinct picture; other verdicts none", () => {
+    withTmp((dir) => {
+      const log = reader.livenessLogFile();
+      expect(log.startsWith(dir)).toBe(true);
+      writeHeartbeat(NAME, process.pid, dir, 4242);
+      expect(reader.isMcpServerAliveForSession(NAME, { ppid: 4242 })).toBe(true);
+      expect(fs.existsSync(log)).toBe(false);
+      expect(reader.isMcpServerAliveForSession(NAME, { ppid: 7777 })).toBe(false);
+      expect(reader.isMcpServerAliveForSession(NAME, { ppid: 7777 })).toBe(false); // same picture
+      let lines = fs.readFileSync(log, "utf8").trim().split("\n");
+      expect(lines).toHaveLength(1);
+      expect(lines[0]).toContain(`foreign-only server=${NAME} own=7777 servers=${process.pid}:4242`);
+      expect(reader.isMcpServerAliveForSession(NAME, { ppid: 8888 })).toBe(false); // a new picture
+      expect(reader.isMcpServerAliveForSession(NAME, { ppid: 8888, trace: false })).toBe(false);
+      lines = fs.readFileSync(log, "utf8").trim().split("\n");
+      expect(lines).toHaveLength(2);
+      expect(reader.heartbeats(NAME).map((h) => h.file)).not.toContain(log); // the log is no heartbeat
+      expect(new Set(reader.heartbeats(NAME).map((h) => h.pid))).toEqual(new Set([process.pid]));
+    });
+  });
   test("defaults to CLAUDE_PID, not the hook's own parent (a bash wrapper)", () => {
     const saved = process.env.CLAUDE_PID;
     try {
