@@ -1,0 +1,250 @@
+'use strict';
+/**
+ * @module project-thread
+ * @version 0.1.0
+ * @plugin devops
+ * @description Claude Projects threads that run on this computer ("Work
+ *   locally", a Claude Code session started over Remote Control). Feature
+ *   `project-threads` (alpha, features.json).
+ *
+ *   Such a session loads the plugin like any other, but its host differs in
+ *   three ways (read off a real thread transcript, 2026-11-21):
+ *   - The person sees only what the `mcp__hearthbot__*` tools post. Text,
+ *     `mcp__visualize__show_widget` and the session's sidebar title reach no one.
+ *   - The title the person sees is the thread's, set with
+ *     `mcp__hearthbot__rename_thread`.
+ *   - Every prompt is a `<wake …><project id="chan_…" type="project">` envelope
+ *     around the person's message; the coordinator's notes arrive as `<relay …>`.
+ *   A Stop hook that blocked did not continue the turn there (one observed
+ *   sample): its reason would only surface as a stale reminder on the next wake.
+ *
+ *   So in a thread the plugin never asks for the Desktop tools and never blocks
+ *   the turn end for a card (every channel, mode `quiet`); with the feature
+ *   allowed (mode `on`) the title head goes on the thread title and the
+ *   completion card is posted with `post_message`.
+ *
+ *   Detection: the wake envelope of a prompt, or a `mcp__hearthbot__*` tool
+ *   call, marks the session with a sticky per-session flag; hooks that see
+ *   neither (Stop) and the MCP server read that flag, with the transcript's
+ *   own `projectsUserTurn` entry as the fallback (`deep`).
+ *   No dependency on the title libs, so they can require this one.
+ */
+
+const fs = require('fs');
+const { sessionFile, readSessionFile, writeSessionFile } = require('./session-id');
+
+/** features.json name of the gated half (thread titles + posted cards). */
+const FEATURE = 'project-threads';
+/** Sticky per-session marker: this session is a project thread. */
+const THREAD_FLAG = 'dotclaude-devops-project-thread';
+
+const HEARTHBOT_PREFIX = 'mcp__hearthbot__';
+const RENAME_TOOL = `${HEARTHBOT_PREFIX}rename_thread`;
+const POST_TOOL = `${HEARTHBOT_PREFIX}post_message`;
+const CHECKLIST_TOOL = `${HEARTHBOT_PREFIX}update_progress_checklist`;
+
+/** The envelope every thread prompt arrives in — nothing a user types opens this way. */
+const WAKE_PATTERN = /^\s*<wake\b[^>]*>\s*<project\b[^>]*\bid="chan_/;
+/** A note from the coordinator or another thread: a colleague's request, not the person's prompt. */
+const RELAY_PATTERN = /^\s*<(?:coordinator-relay\b|relay\s+from=|project_claude_message\b)/;
+/** The message of a wake that triggered the turn. */
+const TRIGGER_MESSAGE = /<message\b[^>]*\btrigger="true"[^>]*>([\s\S]*?)<\/message>/;
+
+/** Transcript bytes read for the fallbacks below. */
+const HEAD_BYTES = 256 * 1024;
+const TAIL_BYTES = 8 * 1024 * 1024;
+
+function isWakePrompt(prompt) {
+  return typeof prompt === 'string' && WAKE_PATTERN.test(prompt);
+}
+
+function isRelayPrompt(prompt) {
+  return typeof prompt === 'string' && RELAY_PATTERN.test(prompt);
+}
+
+function isHearthbotTool(toolName) {
+  return typeof toolName === 'string' && toolName.startsWith(HEARTHBOT_PREFIX);
+}
+
+function decodeEntities(text) {
+  return text.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&');
+}
+
+/**
+ * The person's own words inside a wake envelope, '' when the prompt is no wake
+ * or carries no triggering message. Keyword classifiers (a ship order) read
+ * these instead of the envelope.
+ */
+function personWords(prompt) {
+  if (!isWakePrompt(prompt)) return '';
+  const m = TRIGGER_MESSAGE.exec(prompt);
+  return m ? decodeEntities(m[1]).trim() : '';
+}
+
+/** Leave the sticky marker; a failed write only costs the fallback detection. */
+function markThread(sessionId) {
+  if (!sessionId) return;
+  const file = sessionFile(THREAD_FLAG, sessionId);
+  try {
+    if (!fs.existsSync(file)) writeSessionFile(file, new Date().toISOString());
+  } catch { /* advisory */ }
+}
+
+function isMarked(sessionId) {
+  return !!sessionId && readSessionFile(THREAD_FLAG, sessionId, { exact: true }) !== null;
+}
+
+/**
+ * True when the transcript's opening holds a user entry Claude Code itself
+ * flagged as a project turn (`projectsUserTurn: true`). Parsed, never a text
+ * match: a session that only quotes a thread transcript must not count.
+ */
+function transcriptSaysThread(transcriptPath, maxBytes = HEAD_BYTES) {
+  if (!transcriptPath) return false;
+  let fd;
+  try {
+    fd = fs.openSync(transcriptPath, 'r');
+    const buf = Buffer.alloc(Math.min(fs.fstatSync(fd).size, maxBytes));
+    fs.readSync(fd, buf, 0, buf.length, 0);
+    for (const line of buf.toString('utf8').split('\n')) {
+      if (!line.includes('"projectsUserTurn":true')) continue;
+      let entry;
+      try { entry = JSON.parse(line); } catch { continue; }
+      if (entry && entry.type === 'user' && entry.projectsUserTurn === true) return true;
+    }
+    return false;
+  } catch {
+    return false;
+  } finally {
+    if (fd !== undefined) try { fs.closeSync(fd); } catch { /* ignore */ }
+  }
+}
+
+/**
+ * Is this session a project thread? The marker, else this call's own evidence
+ * (a wake prompt, a hearthbot tool call), else — only with `deep`, for callers
+ * that run once per turn — the transcript. Evidence leaves the marker.
+ *
+ * @param {{ session_id?: string, prompt?: string, tool_name?: string, transcript_path?: string }} hook
+ * @param {{ deep?: boolean }} [opts]
+ */
+function isThread(hook, { deep = false } = {}) {
+  if (!hook || typeof hook !== 'object') return false;
+  if (isMarked(hook.session_id)) return true;
+  const yes = isWakePrompt(hook.prompt) || isHearthbotTool(hook.tool_name) ||
+    (deep && transcriptSaysThread(hook.transcript_path));
+  if (yes) markThread(hook.session_id);
+  return yes;
+}
+
+/** The gated half: thread titles and posted cards, alpha channel only. */
+function enabled(featureOpts) {
+  try { return require('./features').featureAllowed(FEATURE, featureOpts); } catch { return false; }
+}
+
+/**
+ * `off`: no project thread. `quiet`: a thread on a channel without the
+ * feature — the Desktop instructions stay away, nothing replaces them.
+ * `on`: a thread with the feature.
+ *
+ * @param {object} hook see `isThread`
+ * @param {{ deep?: boolean, features?: object }} [opts] `features`: test injection for lib/features.js
+ * @returns {'off'|'quiet'|'on'}
+ */
+function threadMode(hook, opts = {}) {
+  if (!isThread(hook, opts)) return 'off';
+  return enabled(opts.features) ? 'on' : 'quiet';
+}
+
+/** The exact rename call for `title`, JSON-escaped. */
+function renameCall(title) {
+  return `${RENAME_TOOL} {title:${JSON.stringify(title)}}`;
+}
+
+/** The rename call when the hook does not know the thread's title: the model does. */
+function renameCallUnknown(prefix) {
+  return `${RENAME_TOOL} {title:${JSON.stringify(prefix)} + <this thread's current title, without a leading "<status> ➜ <activity> <Word> ┃ " head>}`;
+}
+
+/** The title of a `rename_thread` call in one transcript line, or undefined. */
+function renamedTitleOf(line) {
+  if (!line.includes(`"${RENAME_TOOL}"`)) return undefined;
+  let entry;
+  try { entry = JSON.parse(line); } catch { return undefined; }
+  if (!entry || entry.type !== 'assistant' || entry.isSidechain) return undefined;
+  const content = entry.message && entry.message.content;
+  if (!Array.isArray(content)) return undefined;
+  let title;
+  for (const block of content) {
+    if (block && block.type === 'tool_use' && block.name === RENAME_TOOL && block.input && typeof block.input.title === 'string') {
+      title = block.input.title;
+    }
+  }
+  return title;
+}
+
+/**
+ * The title this session last gave its thread: the newest `rename_thread` call
+ * in the transcript, or `null` (never renamed here — the title is then the one
+ * the coordinator chose, which only the model can see). Never throws.
+ *
+ * @param {string|undefined} transcriptPath
+ * @param {number} [maxBytes] only this much of the file's end is read
+ * @returns {string|null}
+ */
+function lastThreadTitle(transcriptPath, maxBytes = TAIL_BYTES) {
+  if (!transcriptPath) return null;
+  let fd;
+  try {
+    fd = fs.openSync(transcriptPath, 'r');
+    const size = fs.fstatSync(fd).size;
+    const span = Math.min(size, maxBytes);
+    const buf = Buffer.alloc(span);
+    fs.readSync(fd, buf, 0, span, size - span);
+    const lines = buf.toString('utf8').split('\n');
+    // A partial first line fails to parse and is skipped below.
+    for (let i = lines.length - 1; i >= 0; i--) {
+      const title = renamedTitleOf(lines[i]);
+      if (title !== undefined) return title.trim() ? title : null;
+    }
+    return null;
+  } catch {
+    return null;
+  } finally {
+    if (fd !== undefined) try { fs.closeSync(fd); } catch { /* ignore */ }
+  }
+}
+
+/** Glyphs of a progress checklist line: done, in progress, not started. */
+const CHECK_DONE = /^[✓✔✅]/u;
+const CHECK_STEP = /^[✓✔✅✱○◯•]/u;
+
+/** True when a checklist text has steps and every one of them is done. */
+function checklistComplete(text) {
+  if (typeof text !== 'string') return false;
+  const steps = text.split('\n').map((l) => l.trim()).filter((l) => CHECK_STEP.test(l));
+  return steps.length > 0 && steps.every((l) => CHECK_DONE.test(l));
+}
+
+module.exports = {
+  FEATURE,
+  THREAD_FLAG,
+  HEARTHBOT_PREFIX,
+  RENAME_TOOL,
+  POST_TOOL,
+  CHECKLIST_TOOL,
+  isWakePrompt,
+  isRelayPrompt,
+  isHearthbotTool,
+  personWords,
+  markThread,
+  isMarked,
+  transcriptSaysThread,
+  isThread,
+  enabled,
+  threadMode,
+  renameCall,
+  renameCallUnknown,
+  lastThreadTitle,
+  checklistComplete,
+};

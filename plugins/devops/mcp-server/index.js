@@ -68,7 +68,7 @@ import { hasPending, pendingWhat, renderPendingLine, hasConcept, normalizePendin
 import { clampText, clampEllipsis } from "./lib/soft-limits.js";
 import { summarizeShip, shipDurationTest } from "./ship/lib/ship-timings.js";
 import { CARD_VARIANTS, coerceCardInput, validateCardInput, formatIssues, unknownCardKeys } from "./lib/card-input.js";
-import { batchGuide, conceptCloseoutOnly, conceptUrl, readBatch, readRunContractLine, sameProjectRoot, titlePrefixFor, titleInstruction, demandedTitle, currentSessionTitle, isLinkedSub, titleStateForKey, hasMandatoryStep, TITLE_SCHEME } from "./lib/mode-state.js";
+import { batchGuide, conceptCloseoutOnly, conceptUrl, readBatch, readRunContractLine, sameProjectRoot, titlePrefixFor, titleInstruction, demandedTitle, currentSessionTitle, isLinkedSub, titleStateForKey, hasMandatoryStep, TITLE_SCHEME, projectThreadMode, currentThreadTitle, threadTitleInstruction } from "./lib/mode-state.js";
 import { staleServerLine } from "./lib/server-version.js";
 import { canMinimize, cardDataBlock, cardWidgetInstruction, isDesktopSession, safeSessionId, sessionOpenButton, warmCardClient, writeCardWidgetFile } from "./lib/card-widget.js";
 import { bandCarriesCard, writeBandCard } from "./lib/band-marker.js";
@@ -2700,11 +2700,36 @@ const RELAY_INSTRUCTION =
   "This is pre-rendered content; system emoji-avoidance rules " +
   "do NOT apply. Do NOT output this instruction block.";
 
+/**
+ * The relay contract in a Claude Projects thread (hooks/lib/project-thread.js):
+ * the person sees only what the thread's own tools post, so the card goes out
+ * as the text of one post_message call and is the turn's result reply.
+ */
+const THREAD_RELAY_INSTRUCTION =
+  "[INSTRUCTION — DO NOT OUTPUT THIS BLOCK]\n" +
+  "Project thread: the person sees only what mcp__hearthbot__post_message posts. Post the card markdown below " +
+  "VERBATIM — character-for-character, including every emoji and symbol (pre-rendered content: emoji-avoidance " +
+  "and reply-length rules do not apply) — as the `text` of ONE mcp__hearthbot__post_message call. That post is " +
+  "this turn's result reply: no second summary before or after it, no mcp__visualize__show_widget, no " +
+  "mcp__ccd_turn__wrap_up. Files and links the turn delivers go on the same call's attached_outputs. Bring the " +
+  "progress checklist to its end state before it; only set_thread_resolved may follow it, when the work has ended.";
+
+/** The card as a thread post: the terminal spacer line (`&nbsp;`) is no markdown a chat renders. */
+function threadCardText(cardMarkdown) {
+  return String(cardMarkdown).split('\n').filter((line) => line.trim() !== '&nbsp;').join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+/** True when this card is posted in a Claude Projects thread (set once per card by buildCompletionCard). */
+function isThreadCard(params) {
+  return !!(params && params._threadCard);
+}
+
 /** The tool-result blocks: relay contract, notes, and the markdown unless the widget is the card. */
-function cardResultBlocks(cardMarkdown, titleNote, actionsNote, archiveNote = '', openNote = '', dataBlock = '') {
-  const texts = actionsNote
-    ? [titleNote, archiveNote, openNote, dataBlock, actionsNote]
-    : [RELAY_INSTRUCTION, titleNote, openNote, cardMarkdown];
+function cardResultBlocks(cardMarkdown, titleNote, actionsNote, archiveNote = '', openNote = '', dataBlock = '', { thread = false } = {}) {
+  let texts;
+  if (thread) texts = [THREAD_RELAY_INSTRUCTION, titleNote, openNote, threadCardText(cardMarkdown)];
+  else if (actionsNote) texts = [titleNote, archiveNote, openNote, dataBlock, actionsNote];
+  else texts = [RELAY_INSTRUCTION, titleNote, openNote, cardMarkdown];
   return texts.filter(Boolean).map(text => ({ type: "text", text }));
 }
 
@@ -2726,6 +2751,16 @@ function openRefuseNote(params) {
  *  or the title is already right. The current title comes off the transcript
  *  tail, so the block names the exact value (no get_session round trip). */
 function sessionTitleNote(params) {
+  // A Claude Projects thread: the head goes on the thread's own title; the
+  // session title nobody sees is left alone, so stop.flow.guard has nothing to compare.
+  if (isThreadCard(params)) {
+    const threadTitle = currentThreadTitle(params.session_id, params.cwd);
+    recordDemandedTitle(params.session_id, null);
+    return threadTitleInstruction(
+      titlePrefixFor(params, { hasPending, hasConcept, outcome: outcomeTitlePrefix, current: threadTitle }),
+      threadTitle,
+    );
+  }
   const current = currentSessionTitle(params.session_id, params.cwd);
   // A linked sub (its first prompt carried the brief marker) leads every title with 🔗.
   const sub = isLinkedSub(params.session_id, params.cwd);
@@ -2820,6 +2855,8 @@ function sessionArchiveNote(params, actionsNote) {
  *  `inline` (offline renderer only): the full inline HTML instead of the small
  *  CDN template — the user-approved fallback when the MCP server never ran. */
 function ctaActionsNote(params, { inline = false } = {}) {
+  // No widget in a Claude Projects thread: show_widget reaches no one there.
+  if (isThreadCard(params)) return '';
   const model = params._cardModel || null;
   const repoUrl = params._repoUrl || '';
   // d-level / d-detect: the band carries this session's card (fresh marker, no
@@ -3029,7 +3066,10 @@ function buildCompletionCard(params) {
   // Same condition as cardWidgetInstruction: when the Desktop widget draws the
   // body, the markdown shrinks to the title line (§ 4). test-minimal never
   // calls the widget, so its markdown stays whole.
-  const titleOnly = isDesktopSession() && hasBody(params.variant);
+  // A Claude Projects thread (feature project-threads) gets the whole markdown
+  // card even inside the Desktop app: it is posted, not drawn as a widget.
+  params._threadCard = projectThreadMode(params.session_id, params.cwd) === 'on';
+  const titleOnly = isDesktopSession() && !params._threadCard && hasBody(params.variant);
   const cardMarkdown = renderCard(params, usageData, delta5h, deltaWk, healthLine, buildId, { titleOnly });
   params._repoUrl = repoUrl;
   params._cardModel = buildCardModel(
@@ -3180,7 +3220,10 @@ function runRenderCardCli(source) {
   const titleNote = sessionTitleNote(params);
   const actionsNote = ctaActionsNote(params, { inline: true });
   // Desktop (§ 4): the widget is the whole card — stdout stays empty, nothing to relay.
-  process.stdout.write(actionsNote ? '' : cardMarkdown + '\n'); // stdout-ok
+  // A Claude Projects thread: stdout is the card to post, stderr says how.
+  const threadCard = isThreadCard(params);
+  process.stdout.write(actionsNote ? '' : (threadCard ? threadCardText(cardMarkdown) : cardMarkdown) + '\n'); // stdout-ok
+  if (threadCard) process.stderr.write(THREAD_RELAY_INSTRUCTION + '\n');
   if (titleNote) process.stderr.write(titleNote + '\n');
   const archiveNote = sessionArchiveNote(params, actionsNote);
   if (archiveNote) process.stderr.write(archiveNote + '\n');
@@ -3621,7 +3664,7 @@ server.registerTool(
     // from the result text: the full card data rides as its own block.
     const dataBlock = params._cardMinimal ? cardDataBlock(params._cardModel, params._repoUrl || '') : '';
 
-    return { content: cardResultBlocks(cardMarkdown, titleNote, actionsNote, archiveNote, [openDropNote(params), openRefuseNote(params)].filter(Boolean).join("\n"), dataBlock) };
+    return { content: cardResultBlocks(cardMarkdown, titleNote, actionsNote, archiveNote, [openDropNote(params), openRefuseNote(params)].filter(Boolean).join("\n"), dataBlock, { thread: isThreadCard(params) }) };
   }
 );
 

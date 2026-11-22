@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.399.0] — 2026-11-22
+
+### Added
+- **Claude Projects threads (alpha feature `project-threads`)**: in a thread that runs on this computer the status head (`⏳ ➜ 🤖 Solo ┃`, `👉 ➜ 📦 Ready ┃`, …) now goes on the thread's own title with `rename_thread`, and the completion card is posted in the thread with `post_message`. See `deep-knowledge/project-threads.md`.
+
+### Fixed
+- **Project threads on every channel**: the plugin no longer asks a thread for the Desktop session title or the Desktop card widget (nobody sees either in a project), and `stop.flow.guard` no longer blocks the turn end there.
+
 ## [0.398.0] — 2026-11-22
 
 ### Added
