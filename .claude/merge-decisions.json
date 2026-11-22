@@ -86,6 +86,42 @@
         ]
       }
     ],
+    "plugins/devops/hooks/lib/session-title.js›nextTitleCore›final-clamp": [
+      {
+        "ship": "claude/projects-chat-completion-cards-321de4",
+        "by": "JerryT2T",
+        "value": "both kept: carrySubMark(current, next, sub) always, clampTitle unless clamp === false",
+        "decided": true,
+        "at": "2026-11-22T02:07:33.619Z",
+        "hunks": [
+          "a2587fe7060b"
+        ]
+      }
+    ],
+    "plugins/devops/hooks/lib/session-title.js›nextTitleCore›signature": [
+      {
+        "ship": "claude/projects-chat-completion-cards-321de4",
+        "by": "JerryT2T",
+        "value": "both kept: #1194's nextTitle wrapper and nextTitleCore with sub = false, plus clamp = true; the wrapper's sub-mark path honours clamp === false",
+        "decided": true,
+        "at": "2026-11-22T02:07:33.619Z",
+        "hunks": [
+          "538999fd25f6"
+        ]
+      }
+    ],
+    "plugins/devops/hooks/lib/session-title.js›nextTitle›jsdoc-opts": [
+      {
+        "ship": "claude/projects-chat-completion-cards-321de4",
+        "by": "JerryT2T",
+        "value": "both kept: sub?: boolean (#1194) and clamp?: boolean (threads) in one @param line",
+        "decided": true,
+        "at": "2026-11-22T02:07:33.619Z",
+        "hunks": [
+          "642fc905b24c"
+        ]
+      }
+    ],
     "plugins/devops/hooks/mods/index.tsx›AbovePrompt band›idle early-return": [
       {
         "ship": "claude/batch-206a00",
@@ -136,6 +172,18 @@
         "at": "2026-11-15T01:43:05.969Z",
         "hunks": [
           "e506f3697dd3"
+        ]
+      }
+    ],
+    "plugins/devops/mcp-server/index.js›import:mode-state›names": [
+      {
+        "ship": "claude/projects-chat-completion-cards-321de4",
+        "by": "JerryT2T",
+        "value": "both kept: isLinkedSub (#1194) plus projectThreadMode, currentThreadTitle, threadTitleInstruction",
+        "decided": true,
+        "at": "2026-11-22T02:07:33.619Z",
+        "hunks": [
+          "d196fbe330fc"
         ]
       }
     ],

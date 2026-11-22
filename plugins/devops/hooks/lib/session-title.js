@@ -65,9 +65,11 @@ function rest(current) {
  * title or the legacy worded hourglass is marked.
  *
  * @param {string|null} current the title now (`readCurrentTitle`)
- * @param {{ prefix?: string, machine?: boolean, batchArmed?: boolean, sub?: boolean }} [opts]
+ * @param {{ prefix?: string, machine?: boolean, batchArmed?: boolean, sub?: boolean, clamp?: boolean }} [opts]
  *   `batchArmed`: false only when the collect mode is known to be off — a
  *   `📚 Batch ┃` head is then stale and stripped; unknown keeps it.
+ *   `clamp`: false keeps the topic whole — a project thread's title is the
+ *   person's handle for it and its list is not the 42-character sidebar.
  * @returns {string|null}
  */
 function nextTitle(current, opts = {}) {
@@ -76,12 +78,13 @@ function nextTitle(current, opts = {}) {
   // lacks the 🔗 yet gets it even when the head stays.
   if (next === null && opts.sub && typeof current === 'string' && !hasSubMark(current)) {
     const marked = withSubMark(current);
-    return marked !== current ? clampTitle(marked) : null;
+    if (marked === current) return null;
+    return opts.clamp === false ? marked : clampTitle(marked);
   }
   return next;
 }
 
-function nextTitleCore(current, { prefix = WORK_PREFIX, machine = false, batchArmed, sub = false } = {}) {
+function nextTitleCore(current, { prefix = WORK_PREFIX, machine = false, batchArmed, sub = false, clamp = true } = {}) {
   if (typeof current !== 'string' || !current.trim()) return null;
   const kind = classify(current);
   const legacyWorking = kind === 'work' && leadingPrefix(current).prefix === LEGACY_PENDING_PREFIX;
@@ -108,7 +111,8 @@ function nextTitleCore(current, { prefix = WORK_PREFIX, machine = false, batchAr
   } else {
     next = prefix + r;
   }
-  next = clampTitle(carrySubMark(current, next, sub));
+  next = carrySubMark(current, next, sub);
+  if (clamp) next = clampTitle(next);
   return next !== current ? next : null;
 }
 

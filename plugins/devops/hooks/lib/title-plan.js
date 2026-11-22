@@ -18,6 +18,7 @@ const {
   classify, nextTitle,
 } = require('./session-title');
 const ask = require('./ask-title');
+const thread = require('./project-thread');
 const { markerMode } = require('./side-sessions');
 const { STATUS, BARE_WORK } = require('./title-scheme');
 
@@ -201,6 +202,42 @@ function earlyTitleOf({ prompt, current, firstPrompt, prefix = prefixOf(prompt),
   return nextTitle(current, { prefix, sub: knownSub || isLinkedBrief(prompt, firstPrompt) });
 }
 
+/**
+ * The instruction in a Claude Projects thread (lib/project-thread.js): the head
+ * goes on the thread's own title — the one the person sees — with one
+ * `rename_thread` call. No topic rule (the coordinator named the thread, in the
+ * person's words) and no question line (a thread asks with a reply).
+ */
+function threadInstruction(call) {
+  return [
+    `[prompt.flow.title-work] Project thread, once: ${call} in the SAME message as this turn's first other tool call (parallel, no message of its own).`,
+    'The head before "┃ " is the devops status prefix, not part of the thread\'s name: keep it if you rename the thread yourself; the completion card that ends the turn replaces it.',
+    'A turn that only acknowledges (no_reply_needed, a reaction) needs no rename. Tool missing or failing: skip silently. Do not mention this to the person.',
+  ].join('\n');
+}
+
+/**
+ * The hook's whole answer for one prompt of a project thread.
+ * @param {{ prompt: string, current: string|null, resumesShip?: boolean }} input
+ *   `current`: the title this session last gave the thread (`lastThreadTitle`),
+ *   null when it never renamed it — the model then prefixes the title it sees.
+ * @returns {{ context: string, sessionTitle: null }} never a `sessionTitle`: that
+ *   one names the local session, which the person does not see.
+ */
+function threadTitlePlan({ prompt, current, resumesShip = false }) {
+  // The envelope is not the order: a ship is read off the person's own words.
+  const prefix = prefixOf(thread.personWords(prompt) || prompt, resumesShip);
+  const machine = isMachineTurn(prompt) || thread.isRelayPrompt(prompt);
+  let context = '';
+  if (current === null) {
+    if (!machine) context = threadInstruction(thread.renameCallUnknown(prefix));
+  } else {
+    const next = nextTitle(current, { prefix, machine, clamp: false });
+    if (next !== null) context = threadInstruction(thread.renameCall(next));
+  }
+  return { context, sessionTitle: null };
+}
+
 /** The hook's stdout for a plan: plain context, or JSON when it sets the title itself too. */
 function replyOf(plan) {
   if (!plan.context) return '';
@@ -208,4 +245,4 @@ function replyOf(plan) {
   return JSON.stringify({ hookSpecificOutput: { hookEventName: 'UserPromptSubmit', additionalContext: plan.context, sessionTitle: plan.sessionTitle } });
 }
 
-module.exports = { titlePlan, earlyTitleOf, replyOf, prefixOf, topicLine, directInstruction, freshInstruction, instruction, questionLine, SUB_SESSION_BRIEF };
+module.exports = { titlePlan, threadTitlePlan, threadInstruction, earlyTitleOf, replyOf, prefixOf, topicLine, directInstruction, freshInstruction, instruction, questionLine, SUB_SESSION_BRIEF };

@@ -1,6 +1,6 @@
 /**
  * @module mode-state
- * @version 1.6.0
+ * @version 1.7.0
  *
  * Mode state the card reads off the project — not off the caller.
  *
@@ -427,6 +427,76 @@ function knownTitleInstruction(prefix, current, sub = false) {
     "session_id is required: an input-validation error means the call went out without it — resend it once, exactly as written above. " +
     "Truly unavailable (not even deferred) or failing otherwise: skip silently — no retry, no note. " +
     "The card stays the last output of the turn."
+  );
+}
+
+/** Header of the title block in a Claude Projects thread — never part of the card markdown. */
+const THREAD_TITLE_HEADER = "[THREAD TITLE — DO NOT OUTPUT THIS BLOCK]\n";
+
+/**
+ * Whether the card's session is a Claude Projects thread and the feature is on
+ * (hooks/lib/project-thread.js): `off`, `quiet` (a thread on a channel without
+ * the feature — the card renders as before) or `on` (the card is posted in the
+ * thread). Reads the session marker, else the transcript. Never throws.
+ *
+ * @param {string|undefined} sessionId the card's `session_id`
+ * @param {string|undefined} cwd the card's `cwd`
+ * @param {{ home?: string, features?: object }} [opts] test seams
+ * @returns {'off'|'quiet'|'on'}
+ */
+export function projectThreadMode(sessionId, cwd, { home = undefined, features = undefined } = {}) {
+  try {
+    const P = hookRequire("lib", "project-thread.js");
+    const T = hookRequire("lib", "session-title.js");
+    return P.threadMode({ session_id: sessionId, transcript_path: T.findTranscript(sessionId, home, cwd) }, { deep: true, features });
+  } catch {
+    return "off";
+  }
+}
+
+/** The title this session last gave its thread (its newest `rename_thread`), `null` when it never did. */
+export function currentThreadTitle(sessionId, cwd, home = undefined) {
+  try {
+    const P = hookRequire("lib", "project-thread.js");
+    const T = hookRequire("lib", "session-title.js");
+    return P.lastThreadTitle(T.findTranscript(sessionId, home, cwd));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The title block of a card posted in a Claude Projects thread: one
+ * `rename_thread` call that puts the card's head on the thread's own title —
+ * the one the person sees. The topic is never clamped (a thread's title is the
+ * person's handle for it). `current` unknown (this session never renamed the
+ * thread): the model prefixes the title it sees. Empty when a mode owns the
+ * title or it is already right. A `{ owned, other }` concept prefix reads as
+ * its plain outcome: a concept page is not run from a thread.
+ *
+ * @param {string|null|{ owned: string|null, other: string|null }} prefix from `titlePrefixFor`
+ * @param {string|null} [current] from `currentThreadTitle`
+ * @returns {string}
+ */
+export function threadTitleInstruction(prefix, current = null) {
+  const head = prefix && typeof prefix === "object" ? prefix.other : prefix;
+  if (typeof head !== "string") return "";
+  const P = hookRequire("lib", "project-thread.js");
+  let call;
+  if (typeof current === "string" && current.trim()) {
+    const stripped = stripTitlePrefix(current);
+    if (!stripped.trim()) return "";
+    const next = head + stripped;
+    if (next === current) return "";
+    call = P.renameCall(next);
+  } else {
+    if (!head) return "";
+    call = P.renameCallUnknown(head);
+  }
+  return (
+    THREAD_TITLE_HEADER +
+    `Project thread, once: ${call} in the SAME assistant message as the card's post_message call ` +
+    "(rename_thread first in the batch). Tool missing or failing: skip silently — no retry, no note."
   );
 }
 
