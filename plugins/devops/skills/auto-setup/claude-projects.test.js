@@ -31,7 +31,7 @@ describe("auto-setup § Claude Projects (D4)", () => {
   test("the text quotes the card's status line, keeps the title head, one issue = one thread without the number in the title", () => {
     expect(TEXT).toContain("✨✨✨ <title> ✨✨✨");
     expect(TEXT).toMatch(/quote that status line/);
-    expect(TEXT).toContain("<status> ➜ <icon> <Word> ┃ ");
+    expect(TEXT).toContain("<status> ➜ <icon> \": keep that head");
     expect(TEXT).toMatch(/One issue = one thread/);
     expect(TEXT).toMatch(/in the thread's task/);
     expect(TEXT).toMatch(/Do not put the issue number into the thread title/);

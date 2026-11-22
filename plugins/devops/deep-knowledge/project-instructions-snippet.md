@@ -7,7 +7,7 @@ Threads on my computer end their work with a devops completion card: a reply
 whose heading reads "✨✨✨ <title> ✨✨✨", followed by a line that starts with a
 status icon (👉 🟩 🟥 🟦 ⏳). When you report such a thread's result in the
 project chat, quote that status line and the numbered points under it as they
-are. A thread title may start with "<status> ➜ <icon> <Word> ┃ ": keep that head
+are. A thread title may start with "<status> ➜ <icon> ": keep that head
 when you link or rename the thread.
 
 One issue = one thread. When I name a GitHub issue to work on, start one thread

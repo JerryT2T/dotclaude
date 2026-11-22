@@ -6,7 +6,7 @@
  * @plugin devops
  * @matcher ^(?!(?:Read|Glob|Grep)$|mcp__ccd_)
  * @description Takes the concept's "your move" title back the moment a
- *   submission lands (#930). `👉 ➜ 🧭 Concept ┃` means "your move — look at
+ *   submission lands (#930). `👉 ➜ 🧭` means "your move — look at
  *   the page"; once the user has submitted, it is no longer true. Before this
  *   hook only the turn that processed the wake (auto-concept Step 5 § Mark the
  *   round as work) flipped it, so a session busy with another task, or one

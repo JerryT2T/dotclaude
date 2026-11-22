@@ -11,11 +11,11 @@
  *   rename sessions — this one finds the candidates on disk (lib/stale-titles:
  *   ⏳ title sidecar, transcript idle ≥ 2 min, no live governor pid) and hands
  *   Claude the exact old → new titles; Claude renames those whose
- *   list_sessions row says `isRunning:false` to `👉 ➜ ⚡ Interrupted ┃ <title>`.
+ *   list_sessions row says `isRunning:false` to `👉 ➜ ⚡ <title>`.
  *   Reported sessions go into ~/.claude/title-sweep-seen.json (session id →
  *   transcript mtime) so the next session start does not repeat them.
  *   0.3.0: a concept title (👉 waiting or ⏳ working) whose bridge server is
- *   gone (reboot, crash) becomes `🔴 ➜ 🧭 Concept ┃ <title>` instead —
+ *   gone (reboot, crash) becomes `🔴 ➜ 🧭 <title>` instead —
  *   resuming that session relaunches the bridge (ss.concept.resume).
  *   The scan walks every project's sessions (1–5 s under session-start load, it
  *   hit its budget), so it runs detached (lib/deferred-results) and its rename

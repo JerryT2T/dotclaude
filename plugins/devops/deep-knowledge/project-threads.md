@@ -42,23 +42,23 @@ Detection: a wake prompt or any `mcp__hearthbot__*` tool call marks the session 
 
 | Moment | What happens |
 |---|---|
-| A wake starts work | `prompt.flow.title-work` names one `rename_thread` call: `⏳ ➜ 🤖 Solo ┃ <thread title>` (a ship order in the person's words: `⏳ ➜ 🚀 Shipping ┃`). First wake: the model prefixes the title it sees; later the hook knows the title from the transcript's last `rename_thread` and names it exactly |
+| A wake starts work | `prompt.flow.title-work` names one `rename_thread` call: `⏳ ➜ 🤖 <thread title>` (a ship order in the person's words: `⏳ ➜ 🚀`). First wake: the model prefixes the title it sees; later the hook knows the title from the transcript's last `rename_thread` and names it exactly |
 | First prompt of the thread | one line: session-start notices (versions, budget login, orphan lines) are for the Desktop user and are not posted (`prompt.thread.notices`) |
 | A repo must change and the start folder is not its own worktree | the branch guards name a worktree per repo and thread: `git -C <repo> worktree add <repo>/.claude/worktrees/thread-<id8> -b claude/thread-<id8>-<slug>`, work by absolute path. Two threads in one folder, several folders and several repos per thread each get their own; no shared checkout is switched |
-| A skill wants to ask | `AskUserQuestion` is refused with the exact instruction: post the question as a numbered reply (`1. … a) …`), rename the thread to `👉 ➜ ❓ Question ┃ …`; the person's next message is the answer. A do-run arms its run contract from that reply (`hooks/lib/run-contract-thread.js`) |
+| A skill wants to ask | `AskUserQuestion` is refused with the exact instruction: post the question as a numbered reply (`1. … a) …`), rename the thread to `👉 ➜ ❓ …`; the person's next message is the answer. A do-run arms its run contract from that reply (`hooks/lib/run-contract-thread.js`) |
 | A subagent's tool call waits on a permission | `👉` on the thread title via `rename_thread`, back to `⏳` when answered. A permission the thread's own call waits on cannot be shown: the model is blocked until the answer |
 | `start_session` | refused (`pre.thread.session`): report the split to the coordinator. Subagents are allowed |
 | Budget class other than `free` | never asked; *spare the window* applies unasked (`agent-proactivity-details.md` § Thread) |
 | First tool call | the card contract plus one line: the card is the result reply |
 | Checklist with every step done | one "card now" line |
-| `render_completion_card` (tool or `--render-card`) | the full markdown card, to be posted verbatim as the text of ONE `post_message`, plus the exact `rename_thread` to the outcome head (`👉 ➜ 📦 Ready ┃ …`). No widget, no `wrap_up`, no archive |
+| `render_completion_card` (tool or `--render-card`) | the full markdown card, to be posted verbatim as the text of ONE `post_message`, plus the exact `rename_thread` to the outcome head (`👉 ➜ 📦 …`). No widget, no `wrap_up`, no archive |
 | The card is posted | one status line to the coordinator (`SendMessage`, address from the newest coordinator relay in the transcript; skipped silently when unknown or refused), then "turn over": only `set_thread_resolved` may follow |
 | A reply without the card while the title says ⏳ | once per prompt: the exact rename that takes the head off, for a turn that ends there |
 | A concept page | published as an artifact, link posted in the thread and opened in Edge on a local thread (`concept-open.js open-url`); decisions and the action (`iterate`, `implement`) come back through the artifact's `db` store (`skills/auto-concept/deep-knowledge/artifact-fallback.md` § In a Claude Projects thread) |
 
 Rules that differ from a Desktop session:
 
-- **The topic is the thread's own title, never clamped.** The coordinator names a thread in the person's words and the person finds it by that name; the 20-character topic and the 42-character budget are sidebar rules.
+- **The topic is the thread's own title, never clamped.** The coordinator names a thread in the person's words and the person finds it by that name; the 30-character topic and the 42-character budget are sidebar rules.
 - **No `sessionTitle` from the hook, no `set_session_title`.** That title names the local session, which the project does not show.
 - **No interrupted title, no title-mismatch check.** No Stop hook can correct a title there. The stale hourglass is handled by the reply hint above.
 

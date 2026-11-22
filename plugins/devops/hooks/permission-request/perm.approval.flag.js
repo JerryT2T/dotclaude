@@ -5,13 +5,13 @@
  * @event PermissionRequest
  * @plugin devops
  * @description A background agent stopped at a tool permission dialog: puts
- *   the 👉 in the title's status slot (`⏳ ➜ 🤖 Team ┃ X` → `👉 ➜ 🤖 Team ┃ X`,
+ *   the 👉 in the title's status slot (`⏳ ➜ 🤖🤖🤖 X` → `👉 ➜ 🤖🤖🤖 X`,
  *   activity kept) by waking the main thread — registered with `asyncRewake`,
  *   so exit 2 + stderr wakes Claude even while the session idles, and the
  *   dialog never waits for this hook. Records the waiting call
  *   (lib/approval-wait.js); perm.approval.watch restores the ⏳ once it is
- *   answered. Main-thread prompts, a title with no Solo/Team/Testing ⏳ head
- *   (ship, concept, batch, outcome) and an unknown title (no Desktop app) stay
+ *   answered. Main-thread prompts, a title with no Solo/Team ⏳ head
+ *   (ship, concept, testing, batch, outcome) and an unknown title (no Desktop app) stay
  *   silent. In a Claude Projects thread (feature `project-threads`) the 👉 goes
  *   on the THREAD title with `rename_thread` instead (lib/approval-wait.js
  *   `threadWaitText`); a main-thread dialog cannot be flagged (the model is

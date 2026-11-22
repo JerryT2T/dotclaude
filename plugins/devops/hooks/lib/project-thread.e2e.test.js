@@ -92,7 +92,7 @@ describe("a project thread with the feature (alpha)", () => {
     await hook("user-prompt-submit/prompt.flow.silent-turn.js", w, prompt(w, wake("rename the folders")));
     expect(w.flag("dotclaude-devops-project-thread")).toBe(true);
     const out = await hook("user-prompt-submit/prompt.flow.title-work.js", w, prompt(w, wake("rename the folders")));
-    expect(out).toContain('mcp__hearthbot__rename_thread {title:"⏳ ➜ 🤖 Solo ┃ " + <this thread\'s current title');
+    expect(out).toContain('mcp__hearthbot__rename_thread {title:"⏳ ➜ 🤖 " + <this thread\'s current title');
     expect(out).not.toMatch(/set_session_title|get_session|sessionTitle/);
   });
 
@@ -103,7 +103,7 @@ describe("a project thread with the feature (alpha)", () => {
   });
 
   test("a reply without the card under a ⏳ title gets the head-off rename, once per prompt", async () => {
-    w.append(renameEntry(`⏳ ➜ 🤖 Solo ┃ ${TITLE}`));
+    w.append(renameEntry(`⏳ ➜ 🤖 ${TITLE}`));
     const reply = tool("mcp__hearthbot__post_message", { text: "Nothing renamed yet." });
     const first = await hook("post-tool-use/post.flow.completion.js", w, reply);
     expect(first).toContain(`mcp__hearthbot__rename_thread {title:"${TITLE}"}`);
@@ -124,14 +124,14 @@ describe("a project thread with the feature (alpha)", () => {
     expect(stdout).toContain("✨✨✨ Folder rename prepared ✨✨✨");
     expect(stdout).not.toContain("&nbsp;");
     expect(stderr).toContain("Project thread: the person sees only what mcp__hearthbot__post_message posts");
-    expect(stderr).toContain(`mcp__hearthbot__rename_thread {title:"👉 ➜ 📊 Analysis ┃ ${TITLE}"}`);
+    expect(stderr).toContain(`mcp__hearthbot__rename_thread {title:"👉 ➜ 📊 ${TITLE}"}`);
     expect(stderr).not.toMatch(/set_session_title|widget_code|CARD WIDGET|WRAP_UP_ARGS/);
     expect(w.flag("dotclaude-devops-card-widget")).toBe(false);
     expect(w.flag("dotclaude-devops-card-rendered")).toBe(true);
   });
 
   test("the posted card ends the turn; the Stop gate passes and clears its flags", async () => {
-    w.append(renameEntry(`👉 ➜ 📊 Analysis ┃ ${TITLE}`));
+    w.append(renameEntry(`👉 ➜ 📊 ${TITLE}`));
     const out = await hook("post-tool-use/post.flow.completion.js", w, tool("mcp__hearthbot__post_message", { text: "### **✨✨✨ Folder rename prepared ✨✨✨**" }));
     expect(out).toContain("[completion-flow] Card posted");
     expect(w.flag("dotclaude-devops-work-happened")).toBe(true);
@@ -145,7 +145,7 @@ describe("a project thread with the feature (alpha)", () => {
   test("the next wake puts the hourglass back with the exact title", async () => {
     w.append({ type: "user", uuid: "u2", projectsUserTurn: true, message: { role: "user", content: wake("go") } });
     const out = await hook("user-prompt-submit/prompt.flow.title-work.js", w, prompt(w, wake("go")));
-    expect(out).toContain(`mcp__hearthbot__rename_thread {title:"⏳ ➜ 🤖 Solo ┃ ${TITLE}"}`);
+    expect(out).toContain(`mcp__hearthbot__rename_thread {title:"⏳ ➜ 🤖 ${TITLE}"}`);
   });
 });
 
@@ -161,7 +161,7 @@ describe("a project thread without the feature (stable)", () => {
     expect(await hook("user-prompt-submit/prompt.flow.title-work.js", w, prompt(w, wake("rename the folders")))).toBe("");
     const first = await hook("post-tool-use/post.flow.completion.js", w, tool("PowerShell", { command: "Get-ChildItem" }));
     expect(first).not.toMatch(/COMPLETION CARD|Project thread/);
-    w.append(renameEntry(`⏳ ➜ 🤖 Solo ┃ ${TITLE}`));
+    w.append(renameEntry(`⏳ ➜ 🤖 ${TITLE}`));
     const reply = await hook("post-tool-use/post.flow.completion.js", w, tool("mcp__hearthbot__post_message", { text: "Nothing renamed yet." }));
     expect(reply).not.toMatch(/rename_thread|COMPLETION CARD/);
     const checklist = await hook("post-tool-use/post.flow.completion.js", w, tool("mcp__hearthbot__update_progress_checklist", { text: "x\n\n✓ a" }));

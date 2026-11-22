@@ -1,17 +1,18 @@
 #!/usr/bin/env node
 /**
  * @hook pre.title.topic
- * @version 0.1.0
+ * @version 0.2.0
  * @event PreToolUse
  * @plugin devops
  * @matcher mcp__ccd_session_mgmt__set_session_title
- * @description Enforces the 20-character session-title topic (user decision
- *   d-len, 2026-11-17): a set_session_title whose topic — the text after the
- *   `<status> ➜ <icon> <Word> ┃ ` head — is longer than TOPIC_MAX is refused
+ * @description Enforces the 30-character session-title topic (user decision
+ *   d-len, 2026-11-17: 20; 30 since the head lost its keyword, 2026-11-22):
+ *   a set_session_title whose topic — the text after the
+ *   `<status> ➜ <icon> ` head — is longer than TOPIC_MAX is refused
  *   once per topic with the reason and the length, so the model shortens it
  *   itself (abbreviations welcome, d-abbr). Never refused: a call that keeps
  *   the title's current topic (a status-prefix swap — most title calls of the
- *   other hooks), a title without a `┃` head, a batch title (its skill owns
+ *   other hooks), a title without a `➜` head, a batch title (its skill owns
  *   it), an unknown current title (no Desktop app / no transcript), and a
  *   repeat of a topic already refused (no loop). Silent inside a subagent.
  *   Fail-open.

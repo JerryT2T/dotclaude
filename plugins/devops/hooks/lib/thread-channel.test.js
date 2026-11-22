@@ -61,17 +61,17 @@ describe("C1 — AskUserQuestion in a thread is redirected to a numbered reply",
   const input = { tool_name: "AskUserQuestion", tool_input: { questions: [] } };
 
   test("a thread is refused with the exact instruction and the question-head rename", () => {
-    const r = run(ASK, [user(PERSON, "2026-11-22T10:00:00Z"), rename("⏳ ➜ 🤖 Solo ┃ Fix login")], input);
+    const r = run(ASK, [user(PERSON, "2026-11-22T10:00:00Z"), rename("⏳ ➜ 🤖 Fix login")], input);
     expect(r.status).toBe(2);
     expect(r.stderr).toContain("mcp__hearthbot__post_message");
     expect(r.stderr).toContain("numbered");
-    expect(r.stderr).toContain('mcp__hearthbot__rename_thread {title:"👉 ➜ ❓ Question ┃ Fix login"}');
+    expect(r.stderr).toContain('mcp__hearthbot__rename_thread {title:"👉 ➜ ❓ Fix login"}');
   });
 
   test("a thread that never renamed asks the model to prefix the title it sees", () => {
     const r = run(ASK, [user(PERSON, "2026-11-22T10:00:00Z")], input);
     expect(r.status).toBe(2);
-    expect(r.stderr).toContain("👉 ➜ ❓ Question ┃ ");
+    expect(r.stderr).toContain("👉 ➜ ❓ ");
   });
 
   test("a Desktop session (typed prompt) is not redirected", () => {
@@ -174,11 +174,11 @@ describe("C4 — a waiting tool permission shows on the THREAD title", () => {
   test("flag: 👉 via rename_thread; watch is silent while still waiting is not tested here", () => {
     const id = `tc-perm-${process.pid}-${Date.now()}`;
     const transcript = path.join(root, `${id}.jsonl`);
-    fs.writeFileSync(transcript, [user(PERSON, "2026-11-22T10:00:00Z"), rename("⏳ ➜ 🤖 Team ┃ Concept")].join("\n") + "\n");
+    fs.writeFileSync(transcript, [user(PERSON, "2026-11-22T10:00:00Z"), rename("⏳ ➜ 🤖🤖🤖 Concept")].join("\n") + "\n");
     const env = { ...process.env, HOME: home, USERPROFILE: home };
     const r = spawnSync(process.execPath, [FLAG], { input: JSON.stringify({ ...perm, session_id: id, transcript_path: transcript, cwd: root }), encoding: "utf8", env, cwd: root, timeout: 30_000 });
     expect(r.status).toBe(2);
-    expect(r.stderr).toContain('mcp__hearthbot__rename_thread {title:"👉 ➜ 🤖 Team ┃ Concept"}');
+    expect(r.stderr).toContain('mcp__hearthbot__rename_thread {title:"👉 ➜ 🤖🤖🤖 Concept"}');
     expect(r.stderr).not.toContain("set_session_title");
   });
   test("a thread title that is no work head stays silent; a Desktop session keeps set_session_title", () => {
@@ -189,12 +189,12 @@ describe("C4 — a waiting tool permission shows on the THREAD title", () => {
     const quiet = spawnSync(process.execPath, [FLAG], { input: JSON.stringify({ ...perm, session_id: id, transcript_path: transcript, cwd: root }), encoding: "utf8", env, cwd: root, timeout: 30_000 });
     expect(quiet.status).toBe(0);
     const W = require("./approval-wait.js");
-    expect(W.waitText("👉 ➜ 🤖 Team ┃ X")).toContain("set_session_title");
+    expect(W.waitText("👉 ➜ 🤖🤖🤖 X")).toContain("set_session_title");
   });
   test("restore text: ⏳ head back on the thread title; unknown title asks the model", () => {
     const W = require("./approval-wait.js");
-    expect(W.threadRestoreText("👉 ➜ 🤖 Team ┃ Concept")).toContain('rename_thread {title:"⏳ ➜ 🤖 Team ┃ Concept"}');
-    expect(W.threadRestoreText("⏳ ➜ 🤖 Team ┃ Concept")).toBeNull();
+    expect(W.threadRestoreText("👉 ➜ 🤖🤖🤖 Concept")).toContain('rename_thread {title:"⏳ ➜ 🤖🤖🤖 Concept"}');
+    expect(W.threadRestoreText("⏳ ➜ 🤖🤖🤖 Concept")).toBeNull();
     expect(W.threadRestoreText(null)).toContain("still starts with 👉");
     expect(W.threadWaitText(null)).toContain("rename_thread");
     expect(WATCH).toContain("perm.approval.watch");

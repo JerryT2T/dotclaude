@@ -138,13 +138,13 @@ describe("project-thread — the thread's title", () => {
   test("lastThreadTitle is the newest rename_thread of the main thread", () => {
     const file = transcriptFile("titles", [
       { type: "user", projectsUserTurn: true, message: { role: "user", content: wake("x") } },
-      rename("⏳ ➜ 🤖 Solo ┃ Rename the project folders"),
-      rename("⏳ ➜ 🤖 Solo ┃ From a subagent", { isSidechain: true }),
+      rename("⏳ ➜ 🤖 Rename the project folders"),
+      rename("⏳ ➜ 🤖 From a subagent", { isSidechain: true }),
       { type: "user", message: { role: "user", content: 'the tool "mcp__hearthbot__rename_thread" was quoted here' } },
-      rename("👉 ➜ 📊 Analysis ┃ Rename the project folders"),
+      rename("👉 ➜ 📊 Rename the project folders"),
       { type: "assistant", message: { role: "assistant", content: [{ type: "text", text: "done" }] } },
     ]);
-    expect(pt.lastThreadTitle(file)).toBe("👉 ➜ 📊 Analysis ┃ Rename the project folders");
+    expect(pt.lastThreadTitle(file)).toBe("👉 ➜ 📊 Rename the project folders");
   });
 
   test("never renamed, missing transcript or an empty title → null", () => {
@@ -157,6 +157,6 @@ describe("project-thread — the thread's title", () => {
 
   test("the rename calls are exact and JSON-escaped", () => {
     expect(pt.renameCall('Fix "quotes" ┃ x')).toBe('mcp__hearthbot__rename_thread {title:"Fix \\"quotes\\" ┃ x"}');
-    expect(pt.renameCallUnknown("⏳ ➜ 🤖 Solo ┃ ")).toContain('{title:"⏳ ➜ 🤖 Solo ┃ " + <this thread\'s current title');
+    expect(pt.renameCallUnknown("⏳ ➜ 🤖 ")).toContain('{title:"⏳ ➜ 🤖 " + <this thread\'s current title');
   });
 });

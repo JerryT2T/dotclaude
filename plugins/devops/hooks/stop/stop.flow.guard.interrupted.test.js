@@ -7,7 +7,7 @@ import TITLE_SCHEME_MOD from "../lib/title-scheme.js";
 
 // F5 end to end through the real Stop hook: a turn that ends WITHOUT a card
 // while the session title is still the bare "⏳ " is blocked once with the
-// exact rename to "👉 ➜ ⚡ Interrupted ┃ …". A batch title (a batch turn without
+// exact rename to "👉 ➜ ⚡ …". A batch title (a batch turn without
 // a card is intended), a waiting concept and a running ship stay untouched,
 // and the follow-up stop always passes — never a loop.
 const STOP_HOOK = path.join(__dirname, "stop.flow.guard.js");
@@ -103,14 +103,14 @@ describe("stop.flow.guard — F5 interrupted title", () => {
       const out = await stop(dir, { transcript_path });
       expect(out).toMatch(/"decision":"block"/);
       const reason = JSON.parse(out).reason;
-      expect(reason).toContain('mcp__ccd_session_mgmt__set_session_title {session_id:"self", title:' + JSON.stringify("👉 ➜ ⚡ Interrupted ┃ Refactor") + "}");
+      expect(reason).toContain('mcp__ccd_session_mgmt__set_session_title {session_id:"self", title:' + JSON.stringify("👉 ➜ ⚡ Refactor") + "}");
       expect(reason).toMatch(/no get_session/);
       expect(reason).toMatch(/no card/);
       expect(reason).not.toContain("render_completion_card");
       // The follow-up stop passes even though the transcript still says ⏳ — no loop.
       expect(await stop(dir, { transcript_path, stop_hook_active: true })).toBe("");
       // The marker is consumed: a later card-less turn on a bare ⏳ is renamed again.
-      expect(await stop(dir, { transcript_path })).toMatch(/⚡ Interrupted ┃ Refactor/);
+      expect(await stop(dir, { transcript_path })).toMatch(/👉 ➜ ⚡ Refactor/);
     } finally {
       cleanup(dir);
     }
@@ -127,7 +127,7 @@ describe("stop.flow.guard — F5 interrupted title", () => {
         { type: "assistant", message: { role: "assistant", content: [{ type: "tool_use", id: "toolu_9", name: "Agent", input: { subagent_type: "devops:builder", run_in_background: true, description: "Overview", prompt: "x" } }] } },
         { type: "user", message: { role: "user", content: [{ type: "tool_result", tool_use_id: "toolu_9", content: [{ type: "text", text: AGENT_LAUNCH_TEXT.replace(AGENT_ID, second) }] }] } });
       fs.writeFileSync(p, lines.map((l) => JSON.stringify(l)).join("\n") + "\n");
-      expect(await stop(dir, { transcript_path: p })).not.toContain("Interrupted");
+      expect(await stop(dir, { transcript_path: p })).not.toContain("➜ ⚡");
     } finally {
       cleanup(dir);
     }
@@ -136,7 +136,7 @@ describe("stop.flow.guard — F5 interrupted title", () => {
   test("the concept's working prefix is never renamed to Interrupted", async () => {
     const dir = project();
     try {
-      expect(await stop(dir, { transcript_path: transcript(dir, "⏳ ➜ 🧭 Concept ┃ Refactor") })).not.toContain("Interrupted");
+      expect(await stop(dir, { transcript_path: transcript(dir, "⏳ ➜ 🧭 Refactor") })).not.toContain("➜ ⚡");
     } finally {
       cleanup(dir);
     }
@@ -146,7 +146,7 @@ describe("stop.flow.guard — F5 interrupted title", () => {
     const dir = project();
     try {
       const out = await stop(dir, { transcript_path: transcript(dir, "⏳ Working – Refactor") });
-      expect(out).toContain("👉 ➜ ⚡ Interrupted ┃ Refactor");
+      expect(out).toContain("👉 ➜ ⚡ Refactor");
     } finally {
       cleanup(dir);
     }
@@ -154,10 +154,10 @@ describe("stop.flow.guard — F5 interrupted title", () => {
 
   test("batch, a waiting concept, a running ship and every named state stay untouched", async () => {
     for (const title of [
-      "👉 ➜ 📚 Batch ┃ Ideen", "📥 Batch – Ideen",
-      "👉 ➜ 🧭 Concept ┃ Billing", "🧭 Concept – Billing", "⏳ ➜ 🧭 Concept ┃ Billing",
-      "⏳ ➜ 🚀 Shipping ┃ Login-Fix", "🚀 Shipping – Login-Fix",
-      "⏳ ➜ 🤖 Team ┃ Refactor", "🟩 ➜ 🚀 Released Alpha ┃ Login-Fix", "👉 ➜ ⚡ Interrupted ┃ Refactor",
+      "👉 ➜ 📚 Ideen", "📥 Batch – Ideen",
+      "👉 ➜ 🧭 Billing", "🧭 Concept – Billing", "⏳ ➜ 🧭 Billing",
+      "⏳ ➜ 🚀 Login-Fix", "🚀 Shipping – Login-Fix",
+      "⏳ ➜ 🤖🤖🤖 Refactor", "🟩 ➜ 🚀 Login-Fix", "👉 ➜ ⚡ Refactor",
       "Plain title",
     ]) {
       const dir = project();
@@ -174,7 +174,7 @@ describe("stop.flow.guard — F5 interrupted title", () => {
     try {
       expect(await stop(dir, { transcript_path: transcript(dir, null) })).toBe("");
       setFlag(dir, "card-rendered");
-      expect(await stop(dir, { transcript_path: transcript(dir, "⏳ Refactor") })).not.toContain("Interrupted");
+      expect(await stop(dir, { transcript_path: transcript(dir, "⏳ Refactor") })).not.toContain("➜ ⚡");
     } finally {
       cleanup(dir);
     }
@@ -199,7 +199,7 @@ describe("stop.flow.guard — F5 interrupted title", () => {
     // [prompt, launch, launch result, (render), …note]
     if (card) lines.splice(3, 0, render);
     lines.splice(0, 0, { type: "custom-title", customTitle: earlier, sessionId: SESSION },
-      { type: "custom-title", customTitle: "👉 ➜ ❓ Question ┃ Refactor", sessionId: SESSION });
+      { type: "custom-title", customTitle: "👉 ➜ ❓ Refactor", sessionId: SESSION });
     const out = lines.map((l) => JSON.stringify(l)).join("\n").replace(/<status>completed<\/status>/g, `<status>${status}</status>`);
     fs.writeFileSync(p, out + "\n");
     return p;
@@ -208,12 +208,12 @@ describe("stop.flow.guard — F5 interrupted title", () => {
   test("#1156: a cleanly finished last task restores the session's settled title, never Interrupted", async () => {
     const dir = project();
     try {
-      const p = withEarlierTitle(notificationTranscript(dir, "⏳ ➜ 🤖 Team ┃ Refactor"), "🟩 ➜ 🚀 Released Alpha ┃ Refactor");
+      const p = withEarlierTitle(notificationTranscript(dir, "⏳ ➜ 🤖🤖🤖 Refactor"), "🟩 ➜ 🚀 Refactor");
       const out = await stop(dir, { transcript_path: p });
       expect(out).toMatch(/"decision":"block"/);
       const reason = JSON.parse(out).reason;
-      expect(reason).toContain("title:" + JSON.stringify("🟩 ➜ 🚀 Released Alpha ┃ Refactor"));
-      expect(reason).not.toContain("Interrupted");
+      expect(reason).toContain("title:" + JSON.stringify("🟩 ➜ 🚀 Refactor"));
+      expect(reason).not.toContain("➜ ⚡");
     } finally {
       cleanup(dir);
     }
@@ -224,8 +224,8 @@ describe("stop.flow.guard — F5 interrupted title", () => {
   test("#1156: without a card since the last typed prompt the title stays Interrupted", async () => {
     const dir = project();
     try {
-      const p = withEarlierTitle(notificationTranscript(dir, "⏳ ➜ 🤖 Solo ┃ Refactor"), "🟩 ➜ 🚀 Released Alpha ┃ Refactor", "completed", false);
-      expect(await stop(dir, { transcript_path: p })).toContain("👉 ➜ ⚡ Interrupted ┃ Refactor");
+      const p = withEarlierTitle(notificationTranscript(dir, "⏳ ➜ 🤖 Refactor"), "🟩 ➜ 🚀 Refactor", "completed", false);
+      expect(await stop(dir, { transcript_path: p })).toContain("👉 ➜ ⚡ Refactor");
     } finally {
       cleanup(dir);
     }
@@ -235,8 +235,8 @@ describe("stop.flow.guard — F5 interrupted title", () => {
     for (const status of ["failed", "killed"]) {
       const dir = project();
       try {
-        const p = withEarlierTitle(notificationTranscript(dir, "⏳ ➜ 🤖 Team ┃ Refactor"), "🟩 ➜ 🚀 Released Alpha ┃ Refactor", status);
-        expect(await stop(dir, { transcript_path: p }), status).toContain("👉 ➜ ⚡ Interrupted ┃ Refactor");
+        const p = withEarlierTitle(notificationTranscript(dir, "⏳ ➜ 🤖🤖🤖 Refactor"), "🟩 ➜ 🚀 Refactor", status);
+        expect(await stop(dir, { transcript_path: p }), status).toContain("👉 ➜ ⚡ Refactor");
       } finally {
         cleanup(dir);
       }
@@ -246,10 +246,10 @@ describe("stop.flow.guard — F5 interrupted title", () => {
   test("#833: a Team ⏳ on a card-less notification turn takes the ship result's titlePrefix", async () => {
     const dir = project();
     try {
-      const result = 'Done.\n```json\n{"status":"done","titlePrefix":"🟩 ➜ 🚀 Released Alpha ┃ "}\n```';
-      const out = await stop(dir, { transcript_path: notificationTranscript(dir, "⏳ ➜ 🤖 Team ┃ Refactor", { result }) });
+      const result = 'Done.\n```json\n{"status":"done","titlePrefix":"🟩 ➜ 🚀 "}\n```';
+      const out = await stop(dir, { transcript_path: notificationTranscript(dir, "⏳ ➜ 🤖🤖🤖 Refactor", { result }) });
       expect(out).toMatch(/"decision":"block"/);
-      expect(JSON.parse(out).reason).toContain("title:" + JSON.stringify("🟩 ➜ 🚀 Released Alpha ┃ Refactor"));
+      expect(JSON.parse(out).reason).toContain("title:" + JSON.stringify("🟩 ➜ 🚀 Refactor"));
     } finally {
       cleanup(dir);
     }
@@ -258,9 +258,9 @@ describe("stop.flow.guard — F5 interrupted title", () => {
   test("#833: a Shipping ⏳ without a ship result in the transcript → Interrupted", async () => {
     const dir = project();
     try {
-      const out = await stop(dir, { transcript_path: notificationTranscript(dir, "⏳ ➜ 🚀 Shipping ┃ Login-Fix") });
+      const out = await stop(dir, { transcript_path: notificationTranscript(dir, "⏳ ➜ 🚀 Login-Fix") });
       expect(out).toMatch(/"decision":"block"/);
-      expect(JSON.parse(out).reason).toContain("title:" + JSON.stringify("👉 ➜ ⚡ Interrupted ┃ Login-Fix"));
+      expect(JSON.parse(out).reason).toContain("title:" + JSON.stringify("👉 ➜ ⚡ Login-Fix"));
     } finally {
       cleanup(dir);
     }
@@ -269,9 +269,9 @@ describe("stop.flow.guard — F5 interrupted title", () => {
   test("#833: a ⏳ title stays while a background command of the session is still open", async () => {
     const dir = project();
     try {
-      const out = await stop(dir, { transcript_path: notificationTranscript(dir, "⏳ ➜ 🚀 Shipping ┃ Login-Fix", { bash: true }) });
+      const out = await stop(dir, { transcript_path: notificationTranscript(dir, "⏳ ➜ 🚀 Login-Fix", { bash: true }) });
       expect(out).not.toContain("set_session_title");
-      expect(out).not.toContain("Interrupted");
+      expect(out).not.toContain("➜ ⚡");
     } finally {
       cleanup(dir);
     }
@@ -279,9 +279,9 @@ describe("stop.flow.guard — F5 interrupted title", () => {
   test("#964: only a dev server open in the background → the ⏳ title drops like an idle end", async () => {
     const dir = project();
     try {
-      const out = await stop(dir, { transcript_path: notificationTranscript(dir, "⏳ ➜ 🤖 Team ┃ Refactor", { bash: true, bashCmd: "ng serve --port 4200" }) });
+      const out = await stop(dir, { transcript_path: notificationTranscript(dir, "⏳ ➜ 🤖🤖🤖 Refactor", { bash: true, bashCmd: "ng serve --port 4200" }) });
       expect(out).toMatch(/"decision":"block"/);
-      expect(JSON.parse(out).reason).toContain("title:" + JSON.stringify("👉 ➜ ⚡ Interrupted ┃ Refactor"));
+      expect(JSON.parse(out).reason).toContain("title:" + JSON.stringify("👉 ➜ ⚡ Refactor"));
     } finally {
       cleanup(dir);
     }

@@ -94,8 +94,8 @@ in the same message as your next tool call — no `get_session`. No block →
 already marked. Only a block saying the title is unknown sends you to the
 `get_session` fallback in `deep-knowledge/activation.md` § Session title prefix.
 
-The prefix is exactly `👉 ➜ 📚 Batch ┃ ` (pointing hand, arrow, books emoji, word, bar, space;
-same icons as the completion card in its `👉 ➜ 📚 Batch ┃`
+The prefix is exactly `👉 ➜ 📚 ` (pointing hand, arrow, books emoji, space — no word, no bar;
+same icons as the completion card in its `👉 📚 Batch`
 CTA while the mode is armed. Both tools exist only in the Desktop app. Deferred is not unavailable: when they sit in the deferred-tools list, load
 both once with `ToolSearch` `select:mcp__ccd_session_mgmt__get_session,mcp__ccd_session_mgmt__set_session_title`, then call them
 (`{PLUGIN_ROOT}/deep-knowledge/mcp-deferred-tools.md`). In a
@@ -188,7 +188,7 @@ the collect hook syncs main, injects the full note set together with the
 procedure (the `[do-batch] Der Nutzer hat N Notiz(en)` block) and arms the
 hand-off gate — that block is the instruction, the skill is not loaded.
 
-**Before executing this step, Read `{PLUGIN_ROOT}/skills/do-batch/deep-knowledge/fire.md` completely** — 4.0 sync main before any note is read, 4.1 every note with its attachments, 4.2 the coverage list (one line per note), 4.3 feasibility, 4.4 the bundle plan, 4.5 conflicts named, 4.6 the do-run / auto-concept decision rule, 4.7 archive, 4.8 retire the mode and strip the `👉 ➜ 📚 Batch ┃ ` title prefix, 4.9 the hand-off block.
+**Before executing this step, Read `{PLUGIN_ROOT}/skills/do-batch/deep-knowledge/fire.md` completely** — 4.0 sync main before any note is read, 4.1 every note with its attachments, 4.2 the coverage list (one line per note), 4.3 feasibility, 4.4 the bundle plan, 4.5 conflicts named, 4.6 the do-run / auto-concept decision rule, 4.7 archive, 4.8 retire the mode and strip the `👉 ➜ 📚 ` title prefix, 4.9 the hand-off block.
 
 **Firing ends collection** — the mode is OFF from here on. do-batch never
 implements: the plan goes to exactly one skill, `do-run` or `auto-concept`
@@ -204,7 +204,7 @@ node -e "require('{PLUGIN_ROOT}/hooks/lib/batch-state.js').deactivate(process.cw
 
 Restore the session title the same way as in Step 4.8: the `deactivate` call
 above answers with a `[post.flow.title-mode]` block carrying the title with
-the leading `👉 ➜ 📚 Batch ┃ ` stripped — `set_session_title` `self` with it, in
+the leading `👉 ➜ 📚 ` stripped — `set_session_title` `self` with it, in
 parallel with your next tool call. No block → no prefix to strip (any other
 title stays untouched); skip silently outside the Desktop app.
 
@@ -261,8 +261,8 @@ silently if absent. Detail: `deep-knowledge/merge.md` § Local compaction.
   the merge.
 - **The mode expires on its own** (time and note cap). If collection stopped
   mid-session, say so — do not let the user believe prompts are still landing
-  in the queue — and strip the `👉 ➜ 📚 Batch ┃ ` title prefix in that turn.
-- **The title prefix is state, not decoration.** `👉 ➜ 📚 Batch ┃ ` goes on when the
+  in the queue — and strip the `👉 ➜ 📚 ` title prefix in that turn.
+- **The title prefix is state, not decoration.** `👉 ➜ 📚 ` goes on when the
   mode arms (2.2b) and comes off when it ends (4.8, 5, expiry) — never by
   re-typing a remembered title, only by stripping exactly that prefix. Missing
   session tools (terminal, unattended) mean skip, not fail.

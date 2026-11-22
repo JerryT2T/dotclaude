@@ -367,9 +367,18 @@ function trackJobs(prev, jobs, now, cfg, ctx = {}) {
   const th = cfg.heavy;
   const out = {};
   for (const j of jobs.values()) {
-    const p = (prev && prev[j.id]) || { firstSeen: now, overSince: null, lastOver: null, heavySince: null, res: [], peakMB: 0, gpu: false };
+    const known = Boolean(prev && prev[j.id]);
+    const p = known ? prev[j.id] : { firstSeen: now, overSince: null, lastOver: null, heavySince: null, res: [], peakMB: 0, gpu: false };
+    // Spawn churn: descendants new since the last process scan. A test suite that forks hundreds of
+    // short-lived git/cmd processes burns CPU (plus Defender scans and kernel time) in children that
+    // never live through two scans, so its measured cpuPct stays near 0. Between scans the process
+    // list is reused (same pid set) and the last churn value is kept.
+    const before = new Set((p.pids || []).map((x) => x.pid));
+    const samePids = before.size === j.pids.length && j.pids.every((x) => before.has(x.pid));
+    const churn = !known ? 0 : samePids ? (p.churn || 0) : j.pids.filter((x) => !before.has(x.pid)).length;
     // "Heavy" is measured on CPU, GPU and disk; RAM only says which pressure the job feeds.
     const loads = loadedResources(j, th, { diskBusy: ctx.diskBusy !== false });
+    if (Number.isFinite(th.churnPerScan) && churn >= th.churnPerScan && !loads.includes('cpu')) loads.push('cpu');
     const over = loads.some((r) => r !== 'ram');
     let overSince = p.overSince;
     let lastOver = p.lastOver;
@@ -389,7 +398,7 @@ function trackJobs(prev, jobs, now, cfg, ctx = {}) {
     out[j.id] = {
       ...p, id: j.id, rootPid: j.rootPid, startMs: j.startMs, name: j.name, cmd: j.cmd, session: j.session, pids: j.pids,
       cpuPct: j.cpuPct, gpuPct: j.gpuPct, ioBps: j.ioBps, iops: j.iops, memMB: j.memMB,
-      overSince, lastOver, heavySince, heavy: heavySince !== null, res, gpu, kind,
+      overSince, lastOver, heavySince, heavy: heavySince !== null, res, gpu, kind, churn,
       cmdKind: p.cmdKind || (fg && fg.kind) || null,
       peakMB: Math.max(p.peakMB || 0, j.memMB || 0),
     };
@@ -845,17 +854,24 @@ function admit({ command, now, state, kinds = {}, cfg }) {
   base.expectedMB = expected;
   // Admitted a moment ago and not measured yet: invisible in state.jobs and in the free-RAM reading.
   const recent = (Array.isArray(state.admitted) ? state.admitted : []).filter((a) => a && Number.isFinite(a.at) && now - a.at >= 0 && now - a.at < cfg.admission.reserveMs);
-  // Builds and tests share one machine-wide slot while a CPU/disk priority app runs (#1115).
-  if (!c.heavy && (p.priority || []).some((r) => r === 'cpu' || r === 'disk')) {
+  // Builds and tests share one machine-wide slot while a CPU/disk priority app runs (#1115), and
+  // `slotsOverBudget` while CPU/disk is over the 80 % budget: parallel sessions each starting a full
+  // suite at 100 % CPU made the desktop stutter while every single job stayed under the heavy bar.
+  const slotRes = (list) => (list || []).filter((r) => r === 'cpu' || r === 'disk');
+  const prioSlot = slotRes(p.priority);
+  const overSlot = Number.isFinite(cfg.admission.slotsOverBudget) ? slotRes(p.over) : [];
+  if (!c.heavy && (prioSlot.length || overSlot.length)) {
     // Only a job that is a known build/test command or actually burns CPU holds the slot: an
     // idle `governor wait`, shell or `tail -f` never does. An older watcher state without
     // either field holds no slot — fail open.
     const busy = (j) => Boolean(j.cmdKind) || (Number.isFinite(j.cpuPct) && j.cpuPct >= cfg.admission.slotCpuPct);
     const running = (Array.isArray(state.jobs) ? state.jobs : []).filter((j) => j && (j.kind === 'build' || j.kind === 'foreground') && busy(j)).length;
     const active = Math.max(running, recent.length);
-    if (active >= cfg.admission.slotsUnderPriority) {
-      const r = (p.priority || []).filter((x) => x === 'cpu' || x === 'disk');
-      return { decision: 'defer', reason: `priority:${state.priorityBy || 'app'}`, pressed: r, ...base };
+    if (prioSlot.length && active >= cfg.admission.slotsUnderPriority) {
+      return { decision: 'defer', reason: `priority:${state.priorityBy || 'app'}`, pressed: prioSlot, ...base };
+    }
+    if (overSlot.length && active >= cfg.admission.slotsOverBudget) {
+      return { decision: 'defer', reason: `budget:${overSlot.join(',')}`, pressed: overSlot, ...base };
     }
   }
   const free = state.sys && Number.isFinite(state.sys.freeMB) ? state.sys.freeMB : Infinity;

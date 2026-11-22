@@ -5,20 +5,25 @@ import { agoText, bedFrom, bedText, cleanupFrom, homeModel, infoTiles, isBatchTi
 
 const rows = [
   { sessionId: 'local_a', title: '👉 ➜ 📥 Batch ┃ Feedback', cwd: 'P:\\Projects\\dotclaude\\.claude\\worktrees\\x', isRunning: false, lastActivityAt: '2026-11-21T09:00:00Z' },
-  { sessionId: 'local_b', title: '👉 ➜ ❓ Question ┃ Y', cwd: 'P:\\Projects\\scc', isRunning: false, lastActivityAt: '2026-11-21T11:00:00Z' },
-  { sessionId: 'local_c', title: '⏳ ➜ 🚀 Shipping ┃ Z', cwd: 'P:\\Projects\\scc\\.claude\\worktrees\\y', isRunning: true, lastActivityAt: '2026-11-21T12:00:00Z' },
+  { sessionId: 'local_b', title: '👉 ➜ ❓ Y', cwd: 'P:\\Projects\\scc', isRunning: false, lastActivityAt: '2026-11-21T11:00:00Z' },
+  { sessionId: 'local_c', title: '⏳ ➜ 🚀 Z', cwd: 'P:\\Projects\\scc\\.claude\\worktrees\\y', isRunning: true, lastActivityAt: '2026-11-21T12:00:00Z' },
   { sessionId: 'local_d', title: '🟩 ➜ 🚀 Released ┃ W', cwd: 'P:\\Projects\\scc', isRunning: false, lastActivityAt: '2026-11-20T12:00:00Z' },
-  { sessionId: 'local_e', title: '👉 ➜ ❓ Question ┃ old', cwd: 'P:\\Projects\\scc', isArchived: true, lastActivityAt: '2026-11-01T12:00:00Z' },
+  { sessionId: 'local_e', title: '👉 ➜ ❓ old', cwd: 'P:\\Projects\\scc', isArchived: true, lastActivityAt: '2026-11-01T12:00:00Z' },
 ]
 
 test('home: worktree folders map to their repo, the title glyph decides the state', () => {
   expect(projectOf('P:\\Projects\\dotclaude\\.claude\\worktrees\\x-1')).toBe('P:/Projects/dotclaude')
-  expect(kindOf('👉 ➜ ❓ Question ┃ X')).toBe('waiting')
-  expect(kindOf('⏳ ➜ 🤖 Solo ┃ X')).toBe('running')
+  expect(kindOf('👉 ➜ ❓ X')).toBe('waiting')
+  expect(kindOf('⏳ ➜ 🤖 X')).toBe('running')
   expect(kindOf('🟩 ➜ 🚀 Released ┃ X')).toBe('done')
   expect(kindOf('Die data uploader logs')).toBe('other')
   expect(isBatchTitle('👉 ➜ 📥 Batch ┃ Feedback')).toBe(true)
-  expect(isBatchTitle('⏳ ➜ 🤖 Solo ┃ Feedback')).toBe(false)
+  // title-scheme 3.0: the head names no "Batch" any more — the batch icon does.
+  expect(isBatchTitle('👉 ➜ 📚 Feedback zu dotclaude')).toBe(true)
+  expect(isBatchTitle('Batch dotclaude')).toBe(true)
+  expect(isBatchTitle('🔗 👉 ➜ 📚 Feedback')).toBe(true)
+  expect(isBatchTitle('🟩 ➜ 📦 📚 Doku überarbeiten')).toBe(false)
+  expect(isBatchTitle('⏳ ➜ 🤖 Feedback')).toBe(false)
   expect(sessionsFrom('not json')).toEqual([])
 })
 

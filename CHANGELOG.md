@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.400.0] — 2026-11-22
+
+### Changed
+- **Session title without keyword and separator**: the sidebar title now reads `<STATUS> ➜ <ACTIVITY> <topic>` (`⏳ ➜ 🚀 Abschlussseite Funde` instead of `⏳ ➜ 🚀 Shipping ┃ Abschlussseite Funde`), so the freed room goes to the topic. The completion card heading and the mod band keep the keyword (`👉 📦 Ready — Shippen?`). The same head goes on Claude Projects thread titles.
+- **Team work shows three robots** in the title (`⏳ ➜ 🤖🤖🤖`), Solo stays one robot; the card heading still says `🤖 Team`.
+- **Topic limit 30 characters** (20 before) for the topic the model names itself; the 42-character budget now counts the topic alone.
+- States with the same status and activity share one title head (Released Alpha/Beta/Stable, Ready/Files, the three ⚠️ states, Committed/Delivered); the card tells them apart.
+- A Testing run no longer swaps to 👉 while a background agent waits on a tool approval: without the keyword `👉 ➜ 🧪` is the Test outcome.
+
+### Fixed
+- Titles with the worded head of v0.297–v0.399 are still recognised, classified the same and rewritten to the short head on the next prompt or card; a worded Solo head is re-marked instead of counted as already marked, and a worded Testing approval head goes back to ⏳.
+- Home pane: the batch session is recognised by the `📚` of its head, and `sessions-active.js` strips the status head of every title generation from a session's name.
+
+## [0.399.1] — 2026-11-22
+
+### Fixed
+- Load governor: a job that forks many short-lived processes (e.g. a test suite spawning git) now counts as CPU load and can be capped; before, its CPU stayed invisible and nothing was throttled at 100 % CPU.
+- Load governor: builds and tests share `admission.slotsOverBudget` (default 1) machine-wide slots while CPU or disk is over the 80 % budget, not only under a priority app.
+
+### Docs
+- `load-governor.md`: how to diagnose a laggy PC (count new processes, not per-process CPU).
+
 ## [0.399.0] — 2026-11-22
 
 ### Added

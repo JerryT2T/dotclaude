@@ -138,7 +138,7 @@ where they are (`deep-knowledge/merge.md` § Archive).
 **4.8 Retire the mode — never ask whether to stay in it.** Collection is already
 off (the hook deactivated it when the merge fired; on the `/do-batch go` path
 do it yourself — `deactivate(cwd)` is idempotent). Stop the watchdog
-(`batch-watchdog.js stop .`) and strip a leading `👉 ➜ 📚 Batch ┃ ` from the session
+(`batch-watchdog.js stop .`) and strip a leading `👉 ➜ 📚 ` from the session
 title, leaving any other title alone — commands and steps:
 `deep-knowledge/merge.md` § Retire.
 
