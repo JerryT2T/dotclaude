@@ -39,7 +39,9 @@ now AND the Artifact tool is available); this file is the procedure.
 |---|---|---|---|
 | `POST /decisions` | `db.doc("concept/decisions").set(payload)` → 200 `{durable:true}`; a refused write → 507 | 507 `{durable:false}` → the engine keeps `-pending` and says so | untouched (real fetch) |
 | `GET /decisions` | the stored document, `{}` before the first submit | rejects like an unreachable bridge → the engine reads its local queue | untouched |
-| anything else (`/heartbeat`, `/status`, `/draft`) | real fetch — no bridge on the artifact host, the heartbeat shows "not connected" | same | untouched |
+| `POST /draft` (autosave, also the teardown `sendBeacon`) | `db.doc("concept/draft")` keeps `state` + `recovered` (union of the last non-empty `text:` value per key, minus `cleared`) → 200 `{durable:true}` | 507 → after three tries the "nur in diesem Browser" strip | untouched |
+| `GET /draft` (load-time hydrate) | `{found, page_version, recovered}` from that document | rejects → the local copy stands | untouched |
+| anything else (`/heartbeat`, `/status`) | real fetch — no bridge on the artifact host, the heartbeat shows "not connected" | same | untouched |
 
 The wrapper never acks what is not stored, and installs only where
 `window.claude.use` exists.
