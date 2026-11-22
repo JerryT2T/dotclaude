@@ -60,6 +60,13 @@ describe("thread sessions (E4)", () => {
     expect(r.threadCard).toEqual({ owed: true, posted: true });
   });
 
+  test("a card posted under message, content or body counts as posted (the field lookup of run-contract-thread)", () => {
+    for (const key of ["message", "content", "body"]) {
+      const r = digestOf([user(WAKE), toolUse("Edit", { file_path: "a.js" }), toolUse(POST, { [key]: "✨✨✨ card" })]);
+      expect(r.threadCard, key).toEqual({ owed: true, posted: true });
+    }
+  });
+
   test("a thread session with work and no card post is flagged; a plain post is no card", () => {
     const r = digestOf([user(WAKE), toolUse("Bash", { command: "npm test" }), toolUse(POST, { text: "done" })]);
     expect(r.threadCard).toEqual({ owed: true, posted: false });

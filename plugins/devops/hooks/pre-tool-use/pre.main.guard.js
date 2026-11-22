@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook pre.main.guard
- * @version 0.5.0
+ * @version 0.6.0
  * @event PreToolUse
  * @plugin devops
  * @matcher Bash|PowerShell
@@ -53,10 +53,10 @@
 // A lib that fails to load (half-written during a plugin update, version skew)
 // makes this hook a silent no-op instead of a hook error on every Bash call
 // (AUD-028).
-let gitOut, sentinelActive, isLinkedWorktree, gitCommonDir, samePath, isFastForwardOfMain, branchFix, threadWorktreeFor, ownWorktreeDecided, BYPASS, gitCommandRe, matchesGitCommand, gitSegments, WORD_END, remoteDeleteTargets;
+let gitOut, sentinelActive, isLinkedWorktree, gitCommonDir, samePath, isFastForwardOfMain, branchFix, threadWorktreeFor, ownWorktreeDecided, BYPASS, gitCommandRe, matchesGitCommand, gitSegments, unattributedGitWrite, WORD_END, remoteDeleteTargets;
 try {
   require('../lib/plugin-guard');
-  ({ gitCommandRe, matchesGitCommand, gitSegments, isFastForwardOfMain, WORD_END, remoteDeleteTargets } = require('../lib/ship-guard-match'));
+  ({ gitCommandRe, matchesGitCommand, gitSegments, unattributedGitWrite, isFastForwardOfMain, WORD_END, remoteDeleteTargets } = require('../lib/ship-guard-match'));
   ({ gitOut } = require('../lib/git-timeout'));
   ({ isActive: sentinelActive } = require('../lib/ship-sentinel'));
   ({ isLinkedWorktree, gitCommonDir, samePath } = require('../lib/project-root'));
@@ -129,21 +129,32 @@ process.stdin.on('end', () => {
   // folder: a session started in a non-repo folder such as P:\Projects used to
   // pass every write. An unreadable directory falls back to the cwd, as before.
   const targets = new Map();
-  let sawFastForward = false;
-  for (const seg of gitSegments(cmd, cwd)) {
+  const remoteCache = new Map();
+  /** Is `name` a configured remote of the repo at `dir`? No answer (timeout, no repo) reads as no. */
+  const remoteOf = (dir) => (name) => {
+    if (!remoteCache.has(dir)) {
+      const out = gitOut(dir, ['remote']);
+      remoteCache.set(dir, out === null ? [] : out.split(/\r?\n/).map(l => l.trim()).filter(Boolean));
+    }
+    return remoteCache.get(dir).includes(name);
+  };
+  const segments = gitSegments(cmd, cwd);
+  for (const seg of segments) {
     const other = matchesGitCommand(seg.text, WRITE_PATTERNS);
     const push = matchesGitCommand(seg.text, [PUSH_PATTERN]);
     if (!other && !push) continue;
     // Post-ship cleanup: a pure fast-forward of main/master to its remote is no own work on main.
-    if (isFastForwardOfMain(seg.text)) { sawFastForward = true; continue; }
+    if (isFastForwardOfMain(seg.text, remoteOf(seg.dir || cwd))) continue;
     const dir = seg.dir || cwd;
     const prev = targets.get(dir) || { otherWrite: false };
     targets.set(dir, { otherWrite: prev.otherWrite || other });
   }
-  // A write the segment parser did not attribute (exotic syntax): today's check on the cwd.
-  if (!targets.size && !sawFastForward) {
-    const other = matchesGitCommand(cmd, WRITE_PATTERNS);
-    if (other || matchesGitCommand(cmd, [PUSH_PATTERN])) targets.set(cwd, { otherWrite: other });
+  // A write no attributed segment accounts for (exotic syntax): the session's folder is checked too,
+  // also when other segments were attributed or a fast-forward was seen.
+  const strayOther = unattributedGitWrite(cmd, segments, WRITE_PATTERNS);
+  if (strayOther || unattributedGitWrite(cmd, segments, [PUSH_PATTERN])) {
+    const prev = targets.get(cwd) || { otherWrite: false };
+    targets.set(cwd, { otherWrite: prev.otherWrite || strayOther });
   }
 
   for (const [dir, { otherWrite }] of targets) checkDir(hook, tool, cmd, dir, otherWrite);

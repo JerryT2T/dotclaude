@@ -59,13 +59,22 @@ function parseArgs(argv) {
   return o;
 }
 
-function buildLaunch({ port, cwd, html, state, owner }) {
+function buildLaunch({ port, cwd, html, state, owner, inApp = false }) {
   const watch = (mode) => `node ${q(path.join(DIR, 'concept-watch.js'))} --mode ${mode} --port ${port} --state ${q(state)} --owner ${owner}`;
   return {
-    server: `python ${q(path.join(DIR, 'concept-server.py'))} ${port} ${q(cwd)} --html ${q(html)}`,
+    // The in-app pane chosen: its tab is the person's, so the bridge must not read its user agent as a probe.
+    server: `python ${q(path.join(DIR, 'concept-server.py'))} ${port} ${q(cwd)} --html ${q(html)}${inApp ? ' --in-app-browser' : ''}`,
     pulser: watch('pulse'),
     waker: watch('watch'),
   };
+}
+
+/** True when the person's browser choice is the Desktop app's pane (deps.browser overrides, for tests). */
+function inAppChosen(deps = {}) {
+  try {
+    const b = deps.browser || choice.resolveBrowser();
+    return Boolean(b) && b.id === choice.IN_APP;
+  } catch { return false; }
 }
 
 function prepare(opts, deps = {}) {
@@ -108,7 +117,7 @@ function prepare(opts, deps = {}) {
 
   return {
     port, owner, state, url: `http://localhost:${port}/${html}`,
-    launch: buildLaunch({ port, cwd, html, state, owner }),
+    launch: buildLaunch({ port, cwd, html, state, owner, inApp: inAppChosen(deps) }),
     baseline,
   };
 }

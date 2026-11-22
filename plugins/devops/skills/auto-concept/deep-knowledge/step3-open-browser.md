@@ -98,7 +98,9 @@ from an older page) or a stray brace ends `:root` early. `post.concept.gate`
 and `validation-gate.md` § Phase 0b catch the tag structure; this step catches
 what only a CSS parser sees. Load `$URL` in a headless browser context (the
 Claude browser pane / Playwright — NOT the tab the user will get; this is a
-read of the rendered CSS, no bridge interaction) and evaluate:
+read of the rendered CSS, no bridge interaction) at `$URL?probe=1` — the marker
+tells the bridge the look is no user tab, whichever browser the person chose —
+and evaluate:
 
 > **Verification tabs use their own browser profile — always.** Two tabs of
 > the same profile share `localStorage`, and the page keeps its navigation
@@ -111,9 +113,11 @@ read of the rendered CSS, no bridge interaction) and evaluate:
 > ends.
 
 > **The verification tab is not the user's tab.** The bridge ignores polls and
-> the unload beacon of a verification browser (user agent `Claude/`,
-> `Electron/`, `HeadlessChrome`, `Playwright`; `_is_probe_agent` in
-> `concept-server.py`), so it never counts in `browser_tabs` and `verify` still
+> the unload beacon of a verification browser: a request marked `?probe=1` (or
+> header `X-Concept-Probe: 1`) always, and a user agent `Claude/`, `Electron/`,
+> `HeadlessChrome`, `Playwright` unless the person chose the Desktop app's
+> in-app pane (then the bridge runs with `--in-app-browser` and the pane's tab
+> is THEIR tab; `_is_probe_agent` in `concept-server.py`), so it never counts in `browser_tabs` and `verify` still
 > opens Edge after it. Before that rule the pane's tab registered, `verify`
 > answered `already_open: true` on its first call and the user had no page
 > (2026-11-22). **Is the page open for the user?** Read `GET /pending` →

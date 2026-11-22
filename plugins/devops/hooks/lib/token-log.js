@@ -140,8 +140,7 @@ function append(file, rec) {
 
 /** The Claude Project id a wake envelope names (`<project id="chan_…">`), or null. */
 function chanOf(prompt) {
-  const m = typeof prompt === 'string' ? /^\s*<wake\b[^>]*>\s*<project\b[^>]*\bid="(chan_[^"]+)"/.exec(prompt) : null;
-  return m ? m[1] : null;
+  return require('./project-thread').projectId(prompt) || null;
 }
 
 const CHAN_FLAG = 'dotclaude-token-log-chan';
@@ -158,7 +157,8 @@ function threadFields(p) {
     if (!pt.isThread(p)) return {};
     const out = { thread: true };
     const { sessionFile, readSessionFile, writeSessionFile } = require('./session-id');
-    let chan = chanOf(p.prompt);
+    // the dispatcher unwraps `prompt` to the person's text; the envelope with the project id is `prompt_raw`
+    let chan = chanOf(typeof p.prompt_raw === 'string' ? p.prompt_raw : p.prompt);
     if (chan) {
       try { writeSessionFile(sessionFile(CHAN_FLAG, p.session_id), chan); } catch { /* advisory */ }
     } else if (p.session_id) {

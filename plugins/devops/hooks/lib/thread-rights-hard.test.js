@@ -265,3 +265,30 @@ describe("C6 — budget class in a thread is never a question", () => {
     expect(thread).not.toContain("ask once");
   });
 });
+
+describe("review: tag pushes without a name, and a case-insensitive PowerShell filter", () => {
+  const promote = ["git push origin --tags", "git push --follow-tags", "git push --mirror", "git push origin 'refs/tags/beta/*'", "git push origin refs/tags/*:refs/tags/*"];
+  test.each(promote)("a colleague turn cannot promote with: %s", (command) => {
+    expect(rights.destructiveReason(command, root), command).toMatch(/promote/);
+  });
+  test("a plain branch push stays allowed", () => {
+    expect(rights.destructiveReason("git push origin feat/x", root)).toBeNull();
+  });
+  test("the hook blocks `git push --tags` end to end for a colleague, not for the person", () => {
+    expect(run(RIGHTS, [user(LONG_RELAY)], bash("git push origin --tags")).status).toBe(2);
+    expect(run(RIGHTS, [user("go")], bash("git push origin --tags")).status).toBe(0);
+  });
+  test("the manifest filter lets every case of a delete command reach the hook", () => {
+    const manifest = JSON.parse(fs.readFileSync(here("../dispatch/manifest.json"), "utf8"));
+    const entry = manifest.hooks.PreToolUse.flatMap((g) => g.hooks).find((h) => /pre\.thread\.rights/.test(h.command) && h.commandFilter);
+    const re = new RegExp(entry.commandFilter);
+    for (const c of ["remove-item -recurse C:\repo", "REMOVE-ITEM -Recurse x", "RD /s x", "Del /s x", "Git push --force", "RM -rf x"]) expect(re.test(c), c).toBe(true);
+    expect(re.test("npm test")).toBe(false);
+  });
+  test("both manifest entries of the guard fail closed", () => {
+    const manifest = JSON.parse(fs.readFileSync(here("../dispatch/manifest.json"), "utf8"));
+    const entries = manifest.hooks.PreToolUse.flatMap((g) => g.hooks).filter((h) => /pre\.thread\.rights/.test(h.command));
+    expect(entries).toHaveLength(2);
+    for (const e of entries) expect(e.onFailure).toBe("block");
+  });
+});

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook pre.thread.rights
- * @version 0.2.0
+ * @version 0.3.0
  * @event PreToolUse
  * @plugin devops
  * @matcher Bash|PowerShell|mcp__.*__ship_promote

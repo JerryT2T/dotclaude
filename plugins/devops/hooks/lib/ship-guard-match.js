@@ -135,6 +135,9 @@ function maskQuotedToken(s) {
 // `--git-dir[=]<p>`, `--work-tree[=]<p>`, `--no-pager` and friends. Leading
 // `VAR=value` assignments are a command prefix as well.
 const ENV_PREFIX = String.raw`(?:[A-Za-z_]\w*=\S*\s+)*`;
+// A git call also stands after a backtick substitution and behind a shell keyword
+// (`then git commit`, `do …`, `else …`, `! …`, `time …`).
+const GIT_BOUNDARY = String.raw`(?:^|[\n;&|(){}\x60])\s*(?:(?:then|do|else|elif|if|while|until|time|!)\s+)*`;
 const GIT_GLOBAL_OPTS = String.raw`(?:\s+(?:-C\s+\S+|-c\s+\S+|--(?:git-dir|work-tree|namespace)(?:=\S+|\s+\S+)|--no-pager|--paginate|-p|--bare|--no-replace-objects|--literal-pathspecs))*`;
 /** The end of a subcommand word: whitespace, a separator, or the end. */
 const WORD_END = String.raw`(?=[\s;&|(){}]|$)`;
@@ -147,7 +150,7 @@ const WORD_END = String.raw`(?=[\s;&|(){}]|$)`;
  * @returns {RegExp}
  */
 function gitCommandRe(rest) {
-  return new RegExp(BOUNDARY + ENV_PREFIX + String.raw`git(?:\.exe)?` + GIT_GLOBAL_OPTS + String.raw`\s+` + rest, 'm');
+  return new RegExp(GIT_BOUNDARY + ENV_PREFIX + String.raw`git(?:\.exe)?` + GIT_GLOBAL_OPTS + String.raw`\s+` + rest, 'm');
 }
 
 /**
@@ -199,11 +202,13 @@ function isManualShipCommand(cmd) {
 const { SHELLS, MAX_DEPTH, headName, innerCommand, shellHeredocBody } = require('./shell-inner');
 
 const WRAPPERS = new Set(['env', 'command', 'exec', 'sudo', 'time', 'nohup']);
+// Shell keywords that stand in front of a command (`then git commit`).
+const KEYWORDS = new Set(['then', 'do', 'else', 'elif', 'if', 'while', 'until', '!']);
 
 /** Index of the command word in `toks`: past env assignments and wrapper commands. */
 function skipPrefix(toks) {
   let i = 0;
-  while (i < toks.length && (/^[A-Za-z_]\w*=/.test(toks[i]) || WRAPPERS.has(toks[i].toLowerCase()))) i++;
+  while (i < toks.length && (/^[A-Za-z_]\w*=/.test(toks[i]) || WRAPPERS.has(toks[i].toLowerCase()) || KEYWORDS.has(toks[i].toLowerCase()))) i++;
   return i;
 }
 const DIR_CHANGERS = new Set(['cd', 'chdir', 'pushd', 'set-location', 'sl', 'push-location', 'popd', 'pop-location']);
@@ -226,7 +231,7 @@ function gitDirTarget(base, value) {
  * @param {string} text one command segment as typed
  * @returns {boolean}
  */
-function isFastForwardOfMain(text) {
+function isFastForwardOfMain(text, isRemote) {
   const toks = shellTokens(text || '');
   let i = 0;
   while (i < toks.length && (/^[A-Za-z_]\w*=/.test(toks[i]) || WRAPPERS.has(toks[i].toLowerCase()))) i++;
@@ -245,8 +250,12 @@ function isFastForwardOfMain(text) {
   const NAME = /^[A-Za-z0-9._-]+$/;
   const BRANCH = /^(?:main|master)$/i;
   if (sub === 'merge') {
+    const full = args.length === 1 ? /^refs\/remotes\/([A-Za-z0-9._-]+)\/(.+)$/.exec(args[0]) : null;
+    if (full) return BRANCH.test(full[2]);
     const m = args.length === 1 ? /^([A-Za-z0-9._-]+)\/(.+)$/.exec(args[0]) : null;
-    return Boolean(m) && NAME.test(m[1]) && BRANCH.test(m[2]);
+    // `<x>/main` is a fast-forward of the remote's main only when <x> IS a remote: a local branch
+    // `feature/main` carrying own commits is not. No answer from the caller means not one.
+    return Boolean(m) && NAME.test(m[1]) && BRANCH.test(m[2]) && typeof isRemote === 'function' && isRemote(m[1]) === true;
   }
   if (args.length > 2 || args.some(a => !NAME.test(a))) return false;
   return args.length < 2 || BRANCH.test(args[1]);
@@ -303,7 +312,7 @@ function gitSegments(cmd, cwd, depth = 0) {
   if (!cmd || typeof cmd !== 'string') return [];
   const joined = joinContinuations(cmd);
   const masked = maskQuotedToken(joined);
-  const sep = /[\n;&|(){}]/g;
+  const sep = /[\n;&|(){}\x60]/g;
   const spans = [];
   let start = 0;
   let opener = '';
@@ -331,7 +340,7 @@ function gitSegments(cmd, cwd, depth = 0) {
       const shell = headName(toks[i]);
       const inner = SHELLS.has(shell) ? innerCommand(toks.slice(i), shell) : null;
       const body = inner || shellHeredocBody(text, shellTokens, skipPrefix);
-      if (body) { out.push(...gitSegments(body, shellDir, depth + 1)); continue; }
+      if (body) { out.push(...gitSegments(body, shellDir, depth + 1).map((x) => ({ text: x.text, dir: x.dir }))); continue; } // offsets of the inner body mean nothing here
     }
     const head = (toks[i] || '').replace(/^.*[\\/]/, '').toLowerCase();
     if (DIR_POPPERS.has(head)) { shellDir = dirStack.length ? dirStack.pop() : null; continue; }
@@ -361,9 +370,27 @@ function gitSegments(cmd, cwd, depth = 0) {
     gitDir = gitDir !== null ? gitDir : env.GIT_DIR;
     if (workTree !== undefined && workTree !== null) dir = resolveDir(dir, workTree);
     else if (gitDir !== undefined && gitDir !== null) dir = gitDirTarget(dir, gitDir);
-    out.push({ text, dir });
+    out.push({ text, dir, start: a });
   }
   return out;
+}
+
+/**
+ * Does `cmd` still hold a git call matching one of `res` once the text of the
+ * attributed `segments` is blanked out? Then a write exists that gitSegments did
+ * not account for (exotic syntax): the caller checks the session's folder too.
+ * @param {string} cmd
+ * @param {{text: string, start?: number}[]} segments from gitSegments(cmd, …)
+ * @param {RegExp[]} res built by gitCommandRe
+ * @returns {boolean}
+ */
+function unattributedGitWrite(cmd, segments, res) {
+  let s = joinContinuations(cmd || '');
+  for (const seg of segments) {
+    if (typeof seg.start !== 'number') continue;
+    s = s.slice(0, seg.start) + ' '.repeat(seg.text.length) + s.slice(seg.start + seg.text.length);
+  }
+  return matchesGitCommand(s, res);
 }
 
 // Options `git push` may carry in a pure remote-branch delete. Anything else
@@ -447,5 +474,5 @@ function remoteDeleteTargets(cmd) {
 module.exports = {
   isManualShipCommand, stripQuoted, maskQuoted, maskQuotedToken,
   ghVerbRe, ghApiRe, joinContinuations, segmentBounds, isApiWrite,
-  gitSegments, isFastForwardOfMain, BOUNDARY, WORD_END, gitCommandRe, matchesGitCommand, remoteDeleteRefs, remoteDeleteTargets,
+  gitSegments, unattributedGitWrite, isFastForwardOfMain, BOUNDARY, WORD_END, gitCommandRe, matchesGitCommand, remoteDeleteRefs, remoteDeleteTargets,
 };
