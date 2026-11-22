@@ -21,6 +21,8 @@ test('home: worktree folders map to their repo, the title glyph decides the stat
   // title-scheme 3.0: the head names no "Batch" any more — the batch icon does.
   expect(isBatchTitle('👉 ➜ 📚 Feedback zu dotclaude')).toBe(true)
   expect(isBatchTitle('Batch dotclaude')).toBe(true)
+  expect(isBatchTitle('🔗 👉 ➜ 📚 Feedback')).toBe(true)
+  expect(isBatchTitle('🟩 ➜ 📦 📚 Doku überarbeiten')).toBe(false)
   expect(isBatchTitle('⏳ ➜ 🤖 Feedback')).toBe(false)
   expect(sessionsFrom('not json')).toEqual([])
 })

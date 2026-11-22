@@ -83,7 +83,9 @@ must approve something (tool permission, plan, question) the status slot is
 the activity stays: `⏳ ➜ 🤖🤖🤖 X` → `👉 ➜ 🤖🤖🤖 X`, and back to ⏳
 once the dialog is answered (Solo alike: `⏳ ➜ 🤖 X` → `👉 ➜ 🤖 X`; a bare ⏳
 counts as Solo). A running ship, a working concept, a batch, a Testing run
-(since 3.0: `👉 ➜ 🧪` is the Test outcome) and every outcome keep their head. Only the main thread can rename the session, so
+(since 3.0: `👉 ➜ 🧪` is the Test outcome) and every outcome keep their head. A worded
+`👉 ➜ 🧪 Testing ┃ ` an older version left is still read as an approval and goes
+back to `⏳ ➜ 🧪 `. Only the main thread can rename the session, so
 `perm.approval.flag` (PermissionRequest, `asyncRewake`) wakes it with the
 exact title, `perm.approval.watch` wakes it again for the ⏳ once
 `post.approval.clear` / `substop.approval.clear` saw the agent move on. A

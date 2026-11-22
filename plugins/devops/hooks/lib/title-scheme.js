@@ -317,6 +317,12 @@ const LEGACY = Object.freeze({
  * 👉 form would read as the Test outcome.
  */
 const APPROVAL_HEADS = Object.freeze([['Solo', '🤖'], ['Team', '🤖']]);
+/**
+ * Approval heads only the worded grammar had: `👉 ➜ 🧪 Testing ┃ `. Still read
+ * as 'approval' and restored to `⏳ ➜ 🧪 `, so a title an older version left
+ * while an agent waited does not stay on 👉; never produced any more.
+ */
+const LEGACY_APPROVAL_HEADS = Object.freeze([['Testing', '🧪']]);
 
 /** Category of a canonical (fill-less) prefix → classify() result. */
 const CATEGORY = new Map();
@@ -387,6 +393,7 @@ const KNOWN = [];
     CATEGORY.set(compose(STATUS.user, word, act) + ' ', 'approval');
     CATEGORY.set(composeWorded(STATUS.user, word, act) + ' ', 'approval');
   }
+  for (const [word, act] of LEGACY_APPROVAL_HEADS) CATEGORY.set(composeWorded(STATUS.user, word, act) + ' ', 'approval');
 }());
 
 /** Every known prefix but the bare ⏳, longest first. */
@@ -543,8 +550,11 @@ function classify(title) {
 
 /** The APPROVAL_HEADS pair behind `prefix` (current or worded head) under `status`, or undefined. */
 function approvalHead(prefix, status) {
-  return APPROVAL_HEADS.find(([word, act]) => prefix === compose(status, word, act) + ' '
+  const hit = APPROVAL_HEADS.find(([word, act]) => prefix === compose(status, word, act) + ' '
     || prefix === composeWorded(status, word, act) + ' ');
+  // The worded Testing head only on its way back to ⏳ — a ⏳ Testing head never swaps to 👉 (3.0).
+  if (hit || status !== STATUS.user) return hit;
+  return LEGACY_APPROVAL_HEADS.find(([word, act]) => prefix === composeWorded(status, word, act) + ' ');
 }
 
 /**

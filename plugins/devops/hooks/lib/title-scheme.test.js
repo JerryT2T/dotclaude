@@ -207,7 +207,11 @@ describe("title-scheme 3.0 — the title head carries no keyword and no bar", ()
     expect(S.stripPrefixes("⏳ ➜ 🤖 Solo ┃ My task")).toBe("My task");
     expect(S.classify("⏳ ➜ 🤖 Solo ┃ My task")).toBe("work");
     expect(S.classify("👉 ➜ 🤖 Solo ┃ My task")).toBe("approval");
-    expect(S.classify("👉 ➜ 🧪 Testing ┃ My task")).toBe("outcome");
+    // The worded Testing approval head of 2.5–2.8 is still an approval and goes back to ⏳ (review finding 2026-11-22).
+    expect(S.classify("👉 ➜ 🧪 Testing ┃ My task")).toBe("approval");
+    expect(S.approvalRestoredTitle("👉 ➜ 🧪 Testing ┃ My task")).toBe("⏳ ➜ 🧪 My task");
+    expect(S.approvalRestoredTitle("🔗 👉 ➜ 🧪 Testing ┃ My task")).toBe("🔗 ⏳ ➜ 🧪 My task");
+    expect(S.approvalTitle("⏳ ➜ 🧪 Testing ┃ My task")).toBeNull();
   });
 
   test("a worded head stacked with a current one, and its status-less rest, are stripped", () => {

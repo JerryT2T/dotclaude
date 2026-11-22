@@ -71,7 +71,9 @@ export function kindOf(title: string): HomeKind {
  * the batch icon of its head (`👉 ➜ 📚 `, older 📥), or the word — the start title and the worded heads before 3.0.
  */
 export function isBatchTitle(title: string): boolean {
-  return /\bBatch\b|📚|📥/u.test(String(title || ''))
+  const t = String(title || '')
+  // The icon counts only as the head's activity — a 📚 in the topic of another session is no batch.
+  return /\bBatch\b/u.test(t) || /^(?:🔗\s*)?\S+\s*➜\s*(?:📚|📥)/u.test(t)
 }
 
 export function sessionsFrom(text: string): HomeSession[] {
