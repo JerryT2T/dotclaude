@@ -1445,7 +1445,7 @@ function renderChannelLadderMd(ladder, lang) {
 // The localized SENTENCE of each heading. The head in front of it — status
 // icon, activity icon, English keyword — comes from the title scheme
 // (hooks/lib/title-scheme.js) via `cardHead`, the same state id the session
-// title gets: title `👉 ➜ 📦 Ready ┃ X` ↔ heading `👉 📦 Ready — Shippen?`.
+// title gets: title `👉 ➜ 📦 X` ↔ heading `👉 📦 Ready — Shippen?`.
 const HEADINGS = {
   de: {
     // #714: ship is offered only when nothing is open — an `open` point or a
@@ -1597,9 +1597,9 @@ const CONCEPT_HEADING = {
   de: { waiting: 'wartet auf deine Entscheidungen', tail: ' — ich melde mich' },
   en: { waiting: 'waiting for your decisions', tail: ' — I will report back' },
 };
-// The heading head mirrors the session title: `👉 ➜ 🧭 Concept ┃` only while
+// The heading head mirrors the session title: `👉 ➜ 🧭` only while
 // the page waits for the user; iterating / implementing means Claude works,
-// so the card shows `⏳ ➜ 🧭 Concept ┃` like the title (concept 2026-10-19).
+// so the card shows `⏳ ➜ 🧭` like the title (concept 2026-10-19).
 function conceptHeadState(concept) {
   const { phase } = normalizeConcept(concept) || { phase: 'waiting' };
   return phase === 'waiting' ? 'concept-waiting' : 'concept-working';

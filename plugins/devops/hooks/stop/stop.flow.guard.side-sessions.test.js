@@ -56,8 +56,8 @@ describe("stop.flow.guard — side-session note turns", () => {
   test("note asks the user (session stays open): the Linked title stays, no card demanded", async () => {
     const dir = project();
     try {
-      const out = await stop(dir, { transcript_path: transcript(dir, "⏳ ➜ 🔗 Linked ┃ Refactor", "Soll ich fortfahren?") });
-      expect(out).not.toContain("Interrupted");
+      const out = await stop(dir, { transcript_path: transcript(dir, "⏳ ➜ 🔗 Refactor", "Soll ich fortfahren?") });
+      expect(out).not.toContain("➜ ⚡");
       expect(out).not.toContain("Completion card required");
     } finally { cleanup(dir); }
   });
@@ -65,7 +65,7 @@ describe("stop.flow.guard — side-session note turns", () => {
   test("the Team title with an open linked session is not rewritten on a card-less end", async () => {
     const dir = project();
     try {
-      const out = await stop(dir, { transcript_path: transcript(dir, "⏳ ➜ 🤖 Team ┃ Refactor", "Soll ich fortfahren?", { marker: "[devops:deliver]" }) });
+      const out = await stop(dir, { transcript_path: transcript(dir, "⏳ ➜ 🤖🤖🤖 Refactor", "Soll ich fortfahren?", { marker: "[devops:deliver]" }) });
       expect(out).toBe("");
     } finally { cleanup(dir); }
   });
@@ -79,7 +79,7 @@ describe("stop.flow.guard — side-session note turns", () => {
         { type: "assistant", message: { role: "assistant", content: [{ type: "text", text: "Ja." }] } },
         { type: "custom-title", customTitle: "⏳ Refactor", sessionId: SESSION },
       ].map((l) => JSON.stringify(l)).join("\n") + "\n");
-      expect(await stop(dir, { transcript_path: p })).toContain("Interrupted");
+      expect(await stop(dir, { transcript_path: p })).toContain("👉 ➜ ⚡ ");
     } finally { cleanup(dir); }
   });
 
@@ -87,7 +87,7 @@ describe("stop.flow.guard — side-session note turns", () => {
   test("note turn that made a read-only tool call: no card demanded", async () => {
     const dir = project();
     try {
-      const out = await stop(dir, { transcript_path: transcript(dir, "⏳ ➜ 🔗 Linked ┃ Refactor", "", { toolCall: { name: "ToolSearch", input: { query: "select:x" } } }) });
+      const out = await stop(dir, { transcript_path: transcript(dir, "⏳ ➜ 🔗 Refactor", "", { toolCall: { name: "ToolSearch", input: { query: "select:x" } } }) });
       expect(out).not.toContain("Completion card required");
     } finally { cleanup(dir); }
   });
@@ -95,7 +95,7 @@ describe("stop.flow.guard — side-session note turns", () => {
   test("note turn that edited a file is not exempt (the guard blocks)", async () => {
     const dir = project();
     try {
-      const out = await stop(dir, { transcript_path: transcript(dir, "⏳ ➜ 🔗 Linked ┃ Refactor", "fertig", { toolCall: { name: "Edit", input: { file_path: path.join(dir, "a.js"), old_string: "a", new_string: "b" } } }) });
+      const out = await stop(dir, { transcript_path: transcript(dir, "⏳ ➜ 🔗 Refactor", "fertig", { toolCall: { name: "Edit", input: { file_path: path.join(dir, "a.js"), old_string: "a", new_string: "b" } } }) });
       expect(JSON.parse(out).decision).toBe("block");
     } finally { cleanup(dir); }
   });

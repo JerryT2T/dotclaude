@@ -213,24 +213,24 @@ describe("linkedPlan - parent precedence own > 👉 Linked > own ⏳ > ⏳ Linke
     expect(p.lines.join(" ")).toContain("archiviert");
   });
   test("the quoted sidebar title of a waiting sub leads with 🔗", () => {
-    expect(plan([L("Doku", "waiting")], "fallback").lines[0]).toContain("„🔗 👉 ➜ ❓ Question ┃ Doku“");
+    expect(plan([L("Doku", "waiting")], "fallback").lines[0]).toContain("„🔗 👉 ➜ ❓ Doku“");
   });
 });
 
 describe("the card keeps a sub's 🔗 on every title it sets (rows 6, 10, 11, 14)", () => {
   const rel = TITLE_SCHEME.prefixOf("released-alpha");
   test("a status swap on a marked title keeps one 🔗", () => {
-    expect(demandedTitle(rel, "🔗 ⏳ ➜ 🤖 Solo ┃ X")).toBe("🔗 🟩 ➜ 🚀 Released Alpha ┃ X");
-    expect(demandedTitle(TITLE_SCHEME.prefixOf("aborted"), "🔗 ⏳ ➜ 🤖 Solo ┃ X")).toBe("🔗 🟥 ➜ 📦 Aborted ┃ X");
-    expect(demandedTitle(TITLE_SCHEME.prefixOf("paused-usage-reset"), "🔗 ⏳ ➜ 🤖 Solo ┃ X")).toBe("🔗 🟦 ➜ 🔋 Limit ┃ X");
-    expect(demandedTitle(TITLE_SCHEME.prefixOf("linked"), "🔗 ⏳ ➜ 🤖 Solo ┃ X")).toBe("🔗 ⏳ ➜ 🔗 Linked ┃ X");
+    expect(demandedTitle(rel, "🔗 ⏳ ➜ 🤖 X")).toBe("🔗 🟩 ➜ 🚀 X");
+    expect(demandedTitle(TITLE_SCHEME.prefixOf("aborted"), "🔗 ⏳ ➜ 🤖 X")).toBe("🔗 🟥 ➜ 📦 X");
+    expect(demandedTitle(TITLE_SCHEME.prefixOf("paused-usage-reset"), "🔗 ⏳ ➜ 🤖 X")).toBe("🔗 🟦 ➜ 🔋 X");
+    expect(demandedTitle(TITLE_SCHEME.prefixOf("linked"), "🔗 ⏳ ➜ 🤖 X")).toBe("🔗 ⏳ ➜ 🔗 X");
   });
   test("a sub whose title lacks the 🔗 gets it (sub flag), an unlinked session never does", () => {
-    expect(demandedTitle(rel, "⏳ ➜ 🤖 Solo ┃ X", true)).toBe("🔗 🟩 ➜ 🚀 Released Alpha ┃ X");
-    expect(demandedTitle(rel, "⏳ ➜ 🤖 Solo ┃ X", false)).toBe("🟩 ➜ 🚀 Released Alpha ┃ X");
-    expect(titleInstruction(rel, "⏳ ➜ 🤖 Solo ┃ X", true)).toContain("🔗 🟩 ➜ 🚀 Released Alpha ┃ X");
+    expect(demandedTitle(rel, "⏳ ➜ 🤖 X", true)).toBe("🔗 🟩 ➜ 🚀 X");
+    expect(demandedTitle(rel, "⏳ ➜ 🤖 X", false)).toBe("🟩 ➜ 🚀 X");
+    expect(titleInstruction(rel, "⏳ ➜ 🤖 X", true)).toContain("🔗 🟩 ➜ 🚀 X");
   });
   test("the instruction is empty when the marked title is already right", () => {
-    expect(titleInstruction(rel, "🔗 🟩 ➜ 🚀 Released Alpha ┃ X", true)).toBe("");
+    expect(titleInstruction(rel, "🔗 🟩 ➜ 🚀 X", true)).toBe("");
   });
 });

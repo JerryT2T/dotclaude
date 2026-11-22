@@ -109,11 +109,19 @@ describe("check", () => {
   afterEach(() => fs.rmSync(home, { recursive: true, force: true }));
 
   test("busy counts, idle does not — the title's hourglass decides nothing", () => {
-    record(1, { sessionId: "a", status: "busy", statusUpdatedAt: NOW - MIN, name: "⏳ ➜ 🚀 Shipping ┃ Karten" });
-    record(2, { sessionId: "b", status: "idle", statusUpdatedAt: NOW - MIN, name: "⏳ ➜ 🤖 Team ┃ Uploader" });
+    record(1, { sessionId: "a", status: "busy", statusUpdatedAt: NOW - MIN, name: "⏳ ➜ 🚀 Karten" });
+    record(2, { sessionId: "b", status: "idle", statusUpdatedAt: NOW - MIN, name: "⏳ ➜ 🤖🤖🤖 Uploader" });
     transcript("a", [line("user", "los", NOW - MIN)]);
     transcript("b", [line("user", "los", NOW - MIN)]);
     expect(run()).toEqual({ active: [{ id: "a", hostId: "", name: "Karten", why: "working", detail: "" }], sessions: 2 });
+  });
+
+  test("the name drops the status head of every title generation", () => {
+    for (const name of ["⏳ ➜ 🤖🤖🤖 Uploader", "🔗 ⏳ ➜ 🚀 Uploader", "⏳ ➜ 🤖 Team ┃ Uploader", "Uploader"]) {
+      record(1, { sessionId: "a", status: "busy", statusUpdatedAt: NOW - MIN, name });
+      transcript("a", [line("user", "los", NOW - MIN)]);
+      expect(run().active[0].name, name).toBe("Uploader");
+    }
   });
 
   test("a dead process, a record from before the last boot and the caller itself are never counted", () => {
@@ -125,7 +133,7 @@ describe("check", () => {
   });
 
   test("an open concept page is idle; real background work keeps the session active", () => {
-    record(1, { sessionId: "concept", status: "idle", statusUpdatedAt: NOW - 30 * MIN, name: "👉 ➜ 🧭 Concept ┃ Plan" });
+    record(1, { sessionId: "concept", status: "idle", statusUpdatedAt: NOW - 30 * MIN, name: "👉 ➜ 🧭 Plan" });
     record(2, { sessionId: "tests", status: "idle", statusUpdatedAt: NOW - 5 * MIN, name: "Tests" });
     const launch = (id, toolId, command) => [
       line("assistant", [use(toolId, "Bash", { command, run_in_background: true })], NOW - 6 * MIN),

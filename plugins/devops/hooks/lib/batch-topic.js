@@ -3,7 +3,7 @@
  * @version 1.0.0
  * @description The topic of a batch session title. A session that only said
  *   "batch" / "/do-batch" / "sammelmodus" has no subject yet, so the title
- *   `👉 ➜ 📚 Batch ┃ batch` repeated its own word (2026-11-08). Such a topic
+ *   `👉 ➜ 📚 batch` repeated its own word (2026-11-08). Such a topic
  *   becomes `Feedback zu <Projekt>` (de) / `Feedback on <project>` (en); the
  *   project is the main repo's folder — for a worktree the folder holding
  *   `.claude/worktrees`, not the worktree's own name.

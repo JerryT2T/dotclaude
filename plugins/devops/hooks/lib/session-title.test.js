@@ -28,7 +28,7 @@ describe("session-title — prefixes mirror mode-state.js", () => {
     expect(SHIPPING_PREFIX).toBe(SESSION_PREFIX.shipping);
     expect(CONCEPT_PREFIX).toBe(SESSION_PREFIX["concept-waiting"]);
     expect(CONCEPT_WORKING_PREFIX).toBe(SESSION_PREFIX["concept-working"]);
-    expect(INTERRUPTED_PREFIX).toBe("👉 ➜ ⚡ Interrupted ┃ ");
+    expect(INTERRUPTED_PREFIX).toBe("👉 ➜ ⚡ ");
     expect(HOOK_LEGACY).toEqual(LEGACY_PREFIXES);
     expect(LEGACY_PREFIXES).toContain(LEGACY_PENDING_PREFIX);
   });
@@ -50,7 +50,9 @@ describe("session-title — prefixes mirror mode-state.js", () => {
       ...["beta", "stable"].map((c) => releasedPrefix(c, { promoted: true })),
       ...["restart", "reboot", "usage-reset", "user"].map(pausedPrefix),
     ];
-    expect(ALL_NEW.length).toBeGreaterThan(Object.keys(S.STATES).length);
+    // 3.0: states that share status and activity share a head, so the list is shorter than STATES — but covers each.
+    for (const id of Object.keys(S.STATES)) expect(ALL_NEW, id).toContain(S.prefixOf(id));
+    expect(new Set(ALL_NEW).size).toBe(ALL_NEW.length);
     for (const p of all) {
       expect(stripPrefixes(p + "My task"), p).toBe("My task");
       expect(stripPrefixes(p + "My task"), p).toBe(stripTitlePrefix(p + "My task"));
@@ -74,11 +76,12 @@ describe("session-title — prefixes mirror mode-state.js", () => {
     }
     // A selector where the canonical form has none is tolerated too.
     expect(stripPrefixes("👉 📦" + FE0F + " Ready – Job")).toBe("Job");
-    expect(classify("🟦 ➜ ✋ Paused ┃ Job")).toBe("outcome");
-    expect(stripPrefixes("🟦 ➜ 🔋 Limit ┃ Job")).toBe("Job");
-    expect(stripPrefixes("🟦 ➜ 🔋 Limit reset ┃ Job")).toBe("Job"); // the label before it was shortened
-    expect(stripPrefixes("🟩 ➜ 🖥️ System ┃ Job")).toBe("Job");
-    expect(stripPrefixes("👉 ➜ ⚠️ Red tests ┃ Job")).toBe("Job");
+    expect(classify("🟦 ➜ ✋ Job")).toBe("outcome");
+    expect(stripPrefixes("🟦 ➜ 🔋 Job")).toBe("Job");
+    expect(stripPrefixes("🟦 ➜ 🔋 Limit ┃ Job")).toBe("Job"); // the worded heads up to 2.8, either word
+    expect(stripPrefixes("🟦 ➜ 🔋 Limit reset ┃ Job")).toBe("Job");
+    expect(stripPrefixes("🟩 ➜ 🖥️ Job")).toBe("Job");
+    expect(stripPrefixes("👉 ➜ ⚠️ Job")).toBe("Job");
     expect(stripPrefixes("🟩 ▶ Started – Job")).toBe("Job");
   });
 
@@ -86,8 +89,8 @@ describe("session-title — prefixes mirror mode-state.js", () => {
   test("F6: only known prefixes go — free text after a bare ⏳ stays", () => {
     expect(stripPrefixes("⏳ Fix Login – Bug")).toBe("Fix Login – Bug");
     expect(nextTitle("⏳ Fix Login – Bug")).toBeNull();
-    expect(nextTitle("👉 ➜ 📦 Ready ┃ Fix Login – Bug")).toBe(W + "Fix Login – Bug");
-    expect(stripPrefixes("🟩 ➜ 🚀 Released Alpha ┃ Fix Login – Bug")).toBe("Fix Login – Bug");
+    expect(nextTitle("👉 ➜ 📦 Fix Login – Bug")).toBe(W + "Fix Login – Bug");
+    expect(stripPrefixes("🟩 ➜ 🚀 Fix Login – Bug")).toBe("Fix Login – Bug");
     expect(stripPrefixes("📦 Packaging – rework")).toBe("📦 Packaging – rework");
     expect(stripPrefixes("👉 📦 Shipit – rework")).toBe("👉 📦 Shipit – rework");
     expect(stripPrefixes("Release Notes – v2")).toBe("Release Notes – v2");
@@ -95,7 +98,7 @@ describe("session-title — prefixes mirror mode-state.js", () => {
 
   test("stacked prefixes go, a plain or foreign-emoji title stays", () => {
     expect(stripPrefixes("🧪 Test – ⏳ 🚀 Shipped – X")).toBe("X");
-    expect(stripPrefixes("👉 ➜ 🧪 Test ┃ ⏳ ➜ 🚀 Shipping ┃ 🟩 ➜ 🖥️ System ┃ X")).toBe("X");
+    expect(stripPrefixes("👉 ➜ 🧪 ⏳ ➜ 🚀 🟩 ➜ 🖥️ X")).toBe("X");
     expect(stripPrefixes("Plain title")).toBe("Plain title");
     expect(stripPrefixes("🐛 Bug hunt")).toBe("🐛 Bug hunt");
     // An activity icon without a known prefix is title text, not a prefix.
@@ -107,17 +110,17 @@ describe("session-title — prefixes mirror mode-state.js", () => {
     expect(classify("Plain")).toBe("plain");
     expect(classify("⏳ X")).toBe("work");
     expect(classify("⏳ Working – X")).toBe("work");
-    expect(classify("⏳ ➜ 🚀 Shipping ┃ X")).toBe("shipping");
+    expect(classify("⏳ ➜ 🚀 X")).toBe("shipping");
     expect(classify("🚀 Shipping – X")).toBe("shipping");
-    expect(classify("👉 ➜ 📚 Batch ┃ X")).toBe("batch");
+    expect(classify("👉 ➜ 📚 X")).toBe("batch");
     expect(classify("📥 Batch – X")).toBe("batch");
-    expect(classify("🟥 ➜ 📚 Batch ┃ X")).toBe("batch");
-    expect(classify("👉 ➜ 🧭 Concept ┃ X")).toBe("concept-waiting");
+    expect(classify("🟥 ➜ 📚 X")).toBe("batch");
+    expect(classify("👉 ➜ 🧭 X")).toBe("concept-waiting");
     expect(classify("🧭 Concept – X")).toBe("concept-waiting");
-    expect(classify("⏳ ➜ 🧭 Concept ┃ X")).toBe("process");
-    expect(classify("⏳ ➜ 🤖 Team ┃ X")).toBe("process");
-    expect(classify("⏳ ➜ 🧪 Testing ┃ X")).toBe("process");
-    expect(classify("🟩 ➜ 🚀 Released Alpha ┃ X")).toBe("outcome");
+    expect(classify("⏳ ➜ 🧭 X")).toBe("process");
+    expect(classify("⏳ ➜ 🤖🤖🤖 X")).toBe("process");
+    expect(classify("⏳ ➜ 🧪 X")).toBe("process");
+    expect(classify("🟩 ➜ 🚀 X")).toBe("outcome");
     expect(classify("🚀 Shipped – X")).toBe("outcome");
   });
 
@@ -145,38 +148,38 @@ describe("session-title — nextTitle (user prompt)", () => {
   });
   // R1: the guards read the two-slot grammar, the running ship first.
   test("batch is owned by its skill, a running ship and any ⏳ process are never replaced", () => {
-    for (const t of ["👉 ➜ 📚 Batch ┃ Queue", "📥 Batch – Queue", "⏳ ➜ 🚀 Shipping ┃ Fix login", "🚀 Shipping – Fix login",
-      "⏳ ➜ 🧭 Concept ┃ D", "⏳ ➜ 🤖 Team ┃ D", "⏳ ➜ 🧪 Testing ┃ D"]) {
+    for (const t of ["👉 ➜ 📚 Queue", "📥 Batch – Queue", "⏳ ➜ 🚀 Fix login", "🚀 Shipping – Fix login",
+      "⏳ ➜ 🧭 D", "⏳ ➜ 🤖🤖🤖 D", "⏳ ➜ 🧪 D"]) {
       expect(nextTitle(t), t).toBeNull();
     }
-    expect(nextTitle("⏳ ➜ 🚀 Shipping ┃ Fix login", { prefix: SHIPPING_PREFIX })).toBeNull();
-    expect(nextTitle("👉 ➜ 📚 Batch ┃ Queue", { prefix: SHIPPING_PREFIX })).toBeNull();
+    expect(nextTitle("⏳ ➜ 🚀 Fix login", { prefix: SHIPPING_PREFIX })).toBeNull();
+    expect(nextTitle("👉 ➜ 📚 Queue", { prefix: SHIPPING_PREFIX })).toBeNull();
   });
   test("a waiting concept yields to a user prompt", () => {
-    expect(nextTitle("👉 ➜ 🧭 Concept ┃ Dashboard")).toBe(W + "Dashboard");
+    expect(nextTitle("👉 ➜ 🧭 Dashboard")).toBe(W + "Dashboard");
     expect(nextTitle("🧭 Concept – Dashboard")).toBe(W + "Dashboard");
   });
   test("a ship prompt sets Shipping — over the hourglass, an outcome, a process; a legacy Shipping is upgraded", () => {
-    expect(nextTitle("⏳ Fix login", { prefix: SHIPPING_PREFIX })).toBe("⏳ ➜ 🚀 Shipping ┃ Fix login");
-    expect(nextTitle("🟩 ➜ 🚀 Released Alpha ┃ Fix login", { prefix: SHIPPING_PREFIX })).toBe("⏳ ➜ 🚀 Shipping ┃ Fix login");
-    expect(nextTitle("🚀 Shipped – Fix login", { prefix: SHIPPING_PREFIX })).toBe("⏳ ➜ 🚀 Shipping ┃ Fix login");
-    expect(nextTitle("⏳ ➜ 🤖 Team ┃ Fix login", { prefix: SHIPPING_PREFIX })).toBe("⏳ ➜ 🚀 Shipping ┃ Fix login");
-    expect(nextTitle("🚀 Shipping – Fix login", { prefix: SHIPPING_PREFIX })).toBe("⏳ ➜ 🚀 Shipping ┃ Fix login");
-    expect(nextTitle("⏳ Fix Login – Bug", { prefix: SHIPPING_PREFIX })).toBe("⏳ ➜ 🚀 Shipping ┃ Fix Login – Bug");
+    expect(nextTitle("⏳ Fix login", { prefix: SHIPPING_PREFIX })).toBe("⏳ ➜ 🚀 Fix login");
+    expect(nextTitle("🟩 ➜ 🚀 Fix login", { prefix: SHIPPING_PREFIX })).toBe("⏳ ➜ 🚀 Fix login");
+    expect(nextTitle("🚀 Shipped – Fix login", { prefix: SHIPPING_PREFIX })).toBe("⏳ ➜ 🚀 Fix login");
+    expect(nextTitle("⏳ ➜ 🤖🤖🤖 Fix login", { prefix: SHIPPING_PREFIX })).toBe("⏳ ➜ 🚀 Fix login");
+    expect(nextTitle("🚀 Shipping – Fix login", { prefix: SHIPPING_PREFIX })).toBe("⏳ ➜ 🚀 Fix login");
+    expect(nextTitle("⏳ Fix Login – Bug", { prefix: SHIPPING_PREFIX })).toBe("⏳ ➜ 🚀 Fix Login – Bug");
   });
   test("empty / unknown / prefix-only titles do nothing", () => {
     expect(nextTitle("")).toBeNull();
     expect(nextTitle(null)).toBeNull();
     expect(nextTitle("🧪 Test – ")).toBeNull();
-    expect(nextTitle("👉 ➜ 🧪 Test ┃ ")).toBeNull();
+    expect(nextTitle("👉 ➜ 🧪 ")).toBeNull();
   });
 });
 
 describe("session-title — nextTitle (machine turn)", () => {
   const m = { machine: true };
   test("modes, processes and outcomes stay (#618)", () => {
-    for (const t of ["👉 ➜ 🧭 Concept ┃ D", "⏳ ➜ 🧭 Concept ┃ D", "👉 ➜ 📚 Batch ┃ Q", "🟩 ➜ 🚀 Released Alpha ┃ X",
-      "👉 ➜ 📦 Ready ┃ X", "🟦 ➜ ✋ Paused ┃ X", "🧭 Concept – D", "📥 Batch – Q", "🚀 Shipped – X", "📦 Ready – X", "⏸️ Paused – X"]) {
+    for (const t of ["👉 ➜ 🧭 D", "⏳ ➜ 🧭 D", "👉 ➜ 📚 Q", "🟩 ➜ 🚀 X",
+      "👉 ➜ 📦 X", "🟦 ➜ ✋ X", "🧭 Concept – D", "📥 Batch – Q", "🚀 Shipped – X", "📦 Ready – X", "⏸️ Paused – X"]) {
       expect(nextTitle(t, m), t).toBeNull();
     }
   });
@@ -189,15 +192,15 @@ describe("session-title — nextTitle (machine turn)", () => {
 
 // F5: a turn that ends without a card must not leave "⏳" claiming work.
 describe("session-title — interruptedTitle (F5)", () => {
-  test("a bare ⏳ (or the legacy worded one) becomes 👉 ➜ ⚡ Interrupted ┃", () => {
-    expect(interruptedTitle("⏳ Refactor")).toBe("👉 ➜ ⚡ Interrupted ┃ Refactor");
-    expect(interruptedTitle("⏳ Working – Refactor")).toBe("👉 ➜ ⚡ Interrupted ┃ Refactor");
-    expect(interruptedTitle("⏳ Fix Login – Bug")).toBe("👉 ➜ ⚡ Interrupted ┃ Fix Login – Bug");
+  test("a bare ⏳ (or the legacy worded one) becomes 👉 ➜ ⚡", () => {
+    expect(interruptedTitle("⏳ Refactor")).toBe("👉 ➜ ⚡ Refactor");
+    expect(interruptedTitle("⏳ Working – Refactor")).toBe("👉 ➜ ⚡ Refactor");
+    expect(interruptedTitle("⏳ Fix Login – Bug")).toBe("👉 ➜ ⚡ Fix Login – Bug");
   });
   test("batch, a waiting concept, a running ship and every named state stay", () => {
-    for (const t of ["👉 ➜ 📚 Batch ┃ Q", "📥 Batch – Q", "👉 ➜ 🧭 Concept ┃ D", "🧭 Concept – D", "⏳ ➜ 🧭 Concept ┃ D",
-      "⏳ ➜ 🚀 Shipping ┃ X", "🚀 Shipping – X", "⏳ ➜ 🤖 Team ┃ X", "⏳ ➜ 🧪 Testing ┃ X", "👉 ➜ ⚡ Interrupted ┃ X",
-      "🟩 ➜ 🚀 Released Alpha ┃ X", "Plain", "", null]) {
+    for (const t of ["👉 ➜ 📚 Q", "📥 Batch – Q", "👉 ➜ 🧭 D", "🧭 Concept – D", "⏳ ➜ 🧭 D",
+      "⏳ ➜ 🚀 X", "🚀 Shipping – X", "⏳ ➜ 🤖🤖🤖 X", "⏳ ➜ 🧪 X", "👉 ➜ ⚡ X",
+      "🟩 ➜ 🚀 X", "Plain", "", null]) {
       expect(interruptedTitle(t), String(t)).toBeNull();
     }
     expect(interruptedTitle("⏳ ")).toBeNull();
@@ -210,10 +213,10 @@ describe("session-title — lastSettledTitlePrefix / lastNotificationCompleted (
     content: `<task-notification>\n<task-id>x</task-id>\n<status>${status}</status>\n<summary>Task done${extra}</summary>\n</task-notification>` } });
 
   test("the newest outcome title wins; ⏳ work, a running ship and a ❓ question are skipped", () => {
-    const tx = [title("👉 ➜ 📦 Ready ┃ Alt"), title("🟩 ➜ 🚀 Released Alpha ┃ X"), title("⏳ ➜ 🚀 Shipping ┃ X"),
-      title("👉 ➜ ❓ Question ┃ X"), title("⏳ ➜ 🤖 Team ┃ X")].join("\n");
-    expect(lastSettledTitlePrefix(tx)).toBe("🟩 ➜ 🚀 Released Alpha ┃ ");
-    expect(lastSettledTitlePrefix([title("⏳ ➜ 🤖 Team ┃ X"), title("⏳ X")].join("\n"))).toBeNull();
+    const tx = [title("👉 ➜ 📦 Alt"), title("🟩 ➜ 🚀 X"), title("⏳ ➜ 🚀 X"),
+      title("👉 ➜ ❓ X"), title("⏳ ➜ 🤖🤖🤖 X")].join("\n");
+    expect(lastSettledTitlePrefix(tx)).toBe("🟩 ➜ 🚀 ");
+    expect(lastSettledTitlePrefix([title("⏳ ➜ 🤖🤖🤖 X"), title("⏳ X")].join("\n"))).toBeNull();
     expect(lastSettledTitlePrefix("")).toBeNull();
   });
 
@@ -252,8 +255,8 @@ describe("session-title — readCurrentTitle", () => {
   const msg = (n) => ({ type: "user", message: { content: "x".repeat(n) } });
 
   test("the last custom-title wins", () => {
-    const p = write("a.jsonl", [ct("Old"), msg(10), ct("👉 ➜ 🧪 Test ┃ New"), an("👉 ➜ 🧪 Test ┃ New"), msg(10)]);
-    expect(readCurrentTitle(p)).toBe("👉 ➜ 🧪 Test ┃ New");
+    const p = write("a.jsonl", [ct("Old"), msg(10), ct("👉 ➜ 🧪 New"), an("👉 ➜ 🧪 New"), msg(10)]);
+    expect(readCurrentTitle(p)).toBe("👉 ➜ 🧪 New");
   });
   test("agent-name is the fallback when no custom-title is in reach", () => {
     expect(readCurrentTitle(write("b.jsonl", [msg(5), an("Named"), msg(5)]))).toBe("Named");
@@ -290,8 +293,8 @@ describe("session-title — readCurrentTitle", () => {
     expect(readCurrentTitle(write("i.jsonl", [ct("Mine"), an("Other"), msg(5)]))).toBe("Mine");
   });
   test("multi-byte titles survive a chunk boundary", () => {
-    const p = write("g.jsonl", [msg(3000), ct("👉 ➜ 🧭 Concept ┃ Übersicht ä"), msg(100)]);
-    expect(readCurrentTitle(p, { chunk: 200 })).toBe("👉 ➜ 🧭 Concept ┃ Übersicht ä");
+    const p = write("g.jsonl", [msg(3000), ct("👉 ➜ 🧭 Übersicht ä"), msg(100)]);
+    expect(readCurrentTitle(p, { chunk: 200 })).toBe("👉 ➜ 🧭 Übersicht ä");
   });
 });
 
@@ -362,11 +365,37 @@ describe("session-title — do-batch titles", () => {
   });
 
   test("fireTitle swaps the batch prefix for the work prefix (#1126); off stays bare", () => {
-    expect(fireTitle(SESSION_PREFIX.batch + "Feedback zu X")).toBe("⏳ ➜ 🤖 Solo ┃ Feedback zu X");
-    expect(fireTitle("📥 Batch – Feedback zu X")).toBe("⏳ ➜ 🤖 Solo ┃ Feedback zu X");
+    expect(fireTitle(SESSION_PREFIX.batch + "Feedback zu X")).toBe("⏳ ➜ 🤖 Feedback zu X");
+    expect(fireTitle("📥 Batch – Feedback zu X")).toBe("⏳ ➜ 🤖 Feedback zu X");
     expect(fireTitle("Renamed by user")).toBeNull();
     expect(fireTitle(SESSION_PREFIX.batch)).toBeNull();
     expect(fireTitle(null)).toBeNull();
     expect(unbatchTitle(SESSION_PREFIX.batch + "Feedback zu X")).toBe("Feedback zu X");
+  });
+});
+
+describe("session-title — a worded head from before title-scheme 3.0 is upgraded", () => {
+  test("an outcome with word and bar yields to the short work head", () => {
+    expect(nextTitle("🟩 ➜ 🚀 Released Alpha ┃ Uploader-Connect")).toBe("⏳ ➜ 🤖 Uploader-Connect");
+    expect(nextTitle("👉 ➜ 📦 Ready ┃ X", { prefix: SHIPPING_PREFIX })).toBe("⏳ ➜ 🚀 X");
+  });
+
+  test("a worded Solo head is re-marked, the current one is left alone", () => {
+    expect(nextTitle("⏳ ➜ 🤖 Solo ┃ Projects-Hierarchie")).toBe("⏳ ➜ 🤖 Projects-Hierarchie");
+    expect(nextTitle("⏳ ➜ 🤖 Projects-Hierarchie")).toBeNull();
+    expect(nextTitle("🔗 ⏳ ➜ 🤖 Solo ┃ X")).toBe("🔗 ⏳ ➜ 🤖 X");
+  });
+
+  test("a running process keeps its worded head until its own outcome; a ship prompt upgrades a worded ship", () => {
+    expect(nextTitle("⏳ ➜ 🤖 Team ┃ X")).toBeNull();
+    expect(nextTitle("⏳ ➜ 🚀 Shipping ┃ X")).toBeNull();
+    expect(nextTitle("⏳ ➜ 🚀 Shipping ┃ X", { prefix: SHIPPING_PREFIX })).toBe("⏳ ➜ 🚀 X");
+    expect(nextTitle("⏳ ➜ 🚀 X", { prefix: SHIPPING_PREFIX })).toBeNull();
+  });
+
+  test("interrupted: a worded Solo head becomes the short Interrupted head", () => {
+    expect(interruptedTitle("⏳ ➜ 🤖 Solo ┃ Refactor")).toBe("👉 ➜ ⚡ Refactor");
+    expect(interruptedTitle("⏳ ➜ 🤖 Refactor")).toBe("👉 ➜ ⚡ Refactor");
+    expect(interruptedTitle("⏳ ➜ 🤖🤖🤖 Refactor")).toBeNull();
   });
 });

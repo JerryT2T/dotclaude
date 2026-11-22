@@ -1,17 +1,30 @@
 # Changelog
 
-## [0.400.0] — 2026-11-22
+## [0.401.0] — 2026-11-22
 
 ### Added
 - **Browser choice in devops Home.** Einstellungen has a Browser dropdown with the installed browsers plus In-App (the Desktop app's browser pane). Edge stays the default while it is installed; without any browser In-App is used. Concept pages, the waker's re-open and files re-opened after a ship follow the choice. Also by chat ("nimm Chrome als Browser") via `scripts/browser-choice.js`; setting `browser.default` (machine-wide).
-- **Limit title after a hard limit stop.** A session whose turn the usage limit cut now reads `🟦 ➜ 🔋 Limit ┃ …` instead of keeping its `⏳`: the mod band renames it without a model turn, `ss.title.sweep` covers sessions without a band.
+- **Limit title after a hard limit stop.** A session whose turn the usage limit cut now reads `🟦 ➜ 🔋 …` instead of keeping its `⏳`: the mod band renames it without a model turn, `ss.title.sweep` covers sessions without a band.
 
 ### Changed
-- The sidebar and card word for a usage-limit pause is "Limit" (was "Limit reset"). Titles with the old word are still recognised.
+- The card word for a usage-limit pause is "Limit" (was "Limit reset"). Titles with the old worded head are still recognised.
 - `pre.visible-browser.guard` no longer blocks starting Chrome when Chrome is the chosen browser.
 
 ### Fixed
 - Pages opened for the user no longer pass through `cmd /c start` when the URL holds a quote, `%VAR%`, `&` or a space: the browser executable is started directly.
+
+## [0.400.0] — 2026-11-22
+
+### Changed
+- **Session title without keyword and separator**: the sidebar title now reads `<STATUS> ➜ <ACTIVITY> <topic>` (`⏳ ➜ 🚀 Abschlussseite Funde` instead of `⏳ ➜ 🚀 Shipping ┃ Abschlussseite Funde`), so the freed room goes to the topic. The completion card heading and the mod band keep the keyword (`👉 📦 Ready — Shippen?`). The same head goes on Claude Projects thread titles.
+- **Team work shows three robots** in the title (`⏳ ➜ 🤖🤖🤖`), Solo stays one robot; the card heading still says `🤖 Team`.
+- **Topic limit 30 characters** (20 before) for the topic the model names itself; the 42-character budget now counts the topic alone.
+- States with the same status and activity share one title head (Released Alpha/Beta/Stable, Ready/Files, the three ⚠️ states, Committed/Delivered); the card tells them apart.
+- A Testing run no longer swaps to 👉 while a background agent waits on a tool approval: without the keyword `👉 ➜ 🧪` is the Test outcome.
+
+### Fixed
+- Titles with the worded head of v0.297–v0.399 are still recognised, classified the same and rewritten to the short head on the next prompt or card; a worded Solo head is re-marked instead of counted as already marked, and a worded Testing approval head goes back to ⏳.
+- Home pane: the batch session is recognised by the `📚` of its head, and `sessions-active.js` strips the status head of every title generation from a session's name.
 
 ## [0.399.1] — 2026-11-22
 

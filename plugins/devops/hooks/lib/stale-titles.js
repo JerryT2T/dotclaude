@@ -4,7 +4,7 @@
  * @description Finds sessions whose sidebar title still says ⏳ although no
  *   Claude process works on them any more — left behind when the Desktop app
  *   or Claude Code crashed or was quit mid-turn, so no Stop hook (F5) could
- *   swap the hourglass for `👉 ➜ ⚡ Interrupted ┃ `.
+ *   swap the hourglass for `👉 ➜ ⚡ `.
  *
  *   Source: the Desktop app keeps each session's current title in the sidecar
  *   `~/.claude/projects/<slug>/<sessionId>/custom-title.json`
@@ -16,9 +16,9 @@
  *   caller's own session is never one. The hook only pre-filters: Claude
  *   still checks `isRunning:false` in list_sessions before renaming.
  *
- *   0.3.0 — concept offline: a concept title (`👉 ➜ 🧭 Concept ┃` waiting,
- *   `⏳ ➜ 🧭 Concept ┃` working) whose bridge server is gone becomes
- *   `🔴 ➜ 🧭 Concept ┃` — the page cannot reach Claude until the session is
+ *   0.3.0 — concept offline: a concept title (`👉 ➜ 🧭` waiting,
+ *   `⏳ ➜ 🧭` working) whose bridge server is gone becomes
+ *   `🔴 ➜ 🧭` — the page cannot reach Claude until the session is
  *   resumed (ss.concept.resume relaunches the bridge). The bridge counts as
  *   alive only when a registry entry (`~/.claude/concept-bridges/<port>.json`)
  *   for the session's worktree names a live pid that started after the last
