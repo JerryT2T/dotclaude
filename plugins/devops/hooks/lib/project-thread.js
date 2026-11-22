@@ -47,9 +47,6 @@ const CHECKLIST_TOOL = `${HEARTHBOT_PREFIX}update_progress_checklist`;
 const WAKE_PATTERN = /^\s*<wake\b[^>]*>\s*<project\b[^>]*\bid="chan_/;
 /** A note from the coordinator or another thread: a colleague's request, not the person's prompt. */
 const RELAY_PATTERN = /^\s*<(?:coordinator-relay\b|relay\s+from=|project_claude_message\b)/;
-/** The message of a wake that triggered the turn. */
-const TRIGGER_MESSAGE = /<message\b[^>]*?\strigger="true"[^>]*>([\s\S]*?)<\/message>/;
-
 /** Transcript bytes read for the fallbacks below. */
 const HEAD_BYTES = 256 * 1024;
 const TAIL_BYTES = 8 * 1024 * 1024;
