@@ -18,15 +18,18 @@
  *   block, reason on stderr.
  */
 
-let gate, transcriptTools, promptTools;
+let gate, transcriptTools, thread;
 try {
   require('../lib/plugin-guard');
   gate = require('../lib/session-archive-gate');
   transcriptTools = require('../lib/card-guard');
-  promptTools = require('../lib/skill-invocations');
+  thread = require('../lib/project-thread');
 } catch {
   process.exit(0);
 }
+
+/** Transcript tail the shared rights decision reads (the same as pre.thread.rights). */
+const RIGHTS_TAIL_BYTES = 4 * 1024 * 1024;
 
 /** The user's latest prompt asks to archive (de + en) — whole words only. */
 const USER_ASKS_ARCHIVE = /\barchiv(?:e|iere|ieren|ing)?\b/i;
@@ -58,16 +61,29 @@ const USER_CANNOT_ARCHIVE = new RegExp([
   String.raw`\b(?:can'?t|cannot|can\s+not|unable\s+to|won'?t\s+let\s+me)\s+(?:\w+\s+){0,2}archiv\w*`,
 ].join('|'), 'i');
 
-/** 'ask' | 'refuse' | null — what the user's latest prompt says about archiving. */
+/**
+ * 'ask' | 'refuse' | 'colleague' | null — what the turn's prompt says about archiving.
+ * Only the person's word asks (origin `person` or `typed`, lib/project-thread.js): a
+ * coordinator note or another thread's message may not archive this session — not even as
+ * the post-ship hand-over (`colleague`, d-trust) — but its "keep the session" still refuses.
+ */
 function userArchiveIntent(hook) {
   try {
-    const transcript = transcriptTools.safeReadTranscript(hook.transcript_path, transcriptTools.TRANSCRIPT_TAIL_BYTES);
-    const text = promptTools.lastUserPromptText(transcript) || '';
-    if (USER_CANNOT_ARCHIVE.test(text)) return 'ask';
+    const read = (bytes) => transcriptTools.safeReadTranscript(hook.transcript_path, bytes);
+    const view = thread.turnPrompt(read(transcriptTools.TRANSCRIPT_TAIL_BYTES));
+    const text = view.prompt || '';
+    let colleague = thread.isColleagueOrigin(view.prompt_origin);
+    if (!colleague && (view.prompt_origin === 'machine' || !text.trim())) {
+      // A machine prompt or one that is out of the narrow tail: the wide tail and the shared
+      // rights decision (lib/project-thread.js turnRights) — read only when it decides.
+      colleague = thread.turnRights(hook, read(RIGHTS_TAIL_BYTES)) === 'colleague';
+    }
+    if (!colleague && USER_CANNOT_ARCHIVE.test(text)) return 'ask';
     if (USER_REFUSES_ARCHIVE.test(text)) return 'refuse';
+    if (colleague) return 'colleague';
     return USER_ASKS_ARCHIVE.test(text) ? 'ask' : null;
   } catch {
-    return null;
+    return thread.isMarked(hook.session_id) ? 'colleague' : null; // fail closed in a marked thread
   }
 }
 
@@ -91,6 +107,13 @@ process.stdin.on('end', () => {
     process.stderr.write(
       '[devops] archive_session on this session is blocked: the user\'s latest prompt says not to ' +
       'archive it (keep the session open). Do not retry; end the response without text.\n'
+    );
+    process.exit(2);
+  }
+  if (intent === 'colleague') {
+    process.stderr.write(
+      '[devops] archive_session on this session is blocked: the turn was started by a coordinator note, not by the ' +
+      'person. Archiving needs a message of the person in this thread. Do not retry; end the response without text.\n'
     );
     process.exit(2);
   }

@@ -84,6 +84,7 @@ const { contentInBase } = require("../../../scripts/lib/content-landed.js");
 const { chainLanded: chainLandedShared, supersededByHead: supersededByHeadShared, filesInBase: filesInBaseShared } = require("../../../scripts/lib/chain-landed.js");
 const { isParked, coveringRef } = require("../../../hooks/lib/park-register.js");
 const { clearStaleLocks } = require("../../../scripts/lib/stale-git-locks.js");
+const { transcriptSaysThread } = require("../../../hooks/lib/project-thread.js");
 const { isAgentLeftover, pickByAgeCount } = require("../../../scripts/lib/cleanup-rule.js");
 
 const DAY_MS = 86_400_000;
@@ -829,8 +830,41 @@ export function defaultProjectsDir() {
   return path.join(os.homedir(), ".claude", "projects");
 }
 
+/** A Claude Projects thread's work folder / branch, by the names the thread flow gives them. */
+const THREAD_WORKTREE = /\/\.claude\/worktrees\/thread-[^/]+$/i;
+const THREAD_BRANCH = /^claude\/thread-/;
+/** A remote-only branch without a PR is orphaned only after this many idle days. */
+export const REMOTE_ORPHAN_IDLE_DAYS = 7;
+
+/** Some transcript of `wtPath` (any age) opens with a Claude Projects thread turn. */
+function transcriptMarksThread(wtPath, projectsDir) {
+  if (!projectsDir) return false;
+  for (const name of transcriptDirNames(wtPath)) {
+    let files;
+    try { files = fs.readdirSync(path.join(projectsDir, name)); } catch { continue; }
+    for (const f of files.filter((x) => x.endsWith(".jsonl")).slice(0, 20)) {
+      if (transcriptSaysThread(path.join(projectsDir, name, f))) return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Work that belongs to a Claude Projects thread: a worktree `…/.claude/worktrees/thread-*`,
+ * a branch `claude/thread-*`, or a worktree whose session carries the thread marker.
+ * Such work is never preselected, never auto-removed — the thread may sleep for days.
+ */
+export function isThreadWork(unit, projectsDir) {
+  if (!unit || unit.kind === "main-checkout") return false;
+  if (unit.branch && THREAD_BRANCH.test(unit.branch)) return true;
+  if (unit.kind !== "worktree" || !unit.path) return false;
+  if (THREAD_WORKTREE.test(normPath(unit.path))) return true;
+  return Boolean(unit.session) && transcriptMarksThread(unit.path, projectsDir);
+}
+
 /** Why `unit` must stay, or null when it can go. */
 function keepReason(unit, ctx) {
+  if (isThreadWork(unit, ctx.projectsDir)) return "thread-work";
   if (unit.kind === "worktree" && unit.temp && !unit.session) {
     const held = tempHeldReason(unit, ctx.now);
     if (held) return held;
@@ -1016,6 +1050,7 @@ export function classifyUnits(scan, io) {
   const parkedUnits = [];
   const mainOnLanded = [];
   const landedOutside = [];
+  const threadWork = [];
   // A session keeps its worktree until it is closed, also after switching branch or
   // detaching: the branch named after that folder is its work in progress, no finding.
   const sessionFolders = new Set((scan.paths || []).map((p) => path.basename(p)));
@@ -1035,6 +1070,11 @@ export function classifyUnits(scan, io) {
           live: hasLiveSession(u.path, io.projectsDir), idleDays: idleDaysOf(u, ctx),
         });
       }
+      continue;
+    }
+    // thread work is its own group: not removable, not a "keep" row, not an at-risk alarm
+    if (isThreadWork(u, io.projectsDir)) {
+      threadWork.push({ kind: u.kind, branch: u.branch || null, path: u.path || null, head: u.head, ageDays: u.ageDays, preselected: false });
       continue;
     }
     const reason = keepReason(u, ctx);
@@ -1077,7 +1117,7 @@ export function classifyUnits(scan, io) {
   const dirtyHeads = new Set(atRisk.filter((r) => r.dirty > 0).map((r) => r.head));
   const idOf = (r) => (r.dirty > 0 ? `d:${normPath(r.path)}` : `h:${r.head}`);
   atRisk = atRisk.filter((r, i) => (r.dirty > 0 || !dirtyHeads.has(r.head)) && atRisk.findIndex((x) => idOf(x) === idOf(r)) === i);
-  return { ctx, removable, keep, atRisk, parkedUnits, mainOnLanded, landedOutside, merged, open };
+  return { ctx, removable, keep, atRisk, parkedUnits, mainOnLanded, landedOutside, threadWork, merged, open };
 }
 
 /**
@@ -1101,9 +1141,9 @@ export function planAutoClean(scan, settings, io) {
   const maxBytes = (settings.autoCleanMaxGB ?? 0) * GB;
   const expiryDays = settings.backupExpiryDays ?? BACKUP_EXPIRY_DAYS;
   if (scan.units.length === 0 && !hasBackupRefs(io.cwd) && !hasRemoteBranches(io.cwd, scan.defaultBranch)) {
-    return { gateOpen: false, reason: "no leftovers", remove: [], keep: [], atRisk: [], remoteExpire: [], remoteMerged: [], remoteStale: [], offline: false, keptBytes: null };
+    return { gateOpen: false, reason: "no leftovers", remove: [], keep: [], atRisk: [], threadWork: [], remoteExpire: [], remoteMerged: [], remoteStale: [], offline: false, keptBytes: null };
   }
-  const { ctx, removable, keep: kept, atRisk, merged, open } = classifyUnits(scan, io);
+  const { ctx, removable, keep: kept, atRisk, threadWork, merged, open } = classifyUnits(scan, io);
   const remote = remoteBranchPlan(ctx, open, scan.defaultBranch, settings.remoteStaleDays ?? REMOTE_STALE_DAYS, io.now ?? Date.now());
   const keep = kept.filter((k) => k.ageDays > minAge);
   const remoteExpire = merged === null ? [] : expiredBackupRefs(ctx, removable, expiryDays, io.now ?? Date.now());
@@ -1159,6 +1199,7 @@ export function planAutoClean(scan, settings, io) {
     remove,
     keep,
     atRisk,
+    threadWork,
     remoteExpire,
     remoteMerged: remote.merged,
     remoteStale: remote.stale,
@@ -1261,6 +1302,8 @@ export function remoteUnlanded(ctx, defaultBranch, now = Date.now()) {
     const name = ref.slice("refs/remotes/origin/".length);
     if (isSpecialRemote(name, defaultBranch) || local.has(name)) continue;
     if (ctx.open.names.has(name) || ctx.open.shas.has(sha) || (ctx.open.bases && ctx.open.bases.has(name))) continue;
+    // a thread or a cloud session may still come back to it: orphaned only after idle days
+    if ((now - Number(ts) * 1000) / DAY_MS < REMOTE_ORPHAN_IDLE_DAYS) continue;
     const { state } = landingState(sha, name, ctx);
     if (state === "landed") continue;
     if (state === "partial") {

@@ -331,7 +331,39 @@ function summarizeTokenLog(text, { top = 8 } = {}) {
   }
   const rank = (o) => Object.entries(o).sort((a, b) => b[1].chars - a[1].chars).slice(0, top)
     .map(([name, v]) => ({ name, ...v, tokens: tokensOfChars(v.chars) }));
-  return { lines, firstTs, lastTs, events, hooks: rank(hooksBy), tools: rank(toolsBy), usage };
+  return { lines, firstTs, lastTs, events, hooks: rank(hooksBy), tools: rank(toolsBy), usage, threads: threadStartCost(text) };
+}
+
+/**
+ * Start cost per Claude Projects thread (E4): the characters the SessionStart hooks and the
+ * per-wake hooks (UserPromptSubmit) hand a thread session. A SessionStart row is written before
+ * the first wake marks the session, so a thread is every `sid` with at least one `thread:true`
+ * row and all of that sid's rows count. null when the log has no thread row.
+ * @returns {{sessions:number, startChars:number, startTokens:number, wakes:number, perWakeChars:number, perWakeTokens:number}|null}
+ */
+function threadStartCost(text) {
+  const rows = [];
+  const threadSids = new Set();
+  for (const line of String(text || '').split('\n')) {
+    if (!line.trim()) continue;
+    let r; try { r = JSON.parse(line); } catch { continue; }
+    if (!r || typeof r !== 'object' || !r.sid) continue;
+    rows.push(r);
+    if (r.thread === true) threadSids.add(r.sid);
+  }
+  if (!threadSids.size) return null;
+  let startChars = 0; let wakeChars = 0; let wakes = 0;
+  for (const r of rows) {
+    if (!threadSids.has(r.sid)) continue;
+    if (r.event === 'SessionStart') startChars += Number(r.ctx) || 0;
+    else if (r.event === 'UserPromptSubmit') { wakeChars += Number(r.ctx) || 0; wakes++; }
+  }
+  const n = threadSids.size;
+  const perWake = wakes ? Math.round(wakeChars / wakes) : 0;
+  return {
+    sessions: n, startChars: Math.round(startChars / n), startTokens: tokensOfChars(Math.round(startChars / n)),
+    wakes, perWakeChars: perWake, perWakeTokens: tokensOfChars(perWake),
+  };
 }
 
 function tokenLog({ logFile }) {
@@ -344,6 +376,7 @@ function tokenLog({ logFile }) {
     ...s.hooks.map((h) => ({ msg: `hook ${h.name}: ~${h.tokens} tok over ${h.runs} runs` })),
     ...s.tools.slice(0, 5).map((t) => ({ msg: `tool ${t.name}: ~${t.tokens} tok of results over ${t.calls} calls` })),
   ];
+  if (s.threads) findings.push({ msg: `thread start cost (${s.threads.sessions} thread sessions): SessionStart ~${s.threads.startTokens} tok per thread, ~${s.threads.perWakeTokens} tok per wake over ${s.threads.wakes} wakes` });
   if (s.usage.turns) findings.push({ msg: `${s.usage.turns} turns, ${s.usage.calls} API calls, output ${s.usage.output} tok, cache write ${s.usage.cacheWrite} tok` });
   return check('tw-token-log', title, 'green', findings, { metrics: { ...s, file: logFile } });
 }
@@ -404,4 +437,4 @@ async function runTokenWaste({ root = process.cwd(), home = os.homedir(), env = 
   return out;
 }
 
-module.exports = { runTokenWaste, memoryFiles, cacheSplit, modelsOf, cronRunsPerDay, summarizeTokenLog, pruneTokenLog, tokenLogPath, rewritesInput };
+module.exports = { runTokenWaste, memoryFiles, cacheSplit, modelsOf, cronRunsPerDay, summarizeTokenLog, threadStartCost, pruneTokenLog, tokenLogPath, rewritesInput };

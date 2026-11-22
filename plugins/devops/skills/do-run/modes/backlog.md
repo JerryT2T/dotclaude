@@ -199,7 +199,14 @@ is still on screen, apply the Step 0.1 pending-question guard (re-arm + wait).
    gh issue list --milestone "<title>" --state open \
      --json number,title,labels,body,author
    ```
-   Add the loose issues chosen in the second step. From all of them build a
+   Add the loose issues chosen in the second step. **Drop every issue that is
+   already in progress elsewhere** (another session or a Claude Projects thread
+   works it): fetch with `--json number,title,labels,assignees,projectItems`
+   and pipe through
+   `node "{PLUGIN_ROOT}/skills/do-run/modes/backlog/in-progress.js" --me <gh login>`
+   (board status "In Progress", an in-progress label or a foreign assignee).
+   Name the skipped ones in `BACKLOG-LOG.md` and the closing report; run the
+   same filter again right before each issue of the Step 4 loop. From all of them build a
    flat, ordered **work queue**, plus a per-milestone tracking set (which issue
    numbers belong to which milestone) so Step 4 can auto-close a milestone once
    all its issues are done. Track the queue via `TodoWrite`.

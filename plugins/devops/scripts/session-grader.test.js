@@ -50,6 +50,42 @@ function digestOf(lines, opts) {
   return d.finish();
 }
 
+describe("thread sessions (E4)", () => {
+  const WAKE = '<wake reason="message"><project id="chan_x1" type="project"><message trigger="true">go</message></project></wake>';
+  const POST = "mcp__hearthbot__post_message";
+
+  test("a thread session that worked and posted the card is detected, owed and posted", () => {
+    const r = digestOf([user(WAKE), toolUse("Edit", { file_path: "a.js" }), toolUse(POST, { text: "✨✨✨ card" })]);
+    expect(r.thread).toBe(true);
+    expect(r.threadCard).toEqual({ owed: true, posted: true });
+  });
+
+  test("a card posted under message, content or body counts as posted (the field lookup of run-contract-thread)", () => {
+    for (const key of ["message", "content", "body"]) {
+      const r = digestOf([user(WAKE), toolUse("Edit", { file_path: "a.js" }), toolUse(POST, { [key]: "✨✨✨ card" })]);
+      expect(r.threadCard, key).toEqual({ owed: true, posted: true });
+    }
+  });
+
+  test("a thread session with work and no card post is flagged; a plain post is no card", () => {
+    const r = digestOf([user(WAKE), toolUse("Bash", { command: "npm test" }), toolUse(POST, { text: "done" })]);
+    expect(r.threadCard).toEqual({ owed: true, posted: false });
+    expect(g.threadSummary([{ id: "abcdef123456", threadCard: r.threadCard }])).toMatchObject({ owed: 1, posted: 0, rate: 1, missing: ["abcdef123456"] });
+  });
+
+  test("the transcript's projectsUserTurn entry marks a thread; a chat-only thread owes nothing", () => {
+    const r = digestOf([user("hi", { projectsUserTurn: true }), asst([{ type: "text", text: "hello" }])]);
+    expect(r.thread).toBe(true);
+    expect(r.threadCard.owed).toBe(false);
+  });
+
+  test("an ordinary Desktop session stays out of the thread group", () => {
+    const r = digestOf(sampleLines());
+    expect(r.thread).toBe(false);
+    expect(r.threadCard).toEqual({ owed: false, posted: false });
+  });
+});
+
 describe("digest builder", () => {
   test("keeps prompts, assistant text, tool names + short args; drops sidechain and skill injections", () => {
     const { digest, prompts } = digestOf(sampleLines());

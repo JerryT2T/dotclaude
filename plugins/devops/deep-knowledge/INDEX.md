@@ -49,6 +49,7 @@ Quick-reference for all deep-knowledge topics. Read this FIRST to find the right
 | [plugin-scope-routing.md](plugin-scope-routing.md) | Plugin Scope Routing — Where a Fix Belongs | Cross-cutting rule for every skill, hook, and agent: a devops-plugin defect f... |
 | [pre-mortem.md](pre-mortem.md) | Pre-Mortem / Red-Team Self-Critique | Cross-cutting rule for reducing blind spots before non-trivial changes. |
 | [preview-testing.md](preview-testing.md) | Built-in Browser Pane — Capabilities & Limits | Canonical reference for the Desktop **built-in browser pane** |
+| [project-instructions-snippet.md](project-instructions-snippet.md) | Claude Project — text for the project instructions | The one source of the text a Claude Project's instructions (Project settings ... |
 | [project-setup.md](project-setup.md) | Project Setup — Repo Hygiene | How to audit or initialize a project's repository structure: .gitignore, LICE... |
 | [readme-standards.md](readme-standards.md) | README Standards | How to create, rewrite or substantially update a README.md: a polished, moder... |
 | [responsive-testing.md](responsive-testing.md) | Responsive Testing — Multi-Viewport Verification | Multi-device web apps require verification at phone, tablet, and desktop |

@@ -10,6 +10,12 @@ trigger: SessionStart (hook ss.git.check.js)
 Runs automatically at every session start via `hooks/session-start/ss.git.check.js`.
 Silent when everything is clean. Only surfaces a brief warning when issues are found.
 
+## Stays local
+
+This check reads this machine's working trees, so it stays local. A Claude Project's
+routines are cloud threads without the plugin that stop at a usage limit; they cannot
+see uncommitted changes here and are no replacement.
+
 ## What the hook checks
 
 1. `git status --porcelain` — uncommitted changes

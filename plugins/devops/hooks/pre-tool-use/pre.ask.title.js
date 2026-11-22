@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook pre.ask.title
- * @version 0.3.0
+ * @version 0.4.0
  * @event PreToolUse
  * @plugin devops
  * @matcher AskUserQuestion|ExitPlanMode|mcp__ccd_session__start_session
@@ -17,6 +17,10 @@
  *   A call that passes and starts a session gets the ⏳ head on the NEW
  *   session's title (lib/ask-title.js startSessionInput), so its sidebar row
  *   shows the hourglass from its first moment.
+ *   In a Claude Projects thread (feature `project-threads`) an AskUserQuestion
+ *   is refused with the exact instruction to ask as a numbered `post_message`
+ *   reply plus the question head on the THREAD title (`rename_thread`); the
+ *   person's next message is the answer. A Desktop session is untouched.
  */
 
 require('../lib/plugin-guard');
@@ -41,8 +45,22 @@ function startReply(hook) {
   return updatedInput ? JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', updatedInput } }) : null;
 }
 
+/** The thread redirect for an AskUserQuestion, or null (not a thread, feature off, another tool). */
+function threadRedirect(hook) {
+  if (hook.tool_name !== 'AskUserQuestion') return null;
+  const thread = require('../lib/project-thread');
+  if (thread.threadMode(hook, { deep: true }) !== 'on') return null;
+  const current = thread.lastThreadTitle(hook.transcript_path);
+  const target = current === null ? null : ask.questionTitle(current);
+  const call = current === null ? thread.renameCallUnknown(ask.QUESTION_PREFIX)
+    : target ? thread.renameCall(target) : null; // already a question head: nothing to rename
+  return { block: ask.threadQuestionText(call || 'no rename (the title already shows the question head)') };
+}
+
 function main(hook) {
   if (hook.agent_id) return null;
+  const redirect = threadRedirect(hook);
+  if (redirect) return redirect;
   // A non-blocking own_initiative / proposal start still carries its head (🔗 ⏳ ➜ 🤖 Solo).
   if (hook.tool_name && !ask.isBlockingCall(hook.tool_name, hook.tool_input)) return startReply(hook);
   return refusal(hook) || startReply(hook);

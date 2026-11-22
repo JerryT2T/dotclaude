@@ -53,10 +53,17 @@
         "hooks": [
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.ship.guard.js\"", "onFailure": "block", "commandFilter": "\\b[Gg][Hh]\\b" },
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.main.guard.js\"", "onFailure": "block", "commandFilter": "\\b[Gg][Ii][Tt]\\b" },
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.thread.rights.js\"", "onFailure": "block", "commandFilter": "\\b(?:[Gg][Ii][Tt]|[Gg][Hh]|[rR][mM]|[rR][eE][mM][oO][vV][eE]-[iI][tT][eE][mM]|[rR][iI]|[fF][iI][nN][dD]|[rR][dD]|[rR][mM][dD][iI][rR]|[dD][eE][lL]|[eE][rR][aA][sS][eE])\\b" },
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.worktree.split-guard.js\"", "commandFilter": "\\b[Gg][Ii][Tt]\\b" },
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.test.fullguard.js\"", "commandFilter": "\\b(?:npm|vitest)\\b" }
         ],
         "matcher": "Bash|PowerShell"
+      },
+      {
+        "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.thread.rights.js\"", "onFailure": "block" }
+        ],
+        "matcher": "mcp__.*__ship_promote"
       },
       {
         "hooks": [
@@ -139,6 +146,7 @@
       },
       {
         "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.thread.session.js\"", "timeout": 5, "dispatch": "fast" },
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.plugin.session.js\"", "timeout": 10, "dispatch": "fast" },
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.ask.title.js\"", "timeout": 5, "dispatch": "fast" }
         ],
@@ -382,6 +390,7 @@
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/user-prompt-submit/prompt.batch.collect.js\"" },
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/user-prompt-submit/prompt.run.contract.js\"", "timeout": 10 },
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/user-prompt-submit/prompt.flow.silent-turn.js\"" },
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/user-prompt-submit/prompt.thread.notices.js\"" },
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/user-prompt-submit/prompt.flow.title-work.js\"" },
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/user-prompt-submit/prompt.knowledge.dispatch.js\"" },
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/user-prompt-submit/prompt.knowledge.anchor.js\"", "timeout": 10 },

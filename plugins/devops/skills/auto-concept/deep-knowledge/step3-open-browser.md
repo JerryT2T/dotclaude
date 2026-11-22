@@ -41,7 +41,9 @@ Build the copy with `node "{PLUGIN_ROOT}/scripts/concept-artifact.js"
 --artifact docs/concepts/<file>.html`, publish it with `capabilities: {db: {}}`,
 and read the decisions back on the next turn with `ArtifactData` — no bridge,
 no crons, no Edge start. The steps, the wrapper contract and the card:
-`deep-knowledge/artifact-fallback.md`.
+`deep-knowledge/artifact-fallback.md`. In a Claude Projects thread this is the
+only tier (no bridge page reaches the person there): link in the thread, Edge via
+`concept-open.js open-url` on a local thread, link only in the cloud.
 
 ## Open command, 200 gate, token check
 
@@ -96,7 +98,9 @@ from an older page) or a stray brace ends `:root` early. `post.concept.gate`
 and `validation-gate.md` § Phase 0b catch the tag structure; this step catches
 what only a CSS parser sees. Load `$URL` in a headless browser context (the
 Claude browser pane / Playwright — NOT the tab the user will get; this is a
-read of the rendered CSS, no bridge interaction) and evaluate:
+read of the rendered CSS, no bridge interaction) at `$URL?probe=1` — the marker
+tells the bridge the look is no user tab, whichever browser the person chose —
+and evaluate:
 
 > **Verification tabs use their own browser profile — always.** Two tabs of
 > the same profile share `localStorage`, and the page keeps its navigation
@@ -107,6 +111,21 @@ read of the rendered CSS, no bridge interaction) and evaluate:
 > run an isolated profile; a tab in the user's window does not. The bridge
 > mirror is not the leak — `recovered` carries `text:` keys only, on both
 > ends.
+
+> **The verification tab is not the user's tab.** The bridge ignores polls and
+> the unload beacon of a verification browser: a request marked `?probe=1` (or
+> header `X-Concept-Probe: 1`) always, and a user agent `Claude/`, `Electron/`,
+> `HeadlessChrome`, `Playwright` unless the person chose the Desktop app's
+> in-app pane (then the bridge runs with `--in-app-browser` and the pane's tab
+> is THEIR tab; `_is_probe_agent` in `concept-server.py`), so it never counts in `browser_tabs` and `verify` still
+> opens Edge after it. Before that rule the pane's tab registered, `verify`
+> answered `already_open: true` on its first call and the user had no page
+> (2026-11-22). **Is the page open for the user?** Read `GET /pending` →
+> `browser_tabs` (≥ 1 = a user tab polls). Never `GET /heartbeat`: a bare GET
+> there is itself counted as a browser poll and moves `browser_ts`, so the
+> check proves its own request. `already_open: true` on the FIRST `verify` of a
+> bridge run means a user tab was already registered (a resumed concept); with
+> `browser_tabs` 0 right after it, open the page with the command above.
 
 ```js
 getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim()

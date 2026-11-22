@@ -19,9 +19,10 @@ const os = require('os');
 
 // The repo root, not the raw cwd: a session sitting in a subdirectory must not
 // scatter `<subdir>/.claude/token-config.json` files (lib/project-root.js).
-const { projectRoot, projectClaudeDir } = require('../lib/project-root');
+const { projectRoot, stateClaudeDir } = require('../lib/project-root');
 const cwd = projectRoot(process.cwd());
-const CONFIG_DIR = projectClaudeDir(cwd);
+// A folder that is no work tree gets no `.claude/` — its state lives under ~/.claude/devops-state.
+const CONFIG_DIR = stateClaudeDir(cwd);
 const CONFIG_PATH = path.join(CONFIG_DIR, 'token-config.json');
 
 const PLAN_DEFAULTS = require('../lib/plan-defaults');

@@ -962,6 +962,15 @@ describe("AUD-051 — machine turns (task notifications, scheduled tasks) are ne
     const own = B.MACHINE_PATTERNS.map((r) => `${r.source}/${r.flags}`);
     expect(own).toContain(`${silent.MACHINE_TURN_PATTERN.source}/${silent.MACHINE_TURN_PATTERN.flags}`);
     expect(own).toContain(`${silent.SCHEDULED_TASK_PATTERN.source}/${silent.SCHEDULED_TASK_PATTERN.flags}`);
+    // every silent-turn silence marker too, and the side-session pattern both share
+    for (const rx of silent.SILENT_PATTERNS) expect(own).toContain(`${rx.source}/${rx.flags}`);
+    expect(own).toContain(`${silent.SIDE_SESSION_TURN_PATTERN.source}/${silent.SIDE_SESSION_TURN_PATTERN.flags}`);
+  });
+
+  test("a coordinator note is no machine turn in either list (batch skips it by origin, issue tracking reads it)", () => {
+    const note = '<project_claude_message from="coordinator">\n<relay from="coordinator" reason="spawn"><note>fix #12</note></relay>\n</project_claude_message>';
+    expect(B.isMachinePrompt(note)).toBe(false);
+    expect(silent.isMachineTurn(note)).toBe(false);
   });
 
   test.each([

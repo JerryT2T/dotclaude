@@ -159,13 +159,15 @@ function planFor(hook, prompt, cwd) {
   // A Claude Projects thread (lib/project-thread.js): the sidebar title reaches
   // no one there. With the feature the head goes on the thread title instead;
   // without it the hook stays silent.
-  const mode = thread.threadMode({ ...hook, prompt });
+  const mode = thread.threadMode({ ...hook, prompt, prompt_raw: thread.promptFields({ ...hook, prompt }).prompt_raw });
   if (mode === 'quiet') return { context: '', sessionTitle: null };
   if (mode === 'on') {
+    const fields = thread.promptFields({ ...hook, prompt });
     return threadTitlePlan({
-      prompt,
+      prompt: fields.prompt,
+      origin: fields.prompt_origin,
       current: thread.lastThreadTitle(hook.transcript_path),
-      resumesShip: resumesShip(thread.personWords(prompt) || prompt, cwd),
+      resumesShip: resumesShip(fields.prompt, cwd),
     });
   }
   const current = currentTitle(hook);
@@ -252,12 +254,13 @@ if (require.main === module) {
     if (!shouldMark(hook)) process.exit(0);
     if (!runOnce(ONCE_KEY, hook.session_id)) process.exit(0);
     const prompt = hook.prompt || hook.user_message || hook.message || '';
+    const origin = thread.promptFields(hook).prompt_origin;
     const out = hookReply(hook, prompt, hook.cwd || process.cwd());
     if (out) process.stdout.write(out + '\n');
     // A machine turn that left the title alone must not hold the token: a
     // real user message later in the same turn (a "Do it here" click, a card
     // button) would otherwise find it taken and never mark the title (#1094).
-    else if (isMachineTurn(prompt) || thread.isRelayPrompt(prompt)) releaseOnce(ONCE_KEY, hook.session_id);
+    else if (isMachineTurn(prompt) || origin === 'machine' || thread.isColleagueOrigin(origin)) releaseOnce(ONCE_KEY, hook.session_id);
     process.exit(0);
   });
 }

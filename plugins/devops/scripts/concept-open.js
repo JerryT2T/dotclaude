@@ -27,6 +27,11 @@
  *     then /shutdown. Exits 1 and prints {ok:false,error} when /status does not
  *     echo phase "closed" - run it BEFORE any file move or state-file removal.
  *
+ *   open-url --url <https url>
+ *     Opens one https URL (a published artifact) in Edge - no bridge. For a
+ *     thread on this computer; a cloud session (CLAUDE_CODE_REMOTE=true) has no
+ *     browser and answers {ok:true,opened:false}. Same Edge launcher as verify.
+ *
  * Every sibling script is resolved from this file's directory.
  */
 const fs = require('fs');
@@ -54,13 +59,22 @@ function parseArgs(argv) {
   return o;
 }
 
-function buildLaunch({ port, cwd, html, state, owner }) {
+function buildLaunch({ port, cwd, html, state, owner, inApp = false }) {
   const watch = (mode) => `node ${q(path.join(DIR, 'concept-watch.js'))} --mode ${mode} --port ${port} --state ${q(state)} --owner ${owner}`;
   return {
-    server: `python ${q(path.join(DIR, 'concept-server.py'))} ${port} ${q(cwd)} --html ${q(html)}`,
+    // The in-app pane chosen: its tab is the person's, so the bridge must not read its user agent as a probe.
+    server: `python ${q(path.join(DIR, 'concept-server.py'))} ${port} ${q(cwd)} --html ${q(html)}${inApp ? ' --in-app-browser' : ''}`,
     pulser: watch('pulse'),
     waker: watch('watch'),
   };
+}
+
+/** True when the person's browser choice is the Desktop app's pane (deps.browser overrides, for tests). */
+function inAppChosen(deps = {}) {
+  try {
+    const b = deps.browser || choice.resolveBrowser();
+    return Boolean(b) && b.id === choice.IN_APP;
+  } catch { return false; }
 }
 
 function prepare(opts, deps = {}) {
@@ -103,7 +117,7 @@ function prepare(opts, deps = {}) {
 
   return {
     port, owner, state, url: `http://localhost:${port}/${html}`,
-    launch: buildLaunch({ port, cwd, html, state, owner }),
+    launch: buildLaunch({ port, cwd, html, state, owner, inApp: inAppChosen(deps) }),
     baseline,
   };
 }
@@ -288,7 +302,16 @@ async function close(opts, deps = {}) {
   return { ok: true, port, acked, tabs, shutdown };
 }
 
-module.exports = { prepare, verify, close, buildLaunch, parseArgs, openBrowser };
+/** Open a published artifact URL in Edge (thread on this computer); never throws. */
+async function openUrl(opts, deps = {}) {
+  const url = typeof opts.url === 'string' ? opts.url : '';
+  if (!/^https:\/\/[^\s"'<>^&|]+$/.test(url)) return { ok: false, error: 'open-url needs a plain https url' };
+  if ((deps.env || process.env).CLAUDE_CODE_REMOTE === 'true') return { ok: true, opened: false, reason: 'cloud session: no local browser', url };
+  const err = await (deps.openBrowser || openBrowser)(url);
+  return err ? { ok: false, error: err, url } : { ok: true, opened: true, url };
+}
+
+module.exports = { prepare, verify, close, buildLaunch, parseArgs, openBrowser, openUrl };
 
 if (require.main === module) {
   (async () => {
@@ -301,12 +324,16 @@ if (require.main === module) {
         const res = await verify(opts);
         process.stdout.write(JSON.stringify(res) + '\n');
         process.exit(res.ok ? 0 : 1);
+      } else if (cmd === 'open-url') {
+        const res = await openUrl(opts);
+        process.stdout.write(JSON.stringify(res) + '\n');
+        process.exit(res.ok ? 0 : 1);
       } else if (cmd === 'close') {
         const res = await close(opts);
         process.stdout.write(JSON.stringify(res) + '\n');
         process.exit(res.ok ? 0 : 1);
       } else {
-        process.stderr.write('usage: concept-open.js prepare --cwd <dir> --html <rel> | verify --state <abs path> | close --state <abs path>|--port <n> [--finished <json>]\n');
+        process.stderr.write('usage: concept-open.js prepare --cwd <dir> --html <rel> | verify --state <abs path> | open-url --url <https url> | close --state <abs path>|--port <n> [--finished <json>]\n');
         process.exit(2);
       }
     } catch (e) {

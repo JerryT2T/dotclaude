@@ -33,6 +33,31 @@ now AND the Artifact tool is available); this file is the procedure.
    "decide on the artifact, then tell Claude to read the decisions"; no
    `concept` field (nothing waits on a live page).
 
+## In a Claude Projects thread
+
+A concept that starts in a thread takes this path by itself: the person sees
+only what the thread posts, so no localhost bridge page is of use there. The
+owner's wish to decide remotely is given; the hand-off tier is not needed.
+
+- **Publish and post:** steps 1–3, then post the artifact link with
+  `mcp__hearthbot__post_message` (card `changes` + the one `open` item).
+- **Edge:** thread on this computer →
+  `node "{PLUGIN_ROOT}/scripts/concept-open.js" open-url --url <artifact url>`
+  opens it in Edge. Cloud thread (`CLAUDE_CODE_REMOTE=true`): no local browser,
+  the command answers `opened:false`; the link is all there is — say so in the post.
+- **Return channel — read this honestly.** The page's submit lands in the
+  artifact's `db` store (`readBack`, step 5), and that carries the whole payload:
+  decisions, notes and `action` — `iterate` (next round), `implement`,
+  `next-stage` — so the actions are not lost. The session reads it with the
+  `ArtifactData` tool (the Artifact tool's `db` capability; the public artifacts
+  doc page names only comments as a return channel). The read-back has not been
+  observed from a thread yet. The artifact does not wake the thread: the person
+  says "read the decisions" (or the next wake does), then Step 4/5 runs on the
+  stored payload.
+- **If nothing comes back** (the read-back is empty or errors): the person
+  pastes the decisions, or says the action (`next round` / `implement`), into
+  the thread; the session continues from those words. The post says so once.
+
 ## Wrapper contract
 
 | Request | Artifact viewer with `db` | No `db` namespace | No `window.claude` |

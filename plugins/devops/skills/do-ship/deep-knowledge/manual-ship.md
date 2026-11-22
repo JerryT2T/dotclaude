@@ -18,7 +18,9 @@ that did not happen.
 > connect, cache not repairable>) — ich shippe nach der manuellen Checkliste.
 
 In a cloud session add: the plugin is not loaded there; enabling the devops
-plugin for cloud sessions brings the automated pipeline back.
+plugin for cloud sessions (Project settings > Plugins) brings the automated
+pipeline back. Until then a cloud thread ships by § Cloud thread below — it
+can ship; only the tag needs the owner.
 
 ## Checklist
 
@@ -38,7 +40,8 @@ plugin for cloud sessions brings the automated pipeline back.
 5. **PR** — title `type(scope): summary`, body starting `Closes #N` when an
    issue is shipped. Prefer the GitHub MCP tools (`create_pull_request`);
    `gh pr create` is blocked by `pre.ship.guard` wherever the plugin's hooks
-   run, unless the user set `DOTCLAUDE_ALLOW_MANUAL_SHIP=1`.
+   run, unless the user set `DOTCLAUDE_ALLOW_MANUAL_SHIP=1`. In a cloud thread
+   steps 5–9 are the REST commands of § Cloud thread.
 6. **Wait for checks** — every required check green before the merge.
 7. **Squash merge** — never a merge commit, never a rebase merge, unless the
    pipeline's own rule applies (overlapping files with a parallel branch →
@@ -61,6 +64,46 @@ plugin for cloud sessions brings the automated pipeline back.
     `node "{PLUGIN_ROOT}/mcp-server/index.js" --render-card <payload.json>`.
     The card says the ship was manual: a `tests` line
     `{ method: "Ship", result: "manuell — Ship-MCP nicht verfügbar" }`.
+
+## Cloud thread — steps 5 to 9 without `gh pr` and without the plugin
+
+The claude.ai cloud GitHub proxy takes **branch pushes** and `gh api` (REST).
+It refuses the GraphQL subcommands (`gh pr`, `gh issue`), **tag pushes** and
+**branch deletions through git**. So steps 1–4 are unchanged and steps 5–9 read
+as follows; `{owner}/{repo}` is filled in by `gh` from the remote (write the
+real `owner/repo` when it is not). Skip no step; a refused call is reported,
+never worked around by a merge commit or a lightweight tag.
+
+- **Push** — `git push -u origin <branch>` (a branch push works).
+- **5. PR** — `gh api -X POST repos/{owner}/{repo}/pulls -f title='type(scope): summary' -f head='<branch>' -f base='<base>' -f body='Closes #N …'`;
+  the answer carries `number` and `html_url`. REST has no ready-for-review call
+  (GraphQL only), but the proxy offers its own route for a draft:
+  `gh api -X POST repos/{owner}/{repo}/pulls/<N>/ccr/ready_for_review`; the
+  simplest is to create the PR as a regular one. A PR for the branch already open: `gh api 'repos/{owner}/{repo}/pulls?state=open&head={owner}:<branch>'`.
+- **6. Wait for checks** — `SHA=$(git rev-parse HEAD)`, then every ~30 s:
+  `gh api repos/{owner}/{repo}/commits/$SHA/check-runs --jq '.check_runs[] | [.name,.status,.conclusion] | @tsv'`
+  and `gh api repos/{owner}/{repo}/commits/$SHA/status --jq .state`. Green =
+  every run `completed` with `success|neutral|skipped` and the status not
+  `failure`; a failure stops the ship. Nothing reported for ~90 s = no CI there — say so on the card.
+- **7. Squash merge** — `gh api -X PUT repos/{owner}/{repo}/pulls/<N>/merge -f merge_method=squash`;
+  `"merged": true` and `sha` in the answer, then `git fetch origin <base>` and
+  `git rev-parse origin/<base>`. A refusal (checks, review rule) stops the ship; report it.
+- **8. Ring tag — the owner does it.** The proxy rejects a tag push, so do not
+  try it and do not retry. Give the owner the block of
+  `release-flow.md` § owner hand-off. It is written out here, merge sha filled
+  in, because a cloud thread without the plugin has no such file on disk:
+  `git fetch origin <base>` · `git tag -a alpha/vX.Y.Z <merge-sha> -m '{"channel":"alpha","version":"X.Y.Z"}'` ·
+  `git push origin alpha/vX.Y.Z` · `git ls-remote --tags origin alpha/vX.Y.Z`,
+  run in a clone on their own computer. The card says it: *vX.Y.Z is merged on
+  `<base>`, the tag is pending the owner's commands*, and lists them.
+- **9. Cleanup** — `gh api -X DELETE repos/{owner}/{repo}/git/refs/heads/<branch>`;
+  a refusal is a note on the card (the repository's "delete head branches
+  after merge" setting or the cleanup page removes it), not a failure.
+
+With the plugin's ship tools loaded in the cloud thread (`ship_run`) the same
+REST calls run by themselves: `mcp-server/ship/lib/github.js` switches to REST
+when `CLAUDE_CODE_REMOTE=true` or after the first refused `gh pr …` call, and
+the result's `tagHandoff` is the block above, ready to copy.
 
 ## Never
 

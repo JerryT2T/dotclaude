@@ -1,6 +1,6 @@
 # dotclaude
 
-**Version: 0.401.2**
+**Version: 0.402.0**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
 
@@ -26,7 +26,7 @@ keep git clean, block risky moves and stop context waste.
 - **Runs while you are away** — `/do-run` works off a backlog, a task or the leftover weekly budget, and ships each item
 - **Per-project tuning** — extend any skill with a `reference.md`, no fork
 
-<!--devops:count:hooks-->115<!--/devops:count:hooks--> hooks ·
+<!--devops:count:hooks-->119<!--/devops:count:hooks--> hooks ·
 <!--devops:count:skills-->15<!--/devops:count:skills--> skills ·
 <!--devops:count:agents-->11<!--/devops:count:agents--> agents ·
 ~0.7M tokens/week overhead (1–4 % of a Max plan), paid back 1.5–6× by the
@@ -522,7 +522,7 @@ A different stack: extend the skills per project — see [Customize](#customize)
 </details>
 
 <details>
-<summary><strong>Hooks</strong> — <!--devops:count:hooks-->115<!--/devops:count:hooks--> hooks by lifecycle and by category</summary>
+<summary><strong>Hooks</strong> — <!--devops:count:hooks-->119<!--/devops:count:hooks--> hooks by lifecycle and by category</summary>
 
 ```
 SessionStart  ──>  UserPromptSubmit  ──>  PreToolUse  ──>  PostToolUse  ──>  Stop
@@ -567,6 +567,7 @@ SessionStart  ──>  UserPromptSubmit  ──>  PreToolUse  ──>  PostToolU
 - `prompt.batch.collect` — Collect mode for `/do-batch`: while active, blocks the user prompt (JSON `decision: "…
 - `prompt.run.contract` — Arm, refresh or pre-arm the do-run RUN CONTRACT from the prompt (run-contract spec B,…
 - `prompt.flow.silent-turn` — Detects background/cron-injected prompts and marks the turn as "silent" so post.flow.…
+- `prompt.thread.notices` — Two things at the first prompts of a Claude Projects thread.
 - `prompt.flow.title-work` — Marks a session as "being worked on" in the sidebar: on the first real prompt of a se…
 - `prompt.knowledge.dispatch` — On-demand deep-knowledge injection based on prompt keywords.
 - `prompt.knowledge.anchor` — Records the knowledge anchor (Wissensstand) of this worktree: the origin/<base> tip t…
@@ -589,8 +590,10 @@ SessionStart  ──>  UserPromptSubmit  ──>  PreToolUse  ──>  PostToolU
 - `pre.tokens.guard` — Block Read/Bash/Glob/Grep operations that would consume a significant percentage of t…
 - `pre.ship.guard` — Block manual PR creation/merging via Bash or PowerShell.
 - `pre.main.guard` — Prevent accidental writes on local main/master.
+- `pre.thread.rights` — Claude Projects rights (d-trust "alpha", line A4): a turn that a COLLEAGUE started (a…
 - `pre.worktree.split-guard` — WARN (never block) on git-mutating work driven from the main repo root while an agent…
 - `pre.test.fullguard` — While a ship is in progress (the .claude/.ship-in-progress sentinel exists), refuse a…
+- `pre.thread.rights` — Claude Projects rights (d-trust "alpha", line A4): a turn that a COLLEAGUE started (a…
 - `pre.merge.guard` — Never pick a side wholesale — on EVERY branch and worktree.
 - `pre.issue.guard` — Block raw GitHub issue writes (gh issue, gh api, MCP) unless auto-issue ran this turn.
 - `pre.crawl.guard` — Block recursive scans of a filesystem root, a drive root or the whole home directory.
@@ -603,6 +606,7 @@ SessionStart  ──>  UserPromptSubmit  ──>  PreToolUse  ──>  PostToolU
 - `pre.session.archive` — Only the post-ship hand-over archives this session (#632).
 - `pre.title.topic` — Enforces the 30-character session-title topic (user decision d-len, 2026-11-17: 20; 3…
 - `pre.ask.title` — Puts `👉 ➜ ❓ ` on the session title BEFORE a call blocks on the user (a question, a p…
+- `pre.thread.session` — Fan-out rule of a Claude Projects thread (line C5): a thread may spawn subagents but…
 - `pre.plugin.session` — Refuse once a plugin fix session started from a consumer project before the upstream…
 - `pre.ask.title` — Puts `👉 ➜ ❓ ` on the session title BEFORE a call blocks on the user (a question, a p…
 - `pre.strict.agent-gate` — While strict mode is active, refuse an Agent spawn whose prompt does not start with t…
@@ -799,10 +803,13 @@ SessionStart  ──>  UserPromptSubmit  ──>  PreToolUse  ──>  PostToolU
 - `ss.setup.firstrun` *(SessionStart)*
 - `ss.backup.stale` *(SessionStart)*
 - `ss.ci.workflows.sweep` *(SessionStart)*
+- `prompt.thread.notices` *(UserPromptSubmit)*
 - `prompt.hook.hardend` *(UserPromptSubmit)*
+- `pre.thread.rights` *(PreToolUse, PreToolUse)*
 - `pre.test.fullguard` *(PreToolUse)*
 - `pre.merge.guard` *(PreToolUse)*
 - `pre.redirect.scope` *(PreToolUse)*
+- `pre.thread.session` *(PreToolUse)*
 - `pre.waitloop.guard` *(PreToolUse)*
 - `pre.visible-browser.guard` *(PreToolUse)*
 - `post.backup.routine` *(PostToolUse)*
@@ -844,11 +851,11 @@ plugins/
 │   ├── .claude-plugin/plugin.json ← Plugin manifest (SemVer, tags v0.x.y)
 │   ├── .mcp.json                  ← MCP servers: completion card, ship, issues
 │   ├── CONVENTIONS.md             ← Naming, versioning, extension rules
-│   ├── hooks/                     ← <!--devops:count:hooks-->115<!--/devops:count:hooks--> hooks (JS) registered in hooks/dispatch/manifest.json
+│   ├── hooks/                     ← <!--devops:count:hooks-->119<!--/devops:count:hooks--> hooks (JS) registered in hooks/dispatch/manifest.json
 │   ├── skills/                    ← <!--devops:count:skills-->15<!--/devops:count:skills--> skill definitions (SKILL.md)
 │   ├── agents/                    ← <!--devops:count:agents-->11<!--/devops:count:agents--> agent definitions
 │   ├── mcp-server/                ← Card renderer + Desktop widget, ship tools, issue matching
-│   ├── deep-knowledge/            ← Cross-cutting reference docs (<!--devops:count:dk-->61<!--/devops:count:dk--> topics)
+│   ├── deep-knowledge/            ← Cross-cutting reference docs (<!--devops:count:dk-->62<!--/devops:count:dk--> topics)
 │   ├── scheduled-tasks/           ← Runbooks for opt-in background jobs
 │   ├── evals/                     ← Behavioral evals and skill A/B runs (ab-run.js)
 │   ├── templates/                 ← Output style, changelog and release templates

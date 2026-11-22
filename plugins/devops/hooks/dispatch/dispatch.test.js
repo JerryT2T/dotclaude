@@ -211,11 +211,11 @@ describe("fail-closed guards: a module marked onFailure block that gives no verd
     }
   });
 
-  test("the manifest marks exactly the four gates whose verdict a call needs", () => {
+  test("the manifest marks exactly the five gates whose verdict a call needs", () => {
     const manifest = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, "manifest.json"), "utf8"));
     const marked = Object.entries(manifest.hooks).flatMap(([event, groups]) => groups.flatMap((g) => g.hooks)
       .filter((h) => h.onFailure === "block").map((h) => `${event}:${/([\w.-]+)\.js/.exec(h.command)[1]}`));
-    expect(marked.sort()).toEqual(["PreToolUse:pre.cleanup.gate", "PreToolUse:pre.main.guard", "PreToolUse:pre.run.contract", "PreToolUse:pre.ship.guard"]);
+    expect(marked.sort()).toEqual(["PreToolUse:pre.cleanup.gate", "PreToolUse:pre.main.guard", "PreToolUse:pre.run.contract", "PreToolUse:pre.ship.guard", "PreToolUse:pre.thread.rights", "PreToolUse:pre.thread.rights"]);
   });
 });
 

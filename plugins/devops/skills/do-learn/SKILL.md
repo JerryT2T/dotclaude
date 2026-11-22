@@ -121,7 +121,10 @@ session with no git root. This mirrors `isPluginSourceRepo` in
 `{PLUGIN_ROOT}/deep-knowledge/plugin-scope-routing.md`.
 
 **Q3 — Which project?** Only relevant when Q1 = *a project*. Scan the learning
-**text** for a named project; nothing named → the current one. The scan reads
+**text** for a named project; nothing named → the current one. **In a thread
+of a Claude Project, "fürs Projekt" is ambiguous** (this repo, another repo, the
+whole Claude Project): ask which one, as a numbered reply
+(`routing-details.md` → "Which project is meant in a thread"). The scan reads
 the text, it does not survey the disk. Recipe (uses
 `scripts/recent-projects.js`, Claude Code's own project records):
 `deep-knowledge/routing-details.md` (sibling of this file).
@@ -130,7 +133,7 @@ the text, it does not survey the disk. Recipe (uses
 |-----------------------|-----------------------------|--------------------|----------------------------------------------------|
 | the devops plugin     | yes                         | —                  | **A** — edit the plugin files directly             |
 | the devops plugin     | no                          | —                  | **B** — plugin repo: issue, or ask when it was active in the last hour |
-| a project             | either                      | this one           | **C** — this project's own `.claude/` instructions |
+| a project             | either                      | this one           | **C** — this project's own `.claude/` instructions; a rule about how Claude works in the repo → root `.claude/rules/<topic>.md` |
 | a project             | either                      | another one        | **D** — that repo: issue, or ask when it was active in the last hour |
 
 **Reach into another repo (B, D) — by activity.** The session's own repo is
@@ -237,6 +240,9 @@ prompt: `deep-knowledge/feedback-cleanup.md` (sibling of this file).
 ## Step 5 — Report
 
 - Which file(s) changed (path + line delta), and the verbatim rule added
+- Branch C: where it loads — a `.claude/rules/` file in local sessions and cloud
+  threads; a skill extension **not** in a cloud thread without the project
+  plugin; a cross-repo rule → the ready text for Project settings > Memory
 - CLAUDE.md touched → relay what `post.claude.budget` reported, if anything; do
   not re-count lines by hand
 - Feedback memories deleted in Step 4 → list them

@@ -85,7 +85,8 @@ if (require.main === module) {
     let hook;
     try { hook = JSON.parse(inputData); } catch { process.exit(0); }
 
-    const prompt = hook.prompt || '';
+    // The dispatcher's unwrapped fields (lib/project-thread.js PROMPT INTAKE CONTRACT); a direct run gets them from the same function.
+    const { prompt, prompt_raw: promptRaw, prompt_origin: origin } = require('../lib/project-thread').promptFields(hook);
 
     // A Claude Projects thread announces itself with its first prompt (the wake
     // envelope): leave the marker the Stop hook and the card renderer read.
@@ -106,11 +107,13 @@ if (require.main === module) {
     // A prompt is no approval wake turn (lib/approval-wait.js): a wake flag
     // the woken turn never consumed must not silence this one.
     const approvalWait = require('../lib/approval-wait');
-    if (!prompt.includes(approvalWait.MARKER)) approvalWait.dropWake(hook.session_id);
+    if (!promptRaw.includes(approvalWait.MARKER)) approvalWait.dropWake(hook.session_id);
     for (const prefix of ['dotclaude-devops-card-archive', 'dotclaude-devops-card-archive-released', 'dotclaude-devops-archive-shipped']) {
       try { fs.unlinkSync(sessionFile(prefix, hook.session_id)); } catch { /* no flag to clear */ }
     }
 
+    // A thread's own words (a person, a coordinator note) are never a silent tick.
+    if (origin !== 'typed' && origin !== 'machine') process.exit(0);
     if (!isSilent(prompt)) process.exit(0);
 
     try {

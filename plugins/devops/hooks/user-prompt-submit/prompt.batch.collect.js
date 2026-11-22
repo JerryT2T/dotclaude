@@ -826,6 +826,13 @@ process.stdin.on('end', () => {
   let hook;
   try { hook = JSON.parse(inputData); } catch { process.exit(0); }
 
+  // A coordinator note (or another thread's message) is a colleague's turn: not the user's
+  // note to collect, not a prompt that advances the activity clock. It runs untouched.
+  try {
+    const thread = require('../lib/project-thread');
+    if (thread.isColleagueOrigin(thread.promptFields(hook).prompt_origin)) process.exit(0);
+  } catch { /* classification trouble never swallows a prompt */ }
+
   // Field name varies across hook types in this codebase — cover all three.
   // Reading only `user_message` would yield '' here and destroy every prompt.
   const text = hook.prompt || hook.user_message || hook.message || '';

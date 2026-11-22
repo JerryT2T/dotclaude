@@ -109,7 +109,23 @@ async function run({
       ? `⚠ devops: no local install · Cloud ${lag.running} outdated (runs here), newest is ${lag.latest} ${arrow}`
       : `⚠ devops: kein lokaler Install · Cloud ${lag.running} veraltet (läuft hier), neueste ist ${lag.latest} ${arrow}`;
   }
-  return [line, 'Show the user this line verbatim, once.', ''].join('\n');
+  const lines = [line, 'Show the user this line verbatim, once.'];
+  const steps = require('../lib/cloud-update').STEPS;
+  if (cloud) {
+    // A cloud session cannot reach the person's claude.ai login: name the click that is theirs.
+    lines.push(`The update itself is a click only the person can do (this session runs in the cloud and never logs in for them): ${steps}. Say exactly that, once.`);
+  } else {
+    // Desktop without a local install: a session on this machine may start the update itself.
+    try {
+      const cu = require('../lib/cloud-update');
+      const lag = remoteCopyLag({ pluginRoot, latest });
+      const threadSeen = require('../lib/thread-seen').threadSeen(home);
+      if (lag && cu.planCloudUpdate({ home, version: latest, cloudVersion: lag.running, threadSeen }).start) {
+        lines.push(cu.updateInstruction({ version: latest, cloudVersion: lag.running, script: path.join(pluginRoot, 'scripts', 'cloud-update.js'), lang }));
+      }
+    } catch { /* the notice above stands */ }
+  }
+  return [...lines, ''].join('\n');
 }
 
 if (require.main === module) {
