@@ -86,8 +86,12 @@ const crypto = require('crypto');
 
 const cwd = process.cwd();
 // Written by ss.tokens.scan at the repo root (lib/project-root.js).
-const CONFIG_DIR = require('../lib/project-root').projectClaudeDir(cwd);
-const CONFIG_PATH = path.join(CONFIG_DIR, 'token-config.json');
+const CONFIG_DIR = require('../lib/project-root').stateClaudeDir(cwd);
+const STATE_CONFIG_PATH = path.join(CONFIG_DIR, 'token-config.json');
+// A config an older version (or the user) left in `<cwd>/.claude/` stays readable
+// when the state folder has none; the scan writes only to the state folder.
+const LEGACY_CONFIG_PATH = path.join(require('../lib/project-root').projectClaudeDir(cwd), 'token-config.json');
+const CONFIG_PATH = !fs.existsSync(STATE_CONFIG_PATH) && fs.existsSync(LEGACY_CONFIG_PATH) ? LEGACY_CONFIG_PATH : STATE_CONFIG_PATH;
 
 let PLAN_DEFAULTS;
 try {

@@ -13,7 +13,7 @@
  *     git revert, git apply, git am
  *
  *   Bypass conditions (any one of them → exit 0):
- *     - Not inside a git repo
+ *     - The directory the command acts on is not inside a git repo
  *     - HEAD is NOT main/master
  *     - Sentinel file .claude/.ship-in-progress exists (ship pipeline active)
  *     - DEVOPS_ALLOW_MAIN=1 in environment
@@ -45,14 +45,14 @@
 // A lib that fails to load (half-written during a plugin update, version skew)
 // makes this hook a silent no-op instead of a hook error on every Bash call
 // (AUD-028).
-let gitOut, sentinelActive, isLinkedWorktree, branchFix, ownWorktreeDecided, BYPASS, gitCommandRe, matchesGitCommand, WORD_END, remoteDeleteTargets;
+let gitOut, sentinelActive, isLinkedWorktree, branchFix, threadWorktreeFor, ownWorktreeDecided, BYPASS, gitCommandRe, matchesGitCommand, gitSegments, WORD_END, remoteDeleteTargets;
 try {
   require('../lib/plugin-guard');
-  ({ gitCommandRe, matchesGitCommand, WORD_END, remoteDeleteTargets } = require('../lib/ship-guard-match'));
+  ({ gitCommandRe, matchesGitCommand, gitSegments, WORD_END, remoteDeleteTargets } = require('../lib/ship-guard-match'));
   ({ gitOut } = require('../lib/git-timeout'));
   ({ isActive: sentinelActive } = require('../lib/ship-sentinel'));
   ({ isLinkedWorktree } = require('../lib/project-root'));
-  ({ branchFix, ownWorktreeDecided, BYPASS } = require('../lib/branch-fix'));
+  ({ branchFix, threadWorktreeFor, ownWorktreeDecided, BYPASS } = require('../lib/branch-fix'));
 } catch (err) {
   // Silent to the user and the model (exit 0), but not traceless: the line
   // lands in the hook log, so a persistent load error can be found (AUD-068).
@@ -108,19 +108,40 @@ process.stdin.on('end', () => {
   const cmd = (hook.tool_input || {}).command || '';
   if (!cmd) process.exit(0);
 
-  const otherWrite = matchesGitCommand(cmd, WRITE_PATTERNS);
-  const push = matchesGitCommand(cmd, [PUSH_PATTERN]);
-  if (!otherWrite && !push) process.exit(0);
+  if (!matchesGitCommand(cmd, WRITE_PATTERNS) && !matchesGitCommand(cmd, [PUSH_PATTERN])) process.exit(0);
 
   const cwd = hook.cwd || process.cwd();
 
   if (process.env.DEVOPS_ALLOW_MAIN === '1') process.exit(0);
-  if (!isGitRepo(cwd)) process.exit(0);
-  if (sentinelActive(cwd)) process.exit(0);
+
+  // Each git write is checked against the directory IT acts on (`git -C`,
+  // `cd <dir> &&`, `pushd`, `Set-Location`), not only the session's start
+  // folder: a session started in a non-repo folder such as P:\Projects used to
+  // pass every write. An unreadable directory falls back to the cwd, as before.
+  const targets = new Map();
+  for (const seg of gitSegments(cmd, cwd)) {
+    const other = matchesGitCommand(seg.text, WRITE_PATTERNS);
+    const push = matchesGitCommand(seg.text, [PUSH_PATTERN]);
+    if (!other && !push) continue;
+    const dir = seg.dir || cwd;
+    const prev = targets.get(dir) || { otherWrite: false };
+    targets.set(dir, { otherWrite: prev.otherWrite || other });
+  }
+  // A write the segment parser did not attribute (exotic syntax): today's check on the cwd.
+  if (!targets.size) targets.set(cwd, { otherWrite: matchesGitCommand(cmd, WRITE_PATTERNS) });
+
+  for (const [dir, { otherWrite }] of targets) checkDir(hook, tool, cmd, dir, otherWrite);
+  process.exit(0);
+});
+
+/** Exits 2 with the reason when a write in `cmd` acting on `cwd` lands on main/master of its repo. */
+function checkDir(hook, tool, cmd, cwd, otherWrite) {
+  if (!isGitRepo(cwd)) return;
+  if (sentinelActive(cwd)) return;
 
   const branch = currentBranch(cwd);
-  if (!branch) process.exit(0);
-  if (branch !== 'main' && branch !== 'master') process.exit(0);
+  if (!branch) return;
+  if (branch !== 'main' && branch !== 'master') return;
 
   // Only a push matched: a pure delete of non-default remote branches is fine.
   // Bash syntax only — PowerShell parses arguments differently, so it keeps
@@ -136,7 +157,7 @@ process.stdin.on('end', () => {
         if (!head || !head.startsWith(`${remote}/`)) { known = false; break; }
         protectedRefs.add(head.slice(remote.length + 1).toLowerCase());
       }
-      if (known && !t.refs.some(r => protectedRefs.has(r.toLowerCase()))) process.exit(0);
+      if (known && !t.refs.some(r => protectedRefs.has(r.toLowerCase()))) return;
     }
   }
 
@@ -154,6 +175,7 @@ process.stdin.on('end', () => {
     mainCheckout: !(top && isLinkedWorktree(top)),
     subagent: Boolean(hook.agent_id),
     ownWorktree: ownWorktreeDecided(top || cwd),
+    threadWorktree: threadWorktreeFor(hook, top || cwd),
   });
 
   process.stderr.write(
@@ -163,4 +185,4 @@ process.stdin.on('end', () => {
     `[pre.main.guard] ${BYPASS}\n`
   );
   process.exit(2);
-});
+}
