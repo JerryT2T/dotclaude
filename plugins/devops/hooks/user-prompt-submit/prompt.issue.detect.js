@@ -58,11 +58,15 @@ process.stdin.on('end', () => {
   try { if (require('../lib/batch-state').willBeCollected(hook)) process.exit(0); }
   catch { /* fail open */ }
 
-  let message = require('../lib/prompt-text').rawPrompt(hook);
+  const fields = require('../lib/project-thread').promptFields(hook);
+  let message = fields.prompt;
   if (!message) process.exit(0);
   // Background agent reports quote issue and PR numbers; the user referenced
   // none of them (#473). Machine turns also must not consume the first-prompt
   // heuristic.
+  // A coordinator note's request to work on an issue is tracked like a person's (d-lines, relay):
+  // `prompt` is the note's text, so only a machine turn stops here.
+  if (fields.prompt_origin === 'machine') process.exit(0);
   if (require('../lib/non-user-prompt').isNonUserPrompt(message)) process.exit(0);
 
   // A request to work on an issue is tracked; a number only mentioned is

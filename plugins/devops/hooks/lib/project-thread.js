@@ -81,6 +81,142 @@ function personWords(prompt) {
   return m ? decodeEntities(m[1]).trim() : '';
 }
 
+/**
+ * PROMPT INTAKE CONTRACT (package A, Claude Projects).
+ *
+ * The UserPromptSubmit dispatcher (hooks/dispatch/dispatch.js, `normalizeInput`)
+ * unwraps a prompt ONCE and hands every prompt hook the same three fields next
+ * to the rest of the payload:
+ *
+ *   prompt         the words to act on. Typed or machine prompt: the runtime's
+ *                  prompt, byte-identical. Thread prompt: the person's message
+ *                  (origin `person`), the coordinator's note text (`coordinator`)
+ *                  or the other sender's message (`thread`) — never the envelope.
+ *   prompt_raw     the runtime's prompt, untouched (the wake / relay envelope in
+ *                  a thread; equal to `prompt` for typed and machine prompts).
+ *   prompt_origin  who spoke:
+ *                    `person`       the person's own message in a thread
+ *                                   (`<message trigger="true" from="human" trust="principal">`)
+ *                    `coordinator`  a coordinator note (`<relay from="coordinator">`,
+ *                                   `<project_claude_message>`, `<coordinator-relay>`)
+ *                    `thread`       any other thread sender: another thread's note, a
+ *                                   wake without a person message
+ *                    `machine`      nobody typed it: notification, cron tick, scheduled
+ *                                   task, channel / side-session message (lib/non-user-prompt.js)
+ *                    `typed`        a plain Desktop / terminal prompt
+ *
+ * Rights (Claude Projects, d-trust "alpha"): `person` and `typed` speak for the
+ * person (`speaksForPerson`); `coordinator` and `thread` are colleagues
+ * (`isColleagueOrigin`) — they may order work and an alpha ship, never a promote
+ * to beta/stable, a force-push, a session archive or a destructive delete, and
+ * they never satisfy a user-word gate (batch collect, frustration, an
+ * affirmation of a card). `machine` keeps what it always had.
+ *
+ * For a hook that runs outside the dispatcher (a direct run, a test) the same
+ * fields come from `promptFields(hook)` — the one shared function, a no-op
+ * on an already normalised payload. A NON-prompt hook (PreToolUse, Stop) learns
+ * the origin of the turn's prompt from the transcript: `turnPrompt(transcript)`
+ * (all three fields) or `turnOrigin(transcript)` (the origin only), where
+ * `transcript` is the raw JSONL text (lib/card-guard `safeReadTranscript`).
+ */
+const ORIGINS = Object.freeze(['person', 'coordinator', 'thread', 'machine', 'typed']);
+/** The message of a wake that triggered the turn, with its attributes. */
+const TRIGGER_TAG = /<message\b([^>]*\btrigger="true"[^>]*)>([\s\S]*?)<\/message>/;
+const RELAY_BLOCK = /<relay\b([^>]*)>([\s\S]*?)<\/relay>/;
+const NOTE_BLOCK = /<note\b[^>]*>([\s\S]*?)<\/note>/g;
+
+function tagAttr(attrs, name) {
+  const m = new RegExp(`(?:^|\\s)${name}="([^"]*)"`).exec(attrs || '');
+  return m ? decodeEntities(m[1]) : '';
+}
+
+/** The words of a relay / project-message block: its <note> texts, else its text without tags. */
+function relayWords(body) {
+  const notes = [...String(body).matchAll(NOTE_BLOCK)].map((m) => m[1]);
+  const text = notes.length ? notes.join('\n') : String(body).replace(/<[^>]+>/g, ' ');
+  return decodeEntities(text).replace(/[ \t]+\n/g, '\n').trim();
+}
+
+/** { origin, words } of a colleague note outside or inside a wake, or null. */
+function parseRelay(prompt) {
+  const m = RELAY_BLOCK.exec(prompt);
+  if (m) {
+    const from = tagAttr(m[1], 'from');
+    return { origin: from === 'coordinator' || from === '' ? 'coordinator' : 'thread', words: relayWords(m[2]) };
+  }
+  if (isRelayPrompt(prompt)) return { origin: 'coordinator', words: relayWords(prompt) };
+  return null;
+}
+
+/**
+ * Classify one runtime prompt. Pure; never throws.
+ * @param {string} prompt
+ * @returns {{ prompt: string, prompt_raw: string, prompt_origin: 'person'|'coordinator'|'thread'|'machine'|'typed' }}
+ */
+function classifyPrompt(prompt) {
+  const raw = typeof prompt === 'string' ? prompt : '';
+  const out = (origin, words) => ({ prompt: words, prompt_raw: raw, prompt_origin: origin });
+  try {
+    if (isWakePrompt(raw)) {
+      const t = TRIGGER_TAG.exec(raw);
+      if (t) {
+        const from = tagAttr(t[1], 'from');
+        const words = decodeEntities(t[2]).trim();
+        if (from === 'human' && tagAttr(t[1], 'trust') === 'principal') return out('person', words);
+        return out(from === 'coordinator' ? 'coordinator' : 'thread', words);
+      }
+      const relay = parseRelay(raw);
+      return relay ? out(relay.origin, relay.words) : out('thread', '');
+    }
+    if (isRelayPrompt(raw)) {
+      const relay = parseRelay(raw);
+      return out(relay.origin, relay.words);
+    }
+    if (require('./non-user-prompt').isNonUserPrompt(raw)) return out('machine', raw);
+  } catch { /* unreadable: the runtime's prompt stays what it was */ }
+  return out('typed', raw);
+}
+
+/** The payload with `prompt` / `prompt_raw` / `prompt_origin` set; idempotent, the same object when it has no string prompt. */
+function normalizePromptInput(hook) {
+  if (!hook || typeof hook !== 'object' || typeof hook.prompt !== 'string') return hook;
+  if (ORIGINS.includes(hook.prompt_origin) && typeof hook.prompt_raw === 'string') return hook;
+  return { ...hook, ...classifyPrompt(hook.prompt) };
+}
+
+/** The three fields for a hook, normalised or not (`prompt` falls back to the legacy names). */
+function promptFields(hook) {
+  const h = hook && typeof hook === 'object' ? hook : {};
+  const view = normalizePromptInput(typeof h.prompt === 'string' ? h : { ...h, prompt: h.user_message || h.message || '' });
+  return { prompt: view.prompt, prompt_raw: view.prompt_raw, prompt_origin: view.prompt_origin };
+}
+
+/** The person (a thread message of theirs, or a typed prompt) — the word a gate needs. */
+function speaksForPerson(origin) {
+  return origin === 'person' || origin === 'typed';
+}
+
+/** A coordinator note or another thread's message: a colleague, not the person. */
+function isColleagueOrigin(origin) {
+  return origin === 'coordinator' || origin === 'thread';
+}
+
+/**
+ * The turn's prompt as the transcript holds it (the last prompt entry),
+ * classified like the dispatcher does. Never throws.
+ * @param {string} transcriptContent raw JSONL
+ */
+function turnPrompt(transcriptContent) {
+  let text = '';
+  try { text = require('./skill-invocations').lastUserPromptText(transcriptContent); } catch { /* unreadable */ }
+  return classifyPrompt(text);
+}
+
+/** The origin of the turn's prompt, read from the transcript. '' text → `typed` (nothing says otherwise). */
+function turnOrigin(transcriptContent) {
+  return turnPrompt(transcriptContent).prompt_origin;
+}
+
 /** Leave the sticky marker; a failed write only costs the fallback detection. */
 function markThread(sessionId) {
   if (!sessionId) return;
@@ -131,7 +267,8 @@ function transcriptSaysThread(transcriptPath, maxBytes = HEAD_BYTES) {
 function isThread(hook, { deep = false } = {}) {
   if (!hook || typeof hook !== 'object') return false;
   if (isMarked(hook.session_id)) return true;
-  const yes = isWakePrompt(hook.prompt) || isHearthbotTool(hook.tool_name) ||
+  const raw = typeof hook.prompt_raw === 'string' ? hook.prompt_raw : hook.prompt; // the dispatcher unwraps `prompt`
+  const yes = isWakePrompt(raw) || isHearthbotTool(hook.tool_name) ||
     (deep && transcriptSaysThread(hook.transcript_path));
   if (yes) markThread(hook.session_id);
   return yes;
@@ -235,6 +372,14 @@ module.exports = {
   CHECKLIST_TOOL,
   isWakePrompt,
   isRelayPrompt,
+  ORIGINS,
+  classifyPrompt,
+  normalizePromptInput,
+  promptFields,
+  speaksForPerson,
+  isColleagueOrigin,
+  turnPrompt,
+  turnOrigin,
   isHearthbotTool,
   personWords,
   markThread,

@@ -224,10 +224,11 @@ function threadInstruction(call) {
  * @returns {{ context: string, sessionTitle: null }} never a `sessionTitle`: that
  *   one names the local session, which the person does not see.
  */
-function threadTitlePlan({ prompt, current, resumesShip = false }) {
-  // The envelope is not the order: a ship is read off the person's own words.
-  const prefix = prefixOf(thread.personWords(prompt) || prompt, resumesShip);
-  const machine = isMachineTurn(prompt) || thread.isRelayPrompt(prompt);
+function threadTitlePlan({ prompt, origin, current, resumesShip = false }) {
+  // `prompt` / `origin` are the dispatcher's unwrapped fields (lib/project-thread.js); a caller without them gets the same split here.
+  const view = origin ? { prompt, prompt_origin: origin } : thread.classifyPrompt(prompt);
+  const prefix = prefixOf(view.prompt, resumesShip);
+  const machine = isMachineTurn(view.prompt) || view.prompt_origin === 'machine' || thread.isColleagueOrigin(view.prompt_origin);
   let context = '';
   if (current === null) {
     if (!machine) context = threadInstruction(thread.renameCallUnknown(prefix));
