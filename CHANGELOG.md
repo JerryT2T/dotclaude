@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.402.0] — 2026-11-22
+
+### Added
+- **Claude Projects threads (alpha feature `project-threads`).** Questions, the status head on the thread title and the completion card go into the thread; a repo change gets a worktree and branch per thread and repo; `start_session` is refused in a thread, subagents stay allowed.
+- **Colleague rights, enforced.** A note from the coordinator or another thread may work and ship to alpha. Promote, archive, force-push and destructive deletes need the person's own message; hooks deny them otherwise.
+- **Setup hint for a new Claude Project.** The first thread of a project this machine has not seen appends one note: add the plugin under Project settings > Plugins and the devops text to the project instructions. A cloud thread without the plugin gets the plugin hint from `.claude/rules/devops.md`.
+- **Working rules for sessions without the plugin.** `.claude/rules/devops.md` is written at project setup or with the next ship, so cloud threads follow the same rules without a migration.
+
+### Changed
+- Every prompt hook reads one normalized prompt (`prompt`, `prompt_raw`, `prompt_origin`): a wake envelope is unwrapped once, a typed prompt passes unchanged.
+- Session-start notices for the Desktop user are held back by code and released with the first typed prompt; in a thread they never reach the model (with the feature on).
+- Cloud ship: one REST transport for PR, checks and merge. A remembered GraphQL refusal expires after 15 minutes, a rate-limit or corporate proxy error never switches, `DEVOPS_SHIP_GH_TRANSPORT=graphql|rest` pins the path.
+- A lagging cloud copy of the plugin starts its update on its own once a thread ran on this machine.
+- Backlog runs skip an issue that is in progress in another thread; cleanup lists thread worktrees and branches as their own group.
+
+### Fixed
+- Main guard: a git write inside `bash -c "…"`, `sh -c`, `cmd /c`, `pwsh -Command` or a here-doc fed to a shell is checked against main (up to three levels); a session started in a non-repo folder can no longer commit on `main` of a repo below it.
+- A `/send-to-project` turn no longer owes a completion card.
+- The completion-card ladder no longer calls the MCP server dead when only another session's server is attributed.
+- Main guard: `merge --ff-only <x>/main` passes only for a configured remote, and a git write behind `then` / `do` / a backtick or `$( … )` substitution is checked.
+- Concept bridge: with the in-app browser chosen, the pane tab counts as the person's tab; a look by Claude is marked `?probe=1`.
+
 ## [0.401.2] — 2026-11-22
 
 ### Fixed
