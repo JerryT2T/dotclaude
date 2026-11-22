@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.394.3] — 2026-11-22
+
+### Fixed
+- Completion card: no summary text under the card any more — after the card, wrap_up's closing-message demand (its Remote Control variant too) is answered by the card itself, at most the one question follows
+
 ## [0.394.2] — 2026-11-22
 
 ### Fixed

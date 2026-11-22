@@ -947,6 +947,8 @@ function lateBatchNoteLines({ shown, now, lang }) {
   ];
 }
 
+const CLOSING_AFTER_CARD = '[completion-flow] The card IS your closing message — also when wrap_up says the user is on Remote Control or asks you to write one now. Show the widget, then nothing: at most the ask as ONE short question sentence, never a summary, list, status or recap below the card (put anything that matters into the card\'s `answer`).';
+
 /** 2b. A card was already rendered this turn. */
 function cardRenderedLines(hook) {
   const rendered = readSessionFile('dotclaude-devops-card-rendered', hook.session_id, { exact: true });
@@ -955,6 +957,11 @@ function cardRenderedLines(hook) {
   // 0.214.x): the flag's content is the render's timestamp, so a new render
   // earns the reminder again. The Stop gate still checks the card itself.
   const stamp = String(rendered.content || '').trim();
+  // wrap_up after the card answers "write your closing message now" (its Remote
+  // Control variant too: "may not see the next-step box"). Followed literally,
+  // that put a full recap list under the card (2026-11-22) — the card's
+  // `answer` already IS the closing message. Every wrap_up after a render gets it.
+  if (hook.tool_name === 'mcp__ccd_turn__wrap_up') return [CLOSING_AFTER_CARD];
   const turnState = guardedRequire('../lib/turn-state');
   if ((turnState.get(hook.session_id, 'cardRenderedHinted') || '').trim() === stamp) return [];
   try { turnState.set(hook.session_id, 'cardRenderedHinted', stamp); } catch { /* best effort — hint again next call */ }

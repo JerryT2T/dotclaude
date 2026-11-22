@@ -99,6 +99,22 @@ describe("post.flow.completion — card reminder model", () => {
     fs.rmSync(dir, { recursive: true, force: true });
   });
 
+  test("wrap_up after a rendered card: the card is the closing message, every time", () => {
+    const dir = project();
+    const sid = "s-model-4";
+    const tp = transcript(dir, "u1");
+    run(dir, sid, "Read", { file_path: path.join(dir, "a.js") }, tp);
+    fs.writeFileSync(path.join(dir, ".tmp", `dotclaude-devops-card-rendered-${sid}`), String(Date.now()));
+    const first = run(dir, sid, "mcp__ccd_turn__wrap_up", { recap: "x" }, tp);
+    expect(first).toMatch(/card IS your closing message/);
+    expect(first).toMatch(/Remote Control/);
+    expect(first).not.toMatch(END);
+    // A second wrap_up after the same render still gets it; other tools get nothing new.
+    expect(run(dir, sid, "mcp__ccd_turn__wrap_up", { recap: "y" }, tp)).toMatch(/card IS your closing message/);
+    expect(run(dir, sid, "Read", { file_path: path.join(dir, "b.js") }, tp)).not.toMatch(/closing message/);
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
   test("the turn-start line repeats no tool-description rule", () => {
     const dir = project();
     const out = run(dir, "s-model-3", "Read", { file_path: path.join(dir, "a.js") }, transcript(dir, "u1"));
