@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.401.2] — 2026-11-22
+
+### Fixed
+- devops Home: the pane no longer flickers under the pointer. Every draw asked for the next one (a render loop); it now redraws only when fresh figures loaded, at most every 20 s.
+- devops Home: „🧹 aufräumen“ runs the band's branch cleanup instead of starting a session from the mod, which kept failing.
+- devops Home: 👉 / ⏳ / 🟩 and „→ Batch“ open the session in the app (`open_session_in`) instead of a link the OS could not open; „＋ Batch“ retries a refused start once as a start card in the chat and names both reasons when both fail.
+
 ## [0.401.1] — 2026-11-22
 
 ### Fixed
