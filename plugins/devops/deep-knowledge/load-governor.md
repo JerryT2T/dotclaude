@@ -55,7 +55,12 @@ MCP servers are never throttled. Concept:
    folder.
 3. A job is **heavy** after 20 s over 25 % CPU, 20 % GPU or high disk IO
    (> 20 MB/s or > 500 operations/s — many small accesses count) while the
-   disk is pressed. Many short jobs that each stay under that bar still add
+   disk is pressed, or after 20 s of **spawn churn**: ≥ `heavy.churnPerScan`
+   (8) new descendants between two process scans counts as CPU load. A test
+   suite that forks hundreds of short-lived git/cmd processes burns its CPU (plus
+   Defender scans and kernel time) in children that never live through two
+   scans, so its measured CPU stays near 0 (2026-11-22: 30 git/s from parallel
+   vitest runs, CPU at 100 %, 0 heavy jobs, 0 throttles). Many short jobs that each stay under that bar still add
    up: under a CPU priority app or CPU over budget, `plan` adds the newest
    not-yet-heavy, non-user, non-server jobs to the heavy set (resource CPU)
    until the rest sum to ≤ `heavy.cpuPct` — those are throttled like any
@@ -126,8 +131,11 @@ MCP servers are never throttled. Concept:
    one machine-wide slot: while an app holds **CPU or disk** priority, builds
    and tests share `admission.slotsUnderPriority` (default 1) slots; another
    one is deferred with reason `priority:<app>` while a build/foreground job
-   runs or one was admitted within `admission.reserveMs` (30 s). GPU-only
-   priority and no priority never limit them (parallel builds stay fast). Any
+   runs or one was admitted within `admission.reserveMs` (30 s). The same
+   limit holds while **CPU or disk is over the 80 % budget** with no priority
+   app (`admission.slotsOverBudget`, default 1; reason `budget:cpu`) — parallel
+   sessions each starting a full suite at 100 % CPU made the desktop stutter.
+   GPU-only pressure and no pressure never limit them (parallel builds stay fast). Any
    recognised kind still waits while free RAM, minus the expected peaks of jobs
    admitted within `reserveMs` and not measured yet (`admitted.json`, merged
    into `state.admitted` by `readState`, written by the gate through
@@ -158,8 +166,8 @@ MCP servers are never throttled. Concept:
 
 The governor only sees processes; a run that fans out agents decides the load
 before it exists. Autonomous runs and `auto-agents` therefore read
-`~/.claude/governor/state.json` (`pressure.priority`, `priorityBy`) when sizing
-a wave: with a priority app, or before a quiet window the task names ("heavy
+`~/.claude/governor/state.json` (`pressure.priority`, `priorityBy`, `pressure.over`) when sizing
+a wave: with a priority app, with CPU over budget, or before a quiet window the task names ("heavy
 work only after 02:00"), at most one implementing agent runs at a time, briefs
 ask for touched-file tests only, the orchestrator runs the full suite once per
 merge, heavy steps wait for the window, and a Claude-started process is never
@@ -176,6 +184,17 @@ nothing to do with the RAM pressure that deferred a command back then. Before
 blaming load, get fresh evidence: the current load or process list, or the
 same command cross-checked on the base branch. Without it, report the cause
 as "cause unverified", never "because of the governor/RAM".
+
+## Diagnosing a laggy PC
+
+CPU near 100 % while `governor status` shows no heavy job and no throttle
+points to a **process-spawn storm**: short-lived git/cmd/conhost children
+(test suites with temp repos, hooks across many parallel sessions) plus
+Defender (`MsMpEng.exe`, culprit class `os`) scanning every new process.
+Per-process CPU (`Get-Process`, Task Manager) misses both — short-lived and
+protected processes never show up. Count new processes over ~5 s instead and
+group them by parent command line; that names the spawning job. Never kill a
+process to fix it without the user's yes.
 
 ## Commands
 

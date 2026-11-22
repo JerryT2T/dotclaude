@@ -3,7 +3,7 @@
 Directory structure: `.claude/project-map.md` — not auto-loaded; the token guard regenerates and injects it before the first repo-wide Grep/Glob of a session.
 
 ## Build & Test
-- `npm test` — run vitest suite
+- `npm test` — run vitest suite (forks thousands of git processes: with other sessions active, run touched-file tests, `npx vitest run <paths>`, and the full suite once per ship — parallel full runs stalled the PC at 100 % CPU, 2026-11-22)
 - `npm run lint` — eslint check
 - `npm run lint:fix` — eslint autofix
 - `node plugins/devops/evals/ab-run.js --case <dir|glob> [--a-ref origin/main] --runs 1` — behavioral evals / skill A/B via `claude -p` (real model runs, costs usage; `--dry-run` prints the commands only); see `plugins/devops/evals/README.md`
