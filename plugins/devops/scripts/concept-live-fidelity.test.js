@@ -192,7 +192,7 @@ describe("page — the dock switch", () => {
     expect(box.textContent).not.toMatch(/\{\{fidelity\./);
   });
 
-  test("default off; switching on is remembered per Etappe and shown on the FAB", async () => {
+  test("default off; switching on is remembered per Etappe; the FAB carries no status dot (#1180)", async () => {
     const html = built([designRound(1)]);
     let w = await boot(html);
     const input = w.document.getElementById("fidelity-toggle");
@@ -201,7 +201,11 @@ describe("page — the dock switch", () => {
     input.checked = true;
     input.dispatchEvent(new w.Event("change", { bubbles: true }));
     expect(w.fidelityPayload()).toBe("live");
-    expect(w.document.getElementById("feedback-toggle").dataset.fidelity).toBe("live");
+    const fab = w.document.getElementById("feedback-toggle");
+    expect(fab.hasAttribute("data-fidelity")).toBe(false);
+    // no rule draws a dot on the FAB in any state (connected or not, switch on or off)
+    const css = [...w.document.querySelectorAll("style")].map(s => s.textContent).join("\n");
+    expect(css).not.toMatch(/\.feedback-fab\[data-fidelity[^\]]*\]::(?:after|before)/);
     expect(JSON.parse(w.localStorage.getItem("concept-fidelity-20261120-2200-gallery"))).toEqual({ _: "live" });
     // A rebuilt page (new page version) still knows it.
     w = await boot(html, { _: "live" });

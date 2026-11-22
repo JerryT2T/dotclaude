@@ -20,10 +20,10 @@ tab is on screen and refuses a change there.
   `submitWithAction()` from `window.fidelityPayload()`. A next-stage click
   asks for the target Etappe's state. `bake` keeps it in the round's
   `data-frozen-feedback` blob.
-- **Visible state.** `#dock-fidelity[data-on]`, the 💬 FAB's dot
-  (`data-fidelity="live"`, so a collapsed dock still says it is on), the
-  LIVE chip on every live round's tab (build flag `data-fidelity`), and
-  `#fidelity-chip` while a live round is on screen. The chip carries the
+- **Visible state.** `#dock-fidelity[data-on]`, the LIVE chip on every live
+  round's tab (build flag `data-fidelity`), and `#fidelity-chip` while a live
+  round is on screen. The 💬 FAB carries no status dot (#1180: it read as an
+  unexplained signal); the tab chip says it when the dock is collapsed. The chip carries the
   round's `data-fidelity-note`, in amber with "angenähert" when the round
   carries `data-fidelity-approx`.
 - **Hidden on the final report.** Implement, finalize, refine and review
@@ -79,7 +79,6 @@ tab is on screen and refuses a change there.
   const boot = () => {
     const box = document.getElementById('dock-fidelity');
     const input = document.getElementById('fidelity-toggle');
-    const fab = document.getElementById('feedback-toggle');
     const dock = document.getElementById('feedback-dock');
     const chip = document.getElementById('fidelity-chip');
     const chipNote = document.getElementById('fidelity-chip-note');
@@ -98,10 +97,6 @@ tab is on screen and refuses a change there.
       input.setAttribute('aria-checked', input.checked ? 'true' : 'false');
       input.setAttribute('aria-readonly', locked() ? 'true' : 'false');
       box.dataset.on = input.checked ? 'true' : 'false';
-      const fabOn = !finalLive && stateFor(stageOf(live)) === 'live';
-      if (fab) {
-        if (fabOn) fab.dataset.fidelity = 'live'; else delete fab.dataset.fidelity;
-      }
       if (chip) {
         const isLive = !!(shown && shown.getAttribute('data-fidelity') === 'live');
         const approx = isLive && shown.hasAttribute('data-fidelity-approx');
@@ -156,11 +151,6 @@ tab is on screen and refuses a change there.
 .fidelity-text strong { font-size: 0.85rem; color: var(--text-color, #e6edf3); }
 .fidelity-text small, .fidelity-scope { font-size: 0.75rem; color: var(--text-secondary, #8b949e); }
 .fidelity-scope { padding-left: 44px; }
-/* The 💬 FAB keeps a dot while the switch is on, so a collapsed dock still says it. */
-.feedback-fab[data-fidelity="live"]::after {
-  content: ""; position: absolute; top: 6px; right: 6px; width: 12px; height: 12px; border-radius: 50%;
-  background: var(--success-color, #3fb950); box-shadow: 0 0 0 2px var(--panel-bg, #161b22);
-}
 @media (prefers-reduced-motion: reduce) {
   .fidelity-track, .fidelity-track::after { transition: none; }
 }
