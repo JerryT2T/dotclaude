@@ -123,9 +123,22 @@ describe("buildRecoveryScript — mode-specific recovery", () => {
     expect(s).toContain("check --all");
     expect(s).toContain("$sessExit -eq 3");
     // the hand-over sits in its own branch, before the forced power-off
+    // without a known session id nobody can be left out
+    expect(s).not.toContain("--self");
     const handover = s.indexOf("bedtime-shutdown.js' start");
     expect(handover).toBeGreaterThan(s.indexOf("$sessExit -eq 3"));
     expect(handover).toBeLessThan(s.indexOf("shutdown.exe"));
+  });
+
+  test("the watched run itself never holds the forced power-off back", () => {
+    const s = buildRecoveryScript({ ...base, action: "shutdown", sessionId: "5ff58f19-4714-42d6-978d-ac429127f093" });
+    expect(s).toContain("sessions-active.js' check --self '5ff58f19-4714-42d6-978d-ac429127f093'");
+    expect(s).not.toContain("check --all");
+    expect(s).toContain("bedtime-shutdown.js' start --exclude '5ff58f19-4714-42d6-978d-ac429127f093'");
+    // an id that is not a plain token never reaches the script
+    const bad = buildRecoveryScript({ ...base, action: "shutdown", sessionId: "x'; Remove-Item C:/ -Recurse #" });
+    expect(bad).toContain("check --all");
+    expect(bad).not.toContain("Remove-Item C:");
   });
 
   test("notify mode writes a visible stalled marker and never powers off", () => {

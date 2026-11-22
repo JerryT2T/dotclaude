@@ -278,7 +278,7 @@ function shimSafePrompt(prompt) {
 }
 
 function buildRecoveryScript({
-  action, hours, flagPath, stalledPath, recoveryFlagPath, workingDir, resumePrompt, taskName,
+  action, hours, flagPath, stalledPath, recoveryFlagPath, workingDir, resumePrompt, taskName, sessionId,
 }) {
   const flagPs = flagPath.replace(/'/g, "''");
   const stalledPs = String(stalledPath || '').replace(/'/g, "''");
@@ -307,7 +307,13 @@ function buildRecoveryScript({
     // Session guard: the run this task watches is wedged, but ANOTHER session may
     // be working (sessions-active.js, exit 3). Then the power-off is handed to the
     // bedtime watcher, which waits for it instead of cutting it off. A wedged run
-    // stops counting after an hour without a sign of life, so the hand-over ends.
+    // The watched run itself must never count: wedged, it is still "busy" and may
+    // keep writing (a retry loop, a stuck subagent), which would hold the forced
+    // power-off back for good. Its session id, known when the task is registered,
+    // is left out of the check and of the watcher that takes over.
+    const sid = /^[\w-]{1,80}$/.test(String(sessionId || '')) ? String(sessionId) : '';
+    const checkArgs = sid ? `check --self '${sid}'` : 'check --all';
+    const startArgs = sid ? `start --exclude '${sid}'` : 'start';
     const sessionsPs = path.join(__dirname, 'sessions-active.js').replace(/'/g, "''");
     const bedtimePs = path.join(__dirname, 'bedtime-shutdown.js').replace(/'/g, "''");
     recoveryPs = `  Add-Content -Path $logPath -Value "[$ts] flag MISSING at $flag — forcing shutdown"
@@ -315,12 +321,12 @@ function buildRecoveryScript({
   $busyOut = ''
   try { $busyOut = (& '${nodePs}' '${busyPs}' check) -join ' '; $busyExit = $LASTEXITCODE } catch { $busyExit = 1 }
   $sessOut = ''
-  try { $sessOut = (& '${nodePs}' '${sessionsPs}' check --all) -join ' '; $sessExit = $LASTEXITCODE } catch { $sessExit = 1 }
+  try { $sessOut = (& '${nodePs}' '${sessionsPs}' ${checkArgs}) -join ' '; $sessExit = $LASTEXITCODE } catch { $sessExit = 1 }
   if ($busyExit -eq 3) {
     Add-Content -Path $logPath -Value "[$ts] PC bleibt an: busy job still running — shutdown skipped ($busyOut)"
   } elseif ($sessExit -eq 3) {
     Add-Content -Path $logPath -Value "[$ts] another session still works — power-off handed to the bedtime watcher ($sessOut)"
-    try { & '${nodePs}' '${bedtimePs}' start | Out-Null } catch { Add-Content -Path $logPath -Value "[$ts] bedtime watcher could not be started: $_" }
+    try { & '${nodePs}' '${bedtimePs}' ${startArgs} | Out-Null } catch { Add-Content -Path $logPath -Value "[$ts] bedtime watcher could not be started: $_" }
   } else {
     & "$env:SystemRoot\\System32\\shutdown.exe" /s /t 0 /c "Claude autonomous watchdog: session unresponsive after ${hours}h, forcing shutdown"
   }`;
@@ -556,6 +562,8 @@ function runRegister(args) {
   fs.writeFileSync(scriptPath,
     '﻿' + buildRecoveryScript({
       action, hours, flagPath, stalledPath, recoveryFlagPath, workingDir, resumePrompt, taskName,
+      // The run that registers this task is the one it watches.
+      sessionId: process.env.CLAUDE_CODE_SESSION_ID || process.env.CLAUDE_SESSION_ID || '',
     }), 'utf8');
 
   // Register via the PowerShell ScheduledTasks module rather than `schtasks /SD /ST`:

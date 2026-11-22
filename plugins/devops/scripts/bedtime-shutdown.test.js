@@ -50,6 +50,51 @@ describe("isArmed", () => {
   });
 });
 
+describe("abortWanted", () => {
+  const pending = { phase: "shutdown", shutdownAt: NOW + 40_000 };
+  const ours = { sessionId: "bedtime", fireAt: NOW + 40_000 };
+  test("a shutdown the state names is aborted", () => {
+    expect(bed.abortWanted(pending, null, NOW, false)).toBe(true);
+    expect(bed.abortWanted({ phase: "shutdown", shutdownAt: NOW - 60_000 }, null, NOW, false)).toBe(false);
+  });
+  test("a watcher stopped between placing the shutdown and writing its state is covered by the owner marker", () => {
+    expect(bed.abortWanted({ phase: "waiting" }, ours, NOW, true)).toBe(true);
+  });
+  test("a foreign pending shutdown (a do-run fail-safe) is never aborted by a cancel", () => {
+    expect(bed.abortWanted({ phase: "waiting" }, { sessionId: "1a97f0e8", fireAt: NOW + 3_600_000 }, NOW, true)).toBe(false);
+    expect(bed.abortWanted({ phase: "waiting" }, null, NOW, true)).toBe(false);
+    // our own marker, but no watcher of ours was stopped by this cancel
+    expect(bed.abortWanted({ phase: "expired" }, ours, NOW, false)).toBe(false);
+  });
+});
+
+describe("start plumbing", () => {
+  test("--exclude takes plain session ids only, each once", () => {
+    expect(bed.excludeFrom(["start", "--exclude", "5ff58f19-4714", "--exclude", "local_x", "--exclude", "5ff58f19-4714"])).toEqual(["5ff58f19-4714", "local_x"]);
+    expect(bed.excludeFrom(["start", "--exclude", "a b"])).toEqual([]);
+    expect(bed.excludeFrom(["start", "--exclude"])).toEqual([]);
+  });
+  test("the WMI launch is hidden, names its working directory and survives quotes in a path", () => {
+    const cmd = [`C:\\Program Files\\nodejs\\node.exe`, `C:\\it's here\\bedtime-shutdown.js`, "run"].map(bed.quoteWinArg).join(" ");
+    const ps = bed.cimLaunchScript(cmd, "C:\\Users\\o'neil");
+    expect(ps).toContain("Win32_Process");
+    expect(ps).toContain("ShowWindow = [uint16]0");
+    expect(ps).toContain(`CommandLine = '"C:\\Program Files\\nodejs\\node.exe" "C:\\it''s here\\bedtime-shutdown.js" "run"'`);
+    expect(ps).toContain("CurrentDirectory = 'C:\\Users\\o''neil'");
+    expect(ps).toContain("if ($r.ReturnValue -ne 0) { exit 3 }");
+  });
+  test("the watcher leaves the excluded sessions out of every check and says so in its state", async () => {
+    const written = [];
+    let t = NOW;
+    const state = await bed.run({ capMin: 1, exclude: ["wedged"] }, {
+      now: () => t, sleep: async (ms) => { t += ms; }, write: (s) => written.push({ ...s }), cancelled: () => false,
+      check: () => ({ active: [{ name: "A", why: "working", detail: "" }] }),
+    });
+    expect(written[0]).toMatchObject({ claimed: true, exclude: ["wedged"] });
+    expect(state.phase).toBe("expired");
+  });
+});
+
 describe("run", () => {
   /** Drives the loop with a scripted sequence of polls; time moves only through sleep. */
   const drive = async (polls, extra = {}) => {
