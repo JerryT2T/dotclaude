@@ -1327,6 +1327,22 @@ export function bandCardFile(home: string, sid: string): string {
 }
 
 /**
+ * #1203: the session's last card as the band last drew it (any render path: MCP or offline), so a resumed process
+ * can draw it again. `text: null` = the card was spent (a typed prompt, a button press): nothing to restore.
+ */
+export function bandLastCardFile(home: string, sid: string): string {
+  return `${home}/.claude/devops-band/last-${String(sid).replace(/[^\w.-]/g, '_')}.json`
+}
+
+/** #1203: the stored last card's text when it belongs to `sid` and was not spent; else null. Never throws. */
+export function restoredCardText(j: unknown, sid: string): string | null {
+  if (!j || typeof j !== 'object' || !sid) return null
+  const { text, sid: owner } = j as { text?: unknown; sid?: unknown }
+  if (owner !== sid || typeof text !== 'string' || !text) return null
+  return text
+}
+
+/**
  * #1150: the stored card's text when this Bash call wrote it — `writtenAt` not before the call started
  * (`since`, with a small clock skew allowed) and not in the future — else null. A render that wrote nothing
  * (refused, local-ship exit, a hidden exit code) never brings back the session's previous card.

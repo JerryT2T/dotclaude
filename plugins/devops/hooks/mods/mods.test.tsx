@@ -19,6 +19,7 @@ import {
   budgetBarSvg,
   fableFromLive,
   budgetForBand,
+  restoredCardText,
   rollBudget,
   windowsFromLive,
   cleanupApplyPrompt,
@@ -570,6 +571,48 @@ test('card band: a typed prompt spends the card, a textless continuation keeps i
   await $.turn.start({ text: 'next task', turnId: 't3' } as any)
   band = await $.ui.mount({ ...BAND, surface: 'desktop' })
   expect(await has(band, 'Committed')).toBeUndefined()
+  await band.unmount()
+})
+
+test('#1203 card band: every card render is kept per session; a typed prompt or a press marks it spent', async ($, on) => {
+  const { seen } = engine(on)
+  on('session.id', () => ({ value: 'sid-res' }))
+  on('tool.call', () => ({ result: {}, text: CARD_RESULT }))
+  on('turn.start', (_: unknown, e: { turnId: string }) => ({ turnId: e.turnId || 't' }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.tool.call({ tool: CARD_TOOL, summary: 'x' } as any)
+  const kept = () => seen.writes.filter(w => w.path.replace(/\\/g, '/').endsWith('/.claude/devops-band/last-sid-res.json')).map(w => JSON.parse(w.text))
+  expect(kept().at(-1)).toMatchObject({ sid: 'sid-res', text: CARD_RESULT })
+  await $.turn.start({ text: 'next task', turnId: 't2' } as any)
+  expect(kept().at(-1)).toMatchObject({ sid: 'sid-res', text: null })
+})
+
+test('#1203 resume: a new process (empty atoms) + SessionStart resume shows the session\'s last card again; a spent or foreign one does not', async ($, on) => {
+  const last = (o: Record<string, unknown>) => JSON.stringify({ writtenAt: new Date(NOW - 3 * 3_600_000).toISOString(), ...o })
+  engine(on, { files: { '/.claude/devops-band/last-sid-res.json': last({ sid: 'sid-res', text: CARD_RESULT }) } })
+  on('session.id', () => ({ value: 'sid-res' }))
+  on('classic.SessionStart', () => ({}))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.classic.SessionStart({ source: 'resume' } as any)
+  const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(svgIn(await band.find({ key: 'card-heading' }))?.props.alt).toBe('👉 📦 Committed — fertig — shippen?')
+  expect((await band.find({ key: 'card-button-1' }))?.props.label).toBe('Nachbessern')
+  expect(await band.find({ type: 'Text', text: /^Doku/ })).toBeDefined()
+  await band.unmount()
+  expect(restoredCardText({ sid: 'sid-res', text: null }, 'sid-res')).toBeNull()
+  expect(restoredCardText({ sid: 'other', text: CARD_RESULT }, 'sid-res')).toBeNull()
+  expect(restoredCardText({ sid: 'sid-res', text: CARD_RESULT }, 'sid-res')).toBe(CARD_RESULT)
+  expect(restoredCardText(null, 'sid-res')).toBeNull()
+})
+
+test('#1203 resume: a session whose last turn ended without a card shows the idle row', async ($, on) => {
+  engine(on, { files: { '/.claude/devops-band/last-sid-res.json': JSON.stringify({ sid: 'sid-res', text: null, writtenAt: new Date(NOW).toISOString() }) } })
+  on('session.id', () => ({ value: 'sid-res' }))
+  on('classic.SessionStart', () => ({}))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.classic.SessionStart({ source: 'resume' } as any)
+  const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await band.find({ key: 'card-heading' })).toBeUndefined()
   await band.unmount()
 })
 

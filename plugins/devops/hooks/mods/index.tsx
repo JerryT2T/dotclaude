@@ -84,6 +84,8 @@ import {
   budgetFrom,
   fableFromLive,
   budgetForBand,
+  bandLastCardFile,
+  restoredCardText,
   bandWindowsCurrent,
   budgetLine,
   cardFromResult,
@@ -514,6 +516,41 @@ async function homeCtx($: EngineInterface): Promise<HomeCtx> {
   }
 }
 
+/** #1203: keep the band's card for a resumed process (text) or mark it spent (null). Display only: never throws. */
+async function persistCard($: EngineInterface, text: string | null): Promise<void> {
+  try {
+    const home = await homeDir($)
+    const sid = await $.session.id().catch(() => '')
+    if (!home || !sid) return
+    const at = new Date(await $.clock.now()).toISOString()
+    await $.fs.write(bandLastCardFile(home, sid), `${JSON.stringify({ sid, text, writtenAt: at })}\n`)
+  } catch {
+    /* display only */
+  }
+}
+
+/**
+ * #1203: a resume starts a new process with an empty card atom; the session's last card comes back from its file, so
+ * its points and buttons are on screen again (the transcript widget was minimised because the band carried them).
+ */
+async function restoreCard($: EngineInterface): Promise<void> {
+  try {
+    if ((await read($, card)) !== null) return
+    const home = await homeDir($)
+    const sid = await $.session.id().catch(() => '')
+    if (!home || !sid) return
+    const text = restoredCardText(await readJson($, bandLastCardFile(home, sid)), sid)
+    const view = text ? cardFromResult(text) : null
+    if (!view) return
+    await update($, card, c => c ?? view)
+    if (isShippedCard(view)) await update($, settled, () => true)
+    if (isReleaseCard(view)) await update($, released, r => r ?? { line: releaseLine(view.heading), at: view.at })
+    if (view.title) await update($, lastCard, l => l ?? { title: view.title, at: view.at })
+  } catch {
+    /* display only */
+  }
+}
+
 /** A card button: its prompt goes out as the person's own turn; the card leaves the band at once (one press = one prompt). */
 async function pressCardButton($: EngineInterface, prompt: string): Promise<void> {
   let shown = false
@@ -521,6 +558,7 @@ async function pressCardButton($: EngineInterface, prompt: string): Promise<void
     shown = c !== null
     return null
   })
+  if (shown) await persistCard($, null)
   if (shown) await $.prompt.submit({ text: prompt, asUser: true })
 }
 
@@ -1179,6 +1217,7 @@ export const register: Register = on => {
     await checkMcp($).catch(() => undefined)
     await refreshStatus($).catch(() => undefined)
     await rearmWakes($).catch(() => undefined)
+    await restoreCard($)
     return started
   })
 
@@ -1187,6 +1226,7 @@ export const register: Register = on => {
   on('classic.SessionStart', async ($, e, next) => {
     const result = await next(e)
     const source = (e as { source?: string }).source
+    if ((source === 'resume' || source === 'compact') && (await open($))) await restoreCard($)
     if (source !== 'compact' && source !== 'resume' && (await open($))) {
       const texts = verbatimNotices(result && result.additionalContext)
       if (texts.length && !(await read($, flags)).noticesShown) {
@@ -1284,6 +1324,7 @@ export const register: Register = on => {
     if (e.agentId === undefined && (await open($))) {
       const now = await $.clock.now()
       if (startsTypedTurn(e as { text?: string; isMeta?: unknown; origin?: { kind?: string } | null })) {
+        if ((await read($, card)) !== null) await persistCard($, null)
         await update($, card, () => null)
         await update($, halted, () => null)
         await update($, pointsOpen, () => [])
@@ -1360,6 +1401,7 @@ export const register: Register = on => {
       if (view) {
         await update($, halted, () => null)
         await update($, card, () => view)
+        await persistCard($, cardSource)
         if (isShippedCard(view)) await update($, settled, () => true)
         if (isReleaseCard(view)) await update($, released, () => ({ line: releaseLine(view.heading), at: view.at }))
         if (view.title) await update($, lastCard, () => ({ title: view.title, at: view.at }))
