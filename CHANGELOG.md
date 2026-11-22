@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.399.1] — 2026-11-22
+
+### Fixed
+- Load governor: a job that forks many short-lived processes (e.g. a test suite spawning git) now counts as CPU load and can be capped; before, its CPU stayed invisible and nothing was throttled at 100 % CPU.
+- Load governor: builds and tests share `admission.slotsOverBudget` (default 1) machine-wide slots while CPU or disk is over the 80 % budget, not only under a priority app.
+
+### Docs
+- `load-governor.md`: how to diagnose a laggy PC (count new processes, not per-process CPU).
+
 ## [0.399.0] — 2026-11-22
 
 ### Added
