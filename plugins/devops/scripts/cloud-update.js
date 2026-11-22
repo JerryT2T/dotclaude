@@ -9,7 +9,7 @@
  *
  *     done    <version>   the sync was requested (Check for updates clicked)
  *     manual  <version>   a click is left for the person (login, captcha, blocked step)
- *     release <version>   this session cannot run it (thread, no browser tool): free the claim
+ *     release <version>   this session cannot run it (thread, no browser tool): give the claim back (offered again after 3 h)
  *     status              the recorded attempts, as JSON
  *
  *   Nothing here touches the network or claude.ai.

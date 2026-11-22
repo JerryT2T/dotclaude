@@ -19,7 +19,9 @@
  *     of a version in `~/.claude/devops-cloud-update.json` under an atomic lock
  *     dir, so parallel sessions and threads do not all start it. A claim that
  *     was never finished is retried after 3 h, one that needed the person after
- *     24 h, a finished one (sync requested) after 48 h if the copy still lags.
+ *     24 h, a finished one (sync requested) after 48 h if the copy still lags, one a
+ *     session released (thread, no browser tool) after 3 h — so the sessions that
+ *     follow are not handed the instruction block again and again.
  *   - never a login: the instruction forbids automating one and makes the
  *     session name the one click that is left.
  *
@@ -33,7 +35,7 @@ const path = require('path');
 const STATE_FILE = 'devops-cloud-update.json';
 const HOUR = 60 * 60 * 1000;
 /** How long an attempt blocks the next one, by how it ended. */
-const RETRY_MS = Object.freeze({ started: 3 * HOUR, manual: 24 * HOUR, done: 48 * HOUR });
+const RETRY_MS = Object.freeze({ started: 3 * HOUR, released: 3 * HOUR, manual: 24 * HOUR, done: 48 * HOUR });
 const LOCK_STALE_MS = 10 * 60 * 1000;
 
 const stateFile = (home) => path.join(home, '.claude', STATE_FILE);
@@ -59,9 +61,22 @@ function withLock(lockDir, now, fn) {
     fs.mkdirSync(path.dirname(lockDir), { recursive: true });
     fs.mkdirSync(lockDir);
   } catch {
+    // Atomic takeover: rename the stale lock away (only one contender's rename
+    // succeeds), re-check that what was moved really is the stale one, then create ours.
+    const moved = `${lockDir}.stale-${process.pid}-${Math.random().toString(36).slice(2)}`;
     try {
       if (now - fs.statSync(lockDir).mtimeMs < LOCK_STALE_MS) return { locked: false };
-      fs.rmSync(lockDir, { recursive: true, force: true });
+      fs.renameSync(lockDir, moved);
+    } catch {
+      return { locked: false };
+    }
+    try {
+      if (now - fs.statSync(moved).mtimeMs < LOCK_STALE_MS) {
+        // we grabbed a lock that was renewed in between: give it back if the slot is still free
+        try { fs.renameSync(moved, lockDir); } catch { /* the holder's lock is gone anyway */ }
+        return { locked: false };
+      }
+      fs.rmSync(moved, { recursive: true, force: true });
       fs.mkdirSync(lockDir);
     } catch {
       return { locked: false };
@@ -107,15 +122,16 @@ function claimUpdate({ home = os.homedir(), version, now = Date.now(), lockDir =
 
 /**
  * Record how an attempt ended: `done` (sync requested), `manual` (a click is left
- * for the person), `release` (this session cannot run it — free the claim).
+ * for the person), `release` (this session cannot run it — the claim is given back, but the same version
+ * is offered again only after RETRY_MS.released).
  * @returns {boolean}
  */
 function markUpdate({ home = os.homedir(), version, state, now = Date.now(), lockDir = defaultLock(home) }) {
   if (!['done', 'manual', 'release'].includes(state)) return false;
   const res = withLock(lockDir, now, () => {
     const s = readState(home);
-    if (state === 'release') delete s.attempts[version];
-    else s.attempts[version] = { state, at: new Date(now).toISOString() };
+    // release keeps a record: the same version is offered again only after RETRY_MS.released
+    s.attempts[version] = { state: state === 'release' ? 'released' : state, at: new Date(now).toISOString() };
     writeState(home, s);
     return true;
   });

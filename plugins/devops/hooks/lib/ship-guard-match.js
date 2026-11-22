@@ -193,7 +193,51 @@ function isManualShipCommand(cmd) {
 // ── the directory a git command acts on ─────────────────────────────────────
 
 const WRAPPERS = new Set(['env', 'command', 'exec', 'sudo', 'time', 'nohup']);
-const DIR_CHANGERS = new Set(['cd', 'chdir', 'pushd', 'set-location', 'sl', 'push-location']);
+const DIR_CHANGERS = new Set(['cd', 'chdir', 'pushd', 'set-location', 'sl', 'push-location', 'popd', 'pop-location']);
+const DIR_PUSHERS = new Set(['pushd', 'push-location']);
+const DIR_POPPERS = new Set(['popd', 'pop-location']);
+
+/** Directory a `--git-dir` / `GIT_DIR` value stands for: `<work tree>/.git` → the work tree. */
+function gitDirTarget(base, value) {
+  const d = resolveDir(base, value);
+  if (!d) return null;
+  return /^\.git$/i.test(require('path').basename(d)) ? require('path').dirname(d) : d;
+}
+
+/**
+ * Is this git segment a pure fast-forward of main/master to its remote
+ * (`git merge --ff-only <remote>/main`, `git pull --ff-only [<remote> [main]]`)?
+ * That moves the ref to what the remote already has and is no own work on
+ * main — the post-ship "local main up to date" step. Everything else (another
+ * branch, no --ff-only, extra options) is not.
+ * @param {string} text one command segment as typed
+ * @returns {boolean}
+ */
+function isFastForwardOfMain(text) {
+  const toks = shellTokens(text || '');
+  let i = 0;
+  while (i < toks.length && (/^[A-Za-z_]\w*=/.test(toks[i]) || WRAPPERS.has(toks[i].toLowerCase()))) i++;
+  if (!/^git(?:\.exe)?$/i.test((toks[i] || '').replace(/^.*[\\/]/, ''))) return false;
+  i++;
+  for (; i < toks.length && toks[i].startsWith('-'); i++) {
+    if (toks[i] === '-C' || toks[i] === '-c') i++;
+    else if (/^--(?:git-dir|work-tree|namespace)$/.test(toks[i])) i++;
+  }
+  const sub = (toks[i] || '').toLowerCase();
+  if (sub !== 'merge' && sub !== 'pull') return false;
+  const rest = toks.slice(i + 1);
+  if (!rest.includes('--ff-only')) return false;
+  const args = rest.filter(t => !t.startsWith('-'));
+  if (rest.some(t => t.startsWith('-') && !['--ff-only', '-q', '--quiet', '-v', '--verbose'].includes(t))) return false;
+  const NAME = /^[A-Za-z0-9._-]+$/;
+  const BRANCH = /^(?:main|master)$/i;
+  if (sub === 'merge') {
+    const m = args.length === 1 ? /^([A-Za-z0-9._-]+)\/(.+)$/.exec(args[0]) : null;
+    return Boolean(m) && NAME.test(m[1]) && BRANCH.test(m[2]);
+  }
+  if (args.length > 2 || args.some(a => !NAME.test(a))) return false;
+  return args.length < 2 || BRANCH.test(args[1]);
+}
 
 /** Quote-aware whitespace split; quotes are stripped, backslashes stay (Windows paths). */
 function shellTokens(text) {
@@ -223,7 +267,11 @@ function resolveDir(base, arg) {
   // Git Bash writes drive paths as /c/dir.
   if (process.platform === 'win32') a = a.replace(/^\/([A-Za-z])(?=\/|$)/, (_m, d) => `${d.toUpperCase()}:`);
   if (!path.isAbsolute(a) && !base) return null;
-  return path.resolve(base || '/', a);
+  const full = path.resolve(base || '/', a);
+  // A target that does not exist is unknown, not a place: the failed `cd typo`
+  // leaves the shell where it was, so the write must fall back to the cwd.
+  try { if (!require('fs').statSync(full).isDirectory()) return null; } catch { return null; }
+  return full;
 }
 
 /**
@@ -251,6 +299,7 @@ function gitSegments(cmd, cwd) {
   let shellDir = cwd || null;
   // A `cd` inside `( … )` ends with the subshell: the directory before it is back.
   const saved = [];
+  const dirStack = [];
   const out = [];
   for (const [a, b, before] of spans) {
     if (before === '(') saved.push(shellDir);
@@ -258,9 +307,16 @@ function gitSegments(cmd, cwd) {
     const text = joined.slice(a, b);
     const toks = shellTokens(text);
     let i = 0;
-    while (i < toks.length && (/^[A-Za-z_]\w*=/.test(toks[i]) || WRAPPERS.has(toks[i].toLowerCase()))) i++;
+    const env = {};
+    while (i < toks.length && (/^[A-Za-z_]\w*=/.test(toks[i]) || WRAPPERS.has(toks[i].toLowerCase()))) {
+      const em = /^(GIT_DIR|GIT_WORK_TREE)=(.*)$/.exec(toks[i]);
+      if (em) env[em[1]] = em[2];
+      i++;
+    }
     const head = (toks[i] || '').replace(/^.*[\\/]/, '').toLowerCase();
+    if (DIR_POPPERS.has(head)) { shellDir = dirStack.length ? dirStack.pop() : null; continue; }
     if (DIR_CHANGERS.has(head)) {
+      if (DIR_PUSHERS.has(head)) dirStack.push(shellDir);
       const arg = toks.slice(i + 1).find((t) => !t.startsWith('-') && !/^\/[a-z]$/i.test(t));
       shellDir = arg === undefined ? null : resolveDir(shellDir, arg);
       continue;
@@ -268,11 +324,23 @@ function gitSegments(cmd, cwd) {
     if (head !== 'git' && head !== 'git.exe') continue;
     let dir = shellDir;
     let j = i + 1;
+    let workTree = null;
+    let gitDir = null;
     for (; j < toks.length && toks[j].startsWith('-'); j++) {
       const t = toks[j];
       if (t === '-C') { dir = resolveDir(dir, toks[++j]); } else if (t === '-c') j++;
-      else if (/^--(?:git-dir|work-tree)/.test(t)) { dir = null; if (!t.includes('=')) j++; } else if (t === '--namespace') j++;
+      else if (/^--(?:git-dir|work-tree)/.test(t)) {
+        const eq = t.indexOf('=');
+        const val = eq === -1 ? toks[++j] : t.slice(eq + 1);
+        if (t.startsWith('--work-tree')) workTree = val; else gitDir = val;
+      } else if (t === '--namespace') j++;
     }
+    // The option beats the env var; a work tree beats a git dir. A value that
+    // cannot be read leaves the directory unknown (the caller uses the cwd).
+    workTree = workTree !== null ? workTree : env.GIT_WORK_TREE;
+    gitDir = gitDir !== null ? gitDir : env.GIT_DIR;
+    if (workTree !== undefined && workTree !== null) dir = resolveDir(dir, workTree);
+    else if (gitDir !== undefined && gitDir !== null) dir = gitDirTarget(dir, gitDir);
     out.push({ text, dir });
   }
   return out;
@@ -359,5 +427,5 @@ function remoteDeleteTargets(cmd) {
 module.exports = {
   isManualShipCommand, stripQuoted, maskQuoted, maskQuotedToken,
   ghVerbRe, ghApiRe, joinContinuations, segmentBounds, isApiWrite,
-  gitSegments, BOUNDARY, WORD_END, gitCommandRe, matchesGitCommand, remoteDeleteRefs, remoteDeleteTargets,
+  gitSegments, isFastForwardOfMain, BOUNDARY, WORD_END, gitCommandRe, matchesGitCommand, remoteDeleteRefs, remoteDeleteTargets,
 };

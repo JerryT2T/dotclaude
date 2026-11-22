@@ -441,18 +441,6 @@ export async function handler(params) {
     if (ignoreCheck) checks.push(ignoreCheck);
   }
 
-  // 9d2. The managed .claude/rules/devops.md (scripts/cloud-rules.js): an
-  //      established repo gets it with its next ship — staged with the work
-  //      commit or committed on this branch, reported here. Only when the ship
-  //      is otherwise able to land; never a separate migration step.
-  {
-    const rulesCheck = cloudRulesStep({
-      cwd, state, ahead, mode: repoMode,
-      blocked: errors.some((e) => e !== dirtyError),
-    });
-    if (rulesCheck) checks.push(rulesCheck); // a failure carries `warning`, collected below
-  }
-
   // 9e. Workflow hygiene: habits that let a shared GitHub account limit
   //     (artifact quota, minutes) block a ship. Never a gate — the skill
   //     applies the mechanical fixes inside this ship (Step 1e).
@@ -579,8 +567,22 @@ export async function handler(params) {
     checks.push(parts.length ? { name: "concept-pages-landed", ok: true, warning: `Concept pages not landed: ${parts.join("; ")}.` } : { name: "concept-pages-landed", ok: true });
   }
 
+  // 9d2. The managed .claude/rules/devops.md (scripts/cloud-rules.js): an
+  //      established repo gets it with its next ship — staged with the work
+  //      commit or committed on this branch, reported here. Only when the ship
+  //      is otherwise able to land; never a separate migration step. It runs
+  //      AFTER every hard gate above (conflict markers, version, worktree,
+  //      ...), so a ship that is blocked leaves no stray commit on the branch.
+  {
+    const rulesCheck = cloudRulesStep({
+      cwd, state, ahead, mode: repoMode,
+      blocked: errors.some((e) => e !== dirtyError),
+    });
+    if (rulesCheck) checks.push(rulesCheck); // a failure carries `warning`, collected below
+  }
+
   // Collect warnings from checks (non-blocking issues resolved autonomously)
-  const warnings = checks.filter(c => c.warning).map(c => c.warning);
+  const warnings =checks.filter(c => c.warning).map(c => c.warning);
   if (noRemote) warnings.push("No origin remote — push, PR creation, and merge will be skipped");
 
   // Determine if rebase is needed (any merge-safety warnings present).

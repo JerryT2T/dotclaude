@@ -48,21 +48,34 @@ function gh(args, opts = {}) {
 // A working CLI also prefixes its own errors with "GraphQL:" ("Merge commits are
 // not allowed", "can't be rebased"): only proxy / 403 wording counts as a refusal.
 // The proxy's exact text is undocumented, so the remote-session env is the main switch.
-const REST_REFUSAL_RE = /proxy|HTTP 403|\b403\b[^\n]*forbidden|graphql[^\n]*(?:forbidden|blocked|rejected by|not supported|disabled)/i;
-let restSticky = false;
+// The text must be about the GraphQL endpoint or the `gh pr` subcommand being
+// refused — a bare "proxy" (a corporate `proxyconnect tcp` error) or "403" (a
+// secondary rate limit) is an unrelated Desktop failure and never switches.
+const REST_REFUSAL_RE = /graphql[^\n]*(?:forbidden|blocked|rejected by|refused|denied|not supported|disabled)|(?:forbidden|blocked|rejected by|refused|denied)[^\n]*(?:graphql|\bgh pr\b)/i;
+const NOT_A_REFUSAL_RE = /rate limit|too quickly|abuse detection|proxyconnect/i;
+// A remembered refusal lasts one ship run's worth of time, not the MCP process:
+// a single misread error must not pin every later ship of a long-lived server.
+const STICKY_MS = 15 * 60 * 1000;
+let restStickyUntil = 0;
 
 /** Test hook: forget a remembered refusal. */
-export function resetGhTransport() { restSticky = false; }
+export function resetGhTransport() { restStickyUntil = 0; }
+
+function markRestSticky() { restStickyUntil = Date.now() + STICKY_MS; }
 
 /** Does this session reach GitHub through REST rather than the `gh` subcommands? */
 export function useRestTransport(env = process.env) {
   const pin = env.DEVOPS_SHIP_GH_TRANSPORT;
   if (pin === "graphql") return false;
-  return restSticky || pin === "rest" || env.CLAUDE_CODE_REMOTE === "true";
+  return Date.now() < restStickyUntil || pin === "rest" || env.CLAUDE_CODE_REMOTE === "true";
+}
+
+function isRefusalText(text) {
+  return REST_REFUSAL_RE.test(text) && !NOT_A_REFUSAL_RE.test(text);
 }
 
 function refusedByProxy(e) {
-  return REST_REFUSAL_RE.test(sanitizeError(e));
+  return isRefusalText(sanitizeError(e));
 }
 
 /** Run `cli`; when the proxy refuses it, run `rest` instead and remember the refusal. */
@@ -72,7 +85,7 @@ function ghOrRest(cli, rest) {
     return cli();
   } catch (e) {
     if (!refusedByProxy(e)) throw e;
-    restSticky = true;
+    markRestSticky();
     return rest();
   }
 }
@@ -205,7 +218,7 @@ export function markPRReady(prNumber, { title, body } = {}, opts = {}) {
   try {
     gh(["pr", "ready", String(prNumber)], opts);
   } catch (e) {
-    if (refusedByProxy(e)) { restSticky = true; return markPRReadyRest(prNumber, { title, body }, opts); }
+    if (refusedByProxy(e)) { markRestSticky(); return markPRReadyRest(prNumber, { title, body }, opts); }
     return { ok: false, error: sanitizeError(e) };
   }
   if (title || body) {
@@ -544,6 +557,25 @@ function hadRecentChecks(prNumber, opts) {
   return false;
 }
 
+/** hadRecentChecks over REST: did an earlier commit of the PR report check runs or statuses? */
+function hadRecentChecksRest(prNumber, opts) {
+  try {
+    const commits = ghApiJson("GET", `${PULLS}/${prNumber}/commits?per_page=100`, undefined, opts) || [];
+    const earlier = commits.slice(0, -1).slice(-5).reverse();
+    for (const c of earlier) {
+      const sha = c?.sha;
+      if (!sha) continue;
+      try {
+        if ((ghApiJson("GET", `repos/{owner}/{repo}/commits/${sha}/check-runs?per_page=1`, undefined, opts)?.total_count || 0) > 0) return true;
+      } catch { /* fall through to combined status */ }
+      try {
+        if ((ghApiJson("GET", `repos/{owner}/{repo}/commits/${sha}/status?per_page=1`, undefined, opts)?.total_count || 0) > 0) return true;
+      } catch { /* keep looking at the next commit */ }
+    }
+  } catch { /* no readable commit history — assume no signal */ }
+  return false;
+}
+
 /**
  * Watch a PR's CI checks until they complete, fail, or timeout.
  *
@@ -610,9 +642,9 @@ export function watchPRChecks(prNumber, opts, {
   // deducted from the --watch ceiling, or a ship could wait ~2x (AUD-C045).
   const startedAt = now();
   let probe = probeOnce();
-  if (probe.kind === "probe-error" && REST_REFUSAL_RE.test(probe.error)) {
+  if (probe.kind === "probe-error" && isRefusalText(probe.error)) {
     // the proxy refused `gh pr checks` (GraphQL): read the checks over REST instead
-    restSticky = true;
+    markRestSticky();
     return watchPRChecksRest(prNumber, opts, { timeoutSec, intervalSec, noChecksGraceMs, noChecksGraceIntervalMs, sleep, now });
   }
   if (probe.kind === "probe-error") {
@@ -739,7 +771,10 @@ export function watchPRChecks(prNumber, opts, {
 function watchPRChecksRest(prNumber, opts, { timeoutSec, intervalSec, noChecksGraceMs, noChecksGraceIntervalMs, sleep, now }) {
   const startedAt = now();
   const deadline = startedAt + timeoutSec * 1000;
-  const graceEnd = startedAt + Math.max(0, noChecksGraceMs);
+  const graceMs = Math.max(0, noChecksGraceMs);
+  let graceEnd = startedAt + graceMs;
+  let hasHistory = false;
+  let historyAsked = false;
   let checks = [];
   let waited = false;
   for (;;) {
@@ -751,9 +786,22 @@ function watchPRChecksRest(prNumber, opts, { timeoutSec, intervalSec, noChecksGr
     const failed = checks.filter((c) => c.bucket === "fail" || c.bucket === "cancel");
     const pending = checks.filter((c) => c.bucket === "pending");
     if (checks.length === 0) {
+      // Same patience as the CLI path: when earlier commits of this PR reported
+      // checks, wait up to the full checks timeout for the new head (#508) —
+      // asked once, and only when a grace wait is wanted at all.
+      if (!historyAsked && graceMs > 0) {
+        historyAsked = true;
+        hasHistory = hadRecentChecksRest(prNumber, opts);
+        if (hasHistory) graceEnd = Math.max(graceEnd, startedAt + timeoutSec * 1000);
+      }
       if (now() >= graceEnd) {
         const result = { status: "no-checks", checks: [] };
-        if (waited) result.noChecksReason = `No CI checks reported within ${Math.round(Math.max(0, noChecksGraceMs) / 1000)}s of the push — proceeding as no-checks.`;
+        if (waited) {
+          const waitedS = Math.round((graceEnd - startedAt) / 1000);
+          result.noChecksReason = hasHistory
+            ? `PR #${prNumber} had earlier commits with CI checks, but none appeared on this head within ${waitedS}s — proceeding as no-checks; verify CI is wired up on this head.`
+            : `No CI checks reported within ${waitedS}s of the push — proceeding as no-checks.`;
+        }
         return result;
       }
       sleep(Math.max(1, Math.min(noChecksGraceIntervalMs, graceEnd - now())));

@@ -72,11 +72,21 @@ describe("claim: one updater at a time, once per version", () => {
     expect(cu.claimUpdate({ home, version: "0.400.0", now: T0 + 79 * HOUR }).claimed).toBe(true);
   });
 
-  test("release frees the claim at once (a thread cannot run it)", () => {
+  test("finding #12: a release is offered again only after 3 h, not to every following session", () => {
     const home = mk("cu-home-");
     cu.claimUpdate({ home, version: "0.400.0", now: T0 });
     expect(cu.markUpdate({ home, version: "0.400.0", state: "release", now: T0 + 1000 })).toBe(true);
-    expect(cu.claimUpdate({ home, version: "0.400.0", now: T0 + 2000 }).claimed).toBe(true);
+    for (const dt of [2000, 60_000, 2 * HOUR]) expect(cu.claimUpdate({ home, version: "0.400.0", now: T0 + dt }).claimed).toBe(false);
+    expect(cu.claimUpdate({ home, version: "0.400.0", now: T0 + 3 * HOUR + 2000 }).claimed).toBe(true);
+  });
+
+  test("finding #12: taking over a stale lock is rename-based and leaves no stale leftovers", () => {
+    const home = mk("cu-home-");
+    const lockDir = path.join(home, ".claude", "lock");
+    fs.mkdirSync(lockDir, { recursive: true });
+    expect(cu.claimUpdate({ home, version: "0.400.0", lockDir, now: Date.now() + 11 * 60 * 1000 }).claimed).toBe(true);
+    expect(fs.readdirSync(path.join(home, ".claude")).filter((f) => f.includes("stale"))).toEqual([]);
+    expect(fs.existsSync(lockDir)).toBe(false); // released after the claim
   });
 
   test("a live lock makes the other claimant back off; a stale lock is taken over", () => {
