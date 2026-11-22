@@ -87,8 +87,8 @@ an explicit run skill (`agent-proactivity.md` § Precedence): never ask the
 budget question, never downgrade a model for budget. `--from=do-run` without
 `--burn` runs under the class: opus roles on `sonnet`, the call ceiling on
 analysis roles only, the one question under `--mode=interactive`, and
-`--mode=background` (every backlog run) takes *spare the window* unasked (one
-agent at a time;
+`--mode=background` (every backlog run) and every Claude Projects thread take
+*spare the window* unasked (one agent at a time;
 `agent-proactivity-details.md` § Budget). Every other caller (`auto-fix`,
 `auto-concept`, `auto-harden`, `auto-polish`) runs under the class like any
 prompt.

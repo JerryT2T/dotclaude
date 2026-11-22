@@ -49,12 +49,15 @@
     },
     "project-threads": {
       "minChannel": "alpha",
-      "summary": "Claude Projects threads on this computer: the status head goes on the thread title and the completion card is posted in the thread",
+      "summary": "Claude Projects threads on this computer: status head on the thread title, the completion card and questions as thread replies, a worktree per thread and repo, no side sessions",
       "docs": [
         "deep-knowledge/project-threads.md"
       ],
       "scripts": [
-        "hooks/lib/project-thread.js"
+        "hooks/lib/project-thread.js",
+        "hooks/lib/run-contract-thread.js",
+        "hooks/pre-tool-use/pre.thread.session.js",
+        "hooks/user-prompt-submit/prompt.thread.notices.js"
       ]
     },
     "claude-mods": {

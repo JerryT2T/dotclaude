@@ -48,11 +48,12 @@ owner's wish to decide remotely is given; the hand-off tier is not needed.
 - **Return channel — read this honestly.** The page's submit lands in the
   artifact's `db` store (`readBack`, step 5), and that carries the whole payload:
   decisions, notes and `action` — `iterate` (next round), `implement`,
-  `next-stage` — so the actions are not lost. Only artifact comments are a
-  documented return channel of claude.ai; the `db` capability and this read-back
-  are this repo's own assumption and have not been observed answering from a
-  thread. The artifact does not wake the thread: the person says "read the
-  decisions" (or the next wake does), then Step 4/5 runs on the stored payload.
+  `next-stage` — so the actions are not lost. The session reads it with the
+  `ArtifactData` tool (the Artifact tool's `db` capability; the public artifacts
+  doc page names only comments as a return channel). The read-back has not been
+  observed from a thread yet. The artifact does not wake the thread: the person
+  says "read the decisions" (or the next wake does), then Step 4/5 runs on the
+  stored payload.
 - **If nothing comes back** (the read-back is empty or errors): the person
   pastes the decisions, or says the action (`next round` / `implement`), into
   the thread; the session continues from those words. The post says so once.
