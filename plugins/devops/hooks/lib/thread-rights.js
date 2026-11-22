@@ -151,12 +151,7 @@ function findReason(t, cwd) {
 }
 
 const WRAPPERS = new Set(['sudo', 'command', 'env', 'xargs', 'nohup', 'time', 'exec', 'builtin', 'doas']);
-const SHELLS = new Set(['bash', 'sh', 'zsh', 'dash', 'ksh', 'cmd', 'pwsh', 'powershell']);
-
-/** The command name of a token: no directory, no leading backslash, no `.exe`, lower case. */
-function headName(tok) {
-  return String(tok || '').replace(/^.*[\\/]/, '').replace(/\.exe$/i, '').toLowerCase();
-}
+const { SHELLS, MAX_DEPTH, headName, innerCommand } = require('./shell-inner');
 
 /** Strip env assignments and wrapper commands (with their flags), return the token list for one segment. */
 function commandTokens(segment) {
@@ -189,13 +184,6 @@ function commandTokens(segment) {
     return out;
   }
   return t;
-}
-
-/** The inner command of a shell call (`bash -c '…'`, `cmd /c …`, `powershell -Command …`), or ''. */
-function innerCommand(t, head) {
-  const flag = head === 'cmd' ? /^\/[ck]$/i : head === 'pwsh' || head === 'powershell' ? /^-(c|command)$/i : /^-[a-zA-Z]*c$/;
-  const i = t.findIndex((a, n) => n > 0 && flag.test(a));
-  return i === -1 ? '' : t.slice(i + 1).join(' ');
 }
 
 function gitReason(t) {
@@ -256,7 +244,7 @@ function destructiveReason(command, cwd, depth = 0) {
       reason = cmdDeleteReason(t, cwd);
     } else if (head === 'find') {
       reason = findReason(t, cwd);
-    } else if (SHELLS.has(head) && depth < 3) {
+    } else if (SHELLS.has(head) && depth < MAX_DEPTH) {
       const inner = innerCommand(t, head);
       if (inner) reason = destructiveReason(inner, cwd, depth + 1);
     }

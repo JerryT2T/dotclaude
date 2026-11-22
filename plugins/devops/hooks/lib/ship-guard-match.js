@@ -1,6 +1,6 @@
 /**
  * @module ship-guard-match
- * @version 0.4.0
+ * @version 0.5.0
  * @description Pure matcher for pre.ship.guard — decides whether a Bash command
  *   is a REAL manual PR create/merge invocation that must go through /do-ship.
  *
@@ -22,6 +22,10 @@
  *     2. The patterns are anchored to a command position (start of command or
  *        right after a shell separator) so only real command tokens match, not
  *        arbitrary substrings.
+ *
+ *   gitSegments also follows shell wrappers (`bash -c '…'`, `cmd /c …`,
+ *   `pwsh -c …`, a here-doc fed to a bare shell; lib/shell-inner.js, depth 3):
+ *   their inner git calls are returned with the directory in effect there.
  *
  *   This is a nudge, not a security boundary — over-stripping quotes is fine; the
  *   goal is zero false positives on documentation/quoted text while still
@@ -192,7 +196,16 @@ function isManualShipCommand(cmd) {
 
 // ── the directory a git command acts on ─────────────────────────────────────
 
+const { SHELLS, MAX_DEPTH, headName, innerCommand, shellHeredocBody } = require('./shell-inner');
+
 const WRAPPERS = new Set(['env', 'command', 'exec', 'sudo', 'time', 'nohup']);
+
+/** Index of the command word in `toks`: past env assignments and wrapper commands. */
+function skipPrefix(toks) {
+  let i = 0;
+  while (i < toks.length && (/^[A-Za-z_]\w*=/.test(toks[i]) || WRAPPERS.has(toks[i].toLowerCase()))) i++;
+  return i;
+}
 const DIR_CHANGERS = new Set(['cd', 'chdir', 'pushd', 'set-location', 'sl', 'push-location', 'popd', 'pop-location']);
 const DIR_PUSHERS = new Set(['pushd', 'push-location']);
 const DIR_POPPERS = new Set(['popd', 'pop-location']);
@@ -286,7 +299,7 @@ function resolveDir(base, arg) {
  * @param {string} cwd
  * @returns {{text: string, dir: string|null}[]}
  */
-function gitSegments(cmd, cwd) {
+function gitSegments(cmd, cwd, depth = 0) {
   if (!cmd || typeof cmd !== 'string') return [];
   const joined = joinContinuations(cmd);
   const masked = maskQuotedToken(joined);
@@ -306,12 +319,19 @@ function gitSegments(cmd, cwd) {
     else if (before === ')' && saved.length) shellDir = saved.pop();
     const text = joined.slice(a, b);
     const toks = shellTokens(text);
-    let i = 0;
+    const i = skipPrefix(toks);
     const env = {};
-    while (i < toks.length && (/^[A-Za-z_]\w*=/.test(toks[i]) || WRAPPERS.has(toks[i].toLowerCase()))) {
-      const em = /^(GIT_DIR|GIT_WORK_TREE)=(.*)$/.exec(toks[i]);
+    for (let k = 0; k < i; k++) {
+      const em = /^(GIT_DIR|GIT_WORK_TREE)=(.*)$/.exec(toks[k]);
       if (em) env[em[1]] = em[2];
-      i++;
+    }
+    // A shell that runs another command: the inner command is judged on its own,
+    // starting in the directory in effect here; a `cd` inside does not leak out.
+    if (depth < MAX_DEPTH) {
+      const shell = headName(toks[i]);
+      const inner = SHELLS.has(shell) ? innerCommand(toks.slice(i), shell) : null;
+      const body = inner || shellHeredocBody(text, shellTokens, skipPrefix);
+      if (body) { out.push(...gitSegments(body, shellDir, depth + 1)); continue; }
     }
     const head = (toks[i] || '').replace(/^.*[\\/]/, '').toLowerCase();
     if (DIR_POPPERS.has(head)) { shellDir = dirStack.length ? dirStack.pop() : null; continue; }
