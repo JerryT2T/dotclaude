@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.397.0] — 2026-11-22
+
+### Added
+- **Concept closing page: Funde in focus.** Every open Fund is a visible card in the report (what, where, why pre-selected) with its own route pill (⚡ Jetzt → 📌 Issue → Weglassen) instead of a row in a collapsed fold.
+- **Concept closing page: close out without the menu.** Plan line, page disposition, „Abschließen & shippen“, „Nur abschließen, nicht shippen“ and „Nachbessern“ stand beside the Fund cards in the report. Opening ☰ moves the same block into the menu and back, so there is one set of buttons and one state.
+
+### Changed
+- Engine reference: the panel-state CSS part is split in two, the assembled engine is unchanged.
+
 ## [0.396.0] — 2026-11-22
 
 ### Added
