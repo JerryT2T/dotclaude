@@ -59,7 +59,7 @@ describe("batch titles use the fallback", () => {
   const cwd = "/x/dotclaude/.claude/worktrees/w1";
   test("batchTitle: a trigger-only topic", () => {
     expect(st.batchTitle("batch", { lang: "de", cwd })).toBe(S.BATCH_PREFIX + "Feedback zu dotclaude");
-    expect(st.batchTitle("⏳ ➜ 🤖 Solo ┃ /do-batch", { lang: "en", cwd })).toBe(S.BATCH_PREFIX + "Feedback on dotclaude");
+    expect(st.batchTitle("⏳ ➜ 🤖 /do-batch", { lang: "en", cwd })).toBe(S.BATCH_PREFIX + "Feedback on dotclaude");
     expect(st.batchTitle("Fix login", { cwd })).toBe(S.BATCH_PREFIX + "Fix login");
   });
   test("batchTitle: an already batch-marked 'batch' title is repaired, a good one left", () => {

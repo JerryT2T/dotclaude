@@ -9,7 +9,7 @@
  *   in lib/approval-wait.js is dropped by post.approval.clear /
  *   substop.approval.clear — and then, once no other dialog of the session
  *   waits, wakes the main thread with the ⏳ head back
- *   (`👉 ➜ 🤖 Team ┃ X` → `⏳ ➜ 🤖 Team ┃ X`). Silent when the title no longer
+ *   (`👉 ➜ 🤖🤖🤖 X` → `⏳ ➜ 🤖🤖🤖 X`). Silent when the title no longer
  *   carries the approval head (a card or a rename won meanwhile), for a
  *   main-thread prompt, and past its deadline (the hook timeout kills it
  *   anyway). Fail-open.

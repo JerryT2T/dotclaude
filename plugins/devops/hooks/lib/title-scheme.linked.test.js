@@ -5,28 +5,28 @@ const require = createRequire(import.meta.url);
 
 describe("title-scheme - side-session states (2.6)", () => {
   test("heads of linked, linked-waiting and delivered (deliver subs wait as Linked, not Team)", () => {
-    expect(S.head("linked").text).toBe("⏳ ➜ 🔗 Linked ┃");
-    expect(S.head("linked-waiting").text).toBe("👉 ➜ 🔗 Linked ┃");
-    expect(S.head("delivered").text).toBe("🟩 ➜ 📦 Delivered ┃");
-    expect(S.head("delivered", { mandatory: true }).text).toBe("👉 ➜ 📦 Delivered ┃");
+    expect(S.head("linked").text).toBe("⏳ ➜ 🔗");
+    expect(S.head("linked-waiting").text).toBe("👉 ➜ 🔗");
+    expect(S.head("delivered").text).toBe("🟩 ➜ 📦");
+    expect(S.head("delivered", { mandatory: true }).text).toBe("👉 ➜ 📦");
     expect(() => S.head("agents-waiting")).toThrow();
     expect(S.headingOf("linked", "x")).toBe("⏳ 🔗 Linked — x");
     expect(S.headingOf("delivered", "Teil fertig")).toBe("🟩 📦 Delivered — Teil fertig");
   });
 
   test("classify and strip recognise them", () => {
-    expect(S.classify("⏳ ➜ 🔗 Linked ┃ Doku")).toBe("process");
-    expect(S.classify("👉 ➜ 🔗 Linked ┃ Doku")).toBe("outcome");
-    expect(S.classify("🟩 ➜ 📦 Delivered ┃ Teil A")).toBe("outcome");
-    expect(S.classify("👉 ➜ 🤖 Team ┃ Teil A")).toBe("approval");
-    expect(S.stripPrefixes("⏳ ➜ 🔗 Linked ┃ Doku")).toBe("Doku");
-    expect(S.stripPrefixes("👉 ➜ 🔗 Linked ┃ ⏳ ➜ 🔗 Linked ┃ Doku")).toBe("Doku");
-    expect(S.stripPrefixes("🟩 ➜ 📦 Delivered ┃ Teil A")).toBe("Teil A");
+    expect(S.classify("⏳ ➜ 🔗 Doku")).toBe("process");
+    expect(S.classify("👉 ➜ 🔗 Doku")).toBe("outcome");
+    expect(S.classify("🟩 ➜ 📦 Teil A")).toBe("outcome");
+    expect(S.classify("👉 ➜ 🤖🤖🤖 Teil A")).toBe("approval");
+    expect(S.stripPrefixes("⏳ ➜ 🔗 Doku")).toBe("Doku");
+    expect(S.stripPrefixes("👉 ➜ 🔗 ⏳ ➜ 🔗 Doku")).toBe("Doku");
+    expect(S.stripPrefixes("🟩 ➜ 📦 Teil A")).toBe("Teil A");
   });
 });
 
 describe("title-scheme - the 🔗 sub marker (2.8, concept 2026-11-21 B3)", () => {
-  const SOLO = "⏳ ➜ 🤖 Solo ┃ ";
+  const SOLO = "⏳ ➜ 🤖 ";
   const cp = (s) => Array.from(s).length;
 
   test("one leading 🔗, never stacked, seen through by classify / strip", () => {
@@ -40,17 +40,17 @@ describe("title-scheme - the 🔗 sub marker (2.8, concept 2026-11-21 B3)", () =
   });
 
   test("a status swap keeps the 🔗, the parent's 🔗 Linked activity is no marker", () => {
-    expect(S.carrySubMark("🔗 " + SOLO + "X", "🟩 ➜ 🚀 Released Alpha ┃ X")).toBe("🔗 🟩 ➜ 🚀 Released Alpha ┃ X");
-    expect(S.carrySubMark(SOLO + "X", "🟩 ➜ 📦 Committed ┃ X")).toBe("🟩 ➜ 📦 Committed ┃ X");
-    expect(S.hasSubMark("⏳ ➜ 🔗 Linked ┃ Backlog-Run")).toBe(false);
+    expect(S.carrySubMark("🔗 " + SOLO + "X", "🟩 ➜ 🚀 X")).toBe("🔗 🟩 ➜ 🚀 X");
+    expect(S.carrySubMark(SOLO + "X", "🟩 ➜ 📦 X")).toBe("🟩 ➜ 📦 X");
+    expect(S.hasSubMark("⏳ ➜ 🔗 Backlog-Run")).toBe(false);
     // row 14: a sub with its own subs
-    expect(S.withSubMark("⏳ ➜ 🔗 Linked ┃ X")).toBe("🔗 ⏳ ➜ 🔗 Linked ┃ X");
+    expect(S.withSubMark("⏳ ➜ 🔗 X")).toBe("🔗 ⏳ ➜ 🔗 X");
   });
 
   test("the approval wait and its restore keep the 🔗", () => {
-    const up = S.approvalTitle("🔗 ⏳ ➜ 🤖 Team ┃ X");
-    expect(up).toBe("🔗 👉 ➜ 🤖 Team ┃ X");
-    expect(S.approvalRestoredTitle(up)).toBe("🔗 ⏳ ➜ 🤖 Team ┃ X");
+    const up = S.approvalTitle("🔗 ⏳ ➜ 🤖🤖🤖 X");
+    expect(up).toBe("🔗 👉 ➜ 🤖🤖🤖 X");
+    expect(S.approvalRestoredTitle(up)).toBe("🔗 ⏳ ➜ 🤖🤖🤖 X");
   });
 
   test("rows 2, 3, 6, 10, 11: every sub head leads with 🔗", () => {

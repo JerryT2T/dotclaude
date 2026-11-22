@@ -115,7 +115,7 @@ describe("pre.ship.delegate — bare ship subagent (#892)", () => {
     expect(run("Agent", { prompt: BARE }, 750_000).code).toBe(2);
     const r = run("Agent", { prompt: SPAWN }, 750_000);
     expect(r.code).toBe(0);
-    expect(r.stdout).toContain("Shipping");
+    expect(r.stdout).toContain("⏳ ➜ 🚀 ");
   });
   test("a passing mention of do-ship is no ship", () => {
     expect(run("Agent", { prompt: "QA brief: review the diff, don't run do-ship or ship anything." }, 750_000).code).toBe(0);
@@ -181,20 +181,20 @@ describe("pre.ship.delegate — Shipping title before a delegated spawn", () => 
   }
 
   test("a known non-Shipping title refuses the spawn with the exact set call", () => {
-    const r = spawn(titled("⏳ ➜ 🤖 Team ┃ Backlog"));
+    const r = spawn(titled("⏳ ➜ 🤖🤖🤖 Backlog"));
     expect(r.code).toBe(2);
     expect(r.stderr).toContain("[pre.ship.delegate:title]");
-    expect(r.stderr).toContain(`${SET} {session_id:"self", title:"⏳ ➜ 🚀 Shipping ┃ Backlog"}`);
+    expect(r.stderr).toContain(`${SET} {session_id:"self", title:"⏳ ➜ 🚀 Backlog"}`);
   });
 
   test("a set call to the Shipping title in the same message passes", () => {
-    const set = { type: "assistant", message: { content: [{ type: "tool_use", id: "t1", name: SET, input: { session_id: "self", title: "⏳ ➜ 🚀 Shipping ┃ Backlog" } }] } };
-    expect(spawn(titled("⏳ ➜ 🤖 Team ┃ Backlog", [set])).code).toBe(0);
+    const set = { type: "assistant", message: { content: [{ type: "tool_use", id: "t1", name: SET, input: { session_id: "self", title: "⏳ ➜ 🚀 Backlog" } }] } };
+    expect(spawn(titled("⏳ ➜ 🤖🤖🤖 Backlog", [set])).code).toBe(0);
   });
 
   test("an already-Shipping title passes; a second refusal in one turn never happens", () => {
-    expect(spawn(titled("⏳ ➜ 🚀 Shipping ┃ Backlog")).code).toBe(0);
+    expect(spawn(titled("⏳ ➜ 🚀 Backlog")).code).toBe(0);
     const refused = { type: "user", message: { content: [{ type: "tool_result", tool_use_id: "a1", content: "[pre.ship.delegate:title] ..." }] } };
-    expect(spawn(titled("⏳ ➜ 🤖 Team ┃ Backlog", [refused])).code).toBe(0);
+    expect(spawn(titled("⏳ ➜ 🤖🤖🤖 Backlog", [refused])).code).toBe(0);
   });
 });

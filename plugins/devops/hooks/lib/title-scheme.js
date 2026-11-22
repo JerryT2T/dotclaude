@@ -1,16 +1,21 @@
 /**
  * @module title-scheme
- * @version 2.8.0
+ * @version 3.0.0
  * @description The ONE table behind the session title and the completion
  *   card's CTA heading (concept 2026-10-21 "title-iconography").
  *
- *   Grammar: `<STATUS> ➜ <ACTIVITY> <Word> ┃ <title>` — a status icon, an
- *   arrow (U+279C), the activity emoji, the English keyword and a heavy bar
- *   (U+2503) that separates the whole head from the topic (2.4; 2.2/2.3 put
- *   the bar between status and activity). The CTA heading
- *   of every card starts with the SAME parts, followed by ` — ` and the
- *   localized sentence — both are built here from one state id, so they
- *   cannot drift. No fill: 2.0.0 right-aligned the word with U+200A hair
+ *   Grammar (3.0): `<STATUS> ➜ <ACTIVITY> <title>` — a status icon, an arrow
+ *   (U+279C) and the activity emoji, then the topic. The sidebar title
+ *   carries NO keyword and no bar any more (user decision 2026-11-22: the
+ *   room goes to the topic); Team work shows three robots (`⏳ ➜ 🤖🤖🤖 `,
+ *   TITLE_ACTIVITY) so it still differs from Solo. The keyword lives on in
+ *   the CTA heading of every card (`👉 📦 Ready — Shippen?`): status and
+ *   activity of title and heading are built here from one state id, so they
+ *   cannot drift. States that share status and activity share a title head
+ *   (Ready/Files, the three ⚠️, Released Alpha/Beta/Stable, …) — the card
+ *   tells them apart. The 2.4–2.8 worded head
+ *   (`<STATUS> ➜ <ACTIVITY> <Word> ┃ `, U+2503 heavy bar) is recognised and
+ *   stripped, never emitted. No fill: 2.0.0 right-aligned the word with U+200A hair
  *   spaces, but the Desktop sidebar drops every whitespace run (verified
  *   2026-10-21), so titles from that release still carry an invisible fill.
  *
@@ -19,8 +24,9 @@
  *   step (`head(id, { mandatory: true })`). Optional follow-ups keep 🟩.
  *
  *   Matching is FE0F-tolerant and hair-space-tolerant (any number of U+200A
- *   anywhere) and strips ONLY known prefixes: every status x keyword x
- *   activity combination of the current grammar, the 2.2/2.3 bar-first order
+ *   anywhere) and strips ONLY known prefixes: every status x activity
+ *   combination of the current grammar, every status x keyword x activity
+ *   combination of the 2.4–2.8 worded head, the 2.2/2.3 bar-first order
  *   (`<STATUS> ┃ <ACTIVITY> <Word> `), the 2.0/2.1 order
  *   (`<STATUS> ┃ <Word> <ACTIVITY> `, Started 💡 included), the LEGACY generation
  *   (`<STATUS> <ACTIVITY> <Word> – `, old keywords/icons, old ⏸️ status), the
@@ -28,11 +34,12 @@
  *   "Fix Login – Bug" after a bare ⏳ is the title and stays (F6).
  *
  *   Approval wait (2.5): while a background agent waits on a tool permission
- *   dialog, a `⏳` Solo/Team/Testing head turns into the same head with 👉
- *   (`👉 ➜ 🤖 Team ┃ `) and back once the dialog is answered — the activity
+ *   dialog, a `⏳` Solo/Team head turns into the same head with 👉
+ *   (`👉 ➜ 🤖🤖🤖 `) and back once the dialog is answered — the activity
  *   stays, only the status says whose move it is (`approvalTitle`,
  *   `approvalRestoredTitle`; hooks: perm.approval.*). classify() reads those
- *   heads as 'approval'.
+ *   heads as 'approval'. Testing left the swap with 3.0: without the keyword
+ *   `👉 ➜ 🧪 ` IS the Test outcome.
  *
  *   Sub marker (2.8): a linked side session's title starts with `🔗 ` in front
  *   of its normal head; the parent's waiting heads (`⏳/👉 ➜ 🔗 Linked`) are
@@ -45,7 +52,7 @@
 const FE0F = '️';
 /** U+200A — built from the code point, the raw char is invisible in source. */
 const HAIR = String.fromCharCode(0x200A);
-/** U+2503 — the bar between the head and the topic. */
+/** U+2503 — the bar of the worded heads up to 2.8 (recognised, never emitted). */
 const BAR = String.fromCharCode(0x2503);
 /** U+279C — the arrow between status and activity. */
 const ARROW = String.fromCharCode(0x279C);
@@ -180,18 +187,33 @@ function pausedState(reason) {
   return STATES['paused-' + r] && r !== 'user' ? 'paused-' + r : 'paused-user';
 }
 
-/** `cta.activity` → aborted state id; unknown → the generic `🟥 ➜ 📦 Aborted ┃`. */
+/** `cta.activity` → aborted state id; unknown → the generic `🟥 ➜ 📦` (Aborted). */
 function abortedState(activity) {
   const a = String(activity ?? '').trim().toLowerCase();
   return ABORT_ACTIVITIES.includes(a) ? 'aborted-' + a : 'aborted';
 }
 
-/** `👉 ➜ 📦 Ready ┃` for a status icon, keyword and activity. */
+/**
+ * The activity a TITLE shows for a keyword: the card's icon, except Team —
+ * three robots, since the title no longer spells the word that told Team
+ * from Solo. Card headings keep the single icon (`headingOf`).
+ */
+const TITLE_ACTIVITY = Object.freeze({ Team: '🤖🤖🤖' });
+function titleActivity(word, activity) {
+  return TITLE_ACTIVITY[word] || activity;
+}
+
+/** `👉 ➜ 📦` for a status icon, keyword and activity — the keyword only picks the title activity. */
 function compose(status, word, activity) {
+  return `${status} ${ARROW} ${titleActivity(word, activity)}`;
+}
+
+/** The 2.4–2.8 worded head `👉 ➜ 📦 Ready ┃` — recognised, never emitted. */
+function composeWorded(status, word, activity) {
   return `${status} ${ARROW} ${activity} ${word} ${BAR}`;
 }
 
-/** The 2.2/2.3 order `👉 ➜ 📦 Ready ┃` — recognised, never emitted. */
+/** The 2.2/2.3 order `👉 ┃ 📦 Ready` — recognised, never emitted. */
 function composeBarFirst(status, word, activity) {
   return `${status} ${BAR} ${activity} ${word}`;
 }
@@ -202,9 +224,9 @@ function composeWordFirst(status, word, activity) {
 }
 
 /**
- * The head of a state: status, keyword, activity and the joined text
- * (`👉 ➜ 📦 Ready ┃`, no fill). `mandatory` raises a `done` state to the
- * user's move.
+ * The head of a state: status, keyword, activity (the card's icon) and the
+ * joined title text (`👉 ➜ 📦`, no keyword, no fill). `mandatory` raises a
+ * `done` state to the user's move.
  *
  * @param {string} id key of STATES
  * @param {{ mandatory?: boolean }} [opts]
@@ -218,15 +240,14 @@ function head(id, { mandatory = false } = {}) {
   return { id, status, activity: s[2], word: s[1], text: compose(status, s[1], s[2]) };
 }
 
-/** `👉 ➜ 📦 Ready ┃ ` — the session-title prefix of a state. */
+/** `👉 ➜ 📦 ` — the session-title prefix of a state. */
 function prefixOf(id, opts) {
   return head(id, opts).text + ' ';
 }
 
 /**
- * `👉 📦 Ready — Shippen?` — the CTA heading of a state. No `┃`: the bar
- * aligns the word column of session titles; on the card it read as a line
- * starting with "|" (2026-10-21).
+ * `👉 📦 Ready — Shippen?` — the CTA heading of a state: the one place that
+ * still spells the keyword (the title dropped it with 3.0).
  */
 function headingOf(id, sentence, opts) {
   const { status, word, activity } = head(id, opts);
@@ -235,7 +256,7 @@ function headingOf(id, sentence, opts) {
   return s ? `${h} — ${s}` : h;
 }
 
-/** Generic work: `⏳ ➜ 🤖 Solo ┃ ` — what a bare unnamed turn gets. */
+/** Generic work: `⏳ ➜ 🤖 ` (Solo) — what a bare unnamed turn gets. */
 const WORK_PREFIX = compose(STATUS.work, 'Solo', '🤖') + ' ';
 /** The pre-2.0 bare hourglass — still recognised as generic work. */
 const BARE_WORK = STATUS.work + ' ';
@@ -292,9 +313,16 @@ const LEGACY = Object.freeze({
 /**
  * The ⏳ heads [word, activity] that swap to 👉 while a background agent
  * waits on a tool approval. Shipping and a working concept keep their ⏳: a
- * ship and a concept round own their title.
+ * ship and a concept round own their title. Testing keeps it too (3.0): its
+ * 👉 form would read as the Test outcome.
  */
-const APPROVAL_HEADS = Object.freeze([['Solo', '🤖'], ['Team', '🤖'], ['Testing', '🧪']]);
+const APPROVAL_HEADS = Object.freeze([['Solo', '🤖'], ['Team', '🤖']]);
+/**
+ * Approval heads only the worded grammar had: `👉 ➜ 🧪 Testing ┃ `. Still read
+ * as 'approval' and restored to `⏳ ➜ 🧪 `, so a title an older version left
+ * while an agent waited does not stay on 👉; never produced any more.
+ */
+const LEGACY_APPROVAL_HEADS = Object.freeze([['Testing', '🧪']]);
 
 /** Category of a canonical (fill-less) prefix → classify() result. */
 const CATEGORY = new Map();
@@ -309,7 +337,7 @@ const KNOWN = [];
     if (concept) return 'concept-waiting';
     return status === STATUS.work ? 'process' : 'outcome';
   };
-  // Current grammar: every status x (word, activity) pair, no fill.
+  // Every status x (word, activity) pair, no fill.
   const pairs = new Map();
   for (const [, word, act] of Object.values(STATES)) pairs.set(word + ' ' + act, [word, act]);
   pairs.set('Solo 🤖', ['Solo', '🤖']);
@@ -318,7 +346,21 @@ const KNOWN = [];
   const current = new Map([...pairs, ...retired.map((wa) => [wa.join(' '), wa])]);
   // The 2.0/2.1 word-first order, with the icons it used (Started 💡).
   const wordFirst = new Map([...current, ['Started 💡', ['Started', '💡']]]);
-  const orders = [[compose, current], [composeBarFirst, current], [composeWordFirst, wordFirst]];
+  // Current grammar (3.0): status x title activity, no keyword. Read by the
+  // icons alone — states that share both share the category too.
+  for (const st of Object.values(STATUS)) {
+    for (const [word, act] of pairs.values()) {
+      const p = compose(st, word, act) + ' ';
+      if (CATEGORY.has(p)) continue;
+      const icon = titleActivity(word, act);
+      if (icon === '🤖') { add(p, st === STATUS.work ? 'work' : 'outcome'); continue; }
+      add(p, icon === '📚' ? 'batch'
+        : st === STATUS.work && icon === '🚀' ? 'shipping'
+          : st === STATUS.user && icon === '🧭' ? 'concept-waiting'
+            : st === STATUS.work ? 'process' : 'outcome');
+    }
+  }
+  const orders = [[composeWorded, current], [composeBarFirst, current], [composeWordFirst, wordFirst]];
   for (const [build, list] of orders) {
     for (const st of Object.values(STATUS)) {
       for (const [word, act] of list.values()) {
@@ -347,18 +389,22 @@ const KNOWN = [];
           : p === LEGACY.concept ? 'concept-waiting' : 'outcome';
     add(p, cat);
   }
-  for (const [word, act] of APPROVAL_HEADS) CATEGORY.set(compose(STATUS.user, word, act) + ' ', 'approval');
+  for (const [word, act] of APPROVAL_HEADS) {
+    CATEGORY.set(compose(STATUS.user, word, act) + ' ', 'approval');
+    CATEGORY.set(composeWorded(STATUS.user, word, act) + ' ', 'approval');
+  }
+  for (const [word, act] of LEGACY_APPROVAL_HEADS) CATEGORY.set(composeWorded(STATUS.user, word, act) + ' ', 'approval');
 }());
 
 /** Every known prefix but the bare ⏳, longest first. */
 const KNOWN_PREFIXES = Object.freeze([...new Set(KNOWN)].sort((a, b) => b.length - a.length));
 
 // A head that lost its status: an older plugin strips the leading ⏳ as its
-// own bare prefix and stacks its prefix on the rest ("⏳ 🧭 Concept – ➜ 🚀
-// Shipping ┃ X", or "… – ┃ Shipping 🚀 X" for the bar-first orders).
+// own bare prefix and stacks its prefix on the rest ("⏳ 🧭 Concept – ➜ 🚀 X",
+// "… – ➜ 🚀 Shipping ┃ X", or "… – ┃ Shipping 🚀 X" for the bar-first orders).
 // Stripped, never classified — the title gets a fresh head right after.
 const ORPHAN_HEADS = Object.freeze([...new Set(
-  [...KNOWN].filter((p) => p.includes(BAR)).map((p) => p.slice(p.includes(ARROW) ? p.indexOf(ARROW) : p.indexOf(BAR))),
+  [...KNOWN].filter((p) => p.includes(BAR) || p.includes(ARROW)).map((p) => p.slice(p.includes(ARROW) ? p.indexOf(ARROW) : p.indexOf(BAR))),
 )].sort((a, b) => b.length - a.length));
 
 /**
@@ -397,7 +443,7 @@ function canonical(prefix) {
 
 /**
  * The sub marker (2.8): a LINKED side session carries `🔗 ` in front of its
- * normal head (`🔗 ⏳ ➜ 🚀 Shipping ┃ X`). It is no state of its own — every
+ * normal head (`🔗 ⏳ ➜ 🚀 X`). It is no state of its own — every
  * helper below sees through it, and `carrySubMark` puts it back wherever a
  * head is rebuilt, so a status swap never loses it and it never stacks.
  */
@@ -483,13 +529,13 @@ function stripPrefixes(title) {
 /**
  * The state of a title, read off its leading prefix (either generation):
  * - 'plain'      no known prefix
- * - 'work'       `⏳ ➜ 🤖 Solo ┃ ` (or the bare ⏳ / legacy `⏳ Working – `)
- * - 'shipping'   `⏳ ➜ 🚀 Shipping ┃ ` (or the legacy forms)
- * - 'batch'      any status + Batch
- * - 'concept-waiting' `👉 ➜ 🧭 Concept ┃ ` (or the legacy forms)
+ * - 'work'       `⏳ ➜ 🤖 ` (or the bare ⏳ / legacy `⏳ Working – `)
+ * - 'shipping'   `⏳ ➜ 🚀 ` (or the legacy forms)
+ * - 'batch'      any status + 📚 (Batch)
+ * - 'concept-waiting' `👉 ➜ 🧭 ` (or the legacy forms)
  * - 'process'    any other ⏳ prefix (Concept working, Team, Testing)
- * - 'approval'   `👉 ➜ 🤖 Team ┃ ` / Solo / Testing — a background agent
- *                waits on a tool approval (approvalTitle)
+ * - 'approval'   `👉 ➜ 🤖🤖🤖 ` (Team) / `👉 ➜ 🤖 ` (Solo) — a background
+ *                agent waits on a tool approval (approvalTitle)
  * - 'outcome'    any other known prefix (a card's outcome, legacy included)
  *
  * @param {string} title
@@ -502,15 +548,19 @@ function classify(title) {
   return CATEGORY.get(lead.prefix) || 'outcome';
 }
 
-/** The APPROVAL_HEADS pair behind `prefix` under `status`, or undefined. */
+/** The APPROVAL_HEADS pair behind `prefix` (current or worded head) under `status`, or undefined. */
 function approvalHead(prefix, status) {
-  return APPROVAL_HEADS.find(([word, act]) => prefix === compose(status, word, act) + ' ');
+  const hit = APPROVAL_HEADS.find(([word, act]) => prefix === compose(status, word, act) + ' '
+    || prefix === composeWorded(status, word, act) + ' ');
+  // The worded Testing head only on its way back to ⏳ — a ⏳ Testing head never swaps to 👉 (3.0).
+  if (hit || status !== STATUS.user) return hit;
+  return LEGACY_APPROVAL_HEADS.find(([word, act]) => prefix === composeWorded(status, word, act) + ' ');
 }
 
 /**
  * The title while a background agent waits on a tool approval: the ⏳ head
- * with 👉 in its status slot, activity kept (`⏳ ➜ 🤖 Team ┃ X` →
- * `👉 ➜ 🤖 Team ┃ X`; a bare or legacy ⏳ counts as Solo). Null — leave the
+ * with 👉 in its status slot, activity kept (`⏳ ➜ 🤖🤖🤖 X` →
+ * `👉 ➜ 🤖🤖🤖 X`; a bare or legacy ⏳ counts as Solo). Null — leave the
  * title — for every other state: a ship, a working concept, a batch, an
  * outcome, a question, a title that already waits, and an unknown title.
  *
@@ -530,7 +580,7 @@ function approvalTitle(title) {
 
 /**
  * The title once the approval is answered: an approval head back to its ⏳
- * head (`👉 ➜ 🤖 Team ┃ X` → `⏳ ➜ 🤖 Team ┃ X`). Null when the title is no
+ * head (`👉 ➜ 🤖🤖🤖 X` → `⏳ ➜ 🤖🤖🤖 X`). Null when the title is no
  * approval head any more — a card or a rename meanwhile wins.
  *
  * @param {string|null} title
@@ -587,6 +637,8 @@ module.exports = {
   classify,
   allStatePrefixes,
   APPROVAL_HEADS,
+  TITLE_ACTIVITY,
+  titleActivity,
   approvalTitle,
   approvalRestoredTitle,
   SUB_MARK,

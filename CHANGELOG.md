@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.400.0] — 2026-11-22
+
+### Changed
+- **Session title without keyword and separator**: the sidebar title now reads `<STATUS> ➜ <ACTIVITY> <topic>` (`⏳ ➜ 🚀 Abschlussseite Funde` instead of `⏳ ➜ 🚀 Shipping ┃ Abschlussseite Funde`), so the freed room goes to the topic. The completion card heading and the mod band keep the keyword (`👉 📦 Ready — Shippen?`). The same head goes on Claude Projects thread titles.
+- **Team work shows three robots** in the title (`⏳ ➜ 🤖🤖🤖`), Solo stays one robot; the card heading still says `🤖 Team`.
+- **Topic limit 30 characters** (20 before) for the topic the model names itself; the 42-character budget now counts the topic alone.
+- States with the same status and activity share one title head (Released Alpha/Beta/Stable, Ready/Files, the three ⚠️ states, Committed/Delivered); the card tells them apart.
+- A Testing run no longer swaps to 👉 while a background agent waits on a tool approval: without the keyword `👉 ➜ 🧪` is the Test outcome.
+
+### Fixed
+- Titles with the worded head of v0.297–v0.399 are still recognised, classified the same and rewritten to the short head on the next prompt or card; a worded Solo head is re-marked instead of counted as already marked, and a worded Testing approval head goes back to ⏳.
+- Home pane: the batch session is recognised by the `📚` of its head, and `sessions-active.js` strips the status head of every title generation from a session's name.
+
 ## [0.399.1] — 2026-11-22
 
 ### Fixed

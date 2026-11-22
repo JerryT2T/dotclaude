@@ -5,7 +5,7 @@
  * @event PreToolUse
  * @plugin devops
  * @matcher AskUserQuestion|ExitPlanMode|mcp__ccd_session__start_session
- * @description Puts `👉 ➜ ❓ Question ┃ ` on the session title BEFORE a
+ * @description Puts `👉 ➜ ❓ ` on the session title BEFORE a
  *   call blocks on the user (a question, a plan approval, a start_session
  *   approval): a title still on ⏳ (and no set_session_title to the question
  *   title in the same message) refuses the call once per turn with the exact

@@ -7,7 +7,7 @@
  * @matcher AskUserQuestion|ExitPlanMode|mcp__ccd_session__start_session
  * @description The user answered (a question, a plan approval, a
  *   start_session approval), so Claude works again: hands Claude the set call
- *   that puts back the ⏳ head the title had before the question (a running ship or concept keeps its own, else `⏳ ➜ 🤖 Solo ┃ `),
+ *   that puts back the ⏳ head the title had before the question (a running ship or concept keeps its own, else `⏳ ➜ 🤖 `),
  *   to ride along with the next tool call. Rules: lib/ask-title.js. Silent
  *   inside a subagent and when the title no longer says Question. Fail-open.
  */

@@ -304,7 +304,7 @@ function sessionLocale(sessionId) {
  * The session-title lines of the merge context (merge.md § Retire). `title`
  * is the current title off the transcript tail: known → the exact stripped
  * title, set in parallel with the turn's first other tool call, or no line at
- * all when it carries no `👉 ➜ 📚 Batch ┃ ` (or the legacy `📥 Batch – `; a renamed title wins); unknown
+ * all when it carries no `👉 ➜ 📚 ` (or the legacy `📥 Batch – `; a renamed title wins); unknown
  * (`null` / `undefined`) → the get_session fallback.
  *
  * @param {string|null|undefined} title
@@ -325,8 +325,8 @@ function retireTitleLines(title, ctx = {}) {
   }
   return [
     '',
-    'Session-Titel: Beginnt er mit "👉 ➜ 📚 Batch ┃ " oder dem alten "📥 Batch – " (mcp__ccd_session_mgmt__get_session',
-    'self), ersetze genau dieses Präfix durch "⏳ ➜ 🤖 Solo ┃ " via mcp__ccd_session_mgmt__set_session_title',
+    'Session-Titel: Beginnt er mit "👉 ➜ 📚 " oder dem alten "📥 Batch – " (mcp__ccd_session_mgmt__get_session',
+    'self), ersetze genau dieses Präfix durch "⏳ ➜ 🤖 " via mcp__ccd_session_mgmt__set_session_title',
     'self. Nur zurückgestellt (deferred) ist nicht fehlend: dann beide einmal per ToolSearch',
     '"select:mcp__ccd_session_mgmt__get_session,mcp__ccd_session_mgmt__set_session_title" laden, dann aufrufen.',
     'Fehlen die Tools wirklich (Terminal, unbeaufsichtigt) oder schlägt der Aufruf fehl: still überspringen.',

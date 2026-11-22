@@ -256,11 +256,15 @@ function verdictFor(s) {
   return idle(tasks.length ? 'tasks-quiet' : 'idle');
 }
 
-/** A session title without its status head ("⏳ ➜ 🤖 Solo ┃ X" → "X"). */
+/**
+ * A session title without its status head ("⏳ ➜ 🤖 X" → "X", also the worded
+ * head with keyword and bar of before title-scheme 3.0) — the scheme's own strip, so
+ * every head generation goes; the title as it is when the scheme cannot load.
+ */
 function shortName(name, cwd) {
   const n = String(name || '').trim();
-  const i = n.lastIndexOf('┃');
-  const rest = (i >= 0 ? n.slice(i + 1) : n).trim();
+  let rest = n;
+  try { rest = require('../hooks/lib/title-scheme.js').stripPrefixes(n).trim(); } catch { /* keep the title */ }
   return (rest || path.basename(String(cwd || '')) || 'Session').slice(0, 60);
 }
 

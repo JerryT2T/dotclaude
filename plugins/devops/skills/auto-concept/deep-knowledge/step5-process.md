@@ -17,8 +17,8 @@ prompt, so `prompt.flow.title-work` leaves the compass alone on that turn —
 the swap is yours. Once the wake is confirmed real (`/pending` is `true` with
 a new `_version`, Step 5d § re-confirm) and before Step 5a, Desktop app only:
 `mcp__ccd_session_mgmt__get_session` `self`; if the `title` starts with
-`👉 ➜ 🧭 Concept ┃ `, `mcp__ccd_session_mgmt__set_session_title` `self` with
-`"⏳ ➜ 🧭 Concept ┃ " + {title without that prefix}` — the concept's own
+`👉 ➜ 🧭 `, `mcp__ccd_session_mgmt__set_session_title` `self` with
+`"⏳ ➜ 🧭 " + {title without that prefix}` — the concept's own
 working prefix, never a bare `⏳ ` (a bare hourglass reads as generic work,
 and a card-less turn while the round's agents still run then gets renamed to
 Interrupted). Any other title is left as it is. A
@@ -29,11 +29,11 @@ then call them. Skip silently only when the tools are truly missing or fail.
 When the `post.concept.title` hook already handed over this rename (it
 fires on the first tool call after the submission landed, also after the
 waker's pickup, #930/#956), the title
-is already `⏳ ➜ 🧭 Concept ┃ ` and this step finds nothing to change.
+is already `⏳ ➜ 🧭 ` and this step finds nothing to change.
 
 This round then MUST end with its completion card (`concept` field + `cwd`,
 phase per the table in Step 3) — that card is what turns `⏳ ` back into
-`👉 ➜ 🧭 Concept ┃ ` when the page waits again. A round that ends without a card leaves
+`👉 ➜ 🧭 ` when the page waits again. A round that ends without a card leaves
 the sidebar on the hourglass while the page waits for the user.
 
 ## Bring main in before the round

@@ -217,26 +217,26 @@ types the next task into a session that is waiting for page decisions. So,
 right after the page is open, prefix the session title:
 
 1. `mcp__ccd_session_mgmt__get_session` with `session_id: "self"` → `title`.
-2. If `title` already starts with `👉 ➜ 🧭 Concept ┃ `: done.
-3. Strip any leading devops prefix (`⏳ `, `👉 ➜ 📦 Ready ┃ `, `👉 ➜ 🧪 Test ┃ `,
-   `🟩 ➜ 🚀 Released Alpha ┃ `, … and the legacy single-icon forms — the `SESSION_PREFIX` and `LEGACY_PREFIXES` values in
+2. If `title` already starts with `👉 ➜ 🧭 `: done.
+3. Strip any leading devops prefix (`⏳ `, `👉 ➜ 📦 `, `👉 ➜ 🧪 `,
+   `🟩 ➜ 🚀 `, … and the legacy single-icon forms — the `SESSION_PREFIX` and `LEGACY_PREFIXES` values in
    `mcp-server/lib/mode-state.js`) left by the first-prompt hourglass or an
-   earlier card — never stack them (`👉 ➜ 🧭 Concept ┃ ⏳ Foo` is the bug).
+   earlier card — never stack them (`👉 ➜ 🧭 ⏳ Foo` is the bug).
 4. `mcp__ccd_session_mgmt__set_session_title` with `session_id: "self"` and
-   `title: "👉 ➜ 🧭 Concept ┃ {stripped title}"`.
+   `title: "👉 ➜ 🧭 {stripped title}"`.
 
-The prefix is exactly `👉 ➜ 🧭 Concept ┃ ` (pointing hand, compass, space, word, space, en dash,
+The prefix is exactly `👉 ➜ 🧭 ` (pointing hand, compass, space, word, space, en dash,
 space) — the same two icons the completion card carries in its CTA, so sidebar
 and card read as one state (scheme: `{PLUGIN_ROOT}/deep-knowledge/session-title-scheme.md`). From here on the completion card keeps the title
 in step with the phase (table below); Step 6a strips the prefix again.
 
 **`👉 🧭` means "your move — look at the page", nothing else.** Never set
 it before the page is open: while `/auto-concept` is invoked and the page is still
-being generated, the title keeps the `⏳ ➜ 🤖 Solo ┃ ` that `prompt.flow.title-work`
+being generated, the title keeps the `⏳ ➜ 🤖 ` that `prompt.flow.title-work`
 put there. And whenever Claude works again later — a submission is picked up
 (Step 5 § Mark the round as work), the user types into the chat (the hook
 swaps the compass for `⏳ ` itself), a round iterates or implements — the
-title is `⏳ ` (`⏳ ➜ 🧭 Concept ┃ ` once the card names the phase); the card that hands the page back (`phase: "waiting"`) brings
+title is `⏳ ` (`⏳ ➜ 🧭 ` once the card names the phase); the card that hands the page back (`phase: "waiting"`) brings
 `👉 🧭` back. A generic hourglass is the bare icon, never a worded
 `⏳ Working – `.
 
@@ -246,7 +246,7 @@ passed, the page was reloaded and `/reset` returned, never on a card rendered
 before `/reset`: until then the old round, or nothing, is on the page. The
 way back is earlier than Claude's own pickup: `post.concept.title` reads the
 concept store on every tool call, and once a submission is in `state.json`
-and not yet picked up, it hands Claude the `⏳ ➜ 🧭 Concept ┃ ` rename for
+and not yet picked up, it hands Claude the `⏳ ➜ 🧭 ` rename for
 the next tool call — also mid-way through another task. Only Claude can
 rename a session, so an idle session still waits for the pickup waker.
 
@@ -282,9 +282,9 @@ with the one statement that is true:
 
 | `concept.phase` | When | CTA (DE) | Session title |
 |---|---|---|---|
-| `waiting` (default) | Page is open, next step is the user's submission | `👉 🧭 Concept — wartet auf deine Entscheidungen` | `👉 ➜ 🧭 Concept ┃ ` |
-| `iterating` | A submission was processed and the next iteration is still being produced (e.g. by background agents) | `⏳ 🧭 Concept — in Iteration — ich melde mich` | `⏳ ➜ 🧭 Concept ┃ ` |
-| `implementing` | An `implement` submission is being executed and the turn hands back before it lands | `⏳ 🧭 Concept — in Implementierung — ich melde mich` | `⏳ ➜ 🧭 Concept ┃ ` |
+| `waiting` (default) | Page is open, next step is the user's submission | `👉 🧭 Concept — wartet auf deine Entscheidungen` | `👉 ➜ 🧭 ` |
+| `iterating` | A submission was processed and the next iteration is still being produced (e.g. by background agents) | `⏳ 🧭 Concept — in Iteration — ich melde mich` | `⏳ ➜ 🧭 ` |
+| `implementing` | An `implement` submission is being executed and the turn hands back before it lands | `⏳ 🧭 Concept — in Implementierung — ich melde mich` | `⏳ ➜ 🧭 ` |
 
 The card's `[SESSION TITLE]` block carries the prefix of the phase — apply it
 every time, exactly like any other card's title instruction. This is what lets

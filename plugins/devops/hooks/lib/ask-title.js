@@ -4,7 +4,7 @@
  * @description The session title while a call waits for the user — an
  *   AskUserQuestion, an ExitPlanMode plan approval, or a start_session that
  *   asks the user ("offer", "user_asked": the app's approval card): the card
- *   sets `👉 ➜ ❓ Question ┃ ` only when a TURN ends on a question — a question
+ *   sets `👉 ➜ ❓ ` only when a TURN ends on a question — a question
  *   asked mid-turn blocked with the ⏳ still on the title, so the sidebar said
  *   "Claude works" while the session waited for the user (2026-10-25).
  *
@@ -104,7 +104,7 @@ function nameFromTitle(title) {
  * it". Every LOCAL start with a title gets it — except an unmarked own
  * proposal: it shows the title on a card, may never start, and is an
  * independent follow-up that get their normal head from the title-work hook
- * (concept 2026-11-21 rows 12, 13). The head is `⏳ ➜ 🤖 Solo ┃ ` — a start the
+ * (concept 2026-11-21 rows 12, 13). The head is `⏳ ➜ 🤖 ` — a start the
  * parent LINKS (brief marker, or `user_asked` / `offer` — a task the user named: `launchMode`) gets `🔗 ` in front
  * and, when its brief has no marker, `[devops:handoff]` appended, so the new
  * session knows it is a sub (`subModeOfTranscript`). A cloud or SSH session runs
