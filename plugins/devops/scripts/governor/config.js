@@ -22,7 +22,9 @@ const DEFAULTS = Object.freeze({
   procScanMs: 15000, // full process scan at most this often; system counters every tick
   heartbeatMs: 5000,
   // A Claude-attributed job is "heavy" after sustainMs over one threshold.
-  heavy: { cpuPct: 25, gpuPct: 20, diskBps: 20 * MB, diskOps: 500, ramMB: 1024, sustainMs: 20000, dipMs: 6000, generatorMs: 120000 },
+  // churnPerScan: a job with this many new descendants between two process scans counts as CPU-loaded
+  // (short-lived children never show up in the per-process CPU rates).
+  heavy: { cpuPct: 25, gpuPct: 20, diskBps: 20 * MB, diskOps: 500, ramMB: 1024, sustainMs: 20000, dipMs: 6000, generatorMs: 120000, churnPerScan: 8 },
   // "Noticeable load" of a foreign (non-Claude, non-OS) app, per resource. An unknown app's load earns
   // priority only while the system uses >= contendPct of that resource (games/learned apps: always).
   foreign: {
@@ -41,7 +43,8 @@ const DEFAULTS = Object.freeze({
   // staleMs: state older than this = no watcher (fail open). Must exceed 2 x idleTickMs + the longest tick.
   // slotsUnderPriority: builds/tests allowed at once machine-wide while a CPU/disk priority app runs.
   // reserveMs: an admitted job's expected peak is reserved this long (it is not measured yet).
-  admission: { defaultMB: 1024, headroomMB: 4096, staleMs: 60000, slotsUnderPriority: 1, reserveMs: 30000, slotCpuPct: 5 },
+  // slotsOverBudget: the same limit while CPU or disk is over the 80 % budget (no priority app needed).
+  admission: { defaultMB: 1024, headroomMB: 4096, staleMs: 60000, slotsUnderPriority: 1, slotsOverBudget: 1, reserveMs: 30000, slotCpuPct: 5 },
   infraGraceMs: 20000,
   selfLoopMs: 60000,
   starvationMs: 30 * 60000,
