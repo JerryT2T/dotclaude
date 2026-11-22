@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook prompt.flow.silent-turn
- * @version 0.3.0
+ * @version 0.4.0
  * @event UserPromptSubmit
  * @plugin devops
  * @description Detects background/cron-injected prompts and marks the turn
@@ -86,6 +86,10 @@ if (require.main === module) {
     try { hook = JSON.parse(inputData); } catch { process.exit(0); }
 
     const prompt = hook.prompt || '';
+
+    // A Claude Projects thread announces itself with its first prompt (the wake
+    // envelope): leave the marker the Stop hook and the card renderer read.
+    try { require('../lib/project-thread').isThread(hook); } catch { /* advisory */ }
 
     if (isScheduledTask(prompt)) {
       try {

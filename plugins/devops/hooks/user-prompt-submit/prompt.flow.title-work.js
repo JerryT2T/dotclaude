@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook prompt.flow.title-work
- * @version 0.11.0
+ * @version 0.12.0
  * @event UserPromptSubmit
  * @plugin devops
  * @description Marks a session as "being worked on" in the sidebar: on the
@@ -96,6 +96,11 @@
  *     its first set call (lib/title-plan.js topicLine; pre.title.topic enforces
  *     the length). A sub-session's brief gets no topic line (its title comes from
  *     start_session, see lib/ask-title.js startSessionInput).
+ *
+ *   0.12.0: a Claude Projects thread (lib/project-thread.js) never gets the
+ *   Desktop instruction — nobody sees that session's sidebar title. The hook is
+ *   silent there, or (feature project-threads) names the `rename_thread` call
+ *   that puts the head on the thread's own title.
  */
 
 require('../lib/plugin-guard');
@@ -123,8 +128,9 @@ const {
 } = require('../lib/session-title');
 // The pure computation (#1102 Part A): instructions, prefixes and the early title.
 const {
-  titlePlan, earlyTitleOf, replyOf, prefixOf, topicLine, directInstruction, freshInstruction, instruction, questionLine,
+  titlePlan, threadTitlePlan, earlyTitleOf, replyOf, prefixOf, topicLine, directInstruction, freshInstruction, instruction, questionLine,
 } = require('../lib/title-plan');
+const thread = require('../lib/project-thread');
 
 /** The prefix for this prompt; the ship to resume is read off disk here, the rule is in lib/title-plan.js. */
 function prefixFor(prompt, cwd) {
@@ -150,6 +156,18 @@ function isFirstPrompt(transcriptPath) {
 
 /** What the hook reads off disk, then the pure plan (lib/title-plan.js). */
 function planFor(hook, prompt, cwd) {
+  // A Claude Projects thread (lib/project-thread.js): the sidebar title reaches
+  // no one there. With the feature the head goes on the thread title instead;
+  // without it the hook stays silent.
+  const mode = thread.threadMode({ ...hook, prompt });
+  if (mode === 'quiet') return { context: '', sessionTitle: null };
+  if (mode === 'on') {
+    return threadTitlePlan({
+      prompt,
+      current: thread.lastThreadTitle(hook.transcript_path),
+      resumesShip: resumesShip(thread.personWords(prompt) || prompt, cwd),
+    });
+  }
   const current = currentTitle(hook);
   return titlePlan({
     prompt,
@@ -239,7 +257,7 @@ if (require.main === module) {
     // A machine turn that left the title alone must not hold the token: a
     // real user message later in the same turn (a "Do it here" click, a card
     // button) would otherwise find it taken and never mark the title (#1094).
-    else if (isMachineTurn(prompt)) releaseOnce(ONCE_KEY, hook.session_id);
+    else if (isMachineTurn(prompt) || thread.isRelayPrompt(prompt)) releaseOnce(ONCE_KEY, hook.session_id);
     process.exit(0);
   });
 }

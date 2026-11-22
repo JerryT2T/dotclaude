@@ -2076,6 +2076,48 @@ test('/devops toggles the devops Home pane with a one-line answer; the terminal 
   await hint.unmount()
 })
 
+test('home: "🛏 Ins Bett gehen" asks once, then starts the shutdown watcher and shows whom it waits for; "Abbrechen" stops it', async ($, on) => {
+  const { seen } = engine(on, { files: LOG_FILES })
+  on('clock.after', () => new Promise(() => undefined)) // the confirm's own timeout never fires here
+  const calls: string[] = []
+  on('process.run', (_: unknown, ev: { argv: string[] }) => {
+    if (ev.argv[0] !== 'node' || !String(ev.argv[1]).endsWith('/scripts/bedtime-shutdown.js')) return { value: { exitCode: 1, stdout: '', stderr: '' } }
+    calls.push(String(ev.argv[2]))
+    const out =
+      ev.argv[2] === 'start'
+        ? { ok: true, armed: true, phase: 'waiting', updatedAt: NOW, active: [{ name: 'Karten', why: 'working' }], shutdownAt: 0, note: '' }
+        : { ok: true, armed: false, cancelled: true, phase: 'cancelled' }
+    return { value: { exitCode: 0, stdout: `${JSON.stringify(out)}\n`, stderr: '' } }
+  })
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  let home = await $.ui.mount({ ...pane('devops-home', 'devops Home'), surface: 'desktop' } as any)
+  /** Remount until the pane shows `text` (its loads and presses settle between two renders). */
+  const shows = async (text: RegExp) => {
+    let hit: unknown
+    for (let i = 0; i < 40 && !hit; i++) {
+      await home.unmount()
+      for (let j = 0; j < 200; j++) await Promise.resolve()
+      home = await $.ui.mount({ ...pane('devops-home', 'devops Home'), surface: 'desktop' } as any)
+      hit = await home.find({ text })
+    }
+    return hit
+  }
+  await home.press({ key: 'home-tab-overview' })
+  expect(await shows(/Ins Bett gehen/)).toBeDefined()
+  await home.press({ key: 'home-bed-btn' })
+  expect(await shows(/Sicher\? PC fährt dann herunter/)).toBeDefined()
+  expect(calls).toEqual([]) // the first press only asks
+  await home.press({ key: 'home-bed-btn' })
+  expect(await shows(/PC fährt herunter, sobald fertig: Karten/)).toBeDefined()
+  expect(calls).toEqual(['start'])
+  await home.press({ key: 'home-bed-btn' }) // now "Abbrechen"
+  expect(await shows(/Ins Bett gehen/)).toBeDefined()
+  expect(calls).toEqual(['start', 'cancel'])
+  expect(seen.toasts.at(-1)).toMatch(/der PC bleibt an/)
+  await home.unmount()
+  expect(seen.prompts).toEqual([]) // no session, no prompt: the watcher runs outside Claude
+})
+
 test('the fallback status line goes once the line under the prompt is drawn, at the next turn start at the latest', async ($, on) => {
   const { seen } = engine(on, { files: LOG_FILES })
   on('turn.start', () => ({ turnId: 't' }))

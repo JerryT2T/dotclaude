@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.399.0] — 2026-11-22
+
+### Added
+- **Claude Projects threads (alpha feature `project-threads`)**: in a thread that runs on this computer the status head (`⏳ ➜ 🤖 Solo ┃`, `👉 ➜ 📦 Ready ┃`, …) now goes on the thread's own title with `rename_thread`, and the completion card is posted in the thread with `post_message`. See `deep-knowledge/project-threads.md`.
+
+### Fixed
+- **Project threads on every channel**: the plugin no longer asks a thread for the Desktop session title or the Desktop card widget (nobody sees either in a project), and `stop.flow.guard` no longer blocks the turn end there.
+
+## [0.398.0] — 2026-11-22
+
+### Added
+- Home pane: „🛏 Ins Bett gehen“ — powers the PC off once no Claude session works any more, nobody is at the PC and no busy job runs; the row shows whom it waits for and „Abbrechen“ stops it, a 60 s countdown included
+- `scripts/sessions-active.js` (`check` / `wait`): who is working right now, from each Claude process's own status instead of transcript write times
+
+### Changed
+- do-run shutdown (Step 8a, bedtime with nothing left to do): waits for every working session through the new detector — open background work and a wake-up due soon count, an open concept page, a heartbeat or a title rename do not; the calling session is excluded by its id, so a second session in the same checkout is no longer overlooked
+
+### Fixed
+- do-run no longer powers off after 30 min while another session still works, and the 8 h watchdog hands the power-off to the bedtime watcher instead of forcing it
+
 ## [0.397.0] — 2026-11-22
 
 ### Added

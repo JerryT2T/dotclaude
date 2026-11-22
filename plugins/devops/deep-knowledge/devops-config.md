@@ -217,7 +217,7 @@ Runbook: `deep-knowledge/home-backup.md`.
 
 | Key | Default | Meaning |
 |---|---|---|
-| `busyProcesses` | empty | Comma-separated process-name or command-line fragments (case-insensitive substring), e.g. `ffmpeg, train_model.py`. Before an autonomous run powers the PC off (Step 8) and before the watchdog's forced shutdown, `scripts/autonomous-busy-check.js` looks for them. Busy: poll every 10 min up to 6 h, then leave the PC on ("PC bleibt an: <name> läuft noch"). |
+| `busyProcesses` | empty | Comma-separated process-name or command-line fragments (case-insensitive substring), e.g. `ffmpeg, train_model.py`. Before an autonomous run powers the PC off (Step 8), before the watchdog's forced shutdown and before the bedtime watcher's shutdown (`scripts/bedtime-shutdown.js`, the Home pane's 🛏 button), `scripts/autonomous-busy-check.js` looks for them. Busy: poll every 10 min up to 6 h, then leave the PC on ("PC bleibt an: <name> läuft noch"). |
 
 Lock-file convention: a job may instead write its PID into
 `%LOCALAPPDATA%\dotclaude\busy\<job>.lock`; a lock whose PID is alive counts
