@@ -18,6 +18,7 @@ import { detectOutOfBandDeploys, DEFAULT_OUT_OF_BAND_GLOBS, globToRegExp } from 
 import { scanConflictMarkers, describeMarkers } from "../lib/conflict-markers.js";
 import { detectComponents } from "../lib/components.js";
 import { claudeIgnoreCheck, touchesIgnorePolicy } from "../lib/claude-ignore.js";
+import { cloudRulesStep } from "../lib/cloud-rules.js";
 import { scanWorkflows } from "../lib/workflow-hygiene.js";
 import { quotaKey, repoKey, readRecord, describeRecord } from "../lib/ci-quota.js";
 import { pauseWorkflows, sweepOverdue, pausedLine, resumedLine } from "../lib/ci-workflow-guard.js";
@@ -438,6 +439,18 @@ export async function handler(params) {
     const commonDir = gitTry(["rev-parse", "--path-format=absolute", "--git-common-dir"], opts) || null;
     const ignoreCheck = claudeIgnoreCheck({ cwd, files: touched, commonDir });
     if (ignoreCheck) checks.push(ignoreCheck);
+  }
+
+  // 9d2. The managed .claude/rules/devops.md (scripts/cloud-rules.js): an
+  //      established repo gets it with its next ship — staged with the work
+  //      commit or committed on this branch, reported here. Only when the ship
+  //      is otherwise able to land; never a separate migration step.
+  {
+    const rulesCheck = cloudRulesStep({
+      cwd, state, ahead, mode: repoMode,
+      blocked: errors.some((e) => e !== dirtyError),
+    });
+    if (rulesCheck) checks.push(rulesCheck); // a failure carries `warning`, collected below
   }
 
   // 9e. Workflow hygiene: habits that let a shared GitHub account limit

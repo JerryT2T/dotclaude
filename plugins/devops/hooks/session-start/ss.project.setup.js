@@ -44,6 +44,7 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 const { findRepoRoot, gitCommonDir, samePath } = require('../lib/project-root');
 const { applyBlock, migrateGitignore, applyExcludeFallback, BLOCK_START } = require('../lib/runtime-ignores');
+const cloudRules = require('../../scripts/cloud-rules');
 
 const STATE_FILE = 'devops-project-setup.json';
 
@@ -118,6 +119,22 @@ function syncGitignore(root, isNew, commonDir = null) {
   }
 }
 
+/**
+ * The managed `.claude/rules/devops.md` for a repo without a commit yet — its
+ * project setup, next to the .gitignore block. An established repo gets it with
+ * its next ship (ship_preflight), never from here.
+ * @returns {'written'|'current'|'off'|'skipped'|'error'}
+ */
+function syncCloudRules(root, isNew) {
+  if (!isNew || operationInProgress(root)) return 'skipped';
+  try {
+    if (require('../lib/devops-config').load(root).values.cloud.rulesFile === false) return 'off';
+    return cloudRules.write(root).changed ? 'written' : 'current';
+  } catch {
+    return 'error';
+  }
+}
+
 /** Why this repo looks new, or null. */
 function newRepoReason(root) {
   const gitFs = require('../lib/git-fs');
@@ -162,11 +179,12 @@ function setupProject({ cwd, home = os.homedir(), pluginRoot = path.resolve(__di
 
   const reason = newRepoReason(root);
   const gitignore = syncGitignore(root, reason === 'no commit yet', common);
-  if (!reason) return { gitignore, offer: null };
+  const rules = syncCloudRules(root, reason === 'no commit yet');
+  if (!reason) return { gitignore, rules, offer: null };
   const stateFile = path.join(home, '.claude', STATE_FILE);
   const state = readState(stateFile);
   const key = path.resolve(common).replace(/\\/g, '/').toLowerCase();
-  if (state.offered[key]) return { gitignore, offer: null };
+  if (state.offered[key]) return { gitignore, rules, offer: null };
   state.offered[key] = new Date().toISOString();
   try {
     fs.mkdirSync(path.dirname(stateFile), { recursive: true });
@@ -180,7 +198,7 @@ function setupProject({ cwd, home = os.homedir(), pluginRoot = path.resolve(__di
     `stack, a LICENSE, the project map. Do not run it unasked; when the user agrees, follow ${doc}.`,
     'This offer is made once per repository — do not repeat it later in the session.',
   ].join('\n');
-  return { gitignore, offer };
+  return { gitignore, rules, offer };
 }
 
 /** `[devops] version=0.290.0` from the plugin manifest, or null. */
@@ -200,6 +218,25 @@ function versionLine({ pluginRoot = path.resolve(__dirname, '..', '..'), home = 
   return line ? `[ss.version.notice] Show the user this line verbatim in your first reply, once:\n${line}` : null;
 }
 
+/**
+ * The block that makes THIS session start the claude.ai cloud-copy update itself
+ * (hooks/lib/cloud-update.js): only when a thread ran on this machine, the copy
+ * trails the install, the switch is on, and no other session holds the claim.
+ * @returns {string|null}
+ */
+function cloudUpdateBlock({ pluginRoot = path.resolve(__dirname, '..', '..'), home = os.homedir(), lang = 'de' } = {}) {
+  const { localInstall, cloudVersion } = require('../lib/desktop-copy');
+  const { compareVersions } = require('../lib/channels');
+  const cu = require('../lib/cloud-update');
+  const inst = localInstall(home);
+  const cloud = inst && cloudVersion({ pluginRoot, home });
+  const version = inst && (/^\d+\.\d+\.\d+/.exec(inst.version) || [])[0];
+  if (!version || !cloud || compareVersions(cloud, version) >= 0) return null;
+  const plan = cu.planCloudUpdate({ home, version, cloudVersion: cloud, threadSeen: require('../lib/thread-seen').threadSeen(home) });
+  if (!plan.start) return null;
+  return cu.updateInstruction({ version, cloudVersion: cloud, script: path.join(pluginRoot, 'scripts', 'cloud-update.js'), lang });
+}
+
 function main() {
   let input = '';
   process.stdin.setEncoding('utf8');
@@ -217,14 +254,19 @@ function main() {
     // transcript to the running devops version (mining.js VERSION_RE).
     const tag = versionTag();
     let version = null;
+    let cloudUpdate = null;
     try {
       let lang = 'de';
       try { lang = require('../lib/locale').getLocale(hook.session_id); } catch { /* default */ }
+      // A thread flag in the tmp dir becomes the persisted "a thread ran here"
+      // marker BEFORE the notice is worded, so the lag is judged right away.
+      try { require('../lib/thread-seen').recordThreadSeen({}); } catch { /* advisory */ }
       version = versionLine({ lang });
+      cloudUpdate = cloudUpdateBlock({ lang });
     } catch { /* never block the session */ }
     let drift = null;
     try { drift = require('../lib/usage-drift').driftNotice(); } catch { /* never block the session */ }
-    const ctx = [tag, version, drift, res && res.offer].filter(Boolean).join('\n');
+    const ctx = [tag, version, cloudUpdate, drift, res && res.offer].filter(Boolean).join('\n');
     if (ctx) {
       process.stdout.write(JSON.stringify({
         hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: ctx },
@@ -236,4 +278,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { versionTag, setupProject, syncGitignore, newRepoReason, versionLine };
+module.exports = { versionTag, setupProject, syncGitignore, newRepoReason, versionLine, cloudUpdateBlock };

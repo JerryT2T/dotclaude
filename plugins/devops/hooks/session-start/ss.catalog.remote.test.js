@@ -81,6 +81,15 @@ describe("ss.catalog.remote", () => {
     expect(await go("0.344.2", { pluginRoot: root, cloud: true })).toBe("");
   });
 
+  test("a cloud session names the one click that is the person's and starts no browser run", async () => {
+    const root = path.join(tmp, "cloud-plugin2");
+    writePlugin(root, "devops", "0.344.2");
+    const text = await go("0.350.0", { pluginRoot: root, cloud: true, lang: "en" });
+    expect(text).toContain("Customize → Plugins → Manage marketplaces → dotclaude");
+    expect(text).toContain("only the person can do");
+    expect(text).not.toContain("[ss.cloud.update]");
+  });
+
   test("silent for a copy from another marketplace", async () => {
     fs.writeFileSync(path.join(path.dirname(rpmRoot), "manifest.json"), JSON.stringify({
       plugins: [{ id: "plugin_0182abc", name: "devops", marketplaceName: "a-fork" }],

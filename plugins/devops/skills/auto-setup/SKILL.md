@@ -34,7 +34,7 @@ Injected by the override loader (`[skill-overrides]` block); none shown → none
 - Option order is fixed per question, `(Recommended)` / `(Empfohlen)` on the first option (`deep-knowledge/decision-format.md` § Option order). The last option is always the "leave as is" choice. Never ask "ask me what" style boxes.
 - Writes go through `node "{PLUGIN_ROOT}/scripts/devops-setup.js"` (language, quiet, delegation) or `scripts/devops-config.js` (API credit) — never edit `~/.claude/settings.json` by hand or in any other way.
 - A user who answers "leave as is" or closes a box: skip that topic, continue. Say at the end that `devops setup` repeats the guide.
-- Start with one line: what the guide is, five short questions, nothing changes without an answer.
+- Start with one line: what the guide is, six short questions, nothing changes without an answer.
 
 ## Step 1 — Quiet output style
 
@@ -97,7 +97,34 @@ Put the option matching `[ui-locale]` first. Deutsch/English →
 `devops-setup.js language <de|en>`. If `language` is already set in
 `settings.json`, skip the box and say which value is active.
 
-## Step 6 — Wrap up
+## Step 6 — Claude Projects
+
+One box, then information; nothing is written to any file by this step.
+
+| | de | en |
+|---|---|---|
+| Header | `Claude-Projekte` | `Claude Projects` |
+| Question | Problem: Ein Claude-Projekt (claude.ai/code → Projects) hat einen Koordinator, der von Threads nur Titel und Antworten sieht; ohne Anweisung zeigt er die Status-Zeile der Abschluss-Karte nicht und legt Issue-Nummern womöglich in Thread-Titel. Nutzen: Ich gebe dir den fertigen Text für die Projekt-Anweisungen und sage dir die zwei Schalter, die du selbst setzt. Hängt von deiner Wahl ab; ich ändere nichts im Projekt. | Problem: a Claude Project (claude.ai/code → Projects) has a coordinator that sees only a thread's title and replies; without an instruction it does not show the card's status line and may put issue numbers into thread titles. Benefit: I hand you the ready text for the project instructions and name the two switches you set yourself. Depends on your choice; I change nothing in the project. |
+| Options | `Ja, Text und Schalter zeigen (Empfohlen)` / `Nein, ich nutze keine Claude-Projekte` | `Yes, show the text and the switches (Recommended)` / `No, I do not use Claude Projects` |
+
+Yes → show, in this order, from `{PLUGIN_ROOT}/deep-knowledge/project-instructions-snippet.md`
+(the one source — quote its code block verbatim, never retype it):
+
+1. **Project instructions** — the code block, to paste under Project settings >
+   Memory > Project instructions (or to hand to the project chat with "add this
+   to the project instructions"). It quotes a thread card's status line as it is,
+   keeps the title head on thread titles, and sets one issue = one thread with the
+   issue named in the thread's task, not forced into the title.
+2. **Worktree, per folder** — the switch on a folder's card: on for a git repo
+   where more than one thread works, absent for a non-repo parent folder.
+3. **Plugin** — Project settings > Plugins, so a cloud thread has devops; until
+   then the repo's `.claude/rules/devops.md` carries the basic rules.
+
+Say plainly that these are three things only the person can set in the claude.ai
+app (no API reaches them), and that a thread on this computer needs none of the
+plugin step.
+
+## Step 7 — Wrap up
 
 One short list: what was set (and where it applies), what was skipped, that
 output style and language apply from the next new session, and that
