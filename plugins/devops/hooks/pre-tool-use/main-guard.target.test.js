@@ -194,9 +194,11 @@ describe("R2 — post-ship cleanup, and directory attribution of gitSegments", (
   let wt; // a linked worktree of repo a on a feature branch (the ship session's own checkout)
 
   beforeAll(() => {
+    git(["remote", "add", "origin", repos.b], repos.a); // `origin/main` is a fast-forward only when origin is a remote
     wt = join(coll, "a-feat");
     execFileSync("git", ["worktree", "add", "-q", "-b", "feat/r2", wt], { cwd: repos.a, stdio: "ignore" });
   }, TIMEOUT);
+  afterAll(() => { try { git(["remote", "remove", "origin"], repos.a); } catch { /* best effort */ } });
 
   const sentinel = (dir) => {
     mkdirSync(join(dir, ".claude"), { recursive: true });
@@ -347,4 +349,48 @@ describe("B2 — the remedy of a thread outside the repo's work tree", () => {
     expect(branchFix({ branch: "main" })).toEqual(branchFix({ branch: "main", threadWorktree: null }));
     expect(branchFix({ branch: "main" }).join("\n")).toContain("Call the EnterWorktree tool");
   });
+});
+
+describe("review: `<x>/main` needs a remote <x>, and unattributed writes are still checked", () => {
+  let wt;
+  beforeAll(() => {
+    git(["remote", "add", "origin", repos.b], repos.a);
+    wt = join(coll, "a-review");
+    execFileSync("git", ["worktree", "add", "-q", "-b", "feat/review", wt], { cwd: repos.a, stdio: "ignore" });
+  }, TIMEOUT);
+  afterAll(() => {
+    try { git(["worktree", "remove", "--force", wt], repos.a); git(["remote", "remove", "origin"], repos.a); } catch { /* best effort */ }
+  });
+  const inA = (rest) => `git -C "${repos.a}" ${rest}`;
+
+  test("a local branch named feature/main is no fast-forward of main; a real remote and the full ref are", () => {
+    expect(sh(inA("merge --ff-only feature/main"), wt).status).toBe(2);
+    expect(sh(inA("merge --ff-only origin/main"), wt).status).toBe(0);
+    expect(sh(inA("merge --ff-only refs/remotes/origin/main"), wt).status).toBe(0);
+  }, TIMEOUT);
+
+  test("a repo without that remote gives no answer: the normal main check applies", () => {
+    expect(sh(`git -C "${repos.b}" merge --ff-only origin/main`, wt).status).toBe(2);
+  }, TIMEOUT);
+
+  test.each([
+    ["git pull --ff-only && echo `git commit -am x`"],
+    ["git pull --ff-only origin main && x=$(git commit -am x)"],
+    ["git status && echo `git commit -am x`"],
+    ["if true; then git commit -m x; fi"],
+    ["for i in 1; do git commit -m x; done"],
+    ["if false; then true; else git commit -m x; fi"],
+    ["! git commit -m x"],
+    ["time git commit -m x"],
+    ["{ git commit -m x; }"],
+  ])("a write behind a keyword or substitution on main is blocked: %s", (command) => {
+    expect(sh(command, repos.a).status).toBe(2);
+  }, TIMEOUT);
+
+  test("quoted text that only mentions a write stays quiet, and a feature branch is untouched", () => {
+    expect(sh('echo "then git commit"', repos.a).status).toBe(0);
+    expect(sh('echo "do git commit -m x"', repos.a).status).toBe(0);
+    expect(sh("git log --grep='then git commit'", repos.a).status).toBe(0);
+    expect(sh("git pull --ff-only && echo `git commit -am x`", wt).status).toBe(0);
+  }, TIMEOUT);
 });
