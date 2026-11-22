@@ -426,16 +426,18 @@ function deferInfo(b) {
   return { minutes: b.resetInMinutes, soon: b.resetInMinutes <= DEFER_SOON_MIN };
 }
 
-function deferSuffix(b) {
+function deferSuffix(b, opts = {}) {
   const d = deferInfo(b);
   if (!d) return '';
+  // A Claude Projects thread is never asked (nobody answers a card there): it works on, sparingly.
+  if (opts.thread) return ` · defer: window ${b.fivePct}%, resets in ${d.minutes} min → in a thread do not ask: work inline, one agent at a time`;
   const pick = d.soon ? 'after the reset (Recommended) / now inline' : 'now inline (Recommended) / after the reset';
   return ` · defer: window ${b.fivePct}%, resets in ${d.minutes} min → before multi-file work ask once: ${pick} / park as issue — deep-knowledge/defer-to-reset.md`;
 }
 
 /** Short suffix for the per-prompt nudge; empty when nothing changes. */
 function nudgeSuffix(b, opts) {
-  return classSuffix(b, opts) + deferSuffix(b);
+  return classSuffix(b, opts) + deferSuffix(b, opts);
 }
 
 /**

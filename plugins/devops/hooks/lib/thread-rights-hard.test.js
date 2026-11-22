@@ -255,4 +255,13 @@ describe("C6 — budget class in a thread is never a question", () => {
     expect(budget.nudgeSuffix(b, { thread: false })).toBe(budget.nudgeSuffix(b));
     expect(budget.nudgeSuffix({ ...b, cls: "free" }, { thread: true })).toBe("");
   });
+  test("the defer hint asks on Desktop and never in a thread", () => {
+    const full = { cls: "free", tier: "max", binding: "window", override: false, fivePct: 97, resetInMinutes: 20 };
+    const desktop = budget.nudgeSuffix(full);
+    expect(desktop).toContain("ask once");
+    const thread = budget.nudgeSuffix(full, { thread: true });
+    expect(thread).toContain("resets in 20 min");
+    expect(thread).toContain("in a thread do not ask");
+    expect(thread).not.toContain("ask once");
+  });
 });
