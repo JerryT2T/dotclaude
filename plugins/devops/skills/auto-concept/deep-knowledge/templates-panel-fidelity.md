@@ -26,6 +26,11 @@ tab is on screen and refuses a change there.
   unexplained signal); the tab chip says it when the dock is collapsed. The chip carries the
   round's `data-fidelity-note`, in amber with "angenähert" when the round
   carries `data-fidelity-approx`.
+- **Explanation on demand (#1179).** Only the switch and its label sit in the
+  dock. `{{fidelity.hint}}` and `{{fidelity.scope}}` are the label's
+  `data-tip`, so the app tooltip (§ Utilities) shows them on hover, on
+  keyboard focus of the switch and on a long-press on touch, never as a
+  native `title` and never as permanent text.
 - **Hidden on the final report.** Implement, finalize, refine and review
   ignore the switch.
 
@@ -132,7 +137,7 @@ tab is on screen and refuses a change there.
   border-top: 1px solid var(--border-color, #30363d);
 }
 .dock-fidelity[hidden] { display: none; }
-.fidelity-switch { position: relative; display: flex; align-items: flex-start; gap: 10px; cursor: pointer; }
+.fidelity-switch { position: relative; display: flex; align-items: center; gap: 10px; cursor: pointer; }
 .fidelity-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
 .fidelity-track {
   flex: none; position: relative; width: 34px; height: 20px; margin-top: 1px; border-radius: 10px;
@@ -149,8 +154,6 @@ tab is on screen and refuses a change there.
 .fidelity-switch input[aria-readonly="true"] + .fidelity-track { opacity: 0.6; }
 .fidelity-text { display: flex; flex-direction: column; gap: 1px; line-height: 1.3; }
 .fidelity-text strong { font-size: 0.85rem; color: var(--text-color, #e6edf3); }
-.fidelity-text small, .fidelity-scope { font-size: 0.75rem; color: var(--text-secondary, #8b949e); }
-.fidelity-scope { padding-left: 44px; }
 @media (prefers-reduced-motion: reduce) {
   .fidelity-track, .fidelity-track::after { transition: none; }
 }

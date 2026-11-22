@@ -213,6 +213,36 @@ describe("page — the dock switch", () => {
     expect(w.fidelityPayload("B")).toBe("off");
   });
 
+  test("#1179: the two explanation lines are not shown at rest; they are the switch's app tooltip on hover and keyboard focus", async () => {
+    const w = await boot(built([designRound(1)]));
+    const d = w.document;
+    const box = d.getElementById("dock-fidelity");
+    expect(box.textContent).not.toContain("Nächste Runden");
+    expect(box.textContent).not.toContain("Gilt für Design-Runden");
+    expect(box.querySelector("small")).toBeNull();
+    const sw = box.querySelector(".fidelity-switch");
+    expect(sw.hasAttribute("title")).toBe(false);
+    expect(sw.dataset.tip).toContain("Nächste Runden");
+    expect(sw.dataset.tip).toContain("Gilt für Design-Runden");
+    const tipText = () => [...d.querySelectorAll(".app-tooltip, [role=tooltip]")].filter(t => !t.hidden).map(t => t.textContent).join(" ");
+    expect(tipText()).not.toContain("Nächste Runden");
+    // keyboard focus opens it at once
+    d.dispatchEvent(new w.KeyboardEvent("keydown", { key: "Tab", bubbles: true }));
+    d.getElementById("fidelity-toggle").dispatchEvent(new w.FocusEvent("focusin", { bubbles: true }));
+    await new Promise(r => setTimeout(r, 10));
+    expect(tipText()).toContain("Nächste Runden");
+    expect(tipText()).toContain("Gilt für Design-Runden");
+    d.dispatchEvent(new w.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    expect(tipText()).toBe("");
+    // hover (a mouse pointer) opens it after the info delay
+    const PointerEv = w.PointerEvent || w.MouseEvent;
+    const over = new PointerEv("pointerover", { bubbles: true });
+    Object.defineProperty(over, "pointerType", { value: "mouse" });
+    sw.querySelector("strong").dispatchEvent(over);
+    await new Promise(r => setTimeout(r, 1700));
+    expect(tipText()).toContain("Nächste Runden");
+  });
+
   test("without storage the last frozen round of the Etappe answers (sticky)", async () => {
     const r1 = designRound(1, { baked: true, inner: "" }).replace("</section>\n</section>", `</section>\n  ${frozenBlob("live")}\n</section>`);
     const w = await boot(built([r1, designRound(2, { attrs: LIVE })]));
