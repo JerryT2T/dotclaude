@@ -32,32 +32,33 @@ Index of the concept engine reference: the three templates (decision, design, fr
 | 24 | [templates-section-nav-2.md](templates-section-nav-2.md) | 500 | Shared Systems (all templates) · Section Navigation (Decision Panel as TOC) (continued) |
 | 25 | [templates-panel-state.md](templates-panel-state.md) | 560 | Decision Panel State CSS |
 | 26 | [templates-panel-state-2.md](templates-panel-state-2.md) | 577 | Decision Panel State CSS (continued) |
-| 27 | [templates-panel-state-3.md](templates-panel-state-3.md) | 332 | Decision Panel State CSS (continued) |
-| 28 | [templates-persistence.md](templates-persistence.md) | 599 | State Persistence (localStorage + TTL) |
-| 29 | [templates-persistence-2.md](templates-persistence-2.md) | 110 | State Persistence (localStorage + TTL) (continued) |
-| 30 | [templates-persistence-comments.md](templates-persistence-comments.md) | 126 | Persist Warning Banner CSS · Comment Slot Injection |
-| 31 | [templates-attachments.md](templates-attachments.md) | 214 | Attachments — HTML and CSS |
-| 32 | [templates-attachments-js.md](templates-attachments-js.md) | 428 | Attachments — JS |
-| 33 | [templates-mapping.md](templates-mapping.md) | 291 | Information Mapping (engine) — Spec to Wiring, CSS |
-| 34 | [templates-mapping-js.md](templates-mapping-js.md) | 1323 | Information Mapping (engine) — JS |
-| 35 | [templates-submit.md](templates-submit.md) | 341 | collectDecisions (dispatcher) · Two-Button Submit (iterate vs. implement) — HTML and CSS |
-| 36 | [templates-submit-js.md](templates-submit-js.md) | 526 | Two-Button Submit — JS |
-| 37 | [templates-submit-js-2.md](templates-submit-js-2.md) | 569 | Two-Button Submit — JS (continued) |
-| 38 | [templates-submit-js-3.md](templates-submit-js-3.md) | 282 | Two-Button Submit — JS (continued) |
-| 39 | [templates-submit-journey.md](templates-submit-journey.md) | 543 | Journey row · Panel State Reset · Submit Progress Steps |
-| 40 | [templates-utilities.md](templates-utilities.md) | 503 | App Tooltips · Theme Toggle · Neural Backdrop |
-| 41 | [templates-heartbeat.md](templates-heartbeat.md) | 597 | Claude Connection Heartbeat (HTTP Bridge) |
-| 42 | [templates-rounds.md](templates-rounds.md) | 447 | Iteration Tabs |
-| 43 | [templates-final-report.md](templates-final-report.md) | 513 | Final Report Panel · Design System |
-| 44 | [templates-final-report-review.md](templates-final-report-review.md) | 120 | Final Report Panel (continued) · The review switch — "Umsetzung prüfen" · The review round |
-| 45 | [templates-analysis.md](templates-analysis.md) | 293 | Template: analysis (Full + Lite) · Markup contract · Decision modes · Payload · collectModeDecision · Display palette |
-| 46 | [templates-analysis-css.md](templates-analysis-css.md) | 341 | Template: analysis — Styling CSS (Full + Lite) |
-| 47 | [templates-analysis-js.md](templates-analysis-js.md) | 579 | Template: analysis — Engine UI JS (palette, stages, stepper, choreography) |
-| 48 | [templates-analysis-js-2.md](templates-analysis-js-2.md) | 609 | Template: analysis — Engine UI JS (continued) |
-| 49 | [templates-stages.md](templates-stages.md) | 332 | Etappen (stages) — contract, panel head name, round row, stepper tabs, next-stage station · CSS |
-| 50 | [templates-stages-js.md](templates-stages-js.md) | 599 | Etappen JS (stepper, panes, start control, journey row, stage report naming) |
-| 51 | [templates-stages-free-js.md](templates-stages-free-js.md) | 221 | Etappen — the close-out of a stage report ("Offene Etappen", continue vs final) JS |
-| 52 | [templates-voice-js.md](templates-voice-js.md) | 449 | Voice input — mic buttons, notes voice mode (JS + CSS) |
+| 27 | [templates-panel-state-3.md](templates-panel-state-3.md) | 386 | Decision Panel State CSS (continued) |
+| 28 | [templates-panel-state-4.md](templates-panel-state-4.md) | 302 | Decision Panel State CSS (continued) — journey row, status toast |
+| 29 | [templates-persistence.md](templates-persistence.md) | 599 | State Persistence (localStorage + TTL) |
+| 30 | [templates-persistence-2.md](templates-persistence-2.md) | 110 | State Persistence (localStorage + TTL) (continued) |
+| 31 | [templates-persistence-comments.md](templates-persistence-comments.md) | 126 | Persist Warning Banner CSS · Comment Slot Injection |
+| 32 | [templates-attachments.md](templates-attachments.md) | 214 | Attachments — HTML and CSS |
+| 33 | [templates-attachments-js.md](templates-attachments-js.md) | 428 | Attachments — JS |
+| 34 | [templates-mapping.md](templates-mapping.md) | 291 | Information Mapping (engine) — Spec to Wiring, CSS |
+| 35 | [templates-mapping-js.md](templates-mapping-js.md) | 1323 | Information Mapping (engine) — JS |
+| 36 | [templates-submit.md](templates-submit.md) | 341 | collectDecisions (dispatcher) · Two-Button Submit (iterate vs. implement) — HTML and CSS |
+| 37 | [templates-submit-js.md](templates-submit-js.md) | 526 | Two-Button Submit — JS |
+| 38 | [templates-submit-js-2.md](templates-submit-js-2.md) | 569 | Two-Button Submit — JS (continued) |
+| 39 | [templates-submit-js-3.md](templates-submit-js-3.md) | 282 | Two-Button Submit — JS (continued) |
+| 40 | [templates-submit-journey.md](templates-submit-journey.md) | 543 | Journey row · Panel State Reset · Submit Progress Steps |
+| 41 | [templates-utilities.md](templates-utilities.md) | 503 | App Tooltips · Theme Toggle · Neural Backdrop |
+| 42 | [templates-heartbeat.md](templates-heartbeat.md) | 597 | Claude Connection Heartbeat (HTTP Bridge) |
+| 43 | [templates-rounds.md](templates-rounds.md) | 447 | Iteration Tabs |
+| 44 | [templates-final-report.md](templates-final-report.md) | 513 | Final Report Panel · Design System |
+| 45 | [templates-final-report-review.md](templates-final-report-review.md) | 120 | Final Report Panel (continued) · The review switch — "Umsetzung prüfen" · The review round |
+| 46 | [templates-analysis.md](templates-analysis.md) | 293 | Template: analysis (Full + Lite) · Markup contract · Decision modes · Payload · collectModeDecision · Display palette |
+| 47 | [templates-analysis-css.md](templates-analysis-css.md) | 341 | Template: analysis — Styling CSS (Full + Lite) |
+| 48 | [templates-analysis-js.md](templates-analysis-js.md) | 579 | Template: analysis — Engine UI JS (palette, stages, stepper, choreography) |
+| 49 | [templates-analysis-js-2.md](templates-analysis-js-2.md) | 609 | Template: analysis — Engine UI JS (continued) |
+| 50 | [templates-stages.md](templates-stages.md) | 332 | Etappen (stages) — contract, panel head name, round row, stepper tabs, next-stage station · CSS |
+| 51 | [templates-stages-js.md](templates-stages-js.md) | 599 | Etappen JS (stepper, panes, start control, journey row, stage report naming) |
+| 52 | [templates-stages-free-js.md](templates-stages-free-js.md) | 221 | Etappen — the close-out of a stage report ("Offene Etappen", continue vs final) JS |
+| 53 | [templates-voice-js.md](templates-voice-js.md) | 449 | Voice input — mic buttons, notes voice mode (JS + CSS) |
 
 ## Using the parts
 

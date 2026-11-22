@@ -785,3 +785,121 @@ describe("a finalize that outlives its tab, and the done state", () => {
     expect(p.window.__stub.closed).toBe(1);
   });
 });
+
+// The Funde sat in a collapsed fold and the buttons behind the ☰ menu: what was
+// left to decide was the least visible thing on the closing page. Now every
+// Fund card carries its route pill and the sheet is docked in the report while
+// the panel is closed. It is ONE sheet in two homes, never a copy: two sets of
+// buttons could deliver two finalizes.
+describe("the close-out in the report: Fund pills and the docked sheet", () => {
+  const fundPill = (p, id) => p.document.querySelector(`[data-open-questions] [data-oq-id="${id}"] > [data-fund-pill]`);
+  const openPanel = async (p, open) => {
+    p.document.body.classList.toggle("panel-open", open);
+    await tick();
+  };
+
+  test("every open Fund card carries the pill with its pre-selected route", () => {
+    const p = page({ funde: [...FUNDE, { id: "oq-done", title: "[BUG] Already filed", route: "issue", routed: true }] });
+    expect(FUNDE.map((f) => fundPill(p, f.id).dataset.route)).toEqual(["issue", "implement", "ignore"]);
+    expect(fundPill(p, "oq-done")).toBeNull();
+    // Same text and tooltip as the panel's own pill.
+    expect(fundPill(p, "oq-saml").textContent).toBe(p.pill("oq-saml").textContent);
+    expect(fundPill(p, "oq-saml").dataset.tip).toBe(p.pill("oq-saml").dataset.tip);
+    // The pill is not part of the Fund's name or of the issue it becomes.
+    p.ship().click();
+    expect(p.lastPayload().issues.items.map((i) => i.title)).toEqual(["[BUG] SAML login fails"]);
+  });
+
+  test("a tap on the card's pill cycles the route, in the panel row and in the payload alike", async () => {
+    const p = page({ funde: FUNDE });
+    const pill = fundPill(p, "oq-saml");
+    pill.click();
+    expect(fundPill(p, "oq-saml"), "the pill is kept, not rebuilt").toBe(pill);
+    expect(pill.dataset.route).toBe("ignore");
+    expect(p.pill("oq-saml").dataset.route).toBe("ignore");
+    pill.click();
+    expect(pill.dataset.route).toBe("implement");
+    // …and the panel's pill moves the card's.
+    p.route("oq-typo", "issue");
+    expect(fundPill(p, "oq-typo").dataset.route).toBe("issue");
+    p.noship().click();
+    await tick();
+    const sent = p.lastPayload();
+    expect(sent.implement.items.map((i) => i.id)).toEqual(["oq-saml"]);
+    expect(sent.issues.items.map((i) => i.id)).toEqual(["oq-typo"]);
+    expect(sent.ship.run).toBe(false);
+  });
+
+  test("a submitted close-out freezes the card pills too", async () => {
+    const p = page({ funde: FUNDE });
+    p.ship().click();
+    await tick();
+    const pill = fundPill(p, "oq-saml");
+    expect(pill.disabled).toBe(true);
+    pill.disabled = false;
+    pill.click();
+    expect(pill.dataset.route, "a frozen sheet ignores the click").toBe("issue");
+    expect(p.posted.length).toBe(1);
+  });
+
+  test("a closed report shows no pills", () => {
+    const p = page({ closed: true, funde: FUNDE });
+    expect(p.document.querySelectorAll("[data-fund-pill]").length).toBe(0);
+  });
+
+  test("the sheet is docked in the report while the panel is closed, and it is the only one", () => {
+    const p = page({ funde: FUNDE });
+    const slot = p.document.querySelector("section[data-final-report] .fr-close [data-closeout-slot]");
+    expect(slot).toBeTruthy();
+    expect(p.sheet().parentElement).toBe(slot);
+    expect(p.sheet().dataset.home).toBe("report");
+    expect(p.document.querySelectorAll(".closeout-sheet").length).toBe(1);
+    expect(p.document.querySelectorAll('[data-closeout-go="yes"]').length).toBe(1);
+    // The buttons work from there: this is the same delegated listener.
+    p.ship().click();
+    expect(p.lastPayload().ship.run).toBe(true);
+  });
+
+  test("opening the ☰ panel takes the sheet there, closing brings it back, choices kept", async () => {
+    const p = page({ funde: FUNDE });
+    const slot = p.document.querySelector("[data-closeout-slot]");
+    p.route("oq-saml", "implement");
+    await openPanel(p, true);
+    expect(p.sheet().parentElement.id).toBe("panel-final-report");
+    expect(p.sheet().dataset.home).toBe("panel");
+    expect(p.pill("oq-saml").dataset.route).toBe("implement");
+    await openPanel(p, false);
+    expect(p.sheet().parentElement).toBe(slot);
+    expect(p.document.querySelectorAll("[data-closeout-slot]").length).toBe(1);
+    expect(p.pill("oq-saml").dataset.route).toBe("implement");
+  });
+
+  test("an authored zone is used as it is; a report without one gets it before its data lists", () => {
+    const p = page({ tests: [{ id: "t1", text: "Look", crit: "mid" }] });
+    const zone = p.document.querySelector("section[data-final-report] > .fr-close");
+    expect(zone.nextElementSibling.hasAttribute("data-tests")).toBe(true);
+    expect(zone.children.length).toBe(1);
+
+    const q = page({ funde: FUNDE });
+    const sec = q.document.querySelector("section[data-final-report]");
+    q.document.body.classList.add("panel-open");
+    q.window.placeCloseout();
+    sec.querySelector(".fr-close").remove();
+    const authored = q.document.createElement("div");
+    authored.className = "fr-close";
+    authored.appendChild(sec.querySelector("[data-open-questions]"));
+    sec.prepend(authored);
+    q.document.body.classList.remove("panel-open");
+    q.window.placeCloseout();
+    expect(sec.querySelectorAll(".fr-close").length).toBe(1);
+    expect(q.sheet().closest(".fr-close")).toBe(authored);
+    expect(authored.lastElementChild.hasAttribute("data-closeout-slot")).toBe(true);
+  });
+
+  test("a live round that is no final report leaves the sheet in the panel", () => {
+    const p = page({ funde: FUNDE });
+    p.document.querySelector("section[data-final-report]").removeAttribute("data-final-report");
+    p.window.placeCloseout();
+    expect(p.sheet().parentElement.id).toBe("panel-final-report");
+  });
+});

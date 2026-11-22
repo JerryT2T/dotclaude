@@ -1,4 +1,4 @@
-# Concept templates, part 37 of 52: Shared systems — two-button submit JS (continued 2)
+# Concept templates, part 38 of 53: Shared systems — two-button submit JS (continued 2)
 
 ```javascript
 // Every user-facing string comes from the sheet's data-label-* attributes,
@@ -57,6 +57,39 @@ function queueClampTips() {
   requestAnimationFrame(() => { _clampTipsQueued = false; syncClampTips(); });
 }
 window.addEventListener('resize', queueClampTips);
+// One painter for every route pill: the panel row and the Fund card in the
+// report show the same pill in the same state.
+function paintRoutePill(pill, route) {
+  pill.dataset.route = route;
+  pill.textContent = route === 'implement'
+    ? CLOSEOUT_ROUTE_GLYPH.implement + ' ' + closeoutLabel('routeImplementShort', 'implement')
+    : closeoutRouteText(route);
+  pill.dataset.tip = closeoutLabel('route' + route.charAt(0).toUpperCase() + route.slice(1) + 'Hint', '');
+  pill.setAttribute('aria-label', pill.textContent + ' · ' + closeoutLabel('routeHint', ''));
+}
+// The Funde are the report's focus: every open Fund carries its route pill ON
+// its card (.fr-funde li), the same control as in the panel row, so a Fund is
+// decided where it is read. A routed Fund and a closed report carry none; a
+// legacy checkbox cannot hold one. The pill is kept across renders (never
+// rebuilt), so focus stays on it while it cycles.
+function syncFundPills(rows) {
+  const live = new Set();
+  rows.forEach(r => {
+    if (r.el.matches('input')) return;
+    let pill = r.el.querySelector(':scope > [data-fund-pill]');
+    if (!pill) {
+      pill = closeoutEl('button', 'closeout-pill');
+      pill.type = 'button';
+      pill.dataset.fundPill = '';
+      const label = r.el.querySelector(':scope > .oq-label');
+      if (label) label.after(pill); else r.el.prepend(pill);
+    }
+    pill.dataset.routeCycle = r.key;
+    paintRoutePill(pill, followUpRoute(r.key, r.el));
+    live.add(pill);
+  });
+  document.querySelectorAll('[data-fund-pill]').forEach(p => { if (!live.has(p)) p.remove(); });
+}
 // Rows past the third wait behind "+N weitere"; the choice stays in memory for
 // the session of the sheet, like every other answer on it.
 let _decideExpanded = false;
@@ -71,16 +104,8 @@ function syncDecideRows() {
     const key = row.dataset.routeRow;
     row.hidden = !_decideExpanded && i >= CLOSEOUT_GROUP_MAX;
     i += 1;
-    const route = followUpRoute(key, byKey[key]);
     const pill = row.querySelector('[data-route-pill]');
-    if (pill) {
-      pill.dataset.route = route;
-      pill.textContent = route === 'implement'
-        ? CLOSEOUT_ROUTE_GLYPH.implement + ' ' + closeoutLabel('routeImplementShort', 'implement')
-        : closeoutRouteText(route);
-      pill.dataset.tip = closeoutLabel('route' + route.charAt(0).toUpperCase() + route.slice(1) + 'Hint', '');
-      pill.setAttribute('aria-label', pill.textContent + ' · ' + closeoutLabel('routeHint', ''));
-    }
+    if (pill) paintRoutePill(pill, followUpRoute(key, byKey[key]));
   });
   const more = document.getElementById('closeout-decide-more');
   if (more) {
@@ -100,7 +125,7 @@ function cycleRoute(key) {
   _closeoutChoices.route[key] = CLOSEOUT_ROUTES[(at + 1) % CLOSEOUT_ROUTES.length];
   refreshCloseout();
 }
-// A tap on the name opens the 🔍 fold and brings that Fund into view, marked
+// A tap on the name brings that Fund card into view (a legacy 🔍 fold opens first), marked
 // for a moment. The report is the one place that says what, where and why, in
 // the page's language (the issue body is an English artefact).
 function jumpToFund(key) {
@@ -241,6 +266,7 @@ function renderDecideGroup(closed) {
   const count = document.querySelector('[data-closeout-group="decide"] [data-closeout-count]');
   if (count) count.textContent = n ? String(n) : '';
   syncDecideRows();
+  syncFundPills(rows);
   return n;
 }
 // The done state shows no Funde in the FAB — the report body says what
@@ -382,6 +408,48 @@ function setCloseoutFrozen(frozen) {
     if (el.id === 'closeout-close') return;
     el.disabled = frozen;
   });
+  // The route pills on the Fund cards are sheet controls that live in the report.
+  document.querySelectorAll('[data-fund-pill]').forEach(el => { el.disabled = frozen; });
+}
+
+// --- The sheet's second home: docked in the report ---
+// One sheet, two homes. While the ☰ panel is closed the sheet sits IN the final
+// report (.fr-close, beside the Funde), so closing out needs no menu; opening
+// the panel takes it there, closing brings it back. It is the same node, so
+// both places show the same controls in the same state and a submit can never
+// leave from two sheets. A report without the zone gets one before its folds.
+// The slot keeps the sheet's height while the sheet is away.
+function closeoutSlot(section) {
+  let zone = section.querySelector('.fr-close');
+  if (!zone) {
+    zone = closeoutEl('div', 'fr-close');
+    const before = Array.from(section.children).find(el => el.matches('.fr-folds, [data-tests], [data-handoffs]'));
+    section.insertBefore(zone, before || null);
+  }
+  let slot = zone.querySelector('[data-closeout-slot]');
+  if (!slot) {
+    slot = closeoutEl('div', 'fr-close-sheet');
+    slot.dataset.closeoutSlot = '';
+    zone.appendChild(slot);
+  }
+  return slot;
+}
+function placeCloseout() {
+  const sheet = document.getElementById('closeout-sheet');
+  const panelHome = document.getElementById('panel-final-report');
+  if (!sheet || !panelHome) return;
+  const section = finalReportSection();
+  const docked = !!section && !document.body.classList.contains('panel-open');
+  const home = docked ? closeoutSlot(section) : panelHome;
+  sheet.dataset.home = docked ? 'report' : 'panel';
+  if (sheet.parentElement === home) return;
+  const left = sheet.parentElement;
+  if (left && left.hasAttribute('data-closeout-slot')) left.style.minHeight = left.offsetHeight + 'px';
+  // A move drops the focus of whatever is inside the node: hand it back.
+  const focused = sheet.contains(document.activeElement) ? document.activeElement : null;
+  home.insertBefore(sheet, home.firstChild);
+  if (docked) home.style.minHeight = '';
+  if (focused) focused.focus({ preventScroll: true });
 }
 
 // Re-arm after a finalize that did not complete — a blocked ship, a stale
@@ -406,6 +474,7 @@ function renderCloseout() {
   const section = finalReportSection();
   const closed = !!(section && section.hasAttribute('data-closed'));
   sheet.dataset.closed = closed ? 'true' : 'false';
+  placeCloseout();
   const decided = renderDecideGroup(closed);
   const todos = renderTodoGroup(closed);
   initBeforeAfter(section);

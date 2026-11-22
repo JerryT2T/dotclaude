@@ -1,4 +1,4 @@
-# Concept templates, part 14 of 52: Template: design — layout JS
+# Concept templates, part 14 of 53: Template: design — layout JS
 
 ## Layout JS — single-screen navigation + context-sensitive feedback
 

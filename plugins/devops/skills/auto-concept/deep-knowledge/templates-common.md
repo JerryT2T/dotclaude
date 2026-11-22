@@ -1,4 +1,4 @@
-# Concept templates, part 01 of 52: Overview, UI locale
+# Concept templates, part 01 of 53: Overview, UI locale
 
 # Concept HTML Templates
 
@@ -213,6 +213,7 @@ must see their own language. The locale hint is authoritative.
 | `final.route_implement_short`  | Now                            | Jetzt |
 | `final.route_ignore`           | Leave out                      | Weglassen |
 | `final.route_hint`             | ↻ Tap to switch: ⚡ Now → 📌 Issue → Leave out. The name opens it in the report. | ↻ Tippen wechselt: ⚡ Jetzt → 📌 Issue → Weglassen. Der Name zeigt den Fund im Bericht. |
+| `final.funde_hint`             | ↻ A tap on the pill switches: ⚡ Now → 📌 Issue → Leave out. | ↻ Ein Tipp auf die Pille wechselt: ⚡ Jetzt → 📌 Issue → Weglassen. |
 | `final.funde_more`             | +{n} more                      | +{n} weitere |
 | `final.route_implement_hint`   | Built in this close-out, before any ship. | Wird in diesem Abschluss gebaut, vor dem Shippen. |
 | `final.route_issue_hint`       | Filed as a GitHub issue for later. Nothing is built now. | Wird als GitHub-Issue für später angelegt. Jetzt wird nichts gebaut. |
