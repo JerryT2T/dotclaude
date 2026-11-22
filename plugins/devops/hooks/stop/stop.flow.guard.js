@@ -103,11 +103,12 @@ const {
   safeReadTranscript,
   showWidgetCalledThisTurn,
   editsThisTurn,
+  sendToProjectOnlyTurn,
   foreignWidgetTitle,
   PENDING_TAIL_BYTES,
 } = require('../lib/card-guard');
 const { scanOpenTasksInFile, openTaskNames, scanLinkedSessionsInFile } = require('../lib/pending-tasks');
-const { isMcpServerAliveForSession } = require('../lib/mcp-heartbeat');
+const { completionMcpDown: completionMcpState } = require('../lib/mcp-heartbeat');
 const { releaseOnce } = require('../lib/run-once');
 const { isGuideActive, isGuideLoopLive } = require('../../scripts/guide-active-state');
 const { execFileSync } = require('child_process');
@@ -269,7 +270,8 @@ process.stdin.on('end', () => {
   // The wider PENDING slice is used so an agent launched early in a long turn
   // is still seen; one older than the slice is found by a full streamed scan.
   const transcript = silent ? '' : safeReadTranscript(hook.transcript_path, PENDING_TAIL_BYTES);
-  const substantial = isSubstantialAnswer(transcript);
+  // A /send-to-project turn hands a summary to a Claude Project: its prose is no answer that owes a card.
+  const substantial = isSubstantialAnswer(transcript) && !sendToProjectOnlyTurn(transcript);
   const openTasks = silent ? [] : openTaskNames(scanOpenTasksInFile(hook.transcript_path, PENDING_TAIL_BYTES));
   const notificationTurn = !silent && lastUserEntryIsNotification(transcript);
   // A side-session note turn (marked handoff/deliver sessions report back): title
@@ -298,7 +300,7 @@ process.stdin.on('end', () => {
   // Both probes are only needed on the paths that read them: the tree check
   // shells out to git, the heartbeat stats a PID file — skip both on silent ticks.
   const treeClean = (!silent && (scheduledTask || notificationTurn)) ? isTreeClean(hook.cwd, sessionId) : null;
-  const completionMcpDown = silent ? false : !isMcpServerAliveForSession('dotclaude');
+  const completionMcpDown = silent ? false : completionMcpState('dotclaude');
   // #526: a fresh <project>/.claude/auto-guide-active.json marker means an
   // /auto-guide run is mid-loop — never force the card that would end it.
   const guideActive = silent ? false : isGuideActive(hook.cwd);

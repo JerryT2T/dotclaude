@@ -230,6 +230,24 @@ describe("per-session liveness (isMcpServerAliveForSession)", () => {
       expect(new Set(reader.heartbeats(NAME).map((h) => h.pid))).toEqual(new Set([process.pid]));
     });
   });
+  test("completionMcpDown tells 'no server' from 'none attributed to this session'", () => {
+    const card = require("../../hooks/lib/card-guard.js");
+    withTmp((dir) => {
+      expect(reader.completionMcpDown(NAME, { ppid: 4242 })).toBe(true);
+      writeHeartbeat(NAME, other.pid, dir, 9999);
+      expect(reader.completionMcpDown(NAME, { ppid: 4242 })).toBe("foreign");
+      writeHeartbeat(NAME, process.pid, dir, 4242);
+      expect(reader.completionMcpDown(NAME, { ppid: 4242 })).toBe(false);
+    });
+    // The reminder words the two cases differently: "dead" sends the model offline first,
+    // "foreign" lets the tool list decide.
+    const dead = card.buildBlockReason("/plugin", { completionMcpDown: true });
+    const foreign = card.buildBlockReason("/plugin", { completionMcpDown: "foreign" });
+    expect(dead).toContain("NOT running (heartbeat dead)");
+    expect(foreign).not.toContain("heartbeat dead");
+    expect(foreign).toContain("is in your");
+    expect(foreign).toContain("--render-card");
+  });
   test("defaults to CLAUDE_PID, not the hook's own parent (a bash wrapper)", () => {
     const saved = process.env.CLAUDE_PID;
     try {

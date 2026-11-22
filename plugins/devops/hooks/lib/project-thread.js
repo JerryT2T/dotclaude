@@ -222,7 +222,11 @@ function markThread(sessionId) {
   if (!sessionId) return;
   const file = sessionFile(THREAD_FLAG, sessionId);
   try {
-    if (!fs.existsSync(file)) writeSessionFile(file, new Date().toISOString());
+    if (fs.existsSync(file)) return;
+    writeSessionFile(file, new Date().toISOString());
+    // The first thread session of a machine records itself (lib/thread-seen.js): the cloud-copy
+    // lag counts from now on. Not under a test runner — the marker lives in the real home folder.
+    if (!process.env.VITEST) require('./thread-seen').recordThreadSeen({ force: true });
   } catch { /* advisory */ }
 }
 

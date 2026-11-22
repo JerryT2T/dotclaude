@@ -152,9 +152,26 @@ function isMcpServerAlive(serverName) {
  * @param {{ ppid?: number }} [opts] the session's Claude Code pid (default env CLAUDE_PID)
  */
 function isMcpServerAliveForSession(serverName, opts = {}) {
+  return tracedSessionLiveness(serverName, opts).alive;
+}
+
+/** sessionLiveness() that also records a foreign-only verdict (unless `opts.trace === false`). */
+function tracedSessionLiveness(serverName, opts = {}) {
   const detail = sessionLiveness(serverName, opts);
   if (detail.verdict === 'foreign-only' && opts.trace !== false) traceForeignOnly(serverName, detail);
-  return detail.alive;
+  return detail;
+}
+
+/**
+ * What a card reminder needs: false = this session's server answers, true = no
+ * server answers, 'foreign' = servers answer but none is attributed to this
+ * session — the tool may still be connected, so the reminder says to look.
+ * @returns {false|true|'foreign'}
+ */
+function completionMcpDown(serverName = SERVER_NAME, opts = {}) {
+  const detail = tracedSessionLiveness(serverName, opts);
+  if (detail.alive) return false;
+  return detail.verdict === 'foreign-only' ? 'foreign' : true;
 }
 
 /**
@@ -227,5 +244,5 @@ const SERVER_NAME = 'dotclaude';
 module.exports = {
   PREFIX, HEARTBEAT_DIR, SERVER_NAME, pidFileFor, processPidFileFor, isProcessAlive,
   heartbeats, heartbeatState, isMcpServerAlive, isMcpServerAliveForSession,
-  sessionLiveness, livenessLogFile,
+  sessionLiveness, tracedSessionLiveness, completionMcpDown, livenessLogFile,
 };

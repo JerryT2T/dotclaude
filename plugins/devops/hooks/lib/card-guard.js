@@ -416,6 +416,35 @@ function editsThisTurn(transcriptContent) {
   return n;
 }
 
+/**
+ * Is this a /send-to-project turn — every tool call since the turn's prompt is
+ * SendToProjectContext / SendToProject, and there is at least one? Such a turn
+ * hands a summary to a Claude Project; its prose is that hand-over, not an
+ * answer that owes a completion card (post.flow.completion skips the contract
+ * for the same tools).
+ */
+function sendToProjectOnlyTurn(transcriptContent) {
+  if (!transcriptContent) return false;
+  const lines = transcriptContent.split('\n');
+  let sends = 0;
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const raw = lines[i].trim();
+    if (!raw) continue;
+    let entry;
+    try { entry = JSON.parse(raw); } catch { continue; }
+    if (entry.type === 'user' && isPromptEntry(entry)) return sends > 0;
+    if (entry.type !== 'assistant') continue;
+    const content = entry.message && entry.message.content;
+    if (!Array.isArray(content)) continue;
+    for (const b of content) {
+      if (!b || b.type !== 'tool_use') continue;
+      if (!/^SendToProject(?:Context)?$/.test(String(b.name))) return false;
+      sends++;
+    }
+  }
+  return sends > 0;
+}
+
 // ---------------------------------------------------------------------------
 // Card content gates (design § 5.1 - § 5.4)
 // ---------------------------------------------------------------------------
@@ -964,6 +993,17 @@ function renderLadderLines(pluginRoot, { completionMcpDown } = {}) {
     'the tool; never relay a card with an empty Changes block or a generic DONE card',
     'in place of the SHIPPED one.',
   ];
+  if (completionMcpDown === 'foreign') {
+    // Servers answer, none is attributed to this session (lib/mcp-heartbeat.js sessionLiveness):
+    // a neighbour's server, or a session kind whose parent pid differs. The tool list decides.
+    return [
+      'No dotclaude MCP server is attributed to this session (the live ones belong to',
+      'other sessions). If `mcp__plugin_devops_dotclaude__render_completion_card` is in your',
+      'tool list (ToolSearch select: if deferred), call it NOW as the FIRST action.',
+      'If it is not, render the card offline through the same renderer, via Bash:',
+      ...offline,
+    ];
+  }
   if (completionMcpDown) {
     return [
       'The dotclaude MCP server is NOT running (heartbeat dead) — do not',
@@ -1375,6 +1415,7 @@ module.exports = {
   buildWidgetSkippedReason,
   showWidgetCalledThisTurn,
   editsThisTurn,
+  sendToProjectOnlyTurn,
   foreignWidgetTitle,
   isCardWidgetCall,
   widgetRelayText,

@@ -1210,6 +1210,21 @@ describe("decideAction — notification turn", () => {
     expect(editsThisTurn("")).toBe(null);
   });
 
+  test("sendToProjectOnlyTurn: only the send-to-project tools since the last prompt, at least one", () => {
+    const { sendToProjectOnlyTurn } = require("./card-guard");
+    const L = (o) => JSON.stringify(o);
+    const turn = (...names) => [
+      L({ type: "assistant", message: { content: [{ type: "tool_use", name: "Edit" }] } }),
+      L({ type: "user", message: { role: "user", content: "/send-to-project" } }),
+      L({ type: "assistant", message: { content: [{ type: "text", text: "summary" }, ...names.map((name) => ({ type: "tool_use", name }))] } }),
+    ].join("\n");
+    expect(sendToProjectOnlyTurn(turn("SendToProjectContext", "SendToProject"))).toBe(true);
+    expect(sendToProjectOnlyTurn(turn("SendToProject"))).toBe(true);
+    expect(sendToProjectOnlyTurn(turn("SendToProject", "Bash"))).toBe(false); // other work still owes the card
+    expect(sendToProjectOnlyTurn(turn())).toBe(false); // a plain answer is no hand-over
+    expect(sendToProjectOnlyTurn("")).toBe(false);
+  });
+
   test("something shipped on a notification turn still owes the card gate", () => {
     const d = decideAction({
       workHappened: true,
