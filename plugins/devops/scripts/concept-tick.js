@@ -232,6 +232,13 @@ function noteHeartbeat(statePath, ok) {
  * mandate: same port, --html, both watchers — the pieces a restart or a crash
  * takes away together.
  */
+function inAppFlag() {
+  try {
+    const choice = require('../hooks/lib/browser-choice');
+    return choice.resolveBrowser().id === choice.IN_APP ? ' --in-app-browser' : '';
+  } catch { return ''; }
+}
+
 function relaunchInstruction(port, statePath, htmlPath, owner = '') {
   const root = path.dirname(path.dirname(statePath));
   const server = path.join(__dirname, 'concept-server.py');
@@ -241,7 +248,7 @@ function relaunchInstruction(port, statePath, htmlPath, owner = '') {
     `The concept bridge on port ${port} has not answered /heartbeat for ${RELAUNCH_AFTER_FAILURES} consecutive ` +
     `ticks — the server process is gone (a Claude restart or a crash takes it and both watchers with it). ` +
     `Relaunch it on the SAME port so the open tab and the state file stay valid: ` +
-    `\`python "${server}" ${port} "${root}" --html "${htmlPath}"\` ` +
+    `\`python "${server}" ${port} "${root}" --html "${htmlPath}"${inAppFlag()}\` ` +
     `(Bash tool, run_in_background: true — no trailing &, no nohup). If it exits because the port is already ` +
     `bound, another session brought the bridge back — skip the relaunch. ` +
     `Then re-arm the keepalive pulser: node "${watch}" --mode pulse --port ${port} --state "${statePath}"${ownerArg} ` +

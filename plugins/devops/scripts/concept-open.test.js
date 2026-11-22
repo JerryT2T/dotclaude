@@ -187,6 +187,12 @@ test("buildLaunch quotes paths and uses forward slashes", () => {
   expect(l.server).toContain('8800 "C:/a b" --html "d/x.html"');
 });
 
+test("buildLaunch tells the bridge when the in-app pane is the chosen browser", () => {
+  const a = { port: 8800, cwd: "C:/a", html: "d/x.html", state: "C:/a/.claude/concept-active.json", owner: "ab12cd34" };
+  expect(buildLaunch(a).server).not.toContain("--in-app-browser");
+  expect(buildLaunch({ ...a, inApp: true }).server).toMatch(/--html "d\/x\.html" --in-app-browser$/);
+});
+
 // #1030: verify owns the open on the fast path — the docs must not tell the
 // model to run the manual `start msedge` on top of it (page opened twice).
 describe("the real open in its own process", () => {
