@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.401.1] — 2026-11-22
+
+### Fixed
+- Mod band: archive button also on a landed release card (#1200); Wk/5h bars read fresh live usage after a resume (#1204); the last card is restored after resume/compact (#1203).
+- Completion card: "Concept öffnen" button while a concept page waits (#1186); a web-guide next step renders as "Web-Guide starten" (#1185).
+- auto-concept: no green Live-Treue dot on the note FAB (#1180); Live-Treue explanation moved into the switch tooltip (#1179).
+- Ship: cloud sessions use REST instead of GraphQL and explain refused tag pushes (#1202); an existing release bump commit is reused instead of bumping twice (#1191).
+- Stop hooks: a turn waiting on its own background work is not marked interrupted (#1199); an idle autonomous run with open steps is blocked once with the next call (#1178).
+- Setup: a linked worktree no longer rewrites the tracked .gitignore (#1182).
+
+## [0.401.0] — 2026-11-22
+
+### Added
+- **Browser choice in devops Home.** Einstellungen has a Browser dropdown with the installed browsers plus In-App (the Desktop app's browser pane). Edge stays the default while it is installed; without any browser In-App is used. Concept pages, the waker's re-open and files re-opened after a ship follow the choice. Also by chat ("nimm Chrome als Browser") via `scripts/browser-choice.js`; setting `browser.default` (machine-wide).
+- **Limit title after a hard limit stop.** A session whose turn the usage limit cut now reads `🟦 ➜ 🔋 …` instead of keeping its `⏳`: the mod band renames it without a model turn, `ss.title.sweep` covers sessions without a band.
+
+### Changed
+- The card word for a usage-limit pause is "Limit" (was "Limit reset"). Titles with the old worded head are still recognised.
+- `pre.visible-browser.guard` no longer blocks starting Chrome when Chrome is the chosen browser.
+
+### Fixed
+- Pages opened for the user no longer pass through `cmd /c start` when the URL holds a quote, `%VAR%`, `&` or a space: the browser executable is started directly.
+
 ## [0.400.0] — 2026-11-22
 
 ### Changed

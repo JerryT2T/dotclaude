@@ -65,6 +65,32 @@ describe("finding #8 — a misread Desktop error never switches to REST", () => 
   });
 });
 
+describe("one transport — env switches", () => {
+  test.each([
+    [{ DEVOPS_SHIP_GH_TRANSPORT: "rest" }, true],
+    [{ DEVOPS_GH_REST: "1" }, true],
+    [{ CLAUDE_CODE_REMOTE: "true" }, true],
+    [{ CLAUDE_CODE_REMOTE: "true", DEVOPS_SHIP_GH_TRANSPORT: "graphql" }, false],
+    [{}, false],
+  ])("%j -> REST %s", (env, expected) => {
+    expect(useRestTransport({ ...env })).toBe(expected);
+  });
+
+  test("DEVOPS_SHIP_GH_TRANSPORT=graphql pins the CLI: a refusal is thrown, never switched", () => {
+    vi.stubEnv("DEVOPS_SHIP_GH_TRANSPORT", "graphql");
+    route({ "gh pr create": PROXY_REFUSAL });
+    expect(() => createPR({ title: "T", body: "B", base: "main", head: "feat/x" })).toThrow();
+    expect(calls.some((c) => c.args.includes("api"))).toBe(false);
+    expect(useRestTransport()).toBe(false);
+  });
+
+  test("the measured proxy text switches and is remembered", () => {
+    route({ "gh pr create": Object.assign(new Error("x"), { stderr: "HTTP 403: GitHub GraphQL is not available from Claude Code sessions" }), "gh api": { number: 6, html_url: "https://github.com/o/r/pull/6" } });
+    expect(createPR({ title: "T", body: "B", base: "main", head: "feat/x" }).number).toBe(6);
+    expect(useRestTransport()).toBe(true);
+  });
+});
+
 describe("finding #8 — the REST no-checks wait is as patient as the CLI path", () => {
   const sleeps = [];
   let clock;
@@ -73,10 +99,11 @@ describe("finding #8 — the REST no-checks wait is as patient as the CLI path",
 
   const api = ({ history, appearsAfterMs }) => route({
     "gh api": (args) => {
-      const ep = args[args.length - 1];
+      const ep = args.find((a) => a.startsWith("repos/"));
+      const count = (n) => (args.includes("-q") ? String(n) : { total_count: n }); // hadRecentChecks reads `-q .total_count`
       if (/\/pulls\/5\/commits/.test(ep)) return [{ sha: "a".repeat(40) }, { sha: "b".repeat(40) }];
-      if (/commits\/a{40}\/check-runs/.test(ep)) return { total_count: history ? 3 : 0 };
-      if (/commits\/a{40}\/status/.test(ep)) return { total_count: 0 };
+      if (/commits\/a{40}\/check-runs/.test(ep)) return count(history ? 3 : 0);
+      if (/commits\/a{40}\/status/.test(ep)) return count(0);
       if (/check-runs/.test(ep)) return { check_runs: clock >= appearsAfterMs ? [{ name: "ci", status: "completed", conclusion: "success" }] : [] };
       if (/\/status/.test(ep)) return { statuses: [] };
       return { head: { sha: "b".repeat(40) } };

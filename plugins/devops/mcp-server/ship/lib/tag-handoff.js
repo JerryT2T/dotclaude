@@ -28,12 +28,20 @@ const PERMANENT_PATTERNS = [
   /(?:reject|refus|den(?:y|ied)|block)\w*.*\b(?:tag|tags)\b.*\bproxy\b/i,
   /only (?:branch(?:es)?|branch pushes) (?:can|may|are)/i,
   /(?:tags?|refs\/tags\/\S*) (?:is|are) not (?:allowed|supported|permitted)/i,
+  /write access to this github api path is not permitted/i, // the cloud session's GitHub proxy (#1202)
 ];
 
+/** A claude.ai cloud session: its GitHub proxy refuses every tag write (environment policy, #1202). */
+export function isCloudSession(env = process.env) {
+  return env.CLAUDE_CODE_REMOTE === "true";
+}
+
 /** True when the push error is one a retry cannot fix. */
-export function isPermanentPushError(err) {
+export function isPermanentPushError(err, env = process.env) {
   const text = String((err && (err.stderr || err.message)) || err || "");
-  return PERMANENT_PATTERNS.some((re) => re.test(text));
+  if (PERMANENT_PATTERNS.some((re) => re.test(text))) return true;
+  // In a cloud session a tag push ends with "unexpected disconnect": the proxy, not the network.
+  return isCloudSession(env) && /unexpected disconnect|the remote end hung up/i.test(text);
 }
 
 /**
@@ -43,7 +51,8 @@ export function isPermanentPushError(err) {
  *
  * @param {{ channelTag: string, channel: string, version: string, sha?: string|null, base: string, permanent: boolean, error?: string }} p
  */
-export function tagHandoff({ channelTag, channel, version, sha, base, permanent, error, cloud = process.env.CLAUDE_CODE_REMOTE === "true" }) {
+export function tagHandoff({ channelTag, channel, version, sha, base, permanent, error, cloud }, env = process.env) {
+  const inCloud = cloud === undefined ? isCloudSession(env) : !!cloud;
   const target = sha || `origin/${base}`;
   const message = JSON.stringify({ channel, version });
   const quoted = `'${message.replace(/'/g, "'\\''")}'`;
@@ -52,11 +61,13 @@ export function tagHandoff({ channelTag, channel, version, sha, base, permanent,
     target,
     // A cloud session never pushes a tag (the GitHub proxy takes branches only): the
     // owner runs the commands in a clone on their own computer.
-    ...(cloud && { runWhere: "in a local clone of the repository (Desktop app or terminal) — a cloud session cannot push tags" }),
+    ...(inCloud && { runWhere: "in a local clone of the repository (Desktop app or terminal) — a cloud session cannot push tags" }),
     permanent: !!permanent,
-    reason: permanent
-      ? "The remote refused the tag push for this session (permission) — no retry changes that."
-      : "The tag push kept failing after its retries.",
+    reason: permanent && inCloud
+      ? "Cloud sessions cannot push tags: the session's GitHub proxy refuses every tag write (environment policy). Set it once on your PC."
+      : permanent
+        ? "The remote refused the tag push for this session (permission) — no retry changes that."
+        : "The tag push kept failing after its retries.",
     error: error ? String(error).slice(0, 200) : undefined,
     commands: [
       `git fetch origin ${base}`,

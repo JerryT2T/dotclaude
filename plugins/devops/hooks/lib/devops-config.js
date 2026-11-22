@@ -184,6 +184,15 @@ const SCHEMA = Object.freeze({
       doc: 'When a recurring routine is created or changed: ask = offer a backup once per session, auto = back up silently right away, off = only the daily run.',
     }),
   }),
+  // Machine-wide: which browsers exist is a fact of the machine. The values
+  // mirror SETTING_VALUES in ./browser-choice.js (a test keeps both in step).
+  browser: Object.freeze({
+    default: Object.freeze({
+      type: 'enum', default: 'auto', globalOnly: true,
+      values: Object.freeze(['auto', 'edge', 'chrome', 'firefox', 'brave', 'vivaldi', 'opera', 'in-app']),
+      doc: 'Browser for the pages devops opens for you (concept pages, re-opened files, guides): auto = Edge when installed, else the first installed browser, else in-app; in-app = the Desktop app\'s browser pane. A browser that is not installed falls back like auto. Also in the devops Home pane (Einstellungen).',
+    }),
+  }),
   frustratedMode: Object.freeze({
     suggest: Object.freeze({
       type: 'boolean', default: true,

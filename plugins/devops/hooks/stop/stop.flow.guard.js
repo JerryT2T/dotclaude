@@ -104,6 +104,7 @@ const {
   showWidgetCalledThisTurn,
   editsThisTurn,
   sendToProjectOnlyTurn,
+  armedWaitsThisTurn,
   foreignWidgetTitle,
   PENDING_TAIL_BYTES,
 } = require('../lib/card-guard');
@@ -184,6 +185,33 @@ function isTreeClean(cwd, sessionId) {
   if (edits === null) return true;
   const n = parseInt(String(edits.content || '').trim(), 10);
   return Number.isFinite(n) ? n === 0 : null;
+}
+
+/**
+ * #1178: the block reason when an AUTONOMOUS do-run contract of this session
+ * has open obligations at the card gate, else null. Never throws.
+ */
+function autonomousStall(hook, sessionId) {
+  try {
+    const RC = require('../lib/run-contract');
+    const { projectRoot } = require('../lib/project-root');
+    const root = projectRoot(hook.cwd || process.cwd());
+    const c = RC.readContract(root, { sessionId });
+    if (!c || c.flow !== 'autonomous') return null;
+    const evs = RC.events(root);
+    if (!RC.segmentHasWork(evs)) return null;
+    const open = RC.openObligations(c, evs, 'card');
+    if (!open.length) return null;
+    const next = open[0];
+    return [
+      `AUTONOMOUS RUN STILL OPEN — do not end the turn idle (#1178). ${RC.chosenLine(c)}.`,
+      `Open: ${open.map(o => o.ob).join(', ')}. No background agent, task or wake-up is running, so nothing would wake this session again.`,
+      `Continue now with the next open obligation${next.why ? ` (${next.why})` : ''}: ${next.fix || next.ob}`,
+      'Or, if you are deliberately waiting on something, arm a wake-up (ScheduleWakeup / a cron) before ending the turn.',
+    ].join('\n');
+  } catch {
+    return null;
+  }
 }
 
 let inputData = '';
@@ -272,7 +300,15 @@ process.stdin.on('end', () => {
   const transcript = silent ? '' : safeReadTranscript(hook.transcript_path, PENDING_TAIL_BYTES);
   // A /send-to-project turn hands a summary to a Claude Project: its prose is no answer that owes a card.
   const substantial = isSubstantialAnswer(transcript) && !sendToProjectOnlyTurn(transcript);
-  const openTasks = silent ? [] : openTaskNames(scanOpenTasksInFile(hook.transcript_path, PENDING_TAIL_BYTES));
+  const openTaskItems = silent ? [] : scanOpenTasksInFile(hook.transcript_path, PENDING_TAIL_BYTES);
+  const openTasks = openTaskNames(openTaskItems);
+  // #1199: the session's own live work it waits on — backgrounded Bash / a
+  // workflow still open, or a Monitor / wake-up this turn armed. Ending the
+  // turn on it is waiting, not an end state and not an interruption.
+  const waitingOn = silent ? [] : [
+    ...openTaskNames(openTaskItems.filter(t => t && (t.kind === 'task' || t.kind === 'workflow'))),
+    ...(armedWaitsThisTurn(transcript) || []),
+  ];
   const notificationTurn = !silent && lastUserEntryIsNotification(transcript);
   // A side-session note turn (marked handoff/deliver sessions report back): title
   // updated always, card only when the user's move changed — card-less end allowed.
@@ -351,6 +387,7 @@ process.stdin.on('end', () => {
     foreignWidgetTitle: foreignTitle,
     guideActive,
     guideLoopLive,
+    waitingOn,
   });
 
   if (decision.resetFlags) {
@@ -416,12 +453,29 @@ process.stdin.on('end', () => {
     } catch { /* unwritable marker → no block, never loop */ }
   }
 
+  // #1178: an autonomous do-run never ends a turn idle while its run contract
+  // still owes something. With no live background work (agent, task,
+  // workflow, linked session) and no wake-up armed this turn, nothing would
+  // ever wake the session again — the night run froze after its last agent.
+  // Blocked once (stop_hook_active lets the follow-up stop through) with the
+  // next open obligation's exact call.
+  if (decision.action !== 'block' && !silent && !stopHookActive && !scheduledTask && !guideActive
+      && openTasks.length === 0 && openLinked.length === 0 && waitingOn.length === 0) {
+    const stall = autonomousStall(hook, sessionId);
+    if (stall) {
+      decision.action = 'block';
+      decision.reason = stall;
+      decision.gates = ['autonomous-idle'];
+      decision.answerBlock = true; // no card-data pointer: the run continues, it does not close
+    }
+  }
+
   let interruptBlock = false;
   if (decision.action !== 'block' && !silent && !scheduledTask && !guideActive) {
     const asked = turnState.get(sessionId, INTERRUPT_FLAG) !== null;
     if (asked) {
       try { turnState.del(sessionId, INTERRUPT_FLAG); } catch { /* marker already gone — nothing to clear */ }
-    } else if (!cardRendered && openTasks.length === 0 && openLinked.length === 0) {
+    } else if (!cardRendered && openTasks.length === 0 && openLinked.length === 0 && waitingOn.length === 0) {
       // Background work of this session still runs → the work is not
       // interrupted, whatever the title says (a concept round answering one
       // agent's notification while another one still builds).

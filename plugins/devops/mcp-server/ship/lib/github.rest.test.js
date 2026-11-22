@@ -72,11 +72,11 @@ describe("transport choice", () => {
     expect(calls.some((c) => c.args.includes("api"))).toBe(false);
   });
 
-  test("a draft request becomes a regular PR over REST and says so (REST cannot mark a draft ready)", () => {
+  test("a draft request is opened as a draft over REST (it goes ready through the proxy route)", () => {
     vi.stubEnv("CLAUDE_CODE_REMOTE", "true");
     route({ "gh api": { number: 3, html_url: "https://github.com/o/r/pull/3" } });
-    expect(createPR({ title: "T", body: "B", base: "main", head: "f", draft: true })).toMatchObject({ number: 3, draftDowngraded: true });
-    expect(JSON.parse(calls[0].input).draft).toBe(false);
+    expect(createPR({ title: "T", body: "B", base: "main", head: "f", draft: true })).toEqual({ number: 3, url: "https://github.com/o/r/pull/3" });
+    expect(JSON.parse(calls[0].input).draft).toBe(true);
   });
 });
 
@@ -85,7 +85,7 @@ describe("findExistingPR over REST", () => {
     vi.stubEnv("CLAUDE_CODE_REMOTE", "true");
     route({
       "gh api": (args) => (args.some((a) => a.includes("/pulls?"))
-        ? [{ number: 5 }]
+        ? [{ number: 5, html_url: "https://github.com/o/r/pull/5", draft: true }]
         : { number: 5, html_url: "https://github.com/o/r/pull/5", mergeable: false, draft: true }),
     });
     expect(findExistingPR({ base: "main", head: "claude/thread-x" })).toEqual({ number: 5, url: "https://github.com/o/r/pull/5", mergeable: "CONFLICTING", isDraft: true });
@@ -118,7 +118,7 @@ describe("mergePR over REST", () => {
         return { merged, state: merged ? "closed" : "open", head: { ref: "claude/thread-x", sha: "1".repeat(40) }, merge_commit_sha: "f".repeat(40), endpoint };
       },
     });
-    const r = mergePR(5, "main", {}, { strategy: "squash", ...noSleep });
+    const r = mergePR(5, "main", {}, { strategy: "squash", headBranch: "claude/thread-x", ...noSleep });
     expect(r).toMatchObject({ sha: "abc1234", verified: true, fullSha: "f".repeat(40) });
     const put = calls.find((c) => c.args.includes("PUT"));
     expect(put.args).toContain("repos/{owner}/{repo}/pulls/5/merge");
@@ -157,13 +157,15 @@ describe("mergePR over REST", () => {
 });
 
 describe("markPRReady over REST", () => {
-  test("a regular PR refreshes title and body; a draft is reported as not ready", () => {
+  test("a regular PR refreshes title and body; a draft goes ready through the proxy route", () => {
     vi.stubEnv("CLAUDE_CODE_REMOTE", "true");
     route({ "gh api": (args) => (args.includes("PATCH") ? {} : { draft: false }) });
     expect(markPRReady(5, { title: "T", body: "B" })).toEqual({ ok: true });
     expect(JSON.parse(calls.find((c) => c.args.includes("PATCH")).input)).toEqual({ title: "T", body: "B" });
-    route({ "gh api": { draft: true } });
-    expect(markPRReady(5, { title: "T" })).toMatchObject({ ok: false, error: expect.stringMatching(/draft/) });
+    calls.length = 0;
+    route({ "gh api": (args) => (args.includes("GET") ? { draft: true } : {}) });
+    expect(markPRReady(5, { title: "T" })).toEqual({ ok: true });
+    expect(calls.some((c) => c.args.includes("POST") && c.args.includes("repos/{owner}/{repo}/pulls/5/ccr/ready_for_review"))).toBe(true);
   });
 });
 
@@ -175,7 +177,7 @@ describe("watchPRChecks over REST", () => {
 
   const api = (runs, statuses = []) => route({
     "gh api": (args) => {
-      const ep = args[args.length - 1];
+      const ep = args.find((a) => a.startsWith("repos/"));
       if (/check-runs/.test(ep)) return { check_runs: runs() };
       if (/\/status/.test(ep)) return { statuses };
       return { head: { sha: "1".repeat(40) } };
@@ -214,7 +216,7 @@ describe("watchPRChecks over REST", () => {
     vi.stubEnv("CLAUDE_CODE_REMOTE", "");
     route({
       "gh pr checks": Object.assign(new Error("x"), { stderr: "GraphQL: blocked by proxy", status: 1 }),
-      "gh api": (args) => (/check-runs/.test(args[args.length - 1]) ? { check_runs: [{ name: "ci", status: "completed", conclusion: "success" }] } : /\/status/.test(args[args.length - 1]) ? { statuses: [] } : { head: { sha: "1".repeat(40) } }),
+      "gh api": (args) => (/check-runs/.test(args.find((a) => a.startsWith("repos/"))) ? { check_runs: [{ name: "ci", status: "completed", conclusion: "success" }] } : /\/status/.test(args.find((a) => a.startsWith("repos/"))) ? { statuses: [] } : { head: { sha: "1".repeat(40) } }),
     });
     expect(watchPRChecks(5, {}, opts()).status).toBe("passed");
   });

@@ -516,12 +516,13 @@
            Not a [data-comment] field and data-no-persist: its own store
            keeps it per concept and Etappe. -->
       <div class="dock-fidelity" id="dock-fidelity" data-on="false">
-        <label class="fidelity-switch">
+        <!-- #1179: the explanation is the switch's app tooltip (hover, keyboard
+             focus, long-press on touch), never permanent text in the dock. -->
+        <label class="fidelity-switch" data-tip="{{fidelity.hint}} · {{fidelity.scope}}">
           <input type="checkbox" id="fidelity-toggle" role="switch" data-no-persist>
           <span class="fidelity-track" aria-hidden="true"></span>
-          <span class="fidelity-text"><strong>{{fidelity.label}}</strong><small>{{fidelity.hint}}</small></span>
+          <span class="fidelity-text"><strong>{{fidelity.label}}</strong></span>
         </label>
-        <small class="fidelity-scope">{{fidelity.scope}}</small>
       </div>
     </aside>
   </div>

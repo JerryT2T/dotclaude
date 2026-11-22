@@ -31,16 +31,26 @@ function message(found) {
     + 'The text DEVOPS_ALLOW_VISIBLE_BROWSER in the command or code overrides, only when the user asked for this window.';
 }
 
+function userBrowser(cwd) {
+  try { return require('../lib/browser-choice').resolveBrowser({ cwd }).id; } catch { return 'edge'; }
+}
+
 /**
  * @param {object} hook parsed payload
  * @returns {{block: string}|null}
  */
-function main(hook) {
+function check(hook, browserOf = userBrowser) {
   if (!hook || !TOOLS.has(hook.tool_name) || !hook.tool_input) return null;
   const { findVisibleBrowser, hasBypass } = require('../lib/visible-browser-match');
   if (process.env.DEVOPS_ALLOW_VISIBLE_BROWSER === '1' || hasBypass(hook.tool_input)) return null;
-  const found = findVisibleBrowser(hook.tool_name, hook.tool_input);
+  let found = findVisibleBrowser(hook.tool_name, hook.tool_input);
+  // Chrome chosen as the user's browser (devops Home → Einstellungen): starting it is the rule, not a breach.
+  if (found.some((f) => f.kind === 'executable') && browserOf(hook.cwd) === 'chrome') found = found.filter((f) => f.kind !== 'executable');
   return found.length ? { block: message(found) } : null;
+}
+
+function main(hook) {
+  return check(hook);
 }
 
 if (require.main === module) {
@@ -51,4 +61,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { main };
+module.exports = { main, check };

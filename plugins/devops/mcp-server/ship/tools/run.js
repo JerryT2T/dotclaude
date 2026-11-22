@@ -30,7 +30,7 @@
 import { z } from "zod";
 import { createRequire } from "node:module";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative, isAbsolute, sep } from "node:path";
 import { gitTry } from "../lib/git.js";
 import { readVersion, bumpVersion, verifyVersionFiles, updateVersionFiles } from "../lib/version.js";
 import { versionFilesSchema } from "./version-bump.js";
@@ -160,6 +160,51 @@ export function bumpTargetDrift(cwd, vNew, versionFiles = []) {
   } catch { return []; }
 }
 
+/**
+ * #1191: the bump this branch already carries although no checkpoint names it (a blocked exit + ship_cleanup removed
+ * the checkpoint): the current version has its release commit on the branch, not on `origin/<base>`, and is above
+ * the base's version. Derived from git state alone, so a resumed ship never bumps a second time. Null when nothing
+ * landed (or git cannot tell, which only means "bump as usual").
+ * @returns {{ vNew: string, vOld: string|null, commit: string } | null}
+ */
+export function landedBump(cwd, base, version, commitMessage = null, versionFiles = []) {
+  if (!cwd || !base || !version) return null;
+  const subjects = new Set([`chore(release): v${version}`, ...(commitMessage ? [String(commitMessage).split("\n")[0].trim()] : [])]);
+  const log = gitTry(["log", "--format=%H%x09%s", `origin/${base}..HEAD`], { cwd });
+  if (!log) return null;
+  const hit = log.split("\n").map((l) => l.split("\t")).find(([, subj]) => subj && subjects.has(subj.trim()));
+  if (!hit) return null;
+  // The base must not already be at (or past) this version — then the commit is a leftover, not this ship's bump.
+  const baseVersion = (() => {
+    try {
+      const file = readVersion(cwd, versionFiles || []).file;
+      const root = gitTry(["rev-parse", "--show-toplevel"], { cwd }) || cwd;
+      const rel = relative(root, isAbsolute(file) ? file : join(cwd, file)).split(sep).join("/");
+      const text = gitTry(["show", `origin/${base}:${rel}`], { cwd });
+      if (!text) return null;
+      try {
+        const j = JSON.parse(text);
+        return (j && (j.version || (j.metadata && j.metadata.version))) || null;
+      } catch {
+        const m = text.match(/\bversion\b["']?\s*[:=]\s*["']([^"']+)["']/i);
+        return m ? m[1] : null;
+      }
+    } catch { return null; }
+  })();
+  if (baseVersion && !semverAbove(version, baseVersion)) return null;
+  return { vNew: version, vOld: baseVersion, commit: hit[0] };
+}
+
+function semverAbove(a, b) {
+  const pa = String(a).split(/[.-]/).slice(0, 3).map(Number);
+  const pb = String(b).split(/[.-]/).slice(0, 3).map(Number);
+  for (let i = 0; i < 3; i++) {
+    if (!Number.isFinite(pa[i]) || !Number.isFinite(pb[i])) return true;
+    if (pa[i] !== pb[i]) return pa[i] > pb[i];
+  }
+  return false;
+}
+
 function defaultTools() {
   // Imported lazily so a test can inject mocks without loading the real handlers.
   return Promise.all([
@@ -191,6 +236,7 @@ function defaultDeps() {
     recordTiming,
     summarize: summarizeShip,
     now: () => Date.now(),
+    landedBump,
     github: { readPR: readPRForLand, merge: mergePR, deleteBranch: deleteRemoteBranch },
     repoMode: detectRepoMode,
   };
@@ -404,6 +450,18 @@ export async function handler(params, injected = {}) {
     cp = deps.checkpoint.open(cwd) || cp;
     let bumpResult = (cp.steps && cp.steps.bump) || null;
     const finalShip = !pre.intermediate;
+    // #1191: no checkpoint bump, but the branch already carries an unreleased one (resume after a blocked exit and
+    // ship_cleanup): reuse it, never bump again.
+    if (!merged && finalShip && !bumpResult && params.bump && params.bump !== "none" && pre.mode === "git" && deps.landedBump) {
+      const current = (() => { try { return readVersion(cwd, params.versionFiles || []).version; } catch { return null; } })();
+      const landed = current ? deps.landedBump(cwd, pre.base, current, params.commitMessage, params.versionFiles || []) : null;
+      if (landed) {
+        bumpResult = { success: true, bump: params.bump, vOld: landed.vOld, vNew: landed.vNew, reused: true };
+        deps.checkpoint.record("ship_version_bump", { bump: params.bump, cwd }, bumpResult);
+        out.bump = bumpResult;
+        out.warnings.push(`branch already carries the release commit for v${landed.vNew} (${String(landed.commit).slice(0, 7)}) — bump reused, not repeated`);
+      }
+    }
     if (!merged && finalShip && !bumpResult && params.bump !== "none") {
       if (!params.bump) return needs("bump-required", { hint: "decide patch/minor/major/none (versioning.md § When to bump) and pass bump + changelogEntry" });
       if (params.bump === "major" && !params.majorConfirmed) return needs("major-bump", { hint: "ask the user (BLOCK under lockout); re-call with majorConfirmed:true" });

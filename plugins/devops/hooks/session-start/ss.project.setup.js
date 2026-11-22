@@ -60,6 +60,17 @@ function ownGitDir(root) {
   }
 }
 
+/** A linked worktree: its own git dir is not the clone's common dir. */
+function isLinkedWorktree(root, commonDir) {
+  const own = ownGitDir(root);
+  if (!own || !commonDir) return false;
+  try {
+    return !samePath(fs.realpathSync(own), fs.realpathSync(commonDir));
+  } catch {
+    return path.resolve(own) !== path.resolve(commonDir);
+  }
+}
+
 function operationInProgress(root) {
   const dir = ownGitDir(root);
   if (!dir) return true;
@@ -111,6 +122,12 @@ function syncGitignore(root, isNew, commonDir = null) {
   if (operationInProgress(root)) return 'skipped';
   const next = hasBlock ? applyBlock(text) : migrateGitignore(text).text;
   if (next === text) return 'current';
+  // #1182: in a LINKED worktree a stale block is not rewritten in the tracked
+  // file — that left the same uncommitted one-line .gitignore diff in every
+  // session worktree, which the archive dialog then offered to discard. The
+  // current block goes into the clone's shared info/exclude instead, until the
+  // main checkout (or a ship) carries the refresh.
+  if (hasBlock && commonDir && isLinkedWorktree(root, commonDir)) return syncExcludeFallback(commonDir);
   try {
     writeKeepingEol(file, old, next);
     return 'written';

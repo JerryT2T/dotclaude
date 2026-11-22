@@ -153,3 +153,27 @@ describe("bandCarriesCard", () => {
     expect(bandCarriesCard("unknown", { home })).toBe(false);
   });
 });
+
+// #1186: while a concept page is open the band data carries a real "Concept öffnen" button.
+describe("concept open button in the band data (#1186)", () => {
+  const dataOf = (text) => JSON.parse(text.match(/<script type="application\/json" id="dc-card-data">([\s\S]*?)<\/script>/)[1]);
+  const url = "http://localhost:4321/docs/concepts/x.html";
+  test("waiting and iterating carry it (de / en), its prompt is the token-free open-url prompt", async () => {
+    env("CLAUDE_CODE_ENTRYPOINT", "claude-desktop");
+    for (const [phase, lang, label, prefix] of [["waiting", "de", "Concept öffnen", "Im Standardbrowser öffnen:"], ["iterating", "de", "Concept öffnen", "Im Standardbrowser öffnen:"], ["waiting", "en", "Open concept", "Open in default browser:"]]) {
+      const res = await render({ variant: "ready", summary: "x", lang, session_id: `band-concept-${phase}-${lang}`, concept: { phase, url } });
+      const bt = dataOf(allText(res)).bt || [];
+      const b = bt.find((x) => x.l === label);
+      expect(b, `${phase}/${lang}`).toBeTruthy();
+      expect(b.p).toBe(`${prefix} ${url}`);
+    }
+  });
+  test("implementing and a card without a concept carry none", async () => {
+    env("CLAUDE_CODE_ENTRYPOINT", "claude-desktop");
+    for (const extra of [{ concept: { phase: "implementing", url } }, {}]) {
+      const res = await render({ variant: "ready", summary: "x", lang: "de", session_id: "band-concept-none-" + Object.keys(extra).length, ...extra });
+      const bt = dataOf(allText(res)).bt || [];
+      expect(bt.some((x) => x.l === "Concept öffnen")).toBe(false);
+    }
+  });
+});

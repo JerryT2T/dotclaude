@@ -126,7 +126,8 @@ const STATES = Object.freeze({
   'aborted-agents': ['aborted', 'Team', '🤖'],
   // 🟦 paused, per reason.
   'paused-user': ['paused', 'Paused', '✋'],
-  'paused-usage-reset': ['paused', 'Limit reset', '🔋'],
+  // "Limit", not "Limit reset": the card heading names the state, its sentence says when it ends.
+  'paused-usage-reset': ['paused', 'Limit', '🔋'],
   'paused-restart': ['paused', 'Restart', '🔌'],
   'paused-reboot': ['paused', 'Reboot', '💻'],
   // 🔴 the concept page lost its bridge; resuming the session reconnects it
@@ -272,6 +273,8 @@ const CONCEPT_WORKING_PREFIX = prefixOf('concept-working');
 const CONCEPT_OFFLINE_PREFIX = prefixOf('concept-offline');
 /** F5: a turn that ended without a card. */
 const INTERRUPTED_PREFIX = prefixOf('interrupted');
+/** A usage limit stopped the session: set by the paused card, the mod band and ss.title.sweep. */
+const LIMIT_PREFIX = prefixOf('paused-usage-reset');
 
 /** Every single-icon prefix older versions set — still stripped (R4). */
 const LEGACY_PREFIXES = Object.freeze([
@@ -342,7 +345,8 @@ const KNOWN = [];
   for (const [, word, act] of Object.values(STATES)) pairs.set(word + ' ' + act, [word, act]);
   pairs.set('Solo 🤖', ['Solo', '🤖']);
   // Words retired by 2.3 ("Alpha 🚀" before "Released Alpha"), both orders.
-  const retired = [['Alpha', '🚀'], ['Beta', '🚀'], ['Stable', '🚀']];
+  // "Limit reset 🔋" became "Limit" — worded titles in the wild still carry it.
+  const retired = [['Alpha', '🚀'], ['Beta', '🚀'], ['Stable', '🚀'], ['Limit reset', '🔋']];
   const current = new Map([...pairs, ...retired.map((wa) => [wa.join(' '), wa])]);
   // The 2.0/2.1 word-first order, with the icons it used (Started 💡).
   const wordFirst = new Map([...current, ['Started 💡', ['Started', '💡']]]);
@@ -621,6 +625,7 @@ module.exports = {
   CONCEPT_WORKING_PREFIX,
   CONCEPT_OFFLINE_PREFIX,
   INTERRUPTED_PREFIX,
+  LIMIT_PREFIX,
   LEGACY_PREFIXES,
   LEGACY,
   KNOWN_PREFIXES,

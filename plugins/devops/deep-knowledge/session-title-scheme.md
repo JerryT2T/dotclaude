@@ -41,7 +41,7 @@ approval — so Testing left the approval swap (see below).
 | user | `👉 ➜ 🧭` (Concept — page waits), `👉 ➜ 🔗` (Linked — a side session, handoff or deliver, waits on you), `👉 ➜ 📚` (Batch), `👉 ➜ 🧪` (Test), `👉 ➜ 📦` (Ready, Files), `👉 ➜ ❓` (Question), `👉 ➜ ⚠️` (Red tests, Unverified, Not deployed), `👉 ➜ 🚧` (Blocked), `👉 ➜ ⚡` (Interrupted, see F5) |
 | done | `🟩 ➜ 🚀` (Released Alpha — merged ship; Released Beta / Stable — ship and promote in one run; a sub shows its true result too, `🔗 🟩 ➜ 🚀`), `🟩 ➜ 🎊` (Beta / Stable — promote only), `🟩 ➜ 📦` (Committed; Delivered — a side session delivered its part, the parent ships), `🟩 ➜ ✨` (Started), `🟩 ➜ 📊` (Analysis), `🟩 ➜ 🖥️` (System — work outside the repo); never "LIVE" |
 | aborted | `🟥 ➜ 📦` (generic), `🟥 ➜ 🚀` (Ship), `🟥 ➜ 🎊` (Promote), `🟥 ➜ 🧪` (Test), `🟥 ➜ 🧭` (Concept), `🟥 ➜ 📚` (Batch), `🟥 ➜ 📊` (Analysis), `🟥 ➜ 🤖🤖🤖` (Team) |
-| paused | `🟦 ➜ ✋` (Paused), `🟦 ➜ 🔋` (Limit reset), `🟦 ➜ 🔌` (Restart), `🟦 ➜ 💻` (Reboot) |
+| paused | `🟦 ➜ ✋` (Paused), `🟦 ➜ 🔋` (Limit), `🟦 ➜ 🔌` (Restart), `🟦 ➜ 💻` (Reboot) |
 | offline | `🔴 ➜ 🧭` (Concept — set by `ss.title.sweep` only, see F5 after a crash) |
 
 A named abort keeps its activity (`🟥 ➜ 🚀 X`).
@@ -119,6 +119,16 @@ session is open (#833): then a Shipping / Team / Testing hourglass goes too, to 
 last delegated ship result's `titlePrefix` in the transcript (e.g.
 `🟩 ➜ 🚀 `), else to `👉 ➜ ⚡ `. A working concept
 page stays.
+
+**Limit stop.** `🟦 ➜ 🔋 <title>` has three writers, because a turn
+the usage limit cuts leaves no model turn to rename anything: the paused card
+(`pause.reason: "usage-reset"`, when Claude stops before the limit), the mod
+band (`markLimit` in `hooks/mods/index.tsx`: on a main turn whose whole answer
+is Claude Code's "limit hit" line it renames its own session through the app's
+session tools, no model turn — only a ⏳ title, a card's outcome stays), and
+`ss.title.sweep` for sessions without a band (their transcript ends on the
+limit record → Limit instead of Interrupted, also while the process lives).
+The card heading says "Limit"; a worded title of an older version (`Limit ┃`, `Limit reset ┃`) is still recognised and stripped.
 
 **F5 after a crash.** A killed process (app quit, crash, reboot) runs no Stop
 hook, so its ⏳ title survives. `ss.title.sweep` (SessionStart of the next session

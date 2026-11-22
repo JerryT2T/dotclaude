@@ -52,6 +52,8 @@ export const schema = z.object({
  */
 export function openEarlyDraft({ branch, base, cwd }) {
   const opts = { cwd };
+  // #1202: track origin/<branch> explicitly (a narrow-refspec clone never does), so the lease is current.
+  try { gitArgs(["fetch", "origin", `+refs/heads/${branch}:refs/remotes/origin/${branch}`], { cwd, timeout: 60_000 }); } catch { /* not on origin yet */ }
   try {
     gitArgs(["push", "-u", "origin", branch, "--force-with-lease"], { cwd, timeout: 60_000 });
   } catch (e) {
@@ -584,6 +586,8 @@ export async function handler(params) {
   // Collect warnings from checks (non-blocking issues resolved autonomously)
   const warnings =checks.filter(c => c.warning).map(c => c.warning);
   if (noRemote) warnings.push("No origin remote — push, PR creation, and merge will be skipped");
+  // #1202: say up front how a cloud ship lands.
+  else if (process.env.CLAUDE_CODE_REMOTE === "true") warnings.push("Cloud session: PR and merge go through the GitHub REST API; the release tag is handed to the owner (the cloud proxy refuses tag writes)");
 
   // Determine if rebase is needed (any merge-safety warnings present).
   //

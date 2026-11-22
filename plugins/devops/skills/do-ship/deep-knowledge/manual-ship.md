@@ -76,8 +76,10 @@ never worked around by a merge commit or a lightweight tag.
 
 - **Push** — `git push -u origin <branch>` (a branch push works).
 - **5. PR** — `gh api -X POST repos/{owner}/{repo}/pulls -f title='type(scope): summary' -f head='<branch>' -f base='<base>' -f body='Closes #N …'`;
-  the answer carries `number` and `html_url`. REST cannot make a draft ready:
-  create it as a regular PR. A PR for the branch already open: `gh api 'repos/{owner}/{repo}/pulls?state=open&head={owner}:<branch>'`.
+  the answer carries `number` and `html_url`. REST has no ready-for-review call
+  (GraphQL only), but the proxy offers its own route for a draft:
+  `gh api -X POST repos/{owner}/{repo}/pulls/<N>/ccr/ready_for_review`; the
+  simplest is to create the PR as a regular one. A PR for the branch already open: `gh api 'repos/{owner}/{repo}/pulls?state=open&head={owner}:<branch>'`.
 - **6. Wait for checks** — `SHA=$(git rev-parse HEAD)`, then every ~30 s:
   `gh api repos/{owner}/{repo}/commits/$SHA/check-runs --jq '.check_runs[] | [.name,.status,.conclusion] | @tsv'`
   and `gh api repos/{owner}/{repo}/commits/$SHA/status --jq .state`. Green =

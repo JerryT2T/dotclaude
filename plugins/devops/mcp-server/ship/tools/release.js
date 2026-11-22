@@ -534,6 +534,15 @@ export async function handler(params) {
     // gitArgs surfaces that as a throw, which here means "no remote-tracking
     // ref yet" → push without a lease. (F2)
     let remoteBranchSha = null;
+    // #1202: a narrow-refspec clone (cloud sessions fetch only +refs/heads/main)
+    // never tracks origin/<branch>, so the lease would be stale or missing.
+    // Fetch the branch ref explicitly first; a branch not on origin yet fails
+    // here and simply has no lease to pin.
+    try {
+      gitArgs(["fetch", "origin", `+refs/heads/${branch}:refs/remotes/origin/${branch}`], { cwd, timeout: NETWORK_TIMEOUT });
+    } catch {
+      /* not on origin yet */
+    }
     try {
       remoteBranchSha = gitArgs(["rev-parse", "--verify", "--quiet", `refs/remotes/origin/${branch}`], opts) || null;
     } catch {
@@ -846,7 +855,7 @@ export async function handler(params) {
     // after the merge below instead, #442; the local branch stays with the
     // worktree: the Desktop app owns that lifecycle, ship_hygiene / auto-cleanup the rest)
     const worktree = isWorktree(opts);
-    const merge = mergePR(pr.number, base, opts, { skipDeleteBranch: worktree, strategy: mergeStrategy });
+    const merge = mergePR(pr.number, base, opts, { skipDeleteBranch: worktree, strategy: mergeStrategy, headBranch: branch });
     // The merge is the irreversible step. From here on the result MUST carry
     // merged + mergeSha whatever else fails (#398, #372 contract): a caller
     // reading a bare success:false after this line would retry (double-ship)
