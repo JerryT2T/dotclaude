@@ -1,4 +1,4 @@
-# Concept templates, part 28 of 53: Shared systems — decision panel state CSS (continued 4)
+# Concept templates, part 28 of 54: Shared systems — decision panel state CSS (continued 4)
 
 ```css
 /* ── Journey row (§ Submit → Journey row) ──────────────────────────────────

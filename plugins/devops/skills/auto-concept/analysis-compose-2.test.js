@@ -363,7 +363,7 @@ describe("attachments belong to the message they were sent with (#1079)", () => 
     expect(bubbles(doc)).toHaveLength(1);
     expect(bubbles(doc)[0].querySelector(".an-note-att img")).not.toBeNull();
   });
-  test("the pen puts text AND attachments back; delete removes both", async () => {
+  test("the pen puts text AND attachments back; delete moves both into the unsent draft", async () => {
     const { w, doc, ca } = page(FULL, { engine: true });
     const inst = open(w, ca);
     pasteFile(w, inst.comp.ed);
@@ -382,8 +382,59 @@ describe("attachments belong to the message they were sent with (#1079)", () => 
     bubbles(doc)[0].querySelectorAll(".an-note-b")[1].click();   // x of the message
     await flush();
     expect(bubbles(doc)).toHaveLength(0);
-    expect(w._attachments.get("a1-note")).toHaveLength(0);
+    expect(w._attachments.get("a1-note")).toHaveLength(1);       // not lost: waiting in the draft, flagged
+    expect(w._attachments.get("a1-note")[0].draft).toBe(true);
+    expect(w._attachments.get("a1-note")[0].msg).toBeUndefined();
+    expect(inst.comp.ed.textContent).toBe("first");
+    expect(inst.comp.strip.querySelectorAll(".an-att-i")).toHaveLength(1);
     expect(doc.querySelector("#a1 .an-note").value).toBe("");
+  });
+  test("a deleted message's attachment is pending in the draft, not in the payload; sending the draft makes it a message again", async () => {
+    const { w, doc, ca } = page(FULL, { engine: true });
+    const inst = open(w, ca);
+    pasteFile(w, inst.comp.ed);
+    await flush();
+    send(w, ca, inst, "first");
+    await flush();
+    const rec = w._attachments.get("a1-note")[0];
+    rec.synced = true; rec.id = "abc";
+    expect(w.attachmentsFor("a1-note")).toHaveLength(1);         // sent with its message: in the payload
+    bubbles(doc)[0].querySelectorAll(".an-note-b")[1].click();
+    await flush();
+    expect(w.attachmentsFor("a1-note")).toHaveLength(0);         // an unsent draft is never part of the result
+    ca.flush();
+    expect(w.collectModeDecision(doc.getElementById("a1")).note).toBe("");
+    ca.go(inst, 0); ca.go(inst, inst.stages.findIndex(s => s.el.id === "a1"));
+    expect(inst.comp.ed.textContent).toBe("first");
+    expect(bubbles(doc)).toHaveLength(0);                         // leaving never turned the draft into a message
+    expect(w._attachments.get("a1-note")[0].draft).toBe(true);
+    ca.sendNote(inst);
+    await flush();
+    expect(bubbles(doc)).toHaveLength(1);
+    expect(bubbles(doc)[0].querySelector(".an-note-att img")).not.toBeNull();
+    expect(w._attachments.get("a1-note")[0].draft).toBeUndefined();
+    expect(w.attachmentsFor("a1-note")).toHaveLength(1);
+  });
+  test("an image-only message deleted comes back as an attachment-only draft, also after a reload", async () => {
+    const { w, doc, ca } = page(FULL, { engine: true });
+    const inst = open(w, ca);
+    pasteFile(w, inst.comp.ed);
+    await flush();
+    ca.sendNote(inst);
+    await flush();
+    bubbles(doc)[0].querySelectorAll(".an-note-b")[1].click();
+    await flush();
+    expect(bubbles(doc)).toHaveLength(0);
+    expect(inst.comp.strip.querySelectorAll(".an-att-i")).toHaveLength(1);
+    const recs = w._attachments.get("a1-note");
+    const re = page(FULL, { engine: true });                      // reload: records come back from IndexedDB, flagged
+    const inst2 = open(re.w, re.ca);
+    re.w._attachments.set("a1-note", recs.map(r => ({ ...r })));
+    re.w.renderAttachments("a1-note");
+    expect(inst2.comp.strip.querySelectorAll(".an-att-i")).toHaveLength(1);
+    expect(inst2.stages[inst2.idx].restDraft).toBe("");
+    ca.go(inst, 0); ca.go(inst, inst.stages.findIndex(s => s.el.id === "a1"));
+    expect(bubbles(doc)).toHaveLength(0);
   });
   test("x on the bubble's thumbnail removes only the attachment; an image-only message goes with its last one", async () => {
     const { w, doc, ca } = page(FULL, { engine: true });

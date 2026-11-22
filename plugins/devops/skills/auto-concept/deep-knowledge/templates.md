@@ -53,12 +53,13 @@ Index of the concept engine reference: the three templates (decision, design, fr
 | 45 | [templates-final-report-review.md](templates-final-report-review.md) | 120 | Final Report Panel (continued) · The review switch — "Umsetzung prüfen" · The review round |
 | 46 | [templates-analysis.md](templates-analysis.md) | 293 | Template: analysis (Full + Lite) · Markup contract · Decision modes · Payload · collectModeDecision · Display palette |
 | 47 | [templates-analysis-css.md](templates-analysis-css.md) | 341 | Template: analysis — Styling CSS (Full + Lite) |
-| 48 | [templates-analysis-js.md](templates-analysis-js.md) | 579 | Template: analysis — Engine UI JS (palette, stages, stepper, choreography) |
-| 49 | [templates-analysis-js-2.md](templates-analysis-js-2.md) | 609 | Template: analysis — Engine UI JS (continued) |
-| 50 | [templates-stages.md](templates-stages.md) | 332 | Etappen (stages) — contract, panel head name, round row, stepper tabs, next-stage station · CSS |
-| 51 | [templates-stages-js.md](templates-stages-js.md) | 599 | Etappen JS (stepper, panes, start control, journey row, stage report naming) |
-| 52 | [templates-stages-free-js.md](templates-stages-free-js.md) | 221 | Etappen — the close-out of a stage report ("Offene Etappen", continue vs final) JS |
-| 53 | [templates-voice-js.md](templates-voice-js.md) | 449 | Voice input — mic buttons, notes voice mode (JS + CSS) |
+| 48 | [templates-analysis-js.md](templates-analysis-js.md) | 551 | Template: analysis — Engine UI JS (palette, stages, stepper, choreography) |
+| 49 | [templates-analysis-composer.md](templates-analysis-composer.md) | 591 | Template: analysis — Engine UI JS, composer and note store (the restored draft, attachments of a message, send) |
+| 50 | [templates-analysis-js-2.md](templates-analysis-js-2.md) | 609 | Template: analysis — Engine UI JS (continued) |
+| 51 | [templates-stages.md](templates-stages.md) | 332 | Etappen (stages) — contract, panel head name, round row, stepper tabs, next-stage station · CSS |
+| 52 | [templates-stages-js.md](templates-stages-js.md) | 599 | Etappen JS (stepper, panes, start control, journey row, stage report naming) |
+| 53 | [templates-stages-free-js.md](templates-stages-free-js.md) | 221 | Etappen — the close-out of a stage report ("Offene Etappen", continue vs final) JS |
+| 54 | [templates-voice-js.md](templates-voice-js.md) | 449 | Voice input — mic buttons, notes voice mode (JS + CSS) |
 
 ## Using the parts
 

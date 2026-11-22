@@ -1,4 +1,4 @@
-# Concept templates, part 33 of 53: Shared systems — attachments JS
+# Concept templates, part 33 of 54: Shared systems — attachments JS
 
 ### JS
 
@@ -411,7 +411,7 @@ async function restoreAttachments() {
 // advertised as a path that does not exist.
 function attachmentsFor(slotKey) {
   return (_attachments.get(slotKey) || [])
-    .filter(r => r.synced && r.id)
+    .filter(r => r.synced && r.id && !r.draft)
     .map(r => {
       const a = { id: r.id, name: r.name, mime: r.mime, size: r.size,
                   path: '.claude/concepts/{{slug}}/attachments/' + r.id };
@@ -428,8 +428,9 @@ function attachmentsFor(slotKey) {
 // link survives a reload). The marker never reaches the payload text.
 const MSG_MARK_ALL = /\u2063[a-z0-9]+/g;
 function stripMsgMarks(s) { return String(s == null ? '' : s).replace(MSG_MARK_ALL, ''); }
-function setAttachmentMsg(rec, msgId) {
-  if (msgId) rec.msg = msgId; else delete rec.msg;
+function setAttachmentMsg(rec, msgId, draft) {
+  // draft: the record waits in a restored (unsent) draft - kept, but not named in the payload (attachmentsFor).
+  if (msgId) { rec.msg = msgId; delete rec.draft; } else { delete rec.msg; if (draft) rec.draft = true; else delete rec.draft; }
   attachDBPut(rec).catch(() => { /* private mode: the in-memory link still holds */ });
 }
 // The message a tagged record belongs to, as plain text (the store is the

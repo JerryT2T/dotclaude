@@ -1,4 +1,4 @@
-# Concept templates, part 27 of 53: Shared systems — decision panel state CSS (continued 3)
+# Concept templates, part 27 of 54: Shared systems — decision panel state CSS (continued 3)
 
 ```css
 /* ── Final-report body components (§ Final Report Panel → Report body) ──────
