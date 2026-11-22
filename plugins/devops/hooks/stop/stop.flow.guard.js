@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook stop.flow.guard
- * @version 0.14.1
+ * @version 0.15.0
  * @event Stop
  * @plugin devops
  * @description Per-turn completion card + validation enforcement (the validation
@@ -72,6 +72,11 @@
  *   goes too, to the last delegated ship result's `titlePrefix` found in the
  *   transcript, else to Interrupted. A working concept page stays.
  *
+ *   Project thread (0.15.0): in a Claude Projects thread
+ *   (lib/project-thread.js) the gate never blocks — the person sees only the
+ *   thread's own posts, and a blocked stop did not continue the turn there. It
+ *   clears its per-turn flags, releases the title token and passes.
+ *
  *   Card-data pointer (#712 R6): when it blocks while a delegated
  *   `--card-data` ship left its card input in
  *   `.claude/.ship-carddata-<session>.json` (lib/ship-carddata.js), the reason
@@ -130,6 +135,13 @@ function interruptReason(title) {
 }
 /** Flag the card renderer leaves (#1090): the exact title its title block demanded. */
 const CARD_TITLE_FLAG = 'dotclaude-devops-card-title';
+/** The per-turn flags this gate owns — cleared wholesale where it cannot enforce (a project thread). */
+const THREAD_TURN_FLAGS = [
+  'dotclaude-devops-work-happened', 'dotclaude-devops-card-rendered', 'dotclaude-devops-silent-turn',
+  'dotclaude-devops-validation-pending', 'dotclaude-devops-validation-attested', 'dotclaude-devops-validation-open',
+  'dotclaude-devops-pending-attested', 'dotclaude-devops-scheduled-task', 'dotclaude-devops-shipped',
+  'dotclaude-devops-card-widget', CARD_TITLE_FLAG,
+];
 
 /**
  * The block reason for a card turn whose session title is not the one the
@@ -183,6 +195,22 @@ process.stdin.on('end', () => {
   if (!hook || typeof hook !== 'object') process.exit(0);
 
   const sessionId = hook.session_id;
+
+  // A Claude Projects thread (lib/project-thread.js): the turn already ended
+  // with its hearthbot call and nothing shown outside those tools reaches the
+  // person — a block here names tools nobody sees and only surfaces as a stale
+  // reminder on the next wake. Clear this turn's flags, hand the title token
+  // back, pass. Every channel; the card itself is asked for earlier (post.flow.completion).
+  let projectThread = false;
+  try { projectThread = require('../lib/project-thread').isThread(hook, { deep: true }); } catch { /* not a thread */ }
+  if (projectThread) {
+    for (const prefix of THREAD_TURN_FLAGS) {
+      const flag = readSessionFile(prefix, sessionId, { exact: true });
+      if (flag) try { fs.unlinkSync(flag.filePath); } catch { /* already gone */ }
+    }
+    releaseOnce('prompt-title-work', sessionId);
+    process.exit(0);
+  }
 
   // Enforcement flags — exact match only, never the glob fallback (issue #290):
   // this gate blocks the stop on them, so a neighbouring session's file must not
