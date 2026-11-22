@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.400.0] — 2026-11-22
+
+### Added
+- **Browser choice in devops Home.** Einstellungen has a Browser dropdown with the installed browsers plus In-App (the Desktop app's browser pane). Edge stays the default while it is installed; without any browser In-App is used. Concept pages, the waker's re-open and files re-opened after a ship follow the choice. Also by chat ("nimm Chrome als Browser") via `scripts/browser-choice.js`; setting `browser.default` (machine-wide).
+- **Limit title after a hard limit stop.** A session whose turn the usage limit cut now reads `🟦 ➜ 🔋 Limit ┃ …` instead of keeping its `⏳`: the mod band renames it without a model turn, `ss.title.sweep` covers sessions without a band.
+
+### Changed
+- The sidebar and card word for a usage-limit pause is "Limit" (was "Limit reset"). Titles with the old word are still recognised.
+- `pre.visible-browser.guard` no longer blocks starting Chrome when Chrome is the chosen browser.
+
+### Fixed
+- Pages opened for the user no longer pass through `cmd /c start` when the URL holds a quote, `%VAR%`, `&` or a space: the browser executable is started directly.
+
 ## [0.399.1] — 2026-11-22
 
 ### Fixed
