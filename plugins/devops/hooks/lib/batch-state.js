@@ -1280,6 +1280,9 @@ function classify({ text, hookInput, marker, modeActive, foreign }) {
 function willBeCollected(hookInput) {
   try {
     if (!hookInput || typeof hookInput !== 'object') return false;
+    // A coordinator note is a colleague's turn, never a note of the user's (lib/project-thread.js).
+    const thread = require('./project-thread');
+    if (thread.isColleagueOrigin(thread.promptFields(hookInput).prompt_origin)) return false;
     const text = hookInput.prompt || hookInput.user_message || hookInput.message || '';
     if (parseOpenUrlPrompt(text)) return true;
     const cwd = hookInput.cwd || process.cwd();

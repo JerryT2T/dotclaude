@@ -83,6 +83,9 @@ function decide(hook, opts = {}) {
   if (!hook || hook.agent_id) return null;
   const prompt = hook.prompt || hook.user_message || hook.message || '';
   if (typeof prompt !== 'string' || !prompt.trim()) return null;
+  // A coordinator note is a colleague's words, not the person's frustration.
+  const thread = require('../lib/project-thread');
+  if (thread.isColleagueOrigin(thread.promptFields(hook).prompt_origin)) return null;
   if (require('../lib/non-user-prompt').isNonUserPrompt(prompt)) return null;
   if (prompt.includes('<command-name>')) return null;
 

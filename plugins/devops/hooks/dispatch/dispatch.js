@@ -443,6 +443,21 @@ function readStdin() {
   });
 }
 
+/**
+ * The one place a UserPromptSubmit prompt is unwrapped (lib/project-thread.js, PROMPT INTAKE
+ * CONTRACT): `prompt` becomes the words to act on, `prompt_raw` keeps the runtime's prompt,
+ * `prompt_origin` says who spoke. A typed prompt keeps its bytes. Any other event, or a
+ * payload without a string prompt, is returned as it came.
+ * @returns {{ raw: string, payload: object|null }}
+ */
+function normalizeInput(event, raw, payload) {
+  if (event !== 'UserPromptSubmit' || !payload || typeof payload.prompt !== 'string') return { raw, payload };
+  try {
+    const next = require('../lib/project-thread').normalizePromptInput(payload);
+    return next === payload ? { raw, payload } : { raw: JSON.stringify(next), payload: next };
+  } catch { return { raw, payload }; }
+}
+
 async function main() {
   const startedAt = Date.now() - Math.round(process.uptime() * 1000);
   const event = String(process.argv[2] || '');
@@ -450,7 +465,7 @@ async function main() {
   const laneKey = fast ? `${event}:fast` : event;
   const tele = telemetry();
   if (tele) tele.setHook(`dispatch:${laneKey}`);
-  const raw = await readStdin();
+  let raw = await readStdin();
   let payload = null;
   try { payload = require('../lib/hook-input').parseHookInput(raw); } catch { /* matcher falls back to all */ }
   // "devops off for this session": silent from this event on (lib/devops-optout.js)
@@ -460,6 +475,7 @@ async function main() {
   if (payload === null && /^(?:null|true|false|-?\d[\d.eE+-]*|\[[\s\S]*\]|"[\s\S]*")$/.test(String(raw || '').replace(/^\uFEFF/, '').trim())) return { code: 0, stdout: '', stderr: '' };
   let manifest;
   try { manifest = loadManifest(); } catch { return unchecked(event, fast, 'the hook manifest could not be read'); }
+  ({ raw, payload } = normalizeInput(event, raw, payload));
   const all = laneModules(manifest, event, PLUGIN_ROOT, { fast });
   if (!all.length) return { code: 0, stdout: '', stderr: '' };
   const modules = selectModules(manifest, event, payload, PLUGIN_ROOT, { fast });
@@ -558,6 +574,6 @@ if (require.main === module) {
 }
 
 module.exports = {
-  moduleFile, loadManifest, loadLanes, laneGroups, eventModules, laneModules, eventBudgetS, selectModules, runEvent, dispatchDisabled, hardExitStdout, guardFailOpen, guardFailure, failClosed, guardedLane, finalReply, unchecked, recordHardEnd,
+  normalizeInput, moduleFile, loadManifest, loadLanes, laneGroups, eventModules, laneModules, eventBudgetS, selectModules, runEvent, dispatchDisabled, hardExitStdout, guardFailOpen, guardFailure, failClosed, guardedLane, finalReply, unchecked, recordHardEnd,
   HARD_END_TEXT, DEFAULT_TIMEOUT_S, FAST_DEFAULT_TIMEOUT_S, HEADROOM_S, MIN_START_MS, TERMINATE_GRACE_MS, MANIFEST,
 };

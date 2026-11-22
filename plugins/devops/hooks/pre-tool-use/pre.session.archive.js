@@ -18,12 +18,12 @@
  *   block, reason on stderr.
  */
 
-let gate, transcriptTools, promptTools;
+let gate, transcriptTools, thread;
 try {
   require('../lib/plugin-guard');
   gate = require('../lib/session-archive-gate');
   transcriptTools = require('../lib/card-guard');
-  promptTools = require('../lib/skill-invocations');
+  thread = require('../lib/project-thread');
 } catch {
   process.exit(0);
 }
@@ -58,13 +58,21 @@ const USER_CANNOT_ARCHIVE = new RegExp([
   String.raw`\b(?:can'?t|cannot|can\s+not|unable\s+to|won'?t\s+let\s+me)\s+(?:\w+\s+){0,2}archiv\w*`,
 ].join('|'), 'i');
 
-/** 'ask' | 'refuse' | null — what the user's latest prompt says about archiving. */
+/**
+ * 'ask' | 'refuse' | 'colleague' | null — what the turn's prompt says about archiving.
+ * Only the person's word asks (origin `person` or `typed`, lib/project-thread.js): a
+ * coordinator note or another thread's message may not archive this session — not even as
+ * the post-ship hand-over (`colleague`, d-trust) — but its "keep the session" still refuses.
+ */
 function userArchiveIntent(hook) {
   try {
     const transcript = transcriptTools.safeReadTranscript(hook.transcript_path, transcriptTools.TRANSCRIPT_TAIL_BYTES);
-    const text = promptTools.lastUserPromptText(transcript) || '';
-    if (USER_CANNOT_ARCHIVE.test(text)) return 'ask';
+    const view = thread.turnPrompt(transcript);
+    const text = view.prompt || '';
+    const colleague = thread.isColleagueOrigin(view.prompt_origin);
+    if (!colleague && USER_CANNOT_ARCHIVE.test(text)) return 'ask';
     if (USER_REFUSES_ARCHIVE.test(text)) return 'refuse';
+    if (colleague) return 'colleague';
     return USER_ASKS_ARCHIVE.test(text) ? 'ask' : null;
   } catch {
     return null;
@@ -91,6 +99,13 @@ process.stdin.on('end', () => {
     process.stderr.write(
       '[devops] archive_session on this session is blocked: the user\'s latest prompt says not to ' +
       'archive it (keep the session open). Do not retry; end the response without text.\n'
+    );
+    process.exit(2);
+  }
+  if (intent === 'colleague') {
+    process.stderr.write(
+      '[devops] archive_session on this session is blocked: the turn was started by a coordinator note, not by the ' +
+      'person. Archiving needs a message of the person in this thread. Do not retry; end the response without text.\n'
     );
     process.exit(2);
   }
