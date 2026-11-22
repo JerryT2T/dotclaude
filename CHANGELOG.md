@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.398.0] — 2026-11-22
+
+### Added
+- Home pane: „🛏 Ins Bett gehen“ — powers the PC off once no Claude session works any more, nobody is at the PC and no busy job runs; the row shows whom it waits for and „Abbrechen“ stops it, a 60 s countdown included
+- `scripts/sessions-active.js` (`check` / `wait`): who is working right now, from each Claude process's own status instead of transcript write times
+
+### Changed
+- do-run shutdown (Step 8a, bedtime with nothing left to do): waits for every working session through the new detector — open background work and a wake-up due soon count, an open concept page, a heartbeat or a title rename do not; the calling session is excluded by its id, so a second session in the same checkout is no longer overlooked
+
+### Fixed
+- do-run no longer powers off after 30 min while another session still works, and the 8 h watchdog hands the power-off to the bedtime watcher instead of forcing it
+
+## [0.397.0] — 2026-11-22
+
+### Added
+- **Concept closing page: Funde in focus.** Every open Fund is a visible card in the report (what, where, why pre-selected) with its own route pill (⚡ Jetzt → 📌 Issue → Weglassen) instead of a row in a collapsed fold.
+- **Concept closing page: close out without the menu.** Plan line, page disposition, „Abschließen & shippen“, „Nur abschließen, nicht shippen“ and „Nachbessern“ stand beside the Fund cards in the report. Opening ☰ moves the same block into the menu and back, so there is one set of buttons and one state.
+
+### Changed
+- Engine reference: the panel-state CSS part is split in two, the assembled engine is unchanged.
+
 ## [0.395.1] — 2026-11-22
 
 ### Fixed

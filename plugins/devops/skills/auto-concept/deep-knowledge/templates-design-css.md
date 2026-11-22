@@ -1,4 +1,4 @@
-# Concept templates, part 12 of 53: Template: design — layout CSS
+# Concept templates, part 12 of 54: Template: design — layout CSS
 
 ## Layout CSS
 

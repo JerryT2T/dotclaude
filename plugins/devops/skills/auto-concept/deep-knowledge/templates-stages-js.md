@@ -1,4 +1,4 @@
-# Concept templates, part 51 of 53: Shared systems — Etappen (stages) JS
+# Concept templates, part 52 of 54: Shared systems — Etappen (stages) JS
 
 ## Etappen JS
 

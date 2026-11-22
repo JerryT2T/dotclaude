@@ -1,4 +1,4 @@
-# Concept templates, part 48 of 53: Template: analysis — engine UI JS, composer and note store (continued 2)
+# Concept templates, part 49 of 54: Template: analysis — engine UI JS, composer and note store (continued 2)
 
 ```javascript
   /* ----- persistent composer: THE note field of the open stage ----- */

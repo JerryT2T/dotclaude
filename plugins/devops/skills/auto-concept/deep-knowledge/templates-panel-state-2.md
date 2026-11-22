@@ -1,4 +1,4 @@
-# Concept templates, part 26 of 53: Shared systems — decision panel state CSS (continued 2)
+# Concept templates, part 26 of 54: Shared systems — decision panel state CSS (continued 2)
 
 ```css
 /* Close-out sheet — the final report's to-do inbox. A flex column end to
@@ -119,8 +119,9 @@
   line-clamp: 2;
 }
 /* Route pill — ⚡ warning (the one route that writes code, the implement
-   colour), 📌 accent (the issue colour), Weglassen neutral. */
-.closeout-sheet .closeout-pill {
+   colour), 📌 accent (the issue colour), Weglassen neutral. The same pill sits
+   on every Fund card in the report (`.fr-funde`, syncFundPills()). */
+:is(.closeout-sheet, .fr-funde) .closeout-pill {
   flex: none;
   font-size: 0.72rem;
   font-weight: 700;
@@ -131,16 +132,19 @@
   border: 1px solid var(--border-color, #30363d);
   color: var(--text-secondary, #8b949e);
 }
-.closeout-sheet .closeout-pill[data-route="implement"] {
+:is(.closeout-sheet, .fr-funde) .closeout-pill[data-route="implement"] {
   color: var(--warning-color, #d29922);
   border-color: color-mix(in srgb, var(--warning-color, #d29922) 60%, transparent);
   background: color-mix(in srgb, var(--warning-color, #d29922) 12%, transparent);
 }
-.closeout-sheet .closeout-pill[data-route="issue"] {
+:is(.closeout-sheet, .fr-funde) .closeout-pill[data-route="issue"] {
   color: var(--accent-color, #58a6ff);
   border-color: color-mix(in srgb, var(--accent-color, #58a6ff) 60%, transparent);
   background: color-mix(in srgb, var(--accent-color, #58a6ff) 12%, transparent);
 }
+.fr-funde [data-fund-pill] { font-family: inherit; cursor: pointer; }
+.fr-funde [data-fund-pill]:disabled { cursor: default; }
+.fr-funde [data-fund-pill]:focus-visible { outline: 2px solid var(--accent-color, #58a6ff); outline-offset: 2px; }
 .closeout-sheet .closeout-crit {
   flex: none;
   font-size: 0.66rem;
