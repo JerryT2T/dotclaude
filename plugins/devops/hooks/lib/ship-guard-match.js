@@ -245,11 +245,16 @@ function gitSegments(cmd, cwd) {
   const sep = /[\n;&|(){}]/g;
   const spans = [];
   let start = 0;
-  for (let m; (m = sep.exec(masked)); start = m.index + 1) spans.push([start, m.index]);
-  spans.push([start, masked.length]);
+  let opener = '';
+  for (let m; (m = sep.exec(masked)); start = m.index + 1) { spans.push([start, m.index, opener]); opener = m[0]; }
+  spans.push([start, masked.length, opener]);
   let shellDir = cwd || null;
+  // A `cd` inside `( … )` ends with the subshell: the directory before it is back.
+  const saved = [];
   const out = [];
-  for (const [a, b] of spans) {
+  for (const [a, b, before] of spans) {
+    if (before === '(') saved.push(shellDir);
+    else if (before === ')' && saved.length) shellDir = saved.pop();
     const text = joined.slice(a, b);
     const toks = shellTokens(text);
     let i = 0;

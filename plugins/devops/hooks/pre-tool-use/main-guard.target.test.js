@@ -128,6 +128,13 @@ describe("B1 — the command's own repo decides, not the start folder", () => {
     expect(sh("cd c && git commit -m x; cd ../a && git commit -m y", coll).status).toBe(2);
   }, TIMEOUT);
 
+  test("a cd inside a subshell ends with it: the write after it acts on the directory before", () => {
+    // cwd a is on main: the subshell's `cd` into the feature repo must not vouch for the commit after it
+    expect(sh("(cd ../c && git status); git commit -m x", repos.a).status).toBe(2);
+    expect(sh("(cd ../c && git commit -m x)", repos.a).status).toBe(0);
+    expect(sh("(cd a && git status); git -C c commit -m x", coll).status).toBe(0);
+  }, TIMEOUT);
+
   test("harmless commands stay unblocked in a non-repo folder", () => {
     for (const c of [
       "git commit -m x", // acts on the folder itself: no repo, git fails by itself
