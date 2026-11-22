@@ -278,6 +278,19 @@ describe("buttonsFor — § 3 table, Buttons column", () => {
     expect(buttonsFor("ready", "de", { nextStep: step })[0].label).toBe("Ship");
   });
 
+  // #1185: a recommended step that names the web guide renders as the guide button.
+  test("analysis with a web-guide nextStep: the button is Web-Guide starten (compass), not Empfehlung umsetzen", () => {
+    const step = "Führ mich per Web-Guide durch das App-Passwort für mein persönliches Gmail, nur lesend verknüpfen.";
+    const de = buttonsFor("analysis", "de", { nextStep: step });
+    expect(de[0]).toMatchObject({ label: "Web-Guide starten", icon: "compass", prompt: step, primary: true });
+    expect(de).toHaveLength(1);
+    expect(buttonsFor("analysis", "en", { nextStep: "Guide me through the Stripe key with the web guide" })[0].label).toBe("Start web guide");
+    // a detected hand-off does not add a second guide button beside it
+    expect(buttonsFor("analysis", "de", { nextStep: step, guideHandoff: { service: "Google" } }).filter((b) => b.icon === "compass")).toHaveLength(1);
+    // an unrelated step stays the generic recommendation
+    expect(buttonsFor("analysis", "de", { nextStep: "Bau X ein." })[0].label).toBe("Empfehlung umsetzen");
+  });
+
   // Live 2026-09-23: the Desktop host refuses a prefill that starts with "/"
   // (leading space too); plain text lands. A slash prompt is a dead button.
   test("no button prompt starts with a slash — in any key, in any language", () => {

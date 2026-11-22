@@ -184,6 +184,9 @@ export const CLEANUP = {
 };
 
 /** Label of the analysis card's primary button when the card names its recommended next step (`nextStep`). */
+/** #1185: a `nextStep` that asks for the web guide (de/en), e.g. "Führ mich per Web-Guide durch …". */
+export const WEB_GUIDE_STEP_RE = /\b(?:web[- ]?guide|auto-guide)\b/i;
+
 export const NEXT_STEP = {
   de: { label: "Empfehlung umsetzen" },
   en: { label: "Do recommended step" },
@@ -296,9 +299,16 @@ export function buttonsFor(buttonsKey, lang = "de", opts = {}) {
   // An analysis names its one recommended step: "Umsetzen" alone left the user
   // guessing what a click would start.
   const step = String((opts && opts.nextStep) || "").trim().replace(/^\/+/, "");
+  // #1185: a recommended step that names the web guide is the guide button
+  // (its label and compass), never the generic "Empfehlung umsetzen".
+  const guideStep = buttonsKey === "analysis" && step && WEB_GUIDE_STEP_RE.test(step);
   if (buttonsKey === "analysis" && step && buttons.length && !(opts && opts.readOnly)) {
     const n = NEXT_STEP[lang] || NEXT_STEP.de;
-    buttons[0] = { ...buttons[0], label: n.label, prompt: step, tooltip: step.length > 140 ? step.slice(0, 139) + "…" : step };
+    const g = GUIDE_HANDOFF_BUTTON[lang] || GUIDE_HANDOFF_BUTTON.de;
+    const tooltip = step.length > 140 ? step.slice(0, 139) + "…" : step;
+    buttons[0] = guideStep
+      ? { ...buttons[0], label: g.label, icon: g.icon, prompt: step, tooltip }
+      : { ...buttons[0], label: n.label, prompt: step, tooltip };
   }
   // A kept branch's Weiter sends the announced follow-up, never a generic
   // "what's next?"; with nothing named the button goes (the card falls back
@@ -316,7 +326,7 @@ export function buttonsFor(buttonsKey, lang = "de", opts = {}) {
   }
   if (opts && opts.appStart) buttons.push(appStartButton(lang));
   const handoff = opts && opts.guideHandoff;
-  if (handoff && handoff.service) buttons.push(guideHandoffButton(handoff.service, lang));
+  if (handoff && handoff.service && !(guideStep && !(opts && opts.readOnly))) buttons.push(guideHandoffButton(handoff.service, lang));
   return buttons;
 }
 
