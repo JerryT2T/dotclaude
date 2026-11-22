@@ -18,10 +18,13 @@ fails, so nothing needs to reserve space for it up front.
 /* Same family, lower urgency: the work is safe, the user is only being told
    where it currently lives (`.draft-offline-strip`) or that older notes were
    brought back (`.recovered-notes-strip`). Both sit BELOW the frozen bar's
-   z-index band so they never cover the way back to the live round. */
+   z-index band so they never cover the way back to the live round.
+   On an analysis page they sit right ABOVE the notes field: --an-comp-top is
+   the composer's top edge from the viewport bottom (markCompTop), unset → 0.
+   A fixed `bottom: 12px` laid the strip over the text being typed. */
 .draft-offline-strip,
 .recovered-notes-strip {
-  position: fixed; left: 50%; bottom: 12px; transform: translateX(-50%);
+  position: fixed; left: 50%; bottom: calc(var(--an-comp-top, 0px) + 12px); transform: translateX(-50%);
   z-index: 9000; max-width: min(560px, calc(100vw - 2rem));
   display: flex; align-items: center; gap: .75rem;
   background: var(--panel-bg, #1c2128); color: var(--text-color, #e6edf3);
