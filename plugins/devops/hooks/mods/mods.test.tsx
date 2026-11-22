@@ -5,6 +5,7 @@
 import { expect, test } from 'claude-code/testing'
 import {
   addRun,
+  formatResetShort,
   archiveOffered,
   archiveRefusal,
   agentRows,
@@ -14,6 +15,8 @@ import {
   batchViewFrom,
   budgetFrom,
   budgetBars,
+  bandBars,
+  budgetBarSvg,
   fableFromLive,
   cleanupApplyPrompt,
   cleanupPlanPrompt,
@@ -627,9 +630,9 @@ test('budget bars carry a fixed size (an interactive Svg frame takes none from t
   await $.session.measure(MEASURE as any)
   const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
   const bar = await svgIn(await band.find({ key: 'bar-5h' }))
-  expect(bar?.props.width).toBe(220)
+  expect(bar?.props.width).toBe(110) // B2: half width in the status row
   expect(bar?.props.height).toBe(24)
-  expect(await band.find({ type: 'Text', text: /^devops$/ })).toBeUndefined()
+  expect(bar?.props.source).not.toMatch(/devops/)
   await band.unmount()
 })
 
@@ -893,7 +896,10 @@ test('#1170: the rail is the small fixed context column; the usage bars sit unde
   for (let i = 0; i < 4; i++) expect(JSON.stringify(main)).toContain(`card-button-${i}`)
   const zones = JSON.stringify(await band.find({ key: 'zones' }))
   expect(zones).not.toMatch(/bar-5h/)
-  expect(await band.find({ key: 'budget' })).toBeDefined() // the bars row, under the zones
+  expect(await band.find({ key: 'budget' })).toBeDefined() // the bars sit in the status row ...
+  const rows = (await band.find({ key: 'band' }))?.children as Array<{ props?: { key?: string } }>
+  expect(rows.at(-1)?.props?.key).toBe('devops-status-row') // ... the band's last row, under the zones
+  expect(JSON.stringify(rows.at(-1))).toMatch(/bar-Wk/)
   await band.unmount()
 })
 
@@ -995,31 +1001,83 @@ test('B10 idle band is hidden when nothing is due', async ($, on) => {
   const hint = await $.ui.mount({ ...HINT, surface: 'desktop' }) // the host drew the line under the prompt
   await hint.unmount()
   const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
-  expect(await band.find({ type: 'Text', text: /engine/ })).toBeDefined() // the engine own drawing: the mod stepped aside
-  expect(await band.find({ key: 'idle' })).toBeUndefined()
+  expect(await band.find({ key: 'idle' })).toBeUndefined() // no slim row: nothing is due ...
+  expect(await band.find({ key: 'devops-status-row' })).toBeDefined() // ... but the status row stays (B2 checklist 1)
+  const term = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect(await term.find({ type: 'Text', text: /engine/ })).toBeDefined() // the terminal still steps aside
+  await term.unmount()
   await band.unmount()
 })
 
-test('#1176: while the host has not drawn the line under the prompt, the band carries "● devops"; the first hint draw drops it and marks the load row', async ($, on) => {
+test('B2: the status row is the last band row on Desktop (idle, with and without the hint line), not on the terminal; the first hint draw marks the load row', async ($, on) => {
   const { seen } = engine(on)
   on('session.id', () => ({ value: 'sid-hint' }))
   await $.session.start({ cwd: REPO, surface: 'desktop', isInteractive: true })
   await $.session.measure({ context: { window: 200000, tokens: 20000, percent: 10 }, rateLimits: [], changed: ['context'] } as any)
   const before = await $.ui.mount({ ...BAND, surface: 'desktop' })
-  expect(await before.find({ key: 'devops-hint-fallback' })).toBeDefined()
+  const kids = (await before.find({ key: 'band' }))?.children as Array<{ key?: string; props?: { key?: string } }>
+  expect(kids.at(-1)?.props?.key).toBe('devops-status-row')
+  expect(await before.find({ key: 'devops-hint-fallback' })).toBeUndefined() // the old separate rows are gone
   expect(await before.find({ key: 'devops-status' })).toBeDefined()
   await before.unmount()
   const term = await $.ui.mount({ ...BAND, surface: 'terminal' })
-  expect(await term.find({ key: 'devops-hint-fallback' })).toBeUndefined() // the terminal keeps its hint tail
+  expect(await term.find({ key: 'devops-status-row' })).toBeUndefined() // the terminal keeps its hint tail
   await term.unmount()
   const hint = await $.ui.mount({ ...HINT, surface: 'desktop' })
   await hint.unmount()
   await new Promise(r => setTimeout(r, 0))
   const after = await $.ui.mount({ ...BAND, surface: 'desktop' })
-  expect(await after.find({ key: 'devops-hint-fallback' })).toBeUndefined()
+  expect(await after.find({ key: 'devops-status-row' })).toBeDefined() // the band row is the Desktop status either way
   await after.unmount()
   const marker = seen.writes.filter(w => /devops-mods-loaded\.json$/.test(w.path.replace(/\\/g, '/'))).at(-1)
   expect(marker && JSON.parse(marker.text).sessions.find((r: { sid: string }) => r.sid === 'sid-hint')).toMatchObject({ hint: true })
+})
+
+test('B2: the status word is green while active, grey with the reason in its overlay when not; no dot, no "active" text; a press opens the Home pane', async ($, on) => {
+  const { seen } = engine(on, { files: LOG_FILES })
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  const ok = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  const word = JSON.stringify(await ok.find({ key: 'devops-status' }))
+  expect(word).toMatch(/#7bc98f/)
+  expect(word).not.toMatch(/●|active/)
+  expect(JSON.stringify(await ok.find({ key: 'devops-status-row' }))).not.toMatch(/●/)
+  await ok.press({ key: 'devops-status' })
+  expect(seen.opened).toContain('devops-home')
+  await ok.unmount()
+})
+
+test('B2: the band bar watermark keeps the largest unit only — 6 d, 19 h, 45 m, – (never "164 h")', async () => {
+  expect(formatResetShort(6 * 1440 + 20 * 60)).toBe('6 d')
+  expect(formatResetShort(19 * 60 + 45)).toBe('19 h')
+  expect(formatResetShort(45)).toBe('45 m')
+  expect(formatResetShort(null)).toBe('–')
+})
+
+test('B2: bars row = Wk, Fb, 5h always (also not due), 110 px, hours-only watermark with the full text in the alt; no 5h window = empty bar with "–"', async ($, on) => {
+  engine(on)
+  await $.session.start({ cwd: REPO, surface: 'desktop', isInteractive: true })
+  await $.session.measure({ context: { window: 200000, tokens: 20000, percent: 10 }, rateLimits: [{ name: '5h', pct: 10, resetInMinutes: 280 }, { name: 'Wk', pct: 5, resetInMinutes: 9000 }], changed: ['context'] } as any)
+  const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  for (const l of ['Wk', '5h']) {
+    const bar = await svgIn(await band.find({ key: `bar-${l}` }))
+    expect(bar?.props.width).toBe(110)
+    expect(bar?.props.source).toMatch(/<animate attributeName="x"/)
+  }
+  await band.unmount()
+  const t0 = 1_000_000_000_000
+  const b = { weekly: 40, weeklyResetsAt: t0 + 19 * 3_600_000 + 5 * 60_000, fable: 12, fableResetsAt: t0 + 45 * 60_000, fiveHour: null, fiveHourResetsAt: null } as any
+  const bars = bandBars(b, t0)
+  expect(bars.map(x => x.label)).toEqual(['Wk', 'Fb', '5h'])
+  expect(bars.map(x => x.short)).toEqual(['19 h', '45 m', '–'])
+  expect(bars[0].watermark).toBe('19 h 5 m') // full text stays for the alt
+  expect(budgetBarAlt(bars[0], 'en')).toMatch(/19 h 5 m/)
+  expect(budgetBarSvg(bars[0], { width: 110, compact: true })).toMatch(/>19 h</)
+  expect(bars[2].empty).toBe(true)
+  const empty = budgetBarSvg(bars[2], { width: 110, compact: true })
+  expect(empty).toMatch(/>–</)
+  expect(empty).not.toMatch(/width="3"/) // no usage marker
+  expect(bandBars(null, t0).map(x => x.label)).toEqual(['Wk', '5h'])
+  expect(bandBars({ ...b, fable: 0 }, t0).map(x => x.label)).toEqual(['Wk', '5h'])
 })
 
 test('B11 cleanup block: one collapsed line + button, expands to the breakdown and the rule, state per session', async ($, on) => {
@@ -1970,6 +2028,48 @@ test('/devops toggles the devops Home pane with a one-line answer; the terminal 
   await hint.unmount()
 })
 
+test('home: "🛏 Ins Bett gehen" asks once, then starts the shutdown watcher and shows whom it waits for; "Abbrechen" stops it', async ($, on) => {
+  const { seen } = engine(on, { files: LOG_FILES })
+  on('clock.after', () => new Promise(() => undefined)) // the confirm's own timeout never fires here
+  const calls: string[] = []
+  on('process.run', (_: unknown, ev: { argv: string[] }) => {
+    if (ev.argv[0] !== 'node' || !String(ev.argv[1]).endsWith('/scripts/bedtime-shutdown.js')) return { value: { exitCode: 1, stdout: '', stderr: '' } }
+    calls.push(String(ev.argv[2]))
+    const out =
+      ev.argv[2] === 'start'
+        ? { ok: true, armed: true, phase: 'waiting', updatedAt: NOW, active: [{ name: 'Karten', why: 'working' }], shutdownAt: 0, note: '' }
+        : { ok: true, armed: false, cancelled: true, phase: 'cancelled' }
+    return { value: { exitCode: 0, stdout: `${JSON.stringify(out)}\n`, stderr: '' } }
+  })
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  let home = await $.ui.mount({ ...pane('devops-home', 'devops Home'), surface: 'desktop' } as any)
+  /** Remount until the pane shows `text` (its loads and presses settle between two renders). */
+  const shows = async (text: RegExp) => {
+    let hit: unknown
+    for (let i = 0; i < 40 && !hit; i++) {
+      await home.unmount()
+      for (let j = 0; j < 200; j++) await Promise.resolve()
+      home = await $.ui.mount({ ...pane('devops-home', 'devops Home'), surface: 'desktop' } as any)
+      hit = await home.find({ text })
+    }
+    return hit
+  }
+  await home.press({ key: 'home-tab-overview' })
+  expect(await shows(/Ins Bett gehen/)).toBeDefined()
+  await home.press({ key: 'home-bed-btn' })
+  expect(await shows(/Sicher\? PC fährt dann herunter/)).toBeDefined()
+  expect(calls).toEqual([]) // the first press only asks
+  await home.press({ key: 'home-bed-btn' })
+  expect(await shows(/PC fährt herunter, sobald fertig: Karten/)).toBeDefined()
+  expect(calls).toEqual(['start'])
+  await home.press({ key: 'home-bed-btn' }) // now "Abbrechen"
+  expect(await shows(/Ins Bett gehen/)).toBeDefined()
+  expect(calls).toEqual(['start', 'cancel'])
+  expect(seen.toasts.at(-1)).toMatch(/der PC bleibt an/)
+  await home.unmount()
+  expect(seen.prompts).toEqual([]) // no session, no prompt: the watcher runs outside Claude
+})
+
 test('the fallback status line goes once the line under the prompt is drawn, at the next turn start at the latest', async ($, on) => {
   const { seen } = engine(on, { files: LOG_FILES })
   on('turn.start', () => ({ turnId: 't' }))
@@ -2029,8 +2129,10 @@ test('not active: a disconnected MCP server turns the dot red and names the reas
   await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
   expect(seen.status.at(-1)).toBe('🔴 not active · MCP server not connected')
   const hint = await $.ui.mount({ ...HINT, surface: 'desktop' })
-  expect(JSON.stringify(await hint.find({ key: 'devops-status' }))).toMatch(/#e07a7a/)
-  expect((await hint.find({ type: 'Text', text: /not active/ }))?.text).toBe('not active · MCP server not connected')
+  const word = JSON.stringify(await hint.find({ key: 'devops-status' }))
+  expect(word).toMatch(/dimColor/) // grey word, no red dot
+  expect(word).not.toMatch(/#e07a7a|●/)
+  expect((await hint.find({ type: 'Text', text: /MCP server not connected/ }))?.text).toBe('MCP server not connected') // in the word's overlay
   await hint.unmount()
 })
 

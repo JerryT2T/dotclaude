@@ -111,7 +111,7 @@ describe("B1 the note sent with an answer is its own bubble in the history", () 
   test("source: the done overview lists notes too; the seal redraws the earlier bubble", () => {
     expect(JS2).toMatch(/noteTexts\(inst, x\.s\)\.forEach/);
     expect(JS2).toMatch(/noteTexts\(inst, s\)\.forEach/);
-    expect(dk("templates-analysis-js.md")).toMatch(/function sealLeaving\(/);
+    expect(dk("templates-analysis-composer.md")).toMatch(/function sealLeaving\(/);
     expect(JS2).toMatch(/sealLeaving\(inst, prev\)/);
   });
 });

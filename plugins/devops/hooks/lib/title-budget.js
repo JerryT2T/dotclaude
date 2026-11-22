@@ -18,9 +18,12 @@
  *   word switch (Solo → Aborted) re-clamps: `clampTitle` is idempotent and a
  *   topic that already ends in `…` is un-ellipsed before it is cut again —
  *   `……` never stacks.
+ *
+ *   A linked sub's `🔗 ` marker sits in the status area too and takes
+ *   SUB_MARK_WIDTH from the topic: the topic is shortened, never the head.
  */
 
-const { leadingPrefix } = require('./title-scheme');
+const { leadingPrefix, SUB_MARK_WIDTH } = require('./title-scheme');
 
 /** Characters of `<Word> ┃ <topic>` the sidebar shows (see above). */
 const TITLE_BUDGET = 42;
@@ -44,10 +47,11 @@ const cp = (s) => Array.from(s);
  *
  * @param {string} word the activity word of the head ("Solo", "Released Alpha")
  * @param {string} topic
+ * @param {number} [extra] further status-area characters (the sub marker `🔗 `) the topic yields
  * @returns {string}
  */
-function clampTopic(word, topic) {
-  const max = Math.max(4, TITLE_BUDGET - cp(String(word ?? '')).length - SEPARATOR_WIDTH);
+function clampTopic(word, topic, extra = 0) {
+  const max = Math.max(4, TITLE_BUDGET - cp(String(word ?? '')).length - SEPARATOR_WIDTH - extra);
   let t = String(topic ?? '');
   const hadEllipsis = /…\s*$/.test(t);
   t = t.replace(/\s*…+\s*$/, '');
@@ -85,7 +89,7 @@ function clampTitle(title) {
   if (!word) return title;
   const head = title.slice(0, lead.length);
   const rest = title.slice(lead.length);
-  return rest.trim() ? head + clampTopic(word, rest) : title;
+  return rest.trim() ? head + clampTopic(word, rest, lead.sub ? SUB_MARK_WIDTH : 0) : title;
 }
 
 /**

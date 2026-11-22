@@ -1,4 +1,4 @@
-# Concept templates, part 43 of 52: Shared systems — final report panel, design system
+# Concept templates, part 44 of 54: Shared systems — final report panel, design system
 
 ## Final Report Panel
 
@@ -21,6 +21,12 @@ panel then belongs to the close-out alone:
   ship buttons and "🔧 Nachbessern".
 - **The panel starts closed behind ☰**, like on every round: the report is read
   first.
+- **Closing out needs no menu.** While the panel is closed the sheet is docked
+  **in the report** (`.fr-close`, beside the Funde): the same node, moved by
+  `placeCloseout()`, so the buttons, the plan line, the 🧹 line and "Deine
+  Aufgaben" look and behave exactly as in the panel. Opening ☰ takes the sheet
+  there, closing brings it back; the slot keeps its height meanwhile. Never a
+  second copy of the buttons: two sheets could submit twice.
 
 The sheet is deliberately **DOM-driven, not connection-driven**: it is
 present because the section carries `data-final-report`, so it survives
@@ -53,8 +59,13 @@ the click that confirms it is also the ship answer.
   ⚡, `cycleRoute()`); focus stays on the pill, the plan line follows. The pill's
   tooltip says what the route does. ONE hint stands under all Funde
   (`#closeout-route-hint`).
-- **A tap on the name jumps to the Fund in the report** (`jumpToFund()`): the 🔍
-  fold opens and the Fund is marked for a moment. The report says what, where and
+- **The Funde are the report's focus.** Each one is a visible card in `.fr-close`
+  (name, was / wo / warum vorbelegt) that carries **its own route pill**
+  (`syncFundPills()`): the same pill, the same cycle, the same choice as the panel
+  row, so a Fund is decided where it is read. Docked beside those cards the sheet
+  hides its 🧭 rows (they would say everything twice); in the panel they show.
+- **A tap on the name jumps to the Fund in the report** (`jumpToFund()`): the
+  Fund is marked for a moment (a legacy 🔍 fold opens first). The report says what, where and
   why in the page's language; `data-issue-body` stays the English issue text and
   is never shown in the panel. The name is one line, ellipsis as a safety net.
 - **More than three Funde:** three rows, "+N weitere" shows the rest
@@ -198,10 +209,15 @@ report surface; jargon, file paths and numbers only in the 🛠 fold. Top → bo
    evidence (screenshot pair, sampled frame); every `partial` / `unmet` line is a
    Fund with `data-oq-origin="shortfall"`. A line counts as met only with that
    evidence, never on an agent's word.
-6. **`.fr-folds`**, side by side: **"🔍 N Funde unterwegs"** (the Funde, per Fund was
-   / wo / warum vorbelegt, the place the panel's names jump to) and **"🛠 Für
-   Entwickler"** (at most five short lines: commit, areas + ≤ 3 key files, tests in
-   one line, CI link). No other card or section: a "Nachtrag" goes into the 🛠 fold.
+6. **`.fr-close`, the close-out zone** — what is left to decide, in view, never
+   folded away. Left `.fr-funde-box` (`data-open-questions`): the head "🧭 Du
+   entscheidest · N Funde unterwegs" and one card per Fund (was / wo / warum
+   vorbelegt) with its route pill; right the docked close-out sheet (the engine
+   puts it there, author nothing for it). No Funde → omit `.fr-close`; the engine
+   adds the zone with the sheet alone.
+7. **`.fr-folds`**: **"🛠 Für Entwickler"** (at most five short lines: commit,
+   areas + ≤ 3 key files, tests in one line, CI link). No other card or section:
+   a "Nachtrag" goes into the 🛠 fold.
 
 **Try-it sign-in (#933).** A try-it link to a route behind a login is worth
 nothing when the user cannot sign in on exactly that origin — a second dev
@@ -252,9 +268,10 @@ Browser/App) · 5 Prod-Build geprüft · 6 Live vertestet (Staging/Prod) · 7 Vo
 dir abgenommen. A level that does not apply is skipped. The whole list with its
 states is the `data-tip`; test counts live in the 🛠 fold.
 
-**No checkboxes in the report body.** The Funde are plain `<li>` elements;
-the FAB is the only place to answer. After the close-out the body shows what
-became of each Fund (issue link / "umgesetzt").
+**No checkboxes in the report body, and no authored controls.** The Funde are
+plain `<li>` elements; the engine adds the route pill to each card and docks the
+sheet beside them. After the close-out the body shows what became of each Fund
+(issue link / "umgesetzt").
 
 ### Final-report section HTML
 
@@ -306,14 +323,17 @@ became of each Fund (issue link / "umgesetzt").
     <span class="fr-depth-next">○ {{final.depth_next}}: <b>{{final.level_live}}</b></span>
   </div>
 
-  <div class="fr-folds">
-  <!-- The Funde — out-of-scope finds, points the user parked, and what could not
-       be built. NO checkboxes: plain <li> carrying the data the 🧭 group and the
-       payload read. Mandatory: data-oq-id, data-issue-title, data-issue-type,
-       data-oq-origin ("deferred" | "found" | "shortfall"), data-route-default
-       ("now" | "issue" | "ignore") and data-route-reason (one word). -->
-  <details class="fr-fold" data-open-questions>
-    <summary>🔍 2 {{final.funde_fold}}</summary>
+  <!-- The close-out zone. Left the Funde — out-of-scope finds, points the user
+       parked, and what could not be built — as visible cards; the engine adds the
+       route pill to each card and docks the close-out sheet to their right. NO
+       checkboxes, no authored buttons: plain <li> carrying the data the pill, the
+       🧭 group and the payload read. Mandatory: data-oq-id, data-issue-title,
+       data-issue-type, data-oq-origin ("deferred" | "found" | "shortfall"),
+       data-route-default ("now" | "issue" | "ignore") and data-route-reason (one
+       word). No Funde → omit the whole .fr-close. -->
+  <div class="fr-close">
+  <div class="fr-funde-box" data-open-questions>
+    <p class="fr-close-head"><span>🧭 {{final.group_decide}}</span><small>2 {{final.funde_fold}}</small></p>
     <ul class="fr-funde">
       <!-- Visible label (.oq-label): a short noun phrase of AT MOST 28 characters —
            the panel shows one line. The text of a 🧪 / 👉 item: at most 48 (two
@@ -349,8 +369,11 @@ became of each Fund (issue link / "umgesetzt").
         </dl>
       </li>
     </ul>
-  </details>
+    <p class="fr-funde-hint">{{final.funde_hint}}</p>
+  </div>
+  </div>
 
+  <div class="fr-folds">
   <details class="fr-fold">
     <summary>🛠 {{final.dev_fold}}</summary>
     <ul class="fr-dev">

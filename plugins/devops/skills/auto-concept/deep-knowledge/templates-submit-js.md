@@ -1,4 +1,4 @@
-# Concept templates, part 36 of 52: Shared systems — two-button submit JS
+# Concept templates, part 37 of 54: Shared systems — two-button submit JS
 
 ### JS
 
@@ -430,8 +430,8 @@ function finalReportSection() {
 
 // The Funde are NON-INTERACTIVE elements in the report body — any element in
 // the [data-open-questions] block that carries data-issue-title (normally the
-// <li> of the 🔍 fold). The report body has no checkboxes any more: the FAB
-// is the only place to answer. A Fund Claude has already routed carries
+// <li> of a Fund card in .fr-close). The report body has no checkboxes: a Fund
+// is answered on its route pill, on the card or in the panel row. A Fund Claude has already routed carries
 // data-routed (it writes the issue link / "umgesetzt" note at the same time)
 // and drops out here; once every Fund is routed the 🧭 group disappears.
 // A legacy report's checkbox still counts while it is enabled.

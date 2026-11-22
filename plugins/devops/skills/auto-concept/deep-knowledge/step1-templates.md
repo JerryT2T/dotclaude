@@ -420,7 +420,7 @@ gate (A1). **Topic page:** "Thema n von N", title, the topic's own display
 (the first `data-viz` of its L2 long slot; without one, bars placing the topic
 among all topics), its questions as a numbered list, a button — no
 "roter Faden" block. **Closing:** a devops message ("Abschluss") introduces every question with a
-dwell bar and a "Nachschärfen" toggle (preset from the hesitation signal), then
+"Nachschärfen" toggle (preset from the hesitation signal; no dwell bar — dwell stays an internal signal), then
 the ☰ panel's "👉 Zur nächsten Runde" / "Jetzt umsetzen" buttons — no count, no
 deviation summary.
 

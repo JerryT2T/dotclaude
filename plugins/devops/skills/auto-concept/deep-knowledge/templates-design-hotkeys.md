@@ -1,4 +1,4 @@
-# Concept templates, part 20 of 52: Template: design — hotkey overlay, Space and nudges
+# Concept templates, part 20 of 54: Template: design — hotkey overlay, Space and nudges
 
 ## Hotkey overlay, Space and nudges — `wireChromeHotkeys()`
 
@@ -129,6 +129,22 @@ the same hotkeys and tips as a design round. Three jobs:
     const r = n.getBoundingClientRect();
     return r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < innerHeight;
   };
+  // The part of a control the user really sees: its box cut by every clipping / scrolling ancestor and the
+  // viewport. Hidden (visibility), disabled, inert and fully clipped controls have none: no badge for them.
+  const seen = n => {
+    const cs = getComputedStyle(n);
+    if (cs.visibility === 'hidden' || n.disabled || n.closest('[inert], [aria-hidden="true"]:not(.hk-overlay)')) return null;
+    const r = n.getBoundingClientRect();
+    let t = Math.max(r.top, 0), b = Math.min(r.bottom, innerHeight), l = Math.max(r.left, 0), rt = Math.min(r.right, innerWidth);
+    for (let p = n.parentElement; p && p !== document.documentElement; p = p.parentElement) {
+      const o = getComputedStyle(p);
+      if (/(auto|scroll|hidden|clip)/.test(o.overflowX + o.overflowY)) {
+        const q = p.getBoundingClientRect();
+        t = Math.max(t, q.top); b = Math.min(b, q.bottom); l = Math.max(l, q.left); rt = Math.min(rt, q.right);
+      }
+    }
+    return (b - t > 2 && rt - l > 2) ? { top: t, right: rt, left: l, bottom: b } : null;
+  };
   function showKeys() {
     if (layer) return;
     body.classList.add('hk-keys');
@@ -137,11 +153,12 @@ the same hotkeys and tips as a design round. Three jobs:
     layer.setAttribute('aria-hidden', 'true');
     document.querySelectorAll('[data-tip-key]').forEach(n => {
       if (!visible(n)) return;
-      const r = n.getBoundingClientRect();
+      const r = seen(n);
+      if (!r) return;
       // Only what the user can see: a control under the shortcut sheet (or
       // any other layer) gets no badge floating on top of that layer.
       const top = document.elementFromPoint
-        ? document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) : null;
+        ? document.elementFromPoint((r.left + r.right) / 2, (r.top + r.bottom) / 2) : null;
       if (top && !n.contains(top) && !top.contains(n)) return;
       const badge = mk('kbd', 'app-kbd hk-badge', n.dataset.tipKey.replace(/\|/g, '/'));
       badge.style.left = Math.round(r.right) + 'px';
@@ -154,11 +171,49 @@ the same hotkeys and tips as a design round. Three jobs:
       && body.dataset.overviewActive !== 'true' && body.dataset.viewActive !== 'true';
     const onDoc = typeof window.documentPinsActive === 'function' && window.documentPinsActive();
     if ((onDesign || onDoc) && !body.classList.contains('panel-open')) {
-      const ex = mk('div', 'hk-pin-example');
-      ex.append(mk('span', 'hk-pin-dot'), mk('span', 'hk-pin-label', T.ctrl + ' + ' + T.click));
-      layer.appendChild(ex);
+      // The example sits ON a passage that can really be pinned (a visible,
+      // uncovered text block), never at a fixed spot of the viewport — a fixed
+      // 62 % / 58 % landed on "Weiter" in the analysis chat (concept
+      // feedback-dotclaude-ui, #5). No such passage in view → no example.
+      const spot = pinSpot(onDesign);
+      if (spot) {
+        const ex = mk('div', 'hk-pin-example');
+        ex.style.left = Math.round(spot.x) + 'px';
+        ex.style.top = Math.round(spot.y) + 'px';
+        ex.append(mk('span', 'hk-pin-dot'), mk('span', 'hk-pin-label', T.ctrl + ' + ' + T.click));
+        layer.appendChild(ex);
+      }
     }
     body.appendChild(layer);
+  }
+  /** Where the pin example may sit: the middle of a visible text block the
+   *  user can pin, not covered by another layer and clear of every control. */
+  function pinSpot(onDesign) {
+    const root = onDesign
+      ? document.querySelector('section[data-design]:not([hidden]) [data-screen]:not([hidden])') || document.querySelector('section[data-design]:not([hidden])')
+      : document.querySelector('section[data-iteration][data-active]') || document.querySelector('.concept-content');
+    if (!root) return null;
+    const ctl = 'button, a, input, select, textarea, label, [role="button"], [data-tip-key], [contenteditable]';
+    // The old resting spot stays the fallback, but only when nothing pressable
+    // lies under it (a page without measurable passages, a canvas-only screen).
+    const fallback = () => {
+      const x = window.innerWidth * 0.62, y = window.innerHeight * 0.58;
+      const under = document.elementFromPoint ? document.elementFromPoint(x, y) : null;
+      return under && under.closest && under.closest(ctl + ', .an-comp, .jr-toast, .hk-nudge') ? null : { x, y };
+    };
+    const blocks = root.querySelectorAll('p, li, h3, h4, td, [data-screen] div');
+    for (const n of blocks) {
+      if (n.closest(ctl) || n.querySelector(ctl) || !visible(n)) continue;
+      const r = seen(n); // { top, right, left, bottom } — the visible part, no width / height
+      if (!r) continue;
+      const w = r.right - r.left, hgt = r.bottom - r.top;
+      if (w < 120 || hgt < 14) continue;
+      const x = r.left + Math.min(w * 0.5, 220), y = r.top + hgt / 2;
+      const top = document.elementFromPoint ? document.elementFromPoint(x, y) : n;
+      if (top && !n.contains(top)) continue;
+      return { x, y };
+    }
+    return fallback();
   }
   function hideKeys() {
     body.classList.remove('hk-keys');
@@ -363,10 +418,15 @@ body.panel-open .upin-hint, body.panel-open .hk-pin-example { display: none !imp
   position: fixed; transform: translate(-100%, -35%); margin: 0; z-index: 1;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45); animation: hk-pop 0.14s ease both;
 }
+/* left / top are set by showKeys() on a real pinnable passage (pinSpot); the
+   dot's centre sits on that point. */
 .hk-pin-example {
-  position: fixed; left: 62%; top: 58%; display: flex; align-items: center; gap: 0.5rem;
-  animation: hk-pop 0.18s ease both;
+  position: fixed; display: flex; align-items: center; gap: 0.5rem;
+  transform: translate(-11px, -50%); animation: hk-pop 0.18s ease both;
 }
+/* The ? overlay shows every hint at its control: the first-time tip tab would
+   only cover one of them (it sat on the "I" badge in a Lite round). */
+body.hk-keys .hk-nudge { display: none !important; }
 .hk-pin-dot {
   width: 22px; height: 22px; border-radius: 50%; background: var(--accent-color, #388bfd);
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-color, #388bfd) 28%, transparent), 0 0 22px var(--accent-color, #388bfd);

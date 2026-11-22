@@ -1,4 +1,4 @@
-# Concept templates, part 38 of 52: Shared systems — two-button submit JS (continued 3)
+# Concept templates, part 39 of 54: Shared systems — two-button submit JS (continued 3)
 
 ```javascript
 async function submitFinalize(shipRun) {
@@ -390,6 +390,15 @@ document.addEventListener('change', e => {
 document.addEventListener('input', e => {
   if (e.target && e.target.id === 'dispose-move-to') renderDisposeLine();
 });
+// The route pill on a Fund card cycles like the panel's own pill. Delegated on
+// the document: the cards are the report's markup, not the sheet's.
+document.addEventListener('click', e => {
+  const pill = e.target.closest && e.target.closest('[data-fund-pill]');
+  if (!pill) return;
+  const sheet = document.getElementById('closeout-sheet');
+  if (!sheet || sheet.dataset.frozen === 'true' || sheet.dataset.finalizeState) return;
+  cycleRoute(pill.dataset.routeCycle);
+});
 // One delegated click listener for the whole sheet — the rows are rebuilt
 // per item set, the listener never is.
 function closeoutSheetClick(e) {
@@ -425,6 +434,12 @@ function closeoutSheetClick(e) {
 function wireCloseout() {
   const sheet = document.getElementById('closeout-sheet');
   sheet?.addEventListener('click', closeoutSheetClick);
+  // The sheet follows the ☰ panel: open → in the panel, closed → docked in the
+  // report (placeCloseout()). Only the body's class is watched, so moving the
+  // sheet cannot re-trigger it.
+  if (typeof MutationObserver === 'function') {
+    new MutationObserver(placeCloseout).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+  }
   refreshCloseout({ reset: true });
   restoreInFlightCloseout();
   // A kept page reloaded after its close-out: Claude stamped the result on it.

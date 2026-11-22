@@ -83,7 +83,7 @@ const CASES = [
   ["delivered + open point", { variant: "delivered", open: OPEN }, ["👉", "Delivered", "📦"]],
   ["handoff side session running", { variant: "fallback", linked: [{ title: "Doku", mode: "handoff", state: "running" }] }, ["⏳", "Linked", "🔗"]],
   ["handoff side session waits", { variant: "fallback", linked: [{ title: "Doku", mode: "handoff", state: "waiting" }] }, ["👉", "Linked", "🔗"]],
-  ["orchestration side session waits", { variant: "fallback", linked: [{ title: "B", mode: "deliver", state: "waiting" }] }, ["👉", "Team", "🤖"]],
+  ["orchestration side session waits", { variant: "fallback", linked: [{ title: "B", mode: "deliver", state: "waiting" }] }, ["👉", "Linked", "🔗"]],
   ["ready", { variant: "ready" }, ["👉", "Ready", "📦"]],
   ["ready + open point → question", { variant: "ready", open: OPEN_Q }, ["👉", "Question", "❓"]],
   ["ready + requirement waiting on the user → question", { variant: "ready", validation: WAITS }, ["👉", "Question", "❓"]],

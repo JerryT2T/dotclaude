@@ -1,12 +1,46 @@
 # Changelog
 
+## [0.398.0] — 2026-11-22
+
+### Added
+- Home pane: „🛏 Ins Bett gehen“ — powers the PC off once no Claude session works any more, nobody is at the PC and no busy job runs; the row shows whom it waits for and „Abbrechen“ stops it, a 60 s countdown included
+- `scripts/sessions-active.js` (`check` / `wait`): who is working right now, from each Claude process's own status instead of transcript write times
+
+### Changed
+- do-run shutdown (Step 8a, bedtime with nothing left to do): waits for every working session through the new detector — open background work and a wake-up due soon count, an open concept page, a heartbeat or a title rename do not; the calling session is excluded by its id, so a second session in the same checkout is no longer overlooked
+
+### Fixed
+- do-run no longer powers off after 30 min while another session still works, and the 8 h watchdog hands the power-off to the bedtime watcher instead of forcing it
+
+## [0.397.0] — 2026-11-22
+
+### Added
+- **Concept closing page: Funde in focus.** Every open Fund is a visible card in the report (what, where, why pre-selected) with its own route pill (⚡ Jetzt → 📌 Issue → Weglassen) instead of a row in a collapsed fold.
+- **Concept closing page: close out without the menu.** Plan line, page disposition, „Abschließen & shippen“, „Nur abschließen, nicht shippen“ and „Nachbessern“ stand beside the Fund cards in the report. Opening ☰ moves the same block into the menu and back, so there is one set of buttons and one state.
+
+### Changed
+- Engine reference: the panel-state CSS part is split in two, the assembled engine is unchanged.
+
+## [0.395.1] — 2026-11-22
+
+### Fixed
+- Concept pages: the „Notizen liegen nur in diesem Browser“ strip sits right above the notes field instead of covering the text being typed
+- Artifact concept pages save the notes autosave in the artifact's own store, so the false „die Bridge hat sie nicht gespeichert“ strip no longer appears there
+
 ## [0.395.0] — 2026-11-22
 
 ### Added
-- **Claude Projects threads (alpha feature `project-threads`)**: in a thread that runs on this computer the status head (`⏳ ➜ 🤖 Solo ┃`, `👉 ➜ 📦 Ready ┃`, …) now goes on the thread's own title with `rename_thread`, and the completion card is posted in the thread with `post_message`. See `deep-knowledge/project-threads.md`.
+- Mod band: status row as the last Desktop row — `devops` green when running, grey when not, Wk / Fb / 5h usage bars always shown at half width with the same animation
+- Session titles: linked sub sessions lead with `🔗` in front of their full head; every linked start (user_asked, offer, marked proposal) shows `🔗 ⏳ ➜ 🤖 Solo` from the start, and a sub remembers itself so a reset title gets its `🔗` back
+
+### Changed
+- Parent session title precedence: own user step > a sub waits (`👉 ➜ 🔗 Linked`) > own running activity > `⏳ ➜ 🔗 Linked` > done; deliver subs also use `🔗 Linked`, `🤖 Team` names background agents only
+- Concept analysis page: no dwell bars in the closing view, own answers are never auto-flagged for sharpening, room under the floating pill, hotkey badges only on visible controls
+- Band reset watermark shows the largest unit (`6 d`, `19 h`)
 
 ### Fixed
-- **Project threads on every channel**: the plugin no longer asks a thread for the Desktop session title or the Desktop card widget (nobody sees either in a project), and `stop.flow.guard` no longer blocks the turn end there.
+- Concept analysis chat: no doubled answer after Enter + TOC jump; a deleted message returns to the question's draft and survives a reload
+- The band no longer shows the devops word twice when the host draws the prompt hint
 
 ## [0.394.3] — 2026-11-22
 

@@ -11,9 +11,13 @@
  *   ships) or `independent` (no marker: an unrelated follow-up task, never
  *   a status change - at most one `›` line).
  *
- *   Precedence for the parent (first match wins): 1 the parent's own mandatory
- *   step (own diff, question, red tests) -> 2 a marked side session waits on
- *   the user -> 3 marked side sessions still run -> 4 nothing left, Released
+ *   Precedence for the parent (first match wins; concept 2026-11-21 "own"): 1 the
+ *   parent's own mandatory step (own diff, question, red tests) -> 2 a marked side
+ *   session waits on the user (`👉 ➜ 🔗 Linked`) -> 3 the parent's own running work
+ *   (`ctx.ownRunning`, background agents: no head here, its own ⏳ head stays; a
+ *   working concept page is decided by sessionTitleNote) -> 4 marked side sessions
+ *   still run (`⏳ ➜ 🔗 Linked`, handoff AND deliver; `🤖 Team` is background
+ *   agents only) -> 5 nothing left, Released
  *   only when ALL marked side sessions are finished (a Released title invites
  *   archiving the chat). The subordinate state is a `›` line, never lost.
  *   In deliver mode the parent's own diff does NOT win over Team (combined
@@ -137,11 +141,11 @@ export function linkedKeepTokens(raw) {
     .map((e) => e.branch.toLowerCase());
 }
 
-/** Quoted sidebar title of a side session: `„👉 ➜ ❓ Question ┃ title"` (waiting/failed) or `„title"` (running). */
+/** Quoted sidebar title of a side session: `„🔗 👉 ➜ ❓ Question ┃ title"` (waiting/failed) or `„title"` (running). */
 function sidebarText(e, L) {
   const quote = L === T.en ? qe : q;
   if (e.state === "running") return quote(e.title);
-  return quote(`${TITLE_SCHEME.head("question").text} ${e.title}`);
+  return quote(`${TITLE_SCHEME.SUB_MARK} ${TITLE_SCHEME.head("question").text} ${e.title}`);
 }
 
 /** The `›` line that points to the chat where the user's next move is. */
@@ -180,7 +184,7 @@ function versionGte(a, b) {
 /**
  * @param {object} input card params (reads `linked`, `delivery`, `cta`, `state`)
  * @param {string} key resolved decision key (index.js#resolveCardKey)
- * @param {{ lang?: 'de'|'en', ownQuestion?: boolean, pendingWhat?: string, noShipKey?: boolean }} ctx
+ * @param {{ lang?: 'de'|'en', ownQuestion?: boolean, ownRunning?: boolean, pendingWhat?: string, noShipKey?: boolean }} ctx
  * @returns {null | { head: null | { id: string, mandatory: boolean }, sentence: string,
  *   lines: string[], buttonsKey?: string|null, custom?: object[], secondary?: object[], replies?: string[] }}
  *   null = the card has nothing to say about side sessions
@@ -235,7 +239,7 @@ function linkedPlanCore(input, key, ctx) {
       };
     }
     if (waiting.length) {
-      return { head: { id: "agents-waiting", mandatory: true }, sentence: L.waitAsk(waiting), lines: [count, ...moveLines, ...indLines], buttonsKey: null };
+      return { head: { id: "linked-waiting", mandatory: true }, sentence: L.waitAsk(waiting), lines: [count, ...moveLines, ...indLines], buttonsKey: null };
     }
     if (running.length) {
       const what = L.teamRun(n, m) + (ctx.pendingWhat ? ` · ${ctx.pendingWhat}` : "");
@@ -243,7 +247,7 @@ function linkedPlanCore(input, key, ctx) {
       const early = !isShip && (key === "ready" || key === "test") && !ctx.noShipKey;
       const e = L.btn.early;
       return {
-        head: { id: "agents", mandatory: false }, sentence: what, lines, buttonsKey: null,
+        head: ctx.ownRunning && !isShip ? null : { id: "linked", mandatory: false }, sentence: what, lines, buttonsKey: null,
         secondary: early ? [{ label: e[0], icon: "rocket", prompt: e[1], tooltip: e[2] }] : undefined,
       };
     }
@@ -284,6 +288,10 @@ function linkedPlanCore(input, key, ctx) {
     if (waiting.length) lines.push(L.waitAsk(waiting));
     if (failed.length) lines.push(L.failedLook(failed));
     return { head: null, sentence: "", lines: [...lines, ...moveLines, ...indLines] };
+  }
+  // Own running work (background agents) keeps its own ⏳ head; the running subs are only a `›` line.
+  if (ctx.ownRunning && !needUser.length && running.length) {
+    return { head: null, sentence: "", lines: [L.ownRun(running), ...moveLines, ...indLines] };
   }
   if (unfinished.length || failed.length) {
     const sentence = waiting.length ? L.waitAsk(waiting) : failed.length ? L.failedLook(failed) : L.runHandoff(running);

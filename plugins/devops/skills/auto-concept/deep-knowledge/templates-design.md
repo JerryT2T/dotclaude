@@ -1,4 +1,4 @@
-# Concept templates, part 09 of 52: Template: design — rules, devices, click-through, annotation layer
+# Concept templates, part 09 of 54: Template: design — rules, devices, click-through, annotation layer
 
 # Template: design
 

@@ -1,4 +1,4 @@
-# Concept templates, part 46 of 52: Template: analysis — styling CSS (Full + Lite)
+# Concept templates, part 47 of 54: Template: analysis — styling CSS (Full + Lite)
 
 ## Styling (Full + Lite)
 
@@ -55,6 +55,13 @@ html:has(section[data-analysis]) { scroll-padding-top: 60px; }
 .an-enh:not(.an-lite) { overflow: hidden; padding-bottom: 28px; }
 .an-chat { position: relative; flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable both-edges; display: flex; flex-direction: column; padding-inline: 8px; padding-bottom: 28px; scroll-padding-bottom: 28px; }
 .an-chat > *, .an-chat .an-stage { flex: 0 0 auto; }   /* a stage inside a display:contents topic is a flex item too: it must never shrink below its content */
+/* the floating status pill (.jr-toast: caption + 42 px pill, 14 px above the composer) and the frozen bar cover the foot of the chat:
+   while one is shown, the chat keeps that much extra room below its last row, so the last buttons scroll clear of it */
+.an-chat { --an-clear: 28px; }
+body:has(.jr-toast:not([hidden])) .an-chat, body:has(.frozen-bar:not([hidden])) .an-chat { --an-clear: 100px; }
+body:has(.an-strip:not([hidden])) .an-chat, body:has(.draft-offline-strip:not([hidden])) .an-chat { --an-clear: 100px; }
+body:has(.draft-offline-strip:not([hidden])):has(.jr-toast:not([hidden])) .an-chat { --an-clear: 144px; }
+.an-chat { padding-bottom: var(--an-clear); scroll-padding-bottom: var(--an-clear); }
 .an-chat > .an-foot-brief { margin-top: auto; }
 .an-enh:not([data-an-stage="brief"]):not(.an-lite) { padding-top: 12px; }
 /* a design view runs edge to edge under the fixed variant bar: every stage keeps the chrome's top reserve, not only the briefing */
@@ -238,6 +245,9 @@ html[data-theme="light"] .an-kind { color: var(--an-ac); }
 /* attachments: thumbnails floating over the chat, right above the field, left to right (wrapping upwards) */
 .an-strip { position: absolute; left: 0; right: 0; bottom: calc(100% + 8px); z-index: 2; display: flex; flex-wrap: wrap; align-content: flex-end; gap: 8px; padding: 0 4px; pointer-events: none; }
 .an-strip[hidden] { display: none; }
+/* the hotkey tip sits right above the notes field, like the status pill - never across the chat or the field */
+body:has(.an-comp) .hk-nudge { bottom: calc(var(--an-comp-top, 5.5rem) + 14px); }
+body:has(.an-comp):has(.jr-toast:not([hidden])) .hk-nudge { bottom: calc(var(--an-comp-top, 5.5rem) + 92px); }
 body:has(.an-strip:not([hidden])) .jr-toast, body:has(.an-strip:not([hidden])) .frozen-bar { bottom: calc(var(--an-comp-top, 1.25rem) + 78px); }
 .an-strip > * { pointer-events: auto; }
 .an-att-i { position: relative; flex: none; height: 56px; border-radius: 10px; border: 1px solid var(--an-bd2); background: var(--an-s2); box-shadow: 0 6px 18px rgba(0,0,0,.35); overflow: hidden; }
@@ -322,16 +332,13 @@ html[data-theme="light"] .an-att-i { box-shadow: 0 6px 18px rgba(31,35,40,.18); 
 .an-close-t { font-size: 16px; line-height: 1.5; color: var(--an-tx); }
 .an-close-body { margin: 12px 0 0 42px; }
 .an-sig { width: 100%; padding: 6px 16px; border-radius: 16px; background: var(--an-s1); text-align: left; }
-.an-sigrow { display: grid; grid-template-columns: 8px minmax(0, 1.3fr) minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--an-bd); font-size: 14px; }
+.an-sigrow { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--an-bd); font-size: 14px; }
 .an-sigrow:last-child { border-bottom: 0; }
 .an-sigrow > i { width: 8px; height: 26px; border-radius: 4px; background: var(--tc); }
 .an-sig-n b, .an-sig-n small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .an-sig-n small { font-size: 12.5px; color: var(--an-mu); }
 .an-sig-n small.an-sig-note { margin-top: 3px; overflow: visible; text-overflow: clip; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--an-tx2); }
 .an-mini-note { margin-top: 4px; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--an-tx2); }
-.an-dw { height: 8px; border-radius: 4px; background: rgba(255,255,255,.08); overflow: hidden; }
-.an-dw > b { display: block; height: 100%; background: rgba(255,255,255,.30); }
-.an-dw.an-warn > b { background: linear-gradient(90deg, var(--an-b4), var(--an-b2)); }
 .an-tg { padding: 3px 11px; border-radius: 8px; font-size: 12.5px; font-weight: 700; background: var(--an-s2); color: var(--an-mu); box-shadow: inset 0 0 0 1px var(--an-bd2); }
 .an-tg[aria-pressed="true"] { background: rgba(121,192,255,.16); color: var(--an-b3); box-shadow: inset 0 0 0 1px rgba(121,192,255,.35); }
 .an-close .an-foot { padding-top: 18px; }
@@ -567,8 +574,6 @@ html[data-theme="light"] .an-att-i { box-shadow: 0 6px 18px rgba(31,35,40,.18); 
   [data-analysis] [data-briefing-potential] .an-kpi-v, .an-big { font-size: 56px; }
   [data-analysis] [data-opt] { grid-template-columns: 22px minmax(0, 1fr); }
   [data-analysis] [data-opt-preview] { grid-column: 2; grid-row: 3; }
-  .an-sigrow { grid-template-columns: 8px minmax(0, 1fr) auto; }
-  .an-dw { display: none; }
 }
 
 /* section-nav state for mode decisions (updateSectionNavState) */

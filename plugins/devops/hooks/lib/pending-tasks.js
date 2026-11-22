@@ -492,9 +492,13 @@ function messagedAgentId(text, input, launched) {
  * Walk a JSONL transcript and return the background work still open at its end.
  *
  * @param {string} transcriptContent — raw JSONL (a tail slice is fine)
+ * @param {{ skipTask?: (input: object) => boolean, times?: boolean }} [opts] — `skipTask` names
+ *   further Bash launches the caller does not count (scripts/sessions-active.js:
+ *   a wait on other sessions is not work); `times` adds `at` to every item.
  * @returns {Array<{ id: string, kind: 'agent'|'task'|'workflow', name: string }>}
  */
-function scanOpenTasks(transcriptContent) {
+function scanOpenTasks(transcriptContent, opts) {
+  const skipTask = opts && typeof opts.skipTask === 'function' ? opts.skipTask : null;
   if (!transcriptContent) return [];
 
   // Fast path for the overwhelming majority of turns: no launch or resume marker
@@ -551,6 +555,8 @@ function scanOpenTasks(transcriptContent) {
     try { entry = JSON.parse(line); } catch { continue; }
     const content = entry && entry.message && entry.message.content;
     if (!Array.isArray(content)) continue;
+    /** When this entry was written — the launch time of whatever it opens. */
+    const at = Date.parse(entry.timestamp) || 0;
 
     for (const block of content) {
       if (!block || typeof block !== 'object') continue;
@@ -589,7 +595,7 @@ function scanOpenTasks(transcriptContent) {
         const stoppedSinceSend = closedAt.has(id) && closedAt.get(id) > sentAt.get(block.tool_use_id);
         // Never label with the id — recover the launch name, else stay generic.
         if (id && !stoppedSinceSend && !open.has(id)) {
-          open.set(id, { kind: 'agent', name: known.get(id) || 'agent' });
+          open.set(id, { kind: 'agent', name: known.get(id) || 'agent', at });
         }
         continue;
       }
@@ -604,7 +610,7 @@ function scanOpenTasks(transcriptContent) {
           if (input && typeof input.name === 'string' && input.name.trim()) {
             launched.set(input.name.trim(), m[1]);
           }
-          open.set(m[1], { kind: 'agent', name });
+          open.set(m[1], { kind: 'agent', name, at });
         }
         continue;
       }
@@ -613,7 +619,7 @@ function scanOpenTasks(transcriptContent) {
       if (wf) {
         const name = labelFor(input, 'workflow', text);
         known.set(wf[1], name);
-        open.set(wf[1], { kind: 'workflow', name });
+        open.set(wf[1], { kind: 'workflow', name, at });
         continue;
       }
       const taskId = canLaunch(launcher, 'task') ? announcedTaskId(text) : '';
@@ -621,7 +627,7 @@ function scanOpenTasks(transcriptContent) {
         // Concept bridge plumbing (server / pulser / waker) runs for the whole
         // concept session and yields no result — it is never "still running work".
         // A dev server (or a wait on its ready line) never exits by design (#964).
-        if (isConceptInfra(input) || isDevServer(input)) continue;
+        if (isConceptInfra(input) || isDevServer(input) || (skipTask && skipTask(input || {}))) continue;
         // A task starts and ends once, and its end can be written first: a
         // command that finishes just as the timeout moves it to the background
         // has its notification enqueued between the call and this result (27
@@ -629,11 +635,14 @@ function scanOpenTasks(transcriptContent) {
         if (closedAt.has(taskId)) continue;
         const name = labelFor(input, 'task');
         known.set(taskId, name);
-        open.set(taskId, { kind: 'task', name });
+        open.set(taskId, { kind: 'task', name, at });
       }
     }
   }
 
+  // `times` adds each item's launch time (`at`, 0 = unknown): work launched before
+  // its process started died with the old process, whatever the transcript says.
+  if (opts && opts.times) return [...open.entries()].map(([id, v]) => ({ id, kind: v.kind, name: v.name, at: v.at || 0 }));
   return [...open.entries()].map(([id, v]) => ({ id, kind: v.kind, name: v.name }));
 }
 
@@ -665,9 +674,10 @@ function isRelevantLine(line) {
  *
  * @param {string} transcriptPath
  * @param {number} tailBytes — the fast-path slice size
+ * @param {{ skipTask?: (input: object) => boolean }} [opts] — see scanOpenTasks
  * @returns {Array<{ id: string, kind: string, name: string }>}
  */
-function scanOpenTasksInFile(transcriptPath, tailBytes) {
+function scanOpenTasksInFile(transcriptPath, tailBytes, opts) {
   if (!transcriptPath) return [];
   let fd;
   try {
@@ -676,7 +686,7 @@ function scanOpenTasksInFile(transcriptPath, tailBytes) {
     if (size <= tailBytes) {
       const buf = Buffer.alloc(size);
       fs.readSync(fd, buf, 0, size, 0);
-      return scanOpenTasks(buf.toString('utf8'));
+      return scanOpenTasks(buf.toString('utf8'), opts);
     }
     const kept = [];
     const chunk = Buffer.alloc(FULL_SCAN_CHUNK_BYTES);
@@ -694,7 +704,7 @@ function scanOpenTasksInFile(transcriptPath, tailBytes) {
       carry = data.subarray(cut + 1);
     }
     take(carry.toString('utf8').split('\n'));
-    return scanOpenTasks(kept.join('\n'));
+    return scanOpenTasks(kept.join('\n'), opts);
   } catch {
     return [];
   } finally {

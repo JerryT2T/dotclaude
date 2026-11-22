@@ -73,7 +73,7 @@ the close-out with `final: true` (or no `final` at all) runs A → E in full.
    payload's `item.description` carries.
 
 7. Update the final-report fragment: on each created item's Fund `<li>`
-   (the 🔍 fold, `data-oq-id`), set `data-routed`, append the
+   (the Fund cards in `.fr-close`, `data-oq-id`), set `data-routed`, append the
    `[Issue #NNN]` link to the issue URL and a small ✓ badge
    (`templates-final-report.md` § After a point is routed). For items
    that were merged by the user-value gate,

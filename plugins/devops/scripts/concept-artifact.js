@@ -23,8 +23,14 @@
  *   - diverts the read-back `GET /decisions` (a reload restores a sent round)
  *     to the same document. Without a `db` namespace it rejects like an
  *     unreachable bridge, so the engine falls back to its local queue.
- *   - leaves every other request alone. `/heartbeat`, `/status`, `/draft` find
- *     no bridge on the artifact host, so the heartbeat stays honest ("not
+ *   - diverts the notes autosave (`POST /draft`, also the teardown
+ *     `sendBeacon`) to `db.doc("concept/draft")`, and its load-time read-back
+ *     (`GET /draft`) to the same document. Before this the autosave hit the
+ *     artifact host, got refused, and after three tries the page showed
+ *     "Notizen liegen nur in diesem Browser — die Bridge hat sie nicht
+ *     gespeichert" on every artifact concept.
+ *   - leaves every other request alone. `/heartbeat` and `/status` find no
+ *     bridge on the artifact host, so the heartbeat stays honest ("not
  *     connected") — nobody live-monitors an artifact concept, no cron runs.
  *
  *   Claude reads the decisions back on its next turn with
@@ -46,6 +52,8 @@ const START = '<!-- concept-artifact:wrapper:start -->';
 const END = '<!-- concept-artifact:wrapper:end -->';
 const DOC_PATH = 'concept/decisions';
 
+const DRAFT_DOC = 'concept/draft';
+
 // Plain ES5-style functions: the wrapper is inlined verbatim into the page.
 const WRAPPER_JS = `(function () {
   var claude = window.claude;
@@ -59,38 +67,83 @@ const WRAPPER_JS = `(function () {
   function reply(status, body) {
     return new Response(JSON.stringify(body), { status: status, headers: { 'Content-Type': 'application/json' } });
   }
-  function isDecisions(input) {
+  function routeOf(input) {
     var url = typeof input === 'string' ? input : (input && input.url) || '';
-    try { return new URL(url, location.href).pathname === '/decisions'; } catch (e) { return false; }
+    try {
+      var p = new URL(url, location.href).pathname;
+      return p === '/decisions' || p === '/draft' ? p : null;
+    } catch (e) { return null; }
+  }
+  function bodyOf(input, init) {
+    return init && init.body != null ? Promise.resolve(String(init.body))
+      : (input && typeof input.text === 'function' ? input.text() : Promise.resolve('{}'));
+  }
+  function store(path, data) {
+    return getDb().then(function (db) {
+      if (!db) return reply(507, { durable: false, reason: 'no-artifact-db' });
+      data._artifactStoredAt = new Date().toISOString();
+      return db.doc(path).set(data).then(
+        function () { return reply(200, { durable: true }); },
+        function (e) { return reply(507, { durable: false, reason: (e && e.code) || 'write-failed' }); }
+      );
+    });
+  }
+  function load(path) {
+    return getDb().then(function (db) {
+      if (!db) throw new TypeError('concept-artifact: no artifact db');
+      return db.doc(path).get().then(function (snap) { return snap.exists ? snap.data() : null; });
+    });
+  }
+  // Same shape as the bridge's POST /draft: "recovered" is the union of the
+  // last non-empty value ever posted per text: key; a key the user cleared
+  // on purpose leaves it.
+  function postDraft(payload) {
+    return load('${DRAFT_DOC}').catch(function () { return null; }).then(function (prev) {
+      var rec = {};
+      var old = (prev && prev.slug === payload.slug && prev.recovered) || {};
+      Object.keys(old).forEach(function (k) { rec[k] = old[k]; });
+      var st = payload.state || {};
+      Object.keys(st).forEach(function (k) {
+        if (k.indexOf('text:') === 0 && typeof st[k] === 'string' && st[k]) rec[k] = st[k];
+      });
+      (payload.cleared || []).forEach(function (k) { delete rec[k]; });
+      return store('${DRAFT_DOC}', {
+        slug: payload.slug || '', page_version: payload.page_version || '',
+        iteration: payload.iteration || '', state: st, recovered: rec
+      });
+    });
   }
   window.fetch = function (input, init) {
-    if (!isDecisions(input)) return realFetch(input, init);
+    var route = routeOf(input);
+    if (!route) return realFetch(input, init);
     var method = String((init && init.method) || (input && input.method) || 'GET').toUpperCase();
     if (method === 'POST') {
-      var bodyText = init && init.body != null ? Promise.resolve(String(init.body))
-        : (input && typeof input.text === 'function' ? input.text() : Promise.resolve('{}'));
-      return Promise.all([getDb(), bodyText]).then(function (r) {
-        var db = r[0];
-        if (!db) return reply(507, { durable: false, reason: 'no-artifact-db' });
+      return bodyOf(input, init).then(function (text) {
         var data;
-        try { data = JSON.parse(r[1] || '{}'); } catch (e) { return reply(400, { durable: false, reason: 'bad-json' }); }
-        data._artifactStoredAt = new Date().toISOString();
-        return db.doc('${DOC_PATH}').set(data).then(
-          function () { return reply(200, { durable: true }); },
-          function (e) { return reply(507, { durable: false, reason: (e && e.code) || 'write-failed' }); }
-        );
+        try { data = JSON.parse(text || '{}'); } catch (e) { return reply(400, { durable: false, reason: 'bad-json' }); }
+        return route === '/draft' ? postDraft(data) : store('${DOC_PATH}', data);
       });
     }
     if (method === 'GET') {
-      return getDb().then(function (db) {
-        if (!db) throw new TypeError('concept-artifact: no artifact db');
-        return db.doc('${DOC_PATH}').get().then(function (snap) {
-          return reply(200, snap.exists ? snap.data() : {});
-        });
+      return load(route === '/draft' ? '${DRAFT_DOC}' : '${DOC_PATH}').then(function (doc) {
+        if (route === '/decisions') return reply(200, doc || {});
+        return reply(200, doc ? { found: true, page_version: doc.page_version || '', recovered: doc.recovered || {} } : { found: false });
       });
     }
     return Promise.resolve(reply(405, { reason: 'method-not-allowed' }));
   };
+  // The teardown flush uses sendBeacon, which would bypass the patched fetch
+  // and land on the artifact host. Route a /draft beacon through it instead.
+  var nav = window.navigator;
+  if (nav && typeof nav.sendBeacon === 'function') {
+    var realBeacon = nav.sendBeacon.bind(nav);
+    nav.sendBeacon = function (url, data) {
+      if (routeOf(String(url)) !== '/draft') return realBeacon(url, data);
+      var text = data && typeof data.text === 'function' ? data.text() : Promise.resolve(String(data == null ? '{}' : data));
+      text.then(function (t) { return window.fetch('/draft', { method: 'POST', body: t }); }).catch(function () {});
+      return true;
+    };
+  }
 })();`;
 
 function wrapperBlock() {

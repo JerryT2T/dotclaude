@@ -167,7 +167,7 @@ function findFinalReportIssues(html) {
   if (oqStart >= 0) {
     const oq = body.slice(oqStart);
     if (/<input\b[^>]*type=["']checkbox["']/i.test(oq)) {
-      issues.push({ kind: 'final-report-checkbox', why: 'a checkbox inside [data-open-questions] of the final report — the Funde are plain elements now; the panel is the only place to answer (validation-gate.md 33b)', at: region.at });
+      issues.push({ kind: 'final-report-checkbox', why: 'a checkbox inside [data-open-questions] of the final report — the Funde are plain elements now; the route pill the engine adds is the only place to answer (validation-gate.md 33b)', at: region.at });
     }
     for (const m of oq.matchAll(/<[a-z]+\b(?:[^>"']|"[^"]*"|'[^']*')*\sdata-issue-title=(?:[^>"']|"[^"]*"|'[^']*')*>/gi)) {
       const tag = m[0];
@@ -1514,9 +1514,9 @@ function buildBlockReasonInner(name, missing, forbidden, structural, mapping, ov
       lines.push('The rest of the page passed — re-write the file and open it once this gate passes.');
       return lines.join('\n');
     }
-    lines.push('The Funde are plain <li> elements in the 🔍 fold with data-issue-title, data-issue-type,');
+    lines.push('The Funde are plain <li> elements in .fr-close with data-issue-title, data-issue-type,');
     lines.push('data-oq-origin ("deferred" | "found"), data-route-default and data-route-reason — no');
-    lines.push('checkboxes; the panel is the only place to answer. See step5-update-page.md § Final-report');
+    lines.push('checkboxes; the route pill the engine adds is the only place to answer. See step5-update-page.md § Final-report');
     lines.push('append and templates-final-report.md § Final-report section HTML.');
     lines.push('The rest of the page passed — re-write the file and open it once this gate passes.');
     return lines.join('\n');

@@ -139,6 +139,23 @@
         ]
       }
     ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/INDEX.md›generated index›part numbers": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "| [templates-analysis-composer.md](templ"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "regenerated (54 parts)",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "046351368a16"
+        ]
+      }
+    ],
     "plugins/devops/skills/auto-concept/deep-knowledge/step1-templates.md›Etappen (stages)›when mandatory": [
       {
         "ship": "claude/hook-overhead-7c2e",
@@ -148,6 +165,924 @@
         "at": "2026-11-16T23:39:58.743Z",
         "hunks": [
           "00e6ac570581"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-analysis-composer.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 48 of 53: Template: analysis — engi"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 49 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "e08b61b390fe"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-analysis-css.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 46 of 53: Template: analysis — styl"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 47 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "894d258de78d"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-analysis-js-2.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 49 of 53: Template: analysis — engi"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 50 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "40513f559b77"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-analysis-js.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 47 of 53: Template: analysis — engi"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 48 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "7c31a8e13273"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-analysis.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 45 of 53: Template: analysis — Full"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 46 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "b14ea51f7b11"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-attachments-js.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 32 of 53: Shared systems — attachme"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 33 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "8c6fce23075c"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-attachments.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 31 of 53: Shared systems — attachme"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 32 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "004774b2eb34"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-common-structure.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 02 of 53: Shared systems — common s"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 02 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "68f383971e63"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-common.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 01 of 53: Overview, UI locale"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 01 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "a0cfea2323d8"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-decision.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 08 of 53: Template: decision"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 08 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "5694f31e629d"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-design-css-2.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 13 of 53: Template: design — layout"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 13 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "03575ef17715"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-design-css.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 12 of 53: Template: design — layout"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 12 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "c0fefa8fc795"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-design-hotkeys.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 20 of 53: Template: design — hotkey"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 20 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "32f25c45004d"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-design-js.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 14 of 53: Template: design — layout"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 14 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "b844d08aba34"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-design-layout.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 11 of 53: Template: design — fullsc"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 11 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "23b983df9c5f"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-design-overview-css-2.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 19 of 53: Template: design — varian"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 19 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "3cf82ceee2cf"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-design-overview-css.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 18 of 53: Template: design — varian"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 18 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "ce210a556207"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-design-overview.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 17 of 53: Template: design — varian"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 17 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "225ec3e9e949"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-design-screens.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 16 of 53: Template: design — screen"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 16 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "b9f3a64be3c8"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-design-views.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 10 of 53: Template: design — views,"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 10 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "a207f96de6e9"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-design-wiring.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 15 of 53: Template: design — annota"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 15 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "65625f46d800"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-design.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 09 of 53: Template: design — rules,"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 09 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "38926b6b6ade"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-final-report-review.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 44 of 53: Shared systems — final re"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 45 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "ad45fedae3af"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-final-report.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 43 of 53: Shared systems — final re"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 44 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "c355e616d907"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-free-pins.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 22 of 53: Template: free — Document"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 22 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "ba7687fc08a7"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-free.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 21 of 53: Template: free"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 21 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "41207a469913"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-heartbeat.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 41 of 53: Shared systems — connecti"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 42 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "4345646b21d0"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-mapping-js.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 34 of 53: Shared systems — informat"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 35 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "5f0b235ca3f2"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-mapping.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 33 of 53: Shared systems — informat"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 34 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "191e209c6533"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-panel-chrome-js.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 04 of 53: Panel chrome — page-level"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 04 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "f1e83d239f73"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-panel-feedback-dock.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 05 of 53: Panel chrome — feedback d"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 05 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "f3c12673c151"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-panel-fidelity.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 06 of 53: Panel chrome — Live-Treue"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 06 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "04a34e243aa0"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-panel-iteration.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 07 of 53: Per-iteration templates"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 07 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "75c44ab615d9"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-panel-state-2.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 26 of 53: Shared systems — decision"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 26 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "f095f9dc04e6"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-panel-state-3.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 27 of 53: Shared systems — decision"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 27 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "648713b83d97"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-panel-state.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 25 of 53: Shared systems — decision"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 25 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "93e36a173464"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-panel.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 03 of 53: Panel chrome — markup and"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 03 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "7f755bbfdee8"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-persistence-2.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 29 of 53: Shared systems — state pe"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 30 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "81c327fc7c42"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-persistence-comments.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 30 of 53: Shared systems — persist "
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 31 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "995fad317d61"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-persistence.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 28 of 53: Shared systems — state pe"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 29 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "cb50e2e52ea6"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-rounds.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 42 of 53: Shared systems — iteratio"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 43 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "e681e0a438c0"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-section-nav-2.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 24 of 53: Shared systems — section "
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 24 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "8cf45b37cdbf"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-section-nav.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 23 of 53: Shared systems — section "
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 23 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "689538701c47"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-stages-free-js.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 52 of 53: Shared systems — Etappen:"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 53 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "b13fd2e6222b"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-stages-js.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 51 of 53: Shared systems — Etappen "
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 52 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "ebf745c8b1ce"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-stages.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 50 of 53: Shared systems — Etappen "
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 51 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "32f14d6ca26f"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-submit-journey.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 39 of 53: Shared systems — journey "
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 40 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "436d1dd4042a"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-submit-js-2.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 37 of 53: Shared systems — two-butt"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 38 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "0494d266e2c7"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-submit-js-3.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 38 of 53: Shared systems — two-butt"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 39 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "8b93a8e6cd86"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-submit-js.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 36 of 53: Shared systems — two-butt"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 37 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "5ac691fb34a8"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-submit.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 35 of 53: Shared systems — collectD"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 36 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "7607d08790ab"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-utilities.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 40 of 53: Shared systems — tooltips"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 41 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "73a0cc36b38c"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates-voice-js.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "part 53 of 53: Shared systems — voice in"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part 54 of 54",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "9272776e55bd"
+        ]
+      }
+    ],
+    "plugins/devops/skills/auto-concept/deep-knowledge/templates.md›part header›number": [
+      {
+        "ship": "#1194",
+        "by": "Jerry",
+        "value": "| 47 | [templates-analysis-js.md](templa"
+      },
+      {
+        "ship": "claude/devops-abschlussseite-konzept-74314c",
+        "by": "Claude (mechanical renumbering: #1194 and this ship each added a part)",
+        "value": "part ?",
+        "decided": true,
+        "at": "2026-11-22T01:06:11.417Z",
+        "hunks": [
+          "d80a2b7ac7b1"
         ]
       }
     ],

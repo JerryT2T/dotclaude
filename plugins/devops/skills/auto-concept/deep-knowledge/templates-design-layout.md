@@ -1,4 +1,4 @@
-# Concept templates, part 11 of 52: Template: design — fullscreen layout, overlay panel, feedback dock
+# Concept templates, part 11 of 54: Template: design — fullscreen layout, overlay panel, feedback dock
 
 ## Layout — Fullscreen single-screen + Overlay Panel + Feedback Dock
 

@@ -68,7 +68,7 @@ import { hasPending, pendingWhat, renderPendingLine, hasConcept, normalizePendin
 import { clampText, clampEllipsis } from "./lib/soft-limits.js";
 import { summarizeShip, shipDurationTest } from "./ship/lib/ship-timings.js";
 import { CARD_VARIANTS, coerceCardInput, validateCardInput, formatIssues, unknownCardKeys } from "./lib/card-input.js";
-import { batchGuide, conceptCloseoutOnly, conceptUrl, readBatch, readRunContractLine, sameProjectRoot, titlePrefixFor, titleInstruction, demandedTitle, currentSessionTitle, titleStateForKey, hasMandatoryStep, TITLE_SCHEME, projectThreadMode, currentThreadTitle, threadTitleInstruction } from "./lib/mode-state.js";
+import { batchGuide, conceptCloseoutOnly, conceptUrl, readBatch, readRunContractLine, sameProjectRoot, titlePrefixFor, titleInstruction, demandedTitle, currentSessionTitle, isLinkedSub, titleStateForKey, hasMandatoryStep, TITLE_SCHEME, projectThreadMode, currentThreadTitle, threadTitleInstruction } from "./lib/mode-state.js";
 import { staleServerLine } from "./lib/server-version.js";
 import { canMinimize, cardDataBlock, cardWidgetInstruction, isDesktopSession, safeSessionId, sessionOpenButton, warmCardClient, writeCardWidgetFile } from "./lib/card-widget.js";
 import { bandCarriesCard, writeBandCard } from "./lib/band-marker.js";
@@ -1576,7 +1576,7 @@ function linkedPlanFor(input, key, lang) {
   const ownQuestion = QUESTION_KEYS.has(key) && !keptTestPoints(input, key, 'de') && !!openQuestionOf(input);
   const mode = (input.state || {}).mode;
   const noShipKey = mode === 'git-no-remote' || mode === 'file-only';
-  return linkedPlan(input, key, { lang, ownQuestion, noShipKey, pendingWhat: hasPending(input.pending) ? pendingWhat(input.pending, lang) : '' });
+  return linkedPlan(input, key, { lang, ownQuestion, noShipKey, ownRunning: hasPending(input.pending), pendingWhat: hasPending(input.pending) ? pendingWhat(input.pending, lang) : '' });
 }
 
 /** The session-title prefix the card's outcome leaves — `cardHead`'s state. */
@@ -2762,13 +2762,28 @@ function sessionTitleNote(params) {
     );
   }
   const current = currentSessionTitle(params.session_id, params.cwd);
-  // A side-session head (Linked / Team) owns the title even when real agents run too.
+  // A linked sub (its first prompt carried the brief marker) leads every title with 🔗.
+  const sub = isLinkedSub(params.session_id, params.cwd);
+  // Precedence of the parent's title (concept 2026-11-21): own 👉 > a linked sub waits (👉 Linked) >
+  // own ⏳ activity > subs running (⏳ Linked) > done. linkedPlan already leaves its head off on an own
+  // mandatory step and on own running work; a waiting sub outranks a working concept page.
   const linkedPlanNow = linkedPlanFor(params, resolveCardKey(params), 'de');
   const linkedHead = !!(linkedPlanNow && linkedPlanNow.head);
-  const prefix = titlePrefixFor(params, { hasPending: (p) => !linkedHead && hasPending(p), hasConcept, outcome: outcomeTitlePrefix, current });
-  recordDemandedTitle(params.session_id, prefix === null ? null : demandedTitle(prefix, current));
+  let prefix;
+  const subWaits = linkedHead && linkedPlanNow.head.id === 'linked-waiting';
+  if (subWaits && !(hasConcept(params.concept) && conceptPhaseOf(params.concept) === 'waiting')) {
+    prefix = TITLE_SCHEME.prefixOf('linked-waiting');
+  } else {
+    prefix = titlePrefixFor(params, { hasPending: (p) => !linkedHead && hasPending(p), hasConcept, outcome: outcomeTitlePrefix, current });
+  }
+  recordDemandedTitle(params.session_id, prefix === null ? null : demandedTitle(prefix, current, sub));
   if (prefix === null) return '';
-  return titleInstruction(prefix, current);
+  return titleInstruction(prefix, current, sub);
+}
+
+/** Phase of a card's concept field ('waiting' unless it says otherwise). */
+function conceptPhaseOf(concept) {
+  return (normalizeConcept(concept) || { phase: 'waiting' }).phase;
 }
 
 /** Flag file stop.flow.guard reads (#1090): the exact title the last card demanded. */

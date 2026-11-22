@@ -1,4 +1,4 @@
-# Concept templates, part 05 of 52: Panel chrome — feedback dock
+# Concept templates, part 05 of 54: Panel chrome — feedback dock
 
 ```javascript
 // --- Feedback dock (all templates) ---
