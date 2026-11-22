@@ -1,7 +1,7 @@
 // devops Home pane (concept docs/concepts/20261121-1400-devops-home): the pure model behind the pane.
 import { expect, test } from 'claude-code/testing'
 
-import { agoText, cleanupFrom, homeModel, infoTiles, isBatchTitle, kindOf, needsConfirm, paceWord, projectOf, ringSvgSource, ringsFrom, resetText, sessionsFrom } from './home'
+import { agoText, bedFrom, bedText, cleanupFrom, homeModel, infoTiles, isBatchTitle, kindOf, needsConfirm, paceWord, projectOf, ringSvgSource, ringsFrom, resetText, sessionsFrom } from './home'
 
 const rows = [
   { sessionId: 'local_a', title: '👉 ➜ 📥 Batch ┃ Feedback', cwd: 'P:\\Projects\\dotclaude\\.claude\\worktrees\\x', isRunning: false, lastActivityAt: '2026-11-21T09:00:00Z' },
@@ -73,4 +73,23 @@ test('home: without a token gain the headline gives way to measured facts', () =
   expect(none.noGain).toBe(true)
   expect(none.tiles.map(t => t.key)).toEqual(['info-shipped'])
   expect(infoTiles(null, 'de')).toEqual({ tiles: [], noGain: false })
+})
+
+test('home: the bedtime row shows only a watcher that is really armed', () => {
+  const now = 1_000_000_000
+  const waiting = { phase: 'waiting', updatedAt: now - 30_000, active: [{ name: 'A' }, { name: 'B' }, { name: 'C' }, { name: 'D' }, { name: '' }], note: '', shutdownAt: 0 }
+  const bed = bedFrom(waiting, now)
+  expect(bed).toEqual({ phase: 'waiting', names: ['A', 'B', 'C'], more: 1, note: '', shutdownAt: 0 })
+  expect(bedText(bed!, now)).toBe('🛏 PC fährt herunter, sobald fertig: A · B · C (+1)')
+  expect(bedText(bedFrom({ ...waiting, active: [] }, now)!, now)).toBe('🛏 Keine Sitzung arbeitet mehr – PC fährt in wenigen Minuten herunter')
+  expect(bedText(bedFrom({ ...waiting, phase: 'busy-job', note: 'ffmpeg.exe' }, now)!, now)).toBe('🛏 Wartet auf ffmpeg.exe')
+  expect(bedText(bedFrom({ ...waiting, phase: 'person' }, now)!, now)).toContain('sobald du 5 min weg bist')
+  expect(bedFrom({ ...waiting, active: [{ name: 'Ein sehr langer Sitzungstitel, der die Zeile sprengt' }] }, now)!.names).toEqual(['Ein sehr langer Sitzung…'])
+  // a watcher that stopped updating its state, a final phase, a shutdown already past, no file
+  expect(bedFrom({ ...waiting, updatedAt: now - 181_000 }, now)).toBe(null)
+  expect(bedFrom({ ...waiting, phase: 'cancelled' }, now)).toBe(null)
+  expect(bedFrom({ ...waiting, phase: 'expired' }, now)).toBe(null)
+  expect(bedFrom({ phase: 'shutdown', shutdownAt: now - 1, active: [] }, now)).toBe(null)
+  expect(bedFrom(null, now)).toBe(null)
+  expect(bedText(bedFrom({ phase: 'shutdown', shutdownAt: now + 42_000, active: [] }, now)!, now)).toBe('🛏 PC fährt in 42 s herunter')
 })

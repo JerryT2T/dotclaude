@@ -179,8 +179,13 @@ one line only when it matters ("Desktop bleibt frei · PC bleibt an").
   leaves: F6 (and F5 when its gate passes) move INTO the base call, Q3 is
   dropped (Flexibel), Q2 shows only its `Autonom · …` options — at most
   four questions, one `AskUserQuestion`. Nothing left to do ("Rest machen
-  wir morgen") → ask F6 alone: `🔴` → `modes/autonomous.md` Step 8a + 8b
-  (wait for other sessions, then shut down); `➕ Resume` → arm the
+  wir morgen") → ask F6 alone: `🔴` →
+  `node "{PLUGIN_ROOT}/scripts/bedtime-shutdown.js" start` — the Home pane's
+  "🛏 Ins Bett gehen": a detached watcher powers the PC off once no session
+  works any more, the person is away and no busy job runs
+  (`modes/autonomous.md` Step 8a/8a-bis/8b without a session staying awake;
+  `… cancel` stops it); say in one line whom it waits for (the JSON's
+  `active` names); `➕ Resume` → arm the
   `autonomous-resume-schedule.js` cron (`modes/autonomous.md` Step 4);
   `➖ Resume` or `🟢 PC anlassen` (no 5h window) → nothing.
   The rest of the bedtime prompt (tasks, constraints, content
