@@ -92,7 +92,9 @@ const isShortFlags = (a, letters) => /^-[a-zA-Z]+$/.test(a) && [...a.slice(1)].e
 function pushReason(t) {
   const args = t.slice(2);
   for (const a of args) {
-    if (a === '--mirror' || a === '--prune') return 'a mirror / prune push';
+    if (a === '--mirror') return PROMOTE_REASON; // pushes every ref, channel tags included
+    if (a === '--tags' || a === '--follow-tags') return PROMOTE_REASON; // a tag made in an earlier call goes out with it
+    if (a === '--prune') return 'a mirror / prune push';
     if (a === '--force' || a === '-f' || a.startsWith('--force-with-lease') || a === '--force-if-includes') return 'a force-push';
     if (/^-[a-zA-Z]+$/.test(a) && a.includes('f')) return 'a force-push';
     if (a === '--delete' || a === '-d') return 'a remote branch delete';
@@ -102,6 +104,8 @@ function pushReason(t) {
   // positional args after the remote: a channel tag is a promote
   const positional = args.filter((a) => !/^-/.test(a)).slice(1);
   if (positional.some((a) => PROMOTE_TAG.test(a))) return PROMOTE_REASON;
+  // a glob refspec under refs/tags/ matches the channel tags too
+  if (positional.some((a) => /^\+?(?:[^:\s]*:)?refs\/tags\/.*[*?[]/.test(a))) return PROMOTE_REASON;
   return null;
 }
 
