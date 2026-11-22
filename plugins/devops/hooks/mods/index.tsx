@@ -100,6 +100,8 @@ import {
   helpSvg,
   HELP_SIZE,
   hygieneFrom,
+  isLimitStop,
+  limitTitle,
   apiFrom,
   benefitFrom,
   benefitIsOfCall,
@@ -538,6 +540,23 @@ async function pressArchive($: EngineInterface, loc: Locale): Promise<void> {
   }
   const why = archiveRefusal(res)
   if (why) $.ui.toast(tr(loc, 'archiveRefused', { why }), { timeoutMs: 8000 })
+}
+
+/**
+ * The sidebar title of a session the usage limit just stopped: `⏳ ➜ 🤖 X` → `🟦 ➜ 🔋 X`, through the app's own
+ * session tools — no model turn (there is none left; until now only a paused card set this title, so a turn the limit
+ * cut kept its ⏳). Terminal, older app, a refusal: the title stays, ss.title.sweep renames it from another session.
+ */
+async function markLimit($: EngineInterface): Promise<void> {
+  try {
+    const res = await $.mcp.call('ccd_session_mgmt', 'get_session', { session_id: 'self' })
+    if (res.isError) return
+    const text = res.content.map(b => (b && typeof b === 'object' && 'text' in b ? String((b as { text: unknown }).text) : '')).join('')
+    const next = limitTitle((JSON.parse(text) as { title?: unknown }).title)
+    if (next) await $.mcp.call('ccd_session_mgmt', 'set_session_title', { session_id: 'self', title: next })
+  } catch {
+    /* display only */
+  }
 }
 // The session's folder (session.start), for the subagents' briefs.
 let sessionCwd = ''
@@ -1429,6 +1448,9 @@ export const register: Register = on => {
         const text = aborted ? '' : answerHead(ev.answer)
         await update($, halted, () => (aborted || text ? { aborted, text, at: clockAt(now) } : null))
       }
+      // A usage limit cut the turn: no model turn is left to rename the session, so the band does it.
+      const end = e as { answer?: unknown; reason?: unknown }
+      if (isLimitStop(end.answer, end.reason)) await markLimit($)
       // The merge turn is over: a mode it retired takes the row with it; one still armed (merge failed) offers Go again.
       await update($, batchPress, p => (p === 'going' ? null : p))
     }

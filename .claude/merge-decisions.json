@@ -86,6 +86,18 @@
         ]
       }
     ],
+    "completion-card-design.md›paused usage-reset›card word": [
+      {
+        "ship": "claude/devops-browser-setting-c04118",
+        "by": "JerryT2T",
+        "value": "\"Limit\" instead of \"Limit reset\" — user decision in this session (\"limit einfach nur nennen, nicht limit reset\"): the card word is \"Limit\"",
+        "decided": true,
+        "at": "2026-11-22T11:50:45.243Z",
+        "hunks": [
+          "a5ca71a05669"
+        ]
+      }
+    ],
     "plugins/devops/deep-knowledge/project-threads.md›thread title head›keyword and bar": [
       {
         "ship": "claude/chat-title-emoticons-separator-b41eeb",
@@ -1503,6 +1515,30 @@
         "at": "2026-11-17T16:22:07.924Z",
         "hunks": [
           "b2dfc77cc7bc"
+        ]
+      }
+    ],
+    "session-title-scheme.md›paused usage-reset›card word": [
+      {
+        "ship": "claude/devops-browser-setting-c04118",
+        "by": "JerryT2T",
+        "value": "\"Limit\" instead of \"Limit reset\" — user decision in this session (\"limit einfach nur nennen, nicht limit reset\"): the card word is \"Limit\"",
+        "decided": true,
+        "at": "2026-11-22T11:50:45.243Z",
+        "hunks": [
+          "4f855cba2778"
+        ]
+      }
+    ],
+    "session-title.test.js›stripPrefixes›worded limit heads": [
+      {
+        "ship": "claude/devops-browser-setting-c04118",
+        "by": "JerryT2T",
+        "value": "kept on purpose: the worded \"Limit reset ┃\" head of older versions must still be stripped (regression check)",
+        "decided": true,
+        "at": "2026-11-22T11:50:45.243Z",
+        "hunks": [
+          "46c6081acf02"
         ]
       }
     ],

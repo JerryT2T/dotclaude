@@ -871,13 +871,20 @@ describe("pulser as the waker's safety net (no backstop cron)", () => {
 
 describe("reopenCommand", () => {
   test("Windows re-opens minimized so the window does not take focus", () => {
-    const { cmd, args } = reopenCommand("http://localhost:1/x.html", "win32");
-    expect(cmd).toBe("cmd");
-    expect(args).toEqual(["/c", "start", "", "/min", "msedge", "http://localhost:1/x.html"]);
+    const { cmd, args, verbatim } = reopenCommand("http://localhost:1/x.html", "win32", { id: "edge", exe: "C:\\e\\msedge.exe" });
+    expect(cmd).toBe("cmd.exe");
+    expect(verbatim).toBe(true);
+    expect(args).toEqual(["/c", "start", '""', "/min", "msedge", '"http://localhost:1/x.html"']);
   });
-  test("other platforms keep the plain opener", () => {
-    expect(reopenCommand("u", "darwin")).toEqual({ cmd: "open", args: ["u"] });
-    expect(reopenCommand("u", "linux")).toEqual({ cmd: "xdg-open", args: ["u"] });
+  test("the user's browser is the one re-opened; in-app re-opens nothing", () => {
+    const chrome = { id: "chrome", exe: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" };
+    expect(reopenCommand("u", "win32", chrome).args).toEqual(["/c", "start", '""', "/min", '"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"', '"u"']);
+    expect(reopenCommand("u", "darwin", chrome)).toEqual({ cmd: "open", args: ["-a", "Google Chrome", "u"], verbatim: false });
+    expect(reopenCommand("u", "linux", { id: "firefox", exe: "/usr/bin/firefox" })).toEqual({ cmd: "/usr/bin/firefox", args: ["u"], verbatim: false });
+    expect(reopenCommand("u", "win32", { id: "in-app", exe: "" })).toBe(null);
+    // In-app only because no browser was found: the waker has no pane, the OS opener re-opens as before.
+    expect(reopenCommand("u", "darwin", { id: "in-app", exe: "", fallback: true })).toEqual({ cmd: "open", args: ["u"], verbatim: false });
+    expect(reopenCommand("u", "linux", { id: "in-app", exe: "", fallback: true })).toEqual({ cmd: "xdg-open", args: ["u"], verbatim: false });
   });
 });
 

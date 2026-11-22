@@ -85,6 +85,18 @@ describe("verify", () => {
     } finally { srv.close(); }
   });
 
+  test("browser choice in-app: nothing is started, the caller opens the pane; not recorded as opened", async () => {
+    const srv = await fakeBridge();
+    try {
+      const state = stateFor(srv.address().port);
+      const deps = { browser: { id: "in-app", exe: "" }, openBrowser: never, waitMs: 0 };
+      const r = await verify({ state }, deps);
+      expect(r).toEqual({ ok: true, url: r.url, open_in: "pane" });
+      expect(JSON.parse(fs.readFileSync(state, "utf8")).opened_for_run).toBeUndefined();
+      expect(await verify({ state }, deps)).toMatchObject({ ok: true, open_in: "pane" });
+    } finally { srv.close(); }
+  });
+
   test("a tab already open on the bridge is reused: no open, already_open", async () => {
     const srv = await fakeBridge({ tabs: 1 });
     try {

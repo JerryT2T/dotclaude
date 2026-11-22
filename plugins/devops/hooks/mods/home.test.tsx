@@ -2,6 +2,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import { agoText, bedFrom, bedText, cleanupFrom, homeModel, infoTiles, isBatchTitle, kindOf, needsConfirm, paceWord, projectOf, ringSvgSource, ringsFrom, resetText, sessionsFrom } from './home'
+import { browserNote, browsersFrom } from './home'
 
 const rows = [
   { sessionId: 'local_a', title: '👉 ➜ 📥 Batch ┃ Feedback', cwd: 'P:\\Projects\\dotclaude\\.claude\\worktrees\\x', isRunning: false, lastActivityAt: '2026-11-21T09:00:00Z' },
@@ -60,6 +61,19 @@ test('home: budget rings carry the pace; past 85 % the batch start asks first', 
   expect(svg.startsWith('<svg')).toBe(true)
   expect(svg).toContain('<title>Woche: 74 % verbraucht, 89 % der Woche vorbei</title>')
   expect(svg).toContain('<line x1=')
+})
+
+test('home: the browser dropdown reads the script answer; the note says why the browser in effect is not the chosen one', () => {
+  const options = [{ id: 'edge', label: 'Microsoft Edge' }, { id: 'in-app', label: 'In-App (Claude Desktop)' }]
+  const b = browsersFrom(JSON.stringify({ effective: options[0], stored: 'auto', options }))
+  expect(b).toEqual({ effective: options[0], stored: 'auto', options })
+  expect(browserNote(b!)).toBe('')
+  expect(browsersFrom('not json')).toBe(null)
+  expect(browsersFrom(JSON.stringify({ effective: options[0], options: [] }))).toBe(null)
+  expect(browserNote({ effective: options[1]!, stored: 'auto', options: [options[1]!] })).toBe('Kein Browser installiert – Seiten öffnen in der App.')
+  expect(browserNote({ effective: { id: 'chrome', label: 'Google Chrome' }, stored: 'auto', options })).toBe('Edge ist nicht installiert.')
+  expect(browserNote({ effective: options[0]!, stored: 'chrome', options })).toBe('Gewählt war „chrome“, ist aber nicht mehr installiert.')
+  expect(browserNote({ effective: options[1]!, stored: 'in-app', options })).toBe('')
 })
 
 test('home: cleanup counts per repo, age text', () => {
