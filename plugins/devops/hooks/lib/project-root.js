@@ -73,6 +73,26 @@ function projectClaudeDir(cwd) {
   return path.join(projectRoot(cwd), '.claude');
 }
 
+/**
+ * Directory for devops-WRITTEN runtime state (batch activity clock, token
+ * config). Inside a work tree this is exactly `projectClaudeDir(cwd)`. When no
+ * work tree encloses `cwd` — a collecting folder such as `P:\Projects` that a
+ * Claude Projects thread starts in — it is an own folder under
+ * `~/.claude/devops-state/`, so no `.claude/` appears in a folder that is no
+ * project. Writers only: readers of files a user creates by hand
+ * (settings.json, delegation.json, opt-out switches) keep `projectClaudeDir`.
+ * @param {string} [cwd] defaults to process.cwd()
+ * @returns {string} absolute path — never null
+ */
+function stateClaudeDir(cwd) {
+  const start = path.resolve(cwd || process.cwd());
+  if (findRepoRoot(start)) return projectClaudeDir(start);
+  const key = process.platform === 'win32' ? start.toLowerCase() : start;
+  const tag = require('crypto').createHash('sha1').update(key).digest('hex').slice(0, 10);
+  const name = (path.basename(start) || 'root').replace(/[^A-Za-z0-9._-]/g, '_');
+  return path.join(os.homedir(), '.claude', 'devops-state', `${name}-${tag}`);
+}
+
 /** Is `child` the directory `parent` or below it? (win32: path.relative ignores case.) */
 function isInside(child, parent) {
   const rel = path.relative(parent, child);
@@ -142,6 +162,6 @@ function gitCommonDir(cwd) {
 }
 
 module.exports = {
-  findRepoRoot, projectRoot, projectClaudeDir, samePath, gitCommonDir,
+  findRepoRoot, projectRoot, projectClaudeDir, stateClaudeDir, samePath, gitCommonDir,
   isInside, isLinkedWorktree, inOwnWorkTree,
 };

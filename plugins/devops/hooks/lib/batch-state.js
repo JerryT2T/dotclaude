@@ -19,7 +19,7 @@
 const fs   = require('fs');
 const os   = require('os');
 const path = require('path');
-const { projectClaudeDir } = require('./project-root');
+const { projectClaudeDir, stateClaudeDir } = require('./project-root');
 const { parseOpenUrlPrompt } = require('./open-url');
 const { SIDE_SESSION_TURN_PATTERN } = require('./side-sessions');
 
@@ -180,7 +180,7 @@ function modePath(cwd)     { return path.join(claudeDir(cwd), 'batch-mode.json')
 /** Dedicated user-activity clock. Must NOT be the notes file's mtime: machine
  *  prompts touch the session every minute, so a clock hanging off general
  *  activity would never reach the inactivity threshold. */
-function activityPath(cwd) { return path.join(claudeDir(cwd), 'batch-activity'); }
+function activityPath(cwd) { return path.join(stateClaudeDir(cwd), 'batch-activity'); }
 function lockPath(cwd)     { return path.join(claudeDir(cwd), 'batch-watchdog.lock'); }
 
 // ── config ─────────────────────────────────────────────────────────────────
@@ -773,7 +773,7 @@ function matchRescuedToNotes(notes, rescued) {
 
 function touchActivity(cwd, when) {
   const t = typeof when === 'number' ? when : Date.now();
-  fs.mkdirSync(claudeDir(cwd), { recursive: true });
+  fs.mkdirSync(path.dirname(activityPath(cwd)), { recursive: true });
   fs.writeFileSync(activityPath(cwd), String(t), 'utf8');
   return t;
 }
