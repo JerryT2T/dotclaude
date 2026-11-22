@@ -36,18 +36,19 @@
  */
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
 // A lib that fails to load (half-written during a plugin update, version skew)
 // makes this hook a silent no-op instead of a hook error on every edit
 // (AUD-028).
-let gitOut, sentinelActive, isLinkedWorktree, findRepoRoot, gitCommonDir, samePath, branchFix, ownWorktreeDecided, BYPASS;
+let gitOut, sentinelActive, isLinkedWorktree, findRepoRoot, gitCommonDir, samePath, branchFix, threadWorktreeFor, ownWorktreeDecided, BYPASS;
 try {
   require('../lib/plugin-guard');
   ({ gitOut } = require('../lib/git-timeout'));
   ({ isActive: sentinelActive } = require('../lib/ship-sentinel'));
   ({ isLinkedWorktree, findRepoRoot, gitCommonDir, samePath } = require('../lib/project-root'));
-  ({ branchFix, ownWorktreeDecided, BYPASS } = require('../lib/branch-fix'));
+  ({ branchFix, threadWorktreeFor, ownWorktreeDecided, BYPASS } = require('../lib/branch-fix'));
 } catch (err) {
   // Silent to the user and the model (exit 0), but not traceless: the line
   // lands in the hook log, so a persistent load error can be found (AUD-068).
@@ -130,6 +131,18 @@ function targetRoot(cwdRoot, target) {
   }
 }
 
+/** The work tree the target lives in (any repo), or null — never the home directory's dotfiles repo. */
+function foreignRepoOf(target) {
+  try {
+    const { real: realTarget, dir } = realTargetOf(target);
+    const root = real(dir && findRepoRoot(dir));
+    if (!root || samePath(root, os.homedir())) return null;
+    return { root, real: realTarget };
+  } catch {
+    return null;
+  }
+}
+
 let inputData = '';
 process.stdin.setEncoding('utf8');
 process.stdin.on('data', d => { inputData += d; });
@@ -148,10 +161,18 @@ process.stdin.on('end', () => {
   if (process.env.DEVOPS_ALLOW_MAIN === '1') process.exit(0);
 
   const cwdRoot = gitTopLevel(cwd);
-  if (!cwdRoot) process.exit(0);
 
-  const hit = targetRoot(cwdRoot, target);
-  if (!hit) process.exit(0);
+  let hit = cwdRoot ? targetRoot(cwdRoot, target) : null;
+  let threadWorktree = null;
+  if (!hit) {
+    // A Claude Projects thread starts in a folder that is no work tree of the
+    // repo it changes (a collecting folder, another repo). Only there is the
+    // target's own repo guarded; every other session keeps "out of scope".
+    const foreign = foreignRepoOf(target);
+    threadWorktree = foreign ? threadWorktreeFor(hook, foreign.root) : null;
+    if (!threadWorktree) process.exit(0);
+    hit = { root: foreign.root, cwdRoot: null, real: foreign.real };
+  }
   const repoRoot = hit.root;
 
   if (sentinelActive(repoRoot)) process.exit(0);
@@ -175,7 +196,8 @@ process.stdin.on('end', () => {
     // The target lives in ANOTHER work tree of this repo than the session's
     // own — a moved session holding a main-checkout path, or a path inside
     // another session's worktree.
-    elsewhere: samePath(repoRoot, hit.cwdRoot)
+    threadWorktree,
+    elsewhere: !hit.cwdRoot || samePath(repoRoot, hit.cwdRoot)
       ? null
       : { targetRoot: repoRoot, ownRoot: hit.cwdRoot, ownIsWorktree: isLinkedWorktree(hit.cwdRoot) },
   });

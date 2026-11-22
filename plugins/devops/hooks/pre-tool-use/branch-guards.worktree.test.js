@@ -317,7 +317,7 @@ describe("pre.main.guard — chained, global options, PowerShell", () => {
     ["git add -A; git commit -m x"],
     ["git status || git commit -m x"],
     ["git -C . commit -m x"],
-    ['git -C "some dir" commit -m x'],
+    ['git -C "." commit -m x'],
     ["git -c user.name=x -c user.email=y commit -m x"],
     ["git --no-pager -C . push origin main"],
     ["GIT_AUTHOR_NAME=x git commit -m x"],

@@ -190,6 +190,89 @@ function isManualShipCommand(cmd) {
   return false;
 }
 
+// ── the directory a git command acts on ─────────────────────────────────────
+
+const WRAPPERS = new Set(['env', 'command', 'exec', 'sudo', 'time', 'nohup']);
+const DIR_CHANGERS = new Set(['cd', 'chdir', 'pushd', 'set-location', 'sl', 'push-location']);
+
+/** Quote-aware whitespace split; quotes are stripped, backslashes stay (Windows paths). */
+function shellTokens(text) {
+  const out = [];
+  let cur = '';
+  let q = null;
+  let has = false;
+  for (const ch of text) {
+    if (q) { if (ch === q) q = null; else cur += ch; continue; }
+    if (ch === '"' || ch === "'") { q = ch; has = true; continue; }
+    if (/\s/.test(ch)) { if (cur || has) out.push(cur); cur = ''; has = false; continue; }
+    cur += ch;
+  }
+  if (cur || has) out.push(cur);
+  return out;
+}
+
+/**
+ * `arg` relative to `base`; null when the shell, not this parser, decides it
+ * (variable, substitution, `cd -`, glob, unknown base for a relative path).
+ */
+function resolveDir(base, arg) {
+  if (typeof arg !== 'string' || !arg || /[$%\x60*?]/.test(arg) || arg === '-') return null;
+  const path = require('path');
+  let a = arg;
+  if (a === '~' || a.startsWith('~/') || a.startsWith('~\\')) a = require('os').homedir() + a.slice(1);
+  // Git Bash writes drive paths as /c/dir.
+  if (process.platform === 'win32') a = a.replace(/^\/([A-Za-z])(?=\/|$)/, (_m, d) => `${d.toUpperCase()}:`);
+  if (!path.isAbsolute(a) && !base) return null;
+  return path.resolve(base || '/', a);
+}
+
+/**
+ * Every command segment of `cmd` with the directory it acts on: the session's
+ * `cwd` moved by earlier `cd <dir>` / `pushd <dir>` / `Set-Location <dir>`
+ * segments, then by the `-C <dir>` options of the git call itself. `dir` is
+ * null when it cannot be read (variable, `--git-dir`, `cd -` …); the caller
+ * then falls back to the cwd. Only segments with a git call are returned;
+ * `text` is the segment as typed, for the caller's own matchers.
+ *
+ * @param {string} cmd
+ * @param {string} cwd
+ * @returns {{text: string, dir: string|null}[]}
+ */
+function gitSegments(cmd, cwd) {
+  if (!cmd || typeof cmd !== 'string') return [];
+  const joined = joinContinuations(cmd);
+  const masked = maskQuotedToken(joined);
+  const sep = /[\n;&|(){}]/g;
+  const spans = [];
+  let start = 0;
+  for (let m; (m = sep.exec(masked)); start = m.index + 1) spans.push([start, m.index]);
+  spans.push([start, masked.length]);
+  let shellDir = cwd || null;
+  const out = [];
+  for (const [a, b] of spans) {
+    const text = joined.slice(a, b);
+    const toks = shellTokens(text);
+    let i = 0;
+    while (i < toks.length && (/^[A-Za-z_]\w*=/.test(toks[i]) || WRAPPERS.has(toks[i].toLowerCase()))) i++;
+    const head = (toks[i] || '').replace(/^.*[\\/]/, '').toLowerCase();
+    if (DIR_CHANGERS.has(head)) {
+      const arg = toks.slice(i + 1).find((t) => !t.startsWith('-') && !/^\/[a-z]$/i.test(t));
+      shellDir = arg === undefined ? null : resolveDir(shellDir, arg);
+      continue;
+    }
+    if (head !== 'git' && head !== 'git.exe') continue;
+    let dir = shellDir;
+    let j = i + 1;
+    for (; j < toks.length && toks[j].startsWith('-'); j++) {
+      const t = toks[j];
+      if (t === '-C') { dir = resolveDir(dir, toks[++j]); } else if (t === '-c') j++;
+      else if (/^--(?:git-dir|work-tree)/.test(t)) { dir = null; if (!t.includes('=')) j++; } else if (t === '--namespace') j++;
+    }
+    out.push({ text, dir });
+  }
+  return out;
+}
+
 // Options `git push` may carry in a pure remote-branch delete. Anything else
 // (--force, --mirror, --all, --prune, --tags, -u ...) makes the push a real one.
 const DELETE_SAFE_OPTS = new Set(['-d', '--delete', '-q', '--quiet', '-v', '--verbose', '-n', '--dry-run', '--no-verify', '--porcelain']);
@@ -271,5 +354,5 @@ function remoteDeleteTargets(cmd) {
 module.exports = {
   isManualShipCommand, stripQuoted, maskQuoted, maskQuotedToken,
   ghVerbRe, ghApiRe, joinContinuations, segmentBounds, isApiWrite,
-  BOUNDARY, WORD_END, gitCommandRe, matchesGitCommand, remoteDeleteRefs, remoteDeleteTargets,
+  gitSegments, BOUNDARY, WORD_END, gitCommandRe, matchesGitCommand, remoteDeleteRefs, remoteDeleteTargets,
 };
