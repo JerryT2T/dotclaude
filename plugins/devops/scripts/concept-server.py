@@ -886,16 +886,35 @@ def _tab_from_query(query):
     return None
 
 
-def _stamp_browser_poll(tab):
+# A verification browser is not the user's tab. Claude loads the page in its
+# own browser (the Desktop app's built-in pane, an Electron shell, headless
+# Chrome, Playwright) to read the rendered CSS before the page goes to Edge
+# (step3-open-browser.md § Computed-token check). That page runs the same
+# engine and polls like any tab, so it used to enter the registry: verify then
+# answered `already_open` and never opened Edge, and the waker saw a tab for
+# TAB_STALE_MS after the pane was gone (observed 2026-11-22). Its polls and its
+# /bye are answered but leave browser_ts, the registry and browser_bye_ts alone.
+_PROBE_AGENT_RE = re.compile(r'\bClaude/|\bElectron/|HeadlessChrome|Playwright', re.I)
+
+
+def _is_probe_agent(user_agent):
+    """True when the request comes from a verification browser, not a user's tab."""
+    return bool(user_agent) and bool(_PROBE_AGENT_RE.search(user_agent))
+
+
+def _stamp_browser_poll(tab, probe=False):
     """Record a browser-only poll. Caller holds _lock.
 
     Bumps `_browser_ts` (the legacy any-tab signal) and, when the page sent a
     tab id, that tab's entry in the registry; then drops tabs silent for
     longer than TAB_STALE_MS so a tab that died without a pagehide beacon
     ages out instead of holding the page "open" forever (#397).
+    A `probe` poll (`_is_probe_agent`) records nothing.
     """
     global _browser_ts
     now = int(time.time() * 1000)
+    if probe:
+        return _browser_ts
     _browser_ts = now
     if tab:
         _browser_tabs[tab] = now
@@ -1330,7 +1349,7 @@ class ConceptBridgeHandler(http.server.SimpleHTTPRequestHandler):
         route, _, query = self.path.partition('?')
         if route == '/heartbeat':
             with _lock:
-                browser_ts = _stamp_browser_poll(_tab_from_query(query))
+                browser_ts = _stamp_browser_poll(_tab_from_query(query), _is_probe_agent(self.headers.get('User-Agent')))
                 server_ts = _server_ts
                 claude_ts = _claude_ts
             # `ts` is a legacy alias of `claude_ts` for older page JS that
@@ -1461,7 +1480,7 @@ class ConceptBridgeHandler(http.server.SimpleHTTPRequestHandler):
             self._json_response({"html_path": _html_path, "pid": os.getpid()})
         elif route == '/reload':
             with _lock:
-                _stamp_browser_poll(_tab_from_query(query))
+                _stamp_browser_poll(_tab_from_query(query), _is_probe_agent(self.headers.get('User-Agent')))
                 counter = _reload_counter
             self._json_response({"counter": counter})
         elif self.path == '/closed-ack':
@@ -1720,9 +1739,13 @@ class ConceptBridgeHandler(http.server.SimpleHTTPRequestHandler):
                 except Exception:
                     tab = None
             with _lock:
-                _browser_bye_ts = int(time.time() * 1000)
-                if tab is not None:
-                    _browser_tabs.pop(tab, None)
+                # A verification browser never entered the registry, so its
+                # unload is no "the user closed the page" either: stamping it
+                # would make the waker reopen Edge beside verify's own open.
+                if not _is_probe_agent(self.headers.get('User-Agent')):
+                    _browser_bye_ts = int(time.time() * 1000)
+                    if tab is not None:
+                        _browser_tabs.pop(tab, None)
                 remaining = len(_browser_tabs)
             self._json_response({"ok": True, "tabs": remaining})
         elif self.path == '/draft':

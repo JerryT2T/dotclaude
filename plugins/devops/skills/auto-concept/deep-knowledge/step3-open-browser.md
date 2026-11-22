@@ -104,6 +104,19 @@ read of the rendered CSS, no bridge interaction) and evaluate:
 > mirror is not the leak — `recovered` carries `text:` keys only, on both
 > ends.
 
+> **The verification tab is not the user's tab.** The bridge ignores polls and
+> the unload beacon of a verification browser (user agent `Claude/`,
+> `Electron/`, `HeadlessChrome`, `Playwright`; `_is_probe_agent` in
+> `concept-server.py`), so it never counts in `browser_tabs` and `verify` still
+> opens Edge after it. Before that rule the pane's tab registered, `verify`
+> answered `already_open: true` on its first call and the user had no page
+> (2026-11-22). **Is the page open for the user?** Read `GET /pending` →
+> `browser_tabs` (≥ 1 = a user tab polls). Never `GET /heartbeat`: a bare GET
+> there is itself counted as a browser poll and moves `browser_ts`, so the
+> check proves its own request. `already_open: true` on the FIRST `verify` of a
+> bridge run means a user tab was already registered (a resumed concept); with
+> `browser_tabs` 0 right after it, open the page with the command above.
+
 ```js
 getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim()
 ```

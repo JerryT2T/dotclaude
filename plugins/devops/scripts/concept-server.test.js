@@ -232,6 +232,51 @@ describe.skipIf(!PY)("concept-server browser_ts — the last browser poll (#363)
   });
 });
 
+describe.skipIf(!PY)("concept-server ignores verification browsers in the tab registry", () => {
+  // Regression (2026-11-22): the computed-token check loads the page in Claude's
+  // built-in browser pane before `concept-open.js verify`. The pane's page polled
+  // like a tab, verify saw browser_tabs > 0, answered already_open and never
+  // opened Edge — the user had no page while the card said it waits for them.
+  const PANE_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Claude/6.28899.2 Chrome/156.0.8078.100 Safari/537.36 MSIX MSStore";
+  const EDGE_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0";
+  const pending = async () => (await fetch(`http://127.0.0.1:${PORT}/pending`)).json();
+
+  test("a pane / headless / Playwright poll and its /bye leave browser_tabs, browser_ts and browser_bye_ts alone", async () => {
+    const proc = startServer();
+    try {
+      await waitReady();
+      const before = await pending();
+      expect(before.browser_tabs).toBe(0);
+
+      for (const ua of [PANE_UA, "Mozilla/5.0 HeadlessChrome/140.0.0.0 Safari/537.36", "Mozilla/5.0 Chrome/140.0.0.0 Electron/38.0.0 Safari/537.36", "Playwright/1.56"]) {
+        const hb = await fetch(`http://127.0.0.1:${PORT}/heartbeat?tab=probe1`, { headers: { "User-Agent": ua } });
+        expect(hb.ok).toBe(true);                                               // answered like any poll
+        await fetch(`http://127.0.0.1:${PORT}/reload?tab=probe1`, { headers: { "User-Agent": ua } });
+      }
+      const probed = await pending();
+      expect(probed.browser_tabs).toBe(0);
+      expect(probed.browser_ts).toBe(before.browser_ts);
+
+      // The pane closes: its unload beacon is not "the user closed the page".
+      const bye = await fetch(`http://127.0.0.1:${PORT}/bye`, {
+        method: "POST", headers: { "Content-Type": "application/json", "User-Agent": PANE_UA }, body: JSON.stringify({ tab: "probe1" }),
+      });
+      expect(bye.ok).toBe(true);
+      expect((await pending()).browser_bye_ts).toBe(0);
+
+      // The user's Edge tab still registers, and a later pane bye does not remove it.
+      await fetch(`http://127.0.0.1:${PORT}/heartbeat?tab=edge1`, { headers: { "User-Agent": EDGE_UA } });
+      expect((await pending()).browser_tabs).toBe(1);
+      await fetch(`http://127.0.0.1:${PORT}/bye`, {
+        method: "POST", headers: { "Content-Type": "application/json", "User-Agent": PANE_UA }, body: JSON.stringify({ tab: "edge1" }),
+      });
+      expect((await pending()).browser_tabs).toBe(1);
+    } finally {
+      await stopServer(proc);
+    }
+  });
+});
+
 describe.skipIf(!PY)("concept-server per-tab registry and /bye (#397)", () => {
   test("tabs register on ?tab= polls, leave on POST /bye; /pending reports browser_tabs + browser_bye_ts", async () => {
     const proc = startServer();
