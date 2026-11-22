@@ -184,10 +184,13 @@ lives in the single built `{date}-{slug}.html` and its source folder
    - **Prüftiefe** (`.fr-depth`) — `.fr-depth-done` names the level that passed last,
      `.fr-depth-next` the next one not done; the whole ladder goes in `data-tip`.
      Test counts go in the 🛠 fold.
-   - **🔍 N Funde unterwegs** (`<details class="fr-fold" data-open-questions>`,
-     *optional — usually absent, see § Open points admission gate below*) —
-     one plain `<li>` per Fund with was / wo / warum vorbelegt and the data
-     attributes the panel reads. Together with the 🛠 fold inside `.fr-folds`.
+   - **🧭 Du entscheidest · N Funde unterwegs** (`<div class="fr-close">` holding
+     `<div class="fr-funde-box" data-open-questions>`, *optional — usually absent,
+     see § Open points admission gate below*) — visible, never in a fold: one plain
+     `<li>` per Fund with was / wo / warum vorbelegt and the data attributes the
+     panel reads. The engine puts the route pill on each card and docks the
+     close-out sheet (buttons included) beside them; author neither. No Funde →
+     no `.fr-close` (the engine adds the zone with the sheet alone).
    - **🧪 / 👉 data lists** (`<section data-tests hidden>` /
      `<section data-handoffs hidden>`, *only when there is something*) — at
      most three each, one short line: 🧪 what you could not verify yourself,
@@ -226,7 +229,8 @@ The final-report JS block — `refreshCloseout`, `renderCloseout`,
 `closeoutFundeSplit`, `collectFollowUps`, `collectIssueItems`,
 `collectImplementItems`, `todoItems`, `todoDefaultMode`, `todoMode`,
 `collectTodos`, `collectDisposition`, `renderGroup`, `renderDecideGroup`,
-`renderTodoGroup`, `cycleRoute`, `jumpToFund`, `toggleTodoGuide`, `toggleTodoDrop`,
+`renderTodoGroup`, `cycleRoute`, `jumpToFund`, `paintRoutePill`, `syncFundPills`,
+`closeoutSlot`, `placeCloseout`, `toggleTodoGuide`, `toggleTodoDrop`,
 `showFinished`, `submitRefine`, `initBeforeAfter`,
 `renderCloseoutPlan`, `renderDisposeLine`, `toggleDisposeEdit`,
 `updateCloseoutButton`, `setCloseoutButtonState`, `setCloseoutFrozen`,
@@ -245,7 +249,7 @@ and close-out patterns (28–38b) in the generated file.
 
 ## Open points admission gate
 
-The `[data-open-questions]` block (the 🔍 Funde fold) is the exception, not a closing
+The `[data-open-questions]` block (the Funde cards in `.fr-close`) is the exception, not a closing
 ritual. The normal final report has NO open points: the user approved a
 scope, the scope was built, the report says so. Every row on that list asks
 the user for a decision they did not ask to make, so a row has to earn its
