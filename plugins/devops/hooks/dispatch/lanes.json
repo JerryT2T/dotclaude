@@ -110,6 +110,9 @@
         "pre.test.fullguard"
       ],
       [
+        "pre.thread.rights"
+      ],
+      [
         "pre.bash.output-filter"
       ],
       [

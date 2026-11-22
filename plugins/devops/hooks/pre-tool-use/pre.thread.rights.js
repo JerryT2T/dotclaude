@@ -1,22 +1,25 @@
 #!/usr/bin/env node
 /**
  * @hook pre.thread.rights
- * @version 0.1.0
+ * @version 0.2.0
  * @event PreToolUse
  * @plugin devops
- * @matcher Bash|PowerShell
+ * @matcher Bash|PowerShell|mcp__.*__ship_promote
  * @description Claude Projects rights (d-trust "alpha", line A4): a turn that a
- *   COLLEAGUE started — a coordinator note or another thread's message
- *   (`turnOrigin` of the transcript, lib/project-thread.js) — may not run a
+ *   COLLEAGUE started (a coordinator note or another thread's message; the one
+ *   decision is `turnRights` of lib/project-thread.js) may not run a
  *   force-push, a remote branch delete, `git branch -D`, a forced worktree
  *   removal, a recursive delete outside the scratch and temp folders,
- *   `gh repo delete` or `gh release delete` (lib/thread-rights.js). Those need
- *   a message of the person in the thread itself. Exit 2 = block.
+ *   `gh repo delete` / `gh release delete`, nor promote to beta / stable: the
+ *   MCP tool `ship_promote`, a push of a channel tag, `gh release create`
+ *   (lib/thread-rights.js). Those need a message of the person in the thread
+ *   itself. An alpha ship stays allowed. Exit 2 = block.
  *
- *   A safety rule, not a feature: no feature gate. A person or typed origin, a
- *   machine turn, a subagent and every Desktop session pass untouched
- *   (the origin is `typed` there). Fail-open: an unreadable transcript or any
- *   internal error never blocks.
+ *   A safety rule, not a feature: no feature gate. A person or typed turn and
+ *   every Desktop session pass untouched. A subagent is NOT exempt: its call
+ *   carries the PARENT's `transcript_path`, so the parent turn's prompt decides.
+ *   A machine prompt (task notification) continues the last non-machine prompt.
+ *   Fail-closed in a marked thread: a prompt that cannot be read is a colleague.
  */
 
 require('../lib/plugin-guard');
@@ -27,16 +30,26 @@ const DENY =
   'report it in the thread and wait for the person\'s message.';
 
 function main(hook) {
-  if (hook.agent_id) return null; // a subagent acts for the turn that spawned it; the main turn is gated
-  const command = hook.tool_input && typeof hook.tool_input.command === 'string' ? hook.tool_input.command : '';
-  if (!command) return null;
   const rights = require('../lib/thread-rights');
-  const reason = rights.destructiveReason(command, hook.cwd);
+  let reason = null;
+  if (rights.isPromoteTool(hook.tool_name)) {
+    reason = 'a promote to beta/stable (ship_promote)';
+  } else {
+    const command = hook.tool_input && typeof hook.tool_input.command === 'string' ? hook.tool_input.command : '';
+    if (!command) return null;
+    reason = rights.destructiveReason(command, hook.cwd);
+  }
   if (!reason) return null; // the common case: nothing destructive, no transcript read
   const thread = require('../lib/project-thread');
-  const card = require('../lib/card-guard');
-  const transcript = card.safeReadTranscript(hook.transcript_path, 4 * 1024 * 1024); // a long turn pushes its prompt far back
-  if (!thread.isColleagueOrigin(thread.turnOrigin(transcript))) return null;
+  let rightsOfTurn;
+  try {
+    const card = require('../lib/card-guard');
+    const transcript = card.safeReadTranscript(hook.transcript_path, 4 * 1024 * 1024); // a long turn pushes its prompt far back
+    rightsOfTurn = thread.turnRights(hook, transcript);
+  } catch {
+    rightsOfTurn = thread.isMarked(hook.session_id) ? 'colleague' : 'person';
+  }
+  if (rightsOfTurn !== 'colleague') return null;
   return { block: DENY.replace('{reason}', reason) };
 }
 

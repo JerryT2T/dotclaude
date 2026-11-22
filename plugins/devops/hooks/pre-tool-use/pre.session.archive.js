@@ -28,6 +28,9 @@ try {
   process.exit(0);
 }
 
+/** Transcript tail the shared rights decision reads (the same as pre.thread.rights). */
+const RIGHTS_TAIL_BYTES = 4 * 1024 * 1024;
+
 /** The user's latest prompt asks to archive (de + en) — whole words only. */
 const USER_ASKS_ARCHIVE = /\barchiv(?:e|iere|ieren|ing)?\b/i;
 
@@ -66,16 +69,21 @@ const USER_CANNOT_ARCHIVE = new RegExp([
  */
 function userArchiveIntent(hook) {
   try {
-    const transcript = transcriptTools.safeReadTranscript(hook.transcript_path, transcriptTools.TRANSCRIPT_TAIL_BYTES);
-    const view = thread.turnPrompt(transcript);
+    const read = (bytes) => transcriptTools.safeReadTranscript(hook.transcript_path, bytes);
+    const view = thread.turnPrompt(read(transcriptTools.TRANSCRIPT_TAIL_BYTES));
     const text = view.prompt || '';
-    const colleague = thread.isColleagueOrigin(view.prompt_origin);
+    let colleague = thread.isColleagueOrigin(view.prompt_origin);
+    if (!colleague && (view.prompt_origin === 'machine' || !text.trim())) {
+      // A machine prompt or one that is out of the narrow tail: the wide tail and the shared
+      // rights decision (lib/project-thread.js turnRights) — read only when it decides.
+      colleague = thread.turnRights(hook, read(RIGHTS_TAIL_BYTES)) === 'colleague';
+    }
     if (!colleague && USER_CANNOT_ARCHIVE.test(text)) return 'ask';
     if (USER_REFUSES_ARCHIVE.test(text)) return 'refuse';
     if (colleague) return 'colleague';
     return USER_ASKS_ARCHIVE.test(text) ? 'ask' : null;
   } catch {
-    return null;
+    return thread.isMarked(hook.session_id) ? 'colleague' : null; // fail closed in a marked thread
   }
 }
 

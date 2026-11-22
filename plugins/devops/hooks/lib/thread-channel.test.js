@@ -243,8 +243,8 @@ describe("A4 remainder — a colleague turn may not run a destructive command", 
       expect(run(RIGHTS, [user(RELAY, "2026-11-22T10:00:00Z")], bash(command)).status, command).toBe(0);
     }
   });
-  test("a subagent and a plain Desktop session (no hearthbot) are unaffected", () => {
-    expect(run(RIGHTS, [user(RELAY, "2026-11-22T10:00:00Z")], { ...bash("git push -f"), agent_id: "a" }).status).toBe(0);
+  test("a plain Desktop session (no hearthbot) is unaffected; a subagent is gated like its parent turn (finding #2)", () => {
+    expect(run(RIGHTS, [user(RELAY, "2026-11-22T10:00:00Z")], { ...bash("git push -f"), agent_id: "a" }).status).toBe(2);
     expect(run(RIGHTS, [user("go", "2026-11-22T10:00:00Z")], bash("git push -f"), { h: plain }).status).toBe(0);
   });
   test("it is a safety rule: blocks without the feature too", () => {
