@@ -62,6 +62,7 @@ function open(url, opts) {
   const plan = openPlan(url, opts);
   if (!plan) return { ok: true, open_in: 'pane', url };
   try {
+    // windowsHide: opt-out spawnOptions() hides the cmd launcher; only a browser started directly shows its window
     spawn(plan.cmd, plan.args, lib.spawnOptions(plan)).on('error', () => {}).unref();
     return { ok: true, open_in: 'external', url };
   } catch (e) {

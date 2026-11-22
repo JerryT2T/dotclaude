@@ -317,6 +317,7 @@ function reopen(url) {
   try {
     const plan = reopenCommand(url);
     if (!plan) return;
+    // windowsHide: opt-out spawnOptions() hides the cmd launcher; only a browser started directly shows its window
     spawn(plan.cmd, plan.args, require('../hooks/lib/browser-choice').spawnOptions(plan)).on('error', () => {}).unref();
   } catch { /* best effort */ }
 }

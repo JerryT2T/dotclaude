@@ -144,6 +144,7 @@ function openBrowser(url, { command = null, settleMs = OPEN_SETTLE_MS, browser =
     options = choice.spawnOptions(plan);
   }
   return new Promise((resolve) => {
+    // windowsHide: opt-out spawnOptions() hides the cmd launcher; only a browser started directly shows its window
     const c = spawn(cmd, args, options);
     // The child is unref'd so a long-lived browser cannot hold this process, and
     // an unref'd child alone does not keep the event loop alive: without this
