@@ -5,7 +5,8 @@ import path from 'path';
 const dk = f => fs.readFileSync(path.join(__dirname, 'deep-knowledge', f), 'utf8');
 const CSS = dk('templates-analysis-css.md');
 const JS2 = dk('templates-analysis-js-2.md');
-const PANEL = dk('templates-panel-state-3.md');
+// The panel-state CSS spans two parts since the journey row moved into part 4.
+const PANEL = dk('templates-panel-state-3.md') + dk('templates-panel-state-4.md');
 
 describe('analysis chat: history, own messages, composer clearance, toast', () => {
   it('keeps answered questions in the chat and shows the answer as a right-aligned user message', () => {
