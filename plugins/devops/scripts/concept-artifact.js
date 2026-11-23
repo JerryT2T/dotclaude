@@ -1,151 +1,59 @@
 #!/usr/bin/env node
 /**
  * @script concept-artifact
- * @version 0.1.0
+ * @version 0.2.0
  * @plugin devops
- * @description The second-tier no-bridge fallback of `/auto-concept` (#589): turn
- *   a generated concept page into a claude.ai artifact copy whose decisions land
- *   in the artifact's `db` store instead of the localhost bridge.
+ * @description The artifact copy of a concept page (#589) — the no-bridge path
+ *   of `/auto-concept`, and the default in a Claude Projects thread. The
+ *   decisions land in the artifact's `db` store instead of the localhost
+ *   bridge.
  *
- *   The engine page stays byte-for-byte what `docs/concepts/` holds. The script
+ *   The engine page stays byte-for-byte what `docs/concepts/` holds. The build
  *   inserts ONE wrapper `<script>` right after the opening `<head>` tag, so it
  *   runs before any engine code, and writes the copy next to the source as
- *   `<name>.artifact.html`. The wrapper:
+ *   `<name>.artifact.html`. The wrapper is `scripts/lib/concept-artifact-page.js`
+ *   (store layout and rules there): one document per submission, one draft
+ *   document per page load, live sync between viewers, the offline queue
+ *   driven without a heartbeat, and `/reload` from the newest `_processed_at`.
  *
- *   - installs itself only when `window.claude.use` exists (an artifact
- *     viewer). A saved file, the bridge-served page or any other host has no
- *     `window.claude`, so the wrapper does nothing there and the local-bridge
- *     path is never touched.
- *   - diverts `POST /decisions` to `db.doc("concept/decisions").set(payload)`.
- *     A stored write answers `{durable:true}`; no `db` namespace or a refused
- *     write answers 507, so the engine keeps its `-pending` copy and tells the
- *     user — the same never-ack-what-is-not-stored rule as `concept-server.py`.
- *   - diverts the read-back `GET /decisions` (a reload restores a sent round)
- *     to the same document. Without a `db` namespace it rejects like an
- *     unreachable bridge, so the engine falls back to its local queue.
- *   - diverts the notes autosave (`POST /draft`, also the teardown
- *     `sendBeacon`) to `db.doc("concept/draft")`, and its load-time read-back
- *     (`GET /draft`) to the same document. Before this the autosave hit the
- *     artifact host, got refused, and after three tries the page showed
- *     "Notizen liegen nur in diesem Browser — die Bridge hat sie nicht
- *     gespeichert" on every artifact concept.
- *   - leaves every other request alone. `/heartbeat` and `/status` find no
- *     bridge on the artifact host, so the heartbeat stays honest ("not
- *     connected") — nobody live-monitors an artifact concept, no cron runs.
- *
- *   Claude reads the decisions back on its next turn with
- *   `ArtifactData { action: "get", collection: "concept", doc_id: "decisions" }`
- *   against the published artifact's url — the `readBack` field of the output.
+ *   The session side has no live channel: nothing wakes it when someone
+ *   submits. It keeps a small record per concept under
+ *   `.claude/concepts/<slug>/artifact.json` (url, processed submission ids),
+ *   which `ss.concept.resume` reads on every session start, so a restarted or
+ *   replaced session still knows where to look.
  *
  *   Usage:
- *     concept-artifact.js --artifact <concept page .html> [--out <path>]
- *   Prints one JSON object on stdout: { ok, source, out, capabilities, icon, readBack }.
- *   Exit 2 on bad arguments or a page without <head>/<html>.
+ *     concept-artifact.js --artifact <page.html> [--out <path>]
+ *         build the copy → { ok, source, out, capabilities, icon, readBack }
+ *     concept-artifact.js record --page <page.html> --url <artifact url> [--root <dir>]
+ *         after the first publish: remember the artifact for this concept
+ *     concept-artifact.js digest --page <page.html> --submissions <file> [--drafts <file>] [--root <dir>]
+ *         the ArtifactData listings saved to files → what to process, who
+ *         sent what, notes typed after the last submit, and the ack writes
+ *     concept-artifact.js mark --page <page.html> --ids <id,id> [--root <dir>]
+ *         after processing: record those submissions as done
+ *     concept-artifact.js close --page <page.html> [--root <dir>]
+ *         the concept is closed: no more session-start hints
+ *   Prints one JSON object on stdout. Exit 2 on bad arguments.
  */
 
 'use strict';
 
 const fs = require('fs');
 const path = require('path');
+const page = require('./lib/concept-artifact-page');
 
 const START = '<!-- concept-artifact:wrapper:start -->';
 const END = '<!-- concept-artifact:wrapper:end -->';
-const DOC_PATH = 'concept/decisions';
-
-const DRAFT_DOC = 'concept/draft';
 const ICON = 'compass';
+const CAPABILITIES = { db: {}, user: {} };
+const SUBS = 'submissions';
+const DRAFTS = 'drafts';
 
-// Plain ES5-style functions: the wrapper is inlined verbatim into the page.
-const WRAPPER_JS = `(function () {
-  var claude = window.claude;
-  if (!claude || typeof claude.use !== 'function' || typeof window.fetch !== 'function') return;
-  var realFetch = window.fetch.bind(window);
-  var dbPromise = null;
-  function getDb() {
-    if (!dbPromise) dbPromise = Promise.resolve().then(function () { return claude.use('db'); }).catch(function () { return null; });
-    return dbPromise;
-  }
-  function reply(status, body) {
-    return new Response(JSON.stringify(body), { status: status, headers: { 'Content-Type': 'application/json' } });
-  }
-  function routeOf(input) {
-    var url = typeof input === 'string' ? input : (input && input.url) || '';
-    try {
-      var p = new URL(url, location.href).pathname;
-      return p === '/decisions' || p === '/draft' ? p : null;
-    } catch (e) { return null; }
-  }
-  function bodyOf(input, init) {
-    return init && init.body != null ? Promise.resolve(String(init.body))
-      : (input && typeof input.text === 'function' ? input.text() : Promise.resolve('{}'));
-  }
-  function store(path, data) {
-    return getDb().then(function (db) {
-      if (!db) return reply(507, { durable: false, reason: 'no-artifact-db' });
-      data._artifactStoredAt = new Date().toISOString();
-      return db.doc(path).set(data).then(
-        function () { return reply(200, { durable: true }); },
-        function (e) { return reply(507, { durable: false, reason: (e && e.code) || 'write-failed' }); }
-      );
-    });
-  }
-  function load(path) {
-    return getDb().then(function (db) {
-      if (!db) throw new TypeError('concept-artifact: no artifact db');
-      return db.doc(path).get().then(function (snap) { return snap.exists ? snap.data() : null; });
-    });
-  }
-  // Same shape as the bridge's POST /draft: "recovered" is the union of the
-  // last non-empty value ever posted per text: key; a key the user cleared
-  // on purpose leaves it.
-  function postDraft(payload) {
-    return load('${DRAFT_DOC}').catch(function () { return null; }).then(function (prev) {
-      var rec = {};
-      var old = (prev && prev.slug === payload.slug && prev.recovered) || {};
-      Object.keys(old).forEach(function (k) { rec[k] = old[k]; });
-      var st = payload.state || {};
-      Object.keys(st).forEach(function (k) {
-        if (k.indexOf('text:') === 0 && typeof st[k] === 'string' && st[k]) rec[k] = st[k];
-      });
-      (payload.cleared || []).forEach(function (k) { delete rec[k]; });
-      return store('${DRAFT_DOC}', {
-        slug: payload.slug || '', page_version: payload.page_version || '',
-        iteration: payload.iteration || '', state: st, recovered: rec
-      });
-    });
-  }
-  window.fetch = function (input, init) {
-    var route = routeOf(input);
-    if (!route) return realFetch(input, init);
-    var method = String((init && init.method) || (input && input.method) || 'GET').toUpperCase();
-    if (method === 'POST') {
-      return bodyOf(input, init).then(function (text) {
-        var data;
-        try { data = JSON.parse(text || '{}'); } catch (e) { return reply(400, { durable: false, reason: 'bad-json' }); }
-        return route === '/draft' ? postDraft(data) : store('${DOC_PATH}', data);
-      });
-    }
-    if (method === 'GET') {
-      return load(route === '/draft' ? '${DRAFT_DOC}' : '${DOC_PATH}').then(function (doc) {
-        if (route === '/decisions') return reply(200, doc || {});
-        return reply(200, doc ? { found: true, page_version: doc.page_version || '', recovered: doc.recovered || {} } : { found: false });
-      });
-    }
-    return Promise.resolve(reply(405, { reason: 'method-not-allowed' }));
-  };
-  // The teardown flush uses sendBeacon, which would bypass the patched fetch
-  // and land on the artifact host. Route a /draft beacon through it instead.
-  var nav = window.navigator;
-  if (nav && typeof nav.sendBeacon === 'function') {
-    var realBeacon = nav.sendBeacon.bind(nav);
-    nav.sendBeacon = function (url, data) {
-      if (routeOf(String(url)) !== '/draft') return realBeacon(url, data);
-      var text = data && typeof data.text === 'function' ? data.text() : Promise.resolve(String(data == null ? '{}' : data));
-      text.then(function (t) { return window.fetch('/draft', { method: 'POST', body: t }); }).catch(function () {});
-      return true;
-    };
-  }
-})();`;
+const PAGE_SRC = fs.readFileSync(path.join(__dirname, 'lib', 'concept-artifact-page.js'), 'utf8');
+
+// Inlined verbatim. `</script` inside the source would end the tag early.
+const WRAPPER_JS = `(function () {\n${PAGE_SRC.replace(/<\/script/gi, '<\\/script')}\ninstallConceptArtifact(window);\n})();`;
 
 function wrapperBlock() {
   return `${START}<script>${WRAPPER_JS}</script>${END}`;
@@ -178,15 +86,218 @@ function defaultOut(src) {
 }
 
 function parseArgs(argv) {
-  const opts = { artifact: null, out: null };
-  for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--artifact') opts.artifact = argv[++i] || null;
-    else if (argv[i] === '--out') opts.out = argv[++i] || null;
+  const opts = { cmd: 'build', artifact: null, out: null, page: null, url: null, submissions: null, drafts: null, ids: null, root: null };
+  let i = 0;
+  if (argv[0] && !argv[0].startsWith('--')) { opts.cmd = argv[0]; i = 1; }
+  for (; i < argv.length; i++) {
+    const k = argv[i];
+    const v = argv[i + 1];
+    if (k === '--artifact') { opts.artifact = v || null; i++; }
+    else if (k === '--out') { opts.out = v || null; i++; }
+    else if (k === '--page') { opts.page = v || null; i++; }
+    else if (k === '--url') { opts.url = v || null; i++; }
+    else if (k === '--submissions') { opts.submissions = v || null; i++; }
+    else if (k === '--drafts') { opts.drafts = v || null; i++; }
+    else if (k === '--ids') { opts.ids = v || null; i++; }
+    else if (k === '--root') { opts.root = v || null; i++; }
   }
   return opts;
 }
 
-function run(opts) {
+// --- the session's record per concept --------------------------------------
+
+/** `docs/concepts/x.html` and `x.artifact.html` are the same concept. */
+function slugOf(pagePath) {
+  return path.basename(String(pagePath || ''), path.extname(String(pagePath || ''))).replace(/\.artifact$/, '');
+}
+
+function recordPath(pagePath, root) {
+  return path.join(root || process.cwd(), '.claude', 'concepts', slugOf(pagePath), 'artifact.json');
+}
+
+function readRecord(pagePath, root) {
+  try { return JSON.parse(fs.readFileSync(recordPath(pagePath, root), 'utf8')); } catch { return null; }
+}
+
+function writeRecord(pagePath, root, rec) {
+  const f = recordPath(pagePath, root);
+  fs.mkdirSync(path.dirname(f), { recursive: true });
+  const tmp = `${f}.tmp`;
+  fs.writeFileSync(tmp, JSON.stringify(rec, null, 2));
+  fs.renameSync(tmp, f);
+  return f;
+}
+
+const URL_RE = /^https:\/\/claude\.ai\/(code\/)?artifact\/[A-Za-z0-9-]{6,}\/?$/;
+
+function record(opts) {
+  if (!opts.page || !opts.url) return { ok: false, reason: 'record needs --page and --url' };
+  if (!URL_RE.test(opts.url)) return { ok: false, reason: 'not a claude.ai artifact url' };
+  const prev = readRecord(opts.page, opts.root) || {};
+  const now = new Date().toISOString();
+  const rec = {
+    slug: slugOf(opts.page),
+    page: String(opts.page).replace(/\\/g, '/').replace(/\.artifact\.html$/, '.html'),
+    url: opts.url,
+    recorded_at: prev.recorded_at || now,
+    updated_at: now,
+    open: true,
+    processed: Array.isArray(prev.processed) ? prev.processed : [],
+  };
+  return { ok: true, file: writeRecord(opts.page, opts.root, rec), record: rec };
+}
+
+function mark(opts) {
+  if (!opts.page || !opts.ids) return { ok: false, reason: 'mark needs --page and --ids' };
+  // No record (a thread that never ran record): start one, the ids matter more than the url.
+  const rec = readRecord(opts.page, opts.root) || { slug: slugOf(opts.page), page: String(opts.page).replace(/\\/g, '/'), url: null, open: true, processed: [] };
+  const ids = String(opts.ids).split(',').map((s) => s.trim()).filter(Boolean);
+  const set = new Set(rec.processed || []);
+  ids.forEach((id) => set.add(id));
+  rec.processed = [...set].slice(-500);
+  rec.updated_at = new Date().toISOString();
+  rec.last_processed_at = rec.updated_at;
+  const file = writeRecord(opts.page, opts.root, rec);
+  // The db half follows from a fresh listing: digest's ops.unacked carries
+  // the writes with the versions ArtifactData requires (if_version).
+  return { ok: true, file, processed: ids, next: 'list "submissions" again, digest, send ops.unacked as one ArtifactData batch' };
+}
+
+function close(opts) {
+  if (!opts.page) return { ok: false, reason: 'close needs --page' };
+  const rec = readRecord(opts.page, opts.root);
+  if (!rec) return { ok: false, reason: 'no record' };
+  rec.open = false;
+  rec.closed_at = new Date().toISOString();
+  return { ok: true, file: writeRecord(opts.page, opts.root, rec) };
+}
+
+// --- digest: what a read-back hands the session -----------------------------
+
+/**
+ * Documents out of an ArtifactData listing. Its text, as observed
+ * (2026-11-23): a heading line, a BEGIN/END banner, and one JSON object per
+ * line, `{"id", "data", "version", "updatedAt"}`. Also taken: one JSON value
+ * (an array, or an object with `documents` / `docs` / `items` / `results` /
+ * `rows`), entries named `doc_id` / `fields` / `value` or bare bodies.
+ * @returns {{id:string, data:object, version:(number|null)}[]}
+ */
+function parseDocs(raw) {
+  let v = raw;
+  if (typeof v === 'string') {
+    try { v = JSON.parse(v); } catch {
+      v = v.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.startsWith('{')).map((l) => {
+        try { return JSON.parse(l); } catch { return null; }
+      }).filter(Boolean);
+    }
+  }
+  if (v && !Array.isArray(v) && typeof v === 'object') {
+    v = v.documents || v.docs || v.items || v.results || v.rows || v.data || [];
+  }
+  if (!Array.isArray(v)) return [];
+  return v.map((e) => {
+    if (!e || typeof e !== 'object') return null;
+    const body = [e.data, e.fields, e.value].find((x) => x && typeof x === 'object' && !Array.isArray(x)) || e;
+    const id = String(e.id || e.doc_id || e.docId || (e.path && String(e.path).split('/').pop()) || body.submission_id || body.tab || '');
+    const version = Number.isInteger(e.version) ? e.version : null;
+    return { id, data: body, version };
+  }).filter(Boolean);
+}
+
+function clip(s, n = 300) {
+  const t = typeof s === 'string' ? s : JSON.stringify(s);
+  return t && t.length > n ? `${t.slice(0, n)}…` : t;
+}
+
+/**
+ * @param {{submissions:*, drafts?:*, processed?:string[], now?:number}} input
+ */
+function digestDocs({ submissions, drafts, processed = [], now = Date.now() }) {
+  const done = new Set(processed);
+  const subs = parseDocs(submissions).map((d) => ({ ...d, sid: String(d.data.submission_id || d.id) }));
+  const open = subs
+    .filter((d) => !d.data._processed_at && d.data.submitted !== false && !done.has(d.sid) && !done.has(d.id))
+    .sort((a, b) => (Number(a.data._storedAtMs) || 0) - (Number(b.data._storedAtMs) || 0));
+  // A tab that sent the same round twice (a re-send after "not stored")
+  // meant its newer payload; the older one is reported, not processed.
+  const newestPer = new Map();
+  open.forEach((d) => newestPer.set(`${d.data.iteration}|${d.data._tab || d.id}`, d.sid));
+  const process = open.filter((d) => newestPer.get(`${d.data.iteration}|${d.data._tab || d.id}`) === d.sid);
+  const superseded = open.filter((d) => !process.includes(d));
+  const rounds = {};
+  process.forEach((d) => {
+    const r = String(d.data.iteration == null ? '?' : d.data.iteration);
+    rounds[r] = rounds[r] || { iteration: r, submissions: [], actions: [], senders: [] };
+    rounds[r].submissions.push(d.sid);
+    if (!rounds[r].actions.includes(d.data.action)) rounds[r].actions.push(d.data.action);
+    const who = d.data._by || d.data._tab || d.sid;
+    if (!rounds[r].senders.includes(who)) rounds[r].senders.push(who);
+  });
+  const roundList = Object.values(rounds).map((r) => ({ ...r, several: r.submissions.length > 1 }));
+
+  const draftDocs = parseDocs(drafts).map((d) => d.data);
+  const lastSubmitAt = subs.reduce((m, d) => Math.max(m, Number(d.data._storedAtMs) || 0), 0);
+  const merged = page.mergeDrafts(draftDocs).values;
+  const lateEdits = Object.keys(merged)
+    .filter((k) => merged[k].s > lastSubmitAt)
+    .map((k) => ({ key: k, value: clip(merged[k].v), by: merged[k].by || merged[k].tab, at: new Date(merged[k].s).toISOString() }));
+  const overwritten = [];
+  draftDocs.forEach((d) => (Array.isArray(d.superseded) ? d.superseded : []).forEach((s) => {
+    if (s && s.key) overwritten.push({ key: s.key, value: clip(s.value), by: d.by || d.tab, replaced_by_tab: s.by_tab, at: s.at ? new Date(s.at).toISOString() : null });
+  }));
+
+  const iso = new Date(now).toISOString();
+  // ArtifactData batch `writes` entries; an existing document needs its
+  // last-read version, or the whole batch writes nothing.
+  const op = (d, data) => ({ op: 'update', collection: SUBS, doc_id: d.id, data, ...(d.version ? { if_version: d.version } : {}) });
+  // Processed here (mark ran) but the db never heard it (the session stopped
+  // between mark and its writes): the page would wait forever. Re-send.
+  const unacked = subs.filter((d) => !d.data._processed_at && (done.has(d.sid) || done.has(d.id)))
+    .map((d) => op(d, { _processed_at: iso }));
+  return {
+    ok: true,
+    count: { stored: subs.length, open: open.length, process: process.length },
+    process: process.map((d) => ({ id: d.sid, doc_id: d.id, iteration: d.data.iteration, action: d.data.action, by: d.data._by || '', tab: d.data._tab || '', stored_at: d.data._artifactStoredAt || null })),
+    superseded: superseded.map((d) => ({ id: d.sid, doc_id: d.id, iteration: d.data.iteration, by: d.data._by || d.data._tab || '' })),
+    rounds: roundList,
+    lateEdits,
+    overwritten,
+    ops: {
+      // Every open submission is acked together (superseded ones too): the
+      // round they belong to is handled once.
+      pickup: open.filter((d) => !d.data._picked_up_at).map((d) => op(d, { _picked_up_at: iso })),
+      unacked,
+    },
+    markIds: open.map((d) => d.id).join(','),
+  };
+}
+
+/** A saved listing (text file) or an ArtifactData out_dir (one JSON file per document). */
+function readJsonFile(file) {
+  if (!file) return null;
+  const f = path.resolve(file);
+  if (fs.statSync(f).isDirectory()) {
+    return fs.readdirSync(f).filter((n) => n.endsWith('.json')).map((n) => ({
+      id: n.slice(0, -5),
+      data: JSON.parse(fs.readFileSync(path.join(f, n), 'utf8')),
+    }));
+  }
+  return fs.readFileSync(f, 'utf8');
+}
+
+function digest(opts) {
+  if (!opts.page || !opts.submissions) return { ok: false, reason: 'digest needs --page and --submissions <file>' };
+  let subs;
+  let drafts;
+  try {
+    subs = readJsonFile(opts.submissions);
+    drafts = readJsonFile(opts.drafts);
+  } catch (e) { return { ok: false, reason: 'unreadable', error: e.message }; }
+  const rec = readRecord(opts.page, opts.root);
+  return { ...digestDocs({ submissions: subs, drafts, processed: (rec && rec.processed) || [] }), record: rec ? rec.url : null };
+}
+
+function build(opts) {
   if (!opts.artifact) return { ok: false, reason: 'missing --artifact <page.html>' };
   const src = path.resolve(opts.artifact);
   let source;
@@ -199,17 +310,34 @@ function run(opts) {
     ok: true,
     source: src,
     out,
-    capabilities: { db: {} },
+    capabilities: CAPABILITIES,
     // The browser tab of claude.ai/artifact/… shows the icon the FIRST publish
     // names; the page itself runs in a sandboxed frame, so a <link rel="icon">
     // in it never reaches the tab. "compass" matches the concept's 🧭.
     icon: ICON,
-    readBack: { tool: 'ArtifactData', action: 'get', collection: 'concept', doc_id: 'decisions' },
-    note: 'Publish `out` with the Artifact tool, capabilities {db:{}} and, on the first publish, icon "compass" (a redeploy keeps it); read the decisions on the next turn with readBack against the artifact url. No bridge, no crons.',
+    readBack: [
+      { tool: 'ArtifactData', action: 'list', collection: SUBS, query: { limit: 1000 }, save: 'the result text verbatim to a file (it carries the versions the acks need)' },
+      { tool: 'ArtifactData', action: 'list', collection: DRAFTS, query: { limit: 1000 }, out_dir: '<scratchpad>/<slug>-drafts' },
+    ],
+    note: 'Publish `out` with the Artifact tool, capabilities {db:{},user:{}} and, on the first publish, icon "compass" (a redeploy keeps both); then `record --page <page> --url <artifact url>`. Read back with readBack (artifact-fallback.md § Read back). No bridge, no crons.',
   };
 }
 
-module.exports = { wrap, stripWrapper, wrapperBlock, run, parseArgs, START, END, DOC_PATH, WRAPPER_JS };
+function run(opts) {
+  switch (opts.cmd) {
+    case 'build': return build(opts);
+    case 'record': return record(opts);
+    case 'digest': return digest(opts);
+    case 'mark': return mark(opts);
+    case 'close': return close(opts);
+    default: return { ok: false, reason: `unknown command ${opts.cmd}` };
+  }
+}
+
+module.exports = {
+  wrap, stripWrapper, wrapperBlock, run, parseArgs, parseDocs, digestDocs, slugOf, recordPath, readRecord,
+  START, END, WRAPPER_JS, CAPABILITIES, URL_RE,
+};
 
 if (require.main === module) {
   const result = run(parseArgs(process.argv.slice(2)));

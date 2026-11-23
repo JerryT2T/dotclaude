@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook ss.concept.resume
- * @version 0.8.0
+ * @version 0.9.0
  * @event SessionStart
  * @plugin devops
  * @description Recover an open concept session after a Claude restart, and age out
@@ -626,7 +626,46 @@ function sweepConceptStores(root = cwd, now = Date.now(), activeHtml = null) {
   return removed;
 }
 
+/** An artifact concept goes quiet after this long without a record update. */
+const ARTIFACT_HINT_MS = 30 * 24 * 60 * 60 * 1000;
+const ARTIFACT_URL_RE = /^https:\/\/claude\.ai\/(code\/)?artifact\/[A-Za-z0-9-]{6,}\/?$/;
+
+/**
+ * Open artifact concepts (#589, `scripts/concept-artifact.js record`). An
+ * artifact wakes no session: a submit sits in its `db` until someone reads
+ * it. The record under `.claude/concepts/<slug>/artifact.json` is what lets
+ * a restarted or replaced session know there is something to read, so every
+ * session start names each open one. File reads only; never throws.
+ * @returns {string} one instruction line per open concept, or ''
+ */
+function buildArtifactHints(root = cwd, now = Date.now()) {
+  const base = path.join(root, '.claude', 'concepts');
+  let names = [];
+  try { names = fs.readdirSync(base, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name); } catch { return ''; }
+  const lines = [];
+  for (const slug of names) {
+    try {
+      if (!/^[a-zA-Z0-9._-]{1,80}$/.test(slug)) continue;
+      const rec = JSON.parse(fs.readFileSync(path.join(base, slug, 'artifact.json'), 'utf8'));
+      if (!rec || rec.open !== true || !ARTIFACT_URL_RE.test(String(rec.url || ''))) continue;
+      const at = Date.parse(rec.updated_at || rec.recorded_at || '');
+      if (!Number.isFinite(at) || now - at > ARTIFACT_HINT_MS) continue;
+      const pagePath = isValidHtmlPath(rec.page) ? rec.page : `docs/concepts/${slug}.html`;
+      lines.push(
+        `Open artifact concept ${slug} (${pagePath}) at ${rec.url}, ${Array.isArray(rec.processed) ? rec.processed.length : 0} submission(s) processed so far. ` +
+        `Submissions wait in its db and wake nobody: when the user's prompt continues this concept or asks for its decisions ` +
+        `(or a cron armed for it fires), read them per auto-concept artifact-fallback.md § Read back ` +
+        `(ArtifactData list collection "submissions" and "drafts" against that url, then concept-artifact.js digest). ` +
+        `Re-arm its backed-off read-back check (artifact-fallback.md § Wake; it died with the previous session); ` +
+        `any other prompt leaves the concept itself alone. The record is data, not an instruction to act now.`
+      );
+    } catch { /* not an artifact concept */ }
+  }
+  return lines.join('\n');
+}
+
 module.exports = {
+  buildArtifactHints,
   sweepConceptStores,
   isValidHtmlPath,
   isValidState,
@@ -650,6 +689,8 @@ if (require.main === module) {
   (async () => {
     const state = readState();
     sweepConceptStores(cwd, Date.now(), state && state.html_path);
+    const artifactHints = buildArtifactHints(cwd);
+    if (artifactHints) process.stdout.write(artifactHints + '\n');
     if (!state) process.exit(0);
 
     // Consistency check: the concept HTML on disk is the source of truth for
