@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @script orphan-scan
- * @version 0.2.0
+ * @version 0.3.0
  * @plugin devops
  * @description Machine-wide orphan scan. Post-ship hygiene only looks at the
  *   repo that was just shipped; this scans EVERY git repo under a root and
@@ -24,6 +24,7 @@
  *   mainOnLanded = branch the main checkout is parked on although it landed (nudge only)
  *   remoteOnly = origin branches with unlanded work, no PR and no local copy (cloud sessions)
  *   landedOutside = clean landed worktrees outside .claude/worktrees (nudge only)
+ *   truncated = units left unclassified because the repo ran past REPO_BUDGET_MS
  *   The SessionStart hook ss.orphan.nudge reads the report (no git calls).
  *
  *   Read-only except `git fetch --prune` (timeout, offline-tolerant) and the
@@ -51,6 +52,9 @@ const { clearStaleLocks } = require('./lib/stale-git-locks');
 const { isAgentLeftover, pickByAgeCount } = require('./lib/cleanup-rule');
 
 const FETCH_TIMEOUT = 60_000;
+// per-repo classification budget: a repo with dozens of session worktrees took 5+ min and
+// stalled the machine-wide scan (#1222); units past it are kept unclassified, `truncated` counts them
+const REPO_BUDGET_MS = 90_000;
 const GIT_TIMEOUT = 15_000;
 
 function gitOut(args, cwd, timeout = GIT_TIMEOUT) {
@@ -133,7 +137,8 @@ async function scanOne(repo, opts = {}) {
   const self = gitOut(['rev-parse', '--show-toplevel'], process.cwd());
   if (self) scan.units = scan.units.filter((u) => !(u.kind === 'worktree' && hy.normPath(u.path) === hy.normPath(self)));
   const projectsDir = opts.projectsDir === undefined ? hy.defaultProjectsDir() : opts.projectsDir;
-  const cls = hy.classifyUnits(scan, { cwd: repo, projectsDir, fetchMerged: opts.fetchMerged, fetchOpen: opts.fetchOpen });
+  const deadline = (opts.clock || Date.now)() + (opts.budgetMs ?? REPO_BUDGET_MS);
+  const cls = hy.classifyUnits(scan, { cwd: repo, projectsDir, fetchMerged: opts.fetchMerged, fetchOpen: opts.fetchOpen, deadline, clock: opts.clock });
 
   const parked = [];
   for (const p of parkRegister.listParked(repo, now)) {
@@ -176,6 +181,7 @@ async function scanOne(repo, opts = {}) {
       threadWork: (cls.threadWork || []).map((t) => ({ kind: t.kind, branch: t.branch, path: t.path, idleDays: Math.floor(t.ageDays || 0) })),
       remoteOnly: hy.remoteUnlanded(cls.ctx, scan.defaultBranch, now).map((b) => ({ branch: b.name, ageDays: b.ageDays, state: b.state })),
       offline: cls.merged === null,
+      ...(cls.truncated ? { truncated: cls.truncated } : {}),
     },
   };
 }
