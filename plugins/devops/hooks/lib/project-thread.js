@@ -42,6 +42,8 @@ const HEARTHBOT_PREFIX = 'mcp__hearthbot__';
 const RENAME_TOOL = `${HEARTHBOT_PREFIX}rename_thread`;
 const POST_TOOL = `${HEARTHBOT_PREFIX}post_message`;
 const CHECKLIST_TOOL = `${HEARTHBOT_PREFIX}update_progress_checklist`;
+/** The thread's widget tool: the completion card goes out through it as the visual card (mcp-server/lib/card-widget.js threadCardWidget). */
+const WIDGET_TOOL = `${HEARTHBOT_PREFIX}post_widget`;
 
 /** The envelope every thread prompt arrives in — nothing a user types opens this way. */
 const WAKE_PATTERN = /^\s*<wake\b[^>]*>\s*<project\b[^>]*\bid="chan_/;
@@ -457,6 +459,7 @@ module.exports = {
   RENAME_TOOL,
   POST_TOOL,
   CHECKLIST_TOOL,
+  WIDGET_TOOL,
   isWakePrompt,
   projectId,
   isRelayPrompt,

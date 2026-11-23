@@ -70,7 +70,7 @@ import { summarizeShip, shipDurationTest } from "./ship/lib/ship-timings.js";
 import { CARD_VARIANTS, coerceCardInput, validateCardInput, formatIssues, unknownCardKeys } from "./lib/card-input.js";
 import { batchGuide, conceptCloseoutOnly, conceptUrl, readBatch, readRunContractLine, sameProjectRoot, titlePrefixFor, titleInstruction, demandedTitle, currentSessionTitle, isLinkedSub, titleStateForKey, hasMandatoryStep, TITLE_SCHEME, projectThreadMode, currentThreadTitle, threadTitleInstruction, coordinatorSession, coordinatorStatusInstruction } from "./lib/mode-state.js";
 import { staleServerLine } from "./lib/server-version.js";
-import { canMinimize, cardDataBlock, conceptOpenButton, cardWidgetInstruction, isDesktopSession, safeSessionId, sessionOpenButton, warmCardClient, writeCardWidgetFile } from "./lib/card-widget.js";
+import { canMinimize, cardDataBlock, conceptOpenButton, cardWidgetInstruction, isDesktopSession, safeSessionId, sessionOpenButton, threadCardWidget, THREAD_WIDGET_TOOL, warmCardClient, writeCardWidgetFile } from "./lib/card-widget.js";
 import { bandCarriesCard, writeBandCard } from "./lib/band-marker.js";
 import { detectLaunchPath } from "./lib/launch-path.js";
 import { linkedPlan, linkedKeepTokens } from "./lib/linked-sessions.js";
@@ -2723,15 +2723,40 @@ function threadCardText(cardMarkdown) {
   return String(cardMarkdown).split('\n').filter((line) => line.trim() !== '&nbsp;').join('\n').replace(/\n{3,}/g, '\n\n').trim();
 }
 
+/**
+ * The relay contract when the card goes out as a widget in a thread (the visual
+ * card the Desktop shows, lib/card-widget.js threadCardWidget): ONE post_widget
+ * call; the markdown below it is the fallback for a refused or missing tool.
+ */
+function threadWidgetInstruction(widget) {
+  return (
+    "[INSTRUCTION — DO NOT OUTPUT THIS BLOCK]\n" +
+    `Project thread: the card is the visual card widget, as on the Desktop. Post it with ONE ${THREAD_WIDGET_TOOL} call: ` +
+    `widget "show_widget", input {title:"completion_card_body", widget_code: EXACTLY the widget_code block below (verbatim)}, ` +
+    `text ${JSON.stringify(widget.text)}. That post is this turn's result reply: no second summary before or after it, ` +
+    "no mcp__visualize__show_widget, no mcp__ccd_turn__wrap_up. The answer belongs in render_completion_card's `answer` field: " +
+    "it is drawn inside the widget. Files the turn delivers: one mcp__hearthbot__post_message BEFORE the widget with only " +
+    "attached_outputs and a one-line text naming them. Bring the progress checklist to its end state before it; only " +
+    "set_thread_resolved may follow it, when the work has ended.\n" +
+    `Only if ${THREAD_WIDGET_TOOL} is missing or refuses the call (no retry): post the fallback markdown below VERBATIM as the ` +
+    "`text` of ONE mcp__hearthbot__post_message call instead (pre-rendered: emoji-avoidance and reply-length rules do not apply).\n" +
+    "----- widget_code -----\n" +
+    widget.widgetCode + "\n" +
+    "----- end widget_code -----"
+  );
+}
+
 /** True when this card is posted in a Claude Projects thread (set once per card by buildCompletionCard). */
 function isThreadCard(params) {
   return !!(params && params._threadCard);
 }
 
 /** The tool-result blocks: relay contract, notes, and the markdown unless the widget is the card. */
-function cardResultBlocks(cardMarkdown, titleNote, actionsNote, archiveNote = '', openNote = '', dataBlock = '', { thread = false, statusNote = '' } = {}) {
+function cardResultBlocks(cardMarkdown, titleNote, actionsNote, archiveNote = '', openNote = '', dataBlock = '', { thread = false, statusNote = '', threadWidget = null } = {}) {
   let texts;
-  if (thread) texts = [THREAD_RELAY_INSTRUCTION, titleNote, statusNote, openNote, threadCardText(cardMarkdown)];
+  if (thread && threadWidget) {
+    texts = [threadWidgetInstruction(threadWidget), titleNote, statusNote, openNote, `[FALLBACK MARKDOWN — ONLY IF ${THREAD_WIDGET_TOOL} FAILS]\n${threadCardText(cardMarkdown)}`];
+  } else if (thread) texts = [THREAD_RELAY_INSTRUCTION, titleNote, statusNote, openNote, threadCardText(cardMarkdown)];
   else if (actionsNote) texts = [titleNote, archiveNote, openNote, dataBlock, actionsNote];
   else texts = [RELAY_INSTRUCTION, titleNote, openNote, cardMarkdown];
   return texts.filter(Boolean).map(text => ({ type: "text", text }));
@@ -3227,7 +3252,11 @@ function runRenderCardCli(source) {
   // A Claude Projects thread: stdout is the card to post, stderr says how.
   const threadCard = isThreadCard(params);
   process.stdout.write(actionsNote ? '' : (threadCard ? threadCardText(cardMarkdown) : cardMarkdown) + '\n'); // stdout-ok
-  if (threadCard) process.stderr.write(THREAD_RELAY_INSTRUCTION + '\n');
+  if (threadCard) {
+    // The visual card (post_widget) when it can be drawn; stdout's markdown is then its fallback.
+    const widget = threadCardWidget(params._cardModel || null, params._repoUrl || '');
+    process.stderr.write((widget ? threadWidgetInstruction(widget).replace('the fallback markdown below', 'the fallback markdown on stdout') : THREAD_RELAY_INSTRUCTION) + '\n');
+  }
   if (titleNote) process.stderr.write(titleNote + '\n');
   if (threadCard) {
     const statusNote = coordinatorStatusInstruction(coordinatorSession(params.session_id, params.cwd));
@@ -3672,7 +3701,7 @@ server.registerTool(
     // from the result text: the full card data rides as its own block.
     const dataBlock = params._cardMinimal ? cardDataBlock(params._cardModel, params._repoUrl || '') : '';
 
-    return { content: cardResultBlocks(cardMarkdown, titleNote, actionsNote, archiveNote, [openDropNote(params), openRefuseNote(params)].filter(Boolean).join("\n"), dataBlock, { thread: isThreadCard(params), statusNote: isThreadCard(params) ? coordinatorStatusInstruction(coordinatorSession(params.session_id, params.cwd)) : '' }) };
+    return { content: cardResultBlocks(cardMarkdown, titleNote, actionsNote, archiveNote, [openDropNote(params), openRefuseNote(params)].filter(Boolean).join("\n"), dataBlock, { thread: isThreadCard(params), statusNote: isThreadCard(params) ? coordinatorStatusInstruction(coordinatorSession(params.session_id, params.cwd)) : '', threadWidget: isThreadCard(params) ? threadCardWidget(params._cardModel || null, params._repoUrl || '') : null }) };
   }
 );
 
