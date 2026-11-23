@@ -203,6 +203,62 @@ function recordAnswers(state, questions, answers, nowMs = Date.now()) {
   return state;
 }
 
+// ── Claude Projects thread ─────────────────────────────────────────────────
+//
+// In a thread AskUserQuestion reaches no one, so the gate could never be
+// answered there (#1222). The thread form: Claude posts the Dry-Run list with
+// mcp__hearthbot__post_message (a line starting with "Dry-Run" names every
+// branch / worktree; an optional "Unmerged" section lists the unlanded branch
+// names in backticks), and the person's NEXT own thread message answers it.
+// Only a wake whose trigger message is from="human" trust="principal" counts;
+// a relay, a peer or another Claude never does. A yes ("Ja" / "Yes" first)
+// approves exactly that post; any other answer drops the pending post.
+
+const THREAD_DRY_LINE_RE = /^[\s#>*_-]*dry[\s-]?run\b/im;
+const THREAD_UNMERGED_LINE_RE = /^[\s#>*_-]*unmerged\b/i;
+const PRINCIPAL_MSG_RE = /<message\b(?=[^>]*\btrigger="true")(?=[^>]*\bfrom="human")(?=[^>]*\btrust="principal")[^>]*>([\s\S]*?)<\/message>/;
+
+/** Backticked bare branch names of the post's "Unmerged" section (until a blank line). */
+function unmergedNamesOf(text) {
+  const names = [];
+  let inside = false;
+  for (const line of String(text || '').split('\n')) {
+    if (THREAD_UNMERGED_LINE_RE.test(line)) { inside = true; continue; }
+    if (!inside) continue;
+    if (!line.trim()) break;
+    for (const m of line.matchAll(/`([^`\s]+)`/g)) if (isBareBranch(m[1]) && !names.includes(m[1])) names.push(m[1]);
+  }
+  return names;
+}
+
+/** A thread post carrying a Dry-Run list becomes the pending question (mutates and returns state). */
+function recordThreadPost(state, text, nowMs = Date.now()) {
+  if (!state || typeof text !== 'string' || !THREAD_DRY_LINE_RE.test(text)) return state;
+  state.threadPending = { at: nowMs, scope: text, unmerged: unmergedNamesOf(text) };
+  return state;
+}
+
+/** The person's own thread message of a wake prompt, or null (relay, peer, no wake). */
+function principalMessage(prompt) {
+  const s = String(prompt || '');
+  if (!/^\s*<wake\b/.test(s)) return null;
+  const m = PRINCIPAL_MSG_RE.exec(s);
+  return m ? m[1].trim() : null;
+}
+
+/** Fold the person's answer to the pending thread post into the state (mutates and returns it). */
+function confirmThreadPrompt(state, prompt, nowMs = Date.now()) {
+  if (!state || !state.threadPending) return state;
+  const msg = principalMessage(prompt);
+  if (msg === null) return state;
+  const pending = state.threadPending;
+  delete state.threadPending;
+  if (!YES_LABEL_RE.test(msg)) return state;
+  state.dryRun.push({ at: nowMs, scope: pending.scope });
+  for (const name of pending.unmerged || []) state.unmerged.push({ at: nowMs, scope: name, exact: true });
+  return state;
+}
+
 // ── command parsing ────────────────────────────────────────────────────────
 
 /** Shell-ish split into segments (`&&`, `||`, `;`, `|`, newline) of tokens. */
@@ -678,7 +734,10 @@ const HOW_TO_CONFIRM =
   'This item is not in the autonomous class (provably landed and checked out nowhere, or a worktree entry without a directory). ' +
   'Put it on the ONE concept page; once the user decided it there, relay exactly those decisions with one AskUserQuestion: ' +
   'header "Dry-Run", the question lists every branch / worktree by full name, ' +
-  'options "Ja, ausführen" and "Abbrechen". No yes → keep it, list it as open on the `analysis` card.';
+  'options "Ja, ausführen" and "Abbrechen". No yes → keep it, list it as open on the `analysis` card. ' +
+  'In a Claude Projects thread (AskUserQuestion reaches no one there): post the list with mcp__hearthbot__post_message — ' +
+  'a line starting "Dry-Run", every name in full, unlanded branches as backticked names under an "Unmerged" line — ' +
+  'and act only after the person’s own next thread message starts with "Ja".';
 
 /**
  * The gate's verdict for one Bash/PowerShell command.
@@ -766,6 +825,7 @@ module.exports = {
   ARM_TTL_MS,
   statePath, readState, writeState, arm, isCleanupSkill,
   isYesAnswer, questionScope, recordAnswers,
+  recordThreadPost, confirmThreadPrompt, principalMessage, unmergedNamesOf,
   segments, fromMsys, parseDeletes, defaultBase, hasLanded,
   provenLanded, isAutonomous, namesBranch, namesWorktree, decide,
 };

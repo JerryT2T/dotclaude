@@ -143,6 +143,11 @@ earlier, so a tip that moved since then fails the proof:
   `Abbrechen`. An unlanded branch additionally needs its own multiSelect
   question, header `Unmerged`, options = the full branch names; only ticked
   names count.
+- **In a Claude Projects thread** `AskUserQuestion` reaches no one: post the
+  same list with `mcp__hearthbot__post_message` instead — a line starting
+  `Dry-Run`, every name in full, unlanded branches as backticked names under
+  an `Unmerged` line — and act only after the person's own next thread message
+  starts with "Ja" (`prompt.cleanup.gate` records it; a relay never counts).
 - **No answer is a no.** An error (`Answer questions?` under `claude -p`), a
   denied or unavailable tool, `Abbrechen`, `Behalten`, an Other or free-text
   reply: nothing of the ambiguous class is deleted. Do not retry another way —
