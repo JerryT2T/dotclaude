@@ -161,6 +161,26 @@ function relayWords(body) {
   return decodeEntities(text).replace(/[ \t]+\n/g, '\n').trim();
 }
 
+const CITED_USER = /<cited\b[^>]*\sauthor="user"[^>]*>([\s\S]*?)<\/cited>/g;
+
+/**
+ * The person's own messages a colleague attached to its relay (`<cited author="user">`,
+ * copied there by the claude.ai server, which says a cited entry is the person's own word
+ * and can approve a step that cannot be undone). Only a cited block that is a direct part
+ * of the relay counts: one written inside a `<note>` is the colleague's own text. Returns
+ * the non-empty cited texts, [] for anything else. Never throws.
+ */
+function citedPersonWords(raw) {
+  try {
+    const r = RELAY_BLOCK.exec(typeof raw === 'string' ? raw : '');
+    if (!r) return [];
+    const outsideNotes = r[2].replace(/<note\b[^>]*>[\s\S]*?<\/note>/g, ' ');
+    return [...outsideNotes.matchAll(CITED_USER)].map((m) => decodeEntities(m[1]).trim()).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
 /** { origin, words } of a colleague note outside or inside a wake, or null. */
 function parseRelay(prompt) {
   const m = RELAY_BLOCK.exec(prompt);
@@ -277,7 +297,9 @@ function lastHumanSidePrompt(transcriptContent) {
  * THE rights decision of a tool call: whose word is this turn? `colleague` (a coordinator
  * note or another thread's message) may order work and an alpha ship, never a promote,
  * force-push, session archive or destructive delete; `person` may.
- *   - origin coordinator / thread -> colleague;
+ *   - origin coordinator / thread -> colleague, unless the relay carries the person's own
+ *     message (`<cited author="user">`, `citedPersonWords`) -> person: the person's attached
+ *     word is their approval, so they never have to repeat it in the thread;
  *   - a machine prompt -> the last non-machine prompt decides;
  *   - no readable prompt in a marked thread -> colleague (fail closed); in any other
  *     session -> person (a Desktop session behaves as before);
@@ -291,7 +313,10 @@ function lastHumanSidePrompt(transcriptContent) {
  */
 function turnRights(hook, transcriptContent) {
   const view = lastHumanSidePrompt(transcriptContent);
-  if (view) return isColleagueOrigin(view.prompt_origin) ? 'colleague' : 'person';
+  if (view) {
+    if (!isColleagueOrigin(view.prompt_origin)) return 'person';
+    return citedPersonWords(view.prompt_raw).length ? 'person' : 'colleague';
+  }
   return hook && isMarked(hook.session_id) ? 'colleague' : 'person';
 }
 
@@ -472,6 +497,7 @@ module.exports = {
   turnPrompt,
   turnOrigin,
   turnRights,
+  citedPersonWords,
   isWholeWake,
   isHearthbotTool,
   personWords,

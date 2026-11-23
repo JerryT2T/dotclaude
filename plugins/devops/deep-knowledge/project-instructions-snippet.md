@@ -19,6 +19,14 @@ for it and name the issue (number and title) in the thread's task, the first
 message. Do not put the issue number into the thread title: a title has little
 room and 30 issues can be open at once. Before you start a thread for an issue,
 check that no other thread already works on it.
+
+Pass my answers to a thread by attaching my message by its id, never retold:
+only an attached message counts as my approval there. Never ask me to repeat
+an answer in the thread.
+
+"devops learn" here is a task, not a note: start a thread in the repo it is
+about (the devops plugin's repo for the plugin or how threads work), attach
+my message and tell it to run /do-learn.
 ```
 
 ## Where threads run: local-first

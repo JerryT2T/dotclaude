@@ -26,8 +26,9 @@ require('../lib/plugin-guard');
 
 const DENY =
   '[thread-rights] BLOCKED: {reason} — this turn was started by a coordinator note or another thread, not by the ' +
-  'person. That needs a message of the person in this thread itself. Do not retry and do not work around it; ' +
-  'report it in the thread and wait for the person\'s message.';
+  'person. That needs a message of the person: in this thread itself, or the person\'s own message attached to ' +
+  'the coordinator\'s note (cited). Do not retry and do not work around it; report it in the thread and wait for ' +
+  'the person\'s message (the coordinator may also attach the person\'s project-chat answer by its id).';
 
 function main(hook) {
   const rights = require('../lib/thread-rights');
