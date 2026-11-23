@@ -10,7 +10,9 @@
  * cancels it. Einstellungen: the devops switch for this session, the info card's
  * figures as tiles with an "i" toggle, measured facts in place of a token gain that is not there, the version.
  * Einstellungen also holds the browser for pages devops opens: a dropdown of the installed ones plus In-App
- * (scripts/browser-choice.js).
+ * (scripts/browser-choice.js), and, behind the `project-threads` channel feature, the row "Thread-Ort" (global value,
+ * per-project exceptions, copy button for the text block; scripts/thread-location.js) with the prerequisites for a
+ * thread on this computer (display only).
  *
  * Pure helpers are exported for the tests; the engine side reaches the rest of the mod only through `HomeDeps`.
  */
@@ -18,7 +20,7 @@ import type { EngineInterface } from 'claude-code'
 
 import type { InfoData } from '../../types/index'
 import { infoHeadline, infoIsEmpty, infoRows } from './format'
-import { homeDir } from './gate'
+import { featureAllowed, homeDir } from './gate'
 import type { InfoRow, Locale } from './format'
 
 export const HOME_PANE = 'devops-home'
@@ -237,6 +239,127 @@ export function browserNote(b: BrowserState): string {
   return `Gewählt war „${b.stored}“, ist aber nicht mehr installiert.`
 }
 
+// Thread-Ort (scripts/thread-location.js): where Claude Project threads start.
+
+export const INHERIT = 'inherit'
+const THREAD_LABELS: Record<string, string> = { 'local-first': 'Lokal zuerst', 'local-only': 'Nur lokal', 'cloud-first': 'Cloud zuerst', ask: 'Jedes Mal fragen' }
+const THREAD_MEANING: Record<string, string> = {
+  'local-first': 'Threads starten auf diesem Computer. Die Cloud nur, wenn er nicht erreichbar ist.',
+  'local-only': 'Threads starten nur auf diesem Computer. Ist er aus, wartet der Thread.',
+  'cloud-first': 'Threads starten in der Cloud. Der Textblock gehört nicht in die Projektanweisungen.',
+  ask: 'Der Koordinator fragt bei jedem neuen Thread, wo er laufen soll.',
+}
+export const THREAD_REQUEST_NOTE = 'Das ist eine Bitte an den Koordinator des Projekts (der Textblock in den Projektanweisungen), kein erzwungener Schalter. Allein die Einstellung ändert auf claude.ai nichts, solange der Block nicht in den Projektanweisungen steht.'
+
+export type ThreadValueOption = { id: string; label: string }
+export type ThreadProject = { id: string; name: string; value: string; source: 'project' | 'global' | 'default' }
+export type ThreadState = { options: ThreadValueOption[]; global: string; projects: ThreadProject[] }
+
+/** German label of a thread-location value; an unknown id is shown as it is. */
+export function threadLabel(id: string): string {
+  return THREAD_LABELS[id] || id
+}
+
+/** One plain sentence saying what a value means. */
+export function threadMeaning(id: string): string {
+  return THREAD_MEANING[id] || ''
+}
+
+/** `scripts/thread-location.js list|set --json` → the global value and the projects devops has seen. */
+export function threadsFrom(text: string): ThreadState | null {
+  let v: unknown
+  try {
+    v = JSON.parse(text)
+  } catch {
+    return null
+  }
+  const o = v && typeof v === 'object' ? (v as { values?: unknown; global?: unknown; projects?: unknown }) : null
+  if (!o || typeof o.global !== 'string' || !o.global || !Array.isArray(o.values)) return null
+  const options = o.values
+    .map((x): ThreadValueOption | null => (x && typeof x === 'object' && typeof (x as { id?: unknown }).id === 'string' && (x as { id: string }).id ? { id: (x as { id: string }).id, label: threadLabel((x as { id: string }).id) } : null))
+    .filter((x): x is ThreadValueOption => !!x)
+  if (!options.length) return null
+  const projects = (Array.isArray(o.projects) ? o.projects : [])
+    .map((x): ThreadProject | null => {
+      const p = x && typeof x === 'object' ? (x as Record<string, unknown>) : null
+      if (!p || typeof p.id !== 'string' || !p.id || typeof p.value !== 'string') return null
+      const source = p.source === 'project' || p.source === 'global' ? p.source : 'default'
+      return { id: p.id, name: typeof p.name === 'string' ? p.name : '', value: p.value, source }
+    })
+    .filter((x): x is ThreadProject => !!x)
+  return { options, global: o.global, projects }
+}
+
+/** The project's name, or its id shortened so a line stays readable (`chan_0129rN…Egyc`). */
+export function threadProjectName(p: { id: string; name: string }): string {
+  if (p.name.trim()) return p.name.trim()
+  return p.id.length > 16 ? `${p.id.slice(0, 11)}…${p.id.slice(-4)}` : p.id
+}
+
+/** What a project's dropdown shows: its own value, or that it follows the global one. */
+export function threadProjectLabel(p: ThreadProject): string {
+  return p.source === 'project' ? threadLabel(p.value) : `wie global (${threadLabel(p.value)})`
+}
+
+/** `scripts/thread-location.js block --json` → what the copy button does. */
+export type ThreadCopy = { kind: 'copy'; text: string; value: string } | { kind: 'remove'; value: string }
+export function threadCopyFrom(text: string): ThreadCopy | null {
+  let v: unknown
+  try {
+    v = JSON.parse(text)
+  } catch {
+    return null
+  }
+  const o = v && typeof v === 'object' ? (v as { value?: unknown; block?: unknown }) : null
+  if (!o || typeof o.value !== 'string') return null
+  if (typeof o.block === 'string' && o.block.trim()) return { kind: 'copy', text: o.block, value: o.value }
+  return o.value === 'cloud-first' ? { kind: 'remove', value: o.value } : null
+}
+
+/** The toast after the copy button ran. */
+export function threadCopyNote(c: ThreadCopy, copied: boolean): string {
+  if (c.kind === 'remove') return 'Cloud zuerst hat keinen Textblock. Entferne den Block „Where threads run“ aus den Projektanweisungen.'
+  return copied ? `Textblock „${threadLabel(c.value)}“ kopiert. Füge ihn in die Projektanweisungen ein.` : 'Kopieren fehlgeschlagen.'
+}
+
+/** First `major.minor.patch` in `claude --version` output, or ''. */
+export function versionFrom(text: string): string {
+  const m = /(\d+)\.(\d+)\.(\d+)/.exec(text)
+  return m ? `${m[1]}.${m[2]}.${m[3]}` : ''
+}
+
+export function versionAtLeast(v: string, min: string): boolean {
+  const a = v.split('.').map(Number)
+  const b = min.split('.').map(Number)
+  for (let i = 0; i < 3; i++) {
+    if ((a[i] || 0) !== (b[i] || 0)) return (a[i] || 0) > (b[i] || 0)
+  }
+  return true
+}
+
+export const MIN_CLAUDE_CODE = '2.1.280'
+
+/**
+ * The five prerequisites for a thread on this computer. Only the Claude Code version can be read honestly (the
+ * command line's `claude --version`); the Desktop app keeps no setting for the rest that is readable without
+ * guessing its meaning, so those are checks the user does. devops changes none of them.
+ */
+export type Prereq = { key: string; state: 'ok' | 'bad' | 'check'; text: string }
+export function prereqRows(version: string): Prereq[] {
+  const code: Prereq = !version
+    ? { key: 'version', state: 'check', text: `Claude Code ab Version ${MIN_CLAUDE_CODE} auf diesem Computer (die Version war nicht lesbar).` }
+    : versionAtLeast(version, MIN_CLAUDE_CODE)
+      ? { key: 'version', state: 'ok', text: `Claude Code ${version} (Befehl claude), nötig ist ab ${MIN_CLAUDE_CODE}.` }
+      : { key: 'version', state: 'bad', text: `Claude Code ${version} (Befehl claude) ist zu alt, nötig ist ab ${MIN_CLAUDE_CODE}.` }
+  return [
+    { key: 'project', state: 'check', text: 'Im Claude-Projekt „Dein Computer“ auf An, mit einem Standardordner (Projekteinstellungen, Umgebung).' },
+    { key: 'rc', state: 'check', text: 'Remote Control für diesen Computer an: in den Einstellungen der Desktop-App unter Code der Schalter „Use this computer from your phone and claude.ai“, der Ordner steht in der Liste darunter.' },
+    { key: 'awake', state: 'check', text: 'Computer wach halten: in denselben Einstellungen der Schalter „Keep this computer awake for Remote Control“.' },
+    code,
+    { key: 'trusted', state: 'check', text: 'In den Kontoeinstellungen „Require trusted devices“ aus. Ist es an, kann ein Projekt keinen Thread auf diesem Computer ausführen.' },
+  ]
+}
+
 /**
  * `~/.claude/bedtime-shutdown.json` → what is armed right now, or null: a final phase (cancelled, expired, failed),
  * a waiting state whose watcher stopped updating it, and a shutdown whose time has passed all show the button again.
@@ -307,6 +430,13 @@ let browserOpen = false
 let browserSaving = ''
 const BROWSER_TIMEOUT_MS = 8000
 const BROWSER_FRESH_MS = 300_000
+let threads: ThreadState | null = null
+let threadsAt = 0
+let threadsLoading = false
+let threadsVersion = ''
+let threadsOpen = '' // '' | 'global' | a project id: the dropdown that is open
+let threadsSaving = ''
+let threadsGate: Promise<boolean> | null = null
 let bedConfirm = false
 let bedBusy = false
 
@@ -389,6 +519,99 @@ function pickBrowser($: EngineInterface, id: string): void {
     else $.ui.toast('Browser konnte nicht gespeichert werden.', { timeoutMs: 8000 })
     browserSaving = ''
     $.ui.invalidate('ui.render')
+  })()
+}
+
+/** The `project-threads` channel feature: the Thread-Ort row exists only where it is offered (asked once). */
+function threadsOn($: EngineInterface): Promise<boolean> {
+  if (!threadsGate) threadsGate = featureAllowed($, 'project-threads').catch(() => false)
+  return threadsGate
+}
+
+async function threadScript($: EngineInterface, args: string[]): Promise<string | null> {
+  try {
+    const r = await $.process.run(['node', `${$.plugin.root}/scripts/thread-location.js`, ...args, '--json'], { timeoutMs: BROWSER_TIMEOUT_MS })
+    return r.exitCode === 0 ? String(r.stdout || '') : null
+  } catch {
+    return null
+  }
+}
+
+/** Same cache as the browser: a good answer holds 5 min, a failed one is retried after 20 s, ↻ asks now. */
+function loadThreads($: EngineInterface, now: number, force = false): void {
+  if (threadsLoading || (!force && threadsAt && now - threadsAt < (threads ? BROWSER_FRESH_MS : STALE_MS))) return
+  threadsLoading = true
+  threadsAt = now || 1
+  void (async () => {
+    const t = await threadScript($, ['list'])
+    const s = t === null ? null : threadsFrom(t)
+    if (s) threads = s
+    try {
+      const r = await $.process.run(['claude', '--version'], { timeoutMs: BROWSER_TIMEOUT_MS })
+      threadsVersion = r.exitCode === 0 ? versionFrom(String(r.stdout || '')) : ''
+    } catch {
+      threadsVersion = ''
+    }
+    threadsLoading = false
+    $.ui.invalidate('ui.render')
+  })()
+}
+
+/** `value` is a global value, or for a project a value or `inherit`. */
+function pickThread($: EngineInterface, value: string, project?: string): void {
+  threadsOpen = ''
+  const cur = threads ? (project ? threads.projects.find(p => p.id === project) : null) : null
+  const same = project ? !!cur && (value === INHERIT ? cur.source !== 'project' : cur.source === 'project' && cur.value === value) : !!threads && threads.global === value
+  if (!threads || threadsSaving || same) {
+    $.ui.invalidate('ui.render')
+    return
+  }
+  threadsSaving = project || 'global'
+  $.ui.invalidate('ui.render')
+  void (async () => {
+    const t = await threadScript($, project ? ['set', value, '--project', project] : ['set', value])
+    const s = t === null ? null : threadsFrom(t)
+    if (s) threads = s
+    else $.ui.toast('Thread-Ort konnte nicht gespeichert werden.', { timeoutMs: 8000 })
+    threadsSaving = ''
+    $.ui.invalidate('ui.render')
+  })()
+}
+
+/**
+ * The engine typings offer no clipboard call, so the platform's own command gets the text on stdin: Windows `clip`,
+ * macOS `pbcopy`, Linux `wl-copy`, then `xclip`. First one that exits 0 wins.
+ */
+async function copyText($: EngineInterface, text: string): Promise<boolean> {
+  let win = false
+  try {
+    win = (await $.env.get('OS')) === 'Windows_NT'
+  } catch {
+    win = false
+  }
+  const cmds = win ? [['clip']] : [['pbcopy'], ['wl-copy'], ['xclip', '-selection', 'clipboard']]
+  for (const cmd of cmds) {
+    try {
+      const r = await $.process.run(cmd, { stdin: text, timeoutMs: BROWSER_TIMEOUT_MS })
+      if (r.exitCode === 0) return true
+    } catch {
+      // command not there: try the next one
+    }
+  }
+  return false
+}
+
+/** The copy button: the block for the value in effect (global, or a project with its own exception). */
+function copyThreadBlock($: EngineInterface, project?: string): void {
+  void (async () => {
+    const t = await threadScript($, project ? ['block', '--project', project] : ['block'])
+    const c = t === null ? null : threadCopyFrom(t)
+    if (!c) {
+      $.ui.toast('Textblock konnte nicht gelesen werden.', { timeoutMs: 8000 })
+      return
+    }
+    const ok = c.kind === 'copy' ? await copyText($, c.text) : false
+    $.ui.toast(threadCopyNote(c, ok), { timeoutMs: 8000 })
   })()
 }
 
@@ -613,7 +836,7 @@ export async function renderHome($: EngineInterface, e: any, ctx: HomeCtx): Prom
         <Button key="home-tab-settings" variant={tab === 'settings' ? 'primary' : undefined} label="Einstellungen" onPress={() => { tab = 'settings'; $.ui.invalidate('ui.render') }} />
         <Box flexGrow={1} />
         {s && <Text key="home-age" dimColor>{agoText(now - s.at)}</Text>}
-        <Button key="home-refresh" plain label="↻" onPress={() => { if (tab === 'settings') loadBrowsers($, now, true); refreshHome($, ctx, true) }} />
+        <Button key="home-refresh" plain label="↻" onPress={() => { if (tab === 'settings') { loadBrowsers($, now, true); void threadsOn($).then(on => { if (on) loadThreads($, now, true) }) } refreshHome($, ctx, true) }} />
       </Box>
     )
     if (!s) return <Box flexDirection="column" rowGap={1}>{tabs}<Text dimColor>Lädt …</Text></Box>
@@ -626,6 +849,9 @@ export async function renderHome($: EngineInterface, e: any, ctx: HomeCtx): Prom
       loadBrowsers($, now)
       const br = browsers
       const note = br ? browserNote(br) : ''
+      const threadsShown = await threadsOn($)
+      if (threadsShown) loadThreads($, now)
+      const th = threadsShown ? threads : null
       return (
         <Box flexDirection="column" rowGap={1}>
           {tabs}
@@ -645,6 +871,44 @@ export async function renderHome($: EngineInterface, e: any, ctx: HomeCtx): Prom
                 <Button key={`home-browser-${o.id}`} plain label={`${o.id === br.effective.id ? '●' : '○'} ${o.label}`} onPress={() => pickBrowser($, o.id)} />
               ))}
               {note && <Text key="home-browser-note" dimColor>{note}</Text>}
+            </Box>
+          )}
+          {threadsShown && !th && <Text key="home-threads-loading" dimColor>Thread-Ort lädt …</Text>}
+          {th && (
+            <Box key="home-threads" flexDirection="column" borderStyle="round" paddingX={1}>
+              <Box flexDirection="row" alignItems="center" columnGap={1}>
+                <Text><Text bold>Thread-Ort</Text> für Claude-Projekte (global)</Text>
+                <Box flexGrow={1} />
+                <Button key="home-threads-copy" plain label="Textblock kopieren" onPress={() => copyThreadBlock($)} />
+                <Button key="home-threads-toggle" label={threadsSaving === 'global' ? '⏳ speichert …' : `${threadLabel(th.global)} ${threadsOpen === 'global' ? '▴' : '▾'}`} onPress={() => { threadsOpen = threadsOpen === 'global' ? '' : 'global'; $.ui.invalidate('ui.render') }} />
+              </Box>
+              {threadsOpen === 'global' && th.options.map(o => (
+                <Button key={`home-threads-${o.id}`} plain label={`${o.id === th.global ? '●' : '○'} ${o.label}`} onPress={() => pickThread($, o.id)} />
+              ))}
+              <Text key="home-threads-meaning" dimColor>{threadMeaning(th.global)}</Text>
+              <Text key="home-threads-request" dimColor>{THREAD_REQUEST_NOTE}</Text>
+              <Text bold>Ausnahmen pro Projekt</Text>
+              {th.projects.length === 0 && <Text key="home-threads-none" dimColor>Noch kein Projekt gesehen. Sobald ein Thread in einem Claude-Projekt läuft, erscheint es hier.</Text>}
+              {th.projects.map(p => (
+                <Box key={`home-threads-p-${p.id}`} flexDirection="column">
+                  <Box flexDirection="row" alignItems="center" columnGap={1}>
+                    <Text>{threadProjectName(p)}</Text>
+                    <Box flexGrow={1} />
+                    {p.source === 'project' && <Button key={`home-threads-copy-${p.id}`} plain label="Textblock kopieren" onPress={() => copyThreadBlock($, p.id)} />}
+                    <Button key={`home-threads-toggle-${p.id}`} label={threadsSaving === p.id ? '⏳ speichert …' : `${threadProjectLabel(p)} ${threadsOpen === p.id ? '▴' : '▾'}`} onPress={() => { threadsOpen = threadsOpen === p.id ? '' : p.id; $.ui.invalidate('ui.render') }} />
+                  </Box>
+                  {threadsOpen === p.id && (
+                    <Button key={`home-threads-${p.id}-${INHERIT}`} plain label={`${p.source !== 'project' ? '●' : '○'} wie global`} onPress={() => pickThread($, INHERIT, p.id)} />
+                  )}
+                  {threadsOpen === p.id && th.options.map(o => (
+                    <Button key={`home-threads-${p.id}-${o.id}`} plain label={`${p.source === 'project' && p.value === o.id ? '●' : '○'} ${o.label}`} onPress={() => pickThread($, o.id, p.id)} />
+                  ))}
+                </Box>
+              ))}
+              <Text bold>Voraussetzungen (devops ändert nichts davon)</Text>
+              {prereqRows(threadsVersion).map(r => (
+                <Text key={`home-prereq-${r.key}`} dimColor={r.state === 'check'} color={r.state === 'bad' ? STATE_COLOR.waiting : undefined}>{`${r.state === 'ok' ? '✓' : r.state === 'bad' ? '✗' : '–'} ${r.state === 'check' ? 'Prüfen: ' : ''}${r.text}`}</Text>
+              ))}
             </Box>
           )}
           {noGain && (
