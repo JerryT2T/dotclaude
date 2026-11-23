@@ -14,6 +14,11 @@
 ### Fixed
 - The setup hint for a new Claude Project named "Project settings > Plugins", an entry that does not exist. It now names the real places: plugins are enabled once for the claude.ai account, the text goes into Project settings > Memory > Project instructions, and local threads need Environment > "Your computer".
 
+## [0.403.1] — 2026-11-23
+
+### Fixed
+- Auto-concept pages published as claude.ai artifacts now get the compass tab icon instead of the generic globe: the artifact fallback passes `icon: "compass"` on the first publish.
+
 ## [0.403.0] — 2026-11-23
 
 ### Added
