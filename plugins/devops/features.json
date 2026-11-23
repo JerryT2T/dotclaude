@@ -49,13 +49,15 @@
     },
     "project-threads": {
       "minChannel": "alpha",
-      "summary": "Claude Projects threads on this computer: status head on the thread title, the completion card and questions as thread replies, a worktree per thread and repo, no side sessions, session-start notices kept out of a thread, one setup hint per new project",
+      "summary": "Claude Projects threads on this computer: status head on the thread title, the completion card and questions as thread replies, a worktree per thread and repo, no side sessions, session-start notices kept out of a thread, one setup hint per new project, a once-per-project check that the project instructions carry the current \"Where threads run\" block, and the thread-location setting (local first by default)",
       "docs": [
         "deep-knowledge/project-threads.md"
       ],
       "scripts": [
         "hooks/lib/project-thread.js",
-        "hooks/lib/thread-notice-hold.js"
+        "hooks/lib/thread-notice-hold.js",
+        "hooks/lib/thread-location.js",
+        "scripts/thread-location.js"
       ]
     },
     "claude-mods": {

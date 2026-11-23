@@ -1,6 +1,23 @@
 {
   "version": 1,
   "aspects": {
+    ".claude/rules/devops.md›plugin-not-active›wording": [
+      {
+        "ship": "#1219",
+        "by": "Jerry",
+        "value": "'is added under Project settings > Plugins' (generated from cloud-rules.js 0.3.0)"
+      },
+      {
+        "ship": "claude/claude-code-project-structure-4aa260",
+        "by": "JerryT2T",
+        "value": "generated from scripts/cloud-rules.js 0.4.0: the plugin is enabled once for the claude.ai account (claude.ai > Plugins), not per project; a Claude Project has no Plugins tab",
+        "decided": true,
+        "at": "2026-11-23T20:00:14.894Z",
+        "hunks": [
+          "c95e3cbb9d81"
+        ]
+      }
+    ],
     "README.md›count:hooks›value": [
       {
         "ship": "#1147",
@@ -107,6 +124,54 @@
         "at": "2026-11-22T16:13:42.383Z",
         "hunks": [
           "1cdd727cd227"
+        ]
+      }
+    ],
+    "plugins/devops/deep-knowledge/project-instructions-snippet.md›why-work-locally-first›wording": [
+      {
+        "ship": "#1219",
+        "by": "Jerry",
+        "value": "paragraph 'Why work locally first lives here' as shipped in 0.403"
+      },
+      {
+        "ship": "claude/claude-code-project-structure-4aa260",
+        "by": "JerryT2T",
+        "value": "0.403 paragraph kept, with one sentence added on why the text is a block of its own (threadLocation value per project) and the block check next to the setup hint",
+        "decided": true,
+        "at": "2026-11-23T19:55:07.683Z",
+        "hunks": [
+          "fcd8431d8239"
+        ]
+      }
+    ],
+    "plugins/devops/deep-knowledge/project-instructions-snippet.md›work-locally-first›location": [
+      {
+        "ship": "#1219",
+        "by": "Jerry",
+        "value": "paragraph \"Work locally first\" at the top of the devops text"
+      },
+      {
+        "ship": "claude/claude-code-project-structure-4aa260",
+        "by": "JerryT2T",
+        "value": "the same paragraph, word for word, as the first part of the block \"Where threads run (devops local-first, v1)\"; one block per threadLocation value, none inside the devops text (user: 0.403 is the newer wording, this branch keeps its other changes)",
+        "decided": true,
+        "at": "2026-11-23T19:51:58.818Z"
+      }
+    ],
+    "plugins/devops/deep-knowledge/project-threads.md›local-threads-first›bullets": [
+      {
+        "ship": "#1219",
+        "by": "Jerry",
+        "value": "three bullets Coordinator / Cloud thread / Local thread as shipped in 0.403"
+      },
+      {
+        "ship": "claude/claude-code-project-structure-4aa260",
+        "by": "JerryT2T",
+        "value": "0.403 section kept; the coordinator bullet names the local-first block instead of 'the text opens with', the cloud bullet names the skip clause, the local bullet names the block check",
+        "decided": true,
+        "at": "2026-11-23T19:55:07.683Z",
+        "hunks": [
+          "f5171b1a23b5"
         ]
       }
     ],
@@ -528,6 +593,67 @@
         ]
       }
     ],
+    "plugins/devops/hooks/user-prompt-submit/prompt.thread.notices.js›HINT_TEXT›wording": [
+      {
+        "ship": "#1219",
+        "by": "Jerry",
+        "value": "\"(1) Project settings > Plugins: add devops. (2) … add the devops text (among others: threads start on your computer, not in the cloud)\""
+      },
+      {
+        "ship": "claude/claude-code-project-structure-4aa260",
+        "by": "JerryT2T",
+        "value": "three entries: devops enabled once for the claude.ai account under Plugins (a project has no Plugins tab, read on claude.ai 2026-11-23), the devops text and the \"Where threads run\" block in the project instructions, Environment > \"Your computer\" on",
+        "decided": true,
+        "at": "2026-11-23T19:51:58.818Z"
+      },
+      {
+        "ship": "#1219",
+        "by": "Jerry",
+        "value": "(1) Project settings > Plugins: add devops. (2) add the devops text (among others: threads start on your computer, not in the cloud)"
+      },
+      {
+        "ship": "claude/claude-code-project-structure-4aa260",
+        "by": "JerryT2T",
+        "value": "three entries: devops enabled once for the claude.ai account under Plugins (a project has no Plugins tab), devops text and 'Where threads run' block in the project instructions, Environment > 'Your computer' on",
+        "decided": true,
+        "at": "2026-11-23T19:55:07.683Z",
+        "hunks": [
+          "a14dabbabba0"
+        ]
+      },
+      {
+        "ship": "#1219",
+        "by": "Jerry",
+        "value": "(1) Projekteinstellungen > Plugins: devops hinzufügen. (2) den devops-Text eintragen (u. a.: Threads starten auf deinem Rechner, nicht in der Cloud)"
+      },
+      {
+        "ship": "claude/claude-code-project-structure-4aa260",
+        "by": "JerryT2T",
+        "value": "German text of the same three entries (Plugins am Konto, devops-Text und Block in den Projektanweisungen, Umgebung > Dein Computer)",
+        "decided": true,
+        "at": "2026-11-23T19:55:07.683Z",
+        "hunks": [
+          "3600b6430e0d"
+        ]
+      }
+    ],
+    "plugins/devops/hooks/user-prompt-submit/prompt.thread.notices.js›header›version": [
+      {
+        "ship": "#1219",
+        "by": "Jerry",
+        "value": "0.2.1"
+      },
+      {
+        "ship": "claude/claude-code-project-structure-4aa260",
+        "by": "JerryT2T",
+        "value": "0.5.0 (both sides bumped: 0.2.1 upstream, 0.4.0 here)",
+        "decided": true,
+        "at": "2026-11-23T19:55:07.683Z",
+        "hunks": [
+          "dcffee725c44"
+        ]
+      }
+    ],
     "plugins/devops/mcp-server/index.card.linked.test.js›linked title›keyword and bar": [
       {
         "ship": "claude/chat-title-emoticons-separator-b41eeb",
@@ -586,6 +712,37 @@
         "hunks": [
           "78c64c25c597"
         ]
+      }
+    ],
+    "plugins/devops/scripts/cloud-rules.js›header›version": [
+      {
+        "ship": "#1219",
+        "by": "Jerry",
+        "value": "0.3.0"
+      },
+      {
+        "ship": "claude/claude-code-project-structure-4aa260",
+        "by": "JerryT2T",
+        "value": "0.4.0 (both sides bumped to 0.3.0; the merged rules text is a new version)",
+        "decided": true,
+        "at": "2026-11-23T19:55:07.683Z",
+        "hunks": [
+          "58ee201a5291"
+        ]
+      }
+    ],
+    "plugins/devops/scripts/cloud-rules.js›where-a-thread-runs›rule": [
+      {
+        "ship": "#1219",
+        "by": "Jerry",
+        "value": "a cloud thread says it runs in the cloud and asks the coordinator to start the next threads with \"Work locally\""
+      },
+      {
+        "ship": "claude/claude-code-project-structure-4aa260",
+        "by": "JerryT2T",
+        "value": "kept as written; one clause added (skip the request when the project instructions say threads start in the cloud or the coordinator asks each time); this branch's own section \"Cloud thread announces itself\" dropped as a duplicate",
+        "decided": true,
+        "at": "2026-11-23T19:51:58.818Z"
       }
     ],
     "plugins/devops/scripts/sessions-active.js›shortName›head strip": [

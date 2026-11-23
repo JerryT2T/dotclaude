@@ -1,7 +1,10 @@
 /** prompt.thread.notices — SessionStart notices stay out of a thread; Desktop and terminal sessions are untouched. */
 import { describe, test, expect } from "vitest";
 import { spawnSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
+import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import hook from "./prompt.thread.notices.js";
 
@@ -19,6 +22,107 @@ describe("decide", () => {
   test("Desktop / terminal session (mode off) and feature-off thread (quiet) -> silent", () => {
     expect(hook.decide({ mode: "off", said: false })).toBeNull();
     expect(hook.decide({ mode: "quiet", said: false })).toBeNull();
+  });
+});
+
+describe("hint and blockCheck texts", () => {
+  const base = { mode: "on", projectId: "chan_T1", remote: false, checked: false, value: "local-first", version: 1, lang: "en", pluginRoot: "/pr" };
+  test("the setup hint names the real places and no project Plugins tab (de + en)", () => {
+    for (const lang of ["de", "en"]) {
+      const t = hook.HINT_TEXT[lang];
+      expect(t).not.toMatch(/Projek\w*einstellungen > Plugins|Project settings > Plugins/);
+      expect(t).not.toMatch(/—|;/);
+    }
+    expect(hook.HINT_TEXT.en).toMatch(/enabled once for your claude\.ai account under Plugins/);
+    expect(hook.HINT_TEXT.en).toMatch(/Project settings > Memory > Project instructions/);
+    expect(hook.HINT_TEXT.en).toMatch(/Environment > "Your computer"/);
+    expect(hook.HINT_TEXT.de).toMatch(/Projekteinstellungen > Gedächtnis > Projektanweisungen/);
+    expect(hook.HINT_TEXT.de).toMatch(/Umgebung > „Dein Computer“/);
+  });
+  test("hint tells the model to run the script for the location block and read the FIRST fenced block", () => {
+    const t = hook.hint({ mode: "on", projectId: "chan_T1", hinted: false, remote: false, lang: "en", pluginRoot: "/pr" });
+    expect(t).toContain('node "/pr/scripts/thread-location.js" block --project chan_T1');
+    expect(t).toMatch(/FIRST fenced block/);
+    const cf = hook.hint({ mode: "on", projectId: "chan_T1", hinted: false, remote: false, lang: "en", pluginRoot: "/pr", value: "cloud-first" });
+    expect(cf).not.toContain("thread-location.js");
+    expect(cf).not.toContain("text and the \"Where threads run\" block");
+    expect(cf).toContain("add the devops text.");
+  });
+  test("hint stays silent when hinted, remote, feature off or no id", () => {
+    const o = { mode: "on", projectId: "chan_T1", hinted: false, remote: false };
+    expect(hook.hint({ ...o, hinted: true })).toBeNull();
+    expect(hook.hint({ ...o, remote: true })).toBeNull();
+    expect(hook.hint({ ...o, mode: "quiet" })).toBeNull();
+    expect(hook.hint({ ...o, projectId: null })).toBeNull();
+  });
+  test("blockCheck names the marker line of the value and version, with the script as the text source", () => {
+    const t = hook.blockCheck(base);
+    expect(t).toContain("Where threads run (devops local-first, v1)");
+    expect(t).toMatch(/another value or an older version/);
+    expect(t).toContain('node "/pr/scripts/thread-location.js" block --project chan_T1');
+    expect(t).toMatch(/nothing else checks it/);
+  });
+  test("blockCheck for cloud-first is the reverse: remove a block that is still there", () => {
+    const t = hook.blockCheck({ ...base, value: "cloud-first" });
+    expect(t).toContain("Where threads run (devops ");
+    expect(t).toMatch(/None: say nothing/);
+    expect(t).toContain(hook.BLOCK_REMOVE_TEXT.en);
+  });
+  test("blockCheck: silent when checked, remote, off or no project", () => {
+    expect(hook.blockCheck({ ...base, checked: true })).toBeNull();
+    expect(hook.blockCheck({ ...base, remote: true })).toBeNull();
+    expect(hook.blockCheck({ ...base, mode: "off" })).toBeNull();
+    expect(hook.blockCheck({ ...base, projectId: "" })).toBeNull();
+  });
+  test("the block texts exist in de and en without dashes or semicolons", () => {
+    for (const s of [hook.BLOCK_TEXT.en("devops ask, v1"), hook.BLOCK_TEXT.de("devops ask, v1"), hook.BLOCK_REMOVE_TEXT.en, hook.BLOCK_REMOVE_TEXT.de]) {
+      expect(s).not.toMatch(/—|;/);
+    }
+    expect(hook.BLOCK_TEXT.de("x")).toMatch(/„Text zeigen“|Text zeigen/);
+  });
+});
+
+describe("nameProject: a readable name for the Home pane", () => {
+  const seen = createRequire(import.meta.url)("../lib/thread-seen.js");
+  const mk = () => fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "thread-name-")));
+
+  test("the folder of the first local thread is recorded once; a later folder and a cloud container change nothing", () => {
+    const home = mk();
+    const folder = path.join(mk(), "verse-app");
+    fs.mkdirSync(path.join(folder, ".git"), { recursive: true });
+    const parent = mk(); // no git repository: a folder that holds several projects
+    try {
+      expect(hook.nameProject({ seen, projectId: "chan_N1", remote: false, cwd: parent, home })).toBe("");
+      expect(seen.projectName("chan_N1", home)).toBe("");
+      expect(hook.nameProject({ seen, projectId: "chan_N1", remote: true, cwd: folder, home })).toBe("");
+      expect(seen.projectName("chan_N1", home)).toBe("");
+      expect(hook.nameProject({ seen, projectId: "chan_N1", remote: false, cwd: folder, home })).toBe("verse-app");
+      expect(seen.projectName("chan_N1", home)).toBe("verse-app");
+      expect(hook.nameProject({ seen, projectId: "chan_N1", remote: false, cwd: os.tmpdir(), home })).toBe("");
+      expect(seen.projectName("chan_N1", home)).toBe("verse-app");
+    } finally {
+      fs.rmSync(home, { recursive: true, force: true });
+      fs.rmSync(path.dirname(folder), { recursive: true, force: true });
+      fs.rmSync(parent, { recursive: true, force: true });
+    }
+  });
+
+  test("a name the user gave stays, and the other maps of the file survive", () => {
+    const home = mk();
+    try {
+      seen.markProjectHinted("chan_N2", { home });
+      seen.markBlockChecked("chan_N2", "local-first@v1", { home });
+      expect(seen.setProjectName("chan_N2", "  Verse\tCompanion  ", { home })).toBe(true);
+      expect(hook.nameProject({ seen, projectId: "chan_N2", remote: false, cwd: os.tmpdir(), home })).toBe("");
+      expect(seen.projectName("chan_N2", home)).toBe("Verse Companion");
+      expect(seen.projectHinted("chan_N2", home)).toBe(true);
+      expect(seen.blockChecked("chan_N2", home)).toBe("local-first@v1");
+      expect(seen.setProjectName("chan_N2", "   ", { home })).toBe(false);
+      expect(seen.setProjectName("chan_N2", "x".repeat(90), { home })).toBe(true);
+      expect(seen.projectName("chan_N2", home)).toHaveLength(seen.NAME_MAX);
+    } finally {
+      fs.rmSync(home, { recursive: true, force: true });
+    }
   });
 });
 

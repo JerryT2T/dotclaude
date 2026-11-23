@@ -2,7 +2,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import { agoText, bedFrom, bedText, cleanupFrom, homeModel, infoTiles, isBatchTitle, kindOf, needsConfirm, paceWord, projectOf, ringSvgSource, ringsFrom, resetText, sessionsFrom } from './home'
-import { browserNote, browsersFrom } from './home'
+import { browserNote, browsersFrom, prereqRows, THREAD_REQUEST_NOTE, threadCopyFrom, threadCopyNote, threadMeaning, threadProjectLabel, threadProjectName, threadsFrom, versionAtLeast, versionFrom } from './home'
 
 const rows = [
   { sessionId: 'local_a', title: '👉 ➜ 📥 Batch ┃ Feedback', cwd: 'P:\\Projects\\dotclaude\\.claude\\worktrees\\x', isRunning: false, lastActivityAt: '2026-11-21T09:00:00Z' },
@@ -92,6 +92,59 @@ test('home: without a token gain the headline gives way to measured facts', () =
   expect(none.noGain).toBe(true)
   expect(none.tiles.map(t => t.key)).toEqual(['info-shipped'])
   expect(infoTiles(null, 'de')).toEqual({ tiles: [], noGain: false })
+})
+
+test('home: Thread-Ort data, labels and the project name fallback', () => {
+  const list = {
+    values: [{ id: 'local-first', label: 'Local first' }, { id: 'local-only', label: 'Local only' }, { id: 'cloud-first', label: 'Cloud first' }, { id: 'ask', label: 'Ask each time' }],
+    global: 'local-first',
+    projects: [
+      { id: 'chan_0129rNu4z9cephHnRQU2Egyc', name: '', value: 'local-first', source: 'default' },
+      { id: 'chan_short', name: ' Jerry ', value: 'ask', source: 'project' },
+      { id: 'bad', value: 5 },
+    ],
+  }
+  const s = threadsFrom(JSON.stringify(list))!
+  expect(s.options.map(o => o.label)).toEqual(['Lokal zuerst', 'Nur lokal', 'Cloud zuerst', 'Jedes Mal fragen'])
+  expect(s.projects).toHaveLength(2)
+  expect(threadProjectName(s.projects[0])).toBe('chan_0129rN…Egyc')
+  expect(threadProjectName(s.projects[1])).toBe('Jerry')
+  expect(threadProjectLabel(s.projects[0])).toBe('wie global (Lokal zuerst)')
+  expect(threadProjectLabel(s.projects[1])).toBe('Jedes Mal fragen')
+  expect(threadsFrom('nope')).toBe(null)
+  expect(threadsFrom(JSON.stringify({ ...list, values: [] }))).toBe(null)
+  expect(threadsFrom(JSON.stringify({ ...list, projects: undefined }))!.projects).toEqual([])
+  expect(threadMeaning('local-first')).toContain('auf diesem Computer')
+  expect(THREAD_REQUEST_NOTE).toContain('kein erzwungener Schalter')
+})
+
+test('home: the copy button copies a block, and says to remove it for cloud-first', () => {
+  const c = threadCopyFrom(JSON.stringify({ value: 'local-first', marker: 'm', block: 'text' }))!
+  expect(c).toEqual({ kind: 'copy', text: 'text', value: 'local-first' })
+  expect(threadCopyNote(c, true)).toContain('„Lokal zuerst“ kopiert')
+  expect(threadCopyNote(c, false)).toBe('Kopieren fehlgeschlagen.')
+  const r = threadCopyFrom(JSON.stringify({ value: 'cloud-first', marker: null, block: null }))!
+  expect(r.kind).toBe('remove')
+  expect(threadCopyNote(r, true)).toContain('Entferne den Block')
+  expect(threadCopyFrom(JSON.stringify({ value: 'ask', block: null }))).toBe(null)
+  expect(threadCopyFrom('x')).toBe(null)
+})
+
+test('home: prerequisites show only the Claude Code version as a real state', () => {
+  expect(versionFrom('2.1.302 (Claude Code)')).toBe('2.1.302')
+  expect(versionFrom('')).toBe('')
+  expect(versionAtLeast('2.1.280', '2.1.280')).toBe(true)
+  expect(versionAtLeast('2.1.279', '2.1.280')).toBe(false)
+  expect(versionAtLeast('2.2.0', '2.1.280')).toBe(true)
+  expect(versionAtLeast('1.9.999', '2.1.280')).toBe(false)
+  const rows = prereqRows('2.1.302')
+  expect(rows.map(r => r.key)).toEqual(['project', 'rc', 'awake', 'version', 'trusted'])
+  expect(rows.filter(r => r.state === 'ok').map(r => r.key)).toEqual(['version'])
+  expect(rows.filter(r => r.state === 'check')).toHaveLength(4)
+  expect(prereqRows('2.1.100').find(r => r.key === 'version')!.state).toBe('bad')
+  expect(prereqRows('').find(r => r.key === 'version')!.state).toBe('check')
+  expect(rows.find(r => r.key === 'rc')!.text).toContain('Use this computer from your phone and claude.ai')
+  expect(rows.find(r => r.key === 'project')!.text).toContain('„Dein Computer“')
 })
 
 test('home: the bedtime row shows only a watcher that is really armed', () => {
