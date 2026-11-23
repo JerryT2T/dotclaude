@@ -124,6 +124,41 @@ describe("marker / block (single source: the snippet doc)", () => {
     fs.mkdirSync(path.join(root, "deep-knowledge"));
     fs.writeFileSync(path.join(root, "deep-knowledge", "project-instructions-snippet.md"), "```\nplain\n```\n");
     expect(lib.block("local-first", { pluginRoot: root })).toBeNull();
+    expect(lib.devopsText({ pluginRoot: root })).toBeNull();
+    expect(lib.coordinatorRequest("local-first", { pluginRoot: root })).toBeNull();
+  });
+});
+
+describe("devops text and the coordinator request (the person copies nothing)", () => {
+  test("the devops text is the first fenced block and carries its version marker", () => {
+    const t = lib.devopsText();
+    expect(t.split("\n")[0]).toBe(lib.TEXT_MARKER);
+    expect(lib.TEXT_MARKER).toBe(`devops text (v${lib.TEXT_VERSION})`);
+    const doc = fs.readFileSync(lib.snippetFile(), "utf8").replace(/\r\n/g, "\n");
+    expect(doc.match(/```\n([\s\S]*?)\n```/)[1]).toBe(t);
+  });
+  test("the stamp moves with the text version, so a new text asks the coordinator again", () => {
+    expect(lib.stamp("ask")).toBe(`ask@v${lib.BLOCK_VERSION}+t${lib.TEXT_VERSION}`);
+  });
+  test("the request carries both exact blocks and asks the coordinator to edit the instructions itself", () => {
+    const r = lib.coordinatorRequest("local-first");
+    expect(r).toContain("Please edit them yourself now, do not ask the person to copy anything");
+    expect(r).toContain(lib.devopsText());
+    expect(r).toContain(lib.block("local-first"));
+    expect(r).toMatch(/older copy without that line/);
+    const cf = lib.coordinatorRequest("cloud-first");
+    expect(cf).toContain(lib.devopsText());
+    expect(cf).toMatch(/2\. Remove the block whose first line starts with "Where threads run \(devops "/);
+    expect(cf).not.toContain("Block B");
+  });
+  test("script: request prints the message, --json the stamp", () => {
+    const home = mkHome();
+    const plain = run(home, "request", "--project", "chan_REQ1");
+    expect(plain.code).toBe(0);
+    expect(plain.out).toContain("Block A:");
+    const j = JSON.parse(run(home, "request", "--project", "chan_REQ1", "--json").out);
+    expect(j.stamp).toBe(lib.stamp("local-first"));
+    expect(run(home, "request", "--project", "bad").code).toBe(1);
   });
 });
 

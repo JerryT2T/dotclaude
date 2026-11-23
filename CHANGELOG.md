@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.405.0] — 2026-11-23
+
+### Added
+- Claude Projects: the person no longer pastes the devops text or the "Where threads run" block into the project instructions. A local thread whose project lacks the current version sends the coordinator a request with the exact blocks (`scripts/thread-location.js request`), and the coordinator writes them into the project instructions itself. The devops text now carries a version line (`devops text (v2)`), so a changed text reaches every project again. The "show the text" hints remain as the fallback.
+
 ## [0.404.1] — 2026-11-23
 
 ### Fixed
