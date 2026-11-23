@@ -1,14 +1,15 @@
 #!/usr/bin/env node
 /**
  * @script cloud-rules
- * @version 0.3.0
+ * @version 0.4.0
  * @plugin devops
  * @description The managed `.claude/rules/devops.md` of a repo: the few working
  *   rules a session follows WITHOUT the plugin. Claude Code loads the repo's
  *   root `.claude/rules/` in local sessions and in cloud threads of a Claude
- *   Project (which load no repo skills, hooks or MCP servers), so the file is
- *   the one place that reaches both — nothing migrates when a project or a
- *   cloud thread appears later.
+ *   Project (which load repo CLAUDE.md, rules, skills and agents, but run no
+ *   repo hooks and load no `.mcp.json` servers), so the file is the one place
+ *   that reaches both — nothing migrates when a project or a cloud thread
+ *   appears later. It also makes a cloud thread announce itself ("Cloud thread.").
  *
  *     check [repo] [--json]   exit 1 when the file is missing, outdated or carries the block twice
  *     write [repo]            the current block in the file — idempotent; text outside the
@@ -61,11 +62,14 @@ const BODY = [
   '  container (environment `CLAUDE_CODE_REMOTE=true`): end the FIRST reply with one line that it runs in',
   '  the cloud, and ask the coordinator in that same turn to start the next threads of this project with',
   '  "Work locally" on a device that has this repo checked out. Do the work anyway. Anywhere else, say nothing.',
+  '- Skip the request (keep the line) when the project instructions say that threads start in the cloud',
+  '  or that the coordinator asks each time.',
   '',
   '## Claude Project thread without the devops plugin',
   '- Only when no skill named `devops:…` is loaded in this session and the prompt is a Claude Project thread',
   '  (a `<wake …><project …>` envelope): end the FIRST reply with one line that the devops plugin is not',
-  '  active in this project and is added under Project settings > Plugins. Anywhere else, say nothing.',
+  '  active here and is enabled once for the claude.ai account (claude.ai > Plugins), not per project.',
+  '  Anywhere else, say nothing.',
 ];
 
 /** The managed block, LF endings, no trailing newline. */
