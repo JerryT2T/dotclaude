@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.403.1] — 2026-11-23
+
+### Fixed
+- Auto-concept pages published as claude.ai artifacts now get the compass tab icon instead of the generic globe: the artifact fallback passes `icon: "compass"` on the first publish.
+
 ## [0.403.0] — 2026-11-23
 
 ### Added
