@@ -23,10 +23,12 @@ communication hub. Both Claude and the page talk to the server via HTTP —
 no browser tool injection needed for heartbeat or decision exchange.
 
 **Artifact fallback (#589)** — no bridge, and the owner decides on a
-claude.ai artifact copy: nothing is monitored. The page writes its submission
-to the artifact's `db` document `concept/decisions`, and Claude reads it once,
-when told, with `ArtifactData` (`artifact-fallback.md`) instead of
-`/pending` + `/decisions`.
+claude.ai artifact copy: no bridge is monitored. Each submit is its own
+document in the artifact's `db` collection `submissions`, and Claude reads
+them when told, on its backed-off read-back check or from the session-start
+hint, with `ArtifactData` + `concept-artifact.js digest`
+(`artifact-fallback.md` § Read back, § Wake) instead of `/pending` +
+`/decisions`. A read never deletes; `mark` acks the processed ones.
 
 This is an **iterative loop**, not a one-shot. After each submission,
 Claude processes the feedback, updates the page, and monitors again.

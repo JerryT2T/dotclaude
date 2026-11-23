@@ -38,9 +38,12 @@ Artifact tool. The bridge stays first wherever it can run; the hand-off stays
 the default when nobody asked to decide remotely.
 
 Build the copy with `node "{PLUGIN_ROOT}/scripts/concept-artifact.js"
---artifact docs/concepts/<file>.html`, publish it with `capabilities: {db: {}}`,
-and read the decisions back on the next turn with `ArtifactData` — no bridge,
-no crons, no Edge start. The steps, the wrapper contract and the card:
+--artifact docs/concepts/<file>.html`, publish it with `capabilities: {db: {}, user: {}}`,
+record its url (`concept-artifact.js record`) and read the submissions back
+with `ArtifactData` + `concept-artifact.js digest` — no bridge, no bridge
+crons, no Edge start; one backed-off read-back check instead of a waker.
+Several people can answer on the same page at once without overwriting each
+other. The steps, the wrapper contract and the card:
 `deep-knowledge/artifact-fallback.md`. In a Claude Projects thread this is the
 only tier (no bridge page reaches the person there): link in the thread, Edge via
 `concept-open.js open-url` on a local thread, link only in the cloud.
