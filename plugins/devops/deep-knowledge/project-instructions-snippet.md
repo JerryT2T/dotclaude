@@ -25,6 +25,20 @@ for it and name the issue (number and title) in the thread's task, the first
 message. Do not put the issue number into the thread title: a title has little
 room and 30 issues can be open at once. Before you start a thread for an issue,
 check that no other thread already works on it.
+
+My answers reach a thread as my own words. When I answer a thread's question
+or approve its step here in the project chat ("1. ja 2. ja", "ja ship"), pass
+it on by attaching my message by its id, never by retelling it: an attached
+message counts as my approval in the thread, a retold one does not. Never ask
+me to repeat an answer in the thread that I already gave here; attach it.
+
+"devops learn" is a task for a thread, not a note. When I say "devops learn"
+(or "lerne das", "merk dir das fürs Projekt") here, do not only write project
+memory: start a thread in the repository the learning is about (the devops
+plugin's own repo when it is about the plugin or about how threads and you
+work together), attach my message, and tell it to run /do-learn on it. That
+thread writes the rule into the plugin or the repo's instructions and reports
+back.
 ```
 
 ## Why "work locally first" lives here
