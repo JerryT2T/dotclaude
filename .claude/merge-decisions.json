@@ -296,6 +296,18 @@
         ]
       }
     ],
+    "plugins/devops/docs/architecture.html›devops:count:hooks:prompt›value": [
+      {
+        "ship": "claude/project-thread-5l5z8o",
+        "by": "JerryT2T",
+        "value": "generated prompt hook count 21 (this ship adds prompt.cleanup.gate)",
+        "decided": true,
+        "at": "2026-11-23T22:12:07.648Z",
+        "hunks": [
+          "32cc0cf16b65"
+        ]
+      }
+    ],
     "plugins/devops/docs/architecture.html›devops:count:hooks›value": [
       {
         "ship": "claude/project-thread-5l5z8o",
