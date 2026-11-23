@@ -1,6 +1,23 @@
 {
   "version": 1,
   "aspects": {
+    ".claude/rules/devops.md›plugin-not-active›wording": [
+      {
+        "ship": "#1219",
+        "by": "Jerry",
+        "value": "'is added under Project settings > Plugins' (generated from cloud-rules.js 0.3.0)"
+      },
+      {
+        "ship": "claude/claude-code-project-structure-4aa260",
+        "by": "JerryT2T",
+        "value": "generated from scripts/cloud-rules.js 0.4.0: the plugin is enabled once for the claude.ai account (claude.ai > Plugins), not per project; a Claude Project has no Plugins tab",
+        "decided": true,
+        "at": "2026-11-23T20:00:14.894Z",
+        "hunks": [
+          "c95e3cbb9d81"
+        ]
+      }
+    ],
     "README.md›count:hooks›value": [
       {
         "ship": "#1147",
