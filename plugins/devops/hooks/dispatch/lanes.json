@@ -3,7 +3,11 @@
   "lanes": {
     "SessionStart": [
       [
-        "ss.plugin.update"
+        "ss.plugin.update",
+        "ss.knowledge.index",
+        "ss.project.setup",
+        "ss.catalog.remote",
+        "ss.git.check"
       ],
       [
         "ss.permissions.ensure"
@@ -13,9 +17,6 @@
       ],
       [
         "ss.thinking.display"
-      ],
-      [
-        "ss.knowledge.index"
       ],
       [
         "ss.mcp.deps"
@@ -42,16 +43,7 @@
         "ss.tokens.scan"
       ],
       [
-        "ss.project.setup"
-      ],
-      [
-        "ss.catalog.remote"
-      ],
-      [
         "ss.setup.firstrun"
-      ],
-      [
-        "ss.git.check"
       ],
       [
         "ss.git.sync"
@@ -98,19 +90,21 @@
         "pre.ship.guard"
       ],
       [
-        "pre.main.guard"
-      ],
-      [
-        "pre.thread.rights"
+        "pre.main.guard",
+        "pre.thread.rights",
+        "pre.thread.rights",
+        "pre.edit.branch",
+        "pre.ask.title",
+        "pre.agent.model",
+        "pre.agent.apicredit",
+        "pre.agent.announce",
+        "pre.run.contract"
       ],
       [
         "pre.worktree.split-guard"
       ],
       [
         "pre.test.fullguard"
-      ],
-      [
-        "pre.thread.rights"
       ],
       [
         "pre.bash.output-filter"
@@ -134,9 +128,6 @@
         "pre.plugin.scope"
       ],
       [
-        "pre.edit.branch"
-      ],
-      [
         "pre.frustrated.readonly"
       ],
       [
@@ -146,28 +137,13 @@
         "pre.mcp.health"
       ],
       [
-        "pre.ask.title"
-      ],
-      [
         "pre.strict.agent-gate"
-      ],
-      [
-        "pre.agent.model"
-      ],
-      [
-        "pre.agent.apicredit"
-      ],
-      [
-        "pre.agent.announce"
       ],
       [
         "pre.ship.delegate"
       ],
       [
         "pre.agent.relay"
-      ],
-      [
-        "pre.run.contract"
       ],
       [
         "pre.governor.gate"
@@ -184,19 +160,15 @@
         "pre.tokens.guard"
       ],
       [
-        "pre.session.archive"
+        "pre.session.archive",
+        "pre.thread.session",
+        "pre.ask.title"
       ],
       [
         "pre.title.topic"
       ],
       [
-        "pre.thread.session"
-      ],
-      [
         "pre.plugin.session"
-      ],
-      [
-        "pre.ask.title"
       ],
       [
         "pre.agent.relay"
@@ -220,10 +192,11 @@
     ],
     "PostToolUse": [
       [
-        "post.flow.completion"
-      ],
-      [
-        "post.approval.clear"
+        "post.flow.completion",
+        "post.approval.clear",
+        "post.agent.nudge",
+        "post.ask.title",
+        "post.project.setup"
       ],
       [
         "post.concept.gate"
@@ -235,9 +208,6 @@
         "post.claude.budget"
       ],
       [
-        "post.agent.nudge"
-      ],
-      [
         "post.design.remind"
       ],
       [
@@ -245,9 +215,6 @@
       ],
       [
         "post.ask.answers"
-      ],
-      [
-        "post.ask.title"
       ],
       [
         "post.cleanup.gate"
@@ -260,9 +227,6 @@
       ],
       [
         "post.flow.title-mode"
-      ],
-      [
-        "post.project.setup"
       ],
       [
         "post.governor.clear"
@@ -279,12 +243,8 @@
     ],
     "PostToolUse:fast": [
       [
-        "post.flow.completion"
-      ],
-      [
-        "post.approval.clear"
-      ],
-      [
+        "post.flow.completion",
+        "post.approval.clear",
         "post.ask.title"
       ]
     ],
@@ -298,9 +258,7 @@
     ],
     "PostToolUseFailure:fast": [
       [
-        "post.flow.completion"
-      ],
-      [
+        "post.flow.completion",
         "post.approval.clear"
       ]
     ],
@@ -318,9 +276,7 @@
         "stop.hook.hardend"
       ],
       [
-        "stop.flow.guard"
-      ],
-      [
+        "stop.flow.guard",
         "stop.guide.handoff"
       ],
       [
@@ -338,84 +294,169 @@
         "prompt.flow.open-url"
       ],
       [
-        "prompt.batch.collect"
+        "prompt.batch.collect",
+        "prompt.flow.silent-turn",
+        "prompt.thread.notices",
+        "prompt.flow.title-work",
+        "prompt.knowledge.dispatch",
+        "prompt.knowledge.anchor",
+        "prompt.git.sync",
+        "prompt.issue.detect",
+        "prompt.skill.enforce",
+        "prompt.frustrated.detect",
+        "prompt.strict.enforce",
+        "prompt.ship.detect",
+        "prompt.flow.appstart",
+        "prompt.burn.resume",
+        "prompt.governor.resume",
+        "prompt.hook.hardend"
       ],
       [
         "prompt.run.contract"
       ],
       [
-        "prompt.flow.silent-turn"
-      ],
-      [
-        "prompt.thread.notices"
-      ],
-      [
-        "prompt.flow.title-work"
-      ],
-      [
-        "prompt.knowledge.dispatch"
-      ],
-      [
-        "prompt.knowledge.anchor",
-        "prompt.git.sync"
-      ],
-      [
-        "prompt.issue.detect"
-      ],
-      [
         "prompt.plugin.scope"
-      ],
-      [
-        "prompt.skill.enforce"
       ],
       [
         "prompt.skill.overrides"
       ],
       [
-        "prompt.frustrated.detect"
-      ],
-      [
-        "prompt.strict.enforce"
-      ],
-      [
-        "prompt.ship.detect"
-      ],
-      [
-        "prompt.flow.appstart"
-      ],
-      [
-        "prompt.burn.resume"
-      ],
-      [
         "prompt.worktree.branch-guard"
-      ],
-      [
-        "prompt.governor.resume"
-      ],
-      [
-        "prompt.hook.hardend"
       ]
     ]
   },
   "writers": {
+    "ss.plugin.update": [
+      "hooks/lib/thread-seen.js"
+    ],
+    "ss.knowledge.index": [
+      "hooks/lib/thread-seen.js"
+    ],
+    "ss.project.setup": [
+      "hooks/lib/thread-seen.js"
+    ],
+    "ss.catalog.remote": [
+      "hooks/lib/thread-seen.js"
+    ],
+    "ss.git.check": [
+      "hooks/lib/thread-seen.js"
+    ],
     "ss.git.sync": [
       "hooks/lib/git-sync-bg.js",
       "hooks/lib/knowledge-anchor.js"
     ],
+    "pre.main.guard": [
+      "hooks/lib/thread-seen.js"
+    ],
+    "pre.thread.rights": [
+      "hooks/lib/thread-seen.js"
+    ],
     "pre.merge.guard": [
       "hooks/lib/knowledge-anchor.js"
+    ],
+    "pre.edit.branch": [
+      "hooks/lib/thread-seen.js"
+    ],
+    "pre.ask.title": [
+      "hooks/lib/thread-seen.js"
+    ],
+    "pre.agent.model": [
+      "hooks/lib/thread-seen.js"
+    ],
+    "pre.agent.apicredit": [
+      "hooks/lib/thread-seen.js"
+    ],
+    "pre.agent.announce": [
+      "hooks/lib/thread-seen.js"
+    ],
+    "pre.run.contract": [
+      "hooks/lib/thread-seen.js"
+    ],
+    "pre.session.archive": [
+      "hooks/lib/thread-seen.js"
+    ],
+    "pre.thread.session": [
+      "hooks/lib/thread-seen.js"
+    ],
+    "substop.approval.clear": [
+      "hooks/lib/thread-seen.js"
+    ],
+    "post.flow.completion": [
+      "hooks/lib/thread-seen.js"
+    ],
+    "post.approval.clear": [
+      "hooks/lib/thread-seen.js"
+    ],
+    "post.agent.nudge": [
+      "hooks/lib/thread-seen.js"
+    ],
+    "post.ask.title": [
+      "hooks/lib/thread-seen.js"
+    ],
+    "post.project.setup": [
+      "hooks/lib/thread-seen.js"
     ],
     "stop.git.sync": [
       "hooks/lib/git-sync-bg.js",
       "hooks/lib/knowledge-anchor.js"
     ],
+    "stop.flow.guard": [
+      "hooks/lib/thread-seen.js"
+    ],
+    "stop.guide.handoff": [
+      "hooks/lib/thread-seen.js"
+    ],
+    "prompt.batch.collect": [
+      "hooks/lib/thread-seen.js"
+    ],
+    "prompt.flow.silent-turn": [
+      "hooks/lib/thread-seen.js"
+    ],
+    "prompt.thread.notices": [
+      "hooks/lib/thread-seen.js"
+    ],
+    "prompt.flow.title-work": [
+      "hooks/lib/thread-seen.js"
+    ],
+    "prompt.knowledge.dispatch": [
+      "hooks/lib/thread-seen.js"
+    ],
     "prompt.knowledge.anchor": [
-      "hooks/lib/knowledge-anchor.js"
+      "hooks/lib/knowledge-anchor.js",
+      "hooks/lib/thread-seen.js"
     ],
     "prompt.git.sync": [
       "hooks/lib/git-sync-bg.js",
       "hooks/lib/knowledge-anchor.js",
-      "hooks/lib/merge-queue.js"
+      "hooks/lib/merge-queue.js",
+      "hooks/lib/thread-seen.js"
+    ],
+    "prompt.issue.detect": [
+      "hooks/lib/thread-seen.js"
+    ],
+    "prompt.skill.enforce": [
+      "hooks/lib/thread-seen.js"
+    ],
+    "prompt.frustrated.detect": [
+      "hooks/lib/thread-seen.js"
+    ],
+    "prompt.strict.enforce": [
+      "hooks/lib/thread-seen.js"
+    ],
+    "prompt.ship.detect": [
+      "hooks/lib/thread-seen.js"
+    ],
+    "prompt.flow.appstart": [
+      "hooks/lib/thread-seen.js"
+    ],
+    "prompt.burn.resume": [
+      "hooks/lib/thread-seen.js"
+    ],
+    "prompt.governor.resume": [
+      "hooks/lib/thread-seen.js"
+    ],
+    "prompt.hook.hardend": [
+      "hooks/lib/thread-seen.js"
     ]
   }
 }

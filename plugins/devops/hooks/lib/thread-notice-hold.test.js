@@ -179,9 +179,11 @@ describe("change B: one setup hint per new project", () => {
   test("a new project id: the block once, the project recorded; the second session of the project: nothing", () => {
     const first = text(run("hint-b1", wake("hello", "chan_NEW1")));
     expect(first).toContain("[thread-hint]");
-    expect(first).toContain("Project settings > Plugins");
+    expect(first).not.toContain("Project settings > Plugins");
+    expect(first).toContain("claude.ai account under Plugins");
     expect(first).toContain('Reply "show the text"');
     expect(first).toContain("project-instructions-snippet.md");
+    expect(first).toContain("thread-location.js\" block --project chan_NEW1");
     expect(seen.projectHinted("chan_NEW1", home)).toBe(true);
     expect(text(run("hint-b1", wake("again", "chan_NEW1")))).not.toContain("[thread-hint]");
     expect(text(run("hint-b2", wake("other session", "chan_NEW1")))).not.toContain("[thread-hint]");
@@ -196,7 +198,8 @@ describe("change B: one setup hint per new project", () => {
     const out = text(run("hint-b4", wake("hello", "chan_EN1")));
     process.env.TMPDIR = prev;
     expect(out).toContain("Antworte „Text zeigen“");
-    expect(out).toContain("Projekteinstellungen > Memory > Projektanweisungen");
+    expect(out).toContain("Projekteinstellungen > Gedächtnis > Projektanweisungen");
+    expect(out).not.toContain("Plugins: devops hinzufügen");
   });
 
   test("a cloud container (CLAUDE_CODE_REMOTE=true): nothing, nothing recorded", () => {
@@ -218,6 +221,51 @@ describe("change B: one setup hint per new project", () => {
     const file = path.join(tmp, "dotclaude-devops-thread-notice-hold-hint-b9");
     fs.writeFileSync(file, JSON.stringify({ pieces: [] }));
     expect(text(run("hint-b9", wake("hello", "chan_NM2")))).not.toContain("[thread-notices]");
+  });
+
+  test("block check: one combined note for a new project, then one check per value and block version", () => {
+    const TL = require("./thread-location.js");
+    const first = text(run("blk-1", wake("hello", "chan_BLK1")));
+    expect(first).toContain("[thread-hint]");
+    expect(first).not.toContain("[thread-block-check]");
+    expect(seen.blockChecked("chan_BLK1", home)).toBe("local-first@v1");
+    // already hinted, same value and version: nothing
+    expect(text(run("blk-2", wake("again", "chan_BLK1")))).not.toContain("[thread-block-check]");
+    // a changed value asks once again, and only once
+    TL.set("ask", {}, { home });
+    const second = text(run("blk-3", wake("again", "chan_BLK1")));
+    expect(second).toContain("[thread-block-check]");
+    expect(second).toContain("Where threads run (devops ask, v1)");
+    expect(second).not.toContain("[thread-hint]");
+    expect(seen.blockChecked("chan_BLK1", home)).toBe("ask@v1");
+    expect(text(run("blk-4", wake("again", "chan_BLK1")))).not.toContain("[thread-block-check]");
+    // a per-project exception wins for that project only
+    TL.set("cloud-first", { project: "chan_BLK1" }, { home });
+    const third = text(run("blk-5", wake("again", "chan_BLK1")));
+    expect(third).toContain("[thread-block-check]");
+    expect(third).toMatch(/line that starts with `Where threads run \(devops `/);
+    expect(seen.blockChecked("chan_BLK1", home)).toBe("cloud-first@v1");
+  });
+
+  test("block check: not in a cloud container, nothing recorded", () => {
+    seen.markProjectHinted("chan_BLK2", { home });
+    expect(text(run("blk-6", wake("hello", "chan_BLK2"), { CLAUDE_CODE_REMOTE: "true" }))).not.toContain("[thread-block-check]");
+    expect(seen.blockChecked("chan_BLK2", home)).toBeNull();
+    expect(text(run("blk-7", wake("hello", "chan_BLK2")))).toContain("[thread-block-check]");
+  });
+
+  test("the sibling maps survive both markers and recordThreadSeen", () => {
+    const file = path.join(home, ".claude", "devops-thread-seen.json");
+    seen.markProjectHinted("chan_SIB", { home });
+    const m = JSON.parse(fs.readFileSync(file, "utf8"));
+    fs.writeFileSync(file, JSON.stringify({ ...m, projectNames: { chan_SIB: "Sib" } }));
+    seen.markBlockChecked("chan_SIB", "ask@v1", { home });
+    seen.markProjectHinted("chan_SIB2", { home });
+    seen.recordThreadSeen({ home, tmpDir: tmp, force: true, now: Date.now() + 3 * 24 * 3600 * 1000 });
+    const after = JSON.parse(fs.readFileSync(file, "utf8"));
+    expect(after.projectNames).toEqual({ chan_SIB: "Sib" });
+    expect(after.blockChecked).toEqual({ chan_SIB: "ask@v1" });
+    expect(Object.keys(after.projects)).toEqual(["chan_SIB", "chan_SIB2"]);
   });
 
   test("recordThreadSeen keeps the project map", () => {

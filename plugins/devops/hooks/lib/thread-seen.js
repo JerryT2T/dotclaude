@@ -1,7 +1,7 @@
 'use strict';
 /**
  * @module thread-seen
- * @version 0.2.0
+ * @version 0.5.0
  * @plugin devops
  * @description "A Claude Project thread ran on this machine" — a persisted
  *   marker, so the cloud-copy lag is judged by whether cloud threads exist, not
@@ -16,7 +16,14 @@
  *
  *   The same file records which Claude Projects (`chan_…` ids) already got the
  *   one-time setup hint (`projects`: id → ISO time, `projectHinted` /
- *   `markProjectHinted`); `recordThreadSeen` keeps that map when it rewrites.
+ *   `markProjectHinted`). A second sibling map, `blockChecked` (id →
+ *   `<value>@v<N>`), records for which location value and block version the
+ *   "Where threads run" check was last asked of a project. The Desktop Home
+ *   reads a third, `projectNames` (id → string). The wake envelope carries no
+ *   name, so `setProjectName` records the folder a thread first works in
+ *   (prompt.thread.notices) or the name the user gives
+ *   (`scripts/thread-location.js name`). `recordThreadSeen` rewrites the file as
+ *   `{...known, …}` and so keeps every sibling map.
  *
  *   Pure fs, no dependencies — desktop-copy.js and cloud-update.js both read it.
  */
@@ -37,6 +44,23 @@ function liveFlag(tmpDir) {
     return fs.readdirSync(tmpDir).some((n) => n.startsWith(FLAG_PREFIX) && !n.endsWith('.tmp'));
   } catch {
     return false;
+  }
+}
+
+/**
+ * Write the marker in one step (temp file + rename): several thread sessions
+ * write this file, and a torn one would read as "no thread ever ran".
+ */
+function save(home, data) {
+  const file = stateFile(home);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const tmp = `${file}.${process.pid}.tmp`;
+  fs.writeFileSync(tmp, JSON.stringify(data) + '\n');
+  try {
+    fs.renameSync(tmp, file);
+  } catch (e) {
+    try { fs.unlinkSync(tmp); } catch { /* nothing to clean */ }
+    throw e;
   }
 }
 
@@ -66,10 +90,35 @@ function recordThreadSeen({ home = os.homedir(), tmpDir = os.tmpdir(), now = Dat
   const iso = new Date(now).toISOString();
   if (known && now - Date.parse(known.lastSeen || known.firstSeen) < 24 * 60 * 60 * 1000) return true;
   try {
-    fs.mkdirSync(path.dirname(stateFile(home)), { recursive: true });
-    fs.writeFileSync(stateFile(home), JSON.stringify({ ...(known || {}), firstSeen: known ? known.firstSeen : iso, lastSeen: iso }) + '\n');
+    save(home, { ...(known || {}), firstSeen: known ? known.firstSeen : iso, lastSeen: iso });
   } catch { /* advisory: the next session tries again */ }
   return true;
+}
+
+/**
+ * The `<value>@v<N>` the location-block check was last emitted for in this project, or null.
+ * @returns {string|null}
+ */
+function blockChecked(id, home = os.homedir()) {
+  const m = readMarker(home);
+  const v = id && m && m.blockChecked && typeof m.blockChecked === 'object' ? m.blockChecked[id] : undefined;
+  return typeof v === 'string' ? v : null;
+}
+
+/**
+ * Record that the location-block check for `id` was emitted for `stamp` (`<value>@v<N>`).
+ * Keeps every other field and sibling map.
+ * @returns {boolean} whether the record was written
+ */
+function markBlockChecked(id, stamp, { home = os.homedir(), now = Date.now() } = {}) {
+  if (!id || !stamp) return false;
+  const iso = new Date(now).toISOString();
+  const known = readMarker(home) || { firstSeen: iso, lastSeen: iso };
+  const map = known.blockChecked && typeof known.blockChecked === 'object' ? known.blockChecked : {};
+  try {
+    save(home, { ...known, blockChecked: { ...map, [id]: stamp } });
+    return true;
+  } catch { return false; }
 }
 
 /** Did this project already get the setup hint? */
@@ -88,10 +137,44 @@ function markProjectHinted(id, { home = os.homedir(), now = Date.now() } = {}) {
   const known = readMarker(home) || { firstSeen: iso, lastSeen: iso };
   const projects = known.projects && typeof known.projects === 'object' ? known.projects : {};
   try {
-    fs.mkdirSync(path.dirname(stateFile(home)), { recursive: true });
-    fs.writeFileSync(stateFile(home), JSON.stringify({ ...known, projects: { ...projects, [id]: iso } }) + '\n');
+    save(home, { ...known, projects: { ...projects, [id]: iso } });
     return true;
   } catch { return false; }
 }
 
-module.exports = { FILE, FLAG_PREFIX, readMarker, threadSeen, recordThreadSeen, liveFlag, projectHinted, markProjectHinted };
+/** A display name: one line, no control characters, at most NAME_MAX characters. */
+const NAME_MAX = 40;
+function cleanName(name) {
+  // eslint-disable-next-line no-control-regex
+  return String(name || '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, NAME_MAX);
+}
+
+/** The display name recorded for a project (`projectNames`: id → string), or ''. */
+function projectName(id, home = os.homedir()) {
+  const m = readMarker(home);
+  const v = id && m && m.projectNames && typeof m.projectNames === 'object' ? m.projectNames[id] : undefined;
+  return typeof v === 'string' ? v : '';
+}
+
+/**
+ * Record a display name for a project. The wake envelope carries only the id,
+ * so the name comes from the folder a thread works in (`overwrite: false`, the
+ * first one stays) or from the user (`scripts/thread-location.js name`).
+ * Keeps every other field and sibling map.
+ * @returns {boolean} whether the record was written
+ */
+function setProjectName(id, name, { home = os.homedir(), now = Date.now(), overwrite = true } = {}) {
+  const clean = cleanName(name);
+  if (!id || !clean) return false;
+  const iso = new Date(now).toISOString();
+  const known = readMarker(home) || { firstSeen: iso, lastSeen: iso };
+  const map = known.projectNames && typeof known.projectNames === 'object' ? known.projectNames : {};
+  if (!overwrite && typeof map[id] === 'string' && map[id]) return false;
+  if (map[id] === clean) return true;
+  try {
+    save(home, { ...known, projectNames: { ...map, [id]: clean } });
+    return true;
+  } catch { return false; }
+}
+
+module.exports = { FILE, FLAG_PREFIX, NAME_MAX, readMarker, threadSeen, recordThreadSeen, liveFlag, projectHinted, markProjectHinted, blockChecked, markBlockChecked, projectName, setProjectName };
