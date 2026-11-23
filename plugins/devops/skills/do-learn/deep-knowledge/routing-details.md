@@ -223,8 +223,8 @@ plus the coordinator's context name the surprise, derive the rule, execute the
 branch, and put the verbatim rule in the report so the person can correct it
 afterwards. Ask (numbered reply) only when the learning stays ambiguous. A
 learning about how threads and the coordinator work together is a plugin rule
-(Q1): `deep-knowledge/project-threads.md`, and for the coordinator's side the
-text in `deep-knowledge/project-instructions-snippet.md`.
+(Q1): `{PLUGIN_ROOT}/deep-knowledge/project-threads.md`, and for the coordinator's side the
+text in `{PLUGIN_ROOT}/deep-knowledge/project-instructions-snippet.md`.
 
 ### Scheduled-task rules — the runbook is the home
 
