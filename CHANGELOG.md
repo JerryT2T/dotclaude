@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.404.0] — 2026-11-23
+
+### Added
+- **Thread location for Claude Projects (alpha feature `project-threads`).** A setting says where threads start: on your computer first (default), only there, in the cloud first, or ask each time. One global value, with an exception per project. devops Home > Einstellungen has the new row "Thread-Ort" with a button that copies the text block for the project instructions, and lists what local threads need.
+- A local thread checks once per project that its project instructions carry the current "Where threads run" block and says so when it is missing or outdated.
+- Projects appear in Home with a readable name: the folder of their first local thread, or the name given with `thread-location.js name`.
+
+### Changed
+- The "work locally first" text of 0.403 is now its own block, `Where threads run (devops local-first, v1)`, instead of a paragraph inside the devops text. Three rules are added: a start that fails for another reason is reported without a switch to the cloud, a thread that loses contact waits, and "in the cloud" for a task is a temporary exception that changes no setting.
+- A cloud thread no longer asks for local threads when the project instructions say that threads start in the cloud or that the coordinator asks each time.
+
+### Fixed
+- The setup hint for a new Claude Project named "Project settings > Plugins", an entry that does not exist. It now names the real places: plugins are enabled once for the claude.ai account, the text goes into Project settings > Memory > Project instructions, and local threads need Environment > "Your computer".
+
 ## [0.403.0] — 2026-11-23
 
 ### Added
