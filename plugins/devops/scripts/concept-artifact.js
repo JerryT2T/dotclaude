@@ -39,7 +39,7 @@
  *
  *   Usage:
  *     concept-artifact.js --artifact <concept page .html> [--out <path>]
- *   Prints one JSON object on stdout: { ok, source, out, capabilities, readBack }.
+ *   Prints one JSON object on stdout: { ok, source, out, capabilities, icon, readBack }.
  *   Exit 2 on bad arguments or a page without <head>/<html>.
  */
 
@@ -53,6 +53,7 @@ const END = '<!-- concept-artifact:wrapper:end -->';
 const DOC_PATH = 'concept/decisions';
 
 const DRAFT_DOC = 'concept/draft';
+const ICON = 'compass';
 
 // Plain ES5-style functions: the wrapper is inlined verbatim into the page.
 const WRAPPER_JS = `(function () {
@@ -199,8 +200,12 @@ function run(opts) {
     source: src,
     out,
     capabilities: { db: {} },
+    // The browser tab of claude.ai/artifact/… shows the icon the FIRST publish
+    // names; the page itself runs in a sandboxed frame, so a <link rel="icon">
+    // in it never reaches the tab. "compass" matches the concept's 🧭.
+    icon: ICON,
     readBack: { tool: 'ArtifactData', action: 'get', collection: 'concept', doc_id: 'decisions' },
-    note: 'Publish `out` with the Artifact tool and capabilities {db:{}}; read the decisions on the next turn with readBack against the artifact url. No bridge, no crons.',
+    note: 'Publish `out` with the Artifact tool, capabilities {db:{}} and, on the first publish, icon "compass" (a redeploy keeps it); read the decisions on the next turn with readBack against the artifact url. No bridge, no crons.',
   };
 }
 

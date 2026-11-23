@@ -156,6 +156,7 @@ describe("run — CLI", () => {
     expect(stripWrapper(fs.readFileSync(res.out, "utf8"))).toBe(PAGE);
     expect(fs.readFileSync(src, "utf8")).toBe(PAGE);
     expect(res.capabilities).toEqual({ db: {} });
+    expect(res.icon).toBe("compass");
     expect(res.readBack).toEqual({ tool: "ArtifactData", action: "get", collection: "concept", doc_id: "decisions" });
   });
 
