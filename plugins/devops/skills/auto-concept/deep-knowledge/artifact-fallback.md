@@ -16,8 +16,13 @@ now AND the Artifact tool is available); this file is the procedure.
    → `<file>.artifact.html` next to it: the engine bytes unchanged, one
    wrapper `<script>` inserted after `<head>`. A re-run replaces the wrapper.
    Do not commit the `.artifact.html`.
-3. **Publish it** with the Artifact tool, `capabilities: {db: {}}` (the
-   `capabilities` field of the script output).
+3. **Publish it** with the Artifact tool, `capabilities: {db: {}}` and
+   `icon: "compass"` (the `capabilities` and `icon` fields of the script
+   output). The tab of `claude.ai/artifact/…` shows the icon the first
+   publish names; without it the tab falls back to a generic globe. A
+   `<link rel="icon">` in the page cannot help: the page runs in a sandboxed
+   frame. A redeploy keeps the first icon, so an artifact published without
+   one gets `icon: "compass"` passed once on its next redeploy.
 4. **No bridge, no crons, no Edge start.** Nothing polls: the owner submits
    on the artifact, then tells this session (or a later one) to read it.
 5. **Read back** with the script's `readBack`:
