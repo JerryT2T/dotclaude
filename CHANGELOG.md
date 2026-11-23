@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.405.0] — 2026-11-23
+
+### Added
+- Claude Projects: the person no longer pastes the devops text or the "Where threads run" block into the project instructions. A local thread whose project lacks the current version sends the coordinator a request with the exact blocks (`scripts/thread-location.js request`), and the coordinator writes them into the project instructions itself. The devops text now carries a version line (`devops text (v2)`), so a changed text reaches every project again. The "show the text" hints remain as the fallback.
+
+## [0.404.1] — 2026-11-23
+
+### Fixed
+- Claude Projects threads: a coordinator note that attaches the person's own message (`<cited author="user">`) now counts as the person's approval, so an answer given in the project chat no longer has to be repeated in the thread. A cited tag inside the coordinator's own note does not count.
+
+### Changed
+- The project instructions text asks the coordinator to attach the person's answers by id and to hand "devops learn" to a thread that runs `/do-learn` instead of only writing project memory; do-learn skips its confirm question for such a hand-over.
+
 ## [0.404.0] — 2026-11-23
 
 ### Added

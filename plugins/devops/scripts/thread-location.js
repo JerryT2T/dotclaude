@@ -12,7 +12,11 @@
  *     node thread-location.js list [--json]
  *     node thread-location.js set <local-first|local-only|cloud-first|ask|inherit> [--project <chan_id>] [--json]
  *     node thread-location.js block [--project <chan_id>] [--json]
+ *     node thread-location.js request [--project <chan_id>] [--json]
  *     node thread-location.js name <chan_id> <name…> [--json]
+ *
+ *   `request` prints the message a thread sends the coordinator so it writes the
+ *   devops text and the location block into the project instructions itself.
  *
  *   `inherit` (only with --project) removes that project's exception.
  *   `block` prints the text for the value in effect; for cloud-first there is
@@ -122,6 +126,13 @@ function main() {
       if (json) out(JSON.stringify(d));
       else if (d.block) out(d.block);
       else out('cloud-first has no text block: remove the "Where threads run" block from the project instructions.');
+    } else if (cmd === 'request') {
+      if (project && !lib.isProjectId(project)) fail(`malformed project id "${project}" — expected chan_<id>`);
+      const value = lib.effective(project).value;
+      const msg = lib.coordinatorRequest(value);
+      if (!msg) fail(`no devops text or block for "${value}" in deep-knowledge/project-instructions-snippet.md`);
+      if (json) out(JSON.stringify({ value, stamp: lib.stamp(value), message: msg }));
+      else out(msg);
     } else if (cmd === 'name') {
       // every word after the id, also one that starts with "--" (only a trailing --json is the flag)
       const words = argv.slice(argv.indexOf(arg) + 1);
@@ -132,7 +143,7 @@ function main() {
       if (json) out(JSON.stringify(d));
       else out(`${arg}: ${(d.projects.find((p) => p.id === arg) || { name: text }).name}`);
     } else {
-      fail('usage: list [--json] | set <value|inherit> [--project <chan_id>] [--json] | block [--project <chan_id>] [--json] | name <chan_id> <name…> [--json]');
+      fail('usage: list [--json] | set <value|inherit> [--project <chan_id>] [--json] | block [--project <chan_id>] [--json] | request [--project <chan_id>] [--json] | name <chan_id> <name…> [--json]');
     }
   } catch (e) {
     fail(e.message);

@@ -34,6 +34,14 @@
  *      gets hint 2 in the same prompt gets that note only (it covers the
  *      block). This is a working rule for the model, NOT a check by code: the
  *      plugin cannot read the project instructions.
+ *   For 2 and 3 the person copies nothing: the model first runs
+ *   `scripts/thread-location.js request --project <id>` and sends that message
+ *   (the exact devops text and location block) to the coordinator, which writes
+ *   them into the project instructions itself. The devops text carries the marker
+ *   line `devops text (v<TEXT_VERSION>)`, and the stamp in `blockChecked` holds
+ *   both versions (`lib/thread-location.js` `stamp`), so a new text asks again.
+ *   The person-facing hints above are only the fallback when no coordinator
+ *   route works.
  *   4. A readable name for the Home pane: the envelope carries only the
  *      project id, so the folder of the first local thread (its main checkout)
  *      is recorded once as the project's name (`projectNames`); a name the user
@@ -54,6 +62,40 @@ const LINE =
   'orphan / backup / MCP / team lines) are for the Desktop user. Do not post them into this thread.';
 
 const SNIPPET_REL = 'deep-knowledge/project-instructions-snippet.md';
+
+/**
+ * The setup note once the coordinator was asked to write the instructions itself:
+ * only what the coordinator cannot change is left for the person.
+ */
+function setupSentText(lang, withBlock) {
+  if (lang === 'en') {
+    return 'Setup for this project: it is new to devops. ' +
+      '(1) devops is enabled once for your claude.ai account under Plugins, not per project. ' +
+      `(2) I asked the project chat to write the devops text${withBlock ? ' and the "Where threads run" block' : ''} into the project instructions itself: you copy nothing. ` +
+      '(3) For local threads: Project settings > Environment > "Your computer" on.';
+  }
+  return 'Einrichtung für dieses Projekt: es ist neu für devops. ' +
+    '(1) devops wird einmal für dein claude.ai-Konto unter Plugins aktiviert, nicht pro Projekt. ' +
+    `(2) Den devops-Text${withBlock ? ' und den Block „Where threads run“' : ''} habe ich beim Projekt-Chat beantragt, er trägt sie selbst in die Projektanweisungen ein: du kopierst nichts. ` +
+    '(3) Für lokale Threads: Umgebung > „Dein Computer“ einschalten.';
+}
+
+/** The line a later thread adds when it asked the coordinator to update outdated instructions (de + en). */
+const SENT_TEXT = {
+  en: 'The devops part of the project instructions was missing or outdated: I asked the project chat to update it itself, you copy nothing.',
+  de: 'Der devops-Teil der Projektanweisungen fehlte oder war veraltet: Ich habe den Projekt-Chat gebeten, ihn selbst zu aktualisieren, du kopierst nichts.',
+};
+
+/**
+ * The working rule that sends the coordinator the update request: the person
+ * copies nothing. The coordinator loads no plugin, so the script prints the
+ * exact blocks into the message.
+ */
+function sendRule(pluginRoot, projectId) {
+  return `run \`${requestCmd(pluginRoot, projectId)}\` and send its plain output VERBATIM to this project's coordinator yourself, ` +
+    'over the coordinator route your thread instructions name (send_message to "@parent" with visibility "sent_to_shared_agent", ' +
+    'or message_coordinator; never a project-chat post by the person). This is a request to a colleague, not a progress note.';
+}
 
 /** The setup note; `withBlock` false (value cloud-first) leaves the "Where threads run" block out. */
 function setupText(lang, withBlock) {
@@ -99,6 +141,9 @@ function decide({ mode, said, held = false }) {
 const scriptCmd = (pluginRoot, projectId) =>
   `node "${path.join(pluginRoot, 'scripts', 'thread-location.js').replace(/\\/g, '/')}" block --project ${projectId}`;
 
+const requestCmd = (pluginRoot, projectId) =>
+  `node "${path.join(pluginRoot, 'scripts', 'thread-location.js').replace(/\\/g, '/')}" request --project ${projectId}`;
+
 /**
  * The one-time setup hint for a project, or null. One combined note: it also
  * covers the "Where threads run" block, so the block check is not asked again.
@@ -109,6 +154,7 @@ const scriptCmd = (pluginRoot, projectId) =>
 function hint({ mode, projectId, hinted, remote, lang = 'de', pluginRoot = path.resolve(__dirname, '..', '..'), value = 'local-first' }) {
   if (mode !== 'on' || !projectId || hinted || remote) return null;
   const snippet = path.join(pluginRoot, SNIPPET_REL).replace(/\\/g, '/');
+  const l = lang === 'en' ? 'en' : 'de';
   const withBlock = value !== 'cloud-first';
   const how = withBlock
     ? `When the person asks for the text, post two things as replies in this thread: (a) the devops text: read ${snippet} and post its FIRST fenced block verbatim, ` +
@@ -116,8 +162,11 @@ function hint({ mode, projectId, hinted, remote, lang = 'de', pluginRoot = path.
     : `When the person asks for the text: read ${snippet} and post its FIRST fenced block verbatim as a reply in this thread. ` +
       'This project starts threads cloud-first and needs no "Where threads run" block.';
   return '[thread-hint] This Claude Project is new to devops (once per project, never again). ' +
-    "Append a short note to your FIRST reply in this thread (the thread post, in the person's language), in these words: " +
-    `"${setupText(lang === 'en' ? 'en' : 'de', withBlock)}" ${how}`;
+    `First, ${sendRule(pluginRoot, projectId)} ` +
+    "Then append a short note to your FIRST reply in this thread (the thread post, in the person's language), in these words: " +
+    `"${setupSentText(l, withBlock)}" ` +
+    'Only when no route reaches the coordinator (the send is missing or refused): append this note instead: ' +
+    `"${setupText(l, withBlock)}" ${how}`;
 }
 
 /**
@@ -129,17 +178,20 @@ function hint({ mode, projectId, hinted, remote, lang = 'de', pluginRoot = path.
  *   `checked`: this project was already asked for this value and version.
  * @returns {string|null}
  */
-function blockCheck({ mode, projectId, remote, checked, value, version, lang = 'de', pluginRoot = path.resolve(__dirname, '..', '..') }) {
+function blockCheck({ mode, projectId, remote, checked, value, version, lang = 'de', pluginRoot = path.resolve(__dirname, '..', '..'), textMarker = require('../lib/thread-location').TEXT_MARKER }) {
   if (mode !== 'on' || !projectId || remote || checked || !value) return null;
   const l = lang === 'en' ? 'en' : 'de';
-  const intro = '[thread-block-check] Once per project and block version. A local thread starts with this project\'s instructions in its context: look there yourself, nothing else checks it. ';
+  const intro = '[thread-block-check] Once per project and text/block version. A local thread starts with this project\'s instructions in its context: look there yourself, nothing else checks it. ';
   const tail = "append ONE short hint to your FIRST reply in this thread (the thread post, in the person's language), in these words: ";
+  const send = `${sendRule(pluginRoot, projectId)} Then ${tail}"${SENT_TEXT[l]}" Only when no route reaches the coordinator (the send is missing or refused): `;
+  const textLine = `\`${textMarker}\``;
   if (value === 'cloud-first') {
-    return `${intro}Search them for a line that starts with \`Where threads run (devops \`. None: say nothing. Found: ${tail}"${BLOCK_REMOVE_TEXT[l]}"`;
+    return `${intro}Search them for the line ${textLine} and for a line that starts with \`Where threads run (devops \`. ` +
+      `The text line is there and no "Where threads run" line: say nothing. Otherwise: ${send}${tail}"${BLOCK_REMOVE_TEXT[l]}"`;
   }
   const marker = `devops ${value}, v${version}`;
-  return `${intro}Search them for the line \`Where threads run (${marker})\`. Found: say nothing. ` +
-    `Missing, or the line carries another value or an older version: ${tail}"${BLOCK_TEXT[l](marker)}" ` +
+  return `${intro}Search them for the line ${textLine} and the line \`Where threads run (${marker})\`. Both found: say nothing. ` +
+    `One is missing, or carries another value or an older version: ${send}${tail}"${BLOCK_TEXT[l](marker)}" ` +
     `When the person asks to show the text: run \`${scriptCmd(pluginRoot, projectId)}\` and post its plain output verbatim as a reply in this thread.`;
 }
 
@@ -190,7 +242,7 @@ if (require.main === module) {
         nameProject({ seen, projectId: id, remote, cwd: hook.cwd });
         const TL = require('../lib/thread-location');
         const value = TL.effective(id).value;
-        const stamp = `${value}@v${TL.BLOCK_VERSION}`;
+        const stamp = TL.stamp(value);
         const text = hint({ mode, projectId: id, hinted: seen.projectHinted(id), remote, lang, value });
         if (text) {
           // One combined note: the setup hint also covers the location block.
@@ -209,4 +261,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { decide, hint, blockCheck, nameProject, LINE, FLAG, HINT_TEXT, BLOCK_TEXT, BLOCK_REMOVE_TEXT };
+module.exports = { decide, hint, blockCheck, nameProject, LINE, FLAG, HINT_TEXT, BLOCK_TEXT, BLOCK_REMOVE_TEXT, SENT_TEXT, setupSentText };

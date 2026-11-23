@@ -212,6 +212,20 @@ repo, or a Claude Project with a single repo, needs no question. A Desktop or
 terminal session keeps the normal Q3. The thread channel itself (numbered reply,
 title head) is the thread rules' business, not this skill's.
 
+### A learning handed over from the project chat
+
+The coordinator cannot run this skill (no repo, no plugin), so a "devops learn"
+the person says in the project chat arrives as a thread whose relay orders
+do-learn, ideally with the person's message attached (`<cited author="user">`).
+That relay is the invocation. The person already said it once and is away:
+skip Step 1's confirm line ("Learning: … — richtig?") when the cited message
+plus the coordinator's context name the surprise, derive the rule, execute the
+branch, and put the verbatim rule in the report so the person can correct it
+afterwards. Ask (numbered reply) only when the learning stays ambiguous. A
+learning about how threads and the coordinator work together is a plugin rule
+(Q1): `{PLUGIN_ROOT}/deep-knowledge/project-threads.md`, and for the coordinator's side the
+text in `{PLUGIN_ROOT}/deep-knowledge/project-instructions-snippet.md`.
+
 ### Scheduled-task rules — the runbook is the home
 
 A learning about a Desktop scheduled task (the routine forgets pushed-but-

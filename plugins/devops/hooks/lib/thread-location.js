@@ -22,6 +22,7 @@ const path = require('path');
 const VALUES = Object.freeze(['local-first', 'local-only', 'cloud-first', 'ask']);
 const DEFAULT = 'local-first';
 const BLOCK_VERSION = 1;
+const TEXT_VERSION = 2;
 const INHERIT = 'inherit';
 const PROJECT_ID = /^chan_[A-Za-z0-9_-]+$/;
 
@@ -124,6 +125,61 @@ function block(value, opts = {}) {
   return null;
 }
 
+/** The title line of the devops text block, its marker: raise TEXT_VERSION with every change of that text. */
+const TEXT_MARKER = `devops text (v${TEXT_VERSION})`;
+
+/** The fenced block of the snippet doc whose first line is `firstLine`, or null. */
+function fencedBlock(firstLine, opts = {}) {
+  let text;
+  try { text = fs.readFileSync(snippetFile(opts), 'utf8').replace(/\r\n/g, '\n'); } catch { return null; }
+  const re = /^```[^\n]*\n([\s\S]*?)\n```[ \t]*$/gm;
+  for (let hit = re.exec(text); hit; hit = re.exec(text)) {
+    if (hit[1].split('\n', 1)[0].trim() === firstLine) return hit[1];
+  }
+  return null;
+}
+
+/** The devops text for the project instructions (with its marker line), or null. */
+function devopsText(opts = {}) {
+  return fencedBlock(TEXT_MARKER, opts);
+}
+
+/** What the project instructions must carry for `value`: one stamp, so a new text or block version asks again. */
+function stamp(value) {
+  return `${value}@v${BLOCK_VERSION}+t${TEXT_VERSION}`;
+}
+
+/**
+ * The message a thread sends the coordinator so it writes the devops text and the
+ * "Where threads run" block for `value` into the project instructions ITSELF: the
+ * person copies nothing. The coordinator loads no plugin, so the message carries
+ * the exact blocks. null when the snippet doc lacks a block.
+ */
+function coordinatorRequest(value, opts = {}) {
+  const text = devopsText(opts);
+  if (!text) return null;
+  const where = value === 'cloud-first' ? null : block(value, opts);
+  if (value !== 'cloud-first' && !where) return null;
+  const steps = [
+    'devops plugin update request for THIS project\'s instructions (Project settings > Memory > Project instructions).',
+    'Please edit them yourself now, do not ask the person to copy anything:',
+    '1. The devops text (the block whose first line starts with "devops text (", or an older copy without that line ' +
+      'that begins "Threads on my computer end their work with a devops completion card" and runs to its last paragraph): ' +
+      'replace it with block A below; add block A when there is none.',
+    where
+      ? '2. The block whose first line starts with "Where threads run (devops ": replace it with block B below; add block B when there is none.'
+      : '2. Remove the block whose first line starts with "Where threads run (devops ", if there is one: threads of this project start in the cloud first.',
+    'Keep everything else in the instructions unchanged. Then answer this thread in one line: done, or why you could not (then the person pastes the blocks).',
+    '',
+    'Block A:',
+    '```',
+    text,
+    '```',
+  ];
+  if (where) steps.push('', 'Block B:', '```', where, '```');
+  return steps.join('\n');
+}
+
 /**
  * Is the feature `project-threads` allowed on this channel? For the callers that
  * surface the setting (script, Home row); the stored values are read either way.
@@ -133,4 +189,7 @@ function featureOn(opts) {
   try { return require('./features').featureAllowed('project-threads', opts); } catch { return false; }
 }
 
-module.exports = { VALUES, DEFAULT, BLOCK_VERSION, INHERIT, isProjectId, read, effective, set, marker, block, snippetFile, featureOn };
+module.exports = {
+  VALUES, DEFAULT, BLOCK_VERSION, TEXT_VERSION, TEXT_MARKER, INHERIT, isProjectId, read, effective, set, marker, block,
+  devopsText, stamp, coordinatorRequest, snippetFile, featureOn,
+};
