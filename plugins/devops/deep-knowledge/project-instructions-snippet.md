@@ -2,6 +2,10 @@
 
 The one source of the text a Claude Project's instructions (Project settings > Memory > Project instructions, up to 16,000 characters) carry so the coordinator works with the devops threads. Pointed to by `skills/auto-setup/SKILL.md` § Claude Projects and by `project-threads.md` § The project chat — change it here only. It is a request to the coordinator, not an enforced rule, and it is untested. Paste it as it is, or ask Claude in the project chat to add it.
 
+This doc holds four fenced blocks. The first is the devops text. The other three say where threads run, one per value of the setting `threadLocation` (`hooks/lib/thread-location.js`, `scripts/thread-location.js`). Each of those starts with a title line `Where threads run (devops <value>, v1)`: that line is the marker, and a block is found by it. The value `cloud-first` has no block: a project that is set to it carries none, and an older block is removed from the project instructions.
+
+## devops text
+
 ```
 Threads on my computer end their work with a devops completion card: a reply
 whose heading reads "✨✨✨ <title> ✨✨✨", followed by a line that starts with a
@@ -17,7 +21,70 @@ room and 30 issues can be open at once. Before you start a thread for an issue,
 check that no other thread already works on it.
 ```
 
+## Where threads run: local-first
+
+```
+Where threads run (devops local-first, v1)
+1. Start every thread on my computer: a local thread
+   in the folder of the repository the task belongs
+   to. This holds whether I write from the computer,
+   from my phone or from claude.ai.
+2. Start a cloud thread only when my computer cannot
+   be reached (off, asleep, app closed). Then say so
+   in the first line of your reply:
+   "Cloud thread: computer not reachable."
+3. A local start that fails for another reason
+   (folder not approved, Claude out of date, trusted
+   devices): tell me the reason. Do not switch to
+   the cloud.
+4. A local thread that loses contact: tell me and
+   wait. Do not restart its task in the cloud. The
+   unpushed work is on my computer.
+5. When I say "in the cloud" for a task or for this
+   conversation, that runs in the cloud. This is a
+   temporary exception and changes no setting.
+```
+
+## Where threads run: local-only
+
+```
+Where threads run (devops local-only, v1)
+1. Start every thread on my computer: a local thread
+   in the folder of the repository the task belongs
+   to. This holds whether I write from the computer,
+   from my phone or from claude.ai.
+2. Never start a cloud thread by yourself. When my
+   computer cannot be reached (off, asleep, app
+   closed), start nothing in the cloud. Tell me and
+   wait.
+3. A local start that fails for another reason
+   (folder not approved, Claude out of date, trusted
+   devices): tell me the reason. Do not switch to
+   the cloud.
+4. A local thread that loses contact: tell me and
+   wait. Do not restart its task in the cloud. The
+   unpushed work is on my computer.
+5. When I say "in the cloud" for a task or for this
+   conversation, that runs in the cloud. This is a
+   temporary exception and changes no setting.
+```
+
+## Where threads run: ask
+
+```
+Where threads run (devops ask, v1)
+1. Before you start a thread, ask me in one line:
+   on my computer or in the cloud. Start nothing
+   before I answer.
+2. A thread you start in the cloud says so in its
+   first line: "Cloud thread."
+3. A local thread that loses contact: tell me and
+   wait. Do not restart its task in the cloud. The
+   unpushed work is on my computer.
+```
+
 ## Around the text (what auto-setup also says)
 
-- **Worktree, per folder.** A local folder that is a git repository has a **Worktree** switch on its card in the project (the option does not exist for a folder that is no repo, such as a parent folder holding several projects). Switch it on for a folder where more than one thread may work: every thread then gets its own checkout and branch, and two threads cannot overwrite each other. With it off, threads in one folder share one checkout.
-- **Plugin.** A cloud thread loads no repo skills, hooks or MCP servers. To give it the devops plugin, add it under Project settings > Plugins. Whether a plugin's hooks run there is not documented; the working rules a thread needs without the plugin come from the repo's `.claude/rules/devops.md` (`scripts/cloud-rules.js`), which loads either way.
+- **Where the settings are.** A project has no Plugins tab. Its settings tabs are General, Memory, Environment, Usage and Advanced. The per-project setting for local threads is Environment > "Your computer": Off, On, or On with worktrees. Below it are the folders Claude may use without asking, one of them marked as the default. Add the repo folders there.
+- **Worktree.** The choice is the project-wide "Your computer" value: with "On, with worktrees", every new thread in a git folder gets its own checkout and branch, and two threads cannot overwrite each other. With plain "On", threads work directly in the folders and share one checkout. A folder that is no git repository (such as a parent folder holding several projects) has no worktree.
+- **Plugin.** A cloud thread loads no repo skills, hooks or MCP servers. Plugins are account-wide: add devops once under claude.ai > Plugins, not per project. Whether a plugin's hooks run in a cloud thread is not documented. The working rules a thread needs without the plugin come from the repo's `.claude/rules/devops.md` (`scripts/cloud-rules.js`), which loads either way.

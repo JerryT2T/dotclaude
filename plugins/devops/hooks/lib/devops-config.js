@@ -193,6 +193,19 @@ const SCHEMA = Object.freeze({
       doc: 'Browser for the pages devops opens for you (concept pages, re-opened files, guides): auto = Edge when installed, else the first installed browser, else in-app; in-app = the Desktop app\'s browser pane. A browser that is not installed falls back like auto. Also in the devops Home pane (Einstellungen).',
     }),
   }),
+  // Account-wide: a Claude Project belongs to the account, not to a repo. The
+  // values mirror VALUES in ./thread-location.js (a test keeps both in step).
+  threadLocation: Object.freeze({
+    default: Object.freeze({
+      type: 'enum', default: 'local-first', globalOnly: true,
+      values: Object.freeze(['local-first', 'local-only', 'cloud-first', 'ask']),
+      doc: 'Where Claude Project threads start: local-first = on your computer, the cloud only when it cannot be reached; local-only = never in the cloud; cloud-first = no local rule; ask = ask each time. A request to the coordinator in the project instructions, not enforced. Also in the devops Home pane (Einstellungen).',
+    }),
+    projects: Object.freeze({
+      type: 'list', default: Object.freeze([]), globalOnly: true,
+      doc: 'Per-project exceptions to threadLocation.default: comma-separated chan_<id>=<value> entries (value as in threadLocation.default). Entries with an unknown value or a malformed id are ignored. Write with scripts/thread-location.js set <value> --project <id>.',
+    }),
+  }),
   frustratedMode: Object.freeze({
     suggest: Object.freeze({
       type: 'boolean', default: true,

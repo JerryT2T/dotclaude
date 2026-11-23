@@ -154,6 +154,21 @@ chrome|in-app|auto` (it refuses a browser that is not installed), not
 `devops-config.js set`. What follows the choice:
 `deep-knowledge/browser-tool-strategy.md` § The user's browser.
 
+### `threadLocation` — where Claude Project threads start (global only)
+
+| Key | Default | Meaning |
+|---|---|---|
+| `default` | `local-first` | `local-first` = start threads on the user's computer, in the cloud only when it cannot be reached. `local-only` = never in the cloud. `cloud-first` = no local rule (the text block is removed from the project instructions). `ask` = ask each time. |
+| `projects` | empty | Per-project exceptions: comma-separated `chan_<id>=<value>` entries. An entry with an unknown value or a malformed id is ignored on read and refused on write. |
+
+A request to the coordinator in the project instructions, not an enforced
+rule, and untested. In words ("Threads in diesem Projekt nur lokal") →
+`node "{PLUGIN_ROOT}/scripts/thread-location.js" set local-only --project
+chan_…` (`set inherit --project chan_…` removes the exception; without
+`--project` it sets the global value), not `devops-config.js set`.
+`block [--project chan_…]` prints the text for the value in effect (single
+source: `deep-knowledge/project-instructions-snippet.md`).
+
 ### `deployParity` — the deploy-parity build before a ship merges
 
 | Key | Default | Meaning |
