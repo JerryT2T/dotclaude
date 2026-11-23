@@ -433,6 +433,7 @@ const BROWSER_FRESH_MS = 300_000
 let threads: ThreadState | null = null
 let threadsAt = 0
 let threadsLoading = false
+let threadsFailed = false
 let threadsVersion = ''
 let threadsOpen = '' // '' | 'global' | a project id: the dropdown that is open
 let threadsSaving = ''
@@ -546,6 +547,7 @@ function loadThreads($: EngineInterface, now: number, force = false): void {
     const t = await threadScript($, ['list'])
     const s = t === null ? null : threadsFrom(t)
     if (s) threads = s
+    threadsFailed = !s
     try {
       const r = await $.process.run(['claude', '--version'], { timeoutMs: BROWSER_TIMEOUT_MS })
       threadsVersion = r.exitCode === 0 ? versionFrom(String(r.stdout || '')) : ''
@@ -873,7 +875,7 @@ export async function renderHome($: EngineInterface, e: any, ctx: HomeCtx): Prom
               {note && <Text key="home-browser-note" dimColor>{note}</Text>}
             </Box>
           )}
-          {threadsShown && !th && <Text key="home-threads-loading" dimColor>Thread-Ort lädt …</Text>}
+          {threadsShown && !th && <Text key="home-threads-loading" dimColor>{threadsFailed && !threadsLoading ? 'Thread-Ort konnte nicht gelesen werden. ↻ versucht es noch einmal.' : 'Thread-Ort lädt …'}</Text>}
           {th && (
             <Box key="home-threads" flexDirection="column" borderStyle="round" paddingX={1}>
               <Box flexDirection="row" alignItems="center" columnGap={1}>

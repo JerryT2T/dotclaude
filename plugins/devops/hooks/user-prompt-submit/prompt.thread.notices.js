@@ -146,7 +146,8 @@ function blockCheck({ mode, projectId, remote, checked, value, version, lang = '
 /**
  * A readable name for the project in the Home pane: the wake envelope carries
  * only the id, so the folder of the first local thread stands in (its main
- * checkout, never a worktree folder). A name already recorded stays, also one
+ * checkout, never a worktree folder). Only a git repository names a project:
+ * a parent folder that holds several projects would name it "Projects". A name already recorded stays, also one
  * the user gave with `scripts/thread-location.js name`. Not in a cloud
  * container: its state does not persist.
  * @returns {string} the name recorded now, or ''
@@ -155,6 +156,7 @@ function nameProject({ seen, projectId, remote, cwd, home }) {
   if (!projectId || remote || !cwd) return '';
   try {
     if (seen.projectName(projectId, home)) return '';
+    if (!require('../lib/project-root').findRepoRoot(cwd)) return '';
     const name = path.basename(require('../lib/devops-config').mainCheckoutRoot(cwd));
     return name && seen.setProjectName(projectId, name, { home, overwrite: false }) ? name : '';
   } catch { return ''; }

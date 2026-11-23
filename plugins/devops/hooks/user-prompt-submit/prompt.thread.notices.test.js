@@ -89,8 +89,11 @@ describe("nameProject: a readable name for the Home pane", () => {
   test("the folder of the first local thread is recorded once; a later folder and a cloud container change nothing", () => {
     const home = mk();
     const folder = path.join(mk(), "verse-app");
-    fs.mkdirSync(folder);
+    fs.mkdirSync(path.join(folder, ".git"), { recursive: true });
+    const parent = mk(); // no git repository: a folder that holds several projects
     try {
+      expect(hook.nameProject({ seen, projectId: "chan_N1", remote: false, cwd: parent, home })).toBe("");
+      expect(seen.projectName("chan_N1", home)).toBe("");
       expect(hook.nameProject({ seen, projectId: "chan_N1", remote: true, cwd: folder, home })).toBe("");
       expect(seen.projectName("chan_N1", home)).toBe("");
       expect(hook.nameProject({ seen, projectId: "chan_N1", remote: false, cwd: folder, home })).toBe("verse-app");
@@ -100,6 +103,7 @@ describe("nameProject: a readable name for the Home pane", () => {
     } finally {
       fs.rmSync(home, { recursive: true, force: true });
       fs.rmSync(path.dirname(folder), { recursive: true, force: true });
+      fs.rmSync(parent, { recursive: true, force: true });
     }
   });
 

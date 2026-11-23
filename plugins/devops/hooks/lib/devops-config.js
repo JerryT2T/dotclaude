@@ -1,7 +1,7 @@
 'use strict';
 /**
  * @module devops-config
- * @version 0.3.0
+ * @version 0.4.0
  * @plugin devops
  * @description Plugin settings a user can change in plain words, per project
  *   or for every project on the machine.
