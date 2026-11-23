@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.406.0] — 2026-11-23
+
+### Fixed
+- Concept pages published as artifacts (the default in Claude Projects threads) no longer lose answers: each submit is its own document, each page load writes only its own draft, so two people answering at once never overwrite each other; other viewers' newer edits appear live, a failed submit is retried, and a read never deletes a submission before it is processed.
+
+### Added
+- `concept-artifact.js record / digest / mark / close`: the session remembers each artifact concept, and the session start names every open one, so a restarted or replaced thread session still finds waiting answers.
+
 ## [0.405.0] — 2026-11-23
 
 ### Added
