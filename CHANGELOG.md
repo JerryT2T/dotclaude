@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.403.0] — 2026-11-23
+
+### Added
+- Claude Project threads prefer local work without hardcoded paths: the project-instructions text tells the coordinator to start threads with "Work locally" on an online device whose folder holds the project's repo, and the managed `.claude/rules/devops.md` makes a cloud thread say it runs in the cloud and ask the coordinator to start the next threads locally.
+
+### Changed
+- In a Claude Project thread, the completion card is now posted as the visual card widget (`mcp__hearthbot__post_widget`) like on the Desktop. Plain markdown is only the fallback.
+
 ## [0.402.1] — 2026-11-22
 
 ### Fixed

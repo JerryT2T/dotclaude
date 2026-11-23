@@ -37,6 +37,16 @@ describe("cloud-rules block", () => {
     expect(text).toMatch(/Anywhere else, say nothing/);
   });
 
+  test("the rules ask a cloud thread to steer the project back to local threads, generic and cloud-only", () => {
+    const text = cr.applyBlock("");
+    expect(text).toMatch(/## Where a thread runs/);
+    expect(text).toMatch(/CLAUDE_CODE_REMOTE=true/);
+    expect(text).toMatch(/"Work locally" on a device that has this repo checked out/);
+    expect(text).toMatch(/Do the work anyway/);
+    // generic: no machine, user or path of the author leaks into a file every repo carries
+    expect(text).not.toMatch(/[A-Z]:\\|\/Users\/|\/home\//);
+  });
+
   test("applyBlock keeps outside text, replaces a stale block in place, drops a duplicate", () => {
     const stale = `intro\n\n${cr.BLOCK_START}\nold\n${cr.BLOCK_END}\n\nmine\n\n${cr.BLOCK_START}\nold2\n${cr.BLOCK_END}\n`;
     const out = cr.applyBlock(stale);

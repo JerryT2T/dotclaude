@@ -496,7 +496,7 @@ export function threadTitleInstruction(prefix, current = null) {
   }
   return (
     THREAD_TITLE_HEADER +
-    `Project thread, once: ${call} in the SAME assistant message as the card's post_message call ` +
+    `Project thread, once: ${call} in the SAME assistant message as the card's post (post_widget, or its post_message fallback) ` +
     "(rename_thread first in the batch). Tool missing or failing: skip silently — no retry, no note."
   );
 }
@@ -546,7 +546,7 @@ export function coordinatorStatusInstruction(session) {
   const address = `bridge:cse_${session.slice("session_".length)}`;
   return (
     "[COORDINATOR STATUS — DO NOT OUTPUT THIS BLOCK]\n" +
-    `Once, right after the card's post_message: SendMessage to "${address}" with ONE line (at most 20 words): ` +
+    `Once, right after the card's post (post_widget or post_message): SendMessage to "${address}" with ONE line (at most 20 words): ` +
     "the card's status head plus the first line of its answer, no markdown. " +
     "Address refused or tool unavailable: skip silently — no retry, no note, no text in the thread."
   );

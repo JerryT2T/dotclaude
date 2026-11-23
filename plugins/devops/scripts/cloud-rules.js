@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @script cloud-rules
- * @version 0.2.0
+ * @version 0.3.0
  * @plugin devops
  * @description The managed `.claude/rules/devops.md` of a repo: the few working
  *   rules a session follows WITHOUT the plugin. Claude Code loads the repo's
@@ -55,6 +55,12 @@ const BODY = [
   '- End every task with one plain-text reply: a heading `✨✨✨ <title> ✨✨✨`, then a line that starts',
   '  with a status icon (👉 needs you, 🟩 done, 🟥 failed, 🟦 info), then 3-5 numbered points:',
   '  what works now, what was tested and how, what is open, branch and PR link.',
+  '',
+  '## Where a thread runs',
+  '- Local threads first. A Claude Project thread (a `<wake …><project …>` prompt) that runs in a cloud',
+  '  container (environment `CLAUDE_CODE_REMOTE=true`): end the FIRST reply with one line that it runs in',
+  '  the cloud, and ask the coordinator in that same turn to start the next threads of this project with',
+  '  "Work locally" on a device that has this repo checked out. Do the work anyway. Anywhere else, say nothing.',
   '',
   '## Claude Project thread without the devops plugin',
   '- Only when no skill named `devops:…` is loaded in this session and the prompt is a Claude Project thread',

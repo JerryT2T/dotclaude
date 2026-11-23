@@ -866,6 +866,39 @@ export function cardWidgetInstruction(model, repoUrl, env = process.env, { widge
   );
 }
 
+/** The thread tool that draws a widget in a Claude Projects thread (hooks/lib/project-thread.js WIDGET_TOOL). */
+export const THREAD_WIDGET_TOOL = "mcp__hearthbot__post_widget";
+
+/**
+ * The one-line `text` of the thread widget post: what previews, notifications and
+ * the project chat show instead of the widget. Carries the ✨✨✨ marker, so the
+ * hooks recognise the post as the card (post.flow.completion threadReplyLines).
+ * '' without a title.
+ */
+export function threadCardWidgetText(model) {
+  const title = String((model && model.title) || "").trim();
+  if (!title) return "";
+  const head = String((model && model.heading) || "").replace(/\*\*/g, "").trim();
+  return `✨✨✨ ${title} ✨✨✨${head ? ` · ${head}` : ""}`;
+}
+
+/**
+ * The card as a widget in a Claude Projects thread: the same CDN template the
+ * Desktop draws, posted with `mcp__hearthbot__post_widget` (widget
+ * `show_widget`). The thread's widget frame takes the host tokens the client
+ * already uses (--text-primary, --text-secondary, --border, …) and loads scripts
+ * from cdn.jsdelivr.net. Not gated on the Desktop app: a thread runs from any
+ * entry point. '' for test-minimal or without a body.
+ *
+ * @returns {{ widgetCode: string, text: string }|null}
+ */
+export function threadCardWidget(model, repoUrl, env = process.env) {
+  if (!model || model.variant === "test-minimal") return null;
+  const widgetCode = cardWidgetTemplate(model, repoUrl, env);
+  const text = threadCardWidgetText(model);
+  return widgetCode && text ? { widgetCode, text } : null;
+}
+
 /**
  * A session id that is safe to join into a file name (AUD-010): only
  * `[A-Za-z0-9_-]{1,128}` — the harness UUID, "self", Desktop "local_<uuid>".

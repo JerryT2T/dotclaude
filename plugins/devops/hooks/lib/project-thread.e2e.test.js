@@ -114,18 +114,22 @@ describe("a project thread with the feature (alpha)", () => {
   test("a finished checklist asks for the card", async () => {
     const out = await hook("post-tool-use/post.flow.completion.js", w, tool("mcp__hearthbot__update_progress_checklist", { text: "Rename\n\n✓ found\n✓ checked" }));
     expect(out).toContain("[completion-flow] Checklist complete");
-    expect(out).toContain("mcp__hearthbot__post_message");
+    expect(out).toContain("mcp__hearthbot__post_widget");
   });
 
-  test("the renderer hands back a postable card and the exact thread rename, no widget", async () => {
+  test("the renderer hands back the visual card for post_widget, the markdown as fallback, and the exact thread rename", async () => {
     const { code, stdout, stderr } = await render(w);
     expect(code).toBe(0);
     expect(stdout).toContain("Nothing renamed yet: both folders are in use.");
     expect(stdout).toContain("✨✨✨ Folder rename prepared ✨✨✨");
     expect(stdout).not.toContain("&nbsp;");
-    expect(stderr).toContain("Project thread: the person sees only what mcp__hearthbot__post_message posts");
+    expect(stderr).toContain("Post it with ONE mcp__hearthbot__post_widget call");
+    expect(stderr).toContain('title:"completion_card_body"');
+    expect(stderr).toContain('text "✨✨✨ Folder rename prepared ✨✨✨');
+    expect(stderr).toMatch(/----- widget_code -----\n[\s\S]*id="dc-card"[\s\S]*cdn\.jsdelivr\.net[\s\S]*----- end widget_code -----/);
+    expect(stderr).toContain("the fallback markdown on stdout");
     expect(stderr).toContain(`mcp__hearthbot__rename_thread {title:"👉 ➜ 📊 ${TITLE}"}`);
-    expect(stderr).not.toMatch(/set_session_title|widget_code|CARD WIDGET|WRAP_UP_ARGS/);
+    expect(stderr).not.toMatch(/set_session_title|CARD WIDGET|WRAP_UP_ARGS|mcp__visualize__show_widget with/);
     expect(w.flag("dotclaude-devops-card-widget")).toBe(false);
     expect(w.flag("dotclaude-devops-card-rendered")).toBe(true);
   });
@@ -140,6 +144,11 @@ describe("a project thread with the feature (alpha)", () => {
     expect(w.flag("dotclaude-devops-work-happened")).toBe(false);
     expect(w.flag("dotclaude-devops-card-rendered")).toBe(false);
     expect(w.flag("dotclaude-devops-project-thread")).toBe(true);
+  });
+
+  test("the card posted as a widget ends the turn like the markdown post", async () => {
+    const out = await hook("post-tool-use/post.flow.completion.js", w, tool("mcp__hearthbot__post_widget", { widget: "show_widget", input: { title: "completion_card_body", widget_code: "<div id=\"dc-card\"></div>" }, text: "✨✨✨ Folder rename prepared ✨✨✨ · 👉 decide" }));
+    expect(out).toContain("[completion-flow] Card posted");
   });
 
   test("the next wake puts the hourglass back with the exact title", async () => {
