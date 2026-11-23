@@ -134,7 +134,7 @@ describe("auto-cleanup gate contract — the gate", () => {
     const pre = cmds("PreToolUse").find(([, c]) => c.includes("pre.cleanup.gate.js"));
     expect(pre && pre[0]).toBe("Bash|PowerShell");
     const post = cmds("PostToolUse").find(([, c]) => c.includes("post.cleanup.gate.js"));
-    expect(post && post[0]).toBe("Skill|AskUserQuestion");
+    expect(post && post[0]).toBe("Skill|AskUserQuestion|mcp__hearthbot__post_message");
   });
 
   test("Step 10 loads execution.md before any ship, delete or removal", () => {
