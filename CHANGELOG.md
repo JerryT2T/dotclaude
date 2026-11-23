@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.403.2] — 2026-11-23
+## [0.404.1] — 2026-11-23
 
 ### Fixed
 - Claude Projects threads: a coordinator note that attaches the person's own message (`<cited author="user">`) now counts as the person's approval, so an answer given in the project chat no longer has to be repeated in the thread. A cited tag inside the coordinator's own note does not count.
