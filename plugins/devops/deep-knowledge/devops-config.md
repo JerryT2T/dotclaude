@@ -167,7 +167,9 @@ rule, and untested. In words ("Threads in diesem Projekt nur lokal") →
 chan_…` (`set inherit --project chan_…` removes the exception; without
 `--project` it sets the global value), not `devops-config.js set`.
 `block [--project chan_…]` prints the text for the value in effect (single
-source: `deep-knowledge/project-instructions-snippet.md`).
+source: `deep-knowledge/project-instructions-snippet.md`). The script belongs
+to the alpha feature `project-threads` and exits 126 on another channel; the
+blocks themselves are in that doc either way.
 
 ### `deployParity` — the deploy-parity build before a ship merges
 

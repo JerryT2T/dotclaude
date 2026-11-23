@@ -1,7 +1,7 @@
 'use strict';
 /**
  * @module thread-seen
- * @version 0.4.0
+ * @version 0.5.0
  * @plugin devops
  * @description "A Claude Project thread ran on this machine" — a persisted
  *   marker, so the cloud-copy lag is judged by whether cloud threads exist, not
@@ -47,6 +47,23 @@ function liveFlag(tmpDir) {
   }
 }
 
+/**
+ * Write the marker in one step (temp file + rename): several thread sessions
+ * write this file, and a torn one would read as "no thread ever ran".
+ */
+function save(home, data) {
+  const file = stateFile(home);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const tmp = `${file}.${process.pid}.tmp`;
+  fs.writeFileSync(tmp, JSON.stringify(data) + '\n');
+  try {
+    fs.renameSync(tmp, file);
+  } catch (e) {
+    try { fs.unlinkSync(tmp); } catch { /* nothing to clean */ }
+    throw e;
+  }
+}
+
 /** The persisted marker, or null. */
 function readMarker(home = os.homedir()) {
   try {
@@ -73,8 +90,7 @@ function recordThreadSeen({ home = os.homedir(), tmpDir = os.tmpdir(), now = Dat
   const iso = new Date(now).toISOString();
   if (known && now - Date.parse(known.lastSeen || known.firstSeen) < 24 * 60 * 60 * 1000) return true;
   try {
-    fs.mkdirSync(path.dirname(stateFile(home)), { recursive: true });
-    fs.writeFileSync(stateFile(home), JSON.stringify({ ...(known || {}), firstSeen: known ? known.firstSeen : iso, lastSeen: iso }) + '\n');
+    save(home, { ...(known || {}), firstSeen: known ? known.firstSeen : iso, lastSeen: iso });
   } catch { /* advisory: the next session tries again */ }
   return true;
 }
@@ -100,8 +116,7 @@ function markBlockChecked(id, stamp, { home = os.homedir(), now = Date.now() } =
   const known = readMarker(home) || { firstSeen: iso, lastSeen: iso };
   const map = known.blockChecked && typeof known.blockChecked === 'object' ? known.blockChecked : {};
   try {
-    fs.mkdirSync(path.dirname(stateFile(home)), { recursive: true });
-    fs.writeFileSync(stateFile(home), JSON.stringify({ ...known, blockChecked: { ...map, [id]: stamp } }) + '\n');
+    save(home, { ...known, blockChecked: { ...map, [id]: stamp } });
     return true;
   } catch { return false; }
 }
@@ -122,8 +137,7 @@ function markProjectHinted(id, { home = os.homedir(), now = Date.now() } = {}) {
   const known = readMarker(home) || { firstSeen: iso, lastSeen: iso };
   const projects = known.projects && typeof known.projects === 'object' ? known.projects : {};
   try {
-    fs.mkdirSync(path.dirname(stateFile(home)), { recursive: true });
-    fs.writeFileSync(stateFile(home), JSON.stringify({ ...known, projects: { ...projects, [id]: iso } }) + '\n');
+    save(home, { ...known, projects: { ...projects, [id]: iso } });
     return true;
   } catch { return false; }
 }
@@ -158,8 +172,7 @@ function setProjectName(id, name, { home = os.homedir(), now = Date.now(), overw
   if (!overwrite && typeof map[id] === 'string' && map[id]) return false;
   if (map[id] === clean) return true;
   try {
-    fs.mkdirSync(path.dirname(stateFile(home)), { recursive: true });
-    fs.writeFileSync(stateFile(home), JSON.stringify({ ...known, projectNames: { ...map, [id]: clean } }) + '\n');
+    save(home, { ...known, projectNames: { ...map, [id]: clean } });
     return true;
   } catch { return false; }
 }

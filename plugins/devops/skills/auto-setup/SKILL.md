@@ -121,8 +121,10 @@ Yes → show, in this order, from `{PLUGIN_ROOT}/deep-knowledge/project-instruct
    project), changed in devops Home > Einstellungen > „Thread-Ort“ or with
    `scripts/thread-location.js set <value> [--project <chan_id>]`. Get the text
    for the value in effect with `node {PLUGIN_ROOT}/scripts/thread-location.js block [--project <chan_id>]`
-   (plain output is the block; `cloud-first` has none). It is a request to the
-   coordinator, not enforced.
+   (plain output is the block; `cloud-first` has none). The script and the Home
+   row belong to the alpha feature `project-threads`: where the script exits 126
+   (another channel), quote the block under "Where threads run: local-first" from
+   the same doc instead. It is a request to the coordinator, not enforced.
 3. **Your computer, per project** — Project settings > Environment > "Your
    computer": Off, On, or On with worktrees, plus the folders Claude may use
    without asking (one is the default). Worktrees: on for a git repo where more

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @script thread-location
- * @version 0.2.0
+ * @version 0.3.0
  * @plugin devops
  * @description Where Claude Project threads start (hooks/lib/thread-location.js):
  *   the global value, the per-project exceptions, and the text block for the
@@ -95,7 +95,7 @@ function main() {
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--project') {
       project = argv[++i];
-      if (!project) fail('--project needs a project id (chan_…)');
+      if (!project || project.startsWith('--')) fail('--project needs a project id (chan_…)');
     } else if (!argv[i].startsWith('--')) rest.push(argv[i]);
   }
   const [cmd, arg] = rest;
@@ -123,7 +123,10 @@ function main() {
       else if (d.block) out(d.block);
       else out('cloud-first has no text block: remove the "Where threads run" block from the project instructions.');
     } else if (cmd === 'name') {
-      const text = rest.slice(2).join(' ');
+      // every word after the id, also one that starts with "--" (only a trailing --json is the flag)
+      const words = argv.slice(argv.indexOf(arg) + 1);
+      if (words[words.length - 1] === '--json') words.pop();
+      const text = words.join(' ');
       if (!arg || !text) fail('usage: name <chan_id> <name…> [--json]');
       const d = nameProject(arg, text);
       if (json) out(JSON.stringify(d));

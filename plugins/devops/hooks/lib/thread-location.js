@@ -1,7 +1,7 @@
 'use strict';
 /**
  * @module thread-location
- * @version 0.2.0
+ * @version 0.3.0
  * @plugin devops
  * @description Where Claude Project threads start: on the user's computer first
  *   (default), only there, in the cloud first, or ask each time. One global
@@ -65,7 +65,8 @@ function read(opts = {}) {
 function effective(projectId, opts = {}) {
   const { global, projects } = read(opts);
   if (projectId && Object.prototype.hasOwnProperty.call(projects, projectId)) return { value: projects[projectId], source: 'project' };
-  const stored = cfg().load(opts.cwd, { home: opts.home }).sources['threadLocation.default'];
+  let stored;
+  try { stored = cfg().load(opts.cwd, { home: opts.home }).sources['threadLocation.default']; } catch { /* unreadable config: the default */ }
   return { value: global, source: stored === 'global' ? 'global' : 'default' };
 }
 
@@ -113,11 +114,12 @@ function block(value, opts = {}) {
   const m = marker(value);
   if (!m) return null;
   let text;
-  try { text = fs.readFileSync(snippetFile(opts), 'utf8'); } catch { return null; }
+  // CRLF checkout: `$` would not match before the `\r` of a closing fence.
+  try { text = fs.readFileSync(snippetFile(opts), 'utf8').replace(/\r\n/g, '\n'); } catch { return null; }
   const re = /^```[^\n]*\n([\s\S]*?)\n```[ \t]*$/gm;
   for (let hit = re.exec(text); hit; hit = re.exec(text)) {
     const first = hit[1].split(/\r?\n/, 1)[0];
-    if (first.trim() === `Where threads run (${m})`) return hit[1].replace(/\r\n/g, '\n');
+    if (first.trim() === `Where threads run (${m})`) return hit[1];
   }
   return null;
 }

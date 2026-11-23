@@ -107,6 +107,18 @@ describe("marker / block (single source: the snippet doc)", () => {
     expect(lib.block("ask")).toMatch(/on my computer or in the cloud/);
   });
 
+  test("a CRLF checkout of the doc still yields the blocks, without carriage returns", () => {
+    const root = mkHome();
+    fs.mkdirSync(path.join(root, "deep-knowledge"), { recursive: true });
+    const crlf = fs.readFileSync(lib.snippetFile(), "utf8").replace(/\r?\n/g, "\r\n");
+    fs.writeFileSync(path.join(root, "deep-knowledge", "project-instructions-snippet.md"), crlf);
+    for (const v of ["local-first", "local-only", "ask"]) {
+      const b = lib.block(v, { pluginRoot: root });
+      expect(b.split("\n")[0]).toBe(`Where threads run (${lib.marker(v)})`);
+      expect(b).not.toContain("\r");
+    }
+  });
+
   test("a doc without the block gives null; pluginRoot is honoured", () => {
     const root = mkHome();
     fs.mkdirSync(path.join(root, "deep-knowledge"));
@@ -152,6 +164,9 @@ describe("scripts/thread-location.js end to end", () => {
     const stored = JSON.parse(fs.readFileSync(file, "utf8"));
     expect(stored.projects).toEqual({ chan_a: "2026-11-22T10:00:00Z" });
     expect(stored.blockChecked).toEqual({ chan_a: "local-first@v1" });
+    expect(JSON.parse(run(home, "name", "chan_a", "--beta", "Shop", "--json").out).projects[0].name).toBe("--beta Shop");
+    expect(run(home, "block", "--project", "--json").err).toMatch(/--project needs a project id/);
+    expect(fs.readdirSync(path.join(home, ".claude")).filter((n) => n.endsWith(".tmp"))).toEqual([]);
     expect(run(home, "name", "nope", "X").code).toBe(1);
     expect(run(home, "name", "chan_a").code).toBe(1);
   });
