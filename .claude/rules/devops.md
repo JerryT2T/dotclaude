@@ -27,12 +27,9 @@ Written by the devops plugin and kept current by it. Your own text goes outside 
   container (environment `CLAUDE_CODE_REMOTE=true`): end the FIRST reply with one line that it runs in
   the cloud, and ask the coordinator in that same turn to start the next threads of this project with
   "Work locally" on a device that has this repo checked out. Do the work anyway. Anywhere else, say nothing.
-- Skip the request (keep the line) when the project instructions say that threads start in the cloud
-  or that the coordinator asks each time.
 
 ## Claude Project thread without the devops plugin
 - Only when no skill named `devops:…` is loaded in this session and the prompt is a Claude Project thread
   (a `<wake …><project …>` envelope): end the FIRST reply with one line that the devops plugin is not
-  active here and is enabled once for the claude.ai account (claude.ai > Plugins), not per project.
-  Anywhere else, say nothing.
+  active in this project and is added under Project settings > Plugins. Anywhere else, say nothing.
 <!-- <<< devops (managed) <<< -->
