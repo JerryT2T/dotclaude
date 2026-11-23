@@ -1,6 +1,6 @@
 # dotclaude
 
-**Version: 0.403.2**
+**Version: 0.404.0**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
 
@@ -567,7 +567,7 @@ SessionStart  ──>  UserPromptSubmit  ──>  PreToolUse  ──>  PostToolU
 - `prompt.batch.collect` — Collect mode for `/do-batch`: while active, blocks the user prompt (JSON `decision: "…
 - `prompt.run.contract` — Arm, refresh or pre-arm the do-run RUN CONTRACT from the prompt (run-contract spec B,…
 - `prompt.flow.silent-turn` — Detects background/cron-injected prompts and marks the turn as "silent" so post.flow.…
-- `prompt.thread.notices` — Two things at the first prompts of a Claude Projects thread.
+- `prompt.thread.notices` — Four things at the first prompts of a Claude Projects thread.
 - `prompt.flow.title-work` — Marks a session as "being worked on" in the sidebar: on the first real prompt of a se…
 - `prompt.knowledge.dispatch` — On-demand deep-knowledge injection based on prompt keywords.
 - `prompt.knowledge.anchor` — Records the knowledge anchor (Wissensstand) of this worktree: the origin/<base> tip t…

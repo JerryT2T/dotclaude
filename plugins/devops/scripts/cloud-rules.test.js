@@ -32,8 +32,9 @@ describe("cloud-rules block", () => {
     expect(text).toMatch(/## Claude Project thread without the devops plugin/);
     expect(text).toMatch(/no skill named `devops:…` is loaded/);
     expect(text).toMatch(/<wake …><project …>/);
-    expect(text).toMatch(/not\s+active in this project/);
-    expect(text).toMatch(/Project settings > Plugins/);
+    expect(text).toMatch(/not\s+active here/);
+    expect(text).toMatch(/claude\.ai > Plugins/);
+    expect(text).not.toMatch(/Project settings > Plugins/);
     expect(text).toMatch(/Anywhere else, say nothing/);
   });
 
@@ -45,6 +46,14 @@ describe("cloud-rules block", () => {
     expect(text).toMatch(/Do the work anyway/);
     // generic: no machine, user or path of the author leaks into a file every repo carries
     expect(text).not.toMatch(/[A-Z]:\\|\/Users\/|\/home\//);
+  });
+
+  test("the request is skipped where the project asked for the cloud, and the file still fits", () => {
+    const text = cr.applyBlock("");
+    expect(text).toMatch(/Skip the request \(keep the line\)/);
+    expect(text).toMatch(/start in the cloud\s+or that the coordinator asks each time/);
+    expect(text).not.toMatch(/## Cloud thread announces itself/);
+    expect(text.trimEnd().split("\n").length).toBeLessThanOrEqual(cr.MAX_LINES);
   });
 
   test("applyBlock keeps outside text, replaces a stale block in place, drops a duplicate", () => {

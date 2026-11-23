@@ -22,10 +22,20 @@ describe("auto-setup § Claude Projects (D4)", () => {
     expect(STEP).not.toMatch(/One issue = one thread\./);
   });
 
-  test("it names the Worktree switch per folder and Project settings > Plugins", () => {
-    expect(STEP).toMatch(/Worktree, per folder/);
+  test("it names the real project settings, says a project has no Plugins tab, and plugins are account-wide", () => {
+    expect(STEP).toMatch(/Your computer/);
+    expect(STEP).toMatch(/Environment/);
     expect(STEP).toMatch(/non-repo parent folder/);
-    expect(STEP).toContain("Project settings > Plugins");
+    expect(STEP).toMatch(/a project has no Plugins tab/);
+    expect(STEP).toContain("claude.ai > Plugins");
+    expect(STEP).not.toContain("Project settings > Plugins");
+  });
+
+  test("it names the thread-location setting, its Home row and the script as the source of the block", () => {
+    expect(STEP).toContain("threadLocation");
+    expect(STEP).toContain("„Thread-Ort“");
+    expect(STEP).toContain("scripts/thread-location.js block");
+    expect(fs.existsSync(path.join(here, "..", "..", "scripts", "thread-location.js"))).toBe(true);
   });
 
   test("the text quotes the card's status line, keeps the title head, one issue = one thread without the number in the title", () => {

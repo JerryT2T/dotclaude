@@ -18,7 +18,7 @@ that did not happen.
 > connect, cache not repairable>) — ich shippe nach der manuellen Checkliste.
 
 In a cloud session add: the plugin is not loaded there; enabling the devops
-plugin for cloud sessions (Project settings > Plugins) brings the automated
+plugin for cloud sessions (claude.ai > Plugins, account-wide) brings the automated
 pipeline back. Until then a cloud thread ships by § Cloud thread below — it
 can ship; only the tag needs the owner.
 
