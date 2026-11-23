@@ -228,7 +228,7 @@ describe("change B: one setup hint per new project", () => {
     const first = text(run("blk-1", wake("hello", "chan_BLK1")));
     expect(first).toContain("[thread-hint]");
     expect(first).not.toContain("[thread-block-check]");
-    expect(seen.blockChecked("chan_BLK1", home)).toBe("local-first@v1");
+    expect(seen.blockChecked("chan_BLK1", home)).toBe(TL.stamp("local-first"));
     // already hinted, same value and version: nothing
     expect(text(run("blk-2", wake("again", "chan_BLK1")))).not.toContain("[thread-block-check]");
     // a changed value asks once again, and only once
@@ -237,14 +237,14 @@ describe("change B: one setup hint per new project", () => {
     expect(second).toContain("[thread-block-check]");
     expect(second).toContain("Where threads run (devops ask, v1)");
     expect(second).not.toContain("[thread-hint]");
-    expect(seen.blockChecked("chan_BLK1", home)).toBe("ask@v1");
+    expect(seen.blockChecked("chan_BLK1", home)).toBe(TL.stamp("ask"));
     expect(text(run("blk-4", wake("again", "chan_BLK1")))).not.toContain("[thread-block-check]");
     // a per-project exception wins for that project only
     TL.set("cloud-first", { project: "chan_BLK1" }, { home });
     const third = text(run("blk-5", wake("again", "chan_BLK1")));
     expect(third).toContain("[thread-block-check]");
     expect(third).toMatch(/line that starts with `Where threads run \(devops `/);
-    expect(seen.blockChecked("chan_BLK1", home)).toBe("cloud-first@v1");
+    expect(seen.blockChecked("chan_BLK1", home)).toBe(TL.stamp("cloud-first"));
   });
 
   test("block check: not in a cloud container, nothing recorded", () => {

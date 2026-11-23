@@ -1,12 +1,13 @@
 # Claude Project — text for the project instructions
 
-The one source of the text a Claude Project's instructions (Project settings > Memory > Project instructions, up to 16,000 characters) carry so the coordinator works with the devops threads. Pointed to by `skills/auto-setup/SKILL.md` § Claude Projects and by `project-threads.md` § The project chat — change it here only. It is a request to the coordinator, not an enforced rule, and it is untested. Paste it as it is, or ask Claude in the project chat to add it.
+The one source of the text a Claude Project's instructions (Project settings > Memory > Project instructions, up to 16,000 characters) carry so the coordinator works with the devops threads. Pointed to by `skills/auto-setup/SKILL.md` § Claude Projects and by `project-threads.md` § The project chat — change it here only. It is a request to the coordinator, not an enforced rule. Nobody has to paste it: the first local thread of a project whose instructions lack the current text sends the coordinator an update request with the exact blocks (`scripts/thread-location.js request`, `prompt.thread.notices` § 3), and the coordinator writes them into the project instructions itself. Pasting by hand is the fallback when the coordinator cannot.
 
-This doc holds four fenced blocks. The first is the devops text. The other three say where threads run, one per value of the setting `threadLocation` (`hooks/lib/thread-location.js`, `scripts/thread-location.js`). Each of those starts with a title line `Where threads run (devops <value>, v1)`: that line is the marker, and a block is found by it. The value `cloud-first` has no block: a project that is set to it carries none, and an older block is removed from the project instructions.
+This doc holds four fenced blocks. The first is the devops text; its title line `devops text (v<N>)` is its marker (`TEXT_VERSION` in `hooks/lib/thread-location.js`: raise it with every change of the text, so threads ask the coordinator to update older copies). The other three say where threads run, one per value of the setting `threadLocation` (`hooks/lib/thread-location.js`, `scripts/thread-location.js`). Each of those starts with a title line `Where threads run (devops <value>, v1)`: that line is the marker, and a block is found by it. The value `cloud-first` has no block: a project that is set to it carries none, and an older block is removed from the project instructions.
 
 ## devops text
 
 ```
+devops text (v2)
 Threads on my computer end their work with a devops completion card: a reply
 whose heading reads "✨✨✨ <title> ✨✨✨", followed by a line that starts with a
 status icon (👉 🟩 🟥 🟦 ⏳). When you report such a thread's result in the
