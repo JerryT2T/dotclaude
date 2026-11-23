@@ -1,7 +1,10 @@
 /** prompt.thread.notices — SessionStart notices stay out of a thread; Desktop and terminal sessions are untouched. */
 import { describe, test, expect } from "vitest";
 import { spawnSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
+import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import hook from "./prompt.thread.notices.js";
 
@@ -76,6 +79,46 @@ describe("hint and blockCheck texts", () => {
       expect(s).not.toMatch(/—|;/);
     }
     expect(hook.BLOCK_TEXT.de("x")).toMatch(/„Text zeigen“|Text zeigen/);
+  });
+});
+
+describe("nameProject: a readable name for the Home pane", () => {
+  const seen = createRequire(import.meta.url)("../lib/thread-seen.js");
+  const mk = () => fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "thread-name-")));
+
+  test("the folder of the first local thread is recorded once; a later folder and a cloud container change nothing", () => {
+    const home = mk();
+    const folder = path.join(mk(), "verse-app");
+    fs.mkdirSync(folder);
+    try {
+      expect(hook.nameProject({ seen, projectId: "chan_N1", remote: true, cwd: folder, home })).toBe("");
+      expect(seen.projectName("chan_N1", home)).toBe("");
+      expect(hook.nameProject({ seen, projectId: "chan_N1", remote: false, cwd: folder, home })).toBe("verse-app");
+      expect(seen.projectName("chan_N1", home)).toBe("verse-app");
+      expect(hook.nameProject({ seen, projectId: "chan_N1", remote: false, cwd: os.tmpdir(), home })).toBe("");
+      expect(seen.projectName("chan_N1", home)).toBe("verse-app");
+    } finally {
+      fs.rmSync(home, { recursive: true, force: true });
+      fs.rmSync(path.dirname(folder), { recursive: true, force: true });
+    }
+  });
+
+  test("a name the user gave stays, and the other maps of the file survive", () => {
+    const home = mk();
+    try {
+      seen.markProjectHinted("chan_N2", { home });
+      seen.markBlockChecked("chan_N2", "local-first@v1", { home });
+      expect(seen.setProjectName("chan_N2", "  Verse\tCompanion  ", { home })).toBe(true);
+      expect(hook.nameProject({ seen, projectId: "chan_N2", remote: false, cwd: os.tmpdir(), home })).toBe("");
+      expect(seen.projectName("chan_N2", home)).toBe("Verse Companion");
+      expect(seen.projectHinted("chan_N2", home)).toBe(true);
+      expect(seen.blockChecked("chan_N2", home)).toBe("local-first@v1");
+      expect(seen.setProjectName("chan_N2", "   ", { home })).toBe(false);
+      expect(seen.setProjectName("chan_N2", "x".repeat(90), { home })).toBe(true);
+      expect(seen.projectName("chan_N2", home)).toHaveLength(seen.NAME_MAX);
+    } finally {
+      fs.rmSync(home, { recursive: true, force: true });
+    }
   });
 });
 

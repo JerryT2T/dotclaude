@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @script thread-location
- * @version 0.1.0
+ * @version 0.2.0
  * @plugin devops
  * @description Where Claude Project threads start (hooks/lib/thread-location.js):
  *   the global value, the per-project exceptions, and the text block for the
@@ -12,11 +12,15 @@
  *     node thread-location.js list [--json]
  *     node thread-location.js set <local-first|local-only|cloud-first|ask|inherit> [--project <chan_id>] [--json]
  *     node thread-location.js block [--project <chan_id>] [--json]
+ *     node thread-location.js name <chan_id> <name…> [--json]
  *
  *   `inherit` (only with --project) removes that project's exception.
  *   `block` prints the text for the value in effect; for cloud-first there is
  *   none and the output says the block must be removed from the project
- *   instructions. Exit 0 on success, 1 on a usage or validation error.
+ *   instructions. `name` gives a project the name the Home pane shows (the
+ *   wake envelope carries only the id; without a name the folder of its first
+ *   local thread stands in). Exit 0 on success, 1 on a usage or validation
+ *   error, 126 when the feature `project-threads` is not on this channel.
  */
 
 'use strict';
@@ -25,6 +29,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const lib = require('../hooks/lib/thread-location');
+const { featureAllowed } = require('../hooks/lib/features');
 
 const LABELS = { 'local-first': 'Local first', 'local-only': 'Local only', 'cloud-first': 'Cloud first', ask: 'Ask each time' };
 
@@ -64,6 +69,17 @@ function setLocation(value, project, o = {}) {
 function blockData(project, o = {}) {
   const e = lib.effective(project, o);
   return { value: e.value, source: e.source, marker: lib.marker(e.value), block: lib.block(e.value, o) };
+}
+
+/**
+ * Give a project its display name (the Home pane's per-project lines).
+ * @throws {Error} malformed id or empty name
+ */
+function nameProject(project, name, o = {}) {
+  if (!lib.isProjectId(project)) throw new Error(`malformed project id "${project}" — expected chan_<id>`);
+  const seen = require('../hooks/lib/thread-seen');
+  if (!seen.setProjectName(project, name, { home: o.home || os.homedir() })) throw new Error('the name is empty or could not be stored');
+  return listData(o);
 }
 
 function fail(msg) {
@@ -106,14 +122,23 @@ function main() {
       if (json) out(JSON.stringify(d));
       else if (d.block) out(d.block);
       else out('cloud-first has no text block: remove the "Where threads run" block from the project instructions.');
+    } else if (cmd === 'name') {
+      const text = rest.slice(2).join(' ');
+      if (!arg || !text) fail('usage: name <chan_id> <name…> [--json]');
+      const d = nameProject(arg, text);
+      if (json) out(JSON.stringify(d));
+      else out(`${arg}: ${(d.projects.find((p) => p.id === arg) || { name: text }).name}`);
     } else {
-      fail('usage: list [--json] | set <value|inherit> [--project <chan_id>] [--json] | block [--project <chan_id>] [--json]');
+      fail('usage: list [--json] | set <value|inherit> [--project <chan_id>] [--json] | block [--project <chan_id>] [--json] | name <chan_id> <name…> [--json]');
     }
   } catch (e) {
     fail(e.message);
   }
 }
 
-if (require.main === module) main();
+if (require.main === module) {
+  if (!featureAllowed('project-threads')) process.exit(126);
+  main();
+}
 
-module.exports = { listData, setLocation, blockData, seenProjects };
+module.exports = { listData, setLocation, blockData, nameProject, seenProjects };

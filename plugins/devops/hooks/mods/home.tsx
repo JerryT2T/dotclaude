@@ -245,7 +245,7 @@ export const INHERIT = 'inherit'
 const THREAD_LABELS: Record<string, string> = { 'local-first': 'Lokal zuerst', 'local-only': 'Nur lokal', 'cloud-first': 'Cloud zuerst', ask: 'Jedes Mal fragen' }
 const THREAD_MEANING: Record<string, string> = {
   'local-first': 'Threads starten auf diesem Computer. Die Cloud nur, wenn er nicht erreichbar ist.',
-  'local-only': 'Threads starten nur auf diesem Computer. Ist er aus, wartet der Thread.',
+  'local-only': 'Threads starten nur auf diesem Computer. Ist er nicht erreichbar, startet nichts in der Cloud.',
   'cloud-first': 'Threads starten in der Cloud. Der Textblock gehört nicht in die Projektanweisungen.',
   ask: 'Der Koordinator fragt bei jedem neuen Thread, wo er laufen soll.',
 }

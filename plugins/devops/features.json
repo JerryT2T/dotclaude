@@ -56,7 +56,8 @@
       "scripts": [
         "hooks/lib/project-thread.js",
         "hooks/lib/thread-notice-hold.js",
-        "hooks/lib/thread-location.js"
+        "hooks/lib/thread-location.js",
+        "scripts/thread-location.js"
       ]
     },
     "claude-mods": {

@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
  * @hook prompt.thread.notices
- * @version 0.3.0
+ * @version 0.4.0
  * @event UserPromptSubmit
  * @plugin devops
- * @description Three things at the first prompts of a Claude Projects thread.
+ * @description Four things at the first prompts of a Claude Projects thread.
  *   Feature `project-threads` (mode `on`) only; a Desktop or terminal session
  *   gets nothing.
  *   1. Session-start notices for the Desktop user ("Show the user this line
@@ -34,7 +34,11 @@
  *      gets hint 2 in the same prompt gets that note only (it covers the
  *      block). This is a working rule for the model, NOT a check by code: the
  *      plugin cannot read the project instructions.
- *   Neither runs in a cloud container (CLAUDE_CODE_REMOTE=true): its state does
+ *   4. A readable name for the Home pane: the envelope carries only the
+ *      project id, so the folder of the first local thread (its main checkout)
+ *      is recorded once as the project's name (`projectNames`); a name the user
+ *      gave with `scripts/thread-location.js name` stays.
+ *   Neither 2, 3 nor 4 runs in a cloud container (CLAUDE_CODE_REMOTE=true): its state does
  *   not persist, the hint would repeat in every thread.
  */
 
@@ -139,6 +143,23 @@ function blockCheck({ mode, projectId, remote, checked, value, version, lang = '
     `When the person asks to show the text: run \`${scriptCmd(pluginRoot, projectId)}\` and post its plain output verbatim as a reply in this thread.`;
 }
 
+/**
+ * A readable name for the project in the Home pane: the wake envelope carries
+ * only the id, so the folder of the first local thread stands in (its main
+ * checkout, never a worktree folder). A name already recorded stays, also one
+ * the user gave with `scripts/thread-location.js name`. Not in a cloud
+ * container: its state does not persist.
+ * @returns {string} the name recorded now, or ''
+ */
+function nameProject({ seen, projectId, remote, cwd, home }) {
+  if (!projectId || remote || !cwd) return '';
+  try {
+    if (seen.projectName(projectId, home)) return '';
+    const name = path.basename(require('../lib/devops-config').mainCheckoutRoot(cwd));
+    return name && seen.setProjectName(projectId, name, { home, overwrite: false }) ? name : '';
+  } catch { return ''; }
+}
+
 if (require.main === module) {
   let input = '';
   process.stdin.setEncoding('utf8');
@@ -164,6 +185,7 @@ if (require.main === module) {
         let lang = 'de';
         try { lang = require('../lib/locale').getLocale(hook.session_id); } catch { /* default */ }
         const remote = process.env.CLAUDE_CODE_REMOTE === 'true';
+        nameProject({ seen, projectId: id, remote, cwd: hook.cwd });
         const TL = require('../lib/thread-location');
         const value = TL.effective(id).value;
         const stamp = `${value}@v${TL.BLOCK_VERSION}`;
@@ -185,4 +207,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { decide, hint, blockCheck, LINE, FLAG, HINT_TEXT, BLOCK_TEXT, BLOCK_REMOVE_TEXT };
+module.exports = { decide, hint, blockCheck, nameProject, LINE, FLAG, HINT_TEXT, BLOCK_TEXT, BLOCK_REMOVE_TEXT };

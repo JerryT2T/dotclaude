@@ -11,9 +11,12 @@ const cfg = require("./devops-config.js");
 const SCRIPT = require.resolve("../../scripts/thread-location.js");
 
 const tmp = [];
-function mkHome() {
+function mkHome(channel = "alpha") {
   const d = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "thread-location-")));
   tmp.push(d);
+  // the script is gated by the channel feature `project-threads` (alpha)
+  fs.mkdirSync(path.join(d, ".claude", "plugins"), { recursive: true });
+  if (channel) fs.writeFileSync(path.join(d, ".claude", "plugins", ".channels.json"), JSON.stringify({ dotclaude: channel }));
   return d;
 }
 afterEach(() => {
@@ -129,6 +132,26 @@ describe("scripts/thread-location.js end to end", () => {
       { id: "chan_a", name: "Jerry", value: "local-first", source: "default" },
       { id: "chan_z", name: "", value: "local-only", source: "project" },
     ]);
+  });
+
+  test("the script is gated: exit 126 where the feature project-threads is not on the channel", () => {
+    const r = run(mkHome(null), "list", "--json");
+    expect(r.code).toBe(126);
+    expect(r.out).toBe("");
+  });
+
+  test("name: gives a project its display name, keeps the other maps, refuses bad input", () => {
+    const home = mkHome();
+    const file = path.join(home, ".claude", "devops-thread-seen.json");
+    fs.writeFileSync(file, JSON.stringify({ firstSeen: "2026-11-22T10:00:00Z", lastSeen: "2026-11-22T10:00:00Z", projects: { chan_a: "2026-11-22T10:00:00Z" }, blockChecked: { chan_a: "local-first@v1" } }));
+    const r = run(home, "name", "chan_a", "Verse", "Companion", "--json");
+    expect(r.code).toBe(0);
+    expect(JSON.parse(r.out).projects).toEqual([{ id: "chan_a", name: "Verse Companion", value: "local-first", source: "default" }]);
+    const stored = JSON.parse(fs.readFileSync(file, "utf8"));
+    expect(stored.projects).toEqual({ chan_a: "2026-11-22T10:00:00Z" });
+    expect(stored.blockChecked).toEqual({ chan_a: "local-first@v1" });
+    expect(run(home, "name", "nope", "X").code).toBe(1);
+    expect(run(home, "name", "chan_a").code).toBe(1);
   });
 
   test("list tolerates a missing seen file", () => {

@@ -1,7 +1,7 @@
 'use strict';
 /**
  * @module thread-seen
- * @version 0.3.0
+ * @version 0.4.0
  * @plugin devops
  * @description "A Claude Project thread ran on this machine" — a persisted
  *   marker, so the cloud-copy lag is judged by whether cloud threads exist, not
@@ -19,8 +19,10 @@
  *   `markProjectHinted`). A second sibling map, `blockChecked` (id →
  *   `<value>@v<N>`), records for which location value and block version the
  *   "Where threads run" check was last asked of a project. The Desktop Home
- *   reads a third, `projectNames` (id → string; nothing writes it, the wake
- *   envelope carries no name). `recordThreadSeen` rewrites the file as
+ *   reads a third, `projectNames` (id → string). The wake envelope carries no
+ *   name, so `setProjectName` records the folder a thread first works in
+ *   (prompt.thread.notices) or the name the user gives
+ *   (`scripts/thread-location.js name`). `recordThreadSeen` rewrites the file as
  *   `{...known, …}` and so keeps every sibling map.
  *
  *   Pure fs, no dependencies — desktop-copy.js and cloud-update.js both read it.
@@ -126,4 +128,40 @@ function markProjectHinted(id, { home = os.homedir(), now = Date.now() } = {}) {
   } catch { return false; }
 }
 
-module.exports = { FILE, FLAG_PREFIX, readMarker, threadSeen, recordThreadSeen, liveFlag, projectHinted, markProjectHinted, blockChecked, markBlockChecked };
+/** A display name: one line, no control characters, at most NAME_MAX characters. */
+const NAME_MAX = 40;
+function cleanName(name) {
+  // eslint-disable-next-line no-control-regex
+  return String(name || '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, NAME_MAX);
+}
+
+/** The display name recorded for a project (`projectNames`: id → string), or ''. */
+function projectName(id, home = os.homedir()) {
+  const m = readMarker(home);
+  const v = id && m && m.projectNames && typeof m.projectNames === 'object' ? m.projectNames[id] : undefined;
+  return typeof v === 'string' ? v : '';
+}
+
+/**
+ * Record a display name for a project. The wake envelope carries only the id,
+ * so the name comes from the folder a thread works in (`overwrite: false`, the
+ * first one stays) or from the user (`scripts/thread-location.js name`).
+ * Keeps every other field and sibling map.
+ * @returns {boolean} whether the record was written
+ */
+function setProjectName(id, name, { home = os.homedir(), now = Date.now(), overwrite = true } = {}) {
+  const clean = cleanName(name);
+  if (!id || !clean) return false;
+  const iso = new Date(now).toISOString();
+  const known = readMarker(home) || { firstSeen: iso, lastSeen: iso };
+  const map = known.projectNames && typeof known.projectNames === 'object' ? known.projectNames : {};
+  if (!overwrite && typeof map[id] === 'string' && map[id]) return false;
+  if (map[id] === clean) return true;
+  try {
+    fs.mkdirSync(path.dirname(stateFile(home)), { recursive: true });
+    fs.writeFileSync(stateFile(home), JSON.stringify({ ...known, projectNames: { ...map, [id]: clean } }) + '\n');
+    return true;
+  } catch { return false; }
+}
+
+module.exports = { FILE, FLAG_PREFIX, NAME_MAX, readMarker, threadSeen, recordThreadSeen, liveFlag, projectHinted, markProjectHinted, blockChecked, markBlockChecked, projectName, setProjectName };
