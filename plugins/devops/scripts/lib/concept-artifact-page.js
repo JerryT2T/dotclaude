@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars -- plain ES5: every catch needs a binding */
 /**
  * @module concept-artifact-page
  * @plugin devops
