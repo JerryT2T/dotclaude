@@ -11,10 +11,34 @@ A project has one coordinator (the project chat) and threads that do the work. O
 | Place | Runs where | devops loaded? |
 |---|---|---|
 | Thread on this computer ("Work locally") | a Claude Code session here, started over Remote Control, in ONE folder the person picked (may be a non-repo parent folder; several threads may share it) | yes: hooks, MCP server, skills and settings of this machine (measured 2026-11-21) |
-| Cloud thread | a cloud container, own clone and branch | only when the plugin is added under Project settings > Plugins; repo skills, hooks and `.mcp.json` do not load there. Whether a plugin's hooks run is not documented and not tested. Root `CLAUDE.md`, `.claude/CLAUDE.md` and root `.claude/rules/` load either way |
+| Cloud thread | a cloud container, own clone and branch | only when the plugin is enabled for the claude.ai account (claude.ai > Plugins; a project has no Plugins tab). Per the official doc a cloud thread loads the repo's `CLAUDE.md`, `.claude/CLAUDE.md`, root `.claude/rules/`, skills, agents and commands (with exceptions), but runs no repo hooks and loads no `.mcp.json` servers. Whether a plugin's hooks run is not documented and not tested |
 | Coordinator (project chat) | a cloud session | no. It gets the project instructions (Project settings > Memory, 16,000 characters) and nothing from this machine |
 
 What a cloud thread needs without the plugin comes from the repo: `.claude/rules/devops.md` (`scripts/cloud-rules.js`; a new repo gets it with project setup, an established one with its next ship) and the rules do-learn stores under `.claude/rules/` (`skills/do-learn/deep-knowledge/routing-details.md`).
+
+## Where threads run
+
+The person wants local first: a thread on the computer (through Remote Control, also when the request comes from the phone), the cloud only when the computer cannot be reached. Official per-project setting: Project settings > Environment > "Your computer" (Off / On / On with worktrees), with the folders Claude may use without asking, one of them the default. It makes local threads possible. It does not say where a start goes.
+
+The setting `threadLocation` (devops-config, machine-wide: `threadLocation.default`, plus `threadLocation.projects` with entries `chan_<id>=<value>`) says what the project's instructions ask of the coordinator. Code: `hooks/lib/thread-location.js`, `scripts/thread-location.js` (`list`, `set <value> [--project <id>]`, `block [--project <id>]`), the Home row devops Home > Einstellungen > „Thread-Ort“ (dropdown, per-project exceptions, copy button).
+
+| Value | What the block asks |
+|---|---|
+| `local-first` (default) | every thread on the computer; a cloud thread only when the computer cannot be reached, said in the first line; another start failure is reported, no switch; lost contact: report and wait; "in the cloud" for a task is a temporary exception that changes no setting |
+| `local-only` | like `local-first`, but never a cloud thread by itself: unreachable computer means tell and wait |
+| `cloud-first` | no block. A block still in the instructions should be removed |
+| `ask` | one question before every start (computer or cloud); a cloud thread says so in its first line |
+
+The three blocks are fenced blocks in `project-instructions-snippet.md`, each starting with the marker line `Where threads run (devops <value>, v<N>)` (`BLOCK_VERSION` in `thread-location.js`). `block` prints the one for the value in effect. The person pastes it into Project settings > Memory > Project instructions, or asks Claude to add it.
+
+Two notes follow from it. A cloud thread starts its FIRST reply with "Cloud thread." (rule in `.claude/rules/devops.md`, `CLAUDE_CODE_REMOTE` is `true`). A local thread checks once per project and block version that its instructions carry the current marker line (table above): a working rule for the thread's model, not a check by code.
+
+Limits, not to be claimed away:
+
+- The order is a request to the coordinator. No setting enforces it, and whether the coordinator follows the wording is untested.
+- Whether the coordinator knows before a start that the computer is on is not documented.
+- A local thread runs only while the computer is awake with Remote Control on, needs Claude Code v2.1.280 or newer, and is unavailable while "Require trusted devices" is on. A local thread does not load the project's memory files.
+- The plugin cannot read the project instructions, so the outdated-block hint is only as good as the model's look into its own context.
 
 ## What differs in a thread
 
@@ -44,7 +68,8 @@ Detection: a wake prompt or any `mcp__hearthbot__*` tool call marks the session 
 |---|---|
 | A wake starts work | `prompt.flow.title-work` names one `rename_thread` call: `⏳ ➜ 🤖 <thread title>` (a ship order in the person's words: `⏳ ➜ 🚀`). First wake: the model prefixes the title it sees; later the hook knows the title from the transcript's last `rename_thread` and names it exactly |
 | First prompt of the thread | the session-start notices (versions, budget login, orphan / backup / MCP / team lines, usage drift) never reach the model there: the dispatcher keeps every "show the user this … verbatim" piece of SessionStart in a per-session hold (`hooks/lib/thread-notice-hold.js`) and releases it at the next prompt only when that prompt is typed; a whole wake envelope or a marked thread empties it, and a SessionStart inside a marked thread (resume, compact) drops the pieces at once. Held: ss.project.setup (version notice, usage drift), ss.plugin.update, ss.backup.stale, ss.orphan.nudge, ss.mods.load, ss.catalog.remote, ss.mcp.verify, ss.mcp.envcheck, ss.ship.verify, ss.team.changelog. A thread session started before this change (no hold marker) still gets the one request not to post them (`prompt.thread.notices`) |
-| First wake of a thread in a project this machine has not hinted yet | one block: append a short note to the first reply (in the person's language) that two entries are probably missing in the Claude Project settings, which the plugin cannot verify: (1) Project settings > Plugins: add devops, (2) Project settings > Memory > Project instructions: add the devops text; "show the text" makes the thread post the code block of `project-instructions-snippet.md` verbatim. Once per `chan_…` id (`~/.claude/devops-thread-seen.json`, `projects`), recorded when the block is emitted; not in a cloud container (`CLAUDE_CODE_REMOTE=true`, its state does not persist). A cloud thread WITHOUT the plugin gets the equivalent one line from the managed rules text (`scripts/cloud-rules.js`, `.claude/rules/devops.md`): only when no `devops:` skill is loaded and the prompt is a thread |
+| First wake of a thread in a project this machine has not hinted yet | one block: append a short note to the first reply (in the person's language) that some entries are probably missing, which the plugin cannot verify: (1) devops is enabled once for the claude.ai account under Plugins, not per project, (2) Project settings > Memory > Project instructions: the devops text and the "Where threads run" block, (3) Environment > "Your computer" on for local threads. "Show the text" makes the thread post the FIRST fenced block of `project-instructions-snippet.md` (devops text) and the output of `scripts/thread-location.js block --project <id>` (location block for the value in effect there). Once per `chan_…` id (`~/.claude/devops-thread-seen.json`, `projects`), recorded when the block is emitted; not in a cloud container (`CLAUDE_CODE_REMOTE=true`, its state does not persist). A cloud thread WITHOUT the plugin gets the equivalent one line from the managed rules text (`scripts/cloud-rules.js`, `.claude/rules/devops.md`): only when no `devops:` skill is loaded and the prompt is a thread |
+| First wake of a local thread, once per project and block version or value | one context block asks the model to look in its own context (a local thread starts with the project instructions) for the marker line `Where threads run (devops <value>, v<N>)`. Present: nothing. Missing, another value or an older version: one short hint (de + en) with the offer "show the text" (the thread then posts the script's output). `cloud-first`: the reverse, a hint only when such a block is still there. Recorded in `devops-thread-seen.json` → `blockChecked` (id → `<value>@v<N>`) when the block is emitted. A project that gets the setup hint in the same prompt gets that one note only |
 | A repo must change and the start folder is not its own worktree | the branch guards name a worktree per repo and thread: `git -C <repo> worktree add <repo>/.claude/worktrees/thread-<id8> -b claude/thread-<id8>-<slug>`, work by absolute path. Two threads in one folder, several folders and several repos per thread each get their own; no shared checkout is switched |
 | A skill wants to ask | `AskUserQuestion` is refused with the exact instruction: post the question as a numbered reply (`1. … a) …`), rename the thread to `👉 ➜ ❓ …`; the person's next message is the answer. A do-run arms its run contract from that reply (`hooks/lib/run-contract-thread.js`) |
 | A subagent's tool call waits on a permission | `👉` on the thread title via `rename_thread`, back to `⏳` when answered. A permission the thread's own call waits on cannot be shown: the model is blocked until the answer |
@@ -79,7 +104,7 @@ The coordinator shows a thread by its title, so the head a thread puts on its ti
 
 - Notices that persist a "shown once" state before the model saw them are lost for the Desktop when a thread swallows them: the 6 h update cooldown of ss.plugin.update, the monthly usage-drift marker, the orphan nudge stamp, the ss.mods.load seen list, the team changelog timestamp, the ship-verify acknowledged flag. They only matter for a session that is a thread; a typed session releases them.
 - The setup offer of ss.project.setup (`[ss.project.setup] New repository …`) and the cloud-update block are instructions, not "show the user" lines, and are not held.
-- The project hint cannot tell whether the two entries really are missing; it is a one-time prompt per machine and project, so a second machine hints again.
+- The project hint cannot tell whether the entries really are missing; it is a one-time prompt per machine and project, so a second machine hints again.
 - Batch mode, the approval-wait of the thread's own tool call and the ship-skill title steps still name `set_session_title` in a thread. They rename the local session only, which is harmless and invisible.
 - `post_widget` (the thread's widget tool) is not used: a widget on its own does not reach the project chat, the posted text does.
 - The project chat: a card or a devops title there needs the coordinator to cooperate, which only project instructions can ask for.

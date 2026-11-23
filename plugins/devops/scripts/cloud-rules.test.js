@@ -32,9 +32,17 @@ describe("cloud-rules block", () => {
     expect(text).toMatch(/## Claude Project thread without the devops plugin/);
     expect(text).toMatch(/no skill named `devops:…` is loaded/);
     expect(text).toMatch(/<wake …><project …>/);
-    expect(text).toMatch(/not\s+active in this project/);
-    expect(text).toMatch(/Project settings > Plugins/);
+    expect(text).toMatch(/not\s+active here/);
+    expect(text).toMatch(/claude\.ai > Plugins/);
+    expect(text).not.toMatch(/Project settings > Plugins/);
     expect(text).toMatch(/Anywhere else, say nothing/);
+  });
+
+  test("a cloud thread announces itself in its first reply, and the file still fits", () => {
+    const text = cr.applyBlock("");
+    expect(text).toMatch(/`CLAUDE_CODE_REMOTE`\s+is `true`/);
+    expect(text).toMatch(/FIRST reply with "Cloud thread\."/);
+    expect(text.trimEnd().split("\n").length).toBeLessThanOrEqual(cr.MAX_LINES);
   });
 
   test("applyBlock keeps outside text, replaces a stale block in place, drops a duplicate", () => {

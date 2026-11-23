@@ -1,7 +1,7 @@
 'use strict';
 /**
  * @module thread-seen
- * @version 0.2.0
+ * @version 0.3.0
  * @plugin devops
  * @description "A Claude Project thread ran on this machine" — a persisted
  *   marker, so the cloud-copy lag is judged by whether cloud threads exist, not
@@ -16,7 +16,12 @@
  *
  *   The same file records which Claude Projects (`chan_…` ids) already got the
  *   one-time setup hint (`projects`: id → ISO time, `projectHinted` /
- *   `markProjectHinted`); `recordThreadSeen` keeps that map when it rewrites.
+ *   `markProjectHinted`). A second sibling map, `blockChecked` (id →
+ *   `<value>@v<N>`), records for which location value and block version the
+ *   "Where threads run" check was last asked of a project. The Desktop Home
+ *   reads a third, `projectNames` (id → string; nothing writes it, the wake
+ *   envelope carries no name). `recordThreadSeen` rewrites the file as
+ *   `{...known, …}` and so keeps every sibling map.
  *
  *   Pure fs, no dependencies — desktop-copy.js and cloud-update.js both read it.
  */
@@ -72,6 +77,33 @@ function recordThreadSeen({ home = os.homedir(), tmpDir = os.tmpdir(), now = Dat
   return true;
 }
 
+/**
+ * The `<value>@v<N>` the location-block check was last emitted for in this project, or null.
+ * @returns {string|null}
+ */
+function blockChecked(id, home = os.homedir()) {
+  const m = readMarker(home);
+  const v = id && m && m.blockChecked && typeof m.blockChecked === 'object' ? m.blockChecked[id] : undefined;
+  return typeof v === 'string' ? v : null;
+}
+
+/**
+ * Record that the location-block check for `id` was emitted for `stamp` (`<value>@v<N>`).
+ * Keeps every other field and sibling map.
+ * @returns {boolean} whether the record was written
+ */
+function markBlockChecked(id, stamp, { home = os.homedir(), now = Date.now() } = {}) {
+  if (!id || !stamp) return false;
+  const iso = new Date(now).toISOString();
+  const known = readMarker(home) || { firstSeen: iso, lastSeen: iso };
+  const map = known.blockChecked && typeof known.blockChecked === 'object' ? known.blockChecked : {};
+  try {
+    fs.mkdirSync(path.dirname(stateFile(home)), { recursive: true });
+    fs.writeFileSync(stateFile(home), JSON.stringify({ ...known, blockChecked: { ...map, [id]: stamp } }) + '\n');
+    return true;
+  } catch { return false; }
+}
+
 /** Did this project already get the setup hint? */
 function projectHinted(id, home = os.homedir()) {
   const m = readMarker(home);
@@ -94,4 +126,4 @@ function markProjectHinted(id, { home = os.homedir(), now = Date.now() } = {}) {
   } catch { return false; }
 }
 
-module.exports = { FILE, FLAG_PREFIX, readMarker, threadSeen, recordThreadSeen, liveFlag, projectHinted, markProjectHinted };
+module.exports = { FILE, FLAG_PREFIX, readMarker, threadSeen, recordThreadSeen, liveFlag, projectHinted, markProjectHinted, blockChecked, markBlockChecked };
