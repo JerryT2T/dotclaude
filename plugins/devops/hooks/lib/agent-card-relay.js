@@ -115,7 +115,7 @@ function cardShownIn(shown, header, rows) {
 
 /**
  * Claude Projects thread tools: the person sees only what these post, so a
- * card posted through one of them IS shown (#1222 — the relay held back the
+ * card posted through one of them IS shown (the relay held back the
  * very post_message that carried the card, and plain text never reached the
  * person).
  */

@@ -92,7 +92,7 @@ describe("agent-card-relay lib", () => {
     expect(relay.unrelayedLaunches(t)).toEqual([]);
   });
 
-  test("a card posted through a Claude Projects thread tool counts as relayed (#1222)", () => {
+  test("a card posted through a Claude Projects thread tool counts as relayed", () => {
     const post = { type: "assistant", message: { id: "m2", role: "assistant", content: [{ type: "tool_use", id: "p", name: "mcp__hearthbot__post_message", input: { text: card(1) } }] } };
     const t = jsonl(prompt(), agentUse("m1", "a1"), hookCtx("a1", card(1)), result("a1"), post);
     expect(relay.unrelayedLaunches(t)).toEqual([]);
@@ -252,7 +252,7 @@ describe("pre.agent.relay hook", () => {
     expect(r.code).toBe(0);
   }, 20000);
 
-  test("the thread post that carries the card passes; one without it is held (#1222)", async () => {
+  test("the thread post that carries the card passes; one without it is held", async () => {
     const { dir, file } = project(unshown);
     const carry = await runHook(PRE_HOOK, { session_id: sessionId(), cwd: dir, transcript_path: file,
       tool_name: "mcp__hearthbot__post_message", tool_use_id: "b1", tool_input: { text: card(1) } });

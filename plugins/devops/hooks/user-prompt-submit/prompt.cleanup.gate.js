@@ -5,7 +5,7 @@
  * @event UserPromptSubmit
  * @plugin devops
  * @description Claude Projects thread form of the /auto-cleanup Dry-Run
- *   confirm (lib/cleanup-gate.js, #1222): when the gate is armed and a Dry-Run
+ *   confirm (lib/cleanup-gate.js): when the gate is armed and a Dry-Run
  *   list was posted to the thread, the person's own next thread message (a
  *   wake whose trigger message is from="human" trust="principal") answers it —
  *   "Ja"/"Yes" first approves exactly that post, anything else drops it.

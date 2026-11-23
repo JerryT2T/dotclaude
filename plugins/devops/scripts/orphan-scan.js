@@ -53,7 +53,7 @@ const { isAgentLeftover, pickByAgeCount } = require('./lib/cleanup-rule');
 
 const FETCH_TIMEOUT = 60_000;
 // per-repo classification budget: a repo with dozens of session worktrees took 5+ min and
-// stalled the machine-wide scan (#1222); units past it are kept unclassified, `truncated` counts them
+// stalled the machine-wide scan; units past it are kept unclassified, `truncated` counts them
 const REPO_BUDGET_MS = 90_000;
 const GIT_TIMEOUT = 15_000;
 

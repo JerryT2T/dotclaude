@@ -61,7 +61,7 @@ function evaluate(relay, hook) {
   const msgId = relay.messageIdOf(text, hook.tool_use_id);
   if (!msgId) return null;
   const launch = relay.launchToNudge(text, hook.session_id, { skipMsgId: msgId });
-  // a thread post that carries the card IS the relay (#1222): never hold it back
+  // a thread post that carries the card IS the relay: never hold it back
   if (launch && relay.cardShownIn(relay.toolShownText(hook.tool_name, hook.tool_input),
     relay.cardHeader(launch.card), relay.cardRows(launch.card))) return null;
   return launch;

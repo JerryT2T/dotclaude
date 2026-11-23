@@ -206,7 +206,7 @@ function recordAnswers(state, questions, answers, nowMs = Date.now()) {
 // ── Claude Projects thread ─────────────────────────────────────────────────
 //
 // In a thread AskUserQuestion reaches no one, so the gate could never be
-// answered there (#1222). The thread form: Claude posts the Dry-Run list with
+// answered there. The thread form: Claude posts the Dry-Run list with
 // mcp__hearthbot__post_message (a line starting with "Dry-Run" names every
 // branch / worktree; an optional "Unmerged" section lists the unlanded branch
 // names in backticks), and the person's NEXT own thread message answers it.

@@ -14,7 +14,7 @@
  *   PostToolUse, so it records nothing: no answer stays a no.
  *   In a Claude Projects thread a hearthbot post_message carrying a Dry-Run
  *   list becomes the pending question; prompt.cleanup.gate records the
- *   person's answer (#1222). pre.cleanup.gate reads the state.
+ *   person's answer. pre.cleanup.gate reads the state.
  */
 
 function main(hook) {

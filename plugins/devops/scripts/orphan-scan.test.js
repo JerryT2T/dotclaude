@@ -84,7 +84,7 @@ describe("orphan-scan", () => {
     expect(entry.landedLeftovers).toBe(1);
   });
 
-  test("past the per-repo budget every unit is kept unclassified and counted as truncated (#1222)", async () => {
+  test("past the per-repo budget every unit is kept unclassified and counted as truncated", async () => {
     const root = mkRoot();
     const r = repoIn(root, "app");
     commitOn(r, "feat/unpushed", "u.txt", "u\n");

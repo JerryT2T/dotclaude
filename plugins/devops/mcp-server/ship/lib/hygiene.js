@@ -1056,7 +1056,7 @@ export function classifyUnits(scan, io) {
   const sessionFolders = new Set((scan.paths || []).map((p) => path.basename(p)));
   let truncated = 0;
   for (const u of scan.units) {
-    // a time budget (orphan-scan, #1222): a repo with dozens of session worktrees took 5+ min
+    // a time budget (orphan-scan, 2026-11-23): a repo with dozens of session worktrees took 5+ min
     // and stalled the machine-wide scan; past the deadline every unit is kept unclassified
     if (io.deadline && (io.clock || Date.now)() > io.deadline) {
       truncated++;

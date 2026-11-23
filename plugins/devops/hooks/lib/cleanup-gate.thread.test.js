@@ -18,7 +18,7 @@ const post = [
 const wake = (text, attrs = 'from="human" trust="principal"') =>
   `<wake reason="mention"><project id="chan_x"><thread ts="cmsg_a"><message trigger="true" ${attrs} id="cmsg_b">${text}</message></thread></project></wake>`;
 
-describe("cleanup gate, Claude Projects thread form (#1222)", () => {
+describe("cleanup gate, Claude Projects thread form", () => {
   test("a Dry-Run post is pending; the person's Ja approves exactly it, Unmerged names exact", () => {
     const s = gate.recordThreadPost(fresh(), post);
     expect(s.threadPending.unmerged).toEqual(["parked/autosave/backlog-4b7e9e", "claude/visual-base"]);
