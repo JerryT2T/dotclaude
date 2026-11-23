@@ -44,7 +44,7 @@ describe("hint and blockCheck texts", () => {
     expect(t).toContain('node "/pr/scripts/thread-location.js" block --project chan_T1');
     expect(t).toMatch(/FIRST fenced block/);
     const cf = hook.hint({ mode: "on", projectId: "chan_T1", hinted: false, remote: false, lang: "en", pluginRoot: "/pr", value: "cloud-first" });
-    expect(cf).not.toContain("thread-location.js");
+    expect(cf).not.toContain("block --project");
     expect(cf).not.toContain("text and the \"Where threads run\" block");
     expect(cf).toContain("add the devops text.");
   });
@@ -65,8 +65,23 @@ describe("hint and blockCheck texts", () => {
   test("blockCheck for cloud-first is the reverse: remove a block that is still there", () => {
     const t = hook.blockCheck({ ...base, value: "cloud-first" });
     expect(t).toContain("Where threads run (devops ");
-    expect(t).toMatch(/None: say nothing/);
+    expect(t).toMatch(/no "Where threads run" line: say nothing/);
     expect(t).toContain(hook.BLOCK_REMOVE_TEXT.en);
+  });
+  test("the person copies nothing: hint and blockCheck send the coordinator the update request first", () => {
+    const cmd = 'node "/pr/scripts/thread-location.js" request --project chan_T1';
+    const h = hook.hint({ mode: "on", projectId: "chan_T1", hinted: false, remote: false, lang: "de", pluginRoot: "/pr" });
+    const b = hook.blockCheck(base);
+    for (const t of [h, b]) {
+      expect(t).toContain(cmd);
+      expect(t).toContain('send_message to "@parent"');
+      expect(t).toMatch(/Only when no route reaches the coordinator/);
+    }
+    expect(h).toContain(hook.setupSentText("de", true));
+    expect(h.indexOf(cmd)).toBeLessThan(h.indexOf(hook.setupSentText("de", true)));
+    expect(b).toContain(hook.SENT_TEXT.en);
+    expect(b).toContain("`devops text (v");
+    expect(hook.setupSentText("de", true)).not.toMatch(/Text zeigen/);
   });
   test("blockCheck: silent when checked, remote, off or no project", () => {
     expect(hook.blockCheck({ ...base, checked: true })).toBeNull();
