@@ -55,6 +55,16 @@
         "hunks": [
           "22b4114ebf1d"
         ]
+      },
+      {
+        "ship": "claude/project-thread-5l5z8o",
+        "by": "JerryT2T",
+        "value": "generated hook count 120 (this ship adds prompt.cleanup.gate)",
+        "decided": true,
+        "at": "2026-11-23T21:48:52.197Z",
+        "hunks": [
+          "b3ddb0edabed"
+        ]
       }
     ],
     "README.md›hooks-summary›count": [
@@ -293,6 +303,16 @@
         "at": "2026-11-23T21:17:38.642Z",
         "hunks": [
           "d9dde48f055f"
+        ]
+      },
+      {
+        "ship": "claude/project-thread-5l5z8o",
+        "by": "JerryT2T",
+        "value": "generated hook count 120 (this ship adds prompt.cleanup.gate)",
+        "decided": true,
+        "at": "2026-11-23T21:48:52.197Z",
+        "hunks": [
+          "b79b18e14332"
         ]
       }
     ],
