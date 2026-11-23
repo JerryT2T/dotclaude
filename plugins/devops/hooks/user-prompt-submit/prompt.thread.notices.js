@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook prompt.thread.notices
- * @version 0.2.0
+ * @version 0.2.1
  * @event UserPromptSubmit
  * @plugin devops
  * @description Two things at the first prompts of a Claude Projects thread.
@@ -37,10 +37,10 @@ const SNIPPET_REL = 'deep-knowledge/project-instructions-snippet.md';
 
 const HINT_TEXT = {
   en: 'Setup for this project: it is new to devops, and two entries are probably still missing (the plugin cannot verify them). ' +
-    '(1) Project settings > Plugins: add devops. (2) Project settings > Memory > Project instructions: add the devops text. ' +
+    '(1) Project settings > Plugins: add devops. (2) Project settings > Memory > Project instructions: add the devops text (among others: threads start on your computer, not in the cloud). ' +
     'Reply "show the text" and I post it here, or ask Claude in the project chat to add it.',
   de: 'Einrichtung für dieses Projekt: es ist neu für devops, und zwei Einträge fehlen vermutlich noch (das Plugin kann sie nicht prüfen). ' +
-    '(1) Projekteinstellungen > Plugins: devops hinzufügen. (2) Projekteinstellungen > Memory > Projektanweisungen: den devops-Text eintragen. ' +
+    '(1) Projekteinstellungen > Plugins: devops hinzufügen. (2) Projekteinstellungen > Memory > Projektanweisungen: den devops-Text eintragen (u. a.: Threads starten auf deinem Rechner, nicht in der Cloud). ' +
     'Antworte „Text zeigen“, dann poste ich ihn hier, oder bitte Claude im Projekt-Chat, ihn einzutragen.',
 };
 

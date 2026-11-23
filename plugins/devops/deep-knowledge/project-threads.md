@@ -16,6 +16,16 @@ A project has one coordinator (the project chat) and threads that do the work. O
 
 What a cloud thread needs without the plugin comes from the repo: `.claude/rules/devops.md` (`scripts/cloud-rules.js`; a new repo gets it with project setup, an established one with its next ship) and the rules do-learn stores under `.claude/rules/` (`skills/do-learn/deep-knowledge/routing-details.md`).
 
+## Local threads first
+
+Where a thread runs is the coordinator's choice, and the coordinator loads no plugin, so nothing on this machine can force it. The plugin works the three places it does reach, none of them with a device name or path:
+
+- **Coordinator:** the project instructions text (`project-instructions-snippet.md`) opens with "work locally first": start each thread with "Work locally" on an online device whose connected folder holds the project's repository, looked up each time; the cloud only when no such device is online or the person asks for it. It replaces a per-project instruction that names a fixed PC and folder.
+- **Cloud thread:** the managed `.claude/rules/devops.md` (§ Where a thread runs) loads with or without the plugin; with `CLAUDE_CODE_REMOTE=true` and a wake prompt the thread says in its first reply that it runs in the cloud and asks the coordinator to start the next threads locally, then does the work.
+- **Local thread:** the first-wake setup hint names the local-first part of the instructions text.
+
+Not covered: a cloud thread cannot tell whether a device with the repo is online, and it does not move itself; the coordinator decides the next thread. A lagging cloud copy of the plugin is caught on this machine (`hooks/lib/cloud-update.js`), not in the cloud.
+
 ## What differs in a thread
 
 Read off a real thread transcript:
