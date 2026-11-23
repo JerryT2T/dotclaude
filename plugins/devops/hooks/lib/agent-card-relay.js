@@ -1,6 +1,6 @@
 /**
  * @module agent-card-relay
- * @version 0.3.0
+ * @version 0.4.0
  * @description Did the user actually see the agent card?
  *
  *   pre.agent.announce hands Claude the agent card on every spawn with "show
@@ -113,7 +113,26 @@ function cardShownIn(shown, header, rows) {
     && /gestartet|started|launched/.test(s);
 }
 
-/** Text an assistant entry shows the user: text blocks and show_widget code. */
+/**
+ * Claude Projects thread tools: the person sees only what these post, so a
+ * card posted through one of them IS shown (the relay held back the
+ * very post_message that carried the card, and plain text never reached the
+ * person).
+ */
+const THREAD_POST_TOOL = /(^|__)hearthbot__(post_message|post_widget|edit_message)$/;
+
+/** Text a tool call shows the user: show_widget code or a thread post. */
+function toolShownText(name, input) {
+  if (!input) return '';
+  const n = String(name || '');
+  if (/show_widget$/.test(n)) return String(input.widget_code || '');
+  if (THREAD_POST_TOOL.test(n)) {
+    return [input.text, input.input && input.input.widget_code].filter(t => typeof t === 'string').join('\n');
+  }
+  return '';
+}
+
+/** Text an assistant entry shows the user: text blocks, show_widget code, thread posts. */
 function shownText(entry) {
   const content = entry && entry.message && entry.message.content;
   if (!Array.isArray(content)) return '';
@@ -121,8 +140,9 @@ function shownText(entry) {
   for (const b of content) {
     if (!b) continue;
     if (b.type === 'text' && typeof b.text === 'string') parts.push(b.text);
-    if (b.type === 'tool_use' && /show_widget$/.test(String(b.name || '')) && b.input) {
-      parts.push(String(b.input.widget_code || ''));
+    if (b.type === 'tool_use') {
+      const t = toolShownText(b.name, b.input);
+      if (t) parts.push(t);
     }
   }
   return parts.join('\n');
@@ -338,6 +358,8 @@ function nudgeText(launch, { atStop = false } = {}) {
 module.exports = {
   CARD_PREFIX,
   PROGRESS_UPDATE_MODELS,
+  THREAD_POST_TOOL,
+  toolShownText,
   cardFromContext,
   cardHeader,
   cardRows,

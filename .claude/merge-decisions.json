@@ -35,6 +35,38 @@
         ]
       }
     ],
+    "README.md›devops:count:hooks›value": [
+      {
+        "ship": "claude/project-thread-5l5z8o",
+        "by": "JerryT2T",
+        "value": "generated hook count 120 (this ship adds prompt.cleanup.gate)",
+        "decided": true,
+        "at": "2026-11-23T21:00:20.707Z",
+        "hunks": [
+          "822997ee3bbe"
+        ]
+      },
+      {
+        "ship": "claude/project-thread-5l5z8o",
+        "by": "JerryT2T",
+        "value": "generated hook count 120 (this ship adds prompt.cleanup.gate)",
+        "decided": true,
+        "at": "2026-11-23T21:17:38.642Z",
+        "hunks": [
+          "22b4114ebf1d"
+        ]
+      },
+      {
+        "ship": "claude/project-thread-5l5z8o",
+        "by": "JerryT2T",
+        "value": "generated hook count 120 (this ship adds prompt.cleanup.gate)",
+        "decided": true,
+        "at": "2026-11-23T21:48:52.197Z",
+        "hunks": [
+          "b3ddb0edabed"
+        ]
+      }
+    ],
     "README.md›hooks-summary›count": [
       {
         "ship": "#1147",
@@ -261,6 +293,50 @@
         "at": "2026-11-22T10:22:42.269Z",
         "hunks": [
           "c597502f8430"
+        ]
+      }
+    ],
+    "plugins/devops/docs/architecture.html›devops:count:hooks:prompt›value": [
+      {
+        "ship": "claude/project-thread-5l5z8o",
+        "by": "JerryT2T",
+        "value": "generated prompt hook count 21 (this ship adds prompt.cleanup.gate)",
+        "decided": true,
+        "at": "2026-11-23T22:12:07.648Z",
+        "hunks": [
+          "32cc0cf16b65"
+        ]
+      }
+    ],
+    "plugins/devops/docs/architecture.html›devops:count:hooks›value": [
+      {
+        "ship": "claude/project-thread-5l5z8o",
+        "by": "JerryT2T",
+        "value": "generated hook count 120 (this ship adds prompt.cleanup.gate)",
+        "decided": true,
+        "at": "2026-11-23T21:00:20.707Z",
+        "hunks": [
+          "f9f929d0e399"
+        ]
+      },
+      {
+        "ship": "claude/project-thread-5l5z8o",
+        "by": "JerryT2T",
+        "value": "generated hook count 120 (this ship adds prompt.cleanup.gate)",
+        "decided": true,
+        "at": "2026-11-23T21:17:38.642Z",
+        "hunks": [
+          "d9dde48f055f"
+        ]
+      },
+      {
+        "ship": "claude/project-thread-5l5z8o",
+        "by": "JerryT2T",
+        "value": "generated hook count 120 (this ship adds prompt.cleanup.gate)",
+        "decided": true,
+        "at": "2026-11-23T21:48:52.197Z",
+        "hunks": [
+          "b79b18e14332"
         ]
       }
     ],

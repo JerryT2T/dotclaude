@@ -296,7 +296,7 @@
         "hooks": [
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use/post.cleanup.gate.js\"", "timeout": 10 }
         ],
-        "matcher": "Skill|AskUserQuestion"
+        "matcher": "Skill|AskUserQuestion|mcp__hearthbot__post_message"
       },
       {
         "hooks": [
@@ -391,6 +391,7 @@
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/user-prompt-submit/prompt.run.contract.js\"", "timeout": 10 },
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/user-prompt-submit/prompt.flow.silent-turn.js\"" },
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/user-prompt-submit/prompt.thread.notices.js\"" },
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/user-prompt-submit/prompt.cleanup.gate.js\"" },
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/user-prompt-submit/prompt.flow.title-work.js\"" },
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/user-prompt-submit/prompt.knowledge.dispatch.js\"" },
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/user-prompt-submit/prompt.knowledge.anchor.js\"", "timeout": 10 },

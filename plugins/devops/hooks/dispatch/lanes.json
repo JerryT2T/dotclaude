@@ -315,6 +315,9 @@
         "prompt.run.contract"
       ],
       [
+        "prompt.cleanup.gate"
+      ],
+      [
         "prompt.plugin.scope"
       ],
       [

@@ -1054,7 +1054,15 @@ export function classifyUnits(scan, io) {
   // A session keeps its worktree until it is closed, also after switching branch or
   // detaching: the branch named after that folder is its work in progress, no finding.
   const sessionFolders = new Set((scan.paths || []).map((p) => path.basename(p)));
+  let truncated = 0;
   for (const u of scan.units) {
+    // a time budget (orphan-scan, 2026-11-23): a repo with dozens of session worktrees took 5+ min
+    // and stalled the machine-wide scan; past the deadline every unit is kept unclassified
+    if (io.deadline && (io.clock || Date.now)() > io.deadline) {
+      truncated++;
+      keep.push({ ...u, reason: "scan-budget" });
+      continue;
+    }
     // never removable: the user stands on it; landed ones are only reported (#879). Unlanded and
     // idle it is at risk: the autosave skips main checkouts and the branch was never pushed, so
     // nothing else knows about this work.
@@ -1117,7 +1125,7 @@ export function classifyUnits(scan, io) {
   const dirtyHeads = new Set(atRisk.filter((r) => r.dirty > 0).map((r) => r.head));
   const idOf = (r) => (r.dirty > 0 ? `d:${normPath(r.path)}` : `h:${r.head}`);
   atRisk = atRisk.filter((r, i) => (r.dirty > 0 || !dirtyHeads.has(r.head)) && atRisk.findIndex((x) => idOf(x) === idOf(r)) === i);
-  return { ctx, removable, keep, atRisk, parkedUnits, mainOnLanded, landedOutside, threadWork, merged, open };
+  return { ctx, removable, keep, atRisk, parkedUnits, mainOnLanded, landedOutside, threadWork, merged, open, truncated };
 }
 
 /**

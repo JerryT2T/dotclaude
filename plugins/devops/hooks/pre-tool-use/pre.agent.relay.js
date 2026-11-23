@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook pre.agent.relay
- * @version 0.3.0
+ * @version 0.4.0
  * @event PreToolUse
  * @plugin devops
  * @matcher (all tools)
@@ -60,7 +60,11 @@ function evaluate(relay, hook) {
   if (relay.progressUpdates(text)) return null;
   const msgId = relay.messageIdOf(text, hook.tool_use_id);
   if (!msgId) return null;
-  return relay.launchToNudge(text, hook.session_id, { skipMsgId: msgId });
+  const launch = relay.launchToNudge(text, hook.session_id, { skipMsgId: msgId });
+  // a thread post that carries the card IS the relay: never hold it back
+  if (launch && relay.cardShownIn(relay.toolShownText(hook.tool_name, hook.tool_input),
+    relay.cardHeader(launch.card), relay.cardRows(launch.card))) return null;
+  return launch;
 }
 
 function main(hook, deps = {}) {

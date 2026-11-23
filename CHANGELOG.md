@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.407.0] — 2026-11-23
+
+### Fixed
+- **Machine-wide orphan scan no longer stalls:** each repo gets a 90 s classification budget; units past it are kept unclassified and counted as `truncated` (a repo with dozens of session worktrees took 5+ min).
+- **Branch cleanup in a Claude Projects thread:** the Dry-Run confirm now works there — the list is posted to the thread and the person's own next "Ja" approves exactly it (new hook `prompt.cleanup.gate`); relays never count.
+- **Agent card in a thread:** the relay no longer holds back the thread post that carries the card.
+
 ## [0.406.0] — 2026-11-23
 
 ### Fixed

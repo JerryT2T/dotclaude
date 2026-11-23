@@ -84,6 +84,20 @@ describe("orphan-scan", () => {
     expect(entry.landedLeftovers).toBe(1);
   });
 
+  test("past the per-repo budget every unit is kept unclassified and counted as truncated", async () => {
+    const root = mkRoot();
+    const r = repoIn(root, "app");
+    commitOn(r, "feat/unpushed", "u.txt", "u\n");
+    git(r, "branch", "landed-one", "main");
+    const { entry, cls } = await scanOne(r, { ...opts, budgetMs: -1 });
+    expect(entry.truncated).toBe(2);
+    expect(entry.atRisk).toEqual([]);
+    expect(entry.landedLeftovers).toBe(0);
+    expect(cls.keep.every((k) => k.reason === "scan-budget")).toBe(true);
+    const full = await scanOne(r, opts);
+    expect(full.entry.truncated).toBeUndefined();
+  });
+
   test("main checkout on a landed local-only branch and a landed sibling worktree are reported, not removable", async () => {
     const root = mkRoot();
     const r = repoIn(root, "app");

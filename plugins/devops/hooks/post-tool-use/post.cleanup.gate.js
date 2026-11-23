@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
  * @hook post.cleanup.gate
- * @version 0.1.0
+ * @version 0.2.0
  * @event PostToolUse
  * @plugin devops
- * @matcher Skill|AskUserQuestion
+ * @matcher Skill|AskUserQuestion|mcp__hearthbot__post_message
  * @description Arms and feeds the /auto-cleanup deletion gate
  *   (lib/cleanup-gate.js). A loaded auto-cleanup skill arms the gate for this
  *   session and drops every earlier confirmation; an ANSWERED AskUserQuestion
@@ -12,7 +12,9 @@
  *   label starting with Ja/Yes) or — Dry-Run only — revokes the earlier
  *   approvals. An AskUserQuestion that errors or is denied fires no
  *   PostToolUse, so it records nothing: no answer stays a no.
- *   pre.cleanup.gate reads the state.
+ *   In a Claude Projects thread a hearthbot post_message carrying a Dry-Run
+ *   list becomes the pending question; prompt.cleanup.gate records the
+ *   person's answer. pre.cleanup.gate reads the state.
  */
 
 function main(hook) {
@@ -23,6 +25,13 @@ function main(hook) {
   if (name === 'Skill' || name.endsWith('__Skill')) {
     const skill = hook.tool_input && hook.tool_input.skill;
     if (gate.isCleanupSkill(skill)) gate.arm(sessionId);
+    return null;
+  }
+  if (/(^|__)hearthbot__post_message$/.test(name)) {
+    const state = gate.readState(sessionId);
+    if (!state) return null;
+    gate.recordThreadPost(state, hook.tool_input && hook.tool_input.text);
+    gate.writeState(sessionId, state);
     return null;
   }
   if (name !== 'AskUserQuestion') return null;
