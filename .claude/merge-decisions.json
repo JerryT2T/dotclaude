@@ -110,6 +110,23 @@
         ]
       }
     ],
+    "plugins/devops/deep-knowledge/project-threads.md›thread card›post tool": [
+      {
+        "ship": "#1193",
+        "by": "Jerry",
+        "value": "markdown via post_message, post_widget not used"
+      },
+      {
+        "ship": "claude/project-thread-3n8do8",
+        "by": "Jerry",
+        "value": "card as post_widget, markdown only as fallback",
+        "decided": true,
+        "at": "2026-11-23T19:23:26.193Z",
+        "hunks": [
+          "9f7d6a5b299b"
+        ]
+      }
+    ],
     "plugins/devops/deep-knowledge/project-threads.md›thread title head›keyword and bar": [
       {
         "ship": "claude/chat-title-emoticons-separator-b41eeb",
