@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook prompt.thread.notices
- * @version 0.4.0
+ * @version 0.5.0
  * @event UserPromptSubmit
  * @plugin devops
  * @description Four things at the first prompts of a Claude Projects thread.

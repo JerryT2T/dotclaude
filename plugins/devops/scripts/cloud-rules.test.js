@@ -38,10 +38,21 @@ describe("cloud-rules block", () => {
     expect(text).toMatch(/Anywhere else, say nothing/);
   });
 
-  test("a cloud thread announces itself in its first reply, and the file still fits", () => {
+  test("the rules ask a cloud thread to steer the project back to local threads, generic and cloud-only", () => {
     const text = cr.applyBlock("");
-    expect(text).toMatch(/`CLAUDE_CODE_REMOTE`\s+is `true`/);
-    expect(text).toMatch(/FIRST reply with "Cloud thread\."/);
+    expect(text).toMatch(/## Where a thread runs/);
+    expect(text).toMatch(/CLAUDE_CODE_REMOTE=true/);
+    expect(text).toMatch(/"Work locally" on a device that has this repo checked out/);
+    expect(text).toMatch(/Do the work anyway/);
+    // generic: no machine, user or path of the author leaks into a file every repo carries
+    expect(text).not.toMatch(/[A-Z]:\\|\/Users\/|\/home\//);
+  });
+
+  test("the request is skipped where the project asked for the cloud, and the file still fits", () => {
+    const text = cr.applyBlock("");
+    expect(text).toMatch(/Skip the request \(keep the line\)/);
+    expect(text).toMatch(/start in the cloud\s+or that the coordinator asks each time/);
+    expect(text).not.toMatch(/## Cloud thread announces itself/);
     expect(text.trimEnd().split("\n").length).toBeLessThanOrEqual(cr.MAX_LINES);
   });
 

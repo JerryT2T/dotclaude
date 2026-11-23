@@ -23,50 +23,44 @@ check that no other thread already works on it.
 
 ## Where threads run: local-first
 
+The default. Its first paragraph is the "work locally first" text of v0.403, word for word: no device name and no path, so one copy fits every project and every machine.
+
 ```
 Where threads run (devops local-first, v1)
-1. Start every thread on my computer: a local thread
-   in the folder of the repository the task belongs
-   to. This holds whether I write from the computer,
-   from my phone or from claude.ai.
-2. Start a cloud thread only when my computer cannot
-   be reached (off, asleep, app closed). Then say so
-   in the first line of your reply:
-   "Cloud thread: computer not reachable."
-3. A local start that fails for another reason
-   (folder not approved, Claude out of date, trusted
-   devices): tell me the reason. Do not switch to
-   the cloud.
-4. A local thread that loses contact: tell me and
-   wait. Do not restart its task in the cloud. The
-   unpushed work is on my computer.
-5. When I say "in the cloud" for a task or for this
-   conversation, that runs in the cloud. This is a
-   temporary exception and changes no setting.
+Work locally first. Start every thread with "Work locally" (Remote Control on
+my computer), not in the cloud, whenever one of my devices is online and has a
+connected folder that holds this project's repository: pick the folder whose
+git checkout belongs to this project's repo, the repo's own folder before a
+parent folder that holds several projects. Look it up each time (devices and
+folders), never from a saved path. Start a cloud thread only when no such
+device is online, or when I ask for the cloud, and say so in one line in the
+project chat. A cloud thread that notices it should have run locally tells you
+so: start the next threads of this project locally.
+- A local start that fails for another reason (folder not approved, Claude out
+  of date, trusted devices): tell me the reason. Do not switch to the cloud.
+- A local thread that loses contact: tell me and wait. Do not restart its task
+  in the cloud. The unpushed work is on my computer.
+- When I say "in the cloud" for a task or for this conversation, that runs in
+  the cloud. This is a temporary exception and changes no setting.
 ```
 
 ## Where threads run: local-only
 
 ```
 Where threads run (devops local-only, v1)
-1. Start every thread on my computer: a local thread
-   in the folder of the repository the task belongs
-   to. This holds whether I write from the computer,
-   from my phone or from claude.ai.
-2. Never start a cloud thread by yourself. When my
-   computer cannot be reached (off, asleep, app
-   closed), start nothing in the cloud. Tell me and
-   wait.
-3. A local start that fails for another reason
-   (folder not approved, Claude out of date, trusted
-   devices): tell me the reason. Do not switch to
-   the cloud.
-4. A local thread that loses contact: tell me and
-   wait. Do not restart its task in the cloud. The
-   unpushed work is on my computer.
-5. When I say "in the cloud" for a task or for this
-   conversation, that runs in the cloud. This is a
-   temporary exception and changes no setting.
+Work locally only. Start every thread with "Work locally" (Remote Control on
+my computer) on a device of mine that is online and has a connected folder
+that holds this project's repository: pick the folder whose git checkout
+belongs to this project's repo, the repo's own folder before a parent folder
+that holds several projects. Look it up each time (devices and folders), never
+from a saved path. Never start a cloud thread by yourself. When no such device
+is online, start nothing in the cloud. Tell me and wait.
+- A local start that fails for another reason (folder not approved, Claude out
+  of date, trusted devices): tell me the reason. Do not switch to the cloud.
+- A local thread that loses contact: tell me and wait. Do not restart its task
+  in the cloud. The unpushed work is on my computer.
+- When I say "in the cloud" for a task or for this conversation, that runs in
+  the cloud. This is a temporary exception and changes no setting.
 ```
 
 ## Where threads run: ask
@@ -82,6 +76,10 @@ Where threads run (devops ask, v1)
    wait. Do not restart its task in the cloud. The
    unpushed work is on my computer.
 ```
+
+## Why "work locally first" lives here
+
+The coordinator alone decides where a thread starts, and it loads no plugin: these instructions are the only place that reaches that decision. The text names no device and no path, so one copy fits every project and every machine; the coordinator matches the project's repository against the folders of the devices that are online. It is a block of its own, not part of the devops text, because the person can set another value per project (`threadLocation`): the block for the value in effect is the one that goes into the instructions. The two halves the plugin covers itself: a cloud thread of a devops repo says it runs in the cloud and asks the coordinator to start the next threads locally (managed `.claude/rules/devops.md`, `scripts/cloud-rules.js` § Where a thread runs, loaded with or without the plugin), and a local thread's first-wake setup hint and its once-per-project block check point to this text (`prompt.thread.notices`).
 
 ## Around the text (what auto-setup also says)
 

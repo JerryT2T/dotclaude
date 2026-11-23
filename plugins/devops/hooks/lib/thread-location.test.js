@@ -99,7 +99,9 @@ describe("marker / block (single source: the snippet doc)", () => {
       expect(b).not.toMatch(/[—;]/);
     }
     expect(lib.block("cloud-first")).toBeNull();
-    expect(lib.block("local-first")).toContain('"Cloud thread: computer not reachable."');
+    expect(lib.block("local-first")).toContain('Start every thread with "Work locally"');
+    expect(lib.block("local-first")).toContain("never from a saved path");
+    expect(lib.block("local-first")).not.toMatch(/[A-Z]:\\|\/Users\/|\/home\//);
     expect(lib.block("local-first")).toContain("temporary");
     expect(lib.block("local-only")).toMatch(/start nothing in the cloud/);
     expect(lib.block("ask")).toMatch(/on my computer or in the cloud/);

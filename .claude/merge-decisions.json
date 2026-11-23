@@ -110,6 +110,23 @@
         ]
       }
     ],
+    "plugins/devops/deep-knowledge/project-threads.md›thread card›post tool": [
+      {
+        "ship": "#1193",
+        "by": "Jerry",
+        "value": "markdown via post_message, post_widget not used"
+      },
+      {
+        "ship": "claude/project-thread-3n8do8",
+        "by": "Jerry",
+        "value": "card as post_widget, markdown only as fallback",
+        "decided": true,
+        "at": "2026-11-23T19:23:26.193Z",
+        "hunks": [
+          "9f7d6a5b299b"
+        ]
+      }
+    ],
     "plugins/devops/deep-knowledge/project-threads.md›thread title head›keyword and bar": [
       {
         "ship": "claude/chat-title-emoticons-separator-b41eeb",
@@ -1612,6 +1629,48 @@
         "hunks": [
           "96fb0f080121"
         ]
+      }
+    ],
+    "plugins/devops/deep-knowledge/project-instructions-snippet.md›work-locally-first›location": [
+      {
+        "ship": "#1219",
+        "by": "Jerry",
+        "value": "paragraph \"Work locally first\" at the top of the devops text"
+      },
+      {
+        "ship": "claude/claude-code-project-structure-4aa260",
+        "by": "JerryT2T",
+        "value": "the same paragraph, word for word, as the first part of the block \"Where threads run (devops local-first, v1)\"; one block per threadLocation value, none inside the devops text (user: 0.403 is the newer wording, this branch keeps its other changes)",
+        "decided": true,
+        "at": "2026-11-23T19:51:58.818Z"
+      }
+    ],
+    "plugins/devops/hooks/user-prompt-submit/prompt.thread.notices.js›HINT_TEXT›wording": [
+      {
+        "ship": "#1219",
+        "by": "Jerry",
+        "value": "\"(1) Project settings > Plugins: add devops. (2) … add the devops text (among others: threads start on your computer, not in the cloud)\""
+      },
+      {
+        "ship": "claude/claude-code-project-structure-4aa260",
+        "by": "JerryT2T",
+        "value": "three entries: devops enabled once for the claude.ai account under Plugins (a project has no Plugins tab, read on claude.ai 2026-11-23), the devops text and the \"Where threads run\" block in the project instructions, Environment > \"Your computer\" on",
+        "decided": true,
+        "at": "2026-11-23T19:51:58.818Z"
+      }
+    ],
+    "plugins/devops/scripts/cloud-rules.js›where-a-thread-runs›rule": [
+      {
+        "ship": "#1219",
+        "by": "Jerry",
+        "value": "a cloud thread says it runs in the cloud and asks the coordinator to start the next threads with \"Work locally\""
+      },
+      {
+        "ship": "claude/claude-code-project-structure-4aa260",
+        "by": "JerryT2T",
+        "value": "kept as written; one clause added (skip the request when the project instructions say threads start in the cloud or the coordinator asks each time); this branch's own section \"Cloud thread announces itself\" dropped as a duplicate",
+        "decided": true,
+        "at": "2026-11-23T19:51:58.818Z"
       }
     ]
   }

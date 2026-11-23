@@ -825,8 +825,9 @@ const THREAD_REPLY_KEY = 'threadReplyHinted';
  * can correct a title there, and a stale ⏳ on an idle thread misleads.
  */
 function threadReplyLines(hook, toolName) {
-  if (toolName !== projectThread.POST_TOOL) return [];
+  if (toolName !== projectThread.POST_TOOL && toolName !== projectThread.WIDGET_TOOL) return [];
   const text = String((hook.tool_input && hook.tool_input.text) || '');
+  // The card goes out as the widget (its text line carries the marker) or, as a fallback, as the markdown post.
   if (text.includes(CARD_MARKER)) {
     return ['[completion-flow] Card posted — the turn is over: no further reply. Only set_thread_resolved may follow, when the work has ended.'];
   }
@@ -1045,7 +1046,7 @@ function cardContractLines(hook, scheduledTask, threadMode = 'off') {
   else if (completionDown) lines.push(`The completion MCP server is NOT running (heartbeat dead) — render offline FIRST: ${offline}.`);
   // A project thread: the render's result (stderr on the offline path) says how the card is posted.
   if (threadMode === 'on') {
-    lines.push('Project thread: the card is your result reply — post it with mcp__hearthbot__post_message as its result says (no show_widget, no wrap_up, no second summary).');
+    lines.push('Project thread: the card is your result reply — post it as its result says (the visual card via mcp__hearthbot__post_widget; post_message only as its fallback; no mcp__visualize__show_widget, no wrap_up, no second summary).');
   }
   return lines;
 }
@@ -1089,7 +1090,7 @@ function turnEndLines(hook, toolName, threadMode = 'off') {
   try { turnState.set(hook.session_id, TURN_END_KEY, id); } catch { /* best effort — may repeat once */ }
   const call = `mcp__plugin_devops_dotclaude__render_completion_card (session_id:"${hook.session_id || ''}", cwd:"${hook.cwd || ''}")`;
   if (signal === 'checklist') {
-    return [`[completion-flow] Checklist complete: no work left → ${call} now and post its card as the result reply (mcp__hearthbot__post_message), no other summary.`];
+    return [`[completion-flow] Checklist complete: no work left → ${call} now and post its card as the result reply (mcp__hearthbot__post_widget, as its result says), no other summary.`];
   }
   return [signal === 'wrap_up'
     ? `[completion-flow] Turn ending: the completion card IS the closing message — ${call} now; its result names the WRAP_UP_ARGS (the card's decision) for one more mcp__ccd_turn__wrap_up before the widget (#1132), then show it, nothing after it.`

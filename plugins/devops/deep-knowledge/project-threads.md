@@ -16,6 +16,16 @@ A project has one coordinator (the project chat) and threads that do the work. O
 
 What a cloud thread needs without the plugin comes from the repo: `.claude/rules/devops.md` (`scripts/cloud-rules.js`; a new repo gets it with project setup, an established one with its next ship) and the rules do-learn stores under `.claude/rules/` (`skills/do-learn/deep-knowledge/routing-details.md`).
 
+## Local threads first
+
+Where a thread runs is the coordinator's choice, and the coordinator loads no plugin, so nothing on this machine can force it. The plugin works the three places it does reach, none of them with a device name or path:
+
+- **Coordinator:** the `local-first` block of the project instructions text (`project-instructions-snippet.md`, § Where threads run below) says "work locally first": start each thread with "Work locally" on an online device whose connected folder holds the project's repository, looked up each time; the cloud only when no such device is online or the person asks for it. It replaces a per-project instruction that names a fixed PC and folder.
+- **Cloud thread:** the managed `.claude/rules/devops.md` (§ Where a thread runs) loads with or without the plugin; with `CLAUDE_CODE_REMOTE=true` and a wake prompt the thread says in its first reply that it runs in the cloud and asks the coordinator to start the next threads locally, then does the work. The request is skipped when the project instructions say that threads start in the cloud or that the coordinator asks each time.
+- **Local thread:** the first-wake setup hint names the "Where threads run" block, and a once-per-project check asks the thread to look for the current block in its instructions.
+
+Not covered: a cloud thread cannot tell whether a device with the repo is online, and it does not move itself; the coordinator decides the next thread. A lagging cloud copy of the plugin is caught on this machine (`hooks/lib/cloud-update.js`), not in the cloud.
+
 ## Where threads run
 
 The person wants local first: a thread on the computer (through Remote Control, also when the request comes from the phone), the cloud only when the computer cannot be reached. Official per-project setting: Project settings > Environment > "Your computer" (Off / On / On with worktrees), with the folders Claude may use without asking, one of them the default. It makes local threads possible. It does not say where a start goes.
@@ -24,14 +34,14 @@ The setting `threadLocation` (devops-config, machine-wide: `threadLocation.defau
 
 | Value | What the block asks |
 |---|---|
-| `local-first` (default) | every thread on the computer; a cloud thread only when the computer cannot be reached, said in the first line; another start failure is reported, no switch; lost contact: report and wait; "in the cloud" for a task is a temporary exception that changes no setting |
+| `local-first` (default) | every thread with "Work locally" on an online device whose connected folder holds the project's repo, looked up each time, never from a saved path; a cloud thread only when no such device is online or the person asks, said in one line in the project chat; another start failure is reported, no switch; lost contact: report and wait; "in the cloud" for a task is a temporary exception that changes no setting |
 | `local-only` | like `local-first`, but never a cloud thread by itself: unreachable computer means tell and wait |
 | `cloud-first` | no block. A block still in the instructions should be removed |
 | `ask` | one question before every start (computer or cloud); a cloud thread says so in its first line |
 
 The three blocks are fenced blocks in `project-instructions-snippet.md`, each starting with the marker line `Where threads run (devops <value>, v<N>)` (`BLOCK_VERSION` in `thread-location.js`). `block` prints the one for the value in effect. The person pastes it into Project settings > Memory > Project instructions, or asks Claude to add it.
 
-Two notes follow from it. A cloud thread starts its FIRST reply with "Cloud thread." (rule in `.claude/rules/devops.md`, `CLAUDE_CODE_REMOTE` is `true`). A local thread checks once per project and block version that its instructions carry the current marker line (table above): a working rule for the thread's model, not a check by code.
+Two notes follow from it. A cloud thread says in its first reply that it runs in the cloud and asks the coordinator for local threads (§ Local threads first above). A local thread checks once per project and block version that its instructions carry the current marker line (table above): a working rule for the thread's model, not a check by code.
 
 Limits, not to be claimed away:
 
@@ -77,7 +87,7 @@ Detection: a wake prompt or any `mcp__hearthbot__*` tool call marks the session 
 | Budget class other than `free` | never asked; *spare the window* applies unasked (`agent-proactivity-details.md` § Thread) |
 | First tool call | the card contract plus one line: the card is the result reply |
 | Checklist with every step done | one "card now" line |
-| `render_completion_card` (tool or `--render-card`) | the full markdown card, to be posted verbatim as the text of ONE `post_message`, plus the exact `rename_thread` to the outcome head (`👉 ➜ 📦 …`). No widget, no `wrap_up`, no archive |
+| `render_completion_card` (tool or `--render-card`) | the visual card the Desktop draws (the same CDN template, `lib/card-widget.js` `threadCardWidget`), to be posted with ONE `post_widget` (`show_widget`, title `completion_card_body`, `text` = the `✨✨✨ <title> ✨✨✨ · <heading>` line previews and the project chat show); the full markdown rides along and is posted with `post_message` only when `post_widget` is missing or refused. Plus the exact `rename_thread` to the outcome head (`👉 ➜ 📦 …`). No `mcp__visualize__show_widget`, no `wrap_up`, no archive |
 | The card is posted | one status line to the coordinator (`SendMessage`, address from the newest coordinator relay in the transcript; skipped silently when unknown or refused), then "turn over": only `set_thread_resolved` may follow |
 | A reply without the card while the title says ⏳ | once per prompt: the exact rename that takes the head off, for a turn that ends there |
 | A concept page | published as an artifact, link posted in the thread and opened in Edge on a local thread (`concept-open.js open-url`); decisions and the action (`iterate`, `implement`) come back through the artifact's `db` store (`skills/auto-concept/deep-knowledge/artifact-fallback.md` § In a Claude Projects thread) |
@@ -106,7 +116,7 @@ The coordinator shows a thread by its title, so the head a thread puts on its ti
 - The setup offer of ss.project.setup (`[ss.project.setup] New repository …`) and the cloud-update block are instructions, not "show the user" lines, and are not held.
 - The project hint cannot tell whether the entries really are missing; it is a one-time prompt per machine and project, so a second machine hints again.
 - Batch mode, the approval-wait of the thread's own tool call and the ship-skill title steps still name `set_session_title` in a thread. They rename the local session only, which is harmless and invisible.
-- `post_widget` (the thread's widget tool) is not used: a widget on its own does not reach the project chat, the posted text does.
+- The card widget in a thread: the project chat and notifications see only its one `text` line (title + heading); the points and the answer stay in the thread, and the coordinator status line carries the outcome. Whether the widget's buttons (`sendPrompt` / `ui/message`) reach the thread is not observed live yet: the person may have to type the answer.
 - The project chat: a card or a devops title there needs the coordinator to cooperate, which only project instructions can ask for.
 - Not observed live yet: the coordinator address form (`bridge:cse_<id>`), the artifact read-back from a thread, a full ship from a cloud thread, the claude.ai update click. `%TEMP%\dotclaude-mcp-heartbeats\liveness.log` records when a thread's MCP server is not attributed to its session.
 
