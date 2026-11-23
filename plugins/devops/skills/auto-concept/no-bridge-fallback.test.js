@@ -47,15 +47,18 @@ describe("auto-concept — no reachable bridge ≠ no concept (#568)", () => {
     const text = skill.slice(art, edge);
     expect(text).toMatch(/Second tier, behind the hand-off/);
     expect(text).toMatch(/concept-artifact\.js/);
-    expect(text).toMatch(/capabilities: \{db: \{\}\}/);
-    expect(text).toMatch(/no bridge,\s+no crons, no Edge start/);
+    expect(text).toMatch(/capabilities: \{db: \{\}, user: \{\}\}/);
+    expect(text).toMatch(/no bridge, no bridge\s+crons, no Edge start/);
     expect(text).toMatch(/deep-knowledge\/artifact-fallback\.md/);
     expect(skill).not.toMatch(/separate, later fallback \(#589\)/);
   });
 
   test("the artifact procedure names the read-back and the never-ack rule", () => {
     const dk = fs.readFileSync(path.join(__dirname, "deep-knowledge", "artifact-fallback.md"), "utf8");
-    expect(dk).toMatch(/ArtifactData \{ action: "get", collection: "concept", doc_id: "decisions" \}/);
+    expect(dk).toMatch(/ArtifactData \{ action: "list", collection: "submissions" \}/);
+    expect(dk).toMatch(/a read never deletes/);
+    expect(dk).toMatch(/concept-artifact\.js" record/);
+    expect(dk).toMatch(/## Wake/);
     expect(dk).toMatch(/never acks what is not stored/);
     expect(dk).toMatch(/not connected/);
   });

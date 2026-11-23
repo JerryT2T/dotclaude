@@ -1,11 +1,19 @@
 # Changelog
 
-## [0.406.0] — 2026-11-23
+## [0.407.0] — 2026-11-23
 
 ### Fixed
 - **Machine-wide orphan scan no longer stalls:** each repo gets a 90 s classification budget; units past it are kept unclassified and counted as `truncated` (a repo with dozens of session worktrees took 5+ min).
 - **Branch cleanup in a Claude Projects thread:** the Dry-Run confirm now works there — the list is posted to the thread and the person's own next "Ja" approves exactly it (new hook `prompt.cleanup.gate`); relays never count.
 - **Agent card in a thread:** the relay no longer holds back the thread post that carries the card.
+
+## [0.406.0] — 2026-11-23
+
+### Fixed
+- Concept pages published as artifacts (the default in Claude Projects threads) no longer lose answers: each submit is its own document, each page load writes only its own draft, so two people answering at once never overwrite each other; other viewers' newer edits appear live, a failed submit is retried, and a read never deletes a submission before it is processed.
+
+### Added
+- `concept-artifact.js record / digest / mark / close`: the session remembers each artifact concept, and the session start names every open one, so a restarted or replaced thread session still finds waiting answers.
 
 ## [0.405.0] — 2026-11-23
 

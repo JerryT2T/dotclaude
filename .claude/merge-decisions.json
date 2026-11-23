@@ -190,6 +190,18 @@
         "at": "2026-11-23T19:51:58.818Z"
       }
     ],
+    "plugins/devops/deep-knowledge/project-threads.md›What happens table›A concept page row": [
+      {
+        "ship": "claude/project-thread-rgged7",
+        "by": "Claude",
+        "value": "extended row (one document per submit, record, read-back check)",
+        "decided": true,
+        "at": "2026-11-23T21:58:27.740Z",
+        "hunks": [
+          "6f1f23fbedd2"
+        ]
+      }
+    ],
     "plugins/devops/deep-knowledge/project-threads.md›local-threads-first›bullets": [
       {
         "ship": "#1219",
