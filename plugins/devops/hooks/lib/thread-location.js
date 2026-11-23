@@ -1,7 +1,7 @@
 'use strict';
 /**
  * @module thread-location
- * @version 0.1.0
+ * @version 0.2.0
  * @plugin devops
  * @description Where Claude Project threads start: on the user's computer first
  *   (default), only there, in the cloud first, or ask each time. One global
@@ -122,4 +122,13 @@ function block(value, opts = {}) {
   return null;
 }
 
-module.exports = { VALUES, DEFAULT, BLOCK_VERSION, INHERIT, isProjectId, read, effective, set, marker, block, snippetFile };
+/**
+ * Is the feature `project-threads` allowed on this channel? For the callers that
+ * surface the setting (script, Home row); the stored values are read either way.
+ * @param {object} [opts] passed to `featureAllowed` (tests: pluginRoot, home, channel)
+ */
+function featureOn(opts) {
+  try { return require('./features').featureAllowed('project-threads', opts); } catch { return false; }
+}
+
+module.exports = { VALUES, DEFAULT, BLOCK_VERSION, INHERIT, isProjectId, read, effective, set, marker, block, snippetFile, featureOn };

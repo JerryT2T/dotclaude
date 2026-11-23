@@ -42,7 +42,8 @@ describe("hint and blockCheck texts", () => {
     expect(t).toMatch(/FIRST fenced block/);
     const cf = hook.hint({ mode: "on", projectId: "chan_T1", hinted: false, remote: false, lang: "en", pluginRoot: "/pr", value: "cloud-first" });
     expect(cf).not.toContain("thread-location.js");
-    expect(cf).not.toContain("Where threads run\" block");
+    expect(cf).not.toContain("text and the \"Where threads run\" block");
+    expect(cf).toContain("add the devops text.");
   });
   test("hint stays silent when hinted, remote, feature off or no id", () => {
     const o = { mode: "on", projectId: "chan_T1", hinted: false, remote: false };
