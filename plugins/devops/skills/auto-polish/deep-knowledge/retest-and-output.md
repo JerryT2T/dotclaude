@@ -40,6 +40,13 @@ Step 12.
 **Skip self-spawned redteam** when `$PARENT_SKILL=do-run` and parent owns
 a redteam wave — flag findings for parent's wave instead.
 
+## Forwarded line (Step 12)
+
+Findings handed to another thread (Step 10a) get one line in the reply, apart
+from the open decisions: `Forwarded (weitergegeben): <finding> -> <thread or
+coordinator>`. Never list them under "needs your OK". The line is omitted when
+nothing was forwarded.
+
 ## Concept Page (Step 12, when needed)
 
 Build a concept page following the concept scaffold in

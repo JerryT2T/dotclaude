@@ -210,7 +210,8 @@ items: a concept page per `deep-knowledge/retest-and-output.md` § Concept Page.
 - **UI-first** — every change is justified by a UI benefit. Backend
   only when UI demonstrably suffers.
 - **Structural changes need approval.** `--autonomous` flags them, never
-  applies.
+  applies. In a Claude Project thread a finding owned by another thread is
+  forwarded, not asked (Step 10a, `deep-knowledge/fix-phases.md`).
 - **`--strict` narrows, never widens.** Only the named scope changes; a
   finding outside it is reported, not fixed.
 - **Token-first** — when a design token catalog exists, prefer tokens

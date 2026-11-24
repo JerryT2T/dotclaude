@@ -101,6 +101,16 @@ Rules that differ from a Desktop session:
 - **No `sessionTitle` from the hook, no `set_session_title`.** That title names the local session, which the project does not show.
 - **No interrupted title, no title-mismatch check.** No Stop hook can correct a title there. The stale hourglass is handled by the reply hint above.
 
+## Findings that belong to another thread
+
+A finding that lies outside the thread's own task but inside the named scope of another thread is handed over, not asked about. Routing information is reversible and costs the person nothing, so it never goes to the person as a decision (no `AskUserQuestion`, no `request_decision`, no "needs your OK" point).
+
+- **Scope of a thread** comes from the spawn note ("a separate thread does X"), a coordinator relay, or the thread titles `list_threads` returns. Without such a source there is no owner.
+- **Route**, first that works: `message_thread` to the owning thread; `message_coordinator`; on a device thread the coordinator is reached by `send_message` to `@parent` or the bridge note (same route as the instructions request above). Send what the owner needs: file and place, the symptom, the proposed fix, in two or three lines.
+- **The reply** says in one line that it was forwarded and to whom ("weitergegeben" / "forwarded"), under its own heading, not among the open decisions. A forwarded finding is not applied here and not counted as a proposal.
+- **No owner** (no thread's scope covers it): the finding stays what its skill makes of it, a proposal for the person (auto-polish Step 10, `deep-knowledge/fix-phases.md` Step 10a).
+- Applies to every skill that finds things on the way (auto-polish, auto-harden, auto-review). Outside a thread the rule does not apply.
+
 ## Ship
 
 A thread on this computer ships like a Desktop session. A cloud thread ships as far as the platform allows: branch push, PR, checks and squash-merge go through REST (`mcp-server/ship/lib/github.js`, switched by `CLAUDE_CODE_REMOTE=true` or the first refused `gh pr` call); the tag the proxy refuses is handed over with the exact commands for a local clone (`tag-handoff.js`). Without the plugin a cloud thread follows `skills/do-ship/deep-knowledge/manual-ship.md` § Cloud thread.
