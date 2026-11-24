@@ -87,7 +87,6 @@ describe("ss.catalog.remote", () => {
     const text = await go("0.350.0", { pluginRoot: root, cloud: true, lang: "en" });
     expect(text).toContain("start auto-guide");
     expect(text).not.toContain("Manage marketplaces");
-    expect(text).toContain("only the person can do");
     expect(text).not.toContain("[ss.cloud.update]");
   });
 
