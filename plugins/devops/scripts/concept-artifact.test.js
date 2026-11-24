@@ -145,7 +145,7 @@ describe("submissions — nothing is overwritten, nothing is acked unstored", ()
     const flush = () => new Promise((r) => setTimeout(r, 20));
     const mockComments = (state = "available", extra = {}) => ({
       canSendToClaude: vi.fn(() => state),
-      anchorFor: vi.fn(() => "anchor-1"),
+      anchorFor: vi.fn(async () => "anchor-1"),
       sendToClaude: vi.fn(async () => {}),
       ...extra,
     });

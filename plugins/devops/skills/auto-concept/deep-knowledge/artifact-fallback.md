@@ -106,9 +106,12 @@ in this order of preference:
   (`canSendToClaude() === 'available'` → `sendToClaude({anchor, text})`; the
   text names the action and the round). Every error is swallowed, a duplicate
   re-send posts nothing, and an artifact published without `comments` (a
-  redeploy keeps the first capabilities) simply has no wake. The runtime shape
-  of the comments object is not documented in this repo and was not observed
-  live: the wrapper feature-detects each function.
+  redeploy keeps the first capabilities) simply has no wake. Shape per the
+  runtime contract's `comments.d.ts` (0.2.99): `anchorFor(el)` resolves a
+  Promise, `sendToClaude` works for the artifact's Editors only and from the
+  viewer's own recent gesture (the submit click), so a Contributor's submit
+  gets no wake. Not yet observed live; the wrapper still feature-detects each
+  function.
 - **`session_device_bound`:** the durable wake subscription cannot register for
   a cloud session bound to the desktop it started from ("activity on the
   artifact can't wake it"), and the comment wake may be unavailable too.

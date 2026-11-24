@@ -170,9 +170,13 @@ function installConceptArtifact(win) {
           var action = String((data && data.action) || 'submit');
           var round = data && data.iteration != null ? ' of round ' + data.iteration : '';
           var text = 'Concept page submitted: action "' + action + '"' + round + '. Read the decisions from the artifact store (submissions) and continue.';
-          var anchor;
-          try { if (typeof c.anchorFor === 'function' && doc && doc.body) anchor = c.anchorFor(doc.body); } catch (e) { anchor = undefined; }
-          return c.sendToClaude({ anchor: anchor, text: text });
+          // anchorFor resolves a Promise (runtime contract comments.d.ts); the
+          // target needs a real anchor, so no anchor means no wake.
+          if (typeof c.anchorFor !== 'function' || !doc || !doc.body) return;
+          return Promise.resolve(c.anchorFor(doc.body)).then(function (anchor) {
+            if (!anchor) return;
+            return c.sendToClaude({ anchor: anchor, text: text });
+          });
         });
       }).catch(function () { /* the wake is best effort */ });
     } catch (e) { return Promise.resolve(); }
