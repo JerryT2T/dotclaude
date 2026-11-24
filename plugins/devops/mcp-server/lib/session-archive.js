@@ -46,20 +46,27 @@ const SHIP_VARIANTS = new Set(["ship-successful", "released"]);
 /**
  * Should this card archive the session?
  *
+ * A `ready` card that ends a close-out in a repo without remote (`deps.localDone`,
+ * `isLocalDone` in mode-state.js) also qualifies: the local commit is the
+ * delivery, nothing is left to merge or push. Every other guard stays.
+ *
  * @param {object} params normalized card params (variant already guarded)
- * @param {{ desktop: boolean, hasPending: Function, hasConcept: Function,
+ * @param {{ desktop: boolean, localDone?: (p: object) => boolean, hasPending: Function, hasConcept: Function,
  *   closeoutOnly?: (cwd: string) => boolean,
  *   batchActive: (cwd: string) => boolean, holdReason: (cwd: string) => string,
  *   enabled: (cwd: string) => boolean, treeClean: (cwd: string) => boolean }} deps
- * @returns {{ archive: boolean, reason: string }}
+ * @returns {{ archive: boolean, reason: string, local?: boolean }}
  */
 export function archiveDecision(params, deps) {
   const no = (reason) => ({ archive: false, reason });
   if (!deps.desktop) return no("not-desktop");
-  if (!SHIP_VARIANTS.has(params.variant)) return no("variant");
+  const local = typeof deps.localDone === "function" && !!deps.localDone(params);
+  if (!SHIP_VARIANTS.has(params.variant) && !local) return no("variant");
   const s = params.state && typeof params.state === "object" ? params.state : {};
-  if (!s.merged) return no("not-merged");
-  if (!s.pushed && s.mode !== "git-no-remote") return no("not-pushed");
+  if (!local) {
+    if (!s.merged) return no("not-merged");
+    if (!s.pushed && s.mode !== "git-no-remote") return no("not-pushed");
+  }
   if (s.kept) return no("kept");
   if (deps.hasPending(params.pending)) return no("pending");
   // A marked side session still running / waiting / failed: the chat is its hub (unmarked follow-ups never block).
@@ -82,7 +89,7 @@ export function archiveDecision(params, deps) {
   if (hold) return no(`hold:${hold}`);
   if (!deps.enabled(cwd)) return no("switched-off");
   if (!deps.treeClean(cwd)) return no("dirty-tree");
-  return { archive: true, reason: "" };
+  return local ? { archive: true, reason: "", local: true } : { archive: true, reason: "" };
 }
 
 /** A validation requirement (unmet / partial) that waits on the user. */
@@ -113,10 +120,10 @@ export function archiveInstruction() {
 /**
  * Write the flag for an archiving card, or remove a stale one for any other
  * card — a re-render that no longer qualifies must take the hand-over back.
- * The flag holds `{ cwd, nonce, ts }`. Best effort; no `cwd` → no flag.
+ * The flag holds `{ cwd, nonce, ts }` (+ `local: true` for a finished no-remote close-out, which has no merged ship_release as evidence). Best effort; no `cwd` → no flag.
  * @returns {string} the flag path when written, '' otherwise
  */
-export function writeArchiveFlag(archive, sessionId, dir, { cwd = "" } = {}) {
+export function writeArchiveFlag(archive, sessionId, dir, { cwd = "", local = false } = {}) {
   const file = join(dir, `${ARCHIVE_FLAG_PREFIX}-${sessionId}`);
   try {
     if (!archive) {
@@ -124,7 +131,7 @@ export function writeArchiveFlag(archive, sessionId, dir, { cwd = "" } = {}) {
       return "";
     }
     if (!cwd) throw new Error("no cwd");
-    const stamp = { cwd, nonce: randomBytes(8).toString("hex"), ts: Date.now() };
+    const stamp = { cwd, nonce: randomBytes(8).toString("hex"), ts: Date.now(), ...(local ? { local: true } : {}) };
     writeFileSync(file, JSON.stringify(stamp));
     return file;
   } catch {

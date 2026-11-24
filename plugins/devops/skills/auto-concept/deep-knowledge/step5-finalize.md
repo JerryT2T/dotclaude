@@ -288,7 +288,7 @@ never when C blocked. Read `tests[]` and `handoffs[]` from the payload (absent
 | `guide` | `web` | After close-out (Step 6a done, watchers stopped) start the `auto-guide` skill for the item — a browser walk-through of the web task. |
 | `guide` | `desktop` | A desktop task: offer a script or takeover help for the PC step (`computer-use` takeover or a ready-to-run script), after close-out. |
 | `guide` | `inline` | Not guidable by tool: write the short numbered steps into the final message. A `guide` request on a non-guidable item always ends here — never answer "not guidable". |
-| `self` | any | The user does it. Goes onto the completion card: `userFinalTest` for a 🧪 test, the hand-off line for a 👉 item. Max 3 per kind, one very short line each. |
+| `self` | any | The user does it. Goes onto the completion card as an OPTIONAL item — `userFinalTest` `{ "action": "…", "optional": true }` for a 🧪 test, the hand-off line for a 👉 item (same shape): the user chose to do it later, so it is listed but never turns a finished, verified close-out into a 👉 card (a real blocking step still does). Max 3 per kind, one very short line each. |
 
 Rules:
 

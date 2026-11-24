@@ -118,7 +118,7 @@ function releaseArchive(hook, opts = {}) {
     const stamp = readStamp(flag);
     ok = age <= FLAG_MAX_AGE_MS
       && !!stamp
-      && fs.existsSync(sessionFile(SHIPPED_FLAG, sid))
+      && (stamp.local === true || fs.existsSync(sessionFile(SHIPPED_FLAG, sid)))
       && sameWorkTree(stamp.cwd, hook.cwd)
       && treeClean(stamp.cwd);
   } catch {
