@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.407.1] — 2026-11-24
+
+### Fixed
+- **Branch cleanup in a Claude Projects thread:** the person's "Ja" to a Dry-Run list is now actually recorded (the hook read the unwrapped prompt and never saw who spoke), and a fresh Dry-Run post keeps the run armed when the answer comes hours later.
+
 ## [0.407.0] — 2026-11-23
 
 ### Fixed
