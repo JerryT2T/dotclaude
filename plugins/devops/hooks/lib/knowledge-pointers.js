@@ -80,6 +80,7 @@ const POINTERS = Object.freeze([
       'set up this project', 'init repo', 'audit gitignore', 'add license', 'fix gitignore', 'repo hygiene',
       'Projekt einrichten', 'Repo aufsetzen', 'Lizenz hinzufügen', 'gitignore prüfen',
       '/setup-project',
+      'push it to GitHub', 'new GitHub repo', 'neues GitHub-Repo', 'make it robust', 'mach es robust', 'publish this project',
     ]),
   }),
   Object.freeze({

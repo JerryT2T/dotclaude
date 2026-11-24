@@ -7,6 +7,12 @@ How to audit or initialize a project's repository structure: .gitignore, LICENSE
 - **A new repository.** `ss.project.setup` notices a repo without a commit or
   without a root `.gitignore` and tells Claude to offer this setup once per
   clone. Run it only when the user agrees.
+- **Promotion to a real project.** Throwaway or scratch work becomes a real
+  project: Claude ran `git init` in a new folder this session, or the prompt
+  asks to publish it, push it to GitHub, share it, or make it robust / shareable
+  ("mach es robust und pack es in ein neues GitHub-Repo"). Run init mode in
+  full in that same turn, without the offer and before the first push: Step 8b
+  is the bundle. A repo the user created themselves keeps the offer above.
 - **A prompt about it** — "set up this project", "init repo", "audit
   gitignore", "add license", "fix gitignore", "repo hygiene", "Projekt
   einrichten", "Repo aufsetzen", or the old `/setup-project`:
@@ -194,12 +200,31 @@ Skip on other platforms.
 ## Step 8 — Additional files and extensions
 
 - `.editorconfig`, `.gitattributes`, `CHANGELOG.md`: report status and
-  recommend — never auto-create.
+  recommend — never auto-create, except on promotion (Step 8b).
 - `.claude/skills/`: list existing plugin skill extensions. One under a
   pre-restructure skill name (`ship/`, `fix/`, `run-backlog/`, … —
   `hooks/lib/skill-names.js`) still loads as a fallback: report it as "old
   name, still works — rename when convenient". Point to "extend skill"
   (auto-extend) for scaffolding one.
+
+## Step 8b — Promotion bundle
+
+Only on promotion (§ When this applies); do not ask first. Stack-agnostic: the
+checklist names what must exist, the project's own stack decides how. Create
+what is missing, keep what exists, report each item `[CREATED|OK|SKIPPED]`:
+
+1. `.gitignore` managed block: `node {PLUGIN_ROOT}/scripts/claude-ignore.js migrate`, plus the stack ignores of Step 2.
+2. `LICENSE` (Step 4; when the choice is open, the MIT default and say so in the report).
+3. `README.md` per `readme-standards.md`.
+4. `.editorconfig` and `.gitattributes` (line endings, binary files).
+5. `CHANGELOG.md` with an `Unreleased` heading.
+6. `VERSION` — SemVer, the single source of truth; the build stamps it into the artifact (assembly version, `package.json`, a constant: whatever the stack reads).
+7. A build script that produces one packaged, downloadable artifact (zip) from a clean checkout.
+8. CI: build + tests on push and pull request; a release workflow on a `v*` tag that attaches the artifact.
+9. Project map (Step 6) and a project `CLAUDE.md` (Step 3: build, test, release commands).
+
+The first push waits until the list is done. Without a remote the bundle still
+runs; the CI files simply have nothing to run on yet.
 
 ## Step 9 — Report and card
 
