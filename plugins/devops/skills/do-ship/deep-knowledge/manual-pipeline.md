@@ -406,7 +406,7 @@ The block also strips a stale `⏳ ➜ 🚀 ` when the title carries one. A titl
 
 ### Session archive on exit (carried by the card result, #632)
 
-A merged `ship-successful` / `released` card in the Desktop app also returns a `[SESSION ARCHIVE]` block: the session archives itself **after** the card. Show the widget as usual; its hook then releases exactly one more call — `mcp__ccd_session_mgmt__archive_session {session_id:"self"}` — with no text around it. Make it only when the hook says so. The renderer leaves the block out for a kept session, pending work, open points, a dirty tree and more — the full list: `{PLUGIN_ROOT}/skills/do-ship/deep-knowledge/completion-card-payloads.md` § Session archive conditions. In a Claude Projects thread the card carries `[THREAD RESOLVE]` instead: follow it, never call `archive_session` (`deep-knowledge/project-threads.md` § Resolved, not archived).
+A merged `ship-successful` / `released` card in the Desktop app also returns a `[SESSION ARCHIVE]` block: the session archives itself **after** the card. Show the widget as usual; its hook then releases exactly one more call — `mcp__ccd_session_mgmt__archive_session {session_id:"self"}` — with no text around it. Make it only when the hook says so. The renderer leaves the block out for a kept session, pending work, open points, a dirty tree and more — the full list: `{PLUGIN_ROOT}/skills/do-ship/deep-knowledge/completion-card-payloads.md` § Session archive conditions. In a Claude Projects thread the card carries `[THREAD RESOLVE]` instead: follow it, never call `archive_session` (`{PLUGIN_ROOT}/deep-knowledge/project-threads.md` § Resolved, not archived).
 
 ### Promotion-gap nudge (final ship to main without a promotion — MANDATORY)
 
