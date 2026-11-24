@@ -27,7 +27,8 @@ const fs = require('fs');
 const path = require('path');
 const { sessionFile, writeSessionFile } = require('./session-id');
 const { findRepoRoot, samePath } = require('./project-root');
-const { gitRun } = require('./git-timeout');
+const { spawnSync } = require('child_process');
+const { gitRun, GIT_TIMEOUT_MS } = require('./git-timeout');
 const { strandedBranch, leftBehindBranches } = require('../../scripts/lib/stranded-branch');
 
 /** Written by the completion MCP (keyed by the model-supplied id), adopted onto the real id. */
@@ -41,27 +42,59 @@ const FLAG_MAX_AGE_MS = 60 * 60 * 1000;
 const ARCHIVE_TOOL_RE = /(?:^|__)ccd_session_mgmt__archive_session$/;
 
 /**
+ * True only when git itself ran in `cwd` and said there is no repository.
+ * A missing folder, a missing git binary, a timeout, a safe.directory /
+ * dubious-ownership refusal, any other git failure, or a `.git` on the path
+ * (a corrupt repo) is NOT "no repo" — those must still refuse (#1231).
+ * @param {string} cwd
+ */
+function noGitRepo(cwd) {
+  if (!cwd || typeof cwd !== 'string') return false;
+  try {
+    if (!fs.statSync(cwd).isDirectory()) return false;
+    if (findRepoRoot(path.resolve(cwd))) return false;
+    const r = spawnSync('git', ['rev-parse', '--git-dir'], {
+      cwd, timeout: GIT_TIMEOUT_MS, encoding: 'utf8', windowsHide: true,
+      stdio: ['ignore', 'ignore', 'pipe'],
+      env: { ...process.env, LC_ALL: 'C', LANG: 'C', LANGUAGE: 'C' },
+    });
+    if (r.error || r.signal || r.status === null) return false;
+    return r.status === 128 && /not a git repository/i.test(String(r.stderr || ''))
+      && !/dubious ownership|safe\.directory/i.test(String(r.stderr || ''));
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Clean work tree: no tracked change, no untracked file. Ignored files are
  * accepted (the user's local config). Missing or unreadable cwd → false.
+ * A folder git reports as "not a git repository" has no tree to be dirty: true.
  * @param {string} cwd
  */
 function treeClean(cwd) {
   if (!cwd || typeof cwd !== 'string') return false;
   try {
     if (!fs.statSync(cwd).isDirectory()) return false;
+    if (noGitRepo(cwd)) return true;
     return gitRun(cwd, ['status', '--porcelain', '--untracked-files=all']).trim() === '';
   } catch {
     return false;
   }
 }
 
-/** Do both paths sit in the same git work tree? Unresolvable → false. */
+/**
+ * Do both paths sit in the same git work tree? Unresolvable → false. Two
+ * folders without any repo (git said so for both) are the same when their
+ * normalised paths are equal.
+ */
 function sameWorkTree(a, b) {
   if (!a || !b) return false;
   try {
     const ra = findRepoRoot(path.resolve(a));
     const rb = findRepoRoot(path.resolve(b));
-    return !!ra && !!rb && samePath(ra, rb);
+    if (ra || rb) return !!ra && !!rb && samePath(ra, rb);
+    return samePath(a, b) && noGitRepo(a) && noGitRepo(b);
   } catch {
     return false;
   }
@@ -195,6 +228,7 @@ module.exports = {
   FLAG_MAX_AGE_MS,
   ARCHIVE_TOOL_RE,
   treeClean,
+  noGitRepo,
   sameWorkTree,
   readStamp,
   flagBelongsTo,

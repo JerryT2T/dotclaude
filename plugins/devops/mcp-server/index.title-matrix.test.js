@@ -96,6 +96,9 @@ const CASES = [
   ["ready + file-only → files", { variant: "ready", state: { mode: "file-only" } }, ["👉", "Files", "📦"]],
   ["ready-files", { variant: "ready-files", state: { mode: "file-only" } }, ["👉", "Files", "📦"]],
   ["ready-files + open", { variant: "ready-files", state: { mode: "file-only" }, open: OPEN }, ["👉", "Files", "📦"]],
+  ["ready-files finished (delivered set)", { variant: "ready-files", state: { mode: "file-only", delivered: "none" } }, ["🟩", "Files", "📦"]],
+  ["ready + file-only finished, optional final test", { variant: "ready", state: { mode: "file-only", delivered: "none" }, userFinalTest: [{ action: "Datei prüfen", optional: true }] }, ["🟩", "Files", "📦"]],
+  ["ready + file-only finished + mandatory final test", { variant: "ready", state: { mode: "file-only", delivered: "none" }, userFinalTest: ["Datei prüfen"] }, ["👉", "Files", "📦"]],
   // ship
   ["ship-blocked", { variant: "ship-blocked", cta: { reason: "Preflight" } }, ["👉", "Blocked", "🚧"]],
   ["ship-successful plain merge (no ring)", { variant: "ship-successful", state: SHIPPED, delivery: { ship: { version: "0.1.0" } } }, ["🟩", "Released Alpha", "🚀"]],

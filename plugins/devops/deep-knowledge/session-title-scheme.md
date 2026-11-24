@@ -21,7 +21,7 @@ at turn end. Nothing else strips or sets titles.
 **Shared heads.** States with the same status and activity share one title
 head; only the card tells them apart: `👉 ➜ 📦` (Ready, Files), `👉 ➜ ⚠️`
 (Red tests, Unverified, Not deployed), `🟩 ➜ 🚀` (Released Alpha / Beta /
-Stable), `🟩 ➜ 🎊` (promoted Beta / Stable), `🟩 ➜ 📦` (Committed,
+Stable), `🟩 ➜ 🎊` (promoted Beta / Stable), `🟩 ➜ 📦` (Committed, Files done,
 Delivered). `classify` needs none of these distinctions. The one clash across
 categories was `👉 ➜ 🧪` — the Test outcome and a Testing run waiting on an
 approval — so Testing left the approval swap (see below).

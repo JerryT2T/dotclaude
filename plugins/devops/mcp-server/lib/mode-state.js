@@ -22,7 +22,7 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { normalizeConcept } from "./pending.js";
+import { hasPending, normalizeConcept } from "./pending.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -126,6 +126,7 @@ export function titleStateForKey(key, ctx = {}) {
     case "ready": return "ready";
     case "ready-local":
     case "done-local": return "committed";
+    case "done-files": return "files-done";
     case "question": return "question";
     case "test":
     case "test-local": return "test";
@@ -190,7 +191,15 @@ export function hasMandatoryStep(params) {
  */
 export function isLocalDone(params) {
   const state = params && params.state && typeof params.state === "object" ? params.state : {};
-  if (!params || params.variant !== "ready") return false;
+  if (!params) return false;
+  // A project without git: the files on disk are the delivery (#1231). The
+  // variant may already be corrected to `ready-files`; any `delivered` value
+  // counts (ship_release reports "none" for file-only).
+  if ((params.variant === "ready" || params.variant === "ready-files") && state.mode === "file-only") {
+    if (typeof state.delivered !== "string" || !state.delivered.trim()) return false;
+    return !hasMandatoryStep(params) && !hasPending(params.pending);
+  }
+  if (params.variant !== "ready") return false;
   if (state.mode !== "git-no-remote" || state.delivered !== "local-commit-only") return false;
   return !hasMandatoryStep(params);
 }
