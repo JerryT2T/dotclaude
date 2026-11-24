@@ -358,9 +358,11 @@ test('#1161: the cleanup flow stays in the band — no pane opens on its own; st
 })
 
 test('#1161: planSummary counts numbered plan actions and listed decision items only', () => {
-  expect(planSummary('## Plan\n1. a\n2) b\nprose\n## Braucht deine Entscheidung\n- x\n* y\n1. z')).toEqual({ actions: 2, decisions: 3 })
-  expect(planSummary('## Plan\nNichts ist sicher zu entfernen.')).toEqual({ actions: 0, decisions: 0 })
-  expect(planSummary('')).toEqual({ actions: 0, decisions: 0 })
+  expect(planSummary('## Plan\n1. a\n2) b\nprose\n## Braucht deine Entscheidung\n- x\n* y\n1. z')).toEqual({ actions: 2, decisions: 3, unlanded: 0 })
+  expect(planSummary('## Plan\nNichts ist sicher zu entfernen.')).toEqual({ actions: 0, decisions: 0, unlanded: 0 })
+  expect(planSummary('')).toEqual({ actions: 0, decisions: 0, unlanded: 0 })
+  // Unlanded branches are counted apart from plan actions and decisions.
+  expect(planSummary('## Plan\n1. a\n## Unlanded branches\n- b1 — Integrieren\n- b2 — Neu umsetzen\nprose\n## Braucht deine Entscheidung\n- b1')).toEqual({ actions: 1, decisions: 1, unlanded: 2 })
 })
 
 test('#1160: a plan run that ends on an interim waiting line fails as "plan incomplete" and offers no Apply', async ($, on) => {
@@ -682,6 +684,24 @@ test('budget bars carry a fixed size (an interactive Svg frame takes none from t
   expect(bar?.props.height).toBe(24)
   expect(bar?.props.source).not.toMatch(/devops/)
   await band.unmount()
+})
+
+test('#1173: the plan brief runs the content triage; the apply brief acts only on explicit Integrieren / Neu umsetzen choices', () => {
+  const plan = cleanupPlanPrompt('P:/r', 'P:/r/.claude/worktrees/me')
+  expect(plan).toMatch(/git merge-tree --write-tree/)
+  expect(plan).toMatch(/git diff --stat/)
+  expect(plan).toMatch(/## Unlanded branches/)
+  for (const v of ['Integrieren', 'Neu umsetzen', 'Entfernen', 'Behalten']) expect(plan).toContain(v)
+  expect(plan).toMatch(/intention/)
+  expect(plan).toMatch(/proof of landing/)
+  const apply = cleanupApplyPrompt('P:/r', 'P:/r/.claude/worktrees/me', 'PLAN X')
+  expect(apply).toMatch(/NOT approved: skip them, unless the plan text marks/)
+  expect(apply).toMatch(/Konflikte mit main: <paths>/)
+  expect(apply).toMatch(/devops:do-ship", args: "--cwd=<path> --keep --queued"/)
+  expect(apply).toMatch(/devops:auto-issue/)
+  expect(apply).toMatch(/branch is kept/)
+  expect(apply).toMatch(/cannot call Skill\(\)/)
+  expect(apply.endsWith('APPROVED PLAN:\nPLAN X')).toBe(true)
 })
 
 test('cleanup briefs keep the session worktree out and approve only the plan; the band row drops the devops prefix', async () => {

@@ -1999,7 +1999,7 @@ export const register: Register = on => {
           <Box key="cleanup-run-head" flexDirection="row" alignItems="center" columnGap={1} flexWrap="wrap">
             <Text>🧹</Text>
             <Text key="cleanup-run-status" bold={!busy} dimColor={busy}>{head}</Text>
-            {sum && <Text key="cleanup-run-summary" {...S.small}>{tr(loc, 'planSummary', { n: sum.actions, d: sum.decisions })}</Text>}
+            {sum && <Text key="cleanup-run-summary" {...S.small}>{tr(loc, 'planSummary', { n: sum.actions, d: sum.decisions })}{sum.unlanded > 0 ? ` · ${tr(loc, 'planUnlanded', { u: sum.unlanded })}` : ''}</Text>}
             {!busy && run.report && (
               <Button key="cleanup-details" plain label={`${tr(loc, 'cleanupDetails')} ${runUp ? '▾' : '▸'}`} onPress={() => update($, cleanupOpen, v => !v)} />
             )}
