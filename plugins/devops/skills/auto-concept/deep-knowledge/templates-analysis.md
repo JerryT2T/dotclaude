@@ -350,9 +350,25 @@ function hesitationFlag(hz, medianMs) {
   return slow && back;
 }
 
+/** One entry per simulator (data-viz="sim"): its control values and the outputs they give. State is the hidden dm-{simId}.{ctl} inputs. */
+function collectSimStates(scope) {
+  const root = scope || document, seen = {}, out = [];
+  if (!window.CONCEPT_SIM) return out;
+  root.querySelectorAll('[data-viz="sim"][data-sim]').forEach(el => {
+    const id = el.getAttribute('data-sim');
+    if (seen[id]) return;
+    seen[id] = 1;
+    try {
+      const st = window.CONCEPT_SIM.state(JSON.parse(el.getAttribute('data-viz-spec')), id, el.closest('section[data-iteration]') || root);
+      out.push({ id, label: el.dataset.label || id, mode: 'sim', value: { controls: st.controls, outputs: st.outputs }, rec: '', deviates: false, none: false, untouched: !st.moved });
+    } catch (e) { /* a broken spec shows its text and has no state */ }
+  });
+  return out;
+}
+
 function collectModeDecisions(scope) {
   if (window.conceptAnalysis && typeof window.conceptAnalysis.flush === 'function') window.conceptAnalysis.flush();
-  return [...(scope || document).querySelectorAll('[data-decision][data-decision-mode]')].map(collectModeDecision);
+  return [...(scope || document).querySelectorAll('[data-decision][data-decision-mode]')].map(collectModeDecision).concat(typeof collectSimStates === 'function' ? collectSimStates(scope) : []);
 }
 ```
 
@@ -378,6 +394,60 @@ Core types every engine build must provide (the full ≥ 30 type catalogue with
 | `donut` | `{ "parts": [ { "label": "…", "value": 60 } ] }` |
 | `compare` | `{ "before": { "label": "…", "value": 10 }, "after": { "label": "…", "value": 4 }, "unit": "s" }` |
 | `flow` | `{ "steps": [ { "label": "…", "value": "…" } ] }` |
+| `sim` | simulator, below |
+
+### `sim` — a simulator for a mechanic, a model, a cause-and-effect system
+
+Core type, not a decision mode: it has no `data-decision`, no `data-rec`, no answer
+to preselect. The reader moves controls, watches the outputs change and answers in
+the round note or the few text decisions next to it.
+
+```html
+<div data-viz="sim" data-sim="pips" data-label="Pip model" data-viz-spec='{
+  "text": "Pips per component; outputs follow the formulas shown.",
+  "controls": [
+    { "id": "em", "label": "EM", "type": "steps", "min": 0, "max": 4, "value": 2, "group": "Pips" },
+    { "id": "cool", "label": "Cooling", "type": "steps", "min": 0, "max": 4, "value": 2, "group": "Pips" },
+    { "id": "boost", "label": "Boost", "type": "range", "min": 0, "max": 100, "step": 5, "value": 50 }
+  ],
+  "consts": { "base": 10 },
+  "outputs": [
+    { "id": "heat", "label": "Heat", "unit": "/s", "formula": "base * (1 + em) - cool * 3", "tags": ["HUD", "Overheat"] },
+    { "id": "dps", "label": "Damage", "unit": "DPS", "formula": "heat * 2 + boost / 10" }
+  ],
+  "bar": { "output": "heat", "max": 60, "label": "Heat" },
+  "budget": { "total": 6, "controls": ["em", "cool"] }
+}'>The simulator needs JavaScript.</div>
+```
+
+| Key | Meaning |
+|---|---|
+| `data-sim` | simulator id (letters, digits, `_`; unique on the round), names the state `dm-{simId}.{ctl}` |
+| `text` | one line of context, shown as plain text |
+| `controls[]` | `id` (letters, digits, `_`), `label`, `type` `steps` (pips, integer, at most 12 wide) or `range` (`step`), `min`, `max`, `value` (the default), optional `group` (a heading over neighbouring controls). At most 12 |
+| `consts` | named numbers a formula may read, shown under the outputs |
+| `outputs[]` | `id`, `label`, `unit`, `formula`, `tags` (where the value surfaces), `delta` (default true: the live change against the defaults). At most 12; evaluated in order, a formula may read controls, consts and EARLIER outputs |
+| `bar` | `{ "output", "max", "label" }`: a meter for one output |
+| `budget` | `{ "total", "controls": [ids of steps controls] }`: their sum never exceeds `total`; a click over it is refused |
+
+**Formulas** are data, never code. Grammar: numbers, known ids, `+ - * / ^`, unary minus,
+parentheses and `min max abs round floor ceil sqrt clamp(x, lo, hi)`; at most 240
+characters, 160 tokens, 20 levels. An unknown id, an unknown function, any other
+character or a name such as `constructor` / `__proto__` makes the whole spec invalid
+(the page shows `text` instead, and the gate fails it, A14). A division by zero or any
+non-finite result shows as a dash. The formula of every output stays visible under its
+value, so a wrong model can be spotted.
+
+**State** lives in hidden `dm-{simId}.{ctl}` inputs on the round's section. Author one `<input type="hidden" name="dm-{simId}.{ctl}" value="{default}">` per control in the round (the bake writes the answers into the fragment's named inputs, so without them a frozen round loses the values; gate A15 `sim-state-inputs`), and give the sim id the round prefix (`r3_pips`: ids repeat across rounds otherwise). They persist
+by name (`templates-persistence.md`), ship in `allFields` and are read by
+`collectSimStates()` (entry `mode: "sim"`, `value: { controls, outputs }`). The sim is
+authored once. **Default: the topic's L2 long slot** (`data-alevel="2"` →
+`data-slot="long"`; the topic page draws a clone as its graphic); only without a
+topic, in the round body. The clone reuses the same hidden inputs, so no copy of the state exists.
+Every text goes in through `textContent`. Controls are labelled buttons / range
+inputs (arrow keys move the pips); the outputs are an `aria-live="polite"` region.
+Stamp the round `data-topic-kind="mechanic"` when the topic is a mechanic (round-1
+rule: `step1-templates.md` § 1b · Mechanic topics).
 
 ## Phase 2 answer forms
 

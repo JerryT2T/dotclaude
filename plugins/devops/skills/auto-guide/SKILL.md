@@ -80,6 +80,11 @@ Announce once in chat, then go quiet until the guide ends:
 
 ## Step 3 — Open the one tab
 
+**In a cloud session or thread** (`CLAUDE_CODE_REMOTE=true`) there is no Edge of
+the user: start a session on their computer (`start_remote_control` when
+offered, else ask the coordinator for a "Work locally" thread) with this guide's
+goal as its prompt, say so in one line and stop. Never a text click list instead.
+
 Only the Claude-in-Chrome extension in the user's Edge qualifies: the site is
 third-party and needs the user's logins. Preview is localhost-only and
 Playwright has no user context — **no waterfall here**. Computer-use is
@@ -93,7 +98,9 @@ never used (`{PLUGIN_ROOT}/deep-knowledge/browser-tool-strategy.md` § Edge rule
    for the whole guide. `$TAB_ID` is a **number** — never pass a string.
 2. If the call fails → show the "BROWSER TOOL NICHT VERFÜGBAR" block from
    browser-tool-strategy.md and stop; there is no fallback for this skill.
-3. `navigate({ tabId: $TAB_ID, url: $START_URL })`.
+3. `navigate({ tabId: $TAB_ID, url: $START_URL })`. Refused because the site
+   leaves that page to the user (claude.ai Settings / Customize / Plugins) →
+   recovery.md § Companion panel; never another tool or URL around the block.
 4. `node "{PLUGIN_ROOT}/scripts/web-guide.js" guide active` (#526): marks the
    guide active for `stop.flow.guard` so it does not force the completion
    card that would end the wait() loop below. Re-run it on every turn that

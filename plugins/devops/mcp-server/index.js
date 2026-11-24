@@ -1457,6 +1457,8 @@ const HEADINGS = {
     'ready-local': () => 'Lokal committet — noch etwas?',
     // The close-out ended at the local commit and nothing is left for the user.
     'done-local': () => 'Lokal abgeschlossen.',
+    // File-only close-out with nothing left: done, no question.
+    'done-files': () => 'Auf der Platte abgeschlossen.',
     question: (c) => c.question
       ? c.question
       : `Wartet auf dich: ${c.waitsFor} — wie entscheidest du?`,
@@ -1503,6 +1505,7 @@ const HEADINGS = {
     handoff: (c) => c.ship ? `handed to session “${c.title}” — ship?` : `handed to session “${c.title}”`,
     'ready-local': () => 'Committed locally — anything else?',
     'done-local': () => 'Done locally.',
+    'done-files': () => 'Done on disk.',
     question: (c) => c.question
       ? c.question
       : `Waiting on you: ${c.waitsFor} — what's your call?`,
@@ -1555,7 +1558,9 @@ function cardHead(input, key, delivery, state) {
   if (plan && plan.head) return { id: plan.head.id, mandatory: plan.head.mandatory, hkey: 'linked', plan };
   if (QUESTION_KEYS.has(key) && !keptTestPoints(input, key, 'de') && openQuestionOf(input)) return { id: 'question', mandatory: true, hkey: 'question' };
   const noShip = (state.mode === 'git-no-remote' || state.mode === 'file-only') && (key === 'ready' || key === 'test');
-  const hkey = key === 'ready' && isLocalDone(input) ? 'done-local' : noShip ? key + '-local' : key;
+  const fileDone = (key === 'ready' || key === 'ready-files') && state.mode === 'file-only' && isLocalDone(input);
+  const hkey = fileDone ? 'done-files'
+    : key === 'ready' && isLocalDone(input) ? 'done-local' : noShip ? key + '-local' : key;
   const id = titleStateForKey(hkey, {
     ring: !!delivery.promote && state.mode !== 'git-no-remote',
     landed: delivery.promote && delivery.promote.current,
@@ -1915,11 +1920,11 @@ function resolveCardKey(input) {
   const state = input.state || {};
   const delivery = input.delivery || {};
 
-  if (variant === 'ready') {
+  if (variant === 'ready' || variant === 'ready-files') {
     if (input.vv && input.vv.unverified) return input.vv.running ? 'vv-running' : 'vv-unverified';
     if (evidenceHasDeviation(input)) return 'ready-red';
     // Without a repo the work is done on disk — nothing to ship (ready-files).
-    return state.mode === 'file-only' ? 'ready-files' : 'ready';
+    return variant === 'ready-files' || state.mode === 'file-only' ? 'ready-files' : 'ready';
   }
   if (variant === 'ship-blocked') return 'ship-blocked';
   if (variant === 'ship-successful') {
@@ -1942,7 +1947,6 @@ function resolveCardKey(input) {
   if (variant === 'released') {
     return promoteTarget(input, delivery) === 'stable' ? 'released-stable' : 'released-beta';
   }
-  if (variant === 'ready-files') return 'ready-files';
   if (variant === 'test') return 'test';
   if (variant === 'test-minimal') return 'test-minimal';
   if (variant === 'analysis') return 'analysis';
@@ -2866,7 +2870,7 @@ function archiveDeps(params) {
     closeoutOnly: conceptCloseoutOnly,
     batchActive: (cwd) => !!readBatch(cwd),
     holdReason: (cwd) => archiveHold(cwd, params.session_id),
-    localDone: (p) => resolveCardKey(p) === 'ready' && isLocalDone(p),
+    localDone: (p) => { const k = resolveCardKey(p); return (k === 'ready' || k === 'ready-files') && isLocalDone(p); },
     enabled: archiveEnabled,
     treeClean: archiveTreeClean,
   };

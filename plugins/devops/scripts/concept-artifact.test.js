@@ -477,6 +477,15 @@ describe("session side — record, digest, mark", () => {
     expect(run({ cmd: "record", page: "docs/concepts/x.html", url: "https://evil.example/a", root: dir }).ok).toBe(false);
   });
 
+  test("record orders the read-back check, and build never says there is none", () => {
+    const r = run({ cmd: "record", page: "docs/concepts/2026-wake.html", url: "https://claude.ai/artifact/abcdef123", root: dir });
+    expect(r.next).toMatch(/MANDATORY/);
+    expect(r.next).toMatch(/CronCreate/);
+    expect(r.next).toMatch(/§ Wake/);
+    const src = fs.readFileSync(path.join(__dirname, "concept-artifact.js"), "utf8");
+    expect(src).not.toMatch(/no crons/i);
+  });
+
   test("record survives a new session: url and processed ids live under .claude/concepts/<slug>", () => {
     const url = "https://claude.ai/artifact/0f3a9c2e-1111-2222-3333-444455556666";
     const r = run({ cmd: "record", page: "docs/concepts/2026-x.artifact.html", url, root: dir });

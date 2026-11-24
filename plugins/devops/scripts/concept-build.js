@@ -411,6 +411,7 @@ function modeFields(fragment, decisions) {
       case 'wording':
         out[n] = d.choice || ''; out[`${n}-text`] = d.choice === 'custom' ? String(v ?? '') : '';
         break;
+      case 'sim': Object.entries((v && v.controls) || {}).forEach(([k, x]) => { out[`${n}.${k}`] = String(x); }); continue;
       default: continue;
     }
     if (d.mode === 'verify') out[`${n}-fix`] = d.fix || '';

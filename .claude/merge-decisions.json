@@ -138,7 +138,7 @@
     "branch-fix.js›exports›list": [
       {
         "ship": "claude/project-thread-iv58su",
-        "by": "JerryT2T",
+        "by": "Claude (autonomous, not decided by JerryT2T)",
         "value": "plus foreignFix",
         "decided": true,
         "at": "2026-11-24T21:54:36.106Z",
@@ -162,7 +162,7 @@
     "dispatch.js›normalizeInput›call": [
       {
         "ship": "claude/project-thread-iv58su",
-        "by": "JerryT2T",
+        "by": "Claude (autonomous, not decided by JerryT2T)",
         "value": "same call via P",
         "decided": true,
         "at": "2026-11-24T21:54:36.106Z",
@@ -186,7 +186,7 @@
     "lanes.json›lanes›generated": [
       {
         "ship": "claude/project-thread-iv58su",
-        "by": "JerryT2T",
+        "by": "Claude (autonomous, not decided by JerryT2T)",
         "value": "regenerated parallel lanes",
         "decided": true,
         "at": "2026-11-24T21:54:36.106Z",
@@ -198,7 +198,7 @@
     "lanes.json›writers›generated": [
       {
         "ship": "claude/project-thread-iv58su",
-        "by": "JerryT2T",
+        "by": "Claude (autonomous, not decided by JerryT2T)",
         "value": "regenerated parallel lanes",
         "decided": true,
         "at": "2026-11-24T21:54:36.106Z",
@@ -241,7 +241,7 @@
     "plugins/devops/deep-knowledge/project-threads.md›A skill wants to ask›channel": [
       {
         "ship": "claude/project-thread-sj4wep",
-        "by": "JerryT2T",
+        "by": "Claude (autonomous, not decided by JerryT2T)",
         "value": "decision card first, numbered reply as fallback",
         "decided": true,
         "at": "2026-11-24T14:00:58.176Z",
@@ -427,7 +427,7 @@
     "plugins/devops/hooks/lib/ask-title.js›threadQuestionText›first line": [
       {
         "ship": "claude/project-thread-sj4wep",
-        "by": "JerryT2T",
+        "by": "Claude (autonomous, not decided by JerryT2T)",
         "value": "decision card first, numbered reply as fallback",
         "decided": true,
         "at": "2026-11-24T14:00:58.176Z",
@@ -1879,7 +1879,7 @@
     "project-instructions-snippet.md›devops text›version": [
       {
         "ship": "claude/project-thread-iv58su",
-        "by": "JerryT2T",
+        "by": "Claude (autonomous, not decided by JerryT2T)",
         "value": "v3",
         "decided": true,
         "at": "2026-11-24T21:54:36.106Z",
@@ -1891,7 +1891,7 @@
     "project-threads.md›rules›wording": [
       {
         "ship": "claude/project-thread-iv58su",
-        "by": "JerryT2T",
+        "by": "Claude (autonomous, not decided by JerryT2T)",
         "value": "extended lines (resolve)",
         "decided": true,
         "at": "2026-11-24T21:54:36.106Z",

@@ -1,14 +1,15 @@
 # tag-on-version.yml — CI creates the release tag when a session cannot push it.
 #
 # Why: claude.ai cloud sessions cannot push tags (the GitHub proxy takes branch
-# pushes only). Scaffolded by /auto-setup or the first cloud ship; do-ship then
-# polls for the tag this workflow creates instead of handing it to the owner.
+# pushes only). Scaffolded by the do-ship reply "Tag-Workflow einrichten"
+# (mcp-server/ship/lib/tag-workflow-scaffold-cli.mjs); do-ship then polls for the
+# tag this workflow creates instead of handing it to the owner.
 #
-# Tag scheme: set TAG_PREFIX below, or pass the `tag-prefix` input on a manual
-# run. "" -> v1.2.3; "alpha/" -> alpha/v1.2.3 (ring flow).
+# Tag scheme: the scaffold writes TAG_PREFIX as a literal. "" -> v1.2.3;
+# "alpha/" -> alpha/v1.2.3 (ring flow). A push event carries no inputs, so the
+# prefix must live in this file, not in a workflow input.
 #
-# Version source: package.json. Another project type: change the "Read version"
-# step (the versionFiles entry of the project).
+# Version source: VERSION_FILE, a JSON file with a top-level "version".
 #
 # GITHUB_TOKEN note: a tag created with GITHUB_TOKEN does NOT trigger other
 # workflows (`on: push: tags`, release.yml). If a downstream workflow must run
@@ -20,20 +21,18 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-    inputs:
-      tag-prefix:
-        description: 'Tag prefix, e.g. "" for v1.2.3 or "alpha/" for alpha/v1.2.3'
-        required: false
-        default: ""
 
 permissions:
   contents: write
 
 env:
-  TAG_PREFIX: ${{ inputs.tag-prefix || '' }}
+  TAG_PREFIX: ""
+  VERSION_FILE: "package.json"
 
 jobs:
   tag:
+    # A manual run from another branch must not tag that branch's commit.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -42,18 +41,41 @@ jobs:
 
       - name: Read version
         id: version
-        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+        run: |
+          VERSION="$(node -p "require('./' + process.env.VERSION_FILE).version")"
+          if ! printf '%s\n' "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Version '${VERSION}' in ${VERSION_FILE} is not x.y.z"
+            exit 1
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Create tag when missing
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
+          if ! printf '%s\n' "$TAG_PREFIX" | grep -Eq '^([a-z]+/)?$'; then
+            echo "::error::TAG_PREFIX must be empty or one lowercase word and a slash"
+            exit 1
+          fi
           TAG="${TAG_PREFIX}v${VERSION}"
-          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
+          CHANNEL="${TAG_PREFIX%/}"
+          CHANNEL="${CHANNEL:-stable}"
+          # ls-remote --exit-code: 0 = tag found, 2 = no match, anything else = the
+          # check itself failed (network, auth). Only 2 means the tag is missing.
+          STATUS=0
+          git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1 || STATUS=$?
+          if [ "$STATUS" -eq 0 ]; then
             echo "Tag ${TAG} already exists - nothing to do."
             exit 0
           fi
+          if [ "$STATUS" -ne 2 ]; then
+            echo "::error::Could not check the remote for ${TAG} (ls-remote exit ${STATUS})"
+            exit 1
+          fi
+          # Tag the commit that set the version, not whatever main is now.
+          COMMIT="$(git log -1 --first-parent -m --format=%H -G'"version"' -- "$VERSION_FILE")"
+          COMMIT="${COMMIT:-$GITHUB_SHA}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -a "${TAG}" "${GITHUB_SHA}" -m "{\"version\":\"${VERSION}\"}"
+          git tag -a "${TAG}" "${COMMIT}" -m "{\"version\":\"${VERSION}\",\"channel\":\"${CHANNEL}\"}"
           git push origin "refs/tags/${TAG}"

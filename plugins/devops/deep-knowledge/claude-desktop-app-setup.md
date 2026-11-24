@@ -226,5 +226,5 @@ the session starts the claude.ai update itself (`hooks/lib/cloud-update.js`, swi
 devops-config `cloud.autoUpdate`, `auto-update` § "Cloud updaten" → Automatic path).
 Automatic: the decision, the claim (one updater at a time, once per version) and the
 instruction to click Customize → Plugins → Manage marketplaces → dotclaude → Check for
-updates with the session's browser tool. Manual, always: a login, a captcha, a blocked
-step, and the sync itself (claude.ai runs it on its own schedule; 17 h were observed).
+updates with the session's browser tool. Guided (`auto-guide`, reply „Cloud updaten“, #1233):
+a login, a captcha or a blocked step. Out of reach: the sync itself (claude.ai runs it on its own schedule; 17 h were observed).

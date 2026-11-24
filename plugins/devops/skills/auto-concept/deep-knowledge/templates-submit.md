@@ -176,6 +176,8 @@ function collectDecisionDecisions() {
       ...getElementState(el)
     });
   });
+  // Simulators (data-viz="sim", templates-analysis.md § sim): one typed entry each, mode 'sim'.
+  if (typeof collectSimStates === 'function') decisions.push(...collectSimStates(active));
 
   // { general: { text, attachments }, items: [ … ] } — the live round's
   // inline notes plus the 💬 dock's general note (collectComments above).

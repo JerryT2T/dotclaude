@@ -474,6 +474,37 @@ describe("render_completion_card — anatomy (§ 2 of the design doc)", () => {
     });
   });
 
+  // #1231: the same for a project without git - ship_release reports delivered "none" there.
+  describe("finished close-out in a project without git renders as done (#1231)", () => {
+    const state = { mode: "file-only", filesModified: 4, delivered: "none" };
+    test("ready with only optional final tests: green, no question", async () => {
+      const text = await cardText({
+        variant: "ready", summary: "Fertig", lang: "de", session_id: "test-1231-a", state,
+        userFinalTest: [{ action: "Datei prüfen", optional: true }],
+      });
+      expect(text).toMatch(/^## 🟩 📦 Files — Auf der Platte abgeschlossen\.$/m);
+      expect(text).not.toContain("noch etwas?");
+    });
+    test("the ready-files variant and english", async () => {
+      const text = await cardText({ variant: "ready-files", summary: "Done", lang: "en", session_id: "test-1231-b", state });
+      expect(text).toMatch(/^## 🟩 📦 Files — Done on disk\.$/m);
+    });
+    test("a mandatory final test keeps the your-turn card", async () => {
+      const text = await cardText({ variant: "ready", summary: "Fertig", lang: "de", session_id: "test-1231-c", state, userFinalTest: ["Datei prüfen"] });
+      expect(text).toMatch(/^## 👉 📦 Files — Fertig auf der Platte — noch etwas\?$/m);
+    });
+    test("red or unverified evidence is never done, whichever variant carries it", async () => {
+      for (const variant of ["ready", "ready-files"]) {
+        const text = await cardText({ variant, summary: "x", lang: "de", session_id: "test-1231-e", state, validation: [{ requirement: "x", status: "unmet", evidence: "y" }] });
+        expect(text, variant).not.toContain("Auf der Platte abgeschlossen");
+      }
+    });
+    test("without delivered the old heading stays", async () => {
+      const text = await cardText({ variant: "ready", summary: "x", lang: "de", session_id: "test-1231-d", state: { mode: "file-only" } });
+      expect(text).toMatch(/^## 👉 📦 Files — Fertig auf der Platte — noch etwas\?$/m);
+    });
+  });
+
   // Audit 2026-09-26: a card in a folder without any repo (a network share, a
   // scratch folder) drew the git track, "Build no-build-id" and a Ship button.
   test("no repo at all is detected from cwd: file-only form, no build id, nothing to ship", async () => {

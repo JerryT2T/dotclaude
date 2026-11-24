@@ -248,6 +248,8 @@ function collectFreeDecisions() {
   if (typeof collectModeDecision === 'function') {
     active.querySelectorAll('[data-decision][data-decision-mode]').forEach(el => decisions.push(collectModeDecision(el)));
   }
+  // Simulators (templates-analysis.md § sim): a typed entry per sim, mode 'sim'.
+  if (typeof collectSimStates === 'function') decisions.push(...collectSimStates(active));
   // { general: { text, attachments }, items: [ … ] } — the live round's
   // inline notes plus the 💬 dock's general note (§ collectDecisions
   // (dispatcher), collectComments).
