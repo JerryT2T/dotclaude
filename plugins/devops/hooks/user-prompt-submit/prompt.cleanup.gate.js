@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook prompt.cleanup.gate
- * @version 0.1.0
+ * @version 0.2.0
  * @event UserPromptSubmit
  * @plugin devops
  * @description Claude Projects thread form of the /auto-cleanup Dry-Run
@@ -10,6 +10,11 @@
  *   wake whose trigger message is from="human" trust="principal") answers it —
  *   "Ja"/"Yes" first approves exactly that post, anything else drops it.
  *   Outside an armed session, or without a pending post, it does nothing.
+ *
+ *   Reads `prompt_raw`: the dispatcher unwraps a wake into its words
+ *   (lib/project-thread.js, PROMPT INTAKE CONTRACT) and keeps the envelope
+ *   there, and only the envelope says who spoke. Reading `prompt` saw no wake
+ *   and never recorded a yes (2026-11-24, v0.407.0).
  */
 
 function main(hook) {
@@ -17,7 +22,7 @@ function main(hook) {
   const gate = require('../lib/cleanup-gate');
   const state = gate.readState(hook.session_id);
   if (!state || !state.threadPending) return null;
-  gate.confirmThreadPrompt(state, hook.prompt);
+  gate.confirmThreadPrompt(state, typeof hook.prompt_raw === 'string' ? hook.prompt_raw : hook.prompt);
   gate.writeState(hook.session_id, state);
   return null;
 }
