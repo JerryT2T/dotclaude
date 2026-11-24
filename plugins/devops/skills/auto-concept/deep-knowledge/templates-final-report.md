@@ -206,7 +206,8 @@ report surface; jargon, file paths and numbers only in the 🛠 fold. Top → bo
    done next. The whole ladder is the tooltip (below). **Design implement (#935):**
    the parity checklist goes into the "🛠 Für Entwickler" fold as one line per
    checklist item with its parity status (`met` / `partial` / `unmet`) and the
-   evidence (screenshot pair, sampled frame); every `partial` / `unmet` line is a
+   evidence (screenshot pair, sampled frame); a geometry line (#1229) shows
+   mock, build and delta per value (`width 580 | 754 | +30 %`); every `partial` / `unmet` line is a
    Fund with `data-oq-origin="shortfall"`. A line counts as met only with that
    evidence, never on an agent's word.
 6. **`.fr-close`, the close-out zone** — what is left to decide, in view, never

@@ -288,7 +288,7 @@ describe("final-report close-out sheet", () => {
   test("a design implement builds to the mocks and proves parity (#935)", () => {
     const rule = skill.slice(skill.indexOf("**Design concepts: build to the mocks, prove parity (#935).**"));
     expect(rule.length).toBeGreaterThan(0);
-    const head = rule.slice(0, 2600);
+    const head = rule.slice(0, 3800);
     for (const part of ["Parity checklist first", "Binding spec in every brief", "Parity QA", "Fix rounds re-checked", "Evidence in the report"]) {
       expect(head, part).toContain(part);
     }
@@ -301,6 +301,27 @@ describe("final-report close-out sheet", () => {
     expect(qa).toContain("## Design parity (concept implement)");
     expect(qa).toContain("document.getAnimations()");
     expect(md).toMatch(/Design implement\s+\(#935\)/);
+  });
+
+  test("fixed elements get measured geometry lines that QA compares (#1229)", () => {
+    const rule = skill.slice(skill.indexOf("**Geometry lines for fixed elements (#1229).**"));
+    expect(rule.length).toBeGreaterThan(0);
+    const head = rule.slice(0, 1600);
+    expect(head).toContain("getBoundingClientRect()");
+    expect(head).toMatch(/last\s+approved\s+mock\s+wins/);
+    expect(head).toContain("reference viewport");
+    const root = path.join(__dirname, "..", "..");
+    const orch = fs.readFileSync(path.join(root, "deep-knowledge", "agent-orchestration.md"), "utf8");
+    expect(orch).toMatch(/Geometry lines[\s\S]{0,200}never as/);
+    const qa = fs.readFileSync(path.join(root, "agents", "qax.md"), "utf8");
+    const qaRule = qa.slice(qa.indexOf("**Measured boxes (#1229)**"));
+    expect(qaRule.length).toBeGreaterThan(0);
+    const qaHead = qaRule.slice(0, 900);
+    expect(qaHead).toContain("5 %");
+    expect(qaHead).toContain("2 px");
+    expect(qaHead).toMatch(/`unmet`\s+and a shortfall/);
+    expect(qaHead).toMatch(/mock, build and delta/);
+    expect(md).toMatch(/mock, build and delta per\s+value/);
   });
 
   test("every implement gets a verbatim brief, acceptance tables and an independent check (#1004)", () => {

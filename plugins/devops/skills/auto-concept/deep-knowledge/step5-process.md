@@ -350,6 +350,19 @@ external systems change** — with one difference: the next round belongs to `ne
      from; an animation line names its keyframes, duration and easing; a
      layout line names order and placement. Write it to
      `docs/concepts/{name}/parity.md`.
+   - **Geometry lines for fixed elements (#1229).** An element whose size or
+     position the **last approved round's mock** or a user remark fixes (a
+     decorative planet 580 px wide with only its rim at the left edge) gets a
+     geometry line with numbers: selector, measured box (`width`, `height`,
+     `left`, `top`) at the reference viewport, source round. Read the box by
+     opening that round's fragment at the reference viewport and calling
+     `getBoundingClientRect()`; never derive it from words. The last approved
+     mock wins over the wording of earlier rounds ("bigger" in round 2 does not
+     beat 580 px in round 4), so a "1.3x the other planet" is not a value.
+     Only elements the last approved round or a user remark fixes get a line,
+     not every box. The reference viewport is the one the concept declared (else
+     the widest one it was reviewed at); no other viewport is measured. The
+     line goes into `parity.md` and into the brief of the agent that owns it.
    - **Binding spec in every brief.** Each implementing agent gets the
      checklist lines it owns plus the fragment paths as the binding spec
      (`{PLUGIN_ROOT}/deep-knowledge/agent-orchestration.md` § Agent Prompt
