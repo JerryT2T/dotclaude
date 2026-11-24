@@ -19,6 +19,12 @@ describe("hooks.json is generated from the dispatcher manifest", () => {
     expect(lf(build.LANES_JSON)).toBe(build.expectedLanesText());
   });
 
+  test("no shared temp-file writer serialises an event: a lane holds at most 3 modules", () => {
+    // 0.404-0.408: one pid-only temp name in lib/thread-seen.js put 17 of 23 prompt hooks into one lane and doubled the prompt latency.
+    const { lanes } = JSON.parse(fs.readFileSync(build.LANES_JSON, "utf8"));
+    for (const [event, list] of Object.entries(lanes)) for (const lane of list) expect(lane.length, `${event}: ${lane}`).toBeLessThanOrEqual(3);
+  });
+
   test("every manifest command points at an existing hook file", () => {
     for (const event of Object.keys(manifest.hooks)) {
       const mods = eventModules(manifest, event, PLUGIN_ROOT);

@@ -74,7 +74,7 @@ import { canMinimize, cardDataBlock, conceptOpenButton, cardWidgetInstruction, i
 import { bandCarriesCard, writeBandCard } from "./lib/band-marker.js";
 import { detectLaunchPath } from "./lib/launch-path.js";
 import { linkedPlan, linkedKeepTokens } from "./lib/linked-sessions.js";
-import { archiveDecision, archiveInstruction, writeArchiveFlag } from "./lib/session-archive.js";
+import { archiveDecision, archiveInstruction, resolveDecision, resolveInstruction, writeArchiveFlag } from "./lib/session-archive.js";
 import { readToolCallCount, resolveSessionFile } from "./lib/tool-call-count.js";
 import { answerHtml, normalizeAnswer } from "./lib/answer-markdown.js";
 import {
@@ -2759,11 +2759,11 @@ function isThreadCard(params) {
 }
 
 /** The tool-result blocks: relay contract, notes, and the markdown unless the widget is the card. */
-function cardResultBlocks(cardMarkdown, titleNote, actionsNote, archiveNote = '', openNote = '', dataBlock = '', { thread = false, statusNote = '', threadWidget = null } = {}) {
+function cardResultBlocks(cardMarkdown, titleNote, actionsNote, archiveNote = '', openNote = '', dataBlock = '', { thread = false, statusNote = '', threadWidget = null, resolveNote = '' } = {}) {
   let texts;
   if (thread && threadWidget) {
-    texts = [threadWidgetInstruction(threadWidget), titleNote, statusNote, openNote, `[FALLBACK MARKDOWN — ONLY IF ${THREAD_WIDGET_TOOL} FAILS]\n${threadCardText(cardMarkdown)}`];
-  } else if (thread) texts = [THREAD_RELAY_INSTRUCTION, titleNote, statusNote, openNote, threadCardText(cardMarkdown)];
+    texts = [threadWidgetInstruction(threadWidget), titleNote, statusNote, resolveNote, openNote, `[FALLBACK MARKDOWN — ONLY IF ${THREAD_WIDGET_TOOL} FAILS]\n${threadCardText(cardMarkdown)}`];
+  } else if (thread) texts = [THREAD_RELAY_INSTRUCTION, titleNote, statusNote, resolveNote, openNote, threadCardText(cardMarkdown)];
   else if (actionsNote) texts = [titleNote, archiveNote, openNote, dataBlock, actionsNote];
   else texts = [RELAY_INSTRUCTION, titleNote, openNote, cardMarkdown];
   return texts.filter(Boolean).map(text => ({ type: "text", text }));
@@ -2861,25 +2861,34 @@ function archiveEnabled(cwd) {
   } catch { return false; }
 }
 
+/** What the archive decision (and its thread counterpart) reads besides the card. */
+function archiveDeps(params) {
+  return {
+    desktop: isDesktopSession(),
+    hasPending,
+    hasConcept,
+    closeoutOnly: conceptCloseoutOnly,
+    batchActive: (cwd) => !!readBatch(cwd),
+    holdReason: (cwd) => archiveHold(cwd, params.session_id),
+    localDone: (p) => { const k = resolveCardKey(p); return (k === 'ready' || k === 'ready-files') && isLocalDone(p); },
+    enabled: archiveEnabled,
+    treeClean: archiveTreeClean,
+  };
+}
+
+/** The `[THREAD RESOLVE]` block of a card posted in a Claude Projects thread, '' anywhere else. */
+function threadResolveNote(params) {
+  if (!isThreadCard(params)) return '';
+  return resolveInstruction(resolveDecision(params, archiveDeps(params)));
+}
+
 /**
  * The `[SESSION ARCHIVE]` block for a card whose widget is shown, '' otherwise
  * (#632, lib/session-archive.js). Writes — or clears — the per-session flag
  * post.flow.completion reads on the show_widget call.
  */
 function sessionArchiveNote(params, actionsNote) {
-  const { archive, local } = actionsNote
-    ? archiveDecision(params, {
-      desktop: isDesktopSession(),
-      hasPending,
-      hasConcept,
-      closeoutOnly: conceptCloseoutOnly,
-      batchActive: (cwd) => !!readBatch(cwd),
-      holdReason: (cwd) => archiveHold(cwd, params.session_id),
-      localDone: (p) => { const k = resolveCardKey(p); return (k === 'ready' || k === 'ready-files') && isLocalDone(p); },
-      enabled: archiveEnabled,
-      treeClean: archiveTreeClean,
-    })
-    : { archive: false };
+  const { archive, local } = actionsNote ? archiveDecision(params, archiveDeps(params)) : { archive: false };
   writeArchiveFlag(archive, safeSessionId(params.session_id), tmpdir(), { cwd: params.cwd, local: !!local });
   return archive ? archiveInstruction() : '';
 }
@@ -3252,7 +3261,8 @@ function runRenderCardCli(source) {
   }
   const cardMarkdown = buildCompletionCard(params);
   // #1150: the band never sees this card (it reads only the MCP tool's result) — leave it the card's data.
-  if (params._cardModel) writeBandCard(params.session_id, cardDataBlock(params._cardModel, params._repoUrl || ''));
+  // Not in a project thread: the band's card offers "Archive", a thread is resolved instead.
+  if (params._cardModel && !isThreadCard(params)) writeBandCard(params.session_id, cardDataBlock(params._cardModel, params._repoUrl || ''));
   // The rename and CTA-widget instructions ride on stderr so stdout stays the verbatim card.
   const titleNote = sessionTitleNote(params);
   const actionsNote = ctaActionsNote(params, { inline: true });
@@ -3269,6 +3279,7 @@ function runRenderCardCli(source) {
   if (threadCard) {
     const statusNote = coordinatorStatusInstruction(coordinatorSession(params.session_id, params.cwd));
     if (statusNote) process.stderr.write(statusNote + '\n');
+    process.stderr.write(threadResolveNote(params) + '\n');
   }
   const archiveNote = sessionArchiveNote(params, actionsNote);
   if (archiveNote) process.stderr.write(archiveNote + '\n');
@@ -3709,7 +3720,7 @@ server.registerTool(
     // from the result text: the full card data rides as its own block.
     const dataBlock = params._cardMinimal ? cardDataBlock(params._cardModel, params._repoUrl || '') : '';
 
-    return { content: cardResultBlocks(cardMarkdown, titleNote, actionsNote, archiveNote, [openDropNote(params), openRefuseNote(params)].filter(Boolean).join("\n"), dataBlock, { thread: isThreadCard(params), statusNote: isThreadCard(params) ? coordinatorStatusInstruction(coordinatorSession(params.session_id, params.cwd)) : '', threadWidget: isThreadCard(params) ? threadCardWidget(params._cardModel || null, params._repoUrl || '') : null }) };
+    return { content: cardResultBlocks(cardMarkdown, titleNote, actionsNote, archiveNote, [openDropNote(params), openRefuseNote(params)].filter(Boolean).join("\n"), dataBlock, { thread: isThreadCard(params), statusNote: isThreadCard(params) ? coordinatorStatusInstruction(coordinatorSession(params.session_id, params.cwd)) : '', resolveNote: threadResolveNote(params), threadWidget: isThreadCard(params) ? threadCardWidget(params._cardModel || null, params._repoUrl || '') : null }) };
   }
 );
 

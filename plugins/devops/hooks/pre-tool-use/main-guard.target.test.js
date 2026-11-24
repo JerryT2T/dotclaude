@@ -327,17 +327,36 @@ describe("B2 — the remedy of a thread outside the repo's work tree", () => {
     expect(g.status).toBe(2);
     expect(g.stderr).toContain("Call the EnterWorktree tool");
     expect(g.stderr).not.toContain("thread-");
-    // a non-repo start folder + git -C: blocked (B1), with today's remedy text
+    // a non-repo start folder + git -C: blocked (B1); EnterWorktree would act on the wrong repo, so it is not offered
     const x = sh("git -C a commit -m x", coll, { session_id: sid }, threadEnv());
     expect(x.status).toBe(2);
-    expect(x.stderr).not.toContain("worktree add");
+    expect(x.stderr).toContain("worktree add");
+    expect(x.stderr).not.toContain("Call the EnterWorktree tool");
+    expect(x.stderr).not.toContain("thread-");
   }, TIMEOUT);
 
-  test("a thread on a channel without the feature keeps today's remedy", () => {
+  test("a thread on a channel without the feature gets the remedy of a normal session in another repo", () => {
     const s = thread();
     const r = sh("git -C a commit -m x", coll, { session_id: s }, { HOME: stableHome, USERPROFILE: stableHome });
     expect(r.status).toBe(2);
-    expect(r.stderr).not.toContain("worktree add");
+    expect(r.stderr).toContain("worktree add");
+    expect(r.stderr).not.toContain("thread-");
+  }, TIMEOUT);
+
+  test("a new repo is not somebody's main: first commit, first push, scratchpad", () => {
+    const fresh = join(coll, "fresh");
+    mkdirSync(fresh, { recursive: true });
+    git(["init", "-q", "-b", "main", "."], fresh);
+    expect(sh("git -C fresh commit -m first", coll).status).toBe(0);
+    const pub = join(coll, "pub");
+    initRepo(pub);
+    expect(sh("git -C pub push -u origin main", coll).status).toBe(2);
+    git(["remote", "add", "origin", repos.b], pub);
+    expect(sh("git -C pub push -u origin main", coll).status).toBe(0);
+    expect(sh("git -C pub commit -m x", coll).status).toBe(2);
+    const scratch = join(coll, "scratchpad", "s");
+    initRepo(scratch);
+    expect(sh(`git -C "${scratch}" commit -m x`, coll).status).toBe(0);
   }, TIMEOUT);
 
   test("branchFix: a remote adds the fetch, a subagent keeps its report-to-parent text, no thread -> unchanged", () => {

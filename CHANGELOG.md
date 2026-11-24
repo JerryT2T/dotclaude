@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.410.0] — 2026-11-24
+
+### Added
+- Claude Projects threads are resolved, not archived: the completion card carries a `[THREAD RESOLVE]` block with the same conditions as the session archive, the archive guard redirects to `set_thread_resolved`, and the project instructions text (v3) tells the coordinator.
+
+### Fixed
+- Prompt and tool hooks run in parallel again. A shared temp-file name had put 17 prompt hooks into one sequential lane since 0.404 and about doubled the prompt latency in every session.
+- A thread the coordinator starts with a bare spawn note, and a message with uploads in front, are recognised as thread prompts.
+- A typed prompt that opens with a quoted wake envelope stays a typed prompt.
+- Session-start notices held back for threads become toasts again in normal sessions.
+- The main guard lets a new repo's first commit and first push and scratchpad repos through, and names a working remedy for a repo the session does not sit in.
+- A compaction summary or interrupt note no longer lifts a coordinator-started turn to the person's rights.
+
 ## [0.409.0] — 2026-11-24
 
 ### Added

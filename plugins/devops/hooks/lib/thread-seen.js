@@ -54,7 +54,9 @@ function liveFlag(tmpDir) {
 function save(home, data) {
   const file = stateFile(home);
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  const tmp = `${file}.${process.pid}.tmp`;
+  // Random part on purpose: a pid-only name makes this file a "pid-tmp writer" (dispatch/lanes.js), and every
+  // hook that can reach project-thread.js would then share one sequential lane.
+  const tmp = `${file}.${process.pid}.${require('crypto').randomBytes(4).toString('hex')}.tmp`;
   fs.writeFileSync(tmp, JSON.stringify(data) + '\n');
   try {
     fs.renameSync(tmp, file);

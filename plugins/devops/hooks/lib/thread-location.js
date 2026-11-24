@@ -22,7 +22,7 @@ const path = require('path');
 const VALUES = Object.freeze(['local-first', 'local-only', 'cloud-first', 'ask']);
 const DEFAULT = 'local-first';
 const BLOCK_VERSION = 1;
-const TEXT_VERSION = 2;
+const TEXT_VERSION = 3;
 const INHERIT = 'inherit';
 const PROJECT_ID = /^chan_[A-Za-z0-9_-]+$/;
 

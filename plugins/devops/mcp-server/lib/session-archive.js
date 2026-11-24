@@ -92,6 +92,35 @@ export function archiveDecision(params, deps) {
   return local ? { archive: true, reason: "", local: true } : { archive: true, reason: "" };
 }
 
+/**
+ * The thread counterpart (Claude Projects): a thread is resolved, never archived.
+ * Same conditions as the archive, minus the Desktop app: a cloud thread resolves too.
+ * Always a block, so the model never has to guess which of the two applies.
+ *
+ * @param {object} params normalized card params
+ * @param {object} deps see `archiveDecision` (`desktop` is ignored)
+ * @returns {{ resolve: boolean, reason: string }}
+ */
+export function resolveDecision(params, deps) {
+  const { archive, reason } = archiveDecision(params, { ...deps, desktop: true });
+  return { resolve: archive, reason };
+}
+
+/** The out-of-band block of a thread card. */
+export function resolveInstruction({ resolve, reason }) {
+  const head = "[THREAD RESOLVE — DO NOT OUTPUT THIS BLOCK]\n" +
+    "Project thread: a thread is resolved, not archived — never call archive_session, never offer archiving. ";
+  const call = "mcp__hearthbot__set_thread_resolved {resolved:true}";
+  if (resolve) {
+    return head + `This work is shipped and nothing is open: after the card and its status line make ONE more call, ${call}. ` +
+      "Skip it when the person asked to keep the thread open, or when a step of the task is still owed (by anyone).";
+  }
+  if (reason === "variant") {
+    return head + `After the card: ${call} only when the work has ended and nobody owes a next step (a review, an answer, a ship, a merge). Otherwise leave the thread open.`;
+  }
+  return head + `Leave the thread open after this card (${reason}).`;
+}
+
 /** A validation requirement (unmet / partial) that waits on the user. */
 function waitsOnUser(validation) {
   if (!Array.isArray(validation)) return false;

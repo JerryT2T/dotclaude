@@ -23,7 +23,7 @@
  *   allowed (mode `on`) the title head goes on the thread title and the
  *   completion card is posted with `post_message`.
  *
- *   Detection: the wake envelope of a prompt, or a `mcp__hearthbot__*` tool
+ *   Detection: the wake envelope (or the spawn note) of a prompt, or a `mcp__hearthbot__*` tool
  *   call, marks the session with a sticky per-session flag; hooks that see
  *   neither (Stop) and the MCP server read that flag, with the transcript's
  *   own `projectsUserTurn` entry as the fallback (`deep`).
@@ -42,6 +42,8 @@ const HEARTHBOT_PREFIX = 'mcp__hearthbot__';
 const RENAME_TOOL = `${HEARTHBOT_PREFIX}rename_thread`;
 const POST_TOOL = `${HEARTHBOT_PREFIX}post_message`;
 const CHECKLIST_TOOL = `${HEARTHBOT_PREFIX}update_progress_checklist`;
+/** A thread is RESOLVED when its work ended; `archive_session` is for a session outside a project. */
+const RESOLVE_TOOL = `${HEARTHBOT_PREFIX}set_thread_resolved`;
 /** The thread's widget tool: the completion card goes out through it as the visual card (mcp-server/lib/card-widget.js threadCardWidget). */
 const WIDGET_TOOL = `${HEARTHBOT_PREFIX}post_widget`;
 
@@ -49,22 +51,40 @@ const WIDGET_TOOL = `${HEARTHBOT_PREFIX}post_widget`;
 const WAKE_PATTERN = /^\s*<wake\b[^>]*>\s*<project\b[^>]*\bid="chan_/;
 /** A note from the coordinator or another thread: a colleague's request, not the person's prompt. */
 const RELAY_PATTERN = /^\s*<(?:coordinator-relay\b|relay\s+from=|project_claude_message\b)/;
+/** Uploads the runtime puts in front of an envelope: `@"C:\…\image.png" <wake …>`. */
+const ATTACHMENTS = /^\s*(?:@"[^"\n]*"\s*)+(?=<(?:wake|relay|coordinator-relay|project_claude_message)\b)/;
+/** A coordinator note that IS the whole prompt, as the runtime sends it (the spawn note of a local thread, a later note). */
+const WHOLE_RELAY = [
+  /^\s*<relay\s+from="coordinator"[^>]*\ssession="session_[^"]*"[^>]*>[\s\S]*<\/relay>\s*$/,
+  /^\s*<project_claude_message\b[^>]*\sthread_id="cmsg_[^"]*"[^>]*>[\s\S]*<\/project_claude_message>\s*$/,
+];
 /** Transcript bytes read for the fallbacks below. */
 const HEAD_BYTES = 256 * 1024;
 const TAIL_BYTES = 8 * 1024 * 1024;
 
+/** The uploads in front of an envelope, '' when there are none. */
+function attachmentsOf(prompt) {
+  const m = ATTACHMENTS.exec(prompt);
+  return m ? m[0].trim() : '';
+}
+
+/** The prompt without uploads in front of its envelope (any other prompt: unchanged). */
+function envelopeOf(prompt) {
+  return typeof prompt === 'string' ? prompt.replace(ATTACHMENTS, '') : '';
+}
+
 function isWakePrompt(prompt) {
-  return typeof prompt === 'string' && WAKE_PATTERN.test(prompt);
+  return typeof prompt === 'string' && WAKE_PATTERN.test(envelopeOf(prompt));
 }
 
 /** The `chan_…` id of the project in a wake envelope, or '' (not a wake, no id). */
 function projectId(prompt) {
-  const m = /^\s*<wake\b[^>]*>\s*<project\b[^>]*\bid="(chan_[A-Za-z0-9_-]+)"/.exec(typeof prompt === 'string' ? prompt : '');
+  const m = /^\s*<wake\b[^>]*>\s*<project\b[^>]*\bid="(chan_[A-Za-z0-9_-]+)"/.exec(envelopeOf(prompt));
   return m ? m[1] : '';
 }
 
 function isRelayPrompt(prompt) {
-  return typeof prompt === 'string' && RELAY_PATTERN.test(prompt);
+  return typeof prompt === 'string' && RELAY_PATTERN.test(envelopeOf(prompt));
 }
 
 function isHearthbotTool(toolName) {
@@ -199,9 +219,11 @@ function parseRelay(prompt) {
  */
 function classifyPrompt(prompt) {
   const raw = typeof prompt === 'string' ? prompt : '';
-  const out = (origin, words) => ({ prompt: words, prompt_raw: raw, prompt_origin: origin });
+  const files = attachmentsOf(raw);
+  const out = (origin, words) => ({ prompt: files && origin !== 'typed' ? `${words}\n${files}`.trim() : words, prompt_raw: raw, prompt_origin: origin });
   try {
-    if (isWakePrompt(raw)) {
+    // A typed prompt that opens with a quoted wake and goes on in the user's own words stays typed.
+    if (isWholeWake(raw)) {
       const t = findTrigger(raw);
       if (t) {
         const from = tagAttr(t[1], 'from');
@@ -269,6 +291,9 @@ function entryText(entry) {
   return content.filter((b) => b && b.type === 'text' && typeof b.text === 'string').map((b) => b.text).join('');
 }
 
+/** User-role entries the harness writes mid-turn (an interrupt note, a bare reminder, a local command's output). */
+const HARNESS_ENTRY = /^\s*(?:\[Request interrupted by user|<system-reminder>(?:(?!<\/system-reminder>)[\s\S])*<\/system-reminder>\s*$|<local-command-(?:stdout|stderr|caveat)>)/;
+
 /**
  * The newest prompt of the transcript that is not a machine prompt (a task notification,
  * a cron tick ...), classified; `null` when none can be found. Never throws.
@@ -283,9 +308,11 @@ function lastHumanSidePrompt(transcriptContent) {
     if (!line) continue;
     let entry;
     try { entry = JSON.parse(line); } catch { continue; } // a partial first line of a tail
-    if (!entry || entry.type !== 'user' || entry.isSidechain === true || !isPromptEntry(entry)) continue;
+    if (!entry || entry.type !== 'user' || entry.isSidechain === true || entry.isCompactSummary === true) continue;
     const text = entryText(entry);
-    if (!text.trim()) continue;
+    if (!text.trim() || HARNESS_ENTRY.test(text)) continue; // written by the harness: the prompt before it decides
+    // The spawn note of a local thread is an `isMeta` entry, yet it is the prompt that started the turn.
+    if (!isPromptEntry(entry) && !(entry.isMeta === true && isWholeRelay(text))) continue;
     const view = classifyPrompt(text);
     if (view.prompt_origin === 'machine') continue; // it continues earlier work: that prompt decides
     return view;
@@ -338,6 +365,12 @@ function isWholeWake(prompt) {
   return isWakePrompt(prompt) && /<\/wake>\s*$/.test(prompt);
 }
 
+/** The prompt is ONE coordinator note with the runtime's own ids, start to end: only a thread gets such a prompt. */
+function isWholeRelay(prompt) {
+  const text = envelopeOf(prompt);
+  return WHOLE_RELAY.some((re) => re.test(text));
+}
+
 function isMarked(sessionId) {
   return !!sessionId && readSessionFile(THREAD_FLAG, sessionId, { exact: true }) !== null;
 }
@@ -380,12 +413,13 @@ function isThread(hook, { deep = false } = {}) {
   if (!hook || typeof hook !== 'object') return false;
   if (isMarked(hook.session_id)) return true;
   const raw = typeof hook.prompt_raw === 'string' ? hook.prompt_raw : hook.prompt; // the dispatcher unwraps `prompt`
-  const wake = isWakePrompt(raw);
-  // A wake envelope pasted into a Desktop prompt reads as a thread for this prompt only; the
-  // sticky marker needs the whole prompt to be one envelope (or other evidence).
+  // Only a prompt that is one envelope start to end (what the runtime sends): a paste with the user's own words is none.
+  const wake = isWholeWake(raw);
   const other = isHearthbotTool(hook.tool_name) || (deep && transcriptSaysThread(hook.transcript_path));
-  if (other || (wake && isWholeWake(raw))) markThread(hook.session_id);
-  return wake || other;
+  // A local thread the coordinator spawned opens with the bare spawn note, the wake comes later.
+  const relay = isWholeRelay(raw);
+  if (other || relay || wake) markThread(hook.session_id);
+  return wake || relay || other;
 }
 
 /** The gated half: thread titles and posted cards, alpha channel only. */
@@ -484,6 +518,7 @@ module.exports = {
   RENAME_TOOL,
   POST_TOOL,
   CHECKLIST_TOOL,
+  RESOLVE_TOOL,
   WIDGET_TOOL,
   isWakePrompt,
   projectId,
@@ -499,6 +534,7 @@ module.exports = {
   turnRights,
   citedPersonWords,
   isWholeWake,
+  isWholeRelay,
   isHearthbotTool,
   personWords,
   markThread,

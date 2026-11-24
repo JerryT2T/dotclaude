@@ -135,6 +135,18 @@
         ]
       }
     ],
+    "branch-fix.js›exports›list": [
+      {
+        "ship": "claude/project-thread-iv58su",
+        "by": "Claude (autonomous, not decided by JerryT2T)",
+        "value": "plus foreignFix",
+        "decided": true,
+        "at": "2026-11-24T21:54:36.106Z",
+        "hunks": [
+          "1757c62b0d8f"
+        ]
+      }
+    ],
     "completion-card-design.md›paused usage-reset›card word": [
       {
         "ship": "claude/devops-browser-setting-c04118",
@@ -147,6 +159,18 @@
         ]
       }
     ],
+    "dispatch.js›normalizeInput›call": [
+      {
+        "ship": "claude/project-thread-iv58su",
+        "by": "Claude (autonomous, not decided by JerryT2T)",
+        "value": "same call via P",
+        "decided": true,
+        "at": "2026-11-24T21:54:36.106Z",
+        "hunks": [
+          "5917aece7ba9"
+        ]
+      }
+    ],
     "docs/dev/feature-flags.md›project-threads row›text": [
       {
         "ship": "claude/claude-code-project-structure-4aa260",
@@ -156,6 +180,70 @@
         "at": "2026-11-22T16:13:42.383Z",
         "hunks": [
           "1cdd727cd227"
+        ]
+      }
+    ],
+    "lanes.json›lanes›generated": [
+      {
+        "ship": "claude/project-thread-iv58su",
+        "by": "Claude (autonomous, not decided by JerryT2T)",
+        "value": "regenerated parallel lanes",
+        "decided": true,
+        "at": "2026-11-24T21:54:36.106Z",
+        "hunks": [
+          "6da780da2b26"
+        ]
+      },
+      {
+        "ship": "claude/project-thread-iv58su",
+        "by": "Claude (autonomous, not decided by JerryT2T)",
+        "value": "regenerated parallel lanes",
+        "decided": true,
+        "at": "2026-11-24T22:02:12.216Z",
+        "hunks": [
+          "0c549c5e5347"
+        ]
+      },
+      {
+        "ship": "claude/project-thread-iv58su",
+        "by": "JerryT2T",
+        "value": "regenerated parallel lanes",
+        "decided": true,
+        "at": "2026-11-24T22:29:55.197Z",
+        "hunks": [
+          "2995786fa35f"
+        ]
+      }
+    ],
+    "lanes.json›writers›generated": [
+      {
+        "ship": "claude/project-thread-iv58su",
+        "by": "Claude (autonomous, not decided by JerryT2T)",
+        "value": "regenerated parallel lanes",
+        "decided": true,
+        "at": "2026-11-24T21:54:36.106Z",
+        "hunks": [
+          "e1f6473a418f"
+        ]
+      },
+      {
+        "ship": "claude/project-thread-iv58su",
+        "by": "Claude (autonomous, not decided by JerryT2T)",
+        "value": "regenerated parallel lanes",
+        "decided": true,
+        "at": "2026-11-24T22:02:12.216Z",
+        "hunks": [
+          "ea31ef2cbff6"
+        ]
+      },
+      {
+        "ship": "claude/project-thread-iv58su",
+        "by": "JerryT2T",
+        "value": "regenerated parallel lanes",
+        "decided": true,
+        "at": "2026-11-24T22:29:55.197Z",
+        "hunks": [
+          "cbd1c568534a"
         ]
       }
     ],
@@ -1825,6 +1913,30 @@
         "at": "2026-11-22T01:06:11.417Z",
         "hunks": [
           "d80a2b7ac7b1"
+        ]
+      }
+    ],
+    "project-instructions-snippet.md›devops text›version": [
+      {
+        "ship": "claude/project-thread-iv58su",
+        "by": "Claude (autonomous, not decided by JerryT2T)",
+        "value": "v3",
+        "decided": true,
+        "at": "2026-11-24T21:54:36.106Z",
+        "hunks": [
+          "817193ed2824"
+        ]
+      }
+    ],
+    "project-threads.md›rules›wording": [
+      {
+        "ship": "claude/project-thread-iv58su",
+        "by": "Claude (autonomous, not decided by JerryT2T)",
+        "value": "extended lines (resolve)",
+        "decided": true,
+        "at": "2026-11-24T21:54:36.106Z",
+        "hunks": [
+          "57d853b17008"
         ]
       }
     ],

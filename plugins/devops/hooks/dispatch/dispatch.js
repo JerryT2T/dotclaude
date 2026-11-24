@@ -473,7 +473,9 @@ function readStdin() {
 function normalizeInput(event, raw, payload) {
   if (event !== 'UserPromptSubmit' || !payload || typeof payload.prompt !== 'string') return { raw, payload };
   try {
-    const next = require('../lib/project-thread').normalizePromptInput(payload);
+    const P = require('../lib/project-thread');
+    const next = P.normalizePromptInput(payload);
+    P.isThread(next); // marks a thread once, before the parallel lanes would
     return next === payload ? { raw, payload } : { raw: JSON.stringify(next), payload: next };
   } catch { return { raw, payload }; }
 }

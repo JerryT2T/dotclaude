@@ -829,7 +829,7 @@ function threadReplyLines(hook, toolName) {
   const text = String((hook.tool_input && hook.tool_input.text) || '');
   // The card goes out as the widget (its text line carries the marker) or, as a fallback, as the markdown post.
   if (text.includes(CARD_MARKER)) {
-    return ['[completion-flow] Card posted — the turn is over: no further reply. Only set_thread_resolved may follow, when the work has ended.'];
+    return ['[completion-flow] Card posted — the turn is over: no further reply. Only set_thread_resolved may follow, when the work has ended (a thread is resolved, never archived).'];
   }
   const titles = guardedRequire('../lib/session-title');
   const title = projectThread.lastThreadTitle(hook.transcript_path);

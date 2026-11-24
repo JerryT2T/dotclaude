@@ -67,7 +67,7 @@ and the sidebar title reach no one:
 | card | `post_message` with the card markdown (the card tool says how) |
 | file | `attached_outputs` of that `post_message` |
 | progress | `update_progress_checklist` |
-| work ended / nothing to say | `set_thread_resolved` / `no_reply_needed` |
+| work ended (a thread is resolved, never archived) / nothing to say | `set_thread_resolved` / `no_reply_needed` |
 
 The app's wake note ("one reply of at most 20 words first") wins over "never
 narrate" for that first reply only; afterwards the rules above apply.
