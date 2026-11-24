@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.408.0] — 2026-11-24
+
+### Added
+- Thread questions offer the clickable `request_decision` card first, a numbered reply only as fallback.
+- auto-guide: wait results carry a value-free page snapshot, so the guide skips steps the user already did (#1174).
+- auto-concept: the artifact submit wakes the session through a comment where the viewer may send to Claude (#1198).
+- do-ship: in a cloud session a CI workflow (`templates/tag-on-version.yml`) can create the release tag; the ship polls for it instead of handing the tag over (#1212).
+- auto-polish: findings owned by a sibling thread are forwarded to it, not asked (#1223).
+- Cleanup band: verdict per unlanded branch with Integrieren / Neu umsetzen hand-offs (#1173).
+- project-setup: the full setup runs on its own when work is promoted to a real project (#1172).
+
+### Fixed
+- A mid-turn question is answered as visible text before any further blocking wait (#1188).
+- The 5-hour row is decided by the delivered usage data, not by the plan name (#1217).
+- A finished close-out in a repo without remote shows as done and archives (#1216).
+- The concept review round keeps the full format of the round before the final report (#1218).
+- Live-fidelity concept rounds reproduce the app shell or mark each approximated part visibly (#1187).
+
 ## [0.407.1] — 2026-11-24
 
 ### Fixed
