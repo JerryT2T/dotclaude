@@ -1,0 +1,109 @@
+<section data-iteration="1" data-iteration-template="decision" data-analysis="full">
+
+  <section id="briefing" data-analysis-briefing data-nav-label="Briefing">
+    <p data-briefing-what>Zwei offene Issues stammen von Mollywator, der keine Schreibrechte im Repo hat. Der Backlog-Lauf hat sie deshalb nicht umgesetzt. Beide kommen aus echten Sitzungen in Mollywators Star-Citizen-Projekt und tragen schon einen Beweis-Block im Plugin-Format.</p>
+    <p data-briefing-why>Ein fremdes Issue setzt kein Lauf unbeaufsichtigt um. Deine Wahl hier entscheidet, ob es als eigenes Issue in den nächsten Lauf kommt, mit Antwort geschlossen wird oder liegen bleibt.</p>
+    <div data-briefing-potential data-viz="kpi" data-viz-spec='{"value":"2","unit":"Issues","label":"beide inhaltlich plausibel und ungelöst"}'>2 Issues</div>
+    <a data-briefing-topic="t-issues" data-share="100">Die zwei Issues</a>
+    <p data-briefing-duration>≈ 3 min</p>
+    <div data-alevel="1" data-title="Briefing">
+      <div data-slot="short"><div data-viz="kpi" data-viz-spec='{"value":"1 + 1","unit":"Issues","label":"Bug · Feature"}'></div></div>
+      <div data-slot="long">
+        <div data-viz="bars" data-viz-spec='{"items":[{"label":"#1209 Mock-Maße (Aufwand)","value":2},{"label":"#1210 Simulator-Runde (Aufwand)","value":4}],"unit":"Aufwand 1–5"}'></div>
+        <p>#1209 schließt eine konkrete Lücke im Parity-Check von #935: Reihenfolge und Platzierung werden geprüft, gemessene Größen nicht. #1210 ist ein neues Format für Konzeptrunden zu Mechaniken und berührt Templates, Gate und den Runden-Autor.</p>
+        <p>Für beide gilt: Ich habe nichts gefunden, das sie schon abdeckt. Keins der beiden ist ein Missbrauchsversuch; der Text enthält keine Anweisungen an Claude außerhalb des normalen Issue-Formats.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="t-issues" data-topic data-nav-label="Die zwei Issues">
+    <div data-alevel="2" data-title="Die zwei Issues">
+      <div data-slot="short"><p>Ein Bug mit kleinem Fix, ein Feature mit spürbarem Nutzen und mittlerem Umbau.</p></div>
+      <div data-slot="long">
+        <p>Übernehmen heißt: ich lege ein eigenes Issue mit Verweis auf das Original an, das Original wird mit Dank und Link geschlossen. Dann darf der nächste Backlog-Lauf es umsetzen.</p>
+      </div>
+    </div>
+
+    <section id="d-1209" data-nav-label="#1209 Mock-Maße" data-decision="d-1209" data-decision-mode="single"
+             data-label="#1209 Mock-Maße" data-rec="carry-over"
+             data-rec-why="Echter, reproduzierter Fehler nach dem Release, kleiner Fix, und er schließt eine Lücke genau dort, wo #935 schon ansetzt."
+             data-applies-to="#1209 · auto-concept implement, agents/qax.md § Design parity" data-finding="f-1209" data-no-example="Prüfregel im Implement-Schritt, nichts Sichtbares">
+      <p data-applies>Gilt für: #1209 · auto-concept implement, agents/qax.md § Design parity</p>
+      <p data-situation>Ein freigegebener Mock legte ein Element auf 580 px fest; ausgeliefert wurde es deutlich größer, weil eine frühere Wortmeldung („größer“) gewann. Der heutige Parity-Check prüft Reihenfolge und Platzierung, aber keine gemessenen Größen.</p>
+      <h3 data-question>Was passiert mit #1209?</h3>
+      <div data-options>
+        <label data-opt="carry-over" data-recommended>
+          <input type="radio" name="dm-d-1209" value="carry-over" checked>
+          <span data-opt-label>Als eigenes Issue übernehmen</span>
+          <span data-opt-consequence>Neues Issue mit Verweis; nächster Lauf ergänzt die Parity-Liste um gemessene Boxen (±5 %) und qax um den Vergleich.</span>
+        </label>
+        <label data-opt="close-reply">
+          <input type="radio" name="dm-d-1209" value="close-reply">
+          <span data-opt-label>Mit Antwort schließen</span>
+          <span data-opt-consequence>Dank und Begründung im Issue, keine Umsetzung.</span>
+        </label>
+        <label data-opt="reject">
+          <input type="radio" name="dm-d-1209" value="reject">
+          <span data-opt-label>Ablehnen, ohne Antwort liegen lassen</span>
+          <span data-opt-consequence>Issue bleibt offen, kein Lauf fasst es an.</span>
+        </label>
+        <label data-opt="ask-author">
+          <input type="radio" name="dm-d-1209" value="ask-author">
+          <span data-opt-label>Beim Autor nachfragen</span>
+          <span data-opt-consequence>Ich formuliere eine Rückfrage als Kommentar; du schickst sie ab.</span>
+        </label>
+      </div>
+      <textarea data-comment="d-1209-note" placeholder="Notiz (optional)"></textarea>
+      <input type="hidden" name="dm-d-1209-none" value="">
+      <input type="hidden" name="dm-d-1209-hes" value="">
+      <input type="hidden" name="dm-d-1209-touched" value="">
+      <input type="hidden" name="dm-d-1209-issue" value="">
+      <input type="hidden" name="dm-d-1209-epic" value="">
+      <div data-alevel="3" data-title="#1209 Mock-Maße">
+        <div data-slot="short"><div data-viz="kpi" data-viz-spec='{"value":"S","unit":"Aufwand","label":"zwei Doku-Stellen + qax-Regel + Eval"}'></div></div>
+        <div data-slot="long"><p>Fix: pro festgelegtem Element die gemessene Box aus dem Mock in die Parity-Liste, qax vergleicht mit ±5 %.</p></div>
+      </div>
+    </section>
+
+    <section id="d-1210" data-nav-label="#1210 Simulator-Runde" data-decision="d-1210" data-decision-mode="single"
+             data-label="#1210 Simulator-Runde" data-rec="carry-over"
+             data-rec-why="Der Nutzen ist groß und belegt: ein kleiner Simulator brachte in Sekunden Antworten, die 15 Textfragen nicht brachten. Das Analyse-Palette hat heute keinen interaktiven Typ."
+             data-applies-to="#1210 · auto-concept analysis-palette, round templates, concept-author" data-finding="f-1210" data-no-example="Neues Rundenformat; ein Beispiel entsteht erst mit dem Bau">
+      <p data-applies>Gilt für: #1210 · auto-concept analysis-palette, round templates, concept-author</p>
+      <p data-situation>Zu einem Mechanik-Thema kamen 15 Textfragen, etwa 8 Minuten Lesen, und keine Antwort. Ein kleines interaktives Widget brachte sofort konkrete Korrekturen. Die Analyse-Palette kennt heute keinen interaktiven Typ.</p>
+      <h3 data-question>Was passiert mit #1210?</h3>
+      <div data-options>
+        <label data-opt="carry-over" data-recommended>
+          <input type="radio" name="dm-d-1210" value="carry-over" checked>
+          <span data-opt-label>Als eigenes Issue übernehmen</span>
+          <span data-opt-consequence>Neues Issue: Anzeigetyp „Simulator“ in der Palette, Regel „Mechanik-Thema → Runde 1 ist ein Simulator“, höchstens 3 Textfragen.</span>
+        </label>
+        <label data-opt="carry-over-small">
+          <input type="radio" name="dm-d-1210" value="carry-over-small">
+          <span data-opt-label>Nur die Textregel übernehmen</span>
+          <span data-opt-consequence>Kürzere Runden (eine Zeile pro Punkt, wenige Fragen) ohne neuen Simulator-Typ; kleiner, aber der Kern fehlt.</span>
+        </label>
+        <label data-opt="close-reply">
+          <input type="radio" name="dm-d-1210" value="close-reply">
+          <span data-opt-label>Mit Antwort schließen</span>
+          <span data-opt-consequence>Dank und Begründung im Issue, keine Umsetzung.</span>
+        </label>
+        <label data-opt="ask-author">
+          <input type="radio" name="dm-d-1210" value="ask-author">
+          <span data-opt-label>Beim Autor nachfragen</span>
+          <span data-opt-consequence>Ich formuliere eine Rückfrage, etwa nach dem Widget von damals; du schickst sie ab.</span>
+        </label>
+      </div>
+      <textarea data-comment="d-1210-note" placeholder="Notiz (optional)"></textarea>
+      <input type="hidden" name="dm-d-1210-none" value="">
+      <input type="hidden" name="dm-d-1210-hes" value="">
+      <input type="hidden" name="dm-d-1210-touched" value="">
+      <input type="hidden" name="dm-d-1210-issue" value="">
+      <input type="hidden" name="dm-d-1210-epic" value="">
+      <div data-alevel="3" data-title="#1210 Simulator-Runde">
+        <div data-slot="short"><div data-viz="kpi" data-viz-spec='{"value":"M–L","unit":"Aufwand","label":"Palette, Gate, Runden-Autor, Eval"}'></div></div>
+        <div data-slot="long"><p>Risiko: ein falsch modelliertes Verhalten überzeugt mehr als falscher Text, also bleiben die Formeln sichtbar.</p></div>
+      </div>
+    </section>
+  </section>
+</section>
