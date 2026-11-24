@@ -68,6 +68,13 @@ describe("C1 — AskUserQuestion in a thread is redirected to a numbered reply",
     expect(r.stderr).toContain('mcp__hearthbot__rename_thread {title:"👉 ➜ ❓ Fix login"}');
   });
 
+  test("the redirect names the clickable decision card first, the numbered reply as fallback", () => {
+    const r = run(ASK, [user(PERSON, "2026-11-22T10:00:00Z"), rename("⏳ ➜ 🤖 Fix login")], input);
+    const card = r.stderr.indexOf("mcp__hearthbot__request_decision");
+    expect(card).toBeGreaterThan(-1);
+    expect(card).toBeLessThan(r.stderr.indexOf("numbered"));
+  });
+
   test("a thread that never renamed asks the model to prefix the title it sees", () => {
     const r = run(ASK, [user(PERSON, "2026-11-22T10:00:00Z")], input);
     expect(r.status).toBe(2);

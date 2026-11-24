@@ -130,6 +130,16 @@ tab is on screen and refuses a change there.
 ```
 
 ```css
+/* Approximated shell part (#1187): visible on the page, not only as an attribute. */
+[data-fidelity-approx-part] { position: relative; outline: 1px dashed var(--warning-color, #d29922); outline-offset: 2px; }
+.fidelity-approx-badge {
+  display: inline-block; margin-left: .4rem; padding: 0 .4rem; border-radius: 999px;
+  font-size: .7rem; font-weight: 600; line-height: 1.4;
+  color: var(--warning-color, #d29922); border: 1px solid currentColor; background: var(--panel-bg, #161b22);
+}
+```
+
+```css
 /* Live-Treue switch — the dock's last row, below the general note. */
 .dock-fidelity {
   display: flex; flex-direction: column; gap: 4px;

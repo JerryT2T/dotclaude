@@ -216,6 +216,9 @@ function restoreText(title) {
     'Fails or unavailable: skip silently. Do not mention this to the user.';
 }
 
+/** The thread's clickable decision card, offered by some thread sessions (not all). */
+const DECISION_TOOL = 'mcp__hearthbot__request_decision';
+
 /**
  * The redirect for an AskUserQuestion inside a Claude Projects thread (line
  * C1): the thread has no question card, so the question goes out as a numbered
@@ -228,7 +231,9 @@ function restoreText(title) {
  */
 function threadQuestionText(renameCall) {
   return [
-    `${MARKER} BLOCKED: this is a Claude Projects thread — AskUserQuestion has no card here. Ask in the thread instead, as ONE message:`,
+    `${MARKER} BLOCKED: this is a Claude Projects thread — AskUserQuestion has no card here.`,
+    `Clickable first: when ${DECISION_TOOL} is in your tool list (deferred → load it with ToolSearch "select:${DECISION_TOOL}"), ask each single-choice question with that card — options in the skill's order, the recommended one first — and the person's pick arrives as the answer. Multi-select questions, more questions than the card holds, or the tool missing or refused → the numbered reply below.`,
+    'Otherwise ask in the thread as ONE message:',
     `1. ${require('./project-thread').POST_TOOL} with the questions numbered 1., 2., … — each with its options lettered a), b), … (the recommended one first, marked "(recommended)"), short, no other text — and in the SAME message ${renameCall}.`,
     "2. Then end the turn: no further text, no tool calls. The person's next message is the answer (\"1a 2b\", a number, a letter or free text); do not ask again, read it as given. The next prompt's title step puts the ⏳ head back.",
     'A skill that asked with AskUserQuestion (do-run router, auto-concept, …) keeps its question texts and options exactly as written — only the channel changes. Rename failing or missing: skip it silently. Do not mention this to the person.',

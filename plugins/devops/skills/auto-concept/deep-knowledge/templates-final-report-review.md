@@ -82,8 +82,12 @@ html:not([data-template="design"]) .review-switch { left: 1rem; }
 
 #### The review round — what Claude authors
 
-Template: the concept's own (`data-iteration-template` per § Step 1a · Template
-continuity — never switched for the review), section markers `data-review` and
+Template: that of the **last round before the final report** — never the final
+report's `free` (gate `review-template-switch`). When that round was a Full analysis
+(`data-analysis="full"`), the review is a Full analysis too (gate `review-not-full`):
+briefing (what was built, why, what to look at), one topic per area of the build,
+the deviations and green findings as decisions inside those topics, details as
+usual — never a bare note list. Section markers `data-review` and
 `data-review-from="<final report round>"`, tab label "Umsetzung". Three kinds of
 content, in this order:
 

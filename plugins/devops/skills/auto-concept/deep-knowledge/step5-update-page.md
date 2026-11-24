@@ -45,7 +45,10 @@ ships: it is an `iterate`-like branch that appends ONE regular round.
    `.rv-note.rv-green[data-kind="finding"]` plus its own decision `rv-<slug>`
    (`single`: `keep` Behalten / `revert` Zurückbauen).
 5. **Write `rounds/{N+1}.html`** with `data-review`, `data-review-from="<closing round>"`
-   and the concept's template per Step 1a (never a template switch), tab label
+   and the template of the **last round before the closing page** (never the closing
+   page's `free`, gate `review-template-switch`); when that round was a Full analysis
+   the review is `data-analysis="full"` too, with briefing, one topic per area of the
+   build and details (gate `review-not-full`); tab label
    "Umsetzung"; the example first, then the notes beside what they concern. Same
    append checklist as § 5c; the round has the normal controls, so iterate and
    implement work as everywhere.

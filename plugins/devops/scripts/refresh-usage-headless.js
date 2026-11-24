@@ -47,7 +47,7 @@ const { execSync, execFileSync, spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { planId, planLabel } = require('../hooks/lib/plan');
+const { planId, planLabel, sessionDelivered } = require('../hooks/lib/plan');
 const { usageShape, weeklyAllLimit, recordDrift, clearDrift } = require('../hooks/lib/usage-drift');
 
 // Store usage data in ~/.claude — same location regardless of CWD or worktree
@@ -804,6 +804,11 @@ async function scrapeViaCDP() {
       return 3;
     }
 
+    // Remember the technical fact "this account has a 5 h window" (plan.js fiveHourWindow).
+    try {
+      const prevLive = JSON.parse(fs.readFileSync(USAGE_LIVE_PATH, 'utf8'));
+      if ((prevLive && prevLive.fiveHourSeen === true) || sessionDelivered(parsed.session)) parsed.fiveHourSeen = true;
+    } catch { if (sessionDelivered(parsed.session)) parsed.fiveHourSeen = true; }
     writeJsonAtomic(USAGE_LIVE_PATH, parsed);
     log('Usage data refreshed:', JSON.stringify(parsed));
 

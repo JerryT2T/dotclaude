@@ -45,11 +45,18 @@ config keeps `"plan": "max_20"`; both are read through the aliases.
 
 ## The 5-hour limit
 
-Free, Pro and Max have it. Ultra has none once the account is verified; an
-unverified account has a temporary limit. Team and Enterprise: not stated, so
-the plugin trusts the delivered data. `plan.js` `fiveHourState(id, value)`
-decides: a delivered value is always used; `null` means "no limit" on Ultra
-and "window idle" on every other plan.
+Whether a 5-hour window exists is a fact of the account's own usage data, never
+of the plan name (an Ultra account has none once verified, an unverified one has
+a temporary limit, Team and Enterprise are not stated). `plan.js`
+`fiveHourWindow(id, session, seen)` decides, the plan id is ignored:
+a delivered window (a reset time, or usage above 0) is always used; no window
+now but one delivered before (`fiveHourSeen: true` in `usage-live.json`) is
+"idle" and keeps the row; no window and never seen is "no limit", no row, on
+every plan label including `unknown`. `statusline-usage.js` and
+`refresh-usage-headless.js` set `fiveHourSeen` once a window was delivered and
+keep it; a missing flag heals with the next delivered window. A brand-new
+account shows no row until its first window. A carried-over idle window is kept
+only for an account with `fiveHourSeen`.
 
 At question time the injected `[budget]` line tells the two apart: with no
 5h limit it shows only `week N%` (`budgetLine()` in `hooks/lib/budget.js`),

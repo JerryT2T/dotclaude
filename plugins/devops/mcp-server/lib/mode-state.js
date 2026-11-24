@@ -124,7 +124,8 @@ export function stripTitlePrefix(title) {
 export function titleStateForKey(key, ctx = {}) {
   switch (key) {
     case "ready": return "ready";
-    case "ready-local": return "committed";
+    case "ready-local":
+    case "done-local": return "committed";
     case "question": return "question";
     case "test":
     case "test-local": return "test";
@@ -174,6 +175,24 @@ export function hasMandatoryStep(params) {
   if (nonEmpty(finalTests.filter((x) => !(x && typeof x === "object" && x.optional === true)))) return true;
   const validation = Array.isArray(params && params.validation) ? params.validation : [];
   return validation.some((v) => v && typeof v === "object" && v.waitsOn === "user" && v.status !== "met");
+}
+
+/**
+ * True when a `ready` card is the FINISHED end of a close-out in a repo without
+ * remote: the local commit is the delivery (`git-no-remote` +
+ * `delivered: "local-commit-only"`) and nothing is left for the user to do
+ * (no mandatory step). The caller adds the card-key check (`ready` only, no
+ * red or unverified key). Such a card is done (🟩, heading `done-local`), not a
+ * "noch etwas?" turn.
+ *
+ * @param {object} params card params
+ * @returns {boolean}
+ */
+export function isLocalDone(params) {
+  const state = params && params.state && typeof params.state === "object" ? params.state : {};
+  if (!params || params.variant !== "ready") return false;
+  if (state.mode !== "git-no-remote" || state.delivered !== "local-commit-only") return false;
+  return !hasMandatoryStep(params);
 }
 
 /** The fallback outcome when the card passes none: the variant's state. */

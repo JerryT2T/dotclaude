@@ -46,7 +46,7 @@ const page = require('./lib/concept-artifact-page');
 const START = '<!-- concept-artifact:wrapper:start -->';
 const END = '<!-- concept-artifact:wrapper:end -->';
 const ICON = 'compass';
-const CAPABILITIES = { db: {}, user: {} };
+const CAPABILITIES = { db: {}, user: {}, comments: {} };
 const SUBS = 'submissions';
 const DRAFTS = 'drafts';
 
@@ -319,7 +319,7 @@ function build(opts) {
       { tool: 'ArtifactData', action: 'list', collection: SUBS, query: { limit: 1000 }, save: 'the result text verbatim to a file (it carries the versions the acks need)' },
       { tool: 'ArtifactData', action: 'list', collection: DRAFTS, query: { limit: 1000 }, out_dir: '<scratchpad>/<slug>-drafts' },
     ],
-    note: 'Publish `out` with the Artifact tool, capabilities {db:{},user:{}} and, on the first publish, icon "compass" (a redeploy keeps both); then `record --page <page> --url <artifact url>`. Read back with readBack (artifact-fallback.md § Read back). No bridge, no crons.',
+    note: 'Publish `out` with the Artifact tool, capabilities {db:{},user:{},comments:{}} and, on the first publish, icon "compass" (a redeploy keeps both); then `record --page <page> --url <artifact url>`. Read back with readBack (artifact-fallback.md § Read back). No bridge, no crons.',
   };
 }
 

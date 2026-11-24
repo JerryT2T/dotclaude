@@ -63,7 +63,7 @@ and the sidebar title reach no one:
 | Channel | Thread tool |
 |---|---|
 | text / answer | `mcp__hearthbot__post_message` |
-| question | numbered `post_message` reply; title head via `rename_thread` |
+| question | `request_decision` card when offered (single choice); else numbered `post_message` reply; title head via `rename_thread` |
 | card | `post_message` with the card markdown (the card tool says how) |
 | file | `attached_outputs` of that `post_message` |
 | progress | `update_progress_checklist` |
@@ -107,6 +107,8 @@ never a summary, a list or a "Was nun?" block. wrap_up's demand for a closing
 message — its Remote Control variant included ("may not see the next-step box")
 — is answered by the card's `answer`, never by text under it. A skipped step after the card
 (an archive call not made) ends the turn silently too — it never becomes a report.
+
+**Mid-turn question.** A direct question from the user that arrives between tool calls is answered as the turn's final text, before any further blocking wait (`read_terminal` with a long wait, a poll loop, a sleep). Interim text between tool calls is collapsed in the Desktop app and reaches no one while the turn keeps running. End the turn with the short answer; a running terminal command or background task keeps going and wakes the session. Inside an auto-guide panel loop the answer goes into the panel note and the turn ends too (auto-guide Step 5).
 
 A turn triggered by a background-task notification, a wake-up or a cron tick,
 with no user prompt: if nothing changed (same variant, same build-id, same

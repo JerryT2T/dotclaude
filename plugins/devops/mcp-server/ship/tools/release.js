@@ -6,7 +6,7 @@
 import { z } from "zod";
 import { execFileSync } from "node:child_process";
 import { gitArgs, gitTry, currentBranch, headShort, dirtyState, isWorktree, isRebasedOnto, fileOverlap, syncLocalBranch, treeOf, detectDefaultBranch, NETWORK_TIMEOUT } from "../lib/git.js";
-import { createPR, mergePR, findExistingPR, watchPRChecks, deleteRemoteBranch, markPRReady } from "../lib/github.js";
+import { getRemoteTagRest, createPR, mergePR, findExistingPR, watchPRChecks, deleteRemoteBranch, markPRReady } from "../lib/github.js";
 import { acquireLandingLock, LANDING_LOCK_TTL_MS, LANDING_LOCK_HEARTBEAT_MS } from "../lib/landing-lock.js";
 import { channelFields } from "../lib/channel-state.js";
 import { classifyFailedChecks } from "../lib/ci-account-limits.js";
@@ -16,7 +16,7 @@ import { detectRepoMode, probeTimeoutError } from "../lib/repo-mode.js";
 import { remoteTagExists, parseLsRemoteTagOutput } from "../lib/remote-tags.js";
 import { pruneMergedSubBranches } from "../lib/sub-branches.js";
 import { retryUntil } from "../lib/retry.js";
-import { isPermanentPushError, tagHandoff } from "../lib/tag-handoff.js";
+import { isPermanentPushError, isCloudSession, tagHandoff } from "../lib/tag-handoff.js";
 import { scanConflictMarkers, describeMarkers } from "../lib/conflict-markers.js";
 import { clampText } from "../../lib/soft-limits.js";
 import { readVersion } from "../lib/version.js";
@@ -96,6 +96,8 @@ export const schema = z.object({
   interactive: z.boolean().default(false).describe("true when the user is present to answer (interactive /do-ship). An Actions-minutes block with no stored answer then returns ciQuotaDecisionNeeded instead of the skipChecks fallback: ask the user, pass the answer as quotaDecision. Default false (autonomous runs keep the local-gate → skipChecks fallback); a live .claude/.ship-lockout marker always counts as autonomous."),
   checksTimeoutSec: z.number().int().min(30).max(3600).default(600).describe("Max seconds to wait for PR CI checks before merging. Default 10 min."),
   tagVerifyAttempts: z.number().int().min(1).max(20).default(4).describe("How often to re-query the remote before declaring the pushed channel tag unverified"),
+  tagPollAttempts: z.number().int().min(1).max(30).default(6).describe("Cloud session with .github/workflows/tag-on-version.yml: how often to poll for the CI-created ring tag before handing it to the owner (#1212)"),
+  tagPollDelayMs: z.number().int().min(0).max(60_000).default(10_000).describe("Delay between those tag polls"),
   tagRetryDelayMs: z.number().int().min(0).max(60_000).default(1_000).describe("Base delay for the tag-verify backoff (exponential, ×3 per attempt)"),
   cwd: z.string().describe("Working directory of the target repo (required — must be passed by the caller)"),
   validation: z.preprocess(
@@ -1068,10 +1070,33 @@ export async function handler(params) {
         // The merge landed; the owner can still create the tag (#566). Drop the
         // unpushed local tag so the hand-off's `git tag -a` also works in this checkout.
         if (e.permanent || /tag push failed/.test(e.message || "")) gitTry(["tag", "-d", channelTag], opts);
-        result.tagHandoff = tagHandoff({
-          channelTag, channel: "alpha", version: tag.replace(/^v/, ""),
-          sha: result.mergeSha || null, base, permanent: !!e.permanent, error: e.message,
-        });
+        // #1212: a cloud session cannot push the tag, the repo's CI can. With
+        // tag-on-version.yml in the repo, wait for the workflow's tag instead
+        // of handing the step to the owner; only a tag that never shows up
+        // (or a repo without the workflow) falls back to the hand-off.
+        const cloudRefused = !!e.permanent && isCloudSession();
+        const hasTagWorkflow = cloudRefused && existsSync(join(cwd, ".github", "workflows", "tag-on-version.yml"));
+        let polled = false;
+        if (hasTagWorkflow) {
+          const attempts = params.tagPollAttempts ?? 6;
+          const delayMs = params.tagPollDelayMs ?? 10_000;
+          for (let i = 0; i < attempts && !polled; i++) {
+            try { polled = getRemoteTagRest(channelTag, opts).exists; } catch { /* read blip — next poll */ }
+            if (!polled && i < attempts - 1 && delayMs > 0) await new Promise((r) => setTimeout(r, delayMs));
+          }
+        }
+        if (polled) {
+          result.tagVerified = true;
+          result.tagCreatedBy = "ci";
+          result.tagWarning = `${channelTag} was created by .github/workflows/tag-on-version.yml (the cloud session cannot push tags).`;
+          delete result.tagError;
+        } else {
+          result.tagHandoff = tagHandoff({
+            channelTag, channel: "alpha", version: tag.replace(/^v/, ""),
+            sha: result.mergeSha || null, base, permanent: !!e.permanent, error: e.message,
+            workflowMissing: cloudRefused && !hasTagWorkflow, workflowWaited: hasTagWorkflow,
+          });
+        }
       }
       if (tagDefaulted) result.tagDefaulted = true;
 

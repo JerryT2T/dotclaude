@@ -445,6 +445,35 @@ describe("render_completion_card — anatomy (§ 2 of the design doc)", () => {
     }
   });
 
+  // #1216: a finished close-out whose delivery is the local commit is DONE, not "noch etwas?".
+  describe("finished close-out without remote renders as done (#1216)", () => {
+    const state = { mode: "git-no-remote", commit: "abc1234", branch: "main", pushed: false, delivered: "local-commit-only" };
+    test("green heading without the question; self-checks as optional items keep it green", async () => {
+      const text = await cardText({
+        variant: "ready", summary: "Fertig", lang: "de", session_id: "test-1216-a", state,
+        userFinalTest: [{ action: "Szene morgens prüfen", optional: true }, { action: "Szene abends prüfen", optional: true }],
+      });
+      expect(text).toMatch(/^## 🟩 📦 Committed — Lokal abgeschlossen.$/m);
+      expect(text).not.toContain("noch etwas?");
+    });
+    test("english heading", async () => {
+      const text = await cardText({ variant: "ready", summary: "Done", lang: "en", session_id: "test-1216-b", state });
+      expect(text).toMatch(/^## 🟩 📦 Committed — Done locally.$/m);
+    });
+    test("a mandatory user step still turns it into a your-turn card", async () => {
+      const text = await cardText({
+        variant: "ready", summary: "Fertig", lang: "de", session_id: "test-1216-c", state,
+        userFinalTest: ["Szene abends prüfen"],
+      });
+      expect(text).toMatch(/^## 👉 📦 Committed/m);
+      expect(text).not.toContain("Lokal abgeschlossen");
+    });
+    test("without delivered: local-commit-only the old heading stays", async () => {
+      const text = await cardText({ variant: "ready", summary: "x", lang: "de", session_id: "test-1216-d", state: { ...state, delivered: undefined } });
+      expect(text).toContain("## 🟩 📦 Committed — Lokal committet — noch etwas?");
+    });
+  });
+
   // Audit 2026-09-26: a card in a folder without any repo (a network share, a
   // scratch folder) drew the git track, "Build no-build-id" and a Ship button.
   test("no repo at all is detected from cwd: file-only form, no build id, nothing to ship", async () => {

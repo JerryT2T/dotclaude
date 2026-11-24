@@ -27,7 +27,7 @@ const SOURCE = {
  * - askAt / sonnetAt: [fiveHourPct, weeklyPct] where the class flips
  * - deferAt: 5 h fill at which the defer-to-reset question pays off
  * - tokenPct: confirm threshold of the token guard (share of the context window)
- * - fiveHour: 'yes' | 'unverified-only' (Ultra: none once verified) | 'unstated'
+ * - fiveHour: informational only; the display decides by the data (fiveHourWindow), never by this
  * - fable: how Fable usage is limited
  */
 const PLANS = {
@@ -73,34 +73,41 @@ function planLabel(id) {
 }
 
 /**
- * What a `five_hour` value from the usage API means on a plan.
- * 'delivered' - a value came: always use it, for every plan.
- * 'none'      - null on Ultra: no 5 h limit applies.
- * 'idle'      - null elsewhere (or unknown plan): the window is idle.
+ * What a `five_hour` value from the usage data means. The plan name never
+ * decides (renamed or new plans work without an update); only the data does.
+ * 'delivered' - a window came (a reset time, or usage above 0): always use it.
+ * 'idle'      - none now, but this account has delivered one before (`seen`):
+ *               between two windows, the row stays.
+ * 'none'      - none now and never seen: no 5 h limit exists, no row.
  */
-function fiveHourState(id, delivered) {
+function fiveHourState(delivered, seen) {
   if (delivered != null) return 'delivered';
-  return id === 'ultra' ? 'none' : 'idle';
+  return seen ? 'idle' : 'none';
+}
+
+/** True when a snapshot `session` is a real delivered window (a percent AND a reset or usage above 0). */
+function sessionDelivered(session) {
+  if (!session || session.pct == null || !Number.isFinite(Number(session.pct))) return false;
+  const r = session.resetInMinutes;
+  return (r != null && Number.isFinite(Number(r))) || Number(session.pct) > 0;
 }
 
 /**
  * The one decision every display and gate calls: the 5 h window of a snapshot's
- * `session` on a plan. A delivered window (a percent AND either a reset or usage
- * above 0) is always used, on every plan, verified or not. The usage mapper
- * writes an absent `five_hour` as `{ pct: 0, resetInMinutes: null }`, which no
- * live window ever looks like (a live window has a reset).
+ * `session`. `seen` is the remembered fact `fiveHourSeen` of usage-live.json
+ * (a window was delivered once). The usage mapper writes an absent `five_hour`
+ * as `{ pct: 0, resetInMinutes: null }`, which no live window looks like.
+ * `id` (plan id) is kept for call compatibility and ignored.
  * Returns `{ state, pct, resetInMinutes, applies }`:
  * - 'delivered': real data. applies = true.
- * - 'idle': non-Ultra window not started. pct 0, no reset. applies = true (rows
- *   stay as they always were).
- * - 'none': Ultra without a window. pct null. applies = false (rows disappear).
+ * - 'idle': window not started on an account that has one. pct 0. applies = true.
+ * - 'none': nothing delivered, never seen. pct null. applies = false.
  */
-function fiveHourWindow(id, session) {
+function fiveHourWindow(id, session, seen) {
   const pct = session && session.pct != null && Number.isFinite(Number(session.pct)) ? Number(session.pct) : null;
   const rawReset = session ? session.resetInMinutes : null;
   const reset = rawReset != null && Number.isFinite(Number(rawReset)) ? Number(rawReset) : null;
-  const delivered = pct != null && (reset != null || pct > 0);
-  const state = fiveHourState(id, delivered ? session : null);
+  const state = fiveHourState(sessionDelivered(session) ? session : null, seen === true);
   if (state === 'delivered') return { state, pct, resetInMinutes: reset, applies: true };
   if (state === 'none') return { state, pct: null, resetInMinutes: null, applies: false };
   return { state, pct: pct == null ? 0 : pct, resetInMinutes: null, applies: true };
@@ -115,4 +122,4 @@ const CALIBRATION_KEYS = { free: 'Free', pro: 'Pro', max: 'Max 5x', ultra: 'Max 
 /** Legacy keys of the token config (`"plan":"max_20"`), read through aliases. */
 const TOKEN_KEYS = { pro: 'pro', max_5: 'max', max_20: 'ultra' };
 
-module.exports = { SOURCE, PLANS, PLAN_IDS, FABLE, TOKEN_KEYS, CALIBRATION_KEYS, planId, planLabel, fiveHourState, fiveHourWindow };
+module.exports = { SOURCE, PLANS, PLAN_IDS, FABLE, TOKEN_KEYS, CALIBRATION_KEYS, planId, planLabel, fiveHourState, fiveHourWindow, sessionDelivered };

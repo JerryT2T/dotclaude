@@ -372,6 +372,9 @@ or dismisses it.
 - **`--strict` narrows, never widens.** Only files and symbols inside the
   named scope change; a bug, smell or drift outside it is a finding under
   "Manual review", not a fix. The ship path under strict applies nothing.
+- **A finding owned by another thread is forwarded, not asked** (Claude
+  Project thread): `{PLUGIN_ROOT}/deep-knowledge/project-threads.md` §
+  Findings that belong to another thread.
 - **Surface polish-candidates explicitly** so the user can ask for a polish pass (`auto-polish`)
   as a natural follow-up.
 - **Never commit automatically** — this skill modifies files; the user

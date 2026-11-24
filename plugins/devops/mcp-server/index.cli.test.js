@@ -793,6 +793,23 @@ describe("--render-card: the [SESSION ARCHIVE] block and flag", () => {
     unlinkSync(archiveFlag(sid));
   });
 
+  test("a finished close-out without remote (#1216): ready card archives, a mandatory user step does not", async () => {
+    const ready = (sid, over = {}) => ({
+      variant: "ready", summary: "Fertig", session_id: sid, cwd: repo,
+      state: { mode: "git-no-remote", commit: "abc1234", branch: "main", pushed: false, delivered: "local-commit-only" },
+      ...over,
+    });
+    const ok = S("arch-local-ok");
+    const { stderr } = await renderCardFull(ready(ok, { userFinalTest: [{ action: "abends prüfen", optional: true }] }), desktop());
+    expect(stderr).toContain("[SESSION ARCHIVE — DO NOT OUTPUT THIS BLOCK]");
+    expect(JSON.parse(readFileSync(archiveFlag(ok), "utf8")).local).toBe(true);
+    unlinkSync(archiveFlag(ok));
+    const mandatory = S("arch-local-mandatory");
+    const res = await renderCardFull(ready(mandatory, { userFinalTest: ["abends prüfen"] }), desktop());
+    expect(res.stderr).not.toContain("[SESSION ARCHIVE");
+    expect(existsSync(archiveFlag(mandatory))).toBe(false);
+  });
+
   test("a downgraded ship card (no merge) and a released card without a merge write no flag", async () => {
     for (const [name, over] of [
       ["arch-downgrade", { state: { pushed: true, branch: "feat/x" } }],

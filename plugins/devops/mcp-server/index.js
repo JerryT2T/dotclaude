@@ -68,7 +68,7 @@ import { hasPending, pendingWhat, renderPendingLine, hasConcept, normalizePendin
 import { clampText, clampEllipsis } from "./lib/soft-limits.js";
 import { summarizeShip, shipDurationTest } from "./ship/lib/ship-timings.js";
 import { CARD_VARIANTS, coerceCardInput, validateCardInput, formatIssues, unknownCardKeys } from "./lib/card-input.js";
-import { batchGuide, conceptCloseoutOnly, conceptUrl, readBatch, readRunContractLine, sameProjectRoot, titlePrefixFor, titleInstruction, demandedTitle, currentSessionTitle, isLinkedSub, titleStateForKey, hasMandatoryStep, TITLE_SCHEME, projectThreadMode, currentThreadTitle, threadTitleInstruction, coordinatorSession, coordinatorStatusInstruction } from "./lib/mode-state.js";
+import { batchGuide, conceptCloseoutOnly, conceptUrl, readBatch, readRunContractLine, sameProjectRoot, titlePrefixFor, titleInstruction, demandedTitle, currentSessionTitle, isLinkedSub, titleStateForKey, hasMandatoryStep, isLocalDone, TITLE_SCHEME, projectThreadMode, currentThreadTitle, threadTitleInstruction, coordinatorSession, coordinatorStatusInstruction } from "./lib/mode-state.js";
 import { staleServerLine } from "./lib/server-version.js";
 import { canMinimize, cardDataBlock, conceptOpenButton, cardWidgetInstruction, isDesktopSession, safeSessionId, sessionOpenButton, threadCardWidget, THREAD_WIDGET_TOOL, warmCardClient, writeCardWidgetFile } from "./lib/card-widget.js";
 import { bandCarriesCard, writeBandCard } from "./lib/band-marker.js";
@@ -149,12 +149,12 @@ function fiveHourView(usageData) {
   let view;
   try {
     const { fiveHourWindow } = cjsRequire(join(PLUGIN_ROOT, 'hooks', 'lib', 'plan.js'));
-    view = fiveHourWindow(usagePlanId(usageData), session);
+    view = fiveHourWindow(usagePlanId(usageData), session, !!(usageData && usageData.fiveHourSeen === true));
   } catch (err) {
     console.error('[dotclaude-mcp] plan rules unavailable:', err?.message || err);
     const n = Number(session && session.pct);
     const r = session && session.resetInMinutes != null && Number.isFinite(Number(session.resetInMinutes)) ? Number(session.resetInMinutes) : null;
-    view = { state: 'idle', pct: Number.isFinite(n) ? n : 0, resetInMinutes: r, applies: true };
+    view = { state: 'idle', pct: Number.isFinite(n) ? n : 0, resetInMinutes: r, applies: !!(usageData && usageData.fiveHourSeen === true) || r != null || n > 0 };
   }
   if (!session) return { ...view, applies: false };
   return view;
@@ -1455,6 +1455,8 @@ const HEADINGS = {
     handoff: (c) => c.ship ? `an Session „${c.title}“ übergeben — Shippen?` : `an Session „${c.title}“ übergeben`,
     // No remote (#500): nothing to ship to — the work ends at the local commit.
     'ready-local': () => 'Lokal committet — noch etwas?',
+    // The close-out ended at the local commit and nothing is left for the user.
+    'done-local': () => 'Lokal abgeschlossen.',
     question: (c) => c.question
       ? c.question
       : `Wartet auf dich: ${c.waitsFor} — wie entscheidest du?`,
@@ -1500,6 +1502,7 @@ const HEADINGS = {
     ready: () => 'Ship?',
     handoff: (c) => c.ship ? `handed to session “${c.title}” — ship?` : `handed to session “${c.title}”`,
     'ready-local': () => 'Committed locally — anything else?',
+    'done-local': () => 'Done locally.',
     question: (c) => c.question
       ? c.question
       : `Waiting on you: ${c.waitsFor} — what's your call?`,
@@ -1552,7 +1555,7 @@ function cardHead(input, key, delivery, state) {
   if (plan && plan.head) return { id: plan.head.id, mandatory: plan.head.mandatory, hkey: 'linked', plan };
   if (QUESTION_KEYS.has(key) && !keptTestPoints(input, key, 'de') && openQuestionOf(input)) return { id: 'question', mandatory: true, hkey: 'question' };
   const noShip = (state.mode === 'git-no-remote' || state.mode === 'file-only') && (key === 'ready' || key === 'test');
-  const hkey = noShip ? key + '-local' : key;
+  const hkey = key === 'ready' && isLocalDone(input) ? 'done-local' : noShip ? key + '-local' : key;
   const id = titleStateForKey(hkey, {
     ring: !!delivery.promote && state.mode !== 'git-no-remote',
     landed: delivery.promote && delivery.promote.current,
@@ -2860,7 +2863,7 @@ function archiveEnabled(cwd) {
  * post.flow.completion reads on the show_widget call.
  */
 function sessionArchiveNote(params, actionsNote) {
-  const { archive } = actionsNote
+  const { archive, local } = actionsNote
     ? archiveDecision(params, {
       desktop: isDesktopSession(),
       hasPending,
@@ -2868,11 +2871,12 @@ function sessionArchiveNote(params, actionsNote) {
       closeoutOnly: conceptCloseoutOnly,
       batchActive: (cwd) => !!readBatch(cwd),
       holdReason: (cwd) => archiveHold(cwd, params.session_id),
+      localDone: (p) => resolveCardKey(p) === 'ready' && isLocalDone(p),
       enabled: archiveEnabled,
       treeClean: archiveTreeClean,
     })
     : { archive: false };
-  writeArchiveFlag(archive, safeSessionId(params.session_id), tmpdir(), { cwd: params.cwd });
+  writeArchiveFlag(archive, safeSessionId(params.session_id), tmpdir(), { cwd: params.cwd, local: !!local });
   return archive ? archiveInstruction() : '';
 }
 

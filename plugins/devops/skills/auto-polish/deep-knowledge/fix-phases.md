@@ -97,6 +97,18 @@ For Step 4 (#7) findings:
 
 Proposals only, never auto-applied.
 
+### Step 10a — Owned elsewhere (before the proposals are asked)
+
+Only in a Claude Project thread. A structural finding that falls into another
+thread's named scope (spawn note, coordinator relay, `list_threads` titles) is
+forwarded as information right away per
+`{PLUGIN_ROOT}/deep-knowledge/project-threads.md` § Findings that belong to
+another thread (`message_thread`, else `message_coordinator`, else
+`send_message` to `@parent` / the bridge note). It is never put to the person
+as a decision, in both `$AUTONOMOUS` modes, and it does not count towards the
+>3 concept-page threshold. Report it in the "Forwarded" line (Step 12). Only a
+finding with no owning thread continues below as a proposal.
+
 When `$AUTONOMOUS=0`:
 - For ≤3 proposals: ask via `AskUserQuestion`, one decision per proposal,
   with options `Apply` / `Skip` / `Defer to issue`. Include a short

@@ -36,6 +36,7 @@ describe("knowledge-pointers", () => {
     ["bitte Projekt einrichten", "project-setup.md"],
     ["add license please", "project-setup.md"],
     ["mach das mit /setup-project", "project-setup.md"],
+    ["mach es robust und pack es in ein neues GitHub-Repo", "project-setup.md"],
     ["cleanup einstellen: Hinweis erst ab 80", "devops-config.md"],
     ["zeig mir die devops einstellungen", "devops-config.md"],
     ["bitte nicht automatisch aufräumen in diesem Projekt", "devops-config.md"],
@@ -49,6 +50,17 @@ describe("knowledge-pointers", () => {
     "",
   ])("no pointer for %j", (msg) => {
     expect(files(msg)).toEqual([]);
+  });
+
+  test("project-setup.md: promotion runs the full bundle without the offer (#1172)", () => {
+    const s = fs.readFileSync(path.join(DK, "project-setup.md"), "utf8");
+    expect(s).toMatch(/\*\*Promotion to a real project\.\*\*/);
+    expect(s).toMatch(/without the offer and before the first push/);
+    expect(s).toMatch(/never auto-create, except on promotion/);
+    const bundle = s.slice(s.indexOf("## Step 8b"), s.indexOf("## Step 9"));
+    for (const item of ["claude-ignore.js migrate", "LICENSE", "README", ".editorconfig", ".gitattributes", "CHANGELOG.md", "VERSION", "zip", "`v*` tag", "project map", "CLAUDE.md"]) {
+      expect(bundle.toLowerCase(), item).toContain(item.toLowerCase());
+    }
   });
 
   test("a pointer without a legacy skill names no old skill", () => {

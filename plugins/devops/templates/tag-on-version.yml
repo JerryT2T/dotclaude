@@ -1,0 +1,59 @@
+# tag-on-version.yml — CI creates the release tag when a session cannot push it.
+#
+# Why: claude.ai cloud sessions cannot push tags (the GitHub proxy takes branch
+# pushes only). Scaffolded by /auto-setup or the first cloud ship; do-ship then
+# polls for the tag this workflow creates instead of handing it to the owner.
+#
+# Tag scheme: set TAG_PREFIX below, or pass the `tag-prefix` input on a manual
+# run. "" -> v1.2.3; "alpha/" -> alpha/v1.2.3 (ring flow).
+#
+# Version source: package.json. Another project type: change the "Read version"
+# step (the versionFiles entry of the project).
+#
+# GITHUB_TOKEN note: a tag created with GITHUB_TOKEN does NOT trigger other
+# workflows (`on: push: tags`, release.yml). If a downstream workflow must run
+# on the tag, give this job a PAT or GitHub App token in the checkout step and
+# the push, or call that workflow from here via workflow_call / workflow_dispatch.
+name: Tag on version
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag-prefix:
+        description: 'Tag prefix, e.g. "" for v1.2.3 or "alpha/" for alpha/v1.2.3'
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+env:
+  TAG_PREFIX: ${{ inputs.tag-prefix || '' }}
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read version
+        id: version
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Create tag when missing
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          TAG="${TAG_PREFIX}v${VERSION}"
+          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
+            echo "Tag ${TAG} already exists - nothing to do."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${TAG}" "${GITHUB_SHA}" -m "{\"version\":\"${VERSION}\"}"
+          git push origin "refs/tags/${TAG}"

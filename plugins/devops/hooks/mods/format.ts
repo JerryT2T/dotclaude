@@ -711,7 +711,8 @@ export function hygieneLine(h: Hygiene | null, prefix = true, loc: Locale = 'en'
 export function cleanupPlanPrompt(root: string, cwd: string): string {
   return [
     `You plan the branch and worktree cleanup of the git repository at ${root}. This run is READ-ONLY:`,
-    'run only read commands (git status, git worktree list --porcelain, git branch -vv, git log, git cherry, gh pr list).',
+    'run only read commands (git status, git worktree list --porcelain, git branch -vv, git log, git cherry, gh pr list,',
+    'git diff --stat, git merge-tree --write-tree). git merge-tree --write-tree writes objects only, never a ref or the working tree.',
     'Do not commit, delete, prune, push or change any file.',
     'Run every command in the foreground: never use run_in_background, never wait for or poll background tasks.',
     'Your answer is the finished plan and nothing else: no interim status line such as "waiting for …".',
@@ -719,9 +720,18 @@ export function cleanupPlanPrompt(root: string, cwd: string): string {
     '(merged, or the same tree) and it has no uncommitted or unpushed changes. Uncommitted changes are never discarded:',
     'list them for the user. Never touch the worktree ' + cwd + ' (this session) nor a worktree another running Claude',
     'session uses (its folder has a recent .claude/ session marker or is the cwd of a running claude process).',
+    'A branch that is NOT landed (unmerged commits, no proof in the default branch) gets a content triage, never a bare delete:',
+    'its intention (what the work was for, from the commits and diff --stat), its date, the proof of landing (or why none),',
+    'the churn on the default branch in the same area since that date, the git merge-tree --write-tree result against the',
+    'default branch (clean, or the conflicting paths), and one verdict: Integrieren (still wanted, merges clean or small',
+    'conflicts), Neu umsetzen (idea counts, code does not: heavy conflicts or main rebuilt the area), Entfernen (superseded',
+    'or abandoned) or Behalten (unclear or in progress).',
     'Answer in German markdown, no preamble:',
     '## Plan — numbered actions, each: what, the exact command(s), and why it is safe.',
+    '## Unlanded branches — one list item per unlanded branch, grouped by verdict (Integrieren, Neu umsetzen, Entfernen, Behalten):',
+    'branch, verdict, intention, date, landing proof, main churn, merge-tree result. Nothing here is a plan action.',
     '## Braucht deine Entscheidung — everything that is not safe, with the evidence (uncommitted files, unmerged commits).',
+    'An unlanded branch the user must choose for is listed here too, with the verdict as the recommendation.',
     'If nothing is safe to remove, say so in one line under Plan.',
   ].join('\n')
 }
@@ -734,20 +744,22 @@ export function planComplete(answer: string): boolean {
 
 /** The band's one-line summary of a plan (#1161): numbered actions under `## Plan`, listed items under
  *  `## Braucht deine Entscheidung`. Other sections and prose lines are not counted. */
-export function planSummary(report: string): { actions: number; decisions: number } {
+export function planSummary(report: string): { actions: number; decisions: number; unlanded: number } {
   let actions = 0
   let decisions = 0
-  let section: 'plan' | 'decide' | null = null
+  let unlanded = 0
+  let section: 'plan' | 'decide' | 'unlanded' | null = null
   for (const line of (report || '').split(/\r?\n/)) {
     const h = /^##\s+(.*)$/.exec(line)
     if (h) {
-      section = /^Plan\b/.test(h[1]) ? 'plan' : /Entscheidung|decision/i.test(h[1]) ? 'decide' : null
+      section = /^Plan\b/.test(h[1]) ? 'plan' : /Entscheidung|decision/i.test(h[1]) ? 'decide' : /Unlanded|Nicht gelandet/i.test(h[1]) ? 'unlanded' : null
       continue
     }
     if (section === 'plan' && /^\s*\d+[.)]\s/.test(line)) actions++
     else if (section === 'decide' && /^\s*(\d+[.)]|[-*])\s/.test(line)) decisions++
+    else if (section === 'unlanded' && /^\s*(\d+[.)]|[-*])\s/.test(line)) unlanded++
   }
-  return { actions, decisions }
+  return { actions, decisions, unlanded }
 }
 
 /** The apply subagent's brief: exactly the approved plan, re-verified per action. */
@@ -757,7 +769,14 @@ export function cleanupApplyPrompt(root: string, cwd: string, plan: string): str
     'Before each removing command re-check its safety condition (landed in the default branch, no uncommitted or',
     'unpushed changes); if it no longer holds, skip that action and say why. Run no command that is not in the plan,',
     'never force-delete an unmerged branch, never discard uncommitted changes, never touch ' + cwd + '.',
-    'Items under "Braucht deine Entscheidung" are NOT approved: skip them.',
+    'Items under "Braucht deine Entscheidung" and "Unlanded branches" are NOT approved: skip them, unless the plan text marks',
+    'one with an explicit choice line (`Entscheidung: <branch> → Integrieren` or `→ Neu umsetzen`); only such an item acts.',
+    'Integrieren: re-run git merge-tree --write-tree against the default branch first. Conflicts now → skip with',
+    '"Konflikte mit main: <paths>" and suggest Neu umsetzen. Clean → hand over to the ship queue',
+    '(Skill("devops:do-ship", args: "--cwd=<path> --keep --queued"), per the auto-cleanup execution.md § Integrieren).',
+    'Neu umsetzen: file one issue (Skill("devops:auto-issue")) with the intention, date and spec; the branch is kept.',
+    'If you cannot call Skill(), do not improvise a merge: end your answer with the exact do-ship / auto-issue commands',
+    'for the main session to run, one per branch, and mark those lines as handed over.',
     'Answer in German markdown, no preamble: one line per action, ✓ done or ⏭ skipped with the reason.',
     '',
     'APPROVED PLAN:',
@@ -945,6 +964,7 @@ const TABLE = {
   btnClose: ['Close', 'Schließen', 'Cerrar', 'Fermer', 'Fechar', '閉じる', '关闭'],
   btnPlan: ['Plan cleanup', 'Aufräumen planen', 'Planificar limpieza', 'Planifier le nettoyage', 'Planejar limpeza', '整理を計画', '规划清理'],
   planSummary: ['{n} actions · {d} need your decision', '{n} Aktionen · {d} brauchen deine Entscheidung', '{n} acciones · {d} requieren tu decisión', '{n} actions · {d} demandent ta décision', '{n} ações · {d} precisam da sua decisão', '{n} 件のアクション · {d} 件は判断が必要', '{n} 项操作 · {d} 项需要你决定'],
+  planUnlanded: ['{u} unlanded', '{u} nicht gelandet', '{u} sin integrar', '{u} non intégrées', '{u} não integradas', '{u} 件が未統合', '{u} 项未合并'],
   cleanupDetails: ['Details', 'Details', 'Detalles', 'Détails', 'Detalhes', '詳細', '详情'],
   btnExpand: ['Open in pane', 'Im Bereich öffnen', 'Abrir en el panel', 'Ouvrir dans le volet', 'Abrir no painel', 'ペインで開く', '在面板中打开'],
   runPlanning: ['planning…', 'plant …', 'planificando…', 'planification…', 'planejando…', '計画中…', '规划中…'],

@@ -62,6 +62,7 @@ vi.mock("../lib/github.js", () => ({
   watchPRChecks: vi.fn(() => ({ status: "passed", checks: [] })),
   deleteRemoteBranch: vi.fn(() => ({ ok: true, method: "gh-api" })),
   markPRReady: vi.fn(() => ({ ok: true })),
+  getRemoteTagRest: vi.fn(() => ({ exists: false })),
 }));
 
 // The landing lock has its own real-fs suite (lib/landing-lock.test.js); here a
@@ -146,6 +147,7 @@ import { scanConflictMarkers } from "../lib/conflict-markers.js";
 import { acquireLandingLock } from "../lib/landing-lock.js";
 import * as testResults from "../lib/test-results.js";
 import * as nodeFs from "node:fs";
+const fsOrig = await vi.importActual("node:fs");
 
 function params(overrides = {}) {
   return {
@@ -1109,6 +1111,50 @@ describe("ship_release — #398 post-merge truth contract", () => {
     const res = await handler(params({ tagVerifyAttempts: 2 }));
     expect(res.tagHandoff.permanent).toBe(false);
     expect(res.tagHandoff.commands).toHaveLength(4);
+  });
+
+  // #1212: a cloud session cannot push the tag; the repo's tag-on-version.yml can.
+  describe("cloud session tag via CI workflow (#1212)", () => {
+    const refuse = () => gitLib.gitStrict.mockImplementation((cmd) => {
+      if (cmd === "push origin alpha/v1.0.0") throw new Error("fatal: unexpected disconnect while reading sideband packet");
+      return "";
+    });
+    const withWorkflow = (present) => nodeFs.existsSync.mockImplementation((p, ...r) =>
+      /tag-on-version\.yml$/.test(String(p)) ? present : fsOrig.existsSync(p, ...r));
+    beforeEach(() => { process.env.CLAUDE_CODE_REMOTE = "true"; ghLib.getRemoteTagRest.mockReset(); });
+    afterEach(() => { delete process.env.CLAUDE_CODE_REMOTE; nodeFs.existsSync.mockImplementation((...a) => fsOrig.existsSync(...a)); });
+
+    test("workflow present, poll finds the tag: verified, no hand-off", async () => {
+      createPathLsRemote(); refuse(); withWorkflow(true);
+      ghLib.getRemoteTagRest.mockReturnValueOnce({ exists: false }).mockReturnValue({ exists: true, sha: "abc" });
+      const res = await handler(params({ tagPollAttempts: 3, tagPollDelayMs: 0 }));
+      expect(res.success).toBe(true);
+      expect(res.tagVerified).toBe(true);
+      expect(res.tagCreatedBy).toBe("ci");
+      expect(res.tagHandoff).toBeUndefined();
+      expect(res.tagError).toBeUndefined();
+      expect(ghLib.getRemoteTagRest).toHaveBeenCalledWith("alpha/v1.0.0", expect.anything());
+      expect(ghLib.getRemoteTagRest).toHaveBeenCalledTimes(2);
+    });
+
+    test("workflow present, tag never appears: polls the budget, then the hand-off", async () => {
+      createPathLsRemote(); refuse(); withWorkflow(true);
+      ghLib.getRemoteTagRest.mockReturnValue({ exists: false });
+      const res = await handler(params({ tagPollAttempts: 3, tagPollDelayMs: 0 }));
+      expect(ghLib.getRemoteTagRest).toHaveBeenCalledTimes(3);
+      expect(res.tagVerified).toBe(false);
+      expect(res.tagHandoff.workflowNote).toMatch(/tag-on-version\.yml/);
+      expect(res.tagHandoff.setupOffer).toBeUndefined();
+    });
+
+    test("workflow missing: hand-off plus the Tag-Workflow einrichten reply, no polling", async () => {
+      createPathLsRemote(); refuse(); withWorkflow(false);
+      const res = await handler(params({ tagPollDelayMs: 0 }));
+      expect(ghLib.getRemoteTagRest).not.toHaveBeenCalled();
+      expect(res.tagVerified).toBe(false);
+      expect(res.tagHandoff.commands).toHaveLength(4);
+      expect(res.tagHandoff.setupOffer.reply).toBe("Tag-Workflow einrichten");
+    });
   });
 
   test("a successful tag push carries no hand-off", async () => {

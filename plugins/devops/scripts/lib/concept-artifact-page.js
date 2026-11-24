@@ -29,6 +29,10 @@
  *     `_processed_at`, which Claude writes only after it published the next
  *     round, so the engine's `/reload` poll then reloads every open view.
  *
+ *   After a stored (not duplicate) submit the wrapper also posts one comment
+ *   to the owning session where the `comments` capability reports
+ *   `canSendToClaude() === 'available'` (a best-effort wake; errors swallowed).
+ *
  *   The wrapper never acks what is not stored (507 instead), and installs
  *   only where `window.claude.use` exists.
  */
@@ -143,6 +147,40 @@ function installConceptArtifact(win) {
     }
     return byPromise;
   }
+  // The artifact `comments` capability (declared at publish): a viewer's
+  // submit then also posts one comment to the owning session, which wakes it
+  // where the durable wake subscription could not register (#1198). The call
+  // shape (canSendToClaude / anchorFor / sendToClaude) is feature-detected and
+  // every failure is swallowed: the wake is a convenience, never a reason for
+  // the submit not to be acknowledged.
+  var commentsPromise = null;
+  function getComments() {
+    if (!commentsPromise) {
+      commentsPromise = Promise.resolve().then(function () { return claude.use('comments'); })
+        .then(function (c) { return c || null; }, function () { return null; });
+    }
+    return commentsPromise;
+  }
+  function wakeClaude(data) {
+    try {
+      return getComments().then(function (c) {
+        if (!c || typeof c.canSendToClaude !== 'function' || typeof c.sendToClaude !== 'function') return;
+        return Promise.resolve(c.canSendToClaude()).then(function (state) {
+          if (state !== 'available') return;
+          var action = String((data && data.action) || 'submit');
+          var round = data && data.iteration != null ? ' of round ' + data.iteration : '';
+          var text = 'Concept page submitted: action "' + action + '"' + round + '. Read the decisions from the artifact store (submissions) and continue.';
+          // anchorFor resolves a Promise (runtime contract comments.d.ts); the
+          // target needs a real anchor, so no anchor means no wake.
+          if (typeof c.anchorFor !== 'function' || !doc || !doc.body) return;
+          return Promise.resolve(c.anchorFor(doc.body)).then(function (anchor) {
+            if (!anchor) return;
+            return c.sendToClaude({ anchor: anchor, text: text });
+          });
+        });
+      }).catch(function () { /* the wake is best effort */ });
+    } catch (e) { return Promise.resolve(); }
+  }
   function reply(status, body) {
     return new Response(JSON.stringify(body), { status: status, headers: { 'Content-Type': 'application/json' } });
   }
@@ -196,7 +234,7 @@ function installConceptArtifact(win) {
           data._tab = LOAD;
           if (by) data._by = by;
           return serial(SUBS + '/' + id, function () { return once(function () { return ref.set(data); }); })
-            .then(function () { return reply(200, { durable: true }); });
+            .then(function () { wakeClaude(data); return reply(200, { durable: true }); });
         });
       }).catch(function (e) { return reply(507, { durable: false, reason: codeOf(e) }); });
     });

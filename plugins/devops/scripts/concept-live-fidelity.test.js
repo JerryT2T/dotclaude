@@ -37,6 +37,7 @@ const designRound = (n, { baked = false, attrs = "", inner = "" } = {}) => `<sec
   </section>
 </section>`;
 const LIVE = ' data-fidelity="live" data-fidelity-note="Tokens und Galerie 1:1 aus live"';
+const SHELL = '<img src="{{slug}}/assets/01/logo.svg" alt="">';
 
 describe("scopeCss — a live stylesheet cannot reach the page chrome", () => {
   const S = '[data-design="d1"]';
@@ -132,14 +133,32 @@ describe("gate — findFidelityIssues", () => {
   });
   test("value, template and note are required", () => {
     expect(kinds(page(designRound(1, { attrs: ' data-fidelity="on" data-fidelity-note="n"' })))).toEqual(["fidelity-value"]);
-    expect(kinds(page('<section data-iteration="1" data-iteration-template="free" data-fidelity="live" data-fidelity-note="n"></section>'))).toEqual(["fidelity-template"]);
-    expect(kinds(page(designRound(1, { attrs: ' data-fidelity="live"' })))).toEqual(["fidelity-note"]);
+    expect(kinds(page('<section data-iteration="1" data-iteration-template="free" data-fidelity="live" data-fidelity-note="n">' + SHELL + '</section>'))).toEqual(["fidelity-template"]);
+    expect(kinds(page(designRound(1, { attrs: ' data-fidelity="live"', inner: SHELL })))).toEqual(["fidelity-note"]);
   });
   test("unscoped rules and foreign assets in a live round block", () => {
     const inner = '<style>[data-design="d1"] .a { x: 1 } .d1-b { y: 2 } button { z: 3 } :root { --v: 1 }</style><img src="https://cdn.example/p.png" alt="">';
     const k = kinds(page(designRound(1, { attrs: LIVE, inner })));
     expect(k.filter(x => x === "fidelity-unscoped").length).toBe(2);
     expect(k).toContain("fidelity-external");
+  });
+  test("shell ladder (#1187): a live round with no capture and no copied assets redrew the shell", () => {
+    expect(kinds(page(designRound(1, { attrs: LIVE })))).toContain("fidelity-shell-redrawn");
+    expect(kinds(page(designRound(1, { attrs: LIVE, inner: SHELL })))).toEqual([]);
+    expect(kinds(page(designRound(1, { attrs: LIVE, inner: '<style data-live-css="assets/01/app.css" data-scope="d1"></style>' })))).toEqual([]);
+  });
+  test("shell ladder (#1187): approximated parts need data-fidelity-approx-part and a visible badge", () => {
+    const attrs = ' data-fidelity="live" data-fidelity-approx data-fidelity-note="Galerie live, Header angenähert"';
+    expect(kinds(page(designRound(1, { attrs, inner: SHELL })))).toEqual(["fidelity-approx-unmarked"]);
+    const part = '<header data-fidelity-approx-part="header">H</header>';
+    expect(kinds(page(designRound(1, { attrs, inner: SHELL + part })))).toEqual(["fidelity-approx-unmarked"]);
+    const ok = '<header data-fidelity-approx-part="header">H<span class="fidelity-approx-badge">angenähert</span></header>';
+    expect(kinds(page(designRound(1, { attrs, inner: SHELL + ok })))).toEqual([]);
+  });
+  test("shell ladder (#1187): a note claiming 1:1 while the round is approximated blocks", () => {
+    const attrs = ' data-fidelity="live" data-fidelity-approx data-fidelity-note="Alles 1:1 aus live"';
+    const ok = '<header data-fidelity-approx-part="header">H<span class="fidelity-approx-badge">angenähert</span></header>';
+    expect(kinds(page(designRound(1, { attrs, inner: SHELL + ok })))).toEqual(["fidelity-note-claims-live"]);
   });
   test("the issues are structural (blocking) in evaluate()", () => {
     const { dir, home } = project();

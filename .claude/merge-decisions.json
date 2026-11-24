@@ -190,6 +190,18 @@
         "at": "2026-11-23T19:51:58.818Z"
       }
     ],
+    "plugins/devops/deep-knowledge/project-threads.md›A skill wants to ask›channel": [
+      {
+        "ship": "claude/project-thread-sj4wep",
+        "by": "JerryT2T",
+        "value": "decision card first, numbered reply as fallback",
+        "decided": true,
+        "at": "2026-11-24T14:00:58.176Z",
+        "hunks": [
+          "35e9eb73593c"
+        ]
+      }
+    ],
     "plugins/devops/deep-knowledge/project-threads.md›What happens table›A concept page row": [
       {
         "ship": "claude/project-thread-rgged7",
@@ -361,6 +373,18 @@
         "at": "2026-11-22T10:22:42.269Z",
         "hunks": [
           "2744b19d524c"
+        ]
+      }
+    ],
+    "plugins/devops/hooks/lib/ask-title.js›threadQuestionText›first line": [
+      {
+        "ship": "claude/project-thread-sj4wep",
+        "by": "JerryT2T",
+        "value": "decision card first, numbered reply as fallback",
+        "decided": true,
+        "at": "2026-11-24T14:00:58.176Z",
+        "hunks": [
+          "aaba4f824235"
         ]
       }
     ],

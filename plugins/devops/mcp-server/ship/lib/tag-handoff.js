@@ -58,7 +58,7 @@ export function isPermanentPushError(err, env = process.env) {
  *
  * @param {{ channelTag: string, channel: string, version: string, sha?: string|null, base: string, permanent: boolean, error?: string }} p
  */
-export function tagHandoff({ channelTag, channel, version, sha, base, permanent, error, cloud }, env = process.env) {
+export function tagHandoff({ channelTag, channel, version, sha, base, permanent, error, cloud, workflowMissing, workflowWaited }, env = process.env) {
   const inCloud = cloud === undefined ? isCloudSession(env) : !!cloud;
   const target = sha || `origin/${base}`;
   const message = JSON.stringify({ channel, version });
@@ -76,6 +76,11 @@ export function tagHandoff({ channelTag, channel, version, sha, base, permanent,
         ? "The remote refused the tag push for this session (permission) — no retry changes that."
         : "The tag push kept failing after its retries.",
     error: error ? String(error).slice(0, 200) : undefined,
+    // #1212: the cloud cannot push the tag, but the repo's own CI can. Without
+    // templates/tag-on-version.yml the card offers to set it up so the next ship
+    // needs no owner step; with it, the tag simply never showed up in time.
+    ...(inCloud && workflowMissing && { setupOffer: { text: "Tag-Workflow einrichten — künftig legt CI den Tag an (kein Owner-Schritt mehr)", reply: "Tag-Workflow einrichten", template: "templates/tag-on-version.yml", target: ".github/workflows/tag-on-version.yml" } }),
+    ...(workflowWaited && { workflowNote: ".github/workflows/tag-on-version.yml exists but the tag did not appear within the poll budget — check the workflow run (Actions tab) before tagging by hand." }),
     commands: [
       `git fetch origin ${base}`,
       `git tag -a ${channelTag} ${target} -m ${quoted}`,

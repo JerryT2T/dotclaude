@@ -51,6 +51,7 @@ describe("buildSnapshot — happy path", () => {
       session: { pct: 42, resetInMinutes: 180 },
       weekly: { pct: 18, resetDay: null, resetTime: null, resetInMinutes: 2880 },
       plan: "Max Plan",
+      fiveHourSeen: true,
     });
   });
 });

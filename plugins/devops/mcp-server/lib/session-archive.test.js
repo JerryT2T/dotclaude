@@ -122,6 +122,32 @@ describe("session-archive — which cards archive the session", () => {
   });
 });
 
+describe("session-archive — a finished close-out without remote (#1216)", () => {
+  const localDone = (p) => p.variant === "ready" && p.state && p.state.delivered === "local-commit-only" && !p.userTest && !p.open;
+  const ready = (over = {}) => ({ variant: "ready", cwd: "/repo", state: { mode: "git-no-remote", pushed: false, delivered: "local-commit-only" }, ...over });
+  test("archives when the card is the terminal local close-out; the flag is stamped local", () => {
+    expect(archiveDecision(ready(), deps({ localDone }))).toEqual({ archive: true, reason: "", local: true });
+  });
+  test("every other guard still blocks it", () => {
+    expect(archiveDecision(ready({ pending: [{ kind: "agent", name: "a" }] }), deps({ localDone })).archive).toBe(false);
+    expect(archiveDecision(ready({ cwd: "" }), deps({ localDone })).reason).toBe("no-cwd");
+    expect(archiveDecision(ready(), deps({ localDone, treeClean: () => false })).reason).toBe("dirty-tree");
+    expect(archiveDecision(ready(), deps({ localDone, desktop: false })).reason).toBe("not-desktop");
+    expect(archiveDecision(ready({ state: { mode: "git-no-remote", kept: true, delivered: "local-commit-only" } }), deps({ localDone })).reason).toBe("kept");
+    expect(archiveDecision(ready({ open: ["x"] }), deps({ localDone: () => true })).reason).toBe("open");
+  });
+  test("without the localDone verdict a ready card never archives", () => {
+    expect(archiveDecision(ready(), deps()).reason).toBe("variant");
+  });
+  test("the local stamp rides in the flag", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "arch-local-"));
+    try {
+      const file = writeArchiveFlag(true, "s-local", dir, { cwd: "/repo", local: true });
+      expect(JSON.parse(fs.readFileSync(file, "utf8")).local).toBe(true);
+    } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+  });
+});
+
 describe("session-archive — the flag the PostToolUse hook reads", () => {
   test("written for an archiving card, removed by a re-render that no longer qualifies", () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "session-archive-"));

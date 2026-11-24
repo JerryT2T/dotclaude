@@ -17,7 +17,7 @@ Claude Projects thread it is the default (§ In a Claude Projects thread).
    → `<file>.artifact.html` next to it: the engine bytes unchanged, one
    wrapper `<script>` inserted after `<head>`. A re-run replaces the wrapper.
    Do not commit the `.artifact.html`.
-3. **Publish it** with the Artifact tool, `capabilities: {db: {}, user: {}}`
+3. **Publish it** with the Artifact tool, `capabilities: {db: {}, user: {}, comments: {}}`
    and `icon: "compass"` (the `capabilities` and `icon` fields of the script
    output). The tab of `claude.ai/artifact/…` shows the icon the first
    publish names; a `<link rel="icon">` in the page cannot help (sandboxed
@@ -98,8 +98,25 @@ the session stops halfway.
 
 ## Wake
 
-No live channel exists from the artifact to the session: nothing a viewer
-does wakes it. The answers still come back, in this order of preference:
+No bridge reaches the session from the artifact. The answers still come back,
+in this order of preference:
+
+- **The page's own comment wake (`comments` capability, #1198).** After a
+  stored submit the wrapper posts one comment to the owning session
+  (`canSendToClaude() === 'available'` → `sendToClaude({anchor, text})`; the
+  text names the action and the round). Every error is swallowed, a duplicate
+  re-send posts nothing, and an artifact published without `comments` (a
+  redeploy keeps the first capabilities) simply has no wake. Shape per the
+  runtime contract's `comments.d.ts` (0.2.99): `anchorFor(el)` resolves a
+  Promise, `sendToClaude` works for the artifact's Editors only and from the
+  viewer's own recent gesture (the submit click), so a Contributor's submit
+  gets no wake. Not yet observed live; the wrapper still feature-detects each
+  function.
+- **`session_device_bound`:** the durable wake subscription cannot register for
+  a cloud session bound to the desktop it started from ("activity on the
+  artifact can't wake it"), and the comment wake may be unavailable too.
+  Then the check below is the pickup, and the hand-off post says up front:
+  "after you submit, tell me here (Abgeschickt) — nothing wakes me on its own".
 
 - **The person says so** ("fertig", "lies die Entscheidungen", any message
   that continues the concept) → § Read back. The post with the link says once:
