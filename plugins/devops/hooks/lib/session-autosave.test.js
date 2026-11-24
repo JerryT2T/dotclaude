@@ -252,3 +252,16 @@ describe('autosave — stale checkout (#877)', () => {
     expect(r.message).toMatch(/saved locally as parked\/autosave\/sess1/);
   });
 });
+
+describe('autosave — files the base already holds (squash merge)', () => {
+  test('a dirty tree equal to origin/main is not parked', async () => {
+    fs.writeFileSync(path.join(main, 'a.txt'), 'shipped');
+    g(main, 'add', '-A');
+    g(main, ...id, 'commit', '-m', 'squash');
+    g(main, 'push', 'origin', 'main');
+    g(wt, 'fetch', 'origin');
+    write('a.txt', 'shipped');
+    expect(await autosave(opts({ mode: undefined }))).toBeNull();
+    expect(g(wt, 'branch', '--list', 'parked/autosave/sess1')).toBe('');
+  });
+});

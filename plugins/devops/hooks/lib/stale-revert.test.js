@@ -26,7 +26,7 @@ describe('staleRevert (#877)', () => {
   test('files back on an older base state, a deleted newer file and a re-added old one → stale', () => {
     write('a.txt', 'v1'); fs.rmSync(path.join(repo, 'CHANGELOG.md')); write('old.ts', 'legacy');
     const r = staleRevert(repo, ['a.txt', 'CHANGELOG.md', 'old.ts'], 'main');
-    expect(r).toEqual({ stale: true, reverted: ['a.txt', 'CHANGELOG.md', 'old.ts'], own: [] });
+    expect(r).toEqual({ stale: true, reverted: ['a.txt', 'CHANGELOG.md', 'old.ts'], own: [], neutral: [] });
   });
 
   test('any own content makes it real work', () => {

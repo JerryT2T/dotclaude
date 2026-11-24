@@ -61,25 +61,26 @@ function history(wt, base, rel) {
  * @param {string} wt worktree root
  * @param {string[]} paths changed paths, relative to `wt`
  * @param {string} base ref to compare against (e.g. "origin/main")
- * @returns {{stale:boolean, reverted:string[], own:string[]}}
+ * @returns {{stale:boolean, reverted:string[], own:string[], neutral:string[]}}
  */
 function staleRevert(wt, paths, base) {
-  const none = { stale: false, reverted: [], own: [] };
+  const none = { stale: false, reverted: [], own: [], neutral: [] };
   if (!wt || !base || !Array.isArray(paths) || !paths.length || paths.length > MAX_PATHS) return none;
   if (!git(['rev-parse', '--verify', '-q', `${base}^{commit}`], wt)) return none;
   const reverted = [];
   const own = [];
+  const neutral = [];
   let restored = 0;
   for (const rel of paths) {
     const now = worktreeBlob(wt, rel);
     const tip = git(['rev-parse', '-q', '--verify', `${base}:${rel}`], wt);
-    if (now === tip) continue;
+    if (now === tip) { neutral.push(rel); continue; }
     const h = history(wt, base, rel);
     if (now && h.blobs.has(now)) { reverted.push(rel); restored++; }
     else if (!now && tip && h.added) reverted.push(rel);
     else own.push(rel);
   }
-  return { stale: restored > 0 && own.length === 0, reverted, own };
+  return { stale: restored > 0 && own.length === 0, reverted, own, neutral };
 }
 
 module.exports = { staleRevert, HISTORY };
