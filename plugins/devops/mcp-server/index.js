@@ -149,12 +149,12 @@ function fiveHourView(usageData) {
   let view;
   try {
     const { fiveHourWindow } = cjsRequire(join(PLUGIN_ROOT, 'hooks', 'lib', 'plan.js'));
-    view = fiveHourWindow(usagePlanId(usageData), session);
+    view = fiveHourWindow(usagePlanId(usageData), session, !!(usageData && usageData.fiveHourSeen === true));
   } catch (err) {
     console.error('[dotclaude-mcp] plan rules unavailable:', err?.message || err);
     const n = Number(session && session.pct);
     const r = session && session.resetInMinutes != null && Number.isFinite(Number(session.resetInMinutes)) ? Number(session.resetInMinutes) : null;
-    view = { state: 'idle', pct: Number.isFinite(n) ? n : 0, resetInMinutes: r, applies: true };
+    view = { state: 'idle', pct: Number.isFinite(n) ? n : 0, resetInMinutes: r, applies: !!(usageData && usageData.fiveHourSeen === true) || r != null || n > 0 };
   }
   if (!session) return { ...view, applies: false };
   return view;

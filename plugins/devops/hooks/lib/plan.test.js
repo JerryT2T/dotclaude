@@ -93,14 +93,14 @@ describe("behaviour of every plan, with real, idle and missing data", () => {
 });
 
 describe("5 h semantics for Wave 2", () => {
-  test("a delivered value is used on every plan", () => {
-    for (const id of [...Object.keys(PLANS), "unknown"]) expect(fiveHourState(id, 0)).toBe("delivered");
-    expect(fiveHourState("ultra", 12)).toBe("delivered");
+  test("a delivered value is used whether or not a window was seen", () => {
+    expect(fiveHourState(0, false)).toBe("delivered");
+    expect(fiveHourState(12, true)).toBe("delivered");
   });
-  test("null means no limit on Ultra and an idle window elsewhere", () => {
-    expect(fiveHourState("ultra", null)).toBe("none");
-    for (const id of ["free", "pro", "max", "team", "unknown"]) expect(fiveHourState(id, null)).toBe("idle");
-    expect(fiveHourState("ultra", undefined)).toBe("none");
+  test("null: idle once a window was seen, none otherwise (the data decides, not the plan)", () => {
+    expect(fiveHourState(null, true)).toBe("idle");
+    expect(fiveHourState(null, false)).toBe("none");
+    expect(fiveHourState(undefined, undefined)).toBe("none");
   });
   test("Fable facts and the stored keys", () => {
     expect(FABLE).toEqual({ sharePct: 50, scopeName: "Fable", blockAt: 85 });

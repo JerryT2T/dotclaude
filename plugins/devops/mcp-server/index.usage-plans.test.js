@@ -35,35 +35,33 @@ const IDLE5 = { pct: 0, resetInMinutes: null };
 const WK = { pct: 50, resetInMinutes: 5000 };
 const rows = (text) => text.split("\n").filter((l) => /^(5h|Wk|Fb)\s/.test(l)).map((l) => l.slice(0, 2));
 
-describe("5h row follows the plan rule (U1, U3), every surface", () => {
-  test.each(["Free", "Pro", "Max", "Team", "Max Plan"])("%s: real and idle 5h keep their row", (plan) => {
+describe("5h row follows the usage data, never the plan name (U1, U3, #1217), every surface", () => {
+  const SEEN = { fiveHourSeen: true };
+  const LABELS = ["Free", "Pro", "Max", "Ultra", "Team", "Max Plan", "Unknown Tier", undefined];
+  test.each(LABELS)("%s: a delivered window shows the row in meter and card", (plan) => {
     expect(rows(renderUsageMeter(snap(plan, REAL5, WK), 1, 1))).toEqual(["Wk", "5h"]);
-    expect(rows(renderUsageMeter(snap(plan, IDLE5, WK), 1, 1))).toEqual(["Wk", "5h"]);
     expect(rows(renderUsageMeterForCard(snap(plan, REAL5, WK), 1, 1, ""))).toEqual(["Wk", "5h"]);
+    expect(buildBudgetModel(snap(plan, { pct: 60, resetInMinutes: 120 }, WK), 1, 1, "").bars.map((x) => x.label)).toContain("5h");
   });
-  test("verified Ultra (null window): no 5h row in meter or card", () => {
-    expect(rows(renderUsageMeter(snap("Ultra", IDLE5, WK), 1, 1))).toEqual(["Wk"]);
-    expect(rows(renderUsageMeterForCard(snap("Ultra", IDLE5, WK), 1, 1, ""))).toEqual(["Wk"]);
-    expect(rows(renderUsageMeter(snap("Ultra", undefined, WK), 1, 1))).toEqual(["Wk"]);
-  });
-  test("unverified Ultra with real 5h data shows the row", () => {
-    expect(rows(renderUsageMeter(snap("Ultra", REAL5, WK), 1, 1))).toEqual(["Wk", "5h"]);
-    const model = buildBudgetModel(snap("Ultra", { pct: 60, resetInMinutes: 120 }, WK), 1, 1, "");
-    expect(model.bars.map((b) => b.label)).toContain("5h");
-  });
-  test("Ultra idle: no 5h bar in the card model, and the markdown fallback has none", () => {
-    const model = buildBudgetModel(snap("Ultra", IDLE5, { pct: 90, resetInMinutes: 600 }), 1, 1, "");
-    expect(model.bars.map((b) => b.label)).toEqual(["Wk"]);
+  test.each(LABELS)("%s: idle snapshot, never seen a window: no 5h row anywhere", (plan) => {
+    for (const session of [IDLE5, undefined]) {
+      expect(rows(renderUsageMeter(snap(plan, session, WK), 1, 1))).toEqual(["Wk"]);
+      expect(rows(renderUsageMeterForCard(snap(plan, session, WK), 1, 1, ""))).toEqual(["Wk"]);
+    }
+    const model = buildBudgetModel(snap(plan, IDLE5, { pct: 90, resetInMinutes: 600 }), 1, 1, "");
+    expect(model.bars.map((x) => x.label)).toEqual(["Wk"]);
     expect(renderBudgetLineMd(model)).not.toMatch(/5h/);
   });
-  test("an unknown plan label falls back to the credentials tier (empty home: stays unknown = idle row)", () => {
-    expect(rows(renderUsageMeter(snap("Max Plan", IDLE5, WK), 1, 1))).toEqual(["Wk", "5h"]);
+  test.each(LABELS)("%s: idle between two windows of an account that had one keeps the idle row", (plan) => {
+    expect(rows(renderUsageMeter(snap(plan, IDLE5, WK, SEEN), 1, 1))).toEqual(["Wk", "5h"]);
+    expect(rows(renderUsageMeterForCard(snap(plan, IDLE5, WK, SEEN), 1, 1, ""))).toEqual(["Wk", "5h"]);
   });
-  test("the credentials tier decides when the label is the placeholder", () => {
+  test("the credentials tier no longer matters for the row", () => {
     fs.mkdirSync(path.join(FAKE_HOME, ".claude"), { recursive: true });
     fs.writeFileSync(path.join(FAKE_HOME, ".claude", ".credentials.json"), JSON.stringify({ claudeAiOauth: { rateLimitTier: "default_claude_max_20x" } }));
     try {
       expect(rows(renderUsageMeter(snap("Max Plan", IDLE5, WK), 1, 1))).toEqual(["Wk"]);
+      expect(rows(renderUsageMeter(snap("Max Plan", IDLE5, WK, SEEN), 1, 1))).toEqual(["Wk", "5h"]);
     } finally {
       fs.rmSync(path.join(FAKE_HOME, ".claude", ".credentials.json"));
     }
@@ -85,7 +83,7 @@ describe("Pro and Max output is byte-identical to before this change", () => {
   });
   test("Pro / Max / Team idle 5h: meter row unchanged", () => {
     for (const plan of ["Pro", "Max", "Team"]) {
-      expect(renderUsageMeterForCard(snap(plan, IDLE5, WK), 3, 1, "")).toBe("```\nWk  ━━━━━━━╏──────  50% +1%  · 3d 11h\n5h  ╏─────────────   0% +3%  · —\n```");
+      expect(renderUsageMeterForCard(snap(plan, IDLE5, WK, { fiveHourSeen: true }), 3, 1, "")).toBe("```\nWk  ━━━━━━━╏──────  50% +1%  · 3d 11h\n5h  ╏─────────────   0% +3%  · —\n```");
     }
   });
 });

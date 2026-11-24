@@ -24,10 +24,10 @@ const SESSIONS = {
 const WEEK = { pct: 76, resetInMinutes: 2600 };
 const PLANS = ["Free", "Pro", "Max", "Ultra", "Team", "Max Plan"];
 
-function budgetFor(plan, session, weekly = WEEK, ageMin = 1) {
+function budgetFor(plan, session, weekly = WEEK, ageMin = 1, seen = false) {
   return readBudget({
     home: HOME, env: {}, nowMs: NOW,
-    snapshot: { timestamp: new Date(NOW - ageMin * MIN).toISOString(), session, weekly, plan },
+    snapshot: { timestamp: new Date(NOW - ageMin * MIN).toISOString(), session, weekly, plan, ...(seen ? { fiveHourSeen: true } : {}) },
   });
 }
 
@@ -40,14 +40,16 @@ describe("fiveHourWindow - the one 5 h rule (U1)", () => {
   test("a delivered 0 % with a reset is data too (window started, nothing used)", () => {
     expect(fiveHourWindow("ultra", { pct: 0, resetInMinutes: 290 }).state).toBe("delivered");
   });
-  test("null on Ultra means no limit: no row", () => {
-    expect(fiveHourWindow("ultra", { pct: 0, resetInMinutes: null })).toEqual({ state: "none", pct: null, resetInMinutes: null, applies: false });
-    expect(fiveHourWindow("ultra", undefined).applies).toBe(false);
+  test("no delivered window and never seen: no row, on every plan label", () => {
+    for (const id of ["free", "pro", "max", "ultra", "team", "unknown", undefined]) {
+      expect(fiveHourWindow(id, { pct: 0, resetInMinutes: null }, false)).toEqual({ state: "none", pct: null, resetInMinutes: null, applies: false });
+      expect(fiveHourWindow(id, undefined).applies).toBe(false);
+    }
   });
-  test("null on every other plan means idle: the row stays as it always was", () => {
-    for (const id of ["free", "pro", "max", "team", "unknown"]) {
-      expect(fiveHourWindow(id, { pct: 0, resetInMinutes: null })).toEqual({ state: "idle", pct: 0, resetInMinutes: null, applies: true });
-      expect(fiveHourWindow(id, undefined).state).toBe("idle");
+  test("no delivered window but seen before: the idle row stays, on every plan label", () => {
+    for (const id of ["free", "pro", "max", "ultra", "team", "unknown", undefined]) {
+      expect(fiveHourWindow(id, { pct: 0, resetInMinutes: null }, true)).toEqual({ state: "idle", pct: 0, resetInMinutes: null, applies: true });
+      expect(fiveHourWindow(id, undefined, true).state).toBe("idle");
     }
   });
 });
@@ -61,7 +63,7 @@ describe("readBudget - per plan, with real, idle and missing 5 h data (U1, U2, U
     expect(maybeRefreshUsage(b, { home: HOME, nowMs: NOW, env: {} })).toBe(false);
   });
   test.each(PLANS.filter((p) => p !== "Ultra"))("%s: idle window is not expired and not announced", (plan) => {
-    const b = budgetFor(plan, SESSIONS.idle);
+    const b = budgetFor(plan, SESSIONS.idle, WEEK, 1, true);
     expect(b.expired).toBe(false);
     expect(b.announce).toBe(false);
     expect(b.fiveApplies).toBe(true);
@@ -107,7 +109,7 @@ describe("readBudget - per plan, with real, idle and missing 5 h data (U1, U2, U
   });
   test("Pro / Max / Team idle window: reads as window 0%, with no false announce", () => {
     for (const plan of ["Pro", "Max", "Team"]) {
-      const line = budgetLine(budgetFor(plan, SESSIONS.idle));
+      const line = budgetLine(budgetFor(plan, SESSIONS.idle, WEEK, 1, true));
       expect(line).toContain("window 0% · week 76%");
       expect(line).not.toContain("no longer apply");
     }
@@ -126,6 +128,30 @@ describe("readBudget - per plan, with real, idle and missing 5 h data (U1, U2, U
   });
 });
 
+describe("label matrix: the plan label never decides the 5 h row (#1217)", () => {
+  const LABELS = ["Free", "Pro", "Max", "Ultra", "Team", "Max Plan", "Unknown Tier", undefined];
+  const { renderStatusLine } = require("../../scripts/statusline-usage.js");
+  const snap = (plan, session, seen) => ({ timestamp: new Date(NOW - MIN).toISOString(), session, weekly: WEEK, plan, ...(seen ? { fiveHourSeen: true } : {}) });
+
+  test.each(LABELS)("%s: idle snapshot, never seen: no 5h row on any surface", (plan) => {
+    const d = snap(plan, SESSIONS.idle, false);
+    expect(renderStatusLine(d, null)).not.toContain("5h");
+    const b = readBudget({ home: HOME, env: {}, nowMs: NOW, snapshot: d });
+    expect(b.fiveApplies).toBe(false);
+    expect(budgetLine(b)).not.toContain("window");
+  });
+  test.each(LABELS)("%s: delivered window (reset present): the row shows on the status line and the budget line", (plan) => {
+    const d = snap(plan, SESSIONS.real, false);
+    expect(renderStatusLine(d, null)).toContain("5h 42%");
+    expect(budgetLine(readBudget({ home: HOME, env: {}, nowMs: NOW, snapshot: d }))).toContain("window 42%");
+  });
+  test.each(LABELS)("%s: idle snapshot, window seen before: the idle row stays", (plan) => {
+    const d = snap(plan, SESSIONS.idle, true);
+    expect(renderStatusLine(d, null)).toContain("5h 0%");
+    expect(budgetLine(readBudget({ home: HOME, env: {}, nowMs: NOW, snapshot: d }))).toContain("window 0%");
+  });
+});
+
 describe("bindingWindow", () => {
   test("without a 5 h window the week binds", () => {
     expect(bindingWindow({ tier: "ultra", fivePct: null, weeklyPct: 0, fiveApplies: false })).toBe("week");
@@ -137,7 +163,7 @@ describe("bindingWindow", () => {
 });
 
 describe("statusline carry (U4)", () => {
-  const prev = (plan, session, minAgo = 0) => ({ timestamp: new Date(NOW - minAgo * MIN).toISOString(), session, weekly: { pct: 10, resetInMinutes: 5000 }, plan });
+  const prev = (plan, session, minAgo = 0, seen = false) => ({ timestamp: new Date(NOW - minAgo * MIN).toISOString(), session, weekly: { pct: 10, resetInMinutes: 5000 }, plan, ...(seen ? { fiveHourSeen: true } : {}) });
   const onlyWeek = { rate_limits: { seven_day: { used_percentage: 20, resets_at: (NOW + 5000 * MIN) / 1000 } } };
 
   test("Max: an old 5h value is carried until its own reset, aged by the elapsed time", () => {
@@ -146,9 +172,14 @@ describe("statusline carry (U4)", () => {
   test("Max: dropped after its own reset", () => {
     expect(buildSnapshot(onlyWeek, prev("Max", { pct: 60, resetInMinutes: 100 }, 101), NOW).session).toBe(null);
   });
-  test("Pro: a value without a known reset cannot be validated and is dropped; an idle 0 carries", () => {
-    expect(buildSnapshot(onlyWeek, prev("Pro", { pct: 60, resetInMinutes: null }), NOW).session).toBe(null);
-    expect(buildSnapshot(onlyWeek, prev("Pro", { pct: 0, resetInMinutes: null }), NOW).session).toEqual({ pct: 0, resetInMinutes: null });
+  test("Pro: a value without a known reset cannot be validated and is dropped; an idle 0 carries once a window was seen", () => {
+    expect(buildSnapshot(onlyWeek, prev("Pro", { pct: 60, resetInMinutes: null }, 0, true), NOW).session).toBe(null);
+    expect(buildSnapshot(onlyWeek, prev("Pro", { pct: 0, resetInMinutes: null }, 0, true), NOW).session).toEqual({ pct: 0, resetInMinutes: null });
+  });
+  test("an idle 0 is NOT carried for an account that never had a window, on any label", () => {
+    for (const plan of ["Pro", "Max", "Max Plan", undefined]) {
+      expect(buildSnapshot(onlyWeek, prev(plan, { pct: 0, resetInMinutes: null }), NOW).session).toBe(null);
+    }
   });
   test("Ultra: a DELIVERED window (known reset) carries until its own reset, like every plan (R4)", () => {
     expect(buildSnapshot(onlyWeek, prev("Ultra", { pct: 95, resetInMinutes: 100 }, 30), NOW).session).toEqual({ pct: 95, resetInMinutes: 70 });
@@ -161,6 +192,14 @@ describe("statusline carry (U4)", () => {
   test("a carried Ultra window at 95 % is not free for the budget while it lives (R4)", () => {
     const snap = buildSnapshot(onlyWeek, prev("Ultra", { pct: 95, resetInMinutes: 100 }, 5), NOW);
     expect(readBudget({ home: HOME, env: {}, nowMs: NOW, snapshot: snap }).fivePct).toBe(95);
+  });
+  test("buildSnapshot writes fiveHourSeen once a window was delivered, and keeps it through gaps (self-heals when missing)", () => {
+    const both = { rate_limits: { five_hour: { used_percentage: 0, resets_at: (NOW + 90 * MIN) / 1000 }, seven_day: onlyWeek.rate_limits.seven_day } };
+    const first = buildSnapshot(both, null, NOW);
+    expect(first.fiveHourSeen).toBe(true);
+    expect(buildSnapshot(onlyWeek, first, NOW).fiveHourSeen).toBe(true);
+    expect(buildSnapshot(onlyWeek, prev("Ultra", { pct: 0, resetInMinutes: null }), NOW).fiveHourSeen).toBeUndefined();
+    expect(buildSnapshot(both, prev("Max Plan", { pct: 0, resetInMinutes: null }), NOW).fiveHourSeen).toBe(true);
   });
   test("unknown plan label behaves like Max; no previous snapshot gives null", () => {
     expect(buildSnapshot(onlyWeek, prev("Max Plan", { pct: 60, resetInMinutes: 100 }), NOW).session).toEqual({ pct: 60, resetInMinutes: 100 });
@@ -276,17 +315,17 @@ describe("one plan lookup: credentials first, snapshot label second (R9)", () =>
     expect(b.tier).toBe("ultra");
     expect(b.fiveApplies).toBe(false);
   });
-  test("the status line asks the same lookup: a Max Plan snapshot on Ultra shows no 5h", () => {
+  test("the status line decides by the remembered window fact, not the tier: no 5h without it, idle row with it", () => {
     const { renderStatusLine } = require("../../scripts/statusline-usage.js");
     const snap = { session: { pct: 0, resetInMinutes: null }, weekly: { pct: 10, resetInMinutes: 5000 }, plan: "Max Plan" };
-    expect(renderStatusLine(snap, null, "ultra")).toBe("Wk 10%");
-    expect(renderStatusLine(snap, null, "max")).toBe("5h 0%  ·  Wk 10%");
-    expect(renderStatusLine(snap, null)).toBe("5h 0%  ·  Wk 10%");
+    for (const tier of ["ultra", "max", undefined]) expect(renderStatusLine(snap, null, tier)).toBe("Wk 10%");
+    const seen = { ...snap, fiveHourSeen: true };
+    for (const tier of ["ultra", "max", undefined]) expect(renderStatusLine(seen, null, tier)).toBe("5h 0%  ·  Wk 10%");
   });
 });
 
 describe("a percent without a reset does not live forever (R8)", () => {
-  const snapAt = (ageMin, session) => readBudget({ home: HOME, env: {}, nowMs: NOW, snapshot: { timestamp: new Date(NOW - ageMin * MIN).toISOString(), session, weekly: WEEK, plan: "Max" } });
+  const snapAt = (ageMin, session) => readBudget({ home: HOME, env: {}, nowMs: NOW, snapshot: { timestamp: new Date(NOW - ageMin * MIN).toISOString(), session, weekly: WEEK, plan: "Max", fiveHourSeen: true } });
   test("young: kept as a reading, never expired", () => {
     const b = snapAt(60, { pct: 70, resetInMinutes: null });
     expect(b.fivePct).toBe(70);

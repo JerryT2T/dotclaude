@@ -280,9 +280,9 @@ function readBudget({ home = os.homedir(), nowMs = Date.now(), env = process.env
 
   const { tier, label: plan } = resolvePlan(live.plan, { home, sessionId });
 
-  // One rule for every plan (plan.js fiveHourWindow): delivered data is used, a
-  // missing window means "idle" or, on Ultra, "no 5 h limit" (no row, week binds).
-  const fw = fiveHourWindow(tier, live.session);
+  // One rule (plan.js fiveHourWindow), decided by the data: a delivered window is
+  // used, none now but seen before is "idle", never seen is "no 5 h limit" (week binds).
+  const fw = fiveHourWindow(tier, live.session, live.fiveHourSeen === true);
   const five = fw.applies ? liveWindow(live.session, ts, nowMs) : { pct: null, resetInMinutes: null, expired: false };
   const week = liveWindow(live.weekly, ts, nowMs);
   const fable = Array.isArray(live.scoped) ? live.scoped.find((l) => l && l.name === FABLE.scopeName && typeof l.pct === 'number') : null;
