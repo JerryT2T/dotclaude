@@ -58,6 +58,113 @@ const FINDING_ANSWER_RE = /\b(?:vorschlag|ausweg|empfehlung|empfohlen|empfehle|r
 const ABBREV_RE = /\b(?:z\.\s?B|d\.\s?h|u\.\s?a|o\.\s?ä|v\.\s?a|s\.\s?o|s\.\s?u|ca|bzw|ggf|evtl|inkl|vgl|Nr|Abb|e\.\s?g|i\.\s?e|etc|vs|approx)\./g;
 const QUANT_RE = /\d[\d.,]*\s*(?:%|×|x\b|k\b|m\b|ms\b|s\b|sek|min|h\b|tokens?|mb|gb|kb|€|\$|mal\b|fach)/i;
 
+// A14 — the simulator spec (data-viz="sim"). Mirror of the engine's simParse / simModel in
+// templates-analysis-js.md: same grammar, same limits, no evaluation here.
+const SIM_FN = { min: [1, 6], max: [1, 6], abs: [1, 1], round: [1, 1], floor: [1, 1], ceil: [1, 1], sqrt: [1, 1], clamp: [3, 3] };
+const SIM_RESERVED = new Set(['__proto__', 'constructor', 'prototype', 'toString', 'valueOf', 'hasOwnProperty', ...Object.keys(SIM_FN)]);
+const SIM_LIM = { len: 240, tok: 160, depth: 20, controls: 12, outputs: 12 };
+const simId = s => typeof s === 'string' && /^[A-Za-z][A-Za-z0-9_]{0,24}$/.test(s) && !SIM_RESERVED.has(s);
+
+/** Throws when the formula leaves the whitelist grammar or reads an id outside `known` (a Set). */
+function checkFormula(src, known) {
+  src = String(src == null ? '' : src);
+  if (!src.trim() || src.length > SIM_LIM.len) throw new Error('empty or over ' + SIM_LIM.len + ' characters');
+  const t = [];
+  let i = 0;
+  let m;
+  while (i < src.length) {
+    const c = src.charAt(i);
+    const rest = src.slice(i);
+    if (c === ' ' || c === '\t') { i++; continue; }
+    if ((m = /^\d+(?:\.\d+)?/.exec(rest))) { t.push({ k: 'n' }); i += m[0].length; }
+    else if ((m = /^[A-Za-z_][A-Za-z0-9_]*/.exec(rest))) { t.push({ k: 'id', v: m[0] }); i += m[0].length; }
+    else if ('+-*/^(),'.includes(c)) { t.push({ k: c }); i++; }
+    else throw new Error('character "' + c + '" is not allowed');
+    if (t.length > SIM_LIM.tok) throw new Error('over ' + SIM_LIM.tok + ' tokens');
+  }
+  let p = 0;
+  let depth = 0;
+  const peek = () => (p < t.length ? t[p].k : '');
+  const enter = () => { if (++depth > SIM_LIM.depth) throw new Error('nested over ' + SIM_LIM.depth + ' levels'); };
+  const expr = () => {
+    enter();
+    term();
+    while (peek() === '+' || peek() === '-') { p++; term(); }
+    depth--;
+  };
+  const term = () => {
+    unary();
+    while (peek() === '*' || peek() === '/') { p++; unary(); }
+  };
+  const unary = () => {
+    if (peek() === '-') { p++; enter(); unary(); depth--; return; }
+    prim();
+    if (peek() === '^') { p++; unary(); }
+  };
+  const prim = () => {
+    const x = t[p++];
+    if (!x) throw new Error('the formula ends early');
+    if (x.k === 'n') return;
+    if (x.k === '(') { expr(); if (peek() !== ')') throw new Error('missing )'); p++; return; }
+    if (x.k !== 'id') throw new Error('unexpected "' + x.k + '"');
+    if (peek() === '(') {
+      if (!Object.prototype.hasOwnProperty.call(SIM_FN, x.v)) throw new Error('function "' + x.v + '" is not in the whitelist');
+      p++;
+      let n = 0;
+      if (peek() !== ')') { expr(); n++; while (peek() === ',') { p++; expr(); n++; } }
+      if (peek() !== ')') throw new Error('missing )');
+      p++;
+      if (n < SIM_FN[x.v][0] || n > SIM_FN[x.v][1]) throw new Error('wrong argument count for ' + x.v);
+      return;
+    }
+    if (!known.has(x.v) || SIM_RESERVED.has(x.v)) throw new Error('unknown id "' + x.v + '"');
+  };
+  expr();
+  if (p < t.length) throw new Error('unexpected "' + t[p].k + '"');
+}
+
+/** The first problem of a sim spec (id attribute + JSON text), or null. */
+function simSpecProblem(simIdAttr, specText) {
+  if (!simId(simIdAttr || '')) return 'data-sim "' + (simIdAttr || '') + '" is not an id (a letter, then letters, digits, _; max 25)';
+  let s;
+  try { s = JSON.parse(specText || ''); } catch { return 'data-viz-spec is not valid JSON'; }
+  if (!s || typeof s !== 'object' || Array.isArray(s)) return 'data-viz-spec is not an object';
+  const controls = Array.isArray(s.controls) ? s.controls : [];
+  const outs = Array.isArray(s.outputs) ? s.outputs : [];
+  if (!controls.length || !outs.length) return 'a sim needs at least one control and one output (inputs missing)';
+  if (controls.length > SIM_LIM.controls || outs.length > SIM_LIM.outputs) return 'a sim holds at most ' + SIM_LIM.controls + ' controls and ' + SIM_LIM.outputs + ' outputs';
+  const seen = new Set();
+  const known = new Set();
+  for (const c of controls) {
+    if (!c || !simId(c.id) || seen.has(c.id)) return 'control id "' + (c && c.id) + '" is missing, reserved or repeated';
+    if (c.type !== 'steps' && c.type !== 'range') return 'control "' + c.id + '": type must be "steps" or "range"';
+    const min = Number(c.min);
+    const max = Number(c.max);
+    if (!Number.isFinite(min) || !Number.isFinite(max) || max <= min) return 'control "' + c.id + '": min / max missing or not min < max';
+    if (c.type === 'steps' && max - min > 12) return 'control "' + c.id + '": a steps control spans at most 12';
+    seen.add(c.id); known.add(c.id);
+  }
+  if (s.consts != null) {
+    if (typeof s.consts !== 'object' || Array.isArray(s.consts)) return 'consts must be an object of numbers';
+    for (const k of Object.keys(s.consts)) {
+      if (!simId(k) || seen.has(k) || !Number.isFinite(Number(s.consts[k]))) return 'const "' + k + '" is not a unique id with a number';
+      seen.add(k); known.add(k);
+    }
+  }
+  for (const o of outs) {
+    if (!o || !simId(o.id) || seen.has(o.id)) return 'output id "' + (o && o.id) + '" is missing, reserved or repeated';
+    try { checkFormula(o.formula, known); } catch (e) { return 'output "' + o.id + '": formula "' + String(o.formula).slice(0, 60) + '" - ' + e.message; }
+    seen.add(o.id); known.add(o.id);
+  }
+  if (s.budget != null) {
+    const b = s.budget;
+    const ids = b && Array.isArray(b.controls) ? b.controls : [];
+    if (!b || !Number.isFinite(Number(b.total)) || !ids.length || ids.some(id => !controls.some(c => c.id === id && c.type === 'steps'))) return 'budget needs a total and the ids of steps controls';
+  }
+  if (s.bar != null && !(s.bar && outs.some(o => o.id === s.bar.output))) return 'bar.output names no output';
+  return null;
+}
+
 function blank(html) {
   const mask = m => m.replace(/[^\n]/g, ' ');
   return String(html || '')
@@ -157,10 +264,33 @@ function findAnalysisIssues(html) {
   const warnings = [];
   const out = { errors, warnings };
   const raw = String(html || '');
-  if (!/data-analysis|data-decision-mode/.test(raw)) return out;
+  if (!/data-analysis|data-decision-mode|data-viz\s*=\s*["']sim["']|data-topic-kind/.test(raw)) return out;
   const doc = parse(raw);
   const err = (kind, why, at) => errors.push({ kind, why, at });
   const warn = (kind, why, at) => warnings.push({ kind, why, at });
+
+  // A14 / A15 — the simulator is a data-viz type: it needs no decision on the page
+  const sims = doc.nodes.filter(n => attr(n, 'data-viz') === 'sim');
+  for (const sm of sims) {
+    const spec = decode(attr(sm, 'data-viz-spec') || '').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+    const problem = simSpecProblem(attr(sm, 'data-sim'), spec);
+    if (problem) { err('sim-spec', `simulator "${attr(sm, 'data-sim') || '?'}": ${problem} - a broken spec shows only its text; fix it (templates-analysis.md § sim)`, sm.start); continue; }
+    // The bake writes a round's answers into named inputs of its fragment: a sim without its hidden inputs loses its values when the round freezes.
+    const round = doc.nodes.filter(n => n.tag === 'section' && has(n, 'data-iteration') && inside(n, sm)).pop();
+    if (round && !doc.nodes.some(n => has(n, 'data-baked') && n === round)) {
+      const names = new Set(doc.nodes.filter(n => n.tag === 'input' && inside(round, n)).map(n => attr(n, 'name')));
+      const sid = attr(sm, 'data-sim');
+      const missing = JSON.parse(spec).controls.map(c => c.id).filter(c => !names.has(`dm-${sid}.${c}`));
+      if (missing.length) warn('sim-state-inputs', `simulator "${sid}": no <input type="hidden" name="dm-${sid}.{ctl}" value="{default}"> for ${missing.join(', ')} in the round - without them the values do not survive the freeze`, sm.start);
+    }
+  }
+  for (const mech of doc.nodes.filter(n => attr(n, 'data-topic-kind') === 'mechanic')) {
+    const mine = sims.filter(x => inside(mech, x));
+    if (!mine.length) warn('mechanic-no-sim', 'a mechanic round (data-topic-kind="mechanic") has no data-viz="sim" - round 1 of a mechanic is a simulator, not a questionnaire (step1-templates.md § Mechanic topics)', mech.start);
+    if (mine.length > 1) warn('mechanic-sims', `a mechanic round holds ${mine.length} simulators - one sim per round`, mech.start);
+    const nd = doc.nodes.filter(n => has(n, 'data-decision-mode') && inside(mech, n)).length;
+    if (nd > 3) warn('mechanic-decisions', `a mechanic round holds ${nd} text decisions - at most 3, only real either/or choices`, mech.start);
+  }
 
   const fulls = doc.nodes.filter(n => n.tag === 'section' && attr(n, 'data-analysis') === 'full');
   const lites = doc.nodes.filter(n => attr(n, 'data-analysis') === 'lite');
@@ -224,7 +354,8 @@ function findAnalysisIssues(html) {
     for (const t of topics) {
       const name = decode(attr(t, 'data-nav-label') || attr(t, 'id') || '?');
       const n = decisions.filter(d => inside(t, d)).length;
-      if (n < PER_TOPIC_MIN || n > PER_TOPIC_MAX) warn('topic-questions-count', `topic "${name}" holds ${n} questions — keep it between ${PER_TOPIC_MIN} and ${PER_TOPIC_MAX}`, t.start);
+      const mechanic = doc.nodes.some(x => attr(x, 'data-topic-kind') === 'mechanic' && (x === t || inside(x, t) || inside(t, x)));
+      if ((n < PER_TOPIC_MIN && !mechanic) || n > PER_TOPIC_MAX) warn('topic-questions-count', `topic "${name}" holds ${n} questions — keep it between ${PER_TOPIC_MIN} and ${PER_TOPIC_MAX}`, t.start);
       const l2 = doc.nodes.find(x => attr(x, 'data-alevel') === '2' && inside(t, x));
       const title = decode((l2 && attr(l2, 'data-title')) || attr(t, 'data-nav-label') || '').trim();
       const words = title.split(/\s+/).filter(Boolean).length;
@@ -333,4 +464,4 @@ function findAnalysisIssues(html) {
   return out;
 }
 
-module.exports = { findAnalysisIssues, pointsBudget, MODES, TOPIC_MIN, TOPIC_MAX, PER_TOPIC_MIN, PER_TOPIC_MAX, TITLE_MAX_WORDS, LITE_MAX, QUESTION_MAX, STAKES_MAX, parse, lineAt };
+module.exports = { findAnalysisIssues, simSpecProblem, pointsBudget, MODES, TOPIC_MIN, TOPIC_MAX, PER_TOPIC_MIN, PER_TOPIC_MAX, TITLE_MAX_WORDS, LITE_MAX, QUESTION_MAX, STAKES_MAX, parse, lineAt };

@@ -32,7 +32,8 @@ plus one sentence. A quantitative finding without a visual is gate warning A6
 ### Core vs custom
 
 The engine renders eight **core** ids (`templates-analysis.md` § Display
-palette): `text`, `kpi`, `bar`, `bars`, `spark`, `donut`, `compare`, `flow`.
+palette): `text`, `kpi`, `bar`, `bars`, `spark`, `donut`, `compare`, `flow`;
+the interactive `sim` (§ 11) comes on top.
 Every catalogue entry says one of:
 
 - **core `<id>`** — write `data-viz="<id>"` with the spec shown; the engine
@@ -233,6 +234,23 @@ Formatierter Text.
 Count: 4 + 4 + 3 + 3 + 4 + 4 + 2 + 4 + 2 + 5 = **35 types** — 6 drawn by a core
 id as is, 4 built on a core id with a particular spec, 25 custom; all eight
 core ids are used.
+
+## 11 · Simulator — a mechanic the reader moves (not a finding display)
+
+Counted apart from the 35 above: `sim` shows no finding, it lets the reader try a
+model. Core id; spec, formula grammar and state in `templates-analysis.md` § `sim`.
+
+| Type | `data-viz` | Nimm sie, wenn … | Nicht, wenn … | Slots |
+|---|---|---|---|---|
+| Simulator | core `sim` | das Thema eine Mechanik, ein Modell oder ein Ursache-Wirkungs-System ist (Pips, Budgets, Raten): Regler verschieben, Werte und Deltas live sehen, die Formeln prüfen. Round 1 of a `data-topic-kind="mechanic"` topic (`step1-templates.md` § 1b · Mechanic topics). | es um eine Entscheidung zwischen Alternativen geht oder nur eine feste Zahl gezeigt wird. | lang (one per round) |
+
+```text
+sim  {"text":"…","controls":[{"id":"em","label":"EM","type":"steps","min":0,"max":4,"value":2}],"outputs":[{"id":"heat","label":"Heat","unit":"/s","formula":"10 * (1 + em)","tags":["HUD"]}]}
+```
+
+Keep the model small: at most 6 controls and 6 outputs read at a glance; every
+formula plain arithmetic a reader can check, units on every output, tags only
+where the value surfaces (HUD, a tooltip, another system).
 
 ## Style rules for custom types
 

@@ -183,6 +183,8 @@ answer it hands the sheet back and warns.
 
 ### Report body
 
+A decision entry with `mode: "sim"` (a simulator, `templates-analysis.md` § sim) is no answer to count or apply: show `value.controls` and `value.outputs` as one plain line each ("EM 3 · Kühlung 2" / "Hitze 34 /s"), and skip it in open / decided / deviating counts.
+
 **Budget: one screen at 1440 × 900, in one narrow column** (`--concept-read-width`,
 shared with analysis, free and decision rounds; the page header is the only title). The build
 blocks what breaks it (`validation-gate.md` 33d). Plain language on the whole
