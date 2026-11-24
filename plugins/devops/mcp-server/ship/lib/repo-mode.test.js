@@ -213,3 +213,21 @@ describe("refusesGitWrites", () => {
     expect(refusesGitWrites("git-no-remote")).toBe(false);
   });
 });
+
+describe("git never started (missing cwd)", () => {
+  test("spawn ENOENT is unknown, never file-only", () => {
+    execFileSync.mockImplementation(() => { throw Object.assign(new Error("spawnSync git ENOENT"), { code: "ENOENT", status: null }); });
+    expect(detectRepoMode("P:Projectsgone")).toBe("unknown");
+    expect(isGitRepo("P:Projectsgone")).toBe(false);
+  });
+
+  test("git's own refusal (an exit status) stays 'none'", () => {
+    execFileSync.mockImplementation(() => { throw Object.assign(new Error("fatal"), { status: 128 }); });
+    expect(detectRepoMode("/plain")).toBe("none");
+  });
+
+  test("the error names the missing directory", () => {
+    statSync.mockImplementation(() => { throw Object.assign(new Error("ENOENT"), { code: "ENOENT" }); });
+    expect(probeTimeoutError("P:Projectsgone")).toMatch(/cwd does not exist: P:Projectsgone/);
+  });
+});

@@ -160,7 +160,10 @@ async function autosave(o) {
   }
   if (!paths.length && !unpushed) { stamp(true); return null; }
 
-  if (paths.length && !unpushed && def && staleRevert(top, paths, `origin/${def}`).stale) {
+  const vsBase = paths.length && !unpushed && def ? staleRevert(top, paths, `origin/${def}`) : null;
+  // after a squash merge the old HEAD shows landed files as changes: content the base already holds is not work
+  if (vsBase && vsBase.neutral.length === paths.length) { stamp(true); return null; }
+  if (vsBase && vsBase.stale) {
     stamp(true);
     return { message: `[devops] not autosaved: the ${paths.length} changed file(s) only restore an older origin/${def} state (stale checkout) — nothing to park.` };
   }

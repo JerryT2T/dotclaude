@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.408.1] — 2026-11-24
+
+### Fixed
+- **Branch hygiene:** an autosave snapshot of work a squash-merged PR finished counts as landed (its tip is kept as an `archive/` tag) instead of staying "partial" forever; files main already holds are no longer parked.
+- **do-ship:** a ship with bump none tags the version when the branch raised it itself, and a missing `cwd` is an error instead of a successful file-only ship.
+- **Cleanup gate:** a Dry-Run may list worktrees by repo-relative path next to the repo name; a longer path no longer approves a shorter one.
+
 ## [0.408.0] — 2026-11-24
 
 ### Added
