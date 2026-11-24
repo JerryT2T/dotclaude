@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.409.0] — 2026-11-24
+
+### Added
+- auto-concept: mechanic and balance topics start with a live simulator (controls, outputs with visible formulas, budget) instead of text questions (#1230).
+- do-ship: the reply "Tag-Workflow einrichten" scaffolds the tag workflow with the repo's prefix, version file and default branch (#1232).
+
+### Fixed
+- Design parity carries measured boxes of the last approved mock and compares the build against them (#1229).
+- A finished project without git closes as done and can be archived; red evidence never does (#1231).
+- "Cloud updaten" starts the guide, also from project threads, instead of blocked browser attempts and a click list (#1233).
+- `templates/tag-on-version.yml`: literal prefix, validated version, tags the commit that set the version, and a failed remote check is not a missing tag (#1232).
+- Artifact concepts name the mandatory read-back check when they are recorded.
+
 ## [0.408.1] — 2026-11-24
 
 ### Fixed
