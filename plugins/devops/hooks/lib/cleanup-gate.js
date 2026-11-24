@@ -235,6 +235,9 @@ function unmergedNamesOf(text) {
 function recordThreadPost(state, text, nowMs = Date.now()) {
   if (!state || typeof text !== 'string' || !THREAD_DRY_LINE_RE.test(text)) return state;
   state.threadPending = { at: nowMs, scope: text, unmerged: unmergedNamesOf(text) };
+  // the person may answer hours later: a fresh Dry-Run post keeps the run armed
+  // for another ARM_TTL (the 6 h expiry dropped a thread run overnight, 2026-11-24)
+  state.armedAt = nowMs;
   return state;
 }
 
