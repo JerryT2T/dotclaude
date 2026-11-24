@@ -52,13 +52,14 @@ function makeStorage(init = {}) {
 }
 
 /** One viewer: a fake window around the real wrapper. */
-function viewer(store, { user = "u1", local = {}, pageVersion = "v1", elements = [], db } = {}) {
+function viewer(store, { user = "u1", local = {}, pageVersion = "v1", elements = [], db, comments = null } = {}) {
   const calls = [];
   const realFetch = (input, init) => { calls.push({ input, init }); return Promise.resolve(new Response("{}", { status: 404 })); };
   const ls = makeStorage(Object.keys(local).length ? { "concept-state-x": JSON.stringify(local) } : {});
   const handlers = {};
   const document = {
     documentElement: { dataset: { pageVersion } },
+    body: {},
     activeElement: null,
     querySelector: (sel) => elements.find((e) => sel.includes(e.match)) || null,
     addEventListener: (t, fn) => { (handlers[t] = handlers[t] || []).push(fn); },
@@ -73,7 +74,7 @@ function viewer(store, { user = "u1", local = {}, pageVersion = "v1", elements =
     retryPendingSubmission: vi.fn(),
   };
   const dbNs = db === undefined ? store.db : db;
-  win.claude = { use: async (name) => (name === "db" ? dbNs : name === "user" ? (user ? { id: async () => user } : null) : null) };
+  win.claude = { use: async (name) => (name === "db" ? dbNs : name === "user" ? (user ? { id: async () => user } : null) : name === "comments" ? comments : null) };
   const api = installConceptArtifact(win);
   const post = (route, body) => win.fetch(route, { method: "POST", body: typeof body === "string" ? body : JSON.stringify(body) });
   const get = async (route) => (await win.fetch(route, { cache: "no-store" })).json();
@@ -138,6 +139,76 @@ describe("submissions — nothing is overwritten, nothing is acked unstored", ()
     expect(doc).toMatchObject({ submitted: true, action: "iterate", submission_id: "sub-1", _by: "u1", _tab: a.api.load, implement: { run: true } });
     expect(typeof doc._storedAtMs).toBe("number");
     expect(a.calls).toHaveLength(0);
+  });
+
+  describe("comment wake (#1198)", () => {
+    const flush = () => new Promise((r) => setTimeout(r, 20));
+    const mockComments = (state = "available", extra = {}) => ({
+      canSendToClaude: vi.fn(() => state),
+      anchorFor: vi.fn(() => "anchor-1"),
+      sendToClaude: vi.fn(async () => {}),
+      ...extra,
+    });
+    const submit = async (comments, extra = {}) => {
+      const store = makeStore();
+      const a = viewer(store, { comments });
+      const res = await a.post("/decisions", { submitted: true, action: "iterate", iteration: 3, submission_id: "w-1", ...extra });
+      await flush();
+      return { a, res, store };
+    };
+
+    test("available: one comment naming action and round, after the 200", async () => {
+      const c = mockComments();
+      const { res } = await submit(c);
+      expect(res.status).toBe(200);
+      expect(c.sendToClaude).toHaveBeenCalledTimes(1);
+      const arg = c.sendToClaude.mock.calls[0][0];
+      expect(arg.anchor).toBe("anchor-1");
+      expect(arg.text).toMatch(/iterate/);
+      expect(arg.text).toMatch(/round 3/);
+    });
+
+    test("a refused write (507) wakes nobody", async () => {
+      const c = mockComments();
+      const store = makeStore();
+      const a = viewer(store, { comments: c });
+      store.failures.push({ code: "quota_exceeded" });
+      const res = await a.post("/decisions", { submission_id: "w-2" });
+      await flush();
+      expect(res.status).toBe(507);
+      expect(c.sendToClaude).not.toHaveBeenCalled();
+    });
+
+    test("any other capability state wakes nobody", async () => {
+      for (const state of ["unavailable", "session_device_bound", null]) {
+        const c = mockComments(state);
+        const { res } = await submit(c);
+        expect(res.status).toBe(200);
+        expect(c.sendToClaude).not.toHaveBeenCalled();
+      }
+    });
+
+    test("a throwing comments API never breaks the submit", async () => {
+      const boom = mockComments("available", { sendToClaude: vi.fn(() => { throw new Error("boom"); }) });
+      expect((await submit(boom)).res.status).toBe(200);
+      const boom2 = mockComments("available", { canSendToClaude: vi.fn(() => { throw new Error("boom"); }) });
+      expect((await submit(boom2)).res.status).toBe(200);
+      const none = { canSendToClaude: undefined };
+      expect((await submit(none)).res.status).toBe(200);
+      expect((await submit(null)).res.status).toBe(200);
+    });
+
+    test("a duplicate re-send posts no second comment", async () => {
+      const c = mockComments();
+      const store = makeStore();
+      const a = viewer(store, { comments: c });
+      await a.post("/decisions", { submitted: true, submission_id: "w-3" });
+      await flush();
+      const again = await a.post("/decisions", { submitted: true, submission_id: "w-3" });
+      await flush();
+      expect(await again.json()).toEqual({ durable: true, duplicate: true });
+      expect(c.sendToClaude).toHaveBeenCalledTimes(1);
+    });
   });
 
   test("two people submitting at the same time keep both submissions", async () => {
@@ -392,7 +463,7 @@ describe("session side — record, digest, mark", () => {
     expect(res.out).toBe(path.join(dir, "2026-09-28-x.artifact.html"));
     expect(stripWrapper(fs.readFileSync(res.out, "utf8"))).toBe(PAGE);
     expect(fs.readFileSync(src, "utf8")).toBe(PAGE);
-    expect(res.capabilities).toEqual({ db: {}, user: {} });
+    expect(res.capabilities).toEqual({ db: {}, user: {}, comments: {} });
     expect(res.icon).toBe("compass");
     expect(res.readBack).toEqual([
       expect.objectContaining({ tool: "ArtifactData", action: "list", collection: "submissions" }),

@@ -38,7 +38,7 @@ Artifact tool. The bridge stays first wherever it can run; the hand-off stays
 the default when nobody asked to decide remotely.
 
 Build the copy with `node "{PLUGIN_ROOT}/scripts/concept-artifact.js"
---artifact docs/concepts/<file>.html`, publish it with `capabilities: {db: {}, user: {}}`,
+--artifact docs/concepts/<file>.html`, publish it with `capabilities: {db: {}, user: {}, comments: {}}`,
 record its url (`concept-artifact.js record`) and read the submissions back
 with `ArtifactData` + `concept-artifact.js digest` — no bridge, no bridge
 crons, no Edge start; one backed-off read-back check instead of a waker.

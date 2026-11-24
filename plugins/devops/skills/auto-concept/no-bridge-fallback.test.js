@@ -47,7 +47,7 @@ describe("auto-concept — no reachable bridge ≠ no concept (#568)", () => {
     const text = skill.slice(art, edge);
     expect(text).toMatch(/Second tier, behind the hand-off/);
     expect(text).toMatch(/concept-artifact\.js/);
-    expect(text).toMatch(/capabilities: \{db: \{\}, user: \{\}\}/);
+    expect(text).toMatch(/capabilities: \{db: \{\}, user: \{\}, comments: \{\}\}/);
     expect(text).toMatch(/no bridge, no bridge\s+crons, no Edge start/);
     expect(text).toMatch(/deep-knowledge\/artifact-fallback\.md/);
     expect(skill).not.toMatch(/separate, later fallback \(#589\)/);
