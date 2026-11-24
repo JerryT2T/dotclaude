@@ -484,6 +484,44 @@ function payloadStep(arg) {
 // payload wait
 // ---------------------------------------------------------------------------
 
+/* global window, document, location */
+/**
+ * Page snapshot attached to every `payload wait` result (#1174). Serialized
+ * with toString() and run in the page, so it must stay self-contained. Value
+ * free by construction: it reads path, dialog headings and button labels
+ * only — never an input's value — and masks key-like strings.
+ * @returns {{path:string, dialogs:string[], buttons:string[]}}
+ */
+function pageSnapshot() {
+  var mask = function (t) {
+    return String(t || '').replace(/\s+/g, ' ').trim().replace(/[A-Za-z0-9_-]{20,}/g, '***').slice(0, 80);
+  };
+  var shown = function (el) {
+    for (var n = el; n && n.nodeType === 1; n = n.parentElement) {
+      if (n.hidden || n.getAttribute('aria-hidden') === 'true') return false;
+      var st = window.getComputedStyle(n);
+      if (st.display === 'none' || st.visibility === 'hidden') return false;
+    }
+    return true;
+  };
+  var uniq = function (list, max) {
+    var out = [];
+    list.forEach(function (t) { if (t && out.indexOf(t) < 0 && out.length < max) out.push(t); });
+    return out;
+  };
+  var dialogs = [];
+  document.querySelectorAll('[role="dialog"],[role="alertdialog"],dialog[open],[aria-modal="true"]').forEach(function (d) {
+    if (!shown(d)) return;
+    var h = d.querySelector('h1,h2,h3,[role="heading"]');
+    dialogs.push(mask((h && h.textContent) || d.getAttribute('aria-label') || ''));
+  });
+  var buttons = [];
+  document.querySelectorAll('button,[role="button"]').forEach(function (b) {
+    if (shown(b)) buttons.push(mask(b.textContent || b.getAttribute('aria-label')));
+  });
+  return { path: location.pathname, dialogs: uniq(dialogs, 5), buttons: uniq(buttons, 25) };
+}
+
 // #529: `wait(0)` is the "drain" call — SKILL.md 5c runs it after a CDP
 // timeout to reclaim a stranded event without arming a real ~30s wait. It is
 // the one value allowed below WAIT_MIN_MS.
@@ -499,8 +537,10 @@ function payloadWait(msArg) {
   // (window.claudeGuide.stringify) instead of the page's global
   // JSON.stringify — a page that patches the global after injection to read
   // the token/event out of the serialization never sees this call.
+  // #1174: every result, a timeout included, carries `page` — the value-free
+  // snapshot below — so progress made without pressing Weiter is visible.
   process.stdout.write(
-    `(window.claudeGuide ? window.claudeGuide.stringify(await window.claudeGuide.wait(${ms}${tokenArg()})) : JSON.stringify({ type: "reinject-needed" }))`
+    `(window.claudeGuide ? await (async () => { const ev = await window.claudeGuide.wait(${ms}${tokenArg()}); let page = null; try { page = (${pageSnapshot.toString()})(); } catch (e) {} return window.claudeGuide.stringify(Object.assign({}, ev, { page })); })() : JSON.stringify({ type: "reinject-needed" }))`
   );
 }
 
@@ -885,6 +925,7 @@ module.exports = {
   payloadDestroy,
   payloadSleep,
   payloadStep,
+  pageSnapshot,
   tokenArg,
   payloadInject,
   pause,

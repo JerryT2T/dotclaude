@@ -524,16 +524,24 @@ describe("CLI: payload step", () => {
 // ---------------------------------------------------------------------------
 
 describe("CLI: payload wait", () => {
+  // #1174: the snippet awaits wait(), then attaches the value-free page snapshot
+  // (its source is inlined; web-guide-snapshot.jsdom.test.js runs it in a DOM).
+  const expectSnippet = (stdout, ms) => {
+    expect(stdout.startsWith(`(window.claudeGuide ? await (async () => { const ev = await window.claudeGuide.wait(${ms}); let page = null; try { page = (`)).toBe(true);
+    expect(stdout.endsWith(')(); } catch (e) {} return window.claudeGuide.stringify(Object.assign({}, ev, { page })); })() : JSON.stringify({ type: "reinject-needed" }))')).toBe(true);
+    expect(stdout).not.toMatch(/\.value\b|getAttribute\(['"]value['"]\)/);
+  };
+
   test("default 30000ms", () => {
     const r = run(["payload", "wait"]);
     expect(r.code).toBe(0);
-    expect(r.stdout).toBe("(window.claudeGuide ? window.claudeGuide.stringify(await window.claudeGuide.wait(30000)) : JSON.stringify({ type: \"reinject-needed\" }))");
+    expectSnippet(r.stdout, 30000);
   });
 
   test("custom ms within bounds", () => {
     const r = run(["payload", "wait", "5000"]);
     expect(r.code).toBe(0);
-    expect(r.stdout).toBe("(window.claudeGuide ? window.claudeGuide.stringify(await window.claudeGuide.wait(5000)) : JSON.stringify({ type: \"reinject-needed\" }))");
+    expectSnippet(r.stdout, 5000);
   });
 
   test("below minimum bound rejected", () => {
@@ -547,7 +555,7 @@ describe("CLI: payload wait", () => {
   test("0 (drain) is accepted despite being below the minimum bound", () => {
     const r = run(["payload", "wait", "0"]);
     expect(r.code).toBe(0);
-    expect(r.stdout).toBe("(window.claudeGuide ? window.claudeGuide.stringify(await window.claudeGuide.wait(0)) : JSON.stringify({ type: \"reinject-needed\" }))");
+    expectSnippet(r.stdout, 0);
   });
 
   test("above maximum bound rejected", () => {
