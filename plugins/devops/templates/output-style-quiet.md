@@ -63,7 +63,7 @@ and the sidebar title reach no one:
 | Channel | Thread tool |
 |---|---|
 | text / answer | `mcp__hearthbot__post_message` |
-| question | numbered `post_message` reply; title head via `rename_thread` |
+| question | `request_decision` card when offered (single choice); else numbered `post_message` reply; title head via `rename_thread` |
 | card | `post_message` with the card markdown (the card tool says how) |
 | file | `attached_outputs` of that `post_message` |
 | progress | `update_progress_checklist` |
