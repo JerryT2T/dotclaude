@@ -203,6 +203,16 @@
         "hunks": [
           "0c549c5e5347"
         ]
+      },
+      {
+        "ship": "claude/project-thread-iv58su",
+        "by": "JerryT2T",
+        "value": "regenerated parallel lanes",
+        "decided": true,
+        "at": "2026-11-24T22:29:55.197Z",
+        "hunks": [
+          "2995786fa35f"
+        ]
       }
     ],
     "lanes.json›writers›generated": [
@@ -224,6 +234,16 @@
         "at": "2026-11-24T22:02:12.216Z",
         "hunks": [
           "ea31ef2cbff6"
+        ]
+      },
+      {
+        "ship": "claude/project-thread-iv58su",
+        "by": "JerryT2T",
+        "value": "regenerated parallel lanes",
+        "decided": true,
+        "at": "2026-11-24T22:29:55.197Z",
+        "hunks": [
+          "cbd1c568534a"
         ]
       }
     ],
