@@ -31,20 +31,20 @@ HOOK_SCRIPT = ${PLUGIN_ROOT}/hooks/session-start/ss.plugin.update.js
 
 ## "Cloud updaten" / "update cloud"
 
-**First action: start the `auto-guide` skill** (#1233), goal "sync the dotclaude
+**The person asked: first action is to start the `auto-guide` skill** (#1233), goal "sync the dotclaude
 marketplace on claude.ai", start URL `https://claude.ai/customize`. Never try the
 built-in browser or Claude in Chrome on claude.ai yourself first, and never send
 the clicks as chat text. Where the session runs decides how:
 
 - **On the person's computer** (also a local thread): start `auto-guide` here. Claude
   in Chrome cannot open Customize, so it runs with a companion panel
-  (auto-guide `deep-knowledge/recovery.md` § Companion panel).
+  (`{PLUGIN_ROOT}/skills/auto-guide/deep-knowledge/recovery.md` § Companion panel).
 - **In the cloud** (`CLAUDE_CODE_REMOTE=true`): `auto-guide` needs the person's Edge.
   In a project thread start a session on their computer (`start_remote_control`
   when offered, else ask the coordinator for a "Work locally" thread) with the
   prompt "Cloud updaten", and say in one line that the guide opens on the computer.
-  Without such a route: one line, "Say „Cloud updaten“ in a session on your
-  computer, the guide opens there."
+  Without such a route: one line in the person's language, "Say the same in a
+  session on your computer, the guide opens there."
 
 The steps the guide walks: Customize → Plugins → Manage marketplaces → dotclaude
 "…" → Check for updates. The account copy, the one cloud sessions and cloud
@@ -55,7 +55,8 @@ reaches cloud sessions. Then stop; skip the steps below.
 update by themselves when it is needed: switch devops-config `cloud.autoUpdate`
 on (default; global), a Claude Project thread ran on this machine
 (`~/.claude/devops-thread-seen.json`, written from the thread flag), and the
-copy trails the install. The session that wins the claim
+copy trails the install. It is the one case where a session tries the steps itself
+(Customize may refuse; then the guide is offered). The session that wins the claim
 (`hooks/lib/cloud-update.js`: one updater at a time, once per version, retried
 after 3 h unfinished / 24 h manual / 48 h done) gets an `[ss.cloud.update]`
 block and clicks the steps above itself with its browser tool for logged-in

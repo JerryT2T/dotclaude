@@ -98,7 +98,7 @@ No new MCP tool; run the script from the repo root:
 
 It writes the template to `.github/workflows/tag-on-version.yml` with the
 literal tag prefix (`alpha/` when the repo has `alpha/vX.Y.Z` tags, else none)
-and the repo's JSON version file (`.claude-plugin/plugin.json`, else
+the default branch of origin and the repo's JSON version file (`.claude-plugin/plugin.json`, else
 `package.json`), and prints JSON. Exit 1 with `ok: false` and a `reason` means
 nothing was written: an existing tag-on-version workflow is never overwritten, and
 a repo without a JSON version file is refused. Report the reason, do not improvise.

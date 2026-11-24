@@ -58,10 +58,21 @@ export function listTags(cwd) {
   return [...local, ...lines(remote).map((l) => (l.split("\t")[1] || "").replace("refs/tags/", "").replace("^{}", "")).filter(Boolean)];
 }
 
+/** origin's default branch as this clone knows it, else `main`. */
+export function defaultBranch(cwd) {
+  try {
+    const ref = execFileSync("git", ["symbolic-ref", "--short", "refs/remotes/origin/HEAD"], { cwd, encoding: "utf8", timeout: 10000, windowsHide: true, stdio: ["ignore", "pipe", "ignore"] }).trim();
+    const name = ref.replace("origin/", "");
+    return SAFE_PATH.test(name) ? name : "main";
+  } catch {
+    return "main";
+  }
+}
+
 /**
  * Write the workflow. Never overwrites; refuses with a reason instead.
  * @param {{ cwd?: string, tags?: string[] }} [o]  `tags` skips the git lookup (tests).
- * @returns {{ ok: true, path: string, prefix: string, versionFile: string } | { ok: false, reason: string, existing?: string }}
+ * @returns {{ ok: true, path: string, prefix: string, versionFile: string, branch: string } | { ok: false, reason: string, existing?: string }}
  */
 export function scaffoldTagWorkflow(o = {}) {
   const cwd = o.cwd || process.cwd();
@@ -78,11 +89,13 @@ export function scaffoldTagWorkflow(o = {}) {
   const withPrefix = source.replace(/^( {2}TAG_PREFIX: )""$/m, `$1"${prefix}"`);
   const out = withPrefix.replace(/^( {2}VERSION_FILE: )"[^"\n]*"$/m, `$1"${versionFile}"`);
   if (!out.includes(`  TAG_PREFIX: "${prefix}"\n`) || !out.includes(`  VERSION_FILE: "${versionFile}"\n`)) return { ok: false, reason: "the template no longer has the TAG_PREFIX / VERSION_FILE lines the scaffold fills" };
+  const branch = o.branch || defaultBranch(cwd);
+  const text = out.replace("branches: [main]", `branches: [${branch}]`).replace("'refs/heads/main'", `'refs/heads/${branch}'`);
   const target = join(cwd, WORKFLOW_PATH);
   mkdirSync(join(cwd, ".github", "workflows"), { recursive: true });
   if (existsSync(target)) return { ok: false, reason: `${WORKFLOW_PATH} already exists; it is left unchanged`, existing: WORKFLOW_PATH };
-  writeFileSync(target, out, { flag: "wx" });
-  return { ok: true, path: WORKFLOW_PATH, prefix, versionFile };
+  writeFileSync(target, text, { flag: "wx" });
+  return { ok: true, path: WORKFLOW_PATH, prefix, versionFile, branch };
 }
 
 /** True when a push was refused because the token lacks the `workflow` scope. */

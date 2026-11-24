@@ -1920,11 +1920,11 @@ function resolveCardKey(input) {
   const state = input.state || {};
   const delivery = input.delivery || {};
 
-  if (variant === 'ready') {
+  if (variant === 'ready' || variant === 'ready-files') {
     if (input.vv && input.vv.unverified) return input.vv.running ? 'vv-running' : 'vv-unverified';
     if (evidenceHasDeviation(input)) return 'ready-red';
     // Without a repo the work is done on disk — nothing to ship (ready-files).
-    return state.mode === 'file-only' ? 'ready-files' : 'ready';
+    return variant === 'ready-files' || state.mode === 'file-only' ? 'ready-files' : 'ready';
   }
   if (variant === 'ship-blocked') return 'ship-blocked';
   if (variant === 'ship-successful') {
@@ -1947,7 +1947,6 @@ function resolveCardKey(input) {
   if (variant === 'released') {
     return promoteTarget(input, delivery) === 'stable' ? 'released-stable' : 'released-beta';
   }
-  if (variant === 'ready-files') return 'ready-files';
   if (variant === 'test') return 'test';
   if (variant === 'test-minimal') return 'test-minimal';
   if (variant === 'analysis') return 'analysis';

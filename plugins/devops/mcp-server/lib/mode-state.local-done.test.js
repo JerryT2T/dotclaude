@@ -20,6 +20,7 @@ describe("isLocalDone, file-only (#1231)", () => {
   test("no delivered value or another variant is not done", () => {
     expect(isLocalDone(files({ state: { mode: "file-only" } }))).toBe(false);
     expect(isLocalDone(files({ state: { mode: "file-only", delivered: " " } }))).toBe(false);
+    expect(isLocalDone(files({ state: { mode: "file-only", delivered: "failed" } }))).toBe(false);
     expect(isLocalDone(files({ variant: "test" }))).toBe(false);
   });
   test("the no-remote case is unchanged", () => {

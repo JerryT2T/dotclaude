@@ -141,6 +141,7 @@ function simSpecProblem(simIdAttr, specText) {
     const min = Number(c.min);
     const max = Number(c.max);
     if (!Number.isFinite(min) || !Number.isFinite(max) || max <= min) return 'control "' + c.id + '": min / max missing or not min < max';
+    if (c.type === 'range' && (Number(c.step) || 1) <= 0) return 'control "' + c.id + '": step must be above 0';
     if (c.type === 'steps' && max - min > 12) return 'control "' + c.id + '": a steps control spans at most 12';
     seen.add(c.id); known.add(c.id);
   }
@@ -282,6 +283,16 @@ function findAnalysisIssues(html) {
       const sid = attr(sm, 'data-sim');
       const missing = JSON.parse(spec).controls.map(c => c.id).filter(c => !names.has(`dm-${sid}.${c}`));
       if (missing.length) warn('sim-state-inputs', `simulator "${sid}": no <input type="hidden" name="dm-${sid}.{ctl}" value="{default}"> for ${missing.join(', ')} in the round - without them the values do not survive the freeze`, sm.start);
+    }
+  }
+  // Hidden inputs are stored by name: one id in two rounds (or a decision's id) would share its state.
+  for (const x of sims) {
+    const id = attr(x, 'data-sim');
+    const round = doc.nodes.find(n => n.tag === 'section' && has(n, 'data-iteration') && inside(n, x));
+    const twin = sims.find(y => y !== x && y.start < x.start && attr(y, 'data-sim') === id
+      && doc.nodes.find(n => n.tag === 'section' && has(n, 'data-iteration') && inside(n, y)) !== round);
+    if (id && (twin || doc.nodes.some(n => has(n, 'data-decision-mode') && attr(n, 'data-decision') === id))) {
+      err('sim-spec', `data-sim "${id}" is already used by ${twin ? 'a sim of another round' : 'a decision'} - prefix it with the round (r2_${id})`, x.start);
     }
   }
   for (const mech of doc.nodes.filter(n => attr(n, 'data-topic-kind') === 'mechanic')) {

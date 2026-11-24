@@ -493,6 +493,12 @@ describe("render_completion_card — anatomy (§ 2 of the design doc)", () => {
       const text = await cardText({ variant: "ready", summary: "Fertig", lang: "de", session_id: "test-1231-c", state, userFinalTest: ["Datei prüfen"] });
       expect(text).toMatch(/^## 👉 📦 Files — Fertig auf der Platte — noch etwas\?$/m);
     });
+    test("red or unverified evidence is never done, whichever variant carries it", async () => {
+      for (const variant of ["ready", "ready-files"]) {
+        const text = await cardText({ variant, summary: "x", lang: "de", session_id: "test-1231-e", state, validation: [{ requirement: "x", status: "unmet", evidence: "y" }] });
+        expect(text, variant).not.toContain("Auf der Platte abgeschlossen");
+      }
+    });
     test("without delivered the old heading stays", async () => {
       const text = await cardText({ variant: "ready", summary: "x", lang: "de", session_id: "test-1231-d", state: { mode: "file-only" } });
       expect(text).toMatch(/^## 👉 📦 Files — Fertig auf der Platte — noch etwas\?$/m);

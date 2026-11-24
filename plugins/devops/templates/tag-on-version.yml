@@ -72,7 +72,10 @@ jobs:
             echo "::error::Could not check the remote for ${TAG} (ls-remote exit ${STATUS})"
             exit 1
           fi
+          # Tag the commit that set the version, not whatever main is now.
+          COMMIT="$(git log -1 --first-parent -m --format=%H -G'"version"' -- "$VERSION_FILE")"
+          COMMIT="${COMMIT:-$GITHUB_SHA}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -a "${TAG}" "${GITHUB_SHA}" -m "{\"version\":\"${VERSION}\",\"channel\":\"${CHANNEL}\"}"
+          git tag -a "${TAG}" "${COMMIT}" -m "{\"version\":\"${VERSION}\",\"channel\":\"${CHANNEL}\"}"
           git push origin "refs/tags/${TAG}"

@@ -269,6 +269,14 @@ describe("gate A14 / A15", () => {
   test("a page without the stamp is not a mechanic round", () => {
     expect(kinds(wrap("<p>text</p>"), "warnings")).toEqual([]);
   });
+  test("a sim id used in another round or by a decision, and a step below 0, fail", () => {
+    const two = `<section data-iteration="1">${simEl()}</section><section data-iteration="2">${simEl()}</section>`;
+    expect(kinds(two)).toContain("sim-spec");
+    expect(kinds(`<section data-iteration="1">${simEl()}${hiddens()}</section>`)).not.toContain("sim-spec");
+    expect(kinds(`<section data-iteration="1">${simEl()}<div data-decision="pips" data-decision-mode="points" data-rec="a"></div></section>`)).toContain("sim-spec");
+    const bad = { ...SPEC, controls: SPEC.controls.map(c => (c.type === "range" ? { ...c, step: -1 } : c)) };
+    expect(kinds(simEl(bad))).toContain("sim-spec");
+  });
   test("the rule table names A14 and A15", () => {
     const gate = fs.readFileSync(path.join(__dirname, "deep-knowledge", "validation-gate.md"), "utf8");
     expect(gate).toMatch(/\| A14 \| \*\*fail\*\* \|/);

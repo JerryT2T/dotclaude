@@ -36,6 +36,32 @@ describe("scaffoldTagWorkflow (#1232)", () => {
     expect(existsSync(join(dir, WORKFLOW_PATH))).toBe(false);
   });
 
+  test("the tag goes to the commit that set the version", () => {
+    const text = readFileSync(fileURLToPath(new URL("../../../templates/tag-on-version.yml", import.meta.url)), "utf8");
+    expect(text).toContain("git log -1 --first-parent -m --format=%H -G'\"version\"'");
+    expect(text).toContain('git tag -a "${TAG}" "${COMMIT}"');
+    put("package.json", '{\n"version":"1.0.0"\n}');
+    git("init", "-q");
+    const commit = (m) => { git("add", "-A"); git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", m); return execFileSync("git", ["rev-parse", "HEAD"], { cwd: dir, encoding: "utf8" }).trim(); };
+    commit("a");
+    put("package.json", '{\n"version":"1.0.1"\n}');
+    const bump = commit("bump");
+    put("x.txt", "later");
+    commit("later");
+    const found = execFileSync("git", ["log", "-1", "--first-parent", "-m", "--format=%H", '-G"version"', "--", "package.json"], { cwd: dir, encoding: "utf8" }).trim();
+    expect(found).toBe(bump);
+  });
+
+  test("a default branch other than main is written into both places", () => {
+    put("package.json", '{"version":"1.2.3"}');
+    git("init", "-q");
+    git("symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/master");
+    expect(scaffoldTagWorkflow({ cwd: dir, tags: [] })).toMatchObject({ ok: true, branch: "master" });
+    const text = readFileSync(join(dir, WORKFLOW_PATH), "utf8");
+    expect(text).toContain("branches: [master]");
+    expect(text).toContain("github.ref == 'refs/heads/master'");
+  });
+
   test("a repo without ring tags gets no prefix; the plugin manifest wins over package.json", () => {
     put("package.json", '{"version":"1.2.3"}');
     put(".claude-plugin/plugin.json", '{"version":"0.4.0"}');

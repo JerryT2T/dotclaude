@@ -193,10 +193,10 @@ export function isLocalDone(params) {
   const state = params && params.state && typeof params.state === "object" ? params.state : {};
   if (!params) return false;
   // A project without git: the files on disk are the delivery (#1231). The
-  // variant may already be corrected to `ready-files`; any `delivered` value
-  // counts (ship_release reports "none" for file-only).
+  // variant may already be corrected to `ready-files`; `delivered: "none"` is
+  // what ship_release reports for file-only, any other value is not a close-out.
   if ((params.variant === "ready" || params.variant === "ready-files") && state.mode === "file-only") {
-    if (typeof state.delivered !== "string" || !state.delivered.trim()) return false;
+    if (state.delivered !== "none") return false;
     return !hasMandatoryStep(params) && !hasPending(params.pending);
   }
   if (params.variant !== "ready") return false;
