@@ -640,6 +640,23 @@ function assemble({ page, head, fragments, slug = 'concept', md = readTemplates(
   for (const r of plainReports) {
     if (live && r !== live && !hasAttr(live.attrs, 'data-review')) { problems.push('a final-report round must be the last round'); break; }
   }
+  // The live review round takes the format of the round before the final report
+  // (R1 template, R2 Full analysis) and is complete (R3). Frozen/baked reviews are exempt.
+  if (live && live.root && hasAttr(live.attrs, 'data-review')) {
+    const rep = plainReports.length ? plainReports[plainReports.length - 1] : null;
+    const prev = rep ? rounds[rounds.indexOf(rep) - 1] : null;
+    if (prev && prev.root) {
+      const want = getAttr(prev.attrs, 'data-iteration-template');
+      const got = getAttr(live.attrs, 'data-iteration-template');
+      if (want && got !== want) problems.push(`review-template-switch: review round ${live.n} has data-iteration-template="${got}", the last round before the final report (${prev.n}) has "${want}" - the review keeps that template, never the final report's "free"`);
+      if (getAttr(prev.attrs, 'data-analysis') === 'full' && getAttr(live.attrs, 'data-analysis') !== 'full') problems.push(`review-not-full: round ${prev.n} is a Full analysis, review round ${live.n} has no data-analysis="full" - write it as Full analysis (briefing, one topic per area of the build, details)`);
+    }
+    const maskedLive = maskComments(live.html);
+    const greens = (maskedLive.match(/<aside\b[^>]*\brv-green\b[^>]*>/gi) || []).length;
+    const decided = (maskedLive.match(/data-decision=["']rv-/gi) || []).length;
+    if (!getAttr(live.attrs, 'data-review-from')) problems.push(`review-incomplete: review round ${live.n} has no data-review-from="<final report round>"`);
+    else if (decided < greens) problems.push(`review-incomplete: review round ${live.n} has ${greens} green finding(s) (.rv-note.rv-green) but ${decided} rv-* decision(s) - every green finding needs its keep / revert decision`);
+  }
   for (const s of staged ? page.stages : []) {
     if (s && s.state !== undefined && !STAGE_STATES.includes(s.state)) problems.push(`page.json stage ${s.id}: state ${JSON.stringify(s.state)} — must be "issue" or "dropped" (or absent)`);
   }

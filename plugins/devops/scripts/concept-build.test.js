@@ -219,9 +219,54 @@ describe("concept-build — assemble", () => {
     const bad = cb.build(dir, { home });
     expect(bad.ok).toBe(false);
     expect(bad.problems.join("\n")).toMatch(/final-report round must be the last/);
-    write(dir, 3, '<section data-iteration="3" data-iteration-template="free" data-review data-review-from="2"><h2>Umsetzung</h2></section>');
+    write(dir, 3, '<section data-iteration="3" data-iteration-template="decision" data-review data-review-from="2"><h2>Umsetzung</h2></section>');
     const review = cb.build(dir, { home });
     expect(review.problems.join("\n")).not.toMatch(/final-report round must be the last/);
+  });
+
+  describe("review round gate (R1-R3)", () => {
+    const report = '<section data-iteration="2" data-iteration-template="free" data-final-report data-baked><h2>Report</h2></section>';
+    const setup = (round1Attrs = "") => {
+      const { dir, home } = project();
+      cb.init(dir, { title: "T", locale: "de" });
+      write(dir, 1, decisionRound(1, "", { baked: true, attrs: round1Attrs }));
+      write(dir, 2, report);
+      return { dir, home };
+    };
+    const problems = (dir, home) => cb.build(dir, { home }).problems.join("\n");
+
+    test("round-04 shape (freeform review after a Full analysis) fails R1 and R2", () => {
+      const { dir, home } = setup(' data-analysis="full"');
+      write(dir, 3, '<section data-iteration="3" data-iteration-template="free" data-review data-review-from="2"><h2>Umsetzung</h2></section>');
+      const out = cb.build(dir, { home });
+      expect(out.ok).toBe(false);
+      expect(out.problems.join("\n")).toMatch(/review-template-switch/);
+      expect(out.problems.join("\n")).toMatch(/review-not-full/);
+    });
+
+    test("a review in the normal format builds", () => {
+      const { dir, home } = setup(' data-analysis="full"');
+      write(dir, 3, '<section data-iteration="3" data-iteration-template="decision" data-analysis="full" data-review data-review-from="2"><h2>Umsetzung</h2></section>');
+      expect(problems(dir, home)).not.toMatch(/review-/);
+    });
+
+    test("R3: missing data-review-from, or a green finding without its rv-* decision", () => {
+      const { dir, home } = setup();
+      write(dir, 3, '<section data-iteration="3" data-iteration-template="decision" data-review><h2>U</h2></section>');
+      expect(problems(dir, home)).toMatch(/review-incomplete.*data-review-from/);
+      const green = '<aside class="rv-note rv-green" data-review-note data-kind="finding">x</aside>';
+      write(dir, 3, `<section data-iteration="3" data-iteration-template="decision" data-review data-review-from="2">${green}</section>`);
+      expect(problems(dir, home)).toMatch(/review-incomplete.*green finding/);
+      write(dir, 3, `<section data-iteration="3" data-iteration-template="decision" data-review data-review-from="2">${green}<div data-decision="rv-extra" data-decision-mode="single"></div></section>`);
+      expect(problems(dir, home)).not.toMatch(/review-incomplete/);
+    });
+
+    test("a frozen (baked) freeform review keeps building", () => {
+      const { dir, home } = setup(' data-analysis="full"');
+      write(dir, 3, '<section data-iteration="3" data-iteration-template="free" data-review data-review-from="2" data-baked><h2>Umsetzung</h2></section>');
+      write(dir, 4, decisionRound(4));
+      expect(problems(dir, home)).not.toMatch(/review-/);
+    });
   });
 
   test("fragment checks: wrong number / template, unbaked frozen round, stray content all block and keep the last page", () => {

@@ -451,6 +451,18 @@ run before first paint (see § Frozen/Active Mismatch below). The submit
 payload MUST include an `action` field with value `"iterate"` or
 `"implement"`.
 
+## Review round (R1–R3, deterministic)
+
+Enforced by `concept-build.js build` (`assemble`) on the LIVE `section[data-review]` only;
+frozen / baked review rounds keep building. Contract: `templates-final-report-review.md`
+§ The review round.
+
+| # | Severity | Rule |
+|---|---|---|
+| R1 | **fail** | `review-template-switch`: the review round's `data-iteration-template` differs from the last round before the `data-final-report` round |
+| R2 | **fail** | `review-not-full`: that round carries `data-analysis="full"`, the review round does not (A1 then enforces the briefing) |
+| R3 | **fail** | `review-incomplete`: no `data-review-from`, or fewer `rv-*` decisions than `.rv-note.rv-green` findings |
+
 ## Analysis & decision modes (A1–A13, deterministic)
 
 Enforced by `hooks/lib/concept-gate-analysis.js` (called from
