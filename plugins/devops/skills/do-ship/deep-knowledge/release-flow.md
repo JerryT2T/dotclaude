@@ -84,14 +84,33 @@ checklist (#567) points here instead of restating it.
 A claude.ai cloud session never pushes tags (environment policy), so the owner
 step above is the last fallback, not the plan. When the repo has
 `.github/workflows/tag-on-version.yml` (scaffold `templates/tag-on-version.yml`;
-its `tag-prefix` input / `TAG_PREFIX` sets e.g. `alpha/`), `ship_release` polls
-the remote tag via REST (`tagPollAttempts` × `tagPollDelayMs`) after the refused
-push: found → `tagVerified: true`, `tagCreatedBy: "ci"`, no `tagHandoff`. Never
-found → `tagHandoff` with a `workflowNote`. No workflow → `tagHandoff` with a
-`setupOffer` (reply "Tag-Workflow einrichten"): once the owner agrees, add the
-template in a normal PR. A tag made with `GITHUB_TOKEN` does not trigger other
-workflows (the template documents the PAT route); pushing a workflow file may
-need the `workflow` scope — if refused, hand the file to the owner once.
+its literal `TAG_PREFIX` sets e.g. `alpha/`), `ship_release` polls
+the remote tag via REST (`tagPollAttempts` x `tagPollDelayMs`) after the refused
+push: found -> `tagVerified: true`, `tagCreatedBy: "ci"`, no `tagHandoff`. Never
+found -> `tagHandoff` with a `workflowNote`. No workflow -> `tagHandoff` with a
+`setupOffer` (reply "Tag-Workflow einrichten").
+
+### Reply "Tag-Workflow einrichten"
+
+No new MCP tool; run the script from the repo root:
+
+    node {PLUGIN_ROOT}/mcp-server/ship/lib/tag-workflow-scaffold-cli.mjs
+
+It writes the template to `.github/workflows/tag-on-version.yml` with the
+literal tag prefix (`alpha/` when the repo has `alpha/vX.Y.Z` tags, else none)
+the default branch of origin and the repo's JSON version file (`.claude-plugin/plugin.json`, else
+`package.json`), and prints JSON. Exit 1 with `ok: false` and a `reason` means
+nothing was written: an existing tag-on-version workflow is never overwritten, and
+a repo without a JSON version file is refused. Report the reason, do not improvise.
+
+On `ok: true` land the file like any change: a `chore/tag-workflow` branch, one
+commit, a PR through the normal ship flow. Never push it to main. If the branch
+push is refused, save its stderr to a file and run
+`node {PLUGIN_ROOT}/mcp-server/ship/lib/tag-workflow-scaffold-cli.mjs --classify-push <stderr-file> --branch <branch>`:
+`refused: true` carries a `text` naming the missing `workflow` scope and the
+`commands` (`gh auth refresh -h github.com -s workflow`, then the push) for the
+owner. A tag made with `GITHUB_TOKEN` does not trigger other workflows (the
+template documents the PAT route).
 dotclaude's own ring flow does not use it.
 
 ## GitHub Release — at PROMOTION, not at ship

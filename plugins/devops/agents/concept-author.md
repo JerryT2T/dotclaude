@@ -40,6 +40,14 @@ bridge protocol and every message to the user.
    A brief with `fidelity: live` makes this a Live-Treue round. Read
    `live-fidelity.md` § Live-Treue rounds and every path its
    `liveSource` names before you write anything.
+   A topic that is a mechanic, a model or a cause-and-effect system gets a
+   simulator, not a questionnaire. Read `step1-templates.md` § 1b · Mechanic
+   topics and `templates-analysis.md` § `sim`. Stamp `data-topic-kind="mechanic"`
+   on the round's root section (your judgment, no keyword match). The round
+   holds ONE `data-viz="sim"` (controls, live outputs, every formula visible), at
+   most 3 text decisions that are real either/or choices each with a visual, and
+   one line of prose per item. Build it with the gate: A14 blocks a broken sim
+   spec, A15 warns when the sim is missing.
 4. Write `rounds/NN.html`, where `NN` is N zero-padded to two digits. It holds
    one root `<section data-iteration="N" data-iteration-template="…">`
    with nothing outside it. Write in the user's language, with no

@@ -110,6 +110,8 @@ const STATES = Object.freeze({
   'promoted-beta': ['done', 'Beta', '🎊'],
   'promoted-stable': ['done', 'Stable', '🎊'],
   committed: ['done', 'Committed', '📦'],
+  // A finished close-out in a project without git: the files are the delivery.
+  'files-done': ['done', 'Files', '📦'],
   started: ['done', 'Started', '✨'],
   analysis: ['done', 'Analysis', '📊'],
   // A side session delivered its part; the main chat integrates and ships.

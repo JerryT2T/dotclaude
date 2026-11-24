@@ -232,7 +232,7 @@ function versionTag(pluginRoot = path.resolve(__dirname, '..', '..')) {
  */
 function versionLine({ pluginRoot = path.resolve(__dirname, '..', '..'), home = os.homedir(), lang = 'de' } = {}) {
   const line = versionNotice({ pluginRoot, home, lang });
-  return line ? `[ss.version.notice] Show the user this line verbatim in your first reply, once:\n${line}` : null;
+  return line ? `[ss.version.notice] Show the user this line verbatim in your first reply, once (the reply it names starts the auto-guide skill, never a click list in chat):\n${line}` : null;
 }
 
 /**

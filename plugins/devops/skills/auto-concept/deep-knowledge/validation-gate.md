@@ -463,7 +463,7 @@ frozen / baked review rounds keep building. Contract: `templates-final-report-re
 | R2 | **fail** | `review-not-full`: that round carries `data-analysis="full"`, the review round does not (A1 then enforces the briefing) |
 | R3 | **fail** | `review-incomplete`: no `data-review-from`, or fewer `rv-*` decisions than `.rv-note.rv-green` findings |
 
-## Analysis & decision modes (A1–A13, deterministic)
+## Analysis & decision modes (A1–A15, deterministic)
 
 Enforced by `hooks/lib/concept-gate-analysis.js` (called from
 `concept-gate.js` `evaluate()`, so the post-write hook and
@@ -486,6 +486,8 @@ ignored.
 | A11 | **fail** | the old decision-view style in a live design round (`findLegacyDecisionViews`, = P35 in validation-gate-phase2.md): a `data-view-kind="decision"` / `"comparison"` view (`legacy-decision-view`), or more than one `data-view-kind="analysis"` view (`multiple-analysis-views`) — one round, one Full analysis, several topics. Frozen rounds are exempt |
 | A12 | warn → fix | the finding text (`data-situation` + the L3 long slot's prose, display and example not counted, `step1-templates.md` § The finding message): over 40 words, 3 sentences or 220 characters = 3 lines (`finding-length`; the finding is ONE text block above the display), more than 1 code name (`finding-code`), an opening with state / wish / own work (`finding-first`), a recommendation word or an option label (`finding-answer`), no `[data-example]` without `data-no-example="<why>"` on the decision (`finding-example`). **The author fixes every `finding-*` warning before the page opens or reloads** — the build passes, the page does not go out with them |
 | A13 | **fail** | `analysis-ui-question` (`findAnalysisUiQuestions` in `concept-gate.js`): in a live design round a decision inside the `data-view-kind="analysis"` view asks about the UI of that round's variants — its question / situation / label / option labels name a `data-nav-label` of a `data-design` / `data-screen` of the round or "Variante N", or use a UI word (Farbe, Icon, Button, Layout, Position, Abstand, Schrift, Animation, Rahmen, … DE + EN). Fix: detail → auto-note on the element in the variant, direction → its own variant (`decision-modes.md` § Rules). False positive: `data-ui-ok="<why>"` on the decision (reason required). Frozen rounds are exempt |
+| A14 | **fail** | `sim-spec` (`findAnalysisIssues`): a `data-viz="sim"` element whose spec cannot run: no `data-sim` id (letters, digits, `_`), `data-viz-spec` not valid JSON, no controls or outputs, a control or output id twice / reserved (`__proto__`, `constructor`, a function name), a formula outside the whitelist (characters, functions, unknown id, an output reading a later output, over 240 characters / 160 tokens / 20 levels), a bad budget or bar reference. Contract in `templates-analysis.md` § `sim` |
+| A15 | warn | `mechanic-no-sim` / `mechanic-decisions`: an element with `data-topic-kind="mechanic"` holds no `data-viz="sim"`, or more than 3 decisions (round-1 rule, `step1-templates.md` § 1b · Mechanic topics); `mechanic-sims`: more than one sim in the round; `sim-state-inputs`: a sim without its `dm-{simId}.{ctl}` hidden inputs in the round (the bake would lose the values) |
 
 Warnings surface in the `concept-build.js` build report; they never block.
 

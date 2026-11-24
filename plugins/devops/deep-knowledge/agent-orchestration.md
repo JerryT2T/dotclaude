@@ -300,6 +300,9 @@ Every spawned agent MUST receive:
    its markup, CSS and keyframes are the spec, not a reference. Report each
    checklist line you own as built with evidence, or as not built with the
    reason."* A prose summary of the decisions never replaces them (#935).
+   Geometry lines (selector, measured box at the reference viewport, source
+   round) go into the prompt as numbers, copied from `parity.md`, never as
+   "bigger" or "like the other element" (#1229).
    Every other auto-concept implement passes the same way: the path of the
    verbatim brief `docs/concepts/{name}/briefs/implement.md` and the
    checklist lines the agent owns, with the order to return an acceptance

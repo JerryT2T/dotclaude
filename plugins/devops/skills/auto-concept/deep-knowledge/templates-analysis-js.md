@@ -150,6 +150,301 @@ What the code does, in the order of the file:
   VIZ.flow = (el, s) => {
     el.innerHTML = '<div class="an-flow">' + list(s.steps).map((st, i) => (i ? '<i>→</i>' : '') + '<span>' + (st.value != null && st.value !== '' ? '<b>' + esc(st.value) + '</b>' : '') + esc(st.label) + '</span>').join('') + '</div>';
   };
+  /* ----- sim: controls -> live outputs, formulas always visible (templates-analysis.md § sim) -----
+   * The formulas are DATA: a hand-written recursive-descent parser over a closed grammar. Nothing is eval'ed,
+   * no Function(); an identifier is only a known control / const / earlier-output id (looked up in a Set / Map,
+   * never as a property of an object), a call only one of SIM_FN. */
+  const SIM_FN = { min: [Math.min, 1, 6], max: [Math.max, 1, 6], abs: [Math.abs, 1, 1], round: [Math.round, 1, 1], floor: [Math.floor, 1, 1], ceil: [Math.ceil, 1, 1], sqrt: [Math.sqrt, 1, 1], clamp: [(x, a, b) => Math.min(b, Math.max(a, x)), 3, 3] };
+  const SIM_RESERVED = new Set(['__proto__', 'constructor', 'prototype', 'toString', 'valueOf', 'hasOwnProperty'].concat(Object.keys(SIM_FN)));
+  const SIM_LIM = { len: 240, tok: 160, depth: 20, controls: 12, outputs: 12 };
+  const simId = s => typeof s === 'string' && /^[A-Za-z][A-Za-z0-9_]{0,24}$/.test(s) && !SIM_RESERVED.has(s);
+  /** Formula text -> tree, or throws. known = Set of the identifiers it may read. */
+  function simParse(src, known) {
+    src = String(src == null ? '' : src);
+    if (!src.trim() || src.length > SIM_LIM.len) throw new Error('formula length');
+    const t = [];
+    let i = 0, m;
+    while (i < src.length) {
+      const c = src.charAt(i), rest = src.slice(i);
+      if (c === ' ' || c === '\t') { i++; continue; }
+      if ((m = /^\d+(?:\.\d+)?/.exec(rest))) { t.push({ k: 'n', v: Number(m[0]) }); i += m[0].length; }
+      else if ((m = /^[A-Za-z_][A-Za-z0-9_]*/.exec(rest))) { t.push({ k: 'id', v: m[0] }); i += m[0].length; }
+      else if ('+-*/^(),'.indexOf(c) >= 0) { t.push({ k: c }); i++; }
+      else throw new Error('character ' + c);
+      if (t.length > SIM_LIM.tok) throw new Error('too many tokens');
+    }
+    let p = 0, depth = 0;
+    const peek = () => (p < t.length ? t[p].k : '');
+    const enter = () => { if (++depth > SIM_LIM.depth) throw new Error('too deep'); };
+    function expr() {
+      enter();
+      let a = term();
+      while (peek() === '+' || peek() === '-') { const op = t[p++].k; a = { t: 'b', op, a, b: term() }; }
+      depth--;
+      return a;
+    }
+    function term() {
+      let a = unary();
+      while (peek() === '*' || peek() === '/') { const op = t[p++].k; a = { t: 'b', op, a, b: unary() }; }
+      return a;
+    }
+    function unary() {
+      if (peek() === '-') { p++; enter(); const a = unary(); depth--; return { t: 'u', a }; }
+      const a = prim();
+      return peek() === '^' ? (p++, { t: 'b', op: '^', a, b: unary() }) : a;
+    }
+    function prim() {
+      const x = t[p++];
+      if (!x) throw new Error('unexpected end');
+      if (x.k === 'n') return { t: 'n', v: x.v };
+      if (x.k === '(') { const e = expr(); if (peek() !== ')') throw new Error('missing )'); p++; return e; }
+      if (x.k !== 'id') throw new Error('unexpected ' + x.k);
+      if (peek() === '(') {
+        if (!Object.prototype.hasOwnProperty.call(SIM_FN, x.v)) throw new Error('function ' + x.v);
+        p++;
+        const args = [];
+        if (peek() !== ')') { args.push(expr()); while (peek() === ',') { p++; args.push(expr()); } }
+        if (peek() !== ')') throw new Error('missing )');
+        p++;
+        if (args.length < SIM_FN[x.v][1] || args.length > SIM_FN[x.v][2]) throw new Error('arguments of ' + x.v);
+        return { t: 'f', name: x.v, args };
+      }
+      if (!known.has(x.v) || SIM_RESERVED.has(x.v)) throw new Error('unknown ' + x.v);
+      return { t: 'v', name: x.v };
+    }
+    const tree = expr();
+    if (p < t.length) throw new Error('unexpected ' + t[p].k);
+    return tree;
+  }
+  function simRun(n, env) {
+    switch (n.t) {
+      case 'n': return n.v;
+      case 'v': return env.has(n.name) ? env.get(n.name) : NaN;
+      case 'u': return -simRun(n.a, env);
+      case 'f': return SIM_FN[n.name][0].apply(null, n.args.map(a => simRun(a, env)));
+      default: {
+        const a = simRun(n.a, env), b = simRun(n.b, env);
+        if (n.op === '+') return a + b;
+        if (n.op === '-') return a - b;
+        if (n.op === '*') return a * b;
+        if (n.op === '/') return b === 0 ? NaN : a / b;
+        return Math.pow(a, b);
+      }
+    }
+  }
+  /** Spec -> validated model (controls, consts, outputs with compiled trees, budget), or throws. */
+  function simModel(s) {
+    if (!s || typeof s !== 'object') throw new Error('spec');
+    const controls = list(s.controls), outs = list(s.outputs), known = new Set(), seen = new Set();
+    if (!controls.length || !outs.length || controls.length > SIM_LIM.controls || outs.length > SIM_LIM.outputs) throw new Error('inputs or outputs missing');
+    const cs = controls.map(c => {
+      if (!c || !simId(c.id) || seen.has(c.id)) throw new Error('control id');
+      if (c.type !== 'steps' && c.type !== 'range') throw new Error('control type');
+      const min = Number(c.min), max = Number(c.max), step = c.type === 'steps' ? 1 : (Number(c.step) || 1);
+      if (!Number.isFinite(min) || !Number.isFinite(max) || max <= min || step <= 0 || (c.type === 'steps' && max - min > 12)) throw new Error('control range');
+      seen.add(c.id); known.add(c.id);
+      return { id: c.id, label: String(c.label || c.id), type: c.type, min, max, step, group: c.group ? String(c.group) : '', value: clamp(num(c.value == null ? min : c.value), min, max) };
+    });
+    const consts = [];
+    if (s.consts && typeof s.consts === 'object' && !Array.isArray(s.consts)) {
+      Object.keys(s.consts).forEach(k => {
+        if (!simId(k) || seen.has(k) || !Number.isFinite(Number(s.consts[k]))) throw new Error('const ' + k);
+        seen.add(k); known.add(k); consts.push([k, Number(s.consts[k])]);
+      });
+    }
+    const os = outs.map(o => {
+      if (!o || !simId(o.id) || seen.has(o.id)) throw new Error('output id');
+      const tree = simParse(o.formula, known);   // an output may read the controls, consts and EARLIER outputs only
+      seen.add(o.id); known.add(o.id);
+      return { id: o.id, label: String(o.label || o.id), unit: o.unit ? String(o.unit) : '', formula: String(o.formula), tags: list(o.tags).map(String).slice(0, 6), delta: o.delta !== false, tree };
+    });
+    let budget = null;
+    if (s.budget && typeof s.budget === 'object') {
+      const ids = list(s.budget.controls).map(String);
+      if (!Number.isFinite(Number(s.budget.total)) || !ids.length || ids.some(id => !cs.some(c => c.id === id && c.type === 'steps'))) throw new Error('budget');
+      budget = { total: Number(s.budget.total), controls: ids };
+    }
+    let bar = null;
+    if (s.bar && typeof s.bar === 'object') {
+      if (!os.some(o => o.id === s.bar.output)) throw new Error('bar output');
+      bar = { output: s.bar.output, max: Number(s.bar.max) > 0 ? Number(s.bar.max) : 100, label: s.bar.label ? String(s.bar.label) : '' };
+    }
+    return { controls: cs, consts, outputs: os, budget, bar };
+  }
+  /** Values of the outputs for one set of control values; null where the result is not a finite number. */
+  function simCompute(m, vals) {
+    const env = new Map(m.consts);
+    m.controls.forEach(c => env.set(c.id, vals[c.id]));
+    const out = {};
+    m.outputs.forEach(o => {
+      let v = NaN;
+      try { v = simRun(o.tree, env); } catch (e) { v = NaN; }
+      env.set(o.id, v);
+      out[o.id] = Number.isFinite(v) ? v : null;
+    });
+    return out;
+  }
+  window.CONCEPT_SIM = { parse: simParse, model: simModel, compute: simCompute, state: simState };
+  const simReg = {};
+  // The round that owns a sim. A clone is drawn before it is attached, so it asks its authored source (the sim id is unique per round: r{N}_...).
+  function simHost(el, sid) {
+    const own = el.closest('section[data-iteration]');
+    if (own) return own;
+    const src = [...document.querySelectorAll('section[data-iteration] [data-viz="sim"]')].filter(x => x.getAttribute('data-sim') === sid && x.closest('[data-alevel]'));
+    return (src[0] && src[0].closest('section[data-iteration]')) || document.querySelector('section[data-iteration][data-active]') || document.body;
+  }
+  const simName = (sid, cid) => 'dm-' + sid + '.' + cid;
+  const simNotify = sid => { (simReg[sid] || []).forEach(f => f()); };
+  const simSigned = n => (n > 0 ? '+' : n < 0 ? '−' : '') + fmt(Math.abs(n));
+  /** Current control values of sim sid inside scope (stored values, else the spec defaults), plus its outputs. */
+  function simState(spec, sid, scope) {
+    const m = simModel(spec), vals = {}, root = scope || document;
+    const inputs = [...root.querySelectorAll('input[type="hidden"]')];
+    m.controls.forEach(c => {
+      const i = inputs.find(x => x.name === simName(sid, c.id));
+      const raw = i && i.value !== '' ? Number(i.value) : NaN;
+      vals[c.id] = Number.isFinite(raw) ? clamp(raw, c.min, c.max) : c.value;
+    });
+    return { controls: vals, outputs: simCompute(m, vals), moved: m.controls.some(c => vals[c.id] !== c.value) };
+  }
+  VIZ.sim = (el, s) => {
+    const m = simModel(s), sid = el.getAttribute('data-sim') || s.id;
+    if (!simId(sid)) throw new Error('sim id');
+    const host = simHost(el, sid), frozen = !!host.closest('[data-baked]');
+    const hid = {};
+    let fresh = false;
+    m.controls.forEach(c => {
+      let i = [...host.querySelectorAll('input[type="hidden"]')].find(x => x.name === simName(sid, c.id));
+      if (!i) {
+        i = h('input'); i.type = 'hidden'; i.name = simName(sid, c.id); i.value = String(c.value);
+        if (frozen) i.disabled = true;
+        host.appendChild(i);
+        fresh = true;
+      }
+      if (!i.__simBound) { i.__simBound = true; i.addEventListener('change', () => simNotify(sid)); }
+      hid[c.id] = i;
+    });
+    // The state is stored by name (saveState): a hidden input born after the last restore must pick its stored value up now.
+    if (fresh && typeof restoreState === 'function') { try { restoreState(); } catch (e) { /* the defaults stand */ } }
+    const val = c => { const r = hid[c.id].value === '' ? NaN : Number(hid[c.id].value); return Number.isFinite(r) ? clamp(r, c.min, c.max) : c.value; };
+    const vals = () => { const v = {}; m.controls.forEach(c => { v[c.id] = val(c); }); return v; };
+    const base = simCompute(m, (() => { const v = {}; m.controls.forEach(c => { v[c.id] = c.value; }); return v; })());
+    const setVal = (c, next) => {
+      next = clamp(Number((c.min + Math.round((next - c.min) / c.step) * c.step).toPrecision(12)), c.min, c.max);
+      if (hid[c.id].disabled || next === val(c)) return false;
+      if (m.budget && next > val(c) && m.budget.controls.indexOf(c.id) >= 0) {
+        const spent = m.budget.controls.reduce((a, id) => a + val(m.controls.find(x => x.id === id)), 0);
+        if (spent - val(c) + next > m.budget.total) { flash.textContent = L('Budget aufgebraucht', 'Budget used up'); return false; }
+      }
+      flash.textContent = '';
+      hid[c.id].value = String(next);
+      fire(hid[c.id]);
+      return true;
+    };
+    el.textContent = '';
+    const root = h('div', 'an-sim'), flash = h('span', 'an-sim-flash');
+    flash.setAttribute('role', 'status');
+    if (s.text) root.appendChild(h('p', 'an-sim-text', String(s.text)));
+    const ui = {}, groups = new Map();
+    m.controls.forEach(c => {
+      if (!groups.has(c.group)) { const g = h('div', 'an-sim-grp'); if (c.group) g.appendChild(h('div', 'an-sim-gl', c.group)); groups.set(c.group, g); }
+      const row = h('div', 'an-sim-c'), lab = h('span', 'an-sim-l', c.label), shown = h('b', 'an-sim-v');
+      row.appendChild(lab);
+      if (c.type === 'steps') {
+        const pips = h('span', 'an-sim-pips');
+        pips.setAttribute('role', 'group');
+        pips.setAttribute('aria-label', c.label);
+        const bs = [];
+        for (let k = c.min + 1; k <= c.max; k++) {
+          const b = btn('an-sim-pip');
+          b.setAttribute('aria-label', c.label + ': ' + k);
+          b.addEventListener('click', () => setVal(c, val(c) === k ? k - 1 : k));
+          bs.push([k, b]);
+          pips.appendChild(b);
+        }
+        pips.addEventListener('keydown', e => {
+          const d = e.key === 'ArrowRight' || e.key === 'ArrowUp' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowDown' ? -1 : 0;
+          if (!d) return;
+          e.preventDefault();
+          setVal(c, val(c) + d);
+        });
+        row.appendChild(pips);
+        ui[c.id] = () => { bs.forEach(p => { p[1].classList.toggle('an-on', p[0] <= val(c)); p[1].setAttribute('aria-pressed', p[0] === val(c) ? 'true' : 'false'); p[1].disabled = frozen; }); };
+      } else {
+        const r = h('input', 'an-sim-range');
+        r.type = 'range'; r.min = String(c.min); r.max = String(c.max); r.step = String(c.step); r.value = String(val(c));
+        r.setAttribute('aria-label', c.label);
+        r.disabled = frozen;
+        r.addEventListener('input', () => setVal(c, Number(r.value)));
+        row.appendChild(r);
+        ui[c.id] = () => { r.value = String(val(c)); };
+      }
+      row.appendChild(shown);
+      const prev = ui[c.id];
+      ui[c.id] = () => { prev(); shown.textContent = fmt(val(c)); };
+      groups.get(c.group).appendChild(row);
+    });
+    const ctl = h('div', 'an-sim-ctl');
+    groups.forEach(g => ctl.appendChild(g));
+    root.appendChild(ctl);
+    let left = null;
+    if (m.budget) {
+      left = h('div', 'an-sim-budget');
+      root.appendChild(left);
+    }
+    const out = h('div', 'an-sim-out'), tiles = {};
+    out.setAttribute('aria-live', 'polite');
+    m.outputs.forEach(o => {
+      const t = h('div', 'an-sim-o'), v = h('b', 'an-sim-ov'), d = h('i', 'an-sim-od');
+      t.appendChild(h('span', 'an-sim-ol', o.label));
+      const line = h('div', 'an-sim-line');
+      line.append(v, d);
+      t.appendChild(line);
+      if (o.tags.length) { const tg = h('div', 'an-sim-tags'); o.tags.forEach(x => tg.appendChild(h('span', 'an-sim-tag', x))); t.appendChild(tg); }
+      t.appendChild(h('code', 'an-sim-f', o.id + ' = ' + o.formula));
+      out.appendChild(t);
+      tiles[o.id] = { v, d, o };
+    });
+    root.appendChild(out);
+    let meter = null;
+    if (m.bar) {
+      const b = h('div', 'an-sim-bar'), head = h('div', 'an-sim-bh'), tr = h('div', 'an-bar-t'), f = h('i');
+      tr.setAttribute('role', 'img');
+      tr.appendChild(f);
+      b.append(head, tr);
+      root.appendChild(b);
+      meter = { head, tr, f };
+    }
+    if (m.consts.length) root.appendChild(h('div', 'an-sim-k', m.consts.map(k => k[0] + ' = ' + fmt(k[1])).join(' · ')));
+    root.appendChild(flash);
+    el.appendChild(root);
+    const refresh = () => {
+      const v = vals(), cur = simCompute(m, v);
+      m.controls.forEach(c => ui[c.id]());
+      if (left) {
+        const spent = m.budget.controls.reduce((a, id) => a + v[id], 0);
+        left.textContent = L('Übrig: ', 'Left: ') + (m.budget.total - spent) + L(' von ', ' of ') + m.budget.total;
+      }
+      m.outputs.forEach(o => {
+        const x = cur[o.id], b = base[o.id], tl = tiles[o.id];
+        tl.v.textContent = x == null ? '–' : fmt(x) + (o.unit ? ' ' + o.unit : '');
+        const dd = x != null && b != null && o.delta ? Math.round((x - b) * 10) / 10 : 0;
+        tl.d.textContent = dd ? simSigned(dd) : '';
+        tl.d.classList.toggle('an-up', dd > 0);
+        tl.d.classList.toggle('an-down', dd < 0);
+      });
+      if (meter) {
+        const x = cur[m.bar.output], pct = x == null ? 0 : clamp(x / m.bar.max * 100, 0, 100);
+        meter.head.textContent = (m.bar.label || m.bar.output) + ': ' + (x == null ? '–' : fmt(x) + ' / ' + fmt(m.bar.max));
+        meter.f.style.width = pct + '%';
+        meter.f.classList.toggle('an-over', x != null && x > m.bar.max);
+        meter.tr.setAttribute('aria-label', meter.head.textContent);
+      }
+    };
+    (simReg[sid] = simReg[sid] || []).push(refresh);
+    refresh();
+  };
+  document.addEventListener('conceptanalysis:stage', () => { Object.keys(simReg).forEach(simNotify); });
   /** Render every [data-viz] below root once. size = "short" | "long". */
   function renderViz(root, size) {
     (root.matches && root.matches('[data-viz]') ? [root] : []).concat([...root.querySelectorAll('[data-viz]')]).forEach(el => {

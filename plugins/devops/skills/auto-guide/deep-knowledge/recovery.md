@@ -50,6 +50,25 @@ Steps whose action reloads or leaves the page say so in their text (see
 authoring.md § Login and redirects), so the user expects the panel to vanish
 for a moment.
 
+## Companion panel
+
+Some pages may never be opened by Claude, whatever the permission setting: the
+Claude-in-Chrome `navigate` to claude.ai Settings, Customize or Plugins is
+refused as left to the user. The block stands; the panel just lives elsewhere:
+
+1. `navigate` the guide tab to `https://example.com/` (neutral, no login, no CSP)
+   and run Step 3.4 and Step 4 there.
+2. Step 1 of the guide gives the real address as a `copy` chip and asks the user
+   to open it in a **new window beside** this one, then press **Weiter** here.
+   Claude never opens, reads or injects into that page.
+3. Every step names the labels from the task or the provider's docs (no live
+   probe of that page is possible, so 5a and the page checks of 5d do not apply)
+   and ends with a `confirm` that the user saw the result. A label that differs
+   comes back as `help`: answer it in the panel.
+4. The done step says what the user confirmed, never that Claude verified it.
+
+Everything else (waiting, hidden tab, sleeping, ends) is unchanged.
+
 ## Waiting (5c) — every result
 
 Count **time**, not calls: note when the last real event arrived.

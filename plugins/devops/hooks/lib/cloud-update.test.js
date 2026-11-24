@@ -138,10 +138,11 @@ describe("the instruction", () => {
     expect(text).toMatch(/Not in a Claude Project thread/);
   });
 
-  test("never automates a login and names the one click that is left", () => {
+  test("never automates a login and offers the guide instead of a click list", () => {
     expect(text).toMatch(/NEVER automate a login/);
     expect(text).toMatch(/login, a captcha or a two-factor prompt/);
-    expect(text).toMatch(/the exact click that is left/);
+    expect(text).toMatch(/reply "update cloud"/);
+    expect(text).toMatch(/never a click list in chat/);
   });
 
   test("reports back through the bookkeeping script with forward slashes", () => {

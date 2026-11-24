@@ -539,6 +539,30 @@ Continuity lives in the first sentence of each finding ("Nach deiner Antwort zu
 … bleibt …"), not in a separate thread block. Display choice, slot budgets and
 custom-type rules: `analysis-palette.md`.
 
+### Mechanic topics — round 1 is a simulator
+
+When the topic is a mechanic, a model or a cause-and-effect system (energy
+distribution, a budget with rates, a pipeline with throttles), the author — not a
+keyword match — stamps `data-topic-kind="mechanic"` on the round's root section
+(or on the `data-topic` it concerns). Round 1 then shows the thing to try, not a
+questionnaire:
+
+- **One `sim` per round** (`templates-analysis.md` § `sim`; `analysis-palette.md`
+  § 11): controls for what the reader can change, live outputs with deltas, the
+  formula of every output visible, tags for where a value surfaces. It carries
+  the model, so the reader reacts by moving it and writing the correction in the
+  note.
+- **At most 3 text decisions**, only real either/or choices, each with a visual
+  (a palette display or a picture). A question the sim already answers is not
+  asked.
+- **One line of prose per item**: the finding, the sim `text` and each option
+  consequence are a single line.
+- A Full analysis keeps its briefing; the topic count and the 3-question minimum
+  of A4 do not apply to the mechanic topic.
+
+Gate: A14 fails a broken sim spec, A15 warns when a mechanic round has no sim or
+more than 3 decisions (`validation-gate.md` § Analysis & decision modes).
+
 ## 1c · Mapping spec rules
 
 A mapping (`section[data-mapping]` in a `free` round, or a

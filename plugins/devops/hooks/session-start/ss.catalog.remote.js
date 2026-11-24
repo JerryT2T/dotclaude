@@ -110,10 +110,9 @@ async function run({
       : `⚠ devops: kein lokaler Install · Cloud ${lag.running} veraltet (läuft hier), neueste ist ${lag.latest} ${arrow}`;
   }
   const lines = [line, 'Show the user this line verbatim, once.'];
-  const steps = require('../lib/cloud-update').STEPS;
   if (cloud) {
-    // A cloud session cannot reach the person's claude.ai login: name the click that is theirs.
-    lines.push(`The update itself is a click only the person can do (this session runs in the cloud and never logs in for them): ${steps}. Say exactly that, once.`);
+    // A cloud session cannot reach the person's claude.ai login: the guide on their computer can (#1233).
+    lines.push('The update is guided on the person\'s computer, never as a click list in chat and never through a browser tool here: on the reply follow skills/auto-update/SKILL.md § "Cloud updaten" (start auto-guide; from a cloud thread over Remote Control).');
   } else {
     // Desktop without a local install: a session on this machine may start the update itself.
     try {

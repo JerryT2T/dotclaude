@@ -193,7 +193,7 @@
     "plugins/devops/deep-knowledge/project-threads.md›A skill wants to ask›channel": [
       {
         "ship": "claude/project-thread-sj4wep",
-        "by": "JerryT2T",
+        "by": "Claude (autonomous, not decided by JerryT2T)",
         "value": "decision card first, numbered reply as fallback",
         "decided": true,
         "at": "2026-11-24T14:00:58.176Z",
@@ -379,7 +379,7 @@
     "plugins/devops/hooks/lib/ask-title.js›threadQuestionText›first line": [
       {
         "ship": "claude/project-thread-sj4wep",
-        "by": "JerryT2T",
+        "by": "Claude (autonomous, not decided by JerryT2T)",
         "value": "decision card first, numbered reply as fallback",
         "decided": true,
         "at": "2026-11-24T14:00:58.176Z",

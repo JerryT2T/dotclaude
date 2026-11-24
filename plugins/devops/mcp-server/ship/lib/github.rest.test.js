@@ -6,7 +6,7 @@ vi.mock("node:child_process", () => ({
 }));
 
 import { execFileSync } from "node:child_process";
-import { createPR, mergePR, findExistingPR, watchPRChecks, markPRReady, useRestTransport, resetGhTransport } from "./github.js";
+import { createPR, mergePR, findExistingPR, watchPRChecks, markPRReady, getRemoteTagRest, useRestTransport, resetGhTransport } from "./github.js";
 import { isPermanentPushError, tagHandoff } from "./tag-handoff.js";
 
 const PROXY_REFUSAL = Object.assign(new Error("gh failed"), { stderr: "GraphQL: request rejected by the GitHub proxy" });
@@ -236,5 +236,27 @@ describe("the tag the proxy refuses goes to the owner hand-off", () => {
     expect(h.runWhere).toMatch(/local clone/);
     expect(h.commands).toContain("git push origin alpha/v1.2.3");
     expect(tagHandoff({ channelTag: "alpha/v1.2.3", channel: "alpha", version: "1.2.3", base: "main", permanent: true, cloud: false }).runWhere).toBeUndefined();
+  });
+});
+
+describe("getRemoteTagRest (#1232)", () => {
+  const apiFail = (stderr) => Object.assign(new Error("gh failed"), { stderr });
+
+  test("an existing tag returns exists and the sha", () => {
+    route({ "gh api": { ref: "refs/tags/alpha/v1.0.0", object: { sha: "abc" } } });
+    expect(getRemoteTagRest("alpha/v1.0.0")).toEqual({ exists: true, sha: "abc" });
+    expect(calls[0].args.join(" ")).toContain("git/ref/tags/alpha/v1.0.0");
+  });
+
+  test("404 means absent", () => {
+    route({ "gh api": apiFail("gh: Not Found (HTTP 404)") });
+    expect(getRemoteTagRest("v9.9.9")).toEqual({ exists: false });
+  });
+
+  test("every other error is rethrown", () => {
+    for (const stderr of ["gh: Bad credentials (HTTP 401)", "gh: Forbidden (HTTP 403)", "gh: Server Error (HTTP 502)", "dial tcp: lookup api.github.com: no such host", "gh: not found in PATH"]) {
+      route({ "gh api": apiFail(stderr) });
+      expect(() => getRemoteTagRest("v9.9.9"), stderr).toThrow();
+    }
   });
 });

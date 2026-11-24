@@ -144,7 +144,14 @@ function record(opts) {
     open: true,
     processed: Array.isArray(prev.processed) ? prev.processed : [],
   };
-  return { ok: true, file: writeRecord(opts.page, opts.root, rec), record: rec };
+  return {
+    ok: true,
+    file: writeRecord(opts.page, opts.root, rec),
+    record: rec,
+    // Nothing else wakes the session on a submit. Named here because this is
+    // the last step every publisher runs.
+    next: 'MANDATORY before the turn ends: arm ONE read-back check (send_later if you have it, else a one-shot CronCreate) in 20 min, doubling the gap while nothing came (artifact-fallback.md § Wake), and tell the person once to say here when they have decided.',
+  };
 }
 
 function mark(opts) {
@@ -319,7 +326,7 @@ function build(opts) {
       { tool: 'ArtifactData', action: 'list', collection: SUBS, query: { limit: 1000 }, save: 'the result text verbatim to a file (it carries the versions the acks need)' },
       { tool: 'ArtifactData', action: 'list', collection: DRAFTS, query: { limit: 1000 }, out_dir: '<scratchpad>/<slug>-drafts' },
     ],
-    note: 'Publish `out` with the Artifact tool, capabilities {db:{},user:{},comments:{}} and, on the first publish, icon "compass" (a redeploy keeps both); then `record --page <page> --url <artifact url>`. Read back with readBack (artifact-fallback.md § Read back). No bridge, no crons.',
+    note: 'Publish `out` with the Artifact tool, capabilities {db:{},user:{},comments:{}} and, on the first publish, icon "compass" (a redeploy keeps both); then `record --page <page> --url <artifact url>`. Read back with readBack (artifact-fallback.md § Read back). No bridge; record names the read-back check you must arm.',
   };
 }
 

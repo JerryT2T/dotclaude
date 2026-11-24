@@ -81,6 +81,15 @@ prose brief. For every checklist line:
   pause each, set `currentTime` to 0 %, 50 % and 100 % of its duration and
   screenshot; compare keyframe names, duration and easing. An animation the
   mock has and the build lacks is a fail, not a nit.
+- **Measured boxes (#1229)** — for every geometry line of the checklist
+  (selector, expected box, reference viewport), open the built app at exactly
+  that viewport and read `getBoundingClientRect()` of the selector. Compare each
+  value (`width`, `height`, `left`, `top`) with the mock's: it holds within 5 %
+  of the mock value, with a floor of 2 px for small or zero values. Check the
+  reference viewport only. A value outside the tolerance makes the line `unmet`
+  and a shortfall in the final report, never a pass, whatever else looks right
+  (a planet 1.3x too large is `unmet`). The row shows mock, build and delta per
+  value: `width 580 | 754 | +30 %`.
 - **Interaction states** — focus, hover, scroll behaviour the user approved
   ("perfekt beim Scrollen"): reproduce and screenshot.
 
