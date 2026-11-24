@@ -20,6 +20,11 @@ function isTimeout(err) {
   return Boolean(err && (err.code === "ETIMEDOUT" || err.killed === true || err.signal === "SIGTERM"))
 }
 
+/** git never started (missing cwd, no git, no handles): a string errno and no exit status. git's own "no" has a status. */
+function neverRan(err) {
+  return Boolean(err && typeof err.code === "string" && typeof err.status !== "number")
+}
+
 function gitOut(args, cwd) {
   try {
     return execFileSync("git", args, { windowsHide: true,
@@ -29,7 +34,7 @@ function gitOut(args, cwd) {
       timeout: PROBE_TIMEOUT_MS,
     }).trim()
   } catch (err) {
-    return isTimeout(err) ? TIMED_OUT : null
+    return isTimeout(err) || neverRan(err) ? TIMED_OUT : null
   }
 }
 
@@ -38,6 +43,16 @@ function gitOut(args, cwd) {
  * remedy, so the do-ship skill retries instead of believing a skipped result.
  */
 export function probeTimeoutError(cwd) {
+  // A cwd that does not exist fails the spawn with ENOENT; read as "not a git
+  // repo" it made a mangled Windows path in CLI params a file-only success.
+  let missing = false
+  try { statSync(String(cwd)) } catch (e) { missing = e.code === "ENOENT" || e.code === "ENOTDIR" }
+  if (missing) {
+    return (
+      `cwd does not exist: ${cwd} — check the path (a Windows path in a params file needs escaped ` +
+      `backslashes or forward slashes). Nothing was skipped, committed, pushed or merged.`
+    )
+  }
   return (
     `git did not answer within ${PROBE_TIMEOUT_MS / 1000} s (ETIMEDOUT) — the repo mode of ` +
     `${cwd} could not be determined. The machine is under load; retry the call. ` +
@@ -69,7 +84,7 @@ function samePath(a, b) {
 /**
  * Classify how `cwd` relates to git.
  *
- *   "unknown"          — a git probe TIMED OUT; nothing can be concluded and
+ *   "unknown"          — a git probe TIMED OUT or never started; nothing can be concluded and
  *                        every caller must fail loudly, never skip (#411)
  *   "none"             — not inside a work tree at all
  *   "git-foreign-root" — inside a work tree whose ROOT is not `cwd`; the repo

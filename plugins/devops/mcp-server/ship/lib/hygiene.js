@@ -80,6 +80,7 @@ import path from "node:path";
 import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
+const { autosaveSuperseded } = require("../../../scripts/lib/autosave-superseded.js");
 const { contentInBase } = require("../../../scripts/lib/content-landed.js");
 const { chainLanded: chainLandedShared, supersededByHead: supersededByHeadShared, filesInBase: filesInBaseShared } = require("../../../scripts/lib/chain-landed.js");
 const { isParked, coveringRef } = require("../../../hooks/lib/park-register.js");
@@ -507,6 +508,8 @@ export function landingState(sha, branch, ctx) {
     const baseTree = gitOut(["rev-parse", `${ctx.baseRef}^{tree}`], ctx.cwd);
     if (baseTree && trial.split("\n")[0].trim() === baseTree) return done({ state: "landed", via: "tree", filesIn: 0, filesTotal: 0 });
   }
+  // an autosave snapshot of work a squash-merged PR finished
+  if (autosaveSuperseded(sha, branch, ctx)) return done({ state: "landed", via: "autosave", filesIn: 0, filesTotal: 0 });
   const f = filesInBase(sha, ctx);
   if (!f) {
     // too many files for the per-file patch check: the cheap path comparison still tells how many
@@ -528,6 +531,11 @@ export function landingState(sha, branch, ctx) {
  * those files (#953) - it is tagged `archive/<date>/<branch>` first.
  */
 export const RESIDUAL_REMOVABLE = 0.95;
+
+/** Removable without a content proof (partial, superseded autosave): the tip is tagged before it goes. */
+function needsArchive(l) {
+  return l.state === "partial" || l.via === "autosave";
+}
 
 /**
  * What of a branch's own change is still missing from the base, by content:
@@ -1092,7 +1100,7 @@ export function classifyUnits(scan, io) {
       continue;
     }
     // a partial one that is removable at all is the >= 95 % case: tagged before it goes (#953)
-    if (!reason) removable.push(landingState(u.head, u.branch, ctx).state === "partial" ? { ...u, archive: true } : u);
+    if (!reason) removable.push(needsArchive(landingState(u.head, u.branch, ctx)) ? { ...u, archive: true } : u);
     else keep.push({ ...u, reason });
 
     const live = u.kind === "worktree"

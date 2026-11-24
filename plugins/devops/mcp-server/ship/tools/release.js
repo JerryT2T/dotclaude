@@ -24,6 +24,7 @@ import { versionFilesSchema } from "./version-bump.js";
 import { localMerge, localTag, LocalMergeError } from "../lib/local-merge.js";
 import { versionOnlyOverlap } from "../lib/version-rebase.js";
 import { mergeVersionFiles, survivalGate, gateDetail } from "../lib/merge-integrate.js";
+import { baseVersionOf, semverAbove } from "../lib/base-version.js";
 import { createRequire } from "node:module";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
@@ -85,7 +86,7 @@ export const schema = z.object({
   title: z.string().describe("PR title (conventional commit format). Aim for ≤70 chars — a longer title is clamped on a word boundary, not rejected."),
   body: z.string().describe("PR body (must start with Closes #N if applicable)"),
   tag: z.string().nullable().optional().describe("Bare version tag (e.g. v0.18.0), published as alpha/<tag> (ring model). OMIT: defaults to v<version> from the version file (what ship_version_bump wrote). null: ship WITHOUT a ring tag; the result carries tagSkipped + tagWarning, never a silent gap (#372). Ignored for intermediate merges"),
-  bump: z.enum(["patch", "minor", "major", "none"]).optional().describe("The bump ship_version_bump applied in this ship. \"none\" → no ring tag (version unchanged, tag already on an earlier commit); result carries tagSkipped + tagSkipReason. Omitted → read from this ship's checkpoint."),
+  bump: z.enum(["patch", "minor", "major", "none"]).optional().describe("The bump ship_version_bump applied in this ship. \"none\" → no ring tag while the version equals the base version (tag already on an earlier commit); a version the branch raised itself is tagged; result carries tagSkipped + tagSkipReason. Omitted → read from this ship's checkpoint."),
   versionFiles: versionFilesSchema,
   releaseNotes: z.string().nullable().default(null).describe("CHANGELOG entry — NOT published at ship time (releases happen at promotion via ship_promote); recorded as releaseDeferred"),
   prerelease: z.boolean().default(false).describe("Deprecated — releases are created at promotion time; kept for caller compatibility"),
@@ -310,9 +311,15 @@ export async function handler(params) {
   // wrong commit. No tag, and the result says why (the card shows it).
   if (!intermediate && shipBump(params) === "none") {
     const v = readVersion(cwd, params.versionFiles || []);
-    tagSkipReason = `bump: none — version unchanged${v.version ? ` (v${v.version})` : ""}, so no new ring tag; nothing to promote for this ship`;
-    tag = null;
-    tagDefaultSkip = tagSkipReason;
+    // "none" says this ship bumped nothing, not that the branch carries no new
+    // version: one set by its own commits (v0.407.0, 2026-11-24) landed untagged.
+    // Above the base's version it is a release, so the normal tag rule applies.
+    const baseV = v.version ? baseVersionOf(cwd, base, v.file) : null;
+    if (!(baseV && semverAbove(v.version, baseV))) {
+      tagSkipReason = `bump: none — version unchanged${v.version ? ` (v${v.version})` : ""}, so no new ring tag; nothing to promote for this ship`;
+      tag = null;
+      tagDefaultSkip = tagSkipReason;
+    }
   }
   if (!intermediate && tag === undefined) {
     const v = readVersion(cwd, params.versionFiles || []);

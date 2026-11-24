@@ -30,7 +30,8 @@
 import { z } from "zod";
 import { createRequire } from "node:module";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { join, relative, isAbsolute, sep } from "node:path";
+import { join } from "node:path";
+import { baseVersionOf, semverAbove } from "../lib/base-version.js";
 import { gitTry } from "../lib/git.js";
 import { readVersion, bumpVersion, verifyVersionFiles, updateVersionFiles } from "../lib/version.js";
 import { versionFilesSchema } from "./version-bump.js";
@@ -176,33 +177,10 @@ export function landedBump(cwd, base, version, commitMessage = null, versionFile
   if (!hit) return null;
   // The base must not already be at (or past) this version — then the commit is a leftover, not this ship's bump.
   const baseVersion = (() => {
-    try {
-      const file = readVersion(cwd, versionFiles || []).file;
-      const root = gitTry(["rev-parse", "--show-toplevel"], { cwd }) || cwd;
-      const rel = relative(root, isAbsolute(file) ? file : join(cwd, file)).split(sep).join("/");
-      const text = gitTry(["show", `origin/${base}:${rel}`], { cwd });
-      if (!text) return null;
-      try {
-        const j = JSON.parse(text);
-        return (j && (j.version || (j.metadata && j.metadata.version))) || null;
-      } catch {
-        const m = text.match(/\bversion\b["']?\s*[:=]\s*["']([^"']+)["']/i);
-        return m ? m[1] : null;
-      }
-    } catch { return null; }
+    try { return baseVersionOf(cwd, base, readVersion(cwd, versionFiles || []).file); } catch { return null; }
   })();
   if (baseVersion && !semverAbove(version, baseVersion)) return null;
   return { vNew: version, vOld: baseVersion, commit: hit[0] };
-}
-
-function semverAbove(a, b) {
-  const pa = String(a).split(/[.-]/).slice(0, 3).map(Number);
-  const pb = String(b).split(/[.-]/).slice(0, 3).map(Number);
-  for (let i = 0; i < 3; i++) {
-    if (!Number.isFinite(pa[i]) || !Number.isFinite(pb[i])) return true;
-    if (pa[i] !== pb[i]) return pa[i] > pb[i];
-  }
-  return false;
 }
 
 function defaultTools() {

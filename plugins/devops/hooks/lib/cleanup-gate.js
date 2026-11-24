@@ -661,12 +661,37 @@ function normPath(p) {
   return String(p || '').replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
 }
 
-function namesWorktree(scope, target, dir) {
+/** Path as a whole token: `…/agent-1` is not named by `…/agent-12` or `…/agent-1/sub`. */
+function namesPath(s, p) {
+  return Boolean(p) && new RegExp(`${escapeRe(p)}(?![\\w-]|\\.\\w|/[\\w.])`).test(s);
+}
+
+/** Is a repo-relative path named under this repo's name (same line, or the nearest non-list line above)? */
+function namesRelative(s, rel, repo) {
+  const namesRepo = (text) => new RegExp(`(^|[^\\w-])${escapeRe(repo)}(?![\\w-])`).test(text);
+  const at = new RegExp(`(^|[\\s\`"'(,:])(?:\\./)?${escapeRe(rel)}(?![\\w-]|\\.\\w|/[\\w.])`);
+  let heading = '';
+  for (const line of s.split('\n')) {
+    const item = /^\s*(?:[-*+]|\d+\.)\s/.test(line);
+    if (!item && line.trim()) heading = line;
+    if (at.test(line) && (namesRepo(line.split(rel).join(' ')) || (item && namesRepo(heading)))) return true;
+  }
+  return false;
+}
+
+/**
+ * `mainRoot` (the repo's main checkout): a target under it is also named by its
+ * repo-relative path next to the repo's folder name. A relative path alone
+ * could mean another repo of the same cleanup.
+ */
+function namesWorktree(scope, target, dir, mainRoot = null) {
   const s = normPath(scope);
-  const raw = normPath(target);
-  if (raw && s.includes(raw)) return true;
+  const raw = normPath(fromMsys(target));
+  if (namesPath(s, raw)) return true;
   const abs = normPath(resolvePath(dir || '.', target));
-  if (abs && s.includes(abs)) return true;
+  if (namesPath(s, abs)) return true;
+  const root = normPath(mainRoot);
+  if (root && abs.startsWith(`${root}/`) && namesRelative(s, abs.slice(root.length + 1), root.split('/').pop())) return true;
   // 10b's temp worktrees: `.claude/worktrees/cleanup-pr-<n>` for a shipped `#<n>`
   const m = /(?:^|\/)cleanup-pr-(\d+)$/.exec(raw);
   return Boolean(m && new RegExp(`#${m[1]}(?!\\d)`).test(scope));
@@ -797,8 +822,9 @@ function decide({ command, cwd, state, gitFor, mergedHeads, budgetMs = CHAIN_BUD
   const gated = deletes.filter(d => !isAutonomous(d, gitFor(d.dir)));
   if (!gated.length) return null;
   const dryScopes = state.dryRun.map(a => a.scope);
+  const mainRootOf = (d) => ((listWorktrees(gitFor(d.dir)) || [])[0] || {}).path || null;
   const missing = gated.filter(d => !dryScopes.some(s => d.kind === 'worktree' || d.kind === 'dir'
-    ? namesWorktree(s, d.target, d.dir)
+    ? namesWorktree(s, d.target, d.dir, mainRootOf(d))
     : namesBranch(s, d.target)));
   if (missing.length) {
     const names = [...new Set(missing.map(d => d.target))].join(', ');

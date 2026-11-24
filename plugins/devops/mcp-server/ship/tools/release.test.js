@@ -33,6 +33,8 @@ vi.mock("../lib/version.js", () => ({
   readVersion: vi.fn(() => ({ version: "2.3.4", type: "npm", file: "package.json" })),
 }));
 
+vi.mock("../lib/base-version.js", async (importOriginal) => ({ ...(await importOriginal()), baseVersionOf: vi.fn(() => null) }));
+
 vi.mock("../lib/git.js", () => ({
   git: vi.fn(() => ""),
   NETWORK_TIMEOUT: 60_000,
@@ -133,6 +135,7 @@ import { handler, PR_TITLE_MAX } from "./release.js";
 import { mergeVersionFiles as rebaseVersionFiles, survivalGate } from "../lib/merge-integrate.js";
 import * as localMergeLib from "../lib/local-merge.js";
 import { readVersion } from "../lib/version.js";
+import { baseVersionOf } from "../lib/base-version.js";
 import { execFileSync } from "node:child_process";
 import { detectRepoMode } from "../lib/repo-mode.js";
 import * as gitLib from "../lib/git.js";
@@ -672,6 +675,20 @@ describe("ship_release — tag default from the version file (#372)", () => {
     expect(res.tagWarning).toMatch(/No ring tag created — bump: none/);
     const { execFileSync } = await import("node:child_process");
     expect(execFileSync.mock.calls.find((c) => c[0] === "git" && c[1][0] === "tag")).toBeUndefined();
+  });
+
+  test("bump none, but the branch raised the version itself → tagged like any release", async () => {
+    baseVersionOf.mockReturnValueOnce("2.3.3");
+    const p = params({ bump: "none" }); delete p.tag;
+    const res = await handler(p);
+    expect(res.tag).toBe("alpha/v2.3.4");
+    expect(res.tagSkipReason).toBeUndefined();
+  });
+
+  test("bump none and the base has the same version → still no tag", async () => {
+    baseVersionOf.mockReturnValueOnce("2.3.4");
+    const p = params({ bump: "none" }); delete p.tag;
+    expect((await handler(p)).tagSkipReason).toMatch(/version unchanged/);
   });
 
   test("I1: bump none from this ship's checkpoint applies without the param, even over an explicit tag", async () => {
