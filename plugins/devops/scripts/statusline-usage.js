@@ -30,7 +30,9 @@ const os = require('node:os');
 // without plan.js the row follows the remembered window fact alone.
 let planId = () => 'unknown';
 let fiveHourWindow = (id, session, seen) => ({ applies: !!session && seen === true });
-let sessionDelivered = (s) => !!s && s.resetInMinutes != null;
+// Same rule as plan.js sessionDelivered, so the fallback never decides differently.
+let sessionDelivered = (s) => !!s && s.pct != null && Number.isFinite(Number(s.pct))
+  && ((s.resetInMinutes != null && Number.isFinite(Number(s.resetInMinutes))) || Number(s.pct) > 0);
 try { ({ planId, fiveHourWindow, sessionDelivered } = require('../hooks/lib/plan')); } catch { /* fallbacks above */ }
 
 const USAGE_JSON_PATH = path.join(os.homedir(), '.claude', 'usage-live.json');

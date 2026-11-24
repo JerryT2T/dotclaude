@@ -811,7 +811,9 @@ export function getRemoteTagRest(tag, opts = {}) {
     const ref = ghApi("GET", `repos/{owner}/{repo}/git/ref/tags/${path}`, undefined, opts);
     return ref && ref.ref === `refs/tags/${tag}` ? { exists: true, sha: ref.object?.sha } : { exists: false };
   } catch (e) {
-    if (/\b404\b|not found/i.test(String(e.stderr || e.message || e))) return { exists: false };
+    // Only a real 404 ("Not Found (HTTP 404)") means absent; other "not found"
+    // texts (an unknown host, a missing binary) are outages and rethrow.
+    if (/\bHTTP 404\b|\b404\b/.test(String(e.stderr || e.message || e))) return { exists: false };
     throw e;
   }
 }
