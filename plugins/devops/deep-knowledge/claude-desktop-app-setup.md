@@ -140,6 +140,9 @@ and the card was rendered for this session's work tree. Any other
 archiving another session by its id is untouched. A new user prompt drops any
 leftover hand-over.
 
+In a Claude Projects thread none of this runs: a thread is resolved, not
+archived (`project-threads.md` § Resolved, not archived).
+
 Turn it off with the devops setting `ship.archiveAfterShip false`
 (`deep-knowledge/devops-config.md`).
 

@@ -160,3 +160,42 @@ describe("project-thread — the thread's title", () => {
     expect(pt.renameCallUnknown("⏳ ➜ 🤖 ")).toContain('{title:"⏳ ➜ 🤖 " + <this thread\'s current title');
   });
 });
+
+// Seen on 2026-11-24: a spawned local thread opens with the bare spawn note (no wake), and
+// uploads stand in front of the envelope.
+describe("project-thread — spawn note and uploads", () => {
+  const FILES = '@"C:\\u\\a b\\image.png" @"C:\\u\\two.png" ';
+
+  test("the whole spawn note marks the session; a typed or quoted relay does not", () => {
+    expect(pt.isThread({ session_id: sid("spawn"), prompt: RELAY })).toBe(true);
+    expect(pt.isMarked(sid("spawn"))).toBe(true);
+    const later = '<project_claude_message session="session_01T" thread_id="cmsg_01T">\n' + RELAY + "\n</project_claude_message>";
+    expect(pt.isWholeRelay(later)).toBe(true);
+    for (const typed of ["what is this? " + RELAY, RELAY + "\nexplain this", '<relay from="coordinator"><note>x</note></relay>', "relay it"]) {
+      expect(pt.isThread({ session_id: sid("typed-relay"), prompt: typed })).toBe(false);
+    }
+    expect(pt.isMarked(sid("typed-relay"))).toBe(false);
+  });
+
+  test("uploads in front of a wake or a note do not hide it; a typed prompt with uploads stays typed", () => {
+    const view = pt.classifyPrompt(FILES + wake("ship it"));
+    expect(view.prompt_origin).toBe("person");
+    expect(view.prompt.startsWith("ship it")).toBe(true);
+    expect(view.prompt).toContain("image.png");
+    expect(pt.projectId(FILES + wake("x"))).toBe("chan_01TESTTESTTEST");
+    expect(pt.isWholeWake(FILES + wake("x"))).toBe(true);
+    expect(pt.classifyPrompt(FILES + RELAY).prompt_origin).toBe("coordinator");
+    const typed = FILES + "look at this";
+    expect(pt.classifyPrompt(typed)).toEqual({ prompt: typed, prompt_raw: typed, prompt_origin: "typed" });
+  });
+
+  test("the spawn note is an isMeta entry and still decides the turn's rights", () => {
+    const t = [
+      { type: "user", message: { role: "user", content: wake("go") } },
+      { type: "user", isMeta: true, message: { role: "user", content: RELAY } },
+    ].map((e) => JSON.stringify(e)).join("\n");
+    expect(pt.turnRights({ session_id: sid("meta") }, t)).toBe("colleague");
+    const skill = t + "\n" + JSON.stringify({ type: "user", isMeta: true, message: { role: "user", content: "Base directory for this skill" } });
+    expect(pt.turnRights({ session_id: sid("meta") }, skill)).toBe("colleague");
+  });
+});

@@ -7,7 +7,7 @@ This doc holds four fenced blocks. The first is the devops text; its title line 
 ## devops text
 
 ```
-devops text (v2)
+devops text (v3)
 Threads on my computer end their work with a devops completion card: a reply
 whose heading reads "✨✨✨ <title> ✨✨✨", followed by a line that starts with a
 status icon (👉 🟩 🟥 🟦 ⏳). When you report such a thread's result in the
@@ -28,6 +28,10 @@ an answer in the thread.
 "devops learn" here is a task, not a note: start a thread in the repo it is
 about (the devops plugin's repo for the plugin or how threads work), attach
 my message and tell it to run /do-learn.
+
+Threads of this project are resolved, not archived. When I say "archive" or
+"archivieren" about a thread, resolve it. Say "resolved" ("gelöst"), and
+resolve only when nobody owes a next step.
 ```
 
 ## Where threads run: local-first

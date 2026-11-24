@@ -126,3 +126,23 @@ describe("#1165: an api-request blob after the prompt does not hide it", () => {
     expect(r.stderr).toMatch(/says not to archive/);
   });
 });
+
+describe("pre.session.archive — a Claude Projects thread is resolved, not archived", () => {
+  const wake = (t) => '<wake reason="mention" current-time="2026-11-24T20:51:27Z">\n <project id="chan_01T" type="project">\n' +
+    '  <message trigger="true" from="human" trust="principal" id="cmsg_1">' + t + '</message>\n </project>\n</wake>';
+  const mark = (sid) => fs.writeFileSync(path.join(dir, ".tmp", `dotclaude-devops-project-thread-${sid}`), "x");
+
+  test("the person's own request and a released hand-over are redirected to the resolve call", () => {
+    mark("s-thr-1");
+    for (const opts of [{}, { released: true }]) {
+      const r = run("s-thr-1", wake("bitte archivieren"), opts);
+      expect(r.status).toBe(2);
+      expect(r.stderr).toContain("mcp__hearthbot__set_thread_resolved");
+    }
+  });
+
+  test("a normal session still archives on request, also when the prompt talks about threads", () => {
+    const r = run("s-thr-2", "archiviere die Session, Threads im Projekt werden gelöst");
+    expect(r.status).toBe(0);
+  });
+});

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook pre.session.archive
- * @version 0.3.2
+ * @version 0.4.0
  * @event PreToolUse
  * @plugin devops
  * @description Only the post-ship hand-over archives this session (#632).
@@ -16,6 +16,9 @@
  *   is blocked — also a released hand-over or the user's request: the unsaved
  *   work would be cut off. Archiving another session by its explicit id is untouched. Exit 2 =
  *   block, reason on stderr.
+ *   In a Claude Projects thread (lib/project-thread.js) nothing archives the
+ *   session, not even the person's "archivieren": a thread is resolved instead
+ *   (`mcp__hearthbot__set_thread_resolved`), and the block says so.
  */
 
 let gate, transcriptTools, thread;
@@ -114,6 +117,16 @@ process.stdin.on('end', () => {
     process.stderr.write(
       '[devops] archive_session on this session is blocked: the turn was started by a coordinator note, not by the ' +
       'person. Archiving needs a message of the person in this thread. Do not retry; end the response without text.\n'
+    );
+    process.exit(2);
+  }
+  let inThread = false;
+  try { inThread = thread.isThread(hook, { deep: true }); } catch { /* not a thread */ }
+  if (inThread) {
+    process.stderr.write(
+      '[devops] archive_session is blocked: this session is a Claude Projects thread. A thread is resolved, not ' +
+      `archived: when its work has ended and nobody owes a next step, or the person asked for it, call ${thread.RESOLVE_TOOL} ` +
+      '{resolved:true} instead (it can be reopened). Say "gelöst"/"resolved", not "archiviert"/"archived". Do not retry.\n'
     );
     process.exit(2);
   }

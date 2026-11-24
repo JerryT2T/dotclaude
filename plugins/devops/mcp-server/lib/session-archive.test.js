@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
-import { ARCHIVE_FLAG_PREFIX, archiveDecision, archiveInstruction, writeArchiveFlag } from "./session-archive.js";
+import { ARCHIVE_FLAG_PREFIX, archiveDecision, archiveInstruction, resolveDecision, resolveInstruction, writeArchiveFlag } from "./session-archive.js";
 import { hasPending, hasConcept } from "./pending.js";
 
 // #632: only a merged ship card in the Desktop app archives its session.
@@ -193,5 +193,33 @@ describe("session-archive — the devops switch", () => {
     expect(cfg.load(home, { home }).values.ship.archiveAfterShip).toBe(true);
     expect(cfg.parseValue("ship.archiveAfterShip", "false")).toBe(false);
     fs.rmSync(home, { recursive: true, force: true });
+  });
+});
+
+// Claude Projects: a thread is resolved, never archived — same conditions, other tool.
+describe("session-archive — the thread counterpart", () => {
+  test("a finished ship resolves the thread, also where there is no Desktop app (cloud thread)", () => {
+    const d = resolveDecision(shipped(), deps({ desktop: false }));
+    expect(d).toEqual({ resolve: true, reason: "" });
+    const text = resolveInstruction(d);
+    expect(text).toContain("mcp__hearthbot__set_thread_resolved {resolved:true}");
+    expect(text).not.toContain("mcp__ccd_session_mgmt");
+  });
+
+  test.each([
+    [{ open: ["x"] }, "open"],
+    [{ pending: ["devops:qax"] }, "pending"],
+    [{ userTest: ["click it"] }, "user-test"],
+    [{ state: { pushed: true, merged: "main", kept: true } }, "kept"],
+  ])("%j leaves the thread open", (over, reason) => {
+    const d = resolveDecision(shipped(over), deps());
+    expect(d).toEqual({ resolve: false, reason });
+    expect(resolveInstruction(d)).toMatch(/Leave the thread open/);
+  });
+
+  test("any other card leaves the call to the model, only for ended work", () => {
+    const text = resolveInstruction(resolveDecision(shipped({ variant: "analysis" }), deps()));
+    expect(text).toContain("only when the work has ended");
+    expect(text).toContain("never call archive_session");
   });
 });

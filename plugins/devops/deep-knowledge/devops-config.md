@@ -198,7 +198,7 @@ the committed ship extension (`deployParity:` block in the project's
 
 | Key | Default | Meaning |
 |---|---|---|
-| `archiveAfterShip` | `true` | Desktop app: right after the card of a successful ship (`ship-successful` / `released`, merged) the session archives itself. Never for any other card, with an explicit keep (`--keep`, follow-up signals), pending agents/tasks/workflows, open points or user tests on the card, a dirty work tree, or while an autonomous run or ship queue still works. `false` → the session stays in the sidebar. |
+| `archiveAfterShip` | `true` | Desktop app: right after the card of a successful ship (`ship-successful` / `released`, merged) the session archives itself (a Claude Projects thread is resolved instead, under the same conditions). Never for any other card, with an explicit keep (`--keep`, follow-up signals), pending agents/tasks/workflows, open points or user tests on the card, a dirty work tree, or while an autonomous run or ship queue still works. `false` → the session stays in the sidebar. |
 
 ### `apiCredit` — read-only side work on the plan's monthly API credit (opt-in)
 
