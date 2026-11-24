@@ -799,6 +799,24 @@ export function watchPRChecks(prNumber, opts, {
 }
 
 /**
+ * Whether a tag exists on the remote, read through REST
+ * `GET /repos/{o}/{r}/git/ref/tags/<tag>` (a cloud session's git transport may
+ * not list tags; REST reads are allowed). 404 is a clean "absent"; any other
+ * failure is rethrown so a caller never mistakes an outage for "not there".
+ * @returns {{ exists: boolean, sha?: string }}
+ */
+export function getRemoteTagRest(tag, opts = {}) {
+  const path = tag.split("/").map(encodeURIComponent).join("/");
+  try {
+    const ref = ghApi("GET", `repos/{owner}/{repo}/git/ref/tags/${path}`, undefined, opts);
+    return ref && ref.ref === `refs/tags/${tag}` ? { exists: true, sha: ref.object?.sha } : { exists: false };
+  } catch (e) {
+    if (/\b404\b|not found/i.test(String(e.stderr || e.message || e))) return { exists: false };
+    throw e;
+  }
+}
+
+/**
  * Create a GitHub release for a tag.
  * Notes are passed via stdin to avoid shell escaping issues.
  */

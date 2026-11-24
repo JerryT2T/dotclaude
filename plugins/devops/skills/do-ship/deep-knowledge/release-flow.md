@@ -79,6 +79,21 @@ nothing. Never GitHub's web release form: it creates a lightweight tag.
 This block is the single source of the manual tag step; the manual ship
 checklist (#567) points here instead of restating it.
 
+### Cloud session: CI creates the tag (#1212)
+
+A claude.ai cloud session never pushes tags (environment policy), so the owner
+step above is the last fallback, not the plan. When the repo has
+`.github/workflows/tag-on-version.yml` (scaffold `templates/tag-on-version.yml`;
+its `tag-prefix` input / `TAG_PREFIX` sets e.g. `alpha/`), `ship_release` polls
+the remote tag via REST (`tagPollAttempts` × `tagPollDelayMs`) after the refused
+push: found → `tagVerified: true`, `tagCreatedBy: "ci"`, no `tagHandoff`. Never
+found → `tagHandoff` with a `workflowNote`. No workflow → `tagHandoff` with a
+`setupOffer` (reply "Tag-Workflow einrichten"): once the owner agrees, add the
+template in a normal PR. A tag made with `GITHUB_TOKEN` does not trigger other
+workflows (the template documents the PAT route); pushing a workflow file may
+need the `workflow` scope — if refused, hand the file to the owner once.
+dotclaude's own ring flow does not use it.
+
 ## GitHub Release — at PROMOTION, not at ship
 
 Ship creates NO GitHub Release (alpha ships on every merge — a Release per

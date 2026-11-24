@@ -22,6 +22,9 @@ alone as a merge, `rebaseRequired` / `autoRebased`) stay in the skill.
   test: `{ text: "alpha/v<X.Y.Z> fehlt — Tag selbst anlegen (Befehle unten)", reply: "<tagHandoff.commands joined with newlines>" }`,
   plus `tagHandoff.gates` as the reason when `permanent: true`. Never fold it into
   "Promotion ausgesetzt". The block's format and rules: `release-flow.md` § owner hand-off.
+  Cloud (#1212): `tagVerified: true` + `tagCreatedBy: "ci"` → no item, the tag is on the card.
+  `tagHandoff.setupOffer` → add a second open item `{ text: setupOffer.text, reply: setupOffer.reply }`;
+  `tagHandoff.workflowNote` → name it in the first item. See `release-flow.md` § CI creates the tag.
 
 ## Other return shapes
 
