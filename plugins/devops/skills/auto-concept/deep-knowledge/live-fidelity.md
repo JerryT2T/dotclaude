@@ -28,6 +28,28 @@ otherwise. Only the fidelity changes:
 - **All designs of the round,** so the comparison stays fair. A polished
   variant next to a sketched one wins by default.
 
+**Shell of the view — a ladder, never a silent redraw (#1187).** The parts the
+round does not touch (logo, page title, header controls, page background) are
+reproduced in this order:
+
+1. **Capture** the live or dev page, signed in where the route needs it (the
+   project's test account or the Desktop pane session).
+2. Failing that, **copy the project's real files verbatim** into `assets/NN/`
+   (logo file, title string, header markup and styles, background tokens and
+   images) and reference them (`{{slug}}/assets/NN/…`, `data-live-css`).
+3. Only when neither is reachable, approximate, and **mark each approximated
+   part**: `data-fidelity-approx-part="<name>"` on the element plus a visible
+   `<span class="fidelity-approx-badge">angenähert</span>` inside it, and
+   `data-fidelity-approx` on the round. List the part under `liveSource.shell`
+   (`captured` / `copied` / `approximated`, per part).
+
+The gate (`findFidelityIssues`) enforces the markers: `fidelity-shell-redrawn`
+(a live round with neither `data-live-css` nor an `assets/` reference),
+`fidelity-approx-unmarked` (`data-fidelity-approx` without marked parts or
+without the visible badge) and `fidelity-note-claims-live` (a note saying 1:1
+while the round is approximated). It cannot compare against the project's
+source; the ladder's markers are what it checks.
+
 **Live source — the session collects it before the brief (Step 5b iterate step 5):**
 
 ```
@@ -37,6 +59,7 @@ liveSource:
   commit:     <git rev-parse HEAD of the repo they come from>
   screenshot: <path, when the app runs locally: the view as it is now>
   assets:     <files copied to docs/concepts/{name}/assets/NN/>
+  shell:      <logo / title / header / background: captured | copied | approximated>
   gaps:       <what is not reachable (remote data, a deployed-only app, licensed fonts)>
 ```
 

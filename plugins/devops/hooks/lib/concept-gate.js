@@ -1385,6 +1385,23 @@ function findFidelityIssues(html) {
         }
       }
     }
+    // Shell ladder (live-fidelity.md § Shell of the view): the untouched parts come from a capture or from
+    // assets copied into assets/NN/ - a live round with neither redrew the shell by hand.
+    if (!/\sdata-live-css(?=[\s=>/])/i.test(chunk) && !/(?:src|href|poster)=["'][^"']*assets\//i.test(chunk) && !/url\(\s*["']?[^)"']*assets\//i.test(chunk)) {
+      issues.push({ kind: 'fidelity-shell-redrawn', at, why: `iteration ${n}: live round with no <style data-live-css> and no assets/NN/ reference — the untouched shell (logo, page title, header controls, background) was redrawn by hand. Capture the page signed in, or copy the real files into assets/NN/ (live-fidelity.md § Shell of the view)` });
+    }
+    // An approximated round marks each approximated part, visibly, and its note does not claim 1:1 for it.
+    if (/\sdata-fidelity-approx(?=[\s=>/])/i.test(tag)) {
+      const parts = [...chunk.matchAll(/<(\w+)\b(?:[^>"']|"[^"]*"|'[^']*')*?\sdata-fidelity-approx-part(?=[\s=>/])(?:[^>"']|"[^"]*"|'[^']*')*>/gi)];
+      if (!parts.length) {
+        issues.push({ kind: 'fidelity-approx-unmarked', at, why: `iteration ${n}: data-fidelity-approx is set but no element carries data-fidelity-approx-part="<name>" — mark each approximated part (logo, title, header, background) with it and a visible .fidelity-approx-badge` });
+      } else if (!/class=["'][^"']*\bfidelity-approx-badge\b/i.test(chunk)) {
+        issues.push({ kind: 'fidelity-approx-unmarked', at, why: `iteration ${n}: approximated parts carry data-fidelity-approx-part but no visible .fidelity-approx-badge — the user must see which parts are not live` });
+      }
+      if (note && /1\s*:\s*1/.test(note) && !/angen[aä]hert|approx/i.test(note)) {
+        issues.push({ kind: 'fidelity-note-claims-live', at, why: `iteration ${n}: data-fidelity-note claims 1:1 but the round is data-fidelity-approx — name what is approximated ("angenähert") in the note` });
+      }
+    }
     for (const a of chunk.matchAll(/\s(?:src|href|poster)=("|')((?:https?:)?\/\/[^"']+)\1/gi)) {
       issues.push({ kind: 'fidelity-external', at, why: `iteration ${n}: external asset ${a[2]} — copy it into the concept source folder's assets/ and reference it as {{slug}}/assets/…` });
     }
