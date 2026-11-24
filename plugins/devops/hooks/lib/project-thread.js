@@ -222,7 +222,8 @@ function classifyPrompt(prompt) {
   const files = attachmentsOf(raw);
   const out = (origin, words) => ({ prompt: files && origin !== 'typed' ? `${words}\n${files}`.trim() : words, prompt_raw: raw, prompt_origin: origin });
   try {
-    if (isWakePrompt(raw)) {
+    // A typed prompt that opens with a quoted wake and goes on in the user's own words stays typed.
+    if (isWholeWake(raw)) {
       const t = findTrigger(raw);
       if (t) {
         const from = tagAttr(t[1], 'from');
@@ -290,6 +291,9 @@ function entryText(entry) {
   return content.filter((b) => b && b.type === 'text' && typeof b.text === 'string').map((b) => b.text).join('');
 }
 
+/** User-role entries the harness writes mid-turn (an interrupt note, a bare reminder, a local command's output). */
+const HARNESS_ENTRY = /^\s*(?:\[Request interrupted by user|<system-reminder>(?:(?!<\/system-reminder>)[\s\S])*<\/system-reminder>\s*$|<local-command-(?:stdout|stderr|caveat)>)/;
+
 /**
  * The newest prompt of the transcript that is not a machine prompt (a task notification,
  * a cron tick ...), classified; `null` when none can be found. Never throws.
@@ -304,9 +308,9 @@ function lastHumanSidePrompt(transcriptContent) {
     if (!line) continue;
     let entry;
     try { entry = JSON.parse(line); } catch { continue; } // a partial first line of a tail
-    if (!entry || entry.type !== 'user' || entry.isSidechain === true) continue;
+    if (!entry || entry.type !== 'user' || entry.isSidechain === true || entry.isCompactSummary === true) continue;
     const text = entryText(entry);
-    if (!text.trim()) continue;
+    if (!text.trim() || HARNESS_ENTRY.test(text)) continue; // written by the harness: the prompt before it decides
     // The spawn note of a local thread is an `isMeta` entry, yet it is the prompt that started the turn.
     if (!isPromptEntry(entry) && !(entry.isMeta === true && isWholeRelay(text))) continue;
     const view = classifyPrompt(text);
@@ -409,13 +413,12 @@ function isThread(hook, { deep = false } = {}) {
   if (!hook || typeof hook !== 'object') return false;
   if (isMarked(hook.session_id)) return true;
   const raw = typeof hook.prompt_raw === 'string' ? hook.prompt_raw : hook.prompt; // the dispatcher unwraps `prompt`
-  const wake = isWakePrompt(raw);
-  // A wake envelope pasted into a Desktop prompt reads as a thread for this prompt only; the
-  // sticky marker needs the whole prompt to be one envelope (or other evidence).
+  // Only a prompt that is one envelope start to end (what the runtime sends): a paste with the user's own words is none.
+  const wake = isWholeWake(raw);
   const other = isHearthbotTool(hook.tool_name) || (deep && transcriptSaysThread(hook.transcript_path));
   // A local thread the coordinator spawned opens with the bare spawn note, the wake comes later.
   const relay = isWholeRelay(raw);
-  if (other || relay || (wake && isWholeWake(raw))) markThread(hook.session_id);
+  if (other || relay || wake) markThread(hook.session_id);
   return wake || relay || other;
 }
 

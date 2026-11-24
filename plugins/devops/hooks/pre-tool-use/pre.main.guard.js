@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook pre.main.guard
- * @version 0.6.0
+ * @version 0.7.0
  * @event PreToolUse
  * @plugin devops
  * @matcher Bash|PowerShell
@@ -15,6 +15,9 @@
  *   Bypass conditions (any one of them → exit 0):
  *     - The directory the command acts on is not inside a git repo
  *     - HEAD is NOT main/master
+ *     - A write to a repo the session does not sit in, when that repo is new
+ *       (unborn main), lies in a session scratchpad, or is pushed for the
+ *       first time (no remote-tracking branch yet)
  *     - Sentinel file .claude/.ship-in-progress exists (ship pipeline active)
  *     - DEVOPS_ALLOW_MAIN=1 in environment
  *
@@ -53,14 +56,15 @@
 // A lib that fails to load (half-written during a plugin update, version skew)
 // makes this hook a silent no-op instead of a hook error on every Bash call
 // (AUD-028).
-let gitOut, sentinelActive, isLinkedWorktree, gitCommonDir, samePath, isFastForwardOfMain, branchFix, threadWorktreeFor, ownWorktreeDecided, BYPASS, gitCommandRe, matchesGitCommand, gitSegments, unattributedGitWrite, WORD_END, remoteDeleteTargets;
+let gitOut, insideSafe, sentinelActive, isLinkedWorktree, gitCommonDir, samePath, isFastForwardOfMain, branchFix, foreignFix, threadWorktreeFor, ownWorktreeDecided, BYPASS, gitCommandRe, matchesGitCommand, gitSegments, unattributedGitWrite, WORD_END, remoteDeleteTargets;
 try {
   require('../lib/plugin-guard');
   ({ gitCommandRe, matchesGitCommand, gitSegments, unattributedGitWrite, isFastForwardOfMain, WORD_END, remoteDeleteTargets } = require('../lib/ship-guard-match'));
   ({ gitOut } = require('../lib/git-timeout'));
+  ({ insideSafe } = require('../lib/thread-rights'));
   ({ isActive: sentinelActive } = require('../lib/ship-sentinel'));
   ({ isLinkedWorktree, gitCommonDir, samePath } = require('../lib/project-root'));
-  ({ branchFix, threadWorktreeFor, ownWorktreeDecided, BYPASS } = require('../lib/branch-fix'));
+  ({ branchFix, foreignFix, threadWorktreeFor, ownWorktreeDecided, BYPASS } = require('../lib/branch-fix'));
 } catch (err) {
   // Silent to the user and the model (exit 0), but not traceless: the line
   // lands in the hook log, so a persistent load error can be found (AUD-068).
@@ -161,6 +165,13 @@ process.stdin.on('end', () => {
   process.exit(0);
 });
 
+/** Does the write act on another repository than the one the session sits in (or sits in none)? */
+function isForeign(sessionCwd, dir) {
+  const own = sessionCwd ? gitCommonDir(sessionCwd) : null;
+  const target = gitCommonDir(dir);
+  return Boolean(target && !(own && samePath(own, target)));
+}
+
 /** Exits 2 with the reason when a write in `cmd` acting on `cwd` lands on main/master of its repo. */
 function checkDir(hook, tool, cmd, cwd, otherWrite) {
   if (!isGitRepo(cwd)) return;
@@ -176,6 +187,15 @@ function checkDir(hook, tool, cmd, cwd, otherWrite) {
   const branch = currentBranch(cwd);
   if (!branch) return;
   if (branch !== 'main' && branch !== 'master') return;
+
+  // A repo the session does not sit in: creating one (git init, first commit, first
+  // push) and a scratchpad repo are normal work, not a write on somebody's main.
+  const foreign = isForeign(hook.cwd, cwd);
+  if (foreign) {
+    if (gitOut(cwd, ['rev-parse', '--verify', '--quiet', 'HEAD']) === null) return;
+    if (/[\\/]scratchpad(?:[\\/]|$)/i.test(cwd) && insideSafe(cwd, hook.cwd)) return;
+    if (!otherWrite && hasRemote(cwd) && !gitOut(cwd, ['for-each-ref', '--count=1', 'refs/remotes'])) return;
+  }
 
   // Only a push matched: a pure delete of non-default remote branches is fine.
   // Bash syntax only — PowerShell parses arguments differently, so it keeps
@@ -202,14 +222,15 @@ function checkDir(hook, tool, cmd, cwd, otherWrite) {
     ? `Never commit/merge/push directly on ${branch}. Work on a branch derived from origin/${branch} and land via /do-ship.`
     : `Never commit directly on ${branch}. Work on a feature branch and land it via /do-ship.`;
   const top = gitOut(cwd, ['rev-parse', '--show-toplevel']);
-  const fix = branchFix({
+  const threadWorktree = threadWorktreeFor(hook, top || cwd);
+  const fix = foreign && !threadWorktree && !hook.agent_id ? foreignFix({ branch, remote, repo: top || cwd }) : branchFix({
     branch,
     remote,
     // Unknown top level → treat as the shared main checkout: the safe remedy.
     mainCheckout: !(top && isLinkedWorktree(top)),
     subagent: Boolean(hook.agent_id),
     ownWorktree: ownWorktreeDecided(top || cwd),
-    threadWorktree: threadWorktreeFor(hook, top || cwd),
+    threadWorktree,
   });
 
   process.stderr.write(

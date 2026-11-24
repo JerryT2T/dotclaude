@@ -3082,3 +3082,15 @@ test('opt-out chip: a session flag shows "(session)" (de: "aus (Session)"), its 
   expect(tr('de', 'optProject')).toBe('Für dieses Projekt (dauerhaft)')
   expect(tr('de', 'optCancel')).toBe('Abbrechen')
 })
+
+test('notices the dispatcher held until the first prompt still become toasts, once', async ($, on) => {
+  const { seen } = engine(on)
+  const held = '[ss.version.notice] Show the user this line verbatim in your first reply, once:\nℹ v1 → v2'
+  on('classic.SessionStart', () => ({}))
+  on('classic.UserPromptSubmit', () => ({ additionalContext: [held] }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.classic.SessionStart({ source: 'startup' } as any)
+  await $.classic.UserPromptSubmit({ prompt: 'hi' } as any)
+  await $.classic.UserPromptSubmit({ prompt: 'again' } as any)
+  expect(seen.toasts).toEqual(['ℹ v1 → v2'])
+})

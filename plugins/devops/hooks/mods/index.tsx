@@ -1160,6 +1160,14 @@ async function markHintDrawn($: EngineInterface): Promise<void> {
 `)
 }
 
+/** C9: the notices a hook asks Claude to show verbatim, as toasts; once per session. */
+async function toastNotices($: EngineInterface, contexts: readonly string[] | undefined): Promise<void> {
+  const texts = verbatimNotices(contexts)
+  if (!texts.length || (await read($, flags)).noticesShown) return
+  await update($, flags, f => ({ ...f, noticesShown: true }))
+  for (const text of texts) $.ui.toast(text, { timeoutMs: 8000 })
+}
+
 /** B1 (#2): the band's session marker, read by the card tool to shrink the transcript card. Written while the band draws. */
 const BAND_MARKER = '/.claude/devops-band-active.json'
 const BAND_MARKER_EVERY_MS = 60_000
@@ -1241,19 +1249,20 @@ export const register: Register = on => {
     return started
   })
 
+  // The dispatcher holds those notices until the first typed prompt (lib/thread-notice-hold.js), so they also come from there.
+  on('classic.UserPromptSubmit', async ($, e, next) => {
+    const result = await next(e)
+    if (await open($)) await toastNotices($, result && result.additionalContext)
+    return result
+  })
+
   // C9: the SessionStart notices the hooks ask Claude to show verbatim also become toasts; the hook text stays as is.
   // Once per session: a compaction or resume re-runs SessionStart with the same notices, which stay in the band.
   on('classic.SessionStart', async ($, e, next) => {
     const result = await next(e)
     const source = (e as { source?: string }).source
     if ((source === 'resume' || source === 'compact') && (await open($))) await restoreCard($)
-    if (source !== 'compact' && source !== 'resume' && (await open($))) {
-      const texts = verbatimNotices(result && result.additionalContext)
-      if (texts.length && !(await read($, flags)).noticesShown) {
-        await update($, flags, f => ({ ...f, noticesShown: true }))
-        for (const text of texts) $.ui.toast(text, { timeoutMs: 8000 })
-      }
-    }
+    if (source !== 'compact' && source !== 'resume' && (await open($))) await toastNotices($, result && result.additionalContext)
     // #1105: a start after a gap shows a recap once: warm cache → one fork (no effort: an effort can force a full cache
     // write), cold or a failed fork → the last card's own text, no model call. Detached, so it never holds the start.
     if (source !== 'compact' && source !== 'clear' && (await open($))) {

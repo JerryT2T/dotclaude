@@ -92,6 +92,8 @@ If the branch still exists on the remote, delete it explicitly:
 git push origin --delete <shipped-branch>
 ```
 
+In a Claude Projects thread whose turn a coordinator note started (no message of the person attached) this delete and the `git branch -D` of step 4 are denied (`pre.thread.rights`). `ship_cleanup` does both and is not affected; by hand, leave them to the branch cleanup and go on.
+
 Re-verify after deletion — an empty result confirms success.
 
 ### 4. Delete shipped branch (local)

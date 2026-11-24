@@ -199,3 +199,22 @@ describe("project-thread — spawn note and uploads", () => {
     expect(pt.turnRights({ session_id: sid("meta") }, skill)).toBe("colleague");
   });
 });
+
+// Red-team 2026-11-24: normal sessions and harness entries.
+describe("project-thread — what must not count", () => {
+  test("a typed prompt that opens with a quoted wake and goes on stays typed and is no thread", () => {
+    const typed = wake("ship it") + "\nWhat does this envelope mean?";
+    expect(pt.classifyPrompt(typed)).toEqual({ prompt: typed, prompt_raw: typed, prompt_origin: "typed" });
+    expect(pt.threadMode({ session_id: sid("quote"), prompt: typed }, ALPHA)).toBe("off");
+  });
+
+  test.each([
+    ["compact summary", { isCompactSummary: true, message: { role: "user", content: "This session is being continued" } }],
+    ["interrupt", { message: { role: "user", content: [{ type: "text", text: "[Request interrupted by user]" }] } }],
+    ["reminder", { message: { role: "user", content: "<system-reminder>x</system-reminder>" } }],
+    ["local command output", { message: { role: "user", content: "<local-command-stdout>ok</local-command-stdout>" } }],
+  ])("a %s after a coordinator note keeps colleague rights", (_, entry) => {
+    const t = [{ type: "user", message: { role: "user", content: RELAY } }, { type: "user", ...entry }].map((e) => JSON.stringify(e)).join("\n");
+    expect(pt.turnRights({ session_id: sid("harness") }, t)).toBe("colleague");
+  });
+});

@@ -161,6 +161,22 @@ function threadFix({ branch, remote, rel, repo, sessionId, startDir = '' }) {
   ];
 }
 
+/**
+ * The remedy of a normal session (no Claude Projects thread) that writes to a repo
+ * it does not sit in: EnterWorktree acts on the session's OWN repo, so it is not offered.
+ *
+ * @param {{ branch?: string, remote?: boolean, repo: string }} p
+ */
+function foreignFix({ branch = 'main', remote = true, repo }) {
+  const root = String(repo).replace(/\\/g, '/').replace(/\/+$/, '');
+  const wt = `${root}/.claude/worktrees/<topic>-<4 random chars>`;
+  const fetch = remote ? `git -C ${root} fetch origin && ` : '';
+  return [
+    `Why: ${root} is not the repo this session sits in (EnterWorktree would act on the session's own repo), and its checkout may be shared: leave it on ${branch}.`,
+    `Fix: ${fetch}git -C ${root} worktree add ${wt} -b <feat/topic> ${remote ? `origin/${branch}` : branch}, then work by absolute path inside it and run git as \`git -C <worktree> …\`.`,
+  ];
+}
+
 const OWN_WORKTREE_LINE = "This project's handling is decided (devops-config workspace.ownWorktree): do NOT ask the user where to continue — move now. Files THIS session created in the main checkout (e.g. a concept page and its source folder written by concept-build.js) move into the worktree: copy them over, remove the originals, and restart a running concept bridge from the worktree path. Changes you did not make stay exactly as they are.";
 
 /**
@@ -178,4 +194,4 @@ function ownWorktreeDecided(root) {
   try { return require('./devops-config').load(root).values.workspace.ownWorktree === true; } catch { return false; }
 }
 
-module.exports = { branchFix, threadFix, threadWorktreeFor, shortId, enterLine, ownWorktreeDecided, RULE_CLAUSE, BYPASS, OWN_WORKTREE_LINE };
+module.exports = { branchFix, threadFix, foreignFix, threadWorktreeFor, shortId, enterLine, ownWorktreeDecided, RULE_CLAUSE, BYPASS, OWN_WORKTREE_LINE };

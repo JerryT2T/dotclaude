@@ -3257,7 +3257,8 @@ function runRenderCardCli(source) {
   }
   const cardMarkdown = buildCompletionCard(params);
   // #1150: the band never sees this card (it reads only the MCP tool's result) — leave it the card's data.
-  if (params._cardModel) writeBandCard(params.session_id, cardDataBlock(params._cardModel, params._repoUrl || ''));
+  // Not in a project thread: the band's card offers "Archive", a thread is resolved instead.
+  if (params._cardModel && !isThreadCard(params)) writeBandCard(params.session_id, cardDataBlock(params._cardModel, params._repoUrl || ''));
   // The rename and CTA-widget instructions ride on stderr so stdout stays the verbatim card.
   const titleNote = sessionTitleNote(params);
   const actionsNote = ctaActionsNote(params, { inline: true });
