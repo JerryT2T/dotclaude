@@ -218,6 +218,23 @@ describe("namesBranch / namesWorktree — exact names only", () => {
     expect(gate.namesWorktree("Shippen: 1. #4120 fix …", ".claude/worktrees/cleanup-pr-412", "/r")).toBe(false);
     expect(gate.namesWorktree("- something else", ".claude/worktrees/other", "/r")).toBe(false);
   });
+
+  test("a repo-relative name covers the absolute target only next to its repo's name", () => {
+    const t = "P:/Projects/fin/.claude/worktrees/agent-1";
+    const names = (scope, root = "P:/Projects/fin") => gate.namesWorktree(scope, t, "P:/x", root);
+    expect(names("Dry-Run\nfin:\n- `.claude/worktrees/agent-1`\n")).toBe(true);
+    expect(names("Dry-Run\n- fin: .claude\\worktrees\\agent-1")).toBe(true);
+    expect(names("Dry-Run\nother:\n- `.claude/worktrees/agent-1`\nfin:\n- `.claude/worktrees/agent-2`")).toBe(false);
+    expect(names("Dry-Run\n- `.claude/worktrees/agent-1`")).toBe(false);
+    expect(names("fin:\n- `.claude/worktrees/agent-12`")).toBe(false);
+    expect(names("fin:\n- P:/other/.claude/worktrees/agent-1")).toBe(false);
+    expect(names("fin:\n- `.claude/worktrees/agent-1`", null)).toBe(false);
+  });
+
+  test("a longer name or a subfolder never approves the shorter worktree", () => {
+    expect(gate.namesWorktree("- P:/r/.claude/worktrees/agent-12", "P:/r/.claude/worktrees/agent-1", "P:/r")).toBe(false);
+    expect(gate.namesWorktree("- P:/r/.claude/worktrees/agent-1/dist", "P:/r/.claude/worktrees/agent-1", "P:/r")).toBe(false);
+  });
 });
 
 describe("hasLanded / decide against a real repo", () => {
