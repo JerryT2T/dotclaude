@@ -160,15 +160,15 @@ function updateInstruction({ version, cloudVersion, script, lang = 'de' }) {
   const s = String(script).replace(/\\/g, '/');
   const cmd = (state) => `node "${s}" ${state} ${version}`;
   const say = lang === 'en'
-    ? { done: `Cloud update requested (claude.ai syncs on its own schedule, often within hours)`, manual: 'the exact click that is left' }
-    : { done: `Cloud-Update angestoßen (claude.ai synct nach eigenem Takt, oft binnen Stunden)`, manual: 'den genauen Klick, der noch fehlt' };
+    ? { done: `Cloud update requested (claude.ai syncs on its own schedule, often within hours)`, manual: 'that the guide does it: reply "update cloud"' }
+    : { done: `Cloud-Update angestoßen (claude.ai synct nach eigenem Takt, oft binnen Stunden)`, manual: 'dass der Guide es zeigt: „Cloud updaten“ antworten' };
   return [
     `[ss.cloud.update] The claude.ai copy of devops (what cloud threads and cloud sessions run) is on ${cloudVersion}; ${version} is installed here. You hold the update claim for ${version}: one updater at a time, once per version.`,
     'Start the update YOURSELF, as part of a turn that runs anyway: after the work of the person\'s request, before your final reply — never a turn of its own, never a question first.',
     'Not in a Claude Project thread (a `<wake …><project …>` prompt) and not without a browser tool for logged-in sites (Claude in Chrome): there run ' + `\`${cmd('release')}\`` + ' and skip.',
     `Steps (skills/auto-update/SKILL.md § "Cloud updaten"): open https://claude.ai in the browser tool, then ${STEPS} — click each step yourself. Do not start auto-guide: the person is not asked to click.`,
-    `NEVER automate a login: when claude.ai shows a login, a captcha or a two-factor prompt, stop there, run \`${cmd('manual')}\` and tell the person in one line ${say.manual} ("Log in to claude.ai in the open tab" / "Click Check for updates under ${STEPS.split(' → ').slice(1, 4).join(' → ')}").`,
-    `Click went through: run \`${cmd('done')}\` and say once: "${say.done}". Any other failure: run \`${cmd('manual')}\` and name the step that failed.`,
+    `NEVER automate a login: when claude.ai shows a login, a captcha or a two-factor prompt, stop there, run \`${cmd('manual')}\` and tell the person in one line ${say.manual}. A refused navigation (Customize is left to the person) is such a stop too: never another tool or URL around it, never a click list in chat.`,
+    `Click went through: run \`${cmd('done')}\` and say once: "${say.done}". Any other failure: run \`${cmd('manual')}\`, name the step that failed and the same reply.`,
   ].join('\n');
 }
 
