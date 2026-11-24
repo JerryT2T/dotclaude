@@ -129,9 +129,12 @@ between them. When Claude must ask something in the chat after all, it first
 shows the „Frage im Chat" step (recovery.md § Questions in the chat), so the
 user never waits on a spinner for an answer that only appears in the chat.
 A chat question from the user during the loop is answered in the panel (step
-text update, polling continues); the chat copy is posted as the last text only
-when the guide ends. Never end the turn just to surface a chat answer while the
-guide waits on the panel.
+text update); then end the turn with the answer as its last text
+(a running terminal command or background task keeps going and wakes the
+session; the panel loop resumes then). After the panel loop (consent in
+another tab, a terminal wait) the same holds: answer as final text before any
+further blocking wait. Never bury the answer as interim text while a wait
+continues.
 
 **Resuming in a new turn** (an interrupted `wait()`, a card, a chat question,
 compaction): before the first 5c of every turn that continues a running guide,
