@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.410.1] — 2026-11-26
+
+### Fixed
+- A repo without any commit can be set up in one go: the main guards let the scaffold, the first commit and its plain first push through on main, then guard main as before (#1237).
+
 ## [0.410.0] — 2026-11-24
 
 ### Added
