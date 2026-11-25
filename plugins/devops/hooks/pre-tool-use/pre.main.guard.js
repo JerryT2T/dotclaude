@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook pre.main.guard
- * @version 0.7.0
+ * @version 0.8.0
  * @event PreToolUse
  * @plugin devops
  * @matcher Bash|PowerShell
@@ -15,6 +15,9 @@
  *   Bypass conditions (any one of them → exit 0):
  *     - The directory the command acts on is not inside a git repo
  *     - HEAD is NOT main/master
+ *     - The repo has no commit at all (project setup: the first commit has
+ *       nothing to branch off), and the push of that single first commit while
+ *       no remote-tracking branch exists. Never a force push or delete.
  *     - A write to a repo the session does not sit in, when that repo is new
  *       (unborn main), lies in a session scratchpad, or is pushed for the
  *       first time (no remote-tracking branch yet)
@@ -56,11 +59,12 @@
 // A lib that fails to load (half-written during a plugin update, version skew)
 // makes this hook a silent no-op instead of a hook error on every Bash call
 // (AUD-028).
-let gitOut, insideSafe, sentinelActive, isLinkedWorktree, gitCommonDir, samePath, isFastForwardOfMain, branchFix, foreignFix, threadWorktreeFor, ownWorktreeDecided, BYPASS, gitCommandRe, matchesGitCommand, gitSegments, unattributedGitWrite, WORD_END, remoteDeleteTargets;
+let gitOut, hasNoCommits, isFirstCommitOnly, insideSafe, sentinelActive, isLinkedWorktree, gitCommonDir, samePath, isFastForwardOfMain, branchFix, foreignFix, threadWorktreeFor, ownWorktreeDecided, BYPASS, gitCommandRe, matchesGitCommand, gitSegments, unattributedGitWrite, WORD_END, remoteDeleteTargets;
 try {
   require('../lib/plugin-guard');
   ({ gitCommandRe, matchesGitCommand, gitSegments, unattributedGitWrite, isFastForwardOfMain, WORD_END, remoteDeleteTargets } = require('../lib/ship-guard-match'));
   ({ gitOut } = require('../lib/git-timeout'));
+  ({ hasNoCommits, isFirstCommitOnly } = require('../lib/empty-repo'));
   ({ insideSafe } = require('../lib/thread-rights'));
   ({ isActive: sentinelActive } = require('../lib/ship-sentinel'));
   ({ isLinkedWorktree, gitCommonDir, samePath } = require('../lib/project-root'));
@@ -84,6 +88,16 @@ const WRITE_PATTERNS = [
 // push is separate: a pure remote-branch delete is allowed on main (see header).
 const PUSH_PATTERN = gitCommandRe('push' + WORD_END);
 WRITE_PATTERNS.push(gitCommandRe(String.raw`checkout(?:\s+[^\n;&|]*)?\s--(?=\s)`));
+
+// The setup push in its one plain shape. Allow-list, not a force-flag search: a
+// variable, `-c remote.*.push=+…`, an abbreviated option or another refspec
+// leaves a "push" behind and keeps the block.
+const SETUP_PUSH = /(^|&&|;|\n)\s*git(?:\s+-C\s+(?:"[^"$`]*"|[\w./:\\-]+))?\s+push(?:\s+(?:-u|--set-upstream))?\s+origin\s+(?:main|master)(?:\s+2>&1)?\s*(?=$|&&|;|\n)/g;
+// The probe sees the repo BEFORE the command runs, so a chain is bounded here:
+// at most one commit and no other write (merge, reset, pull, ...).
+const isOneCommit = (cmd, dir) => !matchesGitCommand(cmd, [...WRITE_PATTERNS.slice(1), gitCommandRe('pull' + WORD_END)])
+  && gitSegments(cmd, dir).filter(s => matchesGitCommand(s.text, WRITE_PATTERNS.slice(0, 1))).length <= 1;
+const onlySetupPush = (cmd) => !/push|\$|`/i.test(cmd.replace(SETUP_PUSH, '$1'));
 
 function currentBranch(cwd) {
   return gitOut(cwd, ['symbolic-ref', '--quiet', '--short', 'HEAD']);
@@ -196,6 +210,11 @@ function checkDir(hook, tool, cmd, cwd, otherWrite) {
     if (/[\\/]scratchpad(?:[\\/]|$)/i.test(cwd) && insideSafe(cwd, hook.cwd)) return;
     if (!otherWrite && hasRemote(cwd) && !gitOut(cwd, ['for-each-ref', '--count=1', 'refs/remotes'])) return;
   }
+
+  // A repo without any commit (or with only the setup commit, not yet pushed)
+  // has nothing to branch off: project setup may create and push it (#1237).
+  // Only the plain `git push [-u] origin main`: a force push or delete could hit an existing remote main.
+  if (onlySetupPush(cmd) && ((isOneCommit(cmd, hook.cwd || cwd) && hasNoCommits(cwd)) || (!otherWrite && hasRemote(cwd) && isFirstCommitOnly(cwd)))) return;
 
   // Only a push matched: a pure delete of non-default remote branches is fine.
   // Bash syntax only — PowerShell parses arguments differently, so it keeps
