@@ -93,6 +93,10 @@ WRITE_PATTERNS.push(gitCommandRe(String.raw`checkout(?:\s+[^\n;&|]*)?\s--(?=\s)`
 // variable, `-c remote.*.push=+…`, an abbreviated option or another refspec
 // leaves a "push" behind and keeps the block.
 const SETUP_PUSH = /(^|&&|;|\n)\s*git(?:\s+-C\s+(?:"[^"$`]*"|[\w./:\\-]+))?\s+push(?:\s+(?:-u|--set-upstream))?\s+origin\s+(?:main|master)(?:\s+2>&1)?\s*(?=$|&&|;|\n)/g;
+// The probe sees the repo BEFORE the command runs, so a chain is bounded here:
+// at most one commit and no other write (merge, reset, pull, ...).
+const isOneCommit = (cmd, dir) => !matchesGitCommand(cmd, [...WRITE_PATTERNS.slice(1), gitCommandRe('pull' + WORD_END)])
+  && gitSegments(cmd, dir).filter(s => matchesGitCommand(s.text, WRITE_PATTERNS.slice(0, 1))).length <= 1;
 const onlySetupPush = (cmd) => !/push|\$|`/i.test(cmd.replace(SETUP_PUSH, '$1'));
 
 function currentBranch(cwd) {
@@ -210,7 +214,7 @@ function checkDir(hook, tool, cmd, cwd, otherWrite) {
   // A repo without any commit (or with only the setup commit, not yet pushed)
   // has nothing to branch off: project setup may create and push it (#1237).
   // Only the plain `git push [-u] origin main`: a force push or delete could hit an existing remote main.
-  if (onlySetupPush(cmd) && (hasNoCommits(cwd) || (!otherWrite && hasRemote(cwd) && isFirstCommitOnly(cwd)))) return;
+  if (onlySetupPush(cmd) && ((isOneCommit(cmd, hook.cwd || cwd) && hasNoCommits(cwd)) || (!otherWrite && hasRemote(cwd) && isFirstCommitOnly(cwd)))) return;
 
   // Only a push matched: a pure delete of non-default remote branches is fine.
   // Bash syntax only — PowerShell parses arguments differently, so it keeps

@@ -60,6 +60,10 @@ describe("a repo without a commit", () => {
     withOrigin(dir);
     expect(sh(dir, "git commit -m init && git push --force origin main")).toBe(2);
     expect(sh(dir, "git add . && git commit -m init && git push -u origin main")).toBe(0);
+    expect(sh(dir, "git commit -m a && git commit -m b && git push -u origin main")).toBe(2);
+    expect(sh(dir, "git fetch x main && git reset --hard FETCH_HEAD && git push -u origin main")).toBe(2);
+    expect(sh(dir, "git merge FETCH_HEAD")).toBe(2);
+    expect(sh(dir, "git pull x main && git push -u origin main")).toBe(2);
     commit(dir, "a");
     expect(sh(dir, "git push -u origin main")).toBe(0);
     expect(sh(dir, "git push -f origin main")).toBe(2);
