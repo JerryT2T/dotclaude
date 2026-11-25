@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook pre.edit.branch
- * @version 0.2.0
+ * @version 0.3.0
  * @event PreToolUse
  * @plugin devops
  * @matcher Edit|Write|NotebookEdit
@@ -15,6 +15,7 @@
  *     - HEAD is NOT main/master
  *     - Sentinel file .claude/.ship-in-progress exists (ship pipeline active)
  *     - DEVOPS_ALLOW_MAIN=1 in environment
+ *     - The repo has no commit at all (project setup, lib/empty-repo.js)
  *     - Target path is outside this repository (e.g. ~/.claude/**, another repo)
  *
  *   The branch checked is the one of the work tree the TARGET lives in, not
@@ -42,10 +43,11 @@ const path = require('path');
 // A lib that fails to load (half-written during a plugin update, version skew)
 // makes this hook a silent no-op instead of a hook error on every edit
 // (AUD-028).
-let gitOut, sentinelActive, isLinkedWorktree, findRepoRoot, gitCommonDir, samePath, branchFix, threadWorktreeFor, ownWorktreeDecided, BYPASS;
+let gitOut, hasNoCommits, sentinelActive, isLinkedWorktree, findRepoRoot, gitCommonDir, samePath, branchFix, threadWorktreeFor, ownWorktreeDecided, BYPASS;
 try {
   require('../lib/plugin-guard');
   ({ gitOut } = require('../lib/git-timeout'));
+  ({ hasNoCommits } = require('../lib/empty-repo'));
   ({ isActive: sentinelActive } = require('../lib/ship-sentinel'));
   ({ isLinkedWorktree, findRepoRoot, gitCommonDir, samePath } = require('../lib/project-root'));
   ({ branchFix, threadWorktreeFor, ownWorktreeDecided, BYPASS } = require('../lib/branch-fix'));
@@ -180,6 +182,8 @@ process.stdin.on('end', () => {
   const branch = currentBranch(repoRoot);
   if (!branch) process.exit(0);
   if (branch !== 'main' && branch !== 'master') process.exit(0);
+  // Nothing to branch off yet: the setup scaffold is written on main (#1237).
+  if (hasNoCommits(repoRoot)) process.exit(0);
 
   const remote = hasRemote(repoRoot);
   const mainCheckout = !isLinkedWorktree(repoRoot);

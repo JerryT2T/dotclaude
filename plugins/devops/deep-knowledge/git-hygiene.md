@@ -29,6 +29,9 @@ Commit message format and granularity: [commit-conventions.md](commit-convention
   block these actions unless a sentinel file `.claude/.ship-in-progress` is present
   (written by `ship_preflight`, cleared by `ship_cleanup`) or `DEVOPS_ALLOW_MAIN=1`
   is set for an explicit one-shot bypass.
+- Exception: a repo without any commit has nothing to branch off. Its scaffold, its
+  first commit and the first non-force push of that single commit may happen on main
+  (`hooks/lib/empty-repo.js`); from then on main is guarded as usual.
 - Exception: on main, a Bash command whose only write is a pure remote branch
   delete (`git push <remote> --delete <branch>` or `:<branch>`) passes, unless a
   deleted ref is `main`, `master` or the remote's default branch
