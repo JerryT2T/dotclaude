@@ -54,6 +54,7 @@
   function openDock() {
     if (!dock || !dockToggle) return;
     window.closePanel?.();   // mutually exclusive overlays, see openPanel above
+    delete dock.dataset.calmStashed;   // opened on purpose: the eye no longer owns it
     dock.dataset.open = 'true';
     dockToggle.setAttribute('aria-expanded', 'true');
     dockToggle.setAttribute('aria-label', LABEL_CLOSE);
@@ -79,6 +80,23 @@
   }
   window.openDock = openDock;
   window.closeDock = closeDock;
+  // The eye's calm view (body.anno-hidden, design eye and document pin eye)
+  // hid the 💬 FAB but left an OPEN dock standing on its own. Hiding now
+  // closes the dock and marks it (data-calm-stashed); showing again reopens
+  // exactly a dock the eye closed. Closing instead of a CSS hide keeps Space
+  // working while all is hidden: a dock opened on purpose then is visible
+  // and clears the mark, so the way back never toggles it a second time.
+  function calmDock(hide) {
+    if (!dock || !dockToggle) return;
+    if (hide) {
+      if (dock.dataset.open !== 'true') return;
+      closeDock(true);   // no focus to the 💬 FAB: it is hidden with the rest
+      dock.dataset.calmStashed = 'true';
+    } else if (dock.dataset.calmStashed === 'true') {
+      openDock();
+    }
+  }
+  window.calmDock = calmDock;
   // Dock keys while the dock is open (capture phase, so no page handler
   // swallows them first):
   //   * Ctrl/Cmd + Enter in a dock field → focus the next VISIBLE field of the

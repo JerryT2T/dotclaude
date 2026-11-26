@@ -56,7 +56,7 @@ describe("calm view — the eye takes the quick nav and both FABs along", () => 
     for (const sel of ["#design-quick", ".design-switcher", ".panel-fab", ".feedback-fab"]) {
       expect(css).toContain("body.anno-hidden " + sel);
     }
-    expect(css).toMatch(/body\.anno-hidden \.recovered-notes-strip \{\s*opacity: 0 !important; visibility: hidden; pointer-events: none;/);
+    expect(css).toMatch(/body\.anno-hidden \.recovered-notes-strip[^{}]*\{\s*opacity: 0 !important; visibility: hidden; pointer-events: none;/);
     const { document, errors } = await boot(page(2));
     expect(errors).toEqual([]);
     const eye = document.getElementById("anno-toggle");
@@ -79,8 +79,60 @@ describe("calm view — status messages, tips and corner chrome go too", () => {
     }
     for (const sel of [".viewport-toggle", ".draft-offline-strip", ".anno-toggle-fab"]) expect(rule).not.toContain(sel);
     expect(rule).toMatch(/opacity: 0 !important; visibility: hidden; pointer-events: none;\s*transition: opacity 0\.18s/);
-    expect(css).toMatch(/prefers-reduced-motion: reduce\) \{\s*body\.anno-hidden #design-quick[^}]*\.recovered-notes-strip \{ transition: none; \}/);
+    expect(css).toMatch(/prefers-reduced-motion: reduce\) \{\s*body\.anno-hidden #design-quick[^}]*\.recovered-notes-strip[^{}]*\{ transition: none; \}/);
   });
+
+  test("the review pill, LIVE chip, past-round bar and its veil join the calm rule", () => {
+    const rule = css.match(/body\.anno-hidden #design-quick,[^{]*\{[^}]*\}/)[0];
+    for (const sel of [".review-switch", ".fidelity-chip", ".frozen-bar", "#content-dimmer"]) {
+      expect(rule).toContain("body.anno-hidden " + sel);
+    }
+    expect(css).toMatch(/prefers-reduced-motion: reduce\) \{\s*body\.anno-hidden #design-quick[^}]*#content-dimmer \{ transition: none; \}/);
+  });
+
+  test("an open notes dock is hidden with the rest and comes back with it", async () => {
+    const { window, document, errors } = await boot(page(2));
+    expect(errors).toEqual([]);
+    const eye = document.getElementById("anno-toggle");
+    const dock = document.getElementById("feedback-dock");
+    document.getElementById("feedback-toggle").click();
+    expect(dock.dataset.open).toBe("true");
+    eye.click();
+    expect(document.body.classList.contains("anno-hidden")).toBe(true);
+    expect(dock.dataset.open).toBe("false");
+    expect(dock.dataset.calmStashed).toBe("true");
+    eye.click();
+    expect(dock.dataset.open).toBe("true");
+    expect(dock.dataset.calmStashed).toBeUndefined();
+    // A closed dock stays closed both ways.
+    window.closeDock();
+    eye.click();
+    eye.click();
+    expect(dock.dataset.open).toBe("false");
+    // Opened on purpose while all is hidden (Space): visible, and the way back
+    // does not toggle it a second time.
+    document.getElementById("feedback-toggle").click();
+    eye.click();
+    expect(dock.dataset.calmStashed).toBe("true");
+    document.getElementById("feedback-toggle").click();
+    expect(dock.dataset.open).toBe("true");
+    expect(dock.dataset.calmStashed).toBeUndefined();
+    eye.click();
+    expect(dock.dataset.open).toBe("true");
+  }, BOOT_TIMEOUT);
+
+  test("the document pin eye takes an open dock along too", async () => {
+    const html = build({ rounds: 2, entries: 4, mode: "decision", mapping: false, locale: "de", designs: 0, out: "" });
+    const { window, document } = await boot(html);
+    const eye = document.getElementById("dpin-eye");
+    expect(eye).not.toBeNull();
+    const dock = document.getElementById("feedback-dock");
+    window.openDock();
+    eye.click();
+    expect(dock.dataset.open).toBe("false");
+    eye.click();
+    expect(dock.dataset.open).toBe("true");
+  }, BOOT_TIMEOUT);
 
   test("no new tip appears while the layer is hidden", async () => {
     const { window, document } = await boot(page(2));
