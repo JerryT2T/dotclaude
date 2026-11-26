@@ -2074,7 +2074,7 @@ test('under the prompt: "● devops" beside the engine hint; a press opens the d
   }
   expect(text).toMatch(/≈ 20 k/) // the headline tile: the net estimate
   expect(await home.find({ type: 'Text', text: /searches narrowed/ })).toBeDefined()
-  expect(await home.find({ type: 'Text', text: /Version 9.9.9/ })).toBeDefined()
+  expect(await home.find({ type: 'Text', text: /devops 9.9.9/ })).toBeDefined()
   expect(await home.find({ key: 'home-devops-switch' })).toBeDefined()
   await home.unmount()
   await hint.unmount()
@@ -2084,7 +2084,7 @@ test('under the prompt: "● devops" beside the engine hint; a press opens the d
   expect(seen.writes).toEqual([])
 })
 
-test('Home → Einstellungen: the browser dropdown offers the installed browsers plus In-App; a pick is written by the plugin script', async ($, on) => {
+test('Home → Einstellungen: the browser row offers the installed browsers plus In-App as buttons; a pick is written by the plugin script', async ($, on) => {
   const { seen } = engine(on, { files: LOG_FILES })
   const options = [{ id: 'edge', label: 'Microsoft Edge' }, { id: 'chrome', label: 'Google Chrome' }, { id: 'in-app', label: 'In-App (Claude Desktop)' }]
   const runs: string[][] = []
@@ -2114,20 +2114,21 @@ test('Home → Einstellungen: the browser dropdown offers the installed browsers
   await home.press({ key: 'home-tab-settings' })
   await home.press({ key: 'home-refresh' }) // an earlier test's answer may still count as fresh
   await home.unmount()
-  home = await until('home-browser-toggle', /Microsoft Edge ▾/)
-  expect(JSON.stringify(await home.find({ key: 'home-browser-toggle' }))).toMatch(/Microsoft Edge ▾/)
-  expect(await home.find({ key: 'home-browser-chrome' })).toBeUndefined() // closed: no list
-  await home.press({ key: 'home-browser-toggle' })
-  await home.unmount()
-  home = await until('home-browser-edge', /● Microsoft Edge/)
-  expect(JSON.stringify(await home.find({ key: 'home-browser-chrome' }))).toMatch(/○ Google Chrome/)
-  expect(JSON.stringify(await home.find({ key: 'home-browser-in-app' }))).toMatch(/○ In-App/)
+  // No dropdown: every option is a button of one row, the one in effect filled and ticked.
+  home = await until('home-browser-edge', /✓ Microsoft Edge/)
+  expect(JSON.stringify(await home.find({ key: 'home-browser-edge' }))).toMatch(/primary/)
+  expect(JSON.stringify(await home.find({ key: 'home-browser-chrome' }))).not.toMatch(/✓|primary/)
+  expect(JSON.stringify(await home.find({ key: 'home-browser-in-app' }))).toMatch(/In-App/)
+  expect(await home.find({ key: 'home-browser-toggle' })).toBeUndefined()
   await home.press({ key: 'home-browser-in-app' })
   await home.unmount()
-  home = await until('home-browser-toggle', /In-App \(Claude Desktop\) ▾/)
-  expect(JSON.stringify(await home.find({ key: 'home-browser-toggle' }))).toMatch(/In-App \(Claude Desktop\) ▾/)
-  expect(await home.find({ key: 'home-browser-edge' })).toBeUndefined() // a pick closes the list
+  home = await until('home-browser-in-app', /✓ In-App \(Claude Desktop\)/)
+  expect(JSON.stringify(await home.find({ key: 'home-browser-in-app' }))).toMatch(/primary/)
+  expect(JSON.stringify(await home.find({ key: 'home-browser-edge' }))).not.toMatch(/✓/)
   expect(runs.at(-1)).toEqual(['set', 'in-app', '--json'])
+  // The blocks are cards of their own; the figures sit in Statistik.
+  expect(await home.find({ key: 'home-general' })).toBeDefined()
+  expect(await home.find({ key: 'home-stats' })).toBeDefined()
   await home.unmount()
   expect(seen.prompts).toEqual([])
 })
@@ -2231,6 +2232,80 @@ test('home: the open pane settles (no render loop under the pointer); 🧹 runs 
   expect(spawns).toEqual(['Branch cleanup plan'])
   expect(mcp.some(c => c.tool === 'start_session')).toBe(false)
   expect(seen.prompts).toEqual([])
+  await home.unmount()
+})
+
+test('home: "＋ Batch" fills the prompt box with the start request (no mod start_session, no plugin prompt); a draft is kept', async ($, on) => {
+  const { seen } = engine(on, { files: LOG_FILES })
+  on('clock.after', () => new Promise(() => undefined))
+  const mcp: string[] = []
+  on('mcp.call', (_: unknown, e: { tool: string }) => {
+    mcp.push(e.tool)
+    if (e.tool === 'list_sessions') {
+      const rows = [{ sessionId: 'local_j1', title: '🟩 ➜ 🚀 Released ┃ X', cwd: 'P:\\Projects\\jerry', lastActivityAt: '2026-11-21T09:00:00Z' }]
+      return { value: { isError: false, content: [{ type: 'text', text: JSON.stringify(rows) }] } }
+    }
+    return { value: { isError: false, content: [{ type: 'text', text: 'ok' }] } }
+  })
+  let draft = ''
+  const fills: string[] = []
+  on('prompt.read', () => ({ value: { text: draft, cursor: draft.length } }))
+  on('prompt.fill', (_: unknown, e: { text: string }) => {
+    fills.push(e.text)
+    draft = e.text
+    return { isFilled: true, text: e.text, cursor: e.text.length }
+  })
+  await $.session.start({ cwd: 'P:/Projects/demo', surface: 'desktop', isInteractive: true })
+  const settle = async () => { for (let j = 0; j < 400; j++) await Promise.resolve() }
+  const KEY = 'pb-P:/Projects/jerry'
+  let home = await $.ui.mount({ ...pane('devops-home', 'devops Home'), surface: 'desktop' } as any)
+  let btn: unknown
+  for (let i = 0; i < 40 && !btn; i++) {
+    await home.unmount()
+    await settle()
+    home = await $.ui.mount({ ...pane('devops-home', 'devops Home'), surface: 'desktop' } as any)
+    btn = await home.find({ key: KEY })
+  }
+  expect(JSON.stringify(btn)).toMatch(/＋ Batch/)
+  await home.press({ key: KEY })
+  await settle()
+  expect(fills).toHaveLength(1)
+  expect(fills[0]).toMatch(/Batch-Sitzung im Projekt „jerry“/)
+  expect(fills[0]).toContain('cwd `P:/Projects/jerry`')
+  expect(seen.toasts.at(-1)).toMatch(/Enter drücken/)
+  expect(mcp).not.toContain('start_session')
+  expect(seen.prompts).toEqual([])
+  await home.unmount()
+})
+
+test('home: "＋ Batch" never overwrites a draft in the prompt box', async ($, on) => {
+  const { seen } = engine(on, { files: LOG_FILES })
+  on('clock.after', () => new Promise(() => undefined))
+  on('mcp.call', (_: unknown, e: { tool: string }) => {
+    if (e.tool === 'list_sessions') {
+      const rows = [{ sessionId: 'local_k1', title: '🟩 ➜ 🚀 Released ┃ X', cwd: 'P:\\Projects\\kilo', lastActivityAt: '2026-11-21T09:00:00Z' }]
+      return { value: { isError: false, content: [{ type: 'text', text: JSON.stringify(rows) }] } }
+    }
+    return { value: { isError: false, content: [{ type: 'text', text: 'ok' }] } }
+  })
+  const fills: string[] = []
+  on('prompt.read', () => ({ value: { text: 'halb geschrieben', cursor: 3 } }))
+  on('prompt.fill', (_: unknown, e: { text: string }) => (fills.push(e.text), { isFilled: true, text: e.text, cursor: 0 }))
+  await $.session.start({ cwd: 'P:/Projects/demo', surface: 'desktop', isInteractive: true })
+  const settle = async () => { for (let j = 0; j < 400; j++) await Promise.resolve() }
+  const KEY = 'pb-P:/Projects/kilo'
+  let home = await $.ui.mount({ ...pane('devops-home', 'devops Home'), surface: 'desktop' } as any)
+  let btn: unknown
+  for (let i = 0; i < 40 && !btn; i++) {
+    await home.unmount()
+    await settle()
+    home = await $.ui.mount({ ...pane('devops-home', 'devops Home'), surface: 'desktop' } as any)
+    btn = await home.find({ key: KEY })
+  }
+  await home.press({ key: KEY })
+  await settle()
+  expect(fills).toEqual([])
+  expect(seen.toasts.at(-1)).toMatch(/In der Eingabe steht schon Text/)
   await home.unmount()
 })
 
