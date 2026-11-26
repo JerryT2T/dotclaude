@@ -50,9 +50,11 @@ describe("pre.plugin.session (#1076)", () => {
     };
     expect(decide(call(input), deps())).toBe("");
   });
-  test("home.tsx still sends the background the hook exempts", () => {
+  test("home.tsx still asks for the background the hook exempts", () => {
+    // "＋ Batch" puts the start request into the prompt box (the app refuses a mod's own start_session);
+    // the request names the background Claude passes, so the exemption still applies.
     const home = fs.readFileSync(path.join(__dirname, "..", "mods", "home.tsx"), "utf8");
-    expect(home).toMatch(new RegExp(`background: '${HOME_PANE_BACKGROUND}`));
+    expect(home).toMatch(new RegExp(`background „${HOME_PANE_BACKGROUND}`));
   });
   test("an unwritable marker never wedges the start: it passes", () => {
     const d = deps({ markerFile: () => path.join(os.tmpdir(), "no-such-dir-plugsess", "x", "m") });
