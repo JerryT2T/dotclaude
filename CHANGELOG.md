@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.410.2] — 2026-11-26
+
+### Fixed
+- Concept pages: the eye ("Notizen und Navigation ausblenden") now also hides an open notes dock and reopens it when shown again; the review pill, LIVE chip, past-round bar and its veil hide with it too.
+
 ## [0.410.1] — 2026-11-26
 
 ### Fixed
