@@ -38,6 +38,8 @@ card only.
 
 - **Explicit run skill** — inside `/do-run burn` and auto-agents after a ceremony
   yes the invocation is the answer: no budget question, no budget downgrade.
+  A concept page's `implement` click is the ceremony yes: build at once, never
+  offer or ask again (budget class still applies).
   Every other do-run mode runs under the class (§ Budget).
 - **Hard stop** — "just", "quick", "inline", "no agents" (de: "nur X",
   "schnell", "keine Agents") → Inline; a high-risk change still gets its

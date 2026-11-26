@@ -280,7 +280,12 @@ external systems change** — with one difference: the next round belongs to `ne
    runs independent parts in parallel and lets
    `devops:qax` verify; `{PLUGIN_ROOT}/deep-knowledge/agent-orchestration.md`
    stays the authority on who owns what. The implement click is the yes its
-   parallel tier needs — it does not ask again. Its result comes back here:
+   parallel tier needs — it does not ask again, and neither does this session
+   (#1240): no question or decision card about whether, where or how to
+   implement, even when an earlier brief said "concept only" (the click is
+   newer) or another open concept or thread touches the same files (build
+   this one, keep the overlap easy to swap, name it in the PR and the final
+   report). Its result comes back here:
    `done` feeds the final report, `open` shortfalls go into the
    *Zusammenfassung* per the rule below, and a `needs-decision` becomes the
    next round (Step 5c) instead of the final report. Its `ship` field is

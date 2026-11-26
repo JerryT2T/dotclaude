@@ -158,6 +158,17 @@ owner's wish to decide remotely is given; the hand-off tier is not needed.
   submission document, so no write replaces another; every open view applies
   the others' newer edits live (never the field under the cursor), and a
   submit by one person shows the round as sent on the others' pages.
+- **`action: "implement"` is the go (#1240).** The submit is the person's
+  approval for the whole approved scope: start in the same turn (reality
+  check, then `auto-agents`, SKILL.md Step 5b) at the person's default
+  execution place (project memory: local via Remote Control, else here). No
+  `request_decision` or question about *whether* or *how* to implement.
+  The click is newer than any earlier "concept only" brief or coordinator
+  note, so it overrides them. Another open concept or thread that touches the
+  same component is no reason to ask: build the approved concept, keep the
+  overlapping part easy to swap, and name the overlap in the PR and the
+  final report. Only a step that is irreversible beyond what do-ship already
+  gates (a production DB migration) is confirmed once.
 - **If nothing comes back** (the read-back is empty or errors): the person
   pastes the decisions, or says the action (`next round` / `implement`), into
   the thread; the session continues from those words. The post says so once.
