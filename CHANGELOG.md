@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.410.3] — 2026-11-26
+
+### Fixed
+- Concept pages: the eye ("Notizen und Navigation ausblenden") now also hides an open notes dock and reopens it when shown again; the review pill, LIVE chip, past-round bar and its veil hide with it too.
+
+## [0.410.2] — 2026-11-26
+
+### Fixed
+- devops Home: "＋ Batch" no longer fails with "Start sessions only on the user's own words". The Desktop app starts a session only on a turn the person typed, so the button now puts a complete start request into the prompt box; Enter starts the batch session in that project. A draft in the box is kept.
+- devops Home: the 🧹 tile counts and names only this session's repo, the one it cleans.
+
+### Changed
+- devops Home → Einstellungen: three cards (Allgemein, Claude-Projekte, Statistik); every choice is a row of buttons instead of a dropdown; project exceptions, prerequisites and further figures sit behind ▸.
+
 ## [0.410.1] — 2026-11-26
 
 ### Fixed

@@ -183,6 +183,23 @@
         ]
       }
     ],
+    "docs/dev/mods.md›Home pane: redraws and tiles›＋ Batch": [
+      {
+        "ship": "#1211",
+        "by": "Jerry",
+        "value": "retry user_asked then own_initiative"
+      },
+      {
+        "ship": "claude/thread-home-batch-settings",
+        "by": "Jerry",
+        "value": "fill the prompt box (start_session retry removed: the app refuses it)",
+        "decided": true,
+        "at": "2026-11-26T22:29:54.967Z",
+        "hunks": [
+          "852ae4c5997e"
+        ]
+      }
+    ],
     "lanes.json›lanes›generated": [
       {
         "ship": "claude/project-thread-iv58su",

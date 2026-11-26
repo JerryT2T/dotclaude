@@ -3,16 +3,16 @@
  * The Desktop app's own New page runs no session, so no mod can draw there; this pane is the substitute.
  *
  * Übersicht: budget rings with a pace tick, four clickable state tiles (👉 opens the session waiting longest, ⏳ the
- * newest running one, 🟩 the oldest finished one, 🧹 starts the branch cleanup run of the band), one row per project with its non-zero
- * state chips and "＋ Batch" (a new session in that project in collect mode; while that batch session is alive and
- * still a batch, the row links to it instead), and the bedtime row: "🛏 Ins Bett gehen" arms the shutdown watcher
- * (scripts/bedtime-shutdown.js — the PC powers off once no session works any more), shows whom it waits for and
- * cancels it. Einstellungen: the devops switch for this session, the info card's
- * figures as tiles with an "i" toggle, measured facts in place of a token gain that is not there, the version.
- * Einstellungen also holds the browser for pages devops opens: a dropdown of the installed ones plus In-App
- * (scripts/browser-choice.js), and, behind the `project-threads` channel feature, the row "Thread-Ort" (global value,
- * per-project exceptions, copy button for the text block; scripts/thread-location.js) with the prerequisites for a
- * thread on this computer (display only).
+ * newest running one, 🟩 the oldest finished one, 🧹 starts the branch cleanup run of the band for THIS repo and counts
+ * only its items), the bedtime row ("🛏 Ins Bett gehen" arms the shutdown watcher, scripts/bedtime-shutdown.js — the PC
+ * powers off once no session works any more — shows whom it waits for and cancels it), and the Projekte card: one row
+ * per project with its non-zero state chips and "＋ Batch" (fills the prompt box with the start request, see
+ * batchPrompt; while a batch session of that project is alive and still a batch, the row links to it instead).
+ * Einstellungen is three cards, each choice a row of buttons (no dropdowns): Allgemein (devops in this session, the
+ * browser for pages devops opens: installed ones plus In-App, scripts/browser-choice.js), Claude-Projekte behind the
+ * `project-threads` channel feature (global Thread-Ort, per-project exceptions and the prerequisites behind ▸,
+ * copy button for the text block; scripts/thread-location.js) and Statistik (the info card's figures, the first three
+ * shown, the rest behind ▸, each note behind its "i").
  *
  * Pure helpers are exported for the tests; the engine side reaches the rest of the mod only through `HomeDeps`.
  */
@@ -189,7 +189,10 @@ export function homeModel(sessions: HomeSession[], cleanup: Record<string, numbe
   for (const p of map.values()) {
     const id = batches[p.path]
     const s = id ? live.find(x => x.id === id) : undefined
-    p.batch = s && isBatchTitle(s.title) ? s : null
+    // The press no longer learns the new session's id (Claude starts it on the person's Enter): the newest live
+    // session of the project that still carries a batch title is the batch, whoever started it.
+    const titled = live.filter(x => x.project === p.path && isBatchTitle(x.title)).sort(byAtAsc).pop() ?? null
+    p.batch = s && isBatchTitle(s.title) ? s : titled
   }
   const projects = [...map.values()].sort((a, b) => b.waiting - a.waiting || (b.last > a.last ? 1 : b.last < a.last ? -1 : 0))
   const total = Object.values(cleanup).reduce((n, v) => n + v, 0)
@@ -200,6 +203,22 @@ export function homeModel(sessions: HomeSession[], cleanup: Record<string, numbe
 export function needsConfirm(rings: HomeRing[]): boolean {
   const week = rings.find(r => r.label === 'Woche')
   return !!week && week.pct >= CONFIRM_PCT
+}
+
+/**
+ * What "＋ Batch" puts in the prompt box. The Desktop app starts a session only on a turn the person typed in it
+ * (`assertCanStartSideSession`: a mod's own `start_session` call and a plugin's `prompt.submit` are refused, the
+ * fallback proposal card cannot carry a folder), so the press fills the box and the person's Enter is the ask. The
+ * line names every argument so the turn needs no further question; `background` opens with HOME_PANE_BACKGROUND
+ * (hooks/lib/home-pane.js), which keeps the plugin-scope and title hooks out of a press.
+ */
+export function batchPrompt(p: { name: string; path: string }): string {
+  return (
+    `📚 Neue Batch-Sitzung im Projekt „${p.name}“ starten. ` +
+    `start_session: initiation user_asked, context fresh, cwd \`${p.path}\`, title „Batch ${p.name}“, prompt \`/do-batch\`, ` +
+    'background „Started from the devops Home pane by the person pressing its ＋ Batch button; the new session only collects notes with /do-batch.“ ' +
+    'Danach nur eine Zeile, dass sie läuft.'
+  )
 }
 
 /** The info card's figures as tiles; no token gain → measured facts take the headline's place. */
@@ -426,7 +445,8 @@ let paneOpen = false
 let browsers: BrowserState | null = null
 let browsersAt = 0
 let browsersLoading = false
-let browserOpen = false
+/** Disclosures of the Einstellungen tab that are open (per process): exceptions, prerequisites, notes, all figures. */
+const shown = new Set<string>()
 let browserSaving = ''
 const BROWSER_TIMEOUT_MS = 8000
 const BROWSER_FRESH_MS = 300_000
@@ -435,8 +455,9 @@ let threadsAt = 0
 let threadsLoading = false
 let threadsFailed = false
 let threadsVersion = ''
-let threadsOpen = '' // '' | 'global' | a project id: the dropdown that is open
+let threadsOpen = '' // '' or a project id: the exception picker that is open
 let threadsSaving = ''
+let threadsPick = '' // the value being written, for its ⏳
 let threadsGate: Promise<boolean> | null = null
 let bedConfirm = false
 let bedBusy = false
@@ -507,7 +528,6 @@ function loadBrowsers($: EngineInterface, now: number, force = false): void {
 
 /** A press answers inside its budget: the write runs on, its outcome redraws the row. */
 function pickBrowser($: EngineInterface, id: string): void {
-  browserOpen = false
   if (!browsers || browserSaving || id === browsers.stored) {
     $.ui.invalidate('ui.render')
     return
@@ -569,6 +589,7 @@ function pickThread($: EngineInterface, value: string, project?: string): void {
     return
   }
   threadsSaving = project || 'global'
+  threadsPick = value
   $.ui.invalidate('ui.render')
   void (async () => {
     const t = await threadScript($, project ? ['set', value, '--project', project] : ['set', value])
@@ -670,71 +691,66 @@ export async function toggleHome($: EngineInterface, ctx: HomeCtx): Promise<bool
   refreshHome($, ctx, true)
   return true
 }
-
-/** A press answers inside its budget: the session call runs on, its outcome redraws the row. */
-function startSession($: EngineInterface, ctx: HomeCtx, key: string, cwd: string, title: string, prompt: string, onStarted?: (id: string) => Promise<void>): void {
-  busy.set(key, 'starting')
+/** Shows a passing state on a row for `ms`, then gives the row back (a lost timer leaves it for the next press). */
+function holdBusy($: EngineInterface, key: string, state: 'starting' | 'started' | 'failed', ms: number): void {
+  busy.set(key, state)
   $.ui.invalidate('ui.render')
-  void (async () => {
-    try {
-      const args = {
-        context: 'fresh',
-        cwd,
-        title,
-        prompt,
-        // Opening is HOME_PANE_BACKGROUND (hooks/lib/home-pane.js): the start hooks treat it as the person's own press.
-        background: 'Started from the devops Home pane by the person pressing its button; no other context belongs to this session.',
-      }
-      // `user_asked` waits on the app's approval card, which a mod call outside any turn may not get: a refusal (an
-      // isError answer or a denied call) is retried once as a proposal (`own_initiative`), a start card in the chat.
-      const call = async (initiation: string): Promise<{ ok: boolean; text: string }> => {
-        try {
-          const r = await $.mcp.call('ccd_session', 'start_session', { initiation, ...args })
-          return { ok: !r.isError, text: textOf(r) }
-        } catch (err) {
-          return { ok: false, text: err instanceof Error ? err.message : String(err) }
-        }
-      }
-      let res = await call('user_asked')
-      if (!res.ok) {
-        const first = res.text.slice(0, 120) || 'abgelehnt'
-        res = await call('own_initiative')
-        if (!res.ok) throw new Error(`${first} / ${res.text.slice(0, 120) || 'abgelehnt'}`)
-        if (!/\blocal_[0-9a-f-]{8,}/.test(res.text)) $.ui.toast('Start-Karte im Chat – ein Klick darauf startet die Sitzung', { timeoutMs: 8000 })
-      }
-      const id = (/\blocal_[0-9a-f-]{8,}/.exec(res.text) || [''])[0]
-      if (id && onStarted) await onStarted(id)
-      busy.set(key, 'started')
-      if (id) void $.mcp.call('ccd_window', 'open_session_in', { session_id: id, target: 'focus' }).catch(() => undefined)
-    } catch (err) {
-      busy.set(key, 'failed')
-      $.ui.toast(`Start fehlgeschlagen: ${err instanceof Error ? err.message : 'unbekannt'}`, { timeoutMs: 8000 })
-    }
+  try {
+    $.clock.after(ms, () => {
+      if (busy.get(key) === state) busy.delete(key)
+      $.ui.invalidate('ui.render')
+    })
+  } catch {
+    /* the next press or refresh answers it */
+  }
+}
+
+/**
+ * "＋ Batch": the start request goes into the prompt box (batchPrompt says why no mod call can start the session);
+ * the person's Enter sends it as a turn they typed, and Claude starts the session there. A draft already in the box
+ * is never overwritten. Past 85 % of the week the first press only asks, for 8 s.
+ */
+function pressBatch($: EngineInterface, p: HomeProject): void {
+  if (snap && needsConfirm(snap.rings) && confirmFor !== p.path) {
+    confirmFor = p.path
     $.ui.invalidate('ui.render')
     try {
-      $.clock.after(6000, () => {
-        busy.delete(key)
-        refreshHome($, ctx, true)
+      $.clock.after(8000, () => {
+        if (confirmFor === p.path) confirmFor = ''
+        $.ui.invalidate('ui.render')
       })
     } catch {
-      busy.delete(key)
+      /* the next press answers it */
+    }
+    return
+  }
+  confirmFor = ''
+  if (busy.get(p.path) === 'starting') return
+  busy.set(p.path, 'starting')
+  $.ui.invalidate('ui.render')
+  void (async () => {
+    const text = batchPrompt(p)
+    try {
+      const box = await $.prompt.read().catch(() => null)
+      const draft = box && typeof box.text === 'string' ? box.text.trim() : ''
+      if (draft && draft !== text) throw new Error('draft')
+      const r = await $.prompt.fill({ text })
+      if (!r.isFilled) throw new Error(r.refusal || 'refused')
+      holdBusy($, p.path, 'started', 30_000)
+      $.ui.toast(`Enter drücken: Claude startet die Batch-Sitzung in ${p.name}`, { timeoutMs: 8000 })
+    } catch (err) {
+      holdBusy($, p.path, 'failed', 8000)
+      const why = err instanceof Error ? err.message : ''
+      $.ui.toast(
+        why === 'draft'
+          ? 'In der Eingabe steht schon Text. Leere sie oder schick sie ab, dann noch einmal ＋ Batch.'
+          : `Eingabe nicht erreichbar. Schreib Claude: „Starte eine Batch-Sitzung in ${p.path}“.`,
+        { timeoutMs: 10_000 },
+      )
     }
   })()
 }
 
-function pressBatch($: EngineInterface, ctx: HomeCtx, p: HomeProject): void {
-  if (snap && needsConfirm(snap.rings) && confirmFor !== p.path) {
-    confirmFor = p.path
-    $.ui.invalidate('ui.render')
-    return
-  }
-  confirmFor = ''
-  startSession($, ctx, p.path, p.path, `Batch ${p.name}`, '/do-batch', async id => {
-    const map = await batches($)
-    map[p.path] = id
-    await $.store.set(STORE_BATCH, map).catch(() => undefined)
-  })
-}
 
 function pressCleanup($: EngineInterface, ctx: HomeCtx): void {
   if (busy.get(CLEANUP_KEY) === 'starting') return
@@ -815,10 +831,20 @@ function pressBed($: EngineInterface, ctx: HomeCtx, cmd: 'start' | 'cancel'): vo
 }
 
 const STATE_COLOR = { waiting: '#d29922', running: '#1f6feb', done: '#3fb950', cleanup: '#8b949e' } as const
+/** The Statistik card shows this many figures before "Alle … Werte". */
+const STATS_SHOWN = 3
 
 /** The person closed the pane (its ✕): the next status press opens it again. */
 export function homeClosed(): void {
   paneOpen = false
+}
+
+/** "1 ✓ · 4 prüfen": the prerequisites' state in one line, for the closed disclosure. */
+export function prereqSummary(rows: Prereq[]): string {
+  const ok = rows.filter(r => r.state === 'ok').length
+  const bad = rows.filter(r => r.state === 'bad').length
+  const check = rows.filter(r => r.state === 'check').length
+  return [ok ? `${ok} ✓` : '', bad ? `${bad} ✗` : '', check ? `${check} prüfen` : ''].filter(Boolean).join(' · ')
 }
 
 /** The pane's tree; index.tsx hooks `ui.render` for `{ component: 'Pane', requestId: HOME_PANE }` and calls this. */
@@ -831,11 +857,35 @@ export async function renderHome($: EngineInterface, e: any, ctx: HomeCtx): Prom
     const loc = ctx.loc
     const now = await $.clock.now()
     const s = snap
+    const redraw = () => $.ui.invalidate('ui.render')
+
+    /** A block of its own: rounded border, a heading with an optional quiet subtitle, then its rows. */
+    const card = (key: string, title: string, sub: string, ...children: any[]) => (
+      <Box key={key} flexDirection="column" rowGap={1} borderStyle="round" paddingX={1} paddingY={1}>
+        <Box key={`${key}-head`} flexDirection="row" flexWrap="wrap" alignItems="center" columnGap={1}>
+          <Text bold size="heading">{title}</Text>
+          {sub ? <Text dimColor size="footnote">{sub}</Text> : null}
+        </Box>
+        {children}
+      </Box>
+    )
+    /** Progressive disclosure: one plain ▸/▾ row; its content is drawn by the caller only while `shown` holds the id. */
+    const more = (id: string, label: string) => (
+      <Button key={`home-more-${id}`} plain label={`${shown.has(id) ? '▾' : '▸'} ${label}`} onPress={() => { if (shown.has(id)) shown.delete(id); else shown.add(id); redraw() }} />
+    )
+    /** A one-of-several choice as a row of buttons: every option visible, the chosen one filled and ticked. */
+    const seg = (key: string, opts: { id: string; label: string }[], cur: string, saving: string, pick: (id: string) => void) => (
+      <Box key={key} flexDirection="row" flexWrap="wrap" columnGap={1} rowGap={1}>
+        {opts.map(o => (
+          <Button key={`${key}-${o.id}`} variant={o.id === cur ? 'primary' : undefined} label={saving === o.id ? `⏳ ${o.label}` : o.id === cur ? `✓ ${o.label}` : o.label} onPress={() => pick(o.id)} />
+        ))}
+      </Box>
+    )
 
     const tabs = (
       <Box key="home-top" flexDirection="row" alignItems="center" columnGap={1}>
-        <Button key="home-tab-overview" variant={tab === 'overview' ? 'primary' : undefined} label="Übersicht" onPress={() => { tab = 'overview'; $.ui.invalidate('ui.render') }} />
-        <Button key="home-tab-settings" variant={tab === 'settings' ? 'primary' : undefined} label="Einstellungen" onPress={() => { tab = 'settings'; $.ui.invalidate('ui.render') }} />
+        <Button key="home-tab-overview" variant={tab === 'overview' ? 'primary' : undefined} label="Übersicht" onPress={() => { tab = 'overview'; redraw() }} />
+        <Button key="home-tab-settings" variant={tab === 'settings' ? 'primary' : undefined} label="Einstellungen" onPress={() => { tab = 'settings'; redraw() }} />
         <Box flexGrow={1} />
         {s && <Text key="home-age" dimColor>{agoText(now - s.at)}</Text>}
         <Button key="home-refresh" plain label="↻" onPress={() => { if (tab === 'settings') { loadBrowsers($, now, true); void threadsOn($).then(on => { if (on) loadThreads($, now, true) }) } refreshHome($, ctx, true) }} />
@@ -854,90 +904,108 @@ export async function renderHome($: EngineInterface, e: any, ctx: HomeCtx): Prom
       const threadsShown = await threadsOn($)
       if (threadsShown) loadThreads($, now)
       const th = threadsShown ? threads : null
+
+      const general = card(
+        'home-general', 'Allgemein', '',
+        <Box key="home-switch" flexDirection="row" flexWrap="wrap" alignItems="center" columnGap={1} rowGap={1}>
+          <Text>devops in dieser Sitzung</Text>
+          <Box flexGrow={1} />
+          {seg('home-devops-switch', [{ id: 'on', label: 'An' }, { id: 'off', label: 'Aus' }], isOn ? 'on' : 'off', '', id => { if ((id === 'on') !== isOn) void ctx.switchDevops(id === 'on') })}
+        </Box>,
+        br ? (
+          <Box key="home-browser" flexDirection="column" rowGap={1}>
+            <Text>Browser für Seiten, die devops öffnet</Text>
+            {seg('home-browser', br.options, br.effective.id, browserSaving, id => pickBrowser($, id))}
+            {note ? <Text key="home-browser-note" dimColor>{note}</Text> : null}
+          </Box>
+        ) : <Text key="home-browser-loading" dimColor>Browser-Liste lädt …</Text>,
+      )
+
+      let projects: any = null
+      if (threadsShown && !th) {
+        projects = card('home-threads', 'Claude-Projekte', 'wo Threads laufen',
+          <Text key="home-threads-loading" dimColor>{threadsFailed && !threadsLoading ? 'Thread-Ort konnte nicht gelesen werden. ↻ versucht es noch einmal.' : 'Thread-Ort lädt …'}</Text>)
+      } else if (th) {
+        const own = th.projects.filter(p => p.source === 'project').length
+        const pre = prereqRows(threadsVersion)
+        projects = card(
+          'home-threads', 'Claude-Projekte', 'wo Threads laufen',
+          <Box key="home-threads-global" flexDirection="column" rowGap={1}>
+            <Text>Standard für alle Projekte</Text>
+            {seg('home-threads', th.options, th.global, threadsSaving === 'global' ? threadsPick : '', id => pickThread($, id))}
+            <Text key="home-threads-meaning" dimColor>{threadMeaning(th.global)}</Text>
+            <Box flexDirection="row" flexWrap="wrap" columnGap={2}>
+              <Button key="home-threads-copy" plain label="⧉ Textblock kopieren" onPress={() => copyThreadBlock($)} />
+              {more('request', 'Wie wirkt das?')}
+            </Box>
+            {shown.has('request') ? <Text key="home-threads-request" dimColor>{THREAD_REQUEST_NOTE}</Text> : null}
+          </Box>,
+          more('exceptions', `Ausnahmen pro Projekt · ${th.projects.length ? `${own} von ${th.projects.length} eigen` : 'keine'}`),
+          shown.has('exceptions') ? (
+            <Box key="home-threads-list" flexDirection="column" rowGap={1} paddingLeft={2}>
+              {th.projects.length === 0 && <Text key="home-threads-none" dimColor>Noch kein Projekt gesehen. Sobald ein Thread in einem Claude-Projekt läuft, erscheint es hier.</Text>}
+              {th.projects.map(p => (
+                <Box key={`home-threads-p-${p.id}`} flexDirection="column" rowGap={1}>
+                  <Box flexDirection="row" alignItems="center" columnGap={1}>
+                    <Text>{threadProjectName(p)}</Text>
+                    <Text dimColor>{threadProjectLabel(p)}</Text>
+                    <Box flexGrow={1} />
+                    <Button key={`home-threads-toggle-${p.id}`} plain label={threadsSaving === p.id ? '⏳ speichert …' : threadsOpen === p.id ? 'Fertig' : 'Ändern'} onPress={() => { threadsOpen = threadsOpen === p.id ? '' : p.id; redraw() }} />
+                  </Box>
+                  {threadsOpen === p.id && seg(`home-threads-${p.id}`, [{ id: INHERIT, label: 'Wie global' }, ...th.options], p.source === 'project' ? p.value : INHERIT, '', id => pickThread($, id, p.id))}
+                  {threadsOpen === p.id && p.source === 'project' && <Button key={`home-threads-copy-${p.id}`} plain label="⧉ Textblock dieses Projekts kopieren" onPress={() => copyThreadBlock($, p.id)} />}
+                </Box>
+              ))}
+            </Box>
+          ) : null,
+          more('prereq', `Voraussetzungen auf diesem Computer · ${prereqSummary(pre)}`),
+          shown.has('prereq') ? (
+            <Box key="home-prereq" flexDirection="column" rowGap={1} paddingLeft={2}>
+              <Text dimColor size="footnote">devops ändert nichts davon.</Text>
+              {pre.map(r => (
+                <Text key={`home-prereq-${r.key}`} dimColor={r.state === 'check'} color={r.state === 'bad' ? STATE_COLOR.waiting : r.state === 'ok' ? STATE_COLOR.done : undefined}>{`${r.state === 'ok' ? '✓' : r.state === 'bad' ? '✗' : '○'} ${r.text}`}</Text>
+              ))}
+            </Box>
+          ) : null,
+        )
+      }
+
+      const all = shown.has('stats')
+      const list = all ? tiles : tiles.slice(0, STATS_SHOWN)
+      const stats = card(
+        'home-stats', 'Statistik', 'letzte 7 Tage, aus den lokalen Protokollen',
+        noGain ? <Text key="home-quality" bold color={STATE_COLOR.done}>✓ Nutzen diese Woche: Qualität statt Tokens</Text> : null,
+        tiles.length === 0 ? <Text key="home-info-empty" dimColor>{noGain || facts.length ? 'Noch keine Messwerte für diese Woche.' : 'Noch keine devops-Messwerte.'}</Text> : null,
+        ...list.map(t => (
+          <Box key={`tile-${t.key}`} flexDirection="column">
+            <Box flexDirection="row" alignItems="center" columnGap={1}>
+              <Text bold size={t.key === 'info-head' ? 'heading' : undefined} tabular>{t.value}</Text>
+              <Text>{t.label}</Text>
+              <Box flexGrow={1} />
+              {t.note ? <Button key={`i-${t.key}`} plain label={openInfo === t.key ? 'ⓘ' : 'i'} onPress={() => { openInfo = openInfo === t.key ? '' : t.key; redraw() }} /> : null}
+            </Box>
+            {openInfo === t.key && <Text key={`note-${t.key}`} dimColor size="footnote">{t.note}</Text>}
+          </Box>
+        )),
+        tiles.length > STATS_SHOWN ? more('stats', all ? 'Weniger zeigen' : `Alle ${tiles.length} Werte`) : null,
+        version ? <Text key="home-version" dimColor size="footnote">{`devops ${version}`}</Text> : null,
+      )
+
       return (
         <Box flexDirection="column" rowGap={1}>
           {tabs}
-          <Box key="home-switch" flexDirection="row" alignItems="center" columnGap={1} borderStyle="round" paddingX={1}>
-            <Text><Text bold>devops</Text> in dieser Sitzung</Text>
-            <Box flexGrow={1} />
-            <Button key="home-devops-switch" variant={isOn ? 'primary' : undefined} label={isOn ? '● an' : '○ aus'} onPress={() => ctx.switchDevops(!isOn)} />
-          </Box>
-          {br && (
-            <Box key="home-browser" flexDirection="column" borderStyle="round" paddingX={1}>
-              <Box flexDirection="row" alignItems="center" columnGap={1}>
-                <Text><Text bold>Browser</Text> für Seiten, die devops öffnet</Text>
-                <Box flexGrow={1} />
-                <Button key="home-browser-toggle" label={browserSaving ? '⏳ speichert …' : `${br.effective.label} ${browserOpen ? '▴' : '▾'}`} onPress={() => { browserOpen = !browserOpen; $.ui.invalidate('ui.render') }} />
-              </Box>
-              {browserOpen && br.options.map(o => (
-                <Button key={`home-browser-${o.id}`} plain label={`${o.id === br.effective.id ? '●' : '○'} ${o.label}`} onPress={() => pickBrowser($, o.id)} />
-              ))}
-              {note && <Text key="home-browser-note" dimColor>{note}</Text>}
-            </Box>
-          )}
-          {threadsShown && !th && <Text key="home-threads-loading" dimColor>{threadsFailed && !threadsLoading ? 'Thread-Ort konnte nicht gelesen werden. ↻ versucht es noch einmal.' : 'Thread-Ort lädt …'}</Text>}
-          {th && (
-            <Box key="home-threads" flexDirection="column" borderStyle="round" paddingX={1}>
-              <Box flexDirection="row" alignItems="center" columnGap={1}>
-                <Text><Text bold>Thread-Ort</Text> für Claude-Projekte (global)</Text>
-                <Box flexGrow={1} />
-                <Button key="home-threads-copy" plain label="Textblock kopieren" onPress={() => copyThreadBlock($)} />
-                <Button key="home-threads-toggle" label={threadsSaving === 'global' ? '⏳ speichert …' : `${threadLabel(th.global)} ${threadsOpen === 'global' ? '▴' : '▾'}`} onPress={() => { threadsOpen = threadsOpen === 'global' ? '' : 'global'; $.ui.invalidate('ui.render') }} />
-              </Box>
-              {threadsOpen === 'global' && th.options.map(o => (
-                <Button key={`home-threads-${o.id}`} plain label={`${o.id === th.global ? '●' : '○'} ${o.label}`} onPress={() => pickThread($, o.id)} />
-              ))}
-              <Text key="home-threads-meaning" dimColor>{threadMeaning(th.global)}</Text>
-              <Text key="home-threads-request" dimColor>{THREAD_REQUEST_NOTE}</Text>
-              <Text bold>Ausnahmen pro Projekt</Text>
-              {th.projects.length === 0 && <Text key="home-threads-none" dimColor>Noch kein Projekt gesehen. Sobald ein Thread in einem Claude-Projekt läuft, erscheint es hier.</Text>}
-              {th.projects.map(p => (
-                <Box key={`home-threads-p-${p.id}`} flexDirection="column">
-                  <Box flexDirection="row" alignItems="center" columnGap={1}>
-                    <Text>{threadProjectName(p)}</Text>
-                    <Box flexGrow={1} />
-                    {p.source === 'project' && <Button key={`home-threads-copy-${p.id}`} plain label="Textblock kopieren" onPress={() => copyThreadBlock($, p.id)} />}
-                    <Button key={`home-threads-toggle-${p.id}`} label={threadsSaving === p.id ? '⏳ speichert …' : `${threadProjectLabel(p)} ${threadsOpen === p.id ? '▴' : '▾'}`} onPress={() => { threadsOpen = threadsOpen === p.id ? '' : p.id; $.ui.invalidate('ui.render') }} />
-                  </Box>
-                  {threadsOpen === p.id && (
-                    <Button key={`home-threads-${p.id}-${INHERIT}`} plain label={`${p.source !== 'project' ? '●' : '○'} wie global`} onPress={() => pickThread($, INHERIT, p.id)} />
-                  )}
-                  {threadsOpen === p.id && th.options.map(o => (
-                    <Button key={`home-threads-${p.id}-${o.id}`} plain label={`${p.source === 'project' && p.value === o.id ? '●' : '○'} ${o.label}`} onPress={() => pickThread($, o.id, p.id)} />
-                  ))}
-                </Box>
-              ))}
-              <Text bold>Voraussetzungen (devops ändert nichts davon)</Text>
-              {prereqRows(threadsVersion).map(r => (
-                <Text key={`home-prereq-${r.key}`} dimColor={r.state === 'check'} color={r.state === 'bad' ? STATE_COLOR.waiting : undefined}>{`${r.state === 'ok' ? '✓' : r.state === 'bad' ? '✗' : '–'} ${r.state === 'check' ? 'Prüfen: ' : ''}${r.text}`}</Text>
-              ))}
-            </Box>
-          )}
-          {noGain && (
-            <Box key="home-quality" flexDirection="column" borderStyle="round" borderColor={STATE_COLOR.done} paddingX={1}>
-              <Text bold color={STATE_COLOR.done}>✓ Nutzen diese Woche: Qualität statt Tokens</Text>
-              {facts.length ? facts.map(f => <Text key={`q-${f.key}`} dimColor>{`${f.value} · ${f.label}`}</Text>) : <Text dimColor>Noch keine Messwerte für diese Woche.</Text>}
-            </Box>
-          )}
-          {tiles.length === 0 && !noGain && <Text key="home-info-empty" dimColor>Noch keine devops-Messwerte.</Text>}
-          {tiles.map(t => (
-            <Box key={`tile-${t.key}`} flexDirection="column" borderStyle="round" paddingX={1}>
-              <Box flexDirection="row" alignItems="center" columnGap={1}>
-                <Text bold>{t.value}</Text>
-                <Text>{t.label}</Text>
-                <Box flexGrow={1} />
-                <Button key={`i-${t.key}`} plain label={openInfo === t.key ? 'ⓘ' : 'i'} onPress={() => { openInfo = openInfo === t.key ? '' : t.key; $.ui.invalidate('ui.render') }} />
-              </Box>
-              {openInfo === t.key && <Text key={`note-${t.key}`} dimColor>{t.note}</Text>}
-            </Box>
-          ))}
-          {version && <Text key="home-version" dimColor>{`Version ${version}`}</Text>}
+          {general}
+          {projects}
+          {stats}
         </Box>
       )
     }
 
     const m = s.model
     const cleanBusy = busy.get(CLEANUP_KEY)
+    // 🧹 cleans THIS session's repo only (the band's run), so it counts that repo, not the sum of all of them.
+    const here = projectOf(ctx.root)
+    const hereClean = m.projects.find(p => p.path === here)?.cleanup ?? 0
     const tile = (key: string, n: number, label: string, color: string, action?: () => void) => (
       <Box key={key} flexDirection="column" flexGrow={1} borderStyle="round" borderColor={n ? color : undefined} paddingX={1}>
         <Text bold color={n ? color : undefined}>{String(n)}</Text>
@@ -967,7 +1035,7 @@ export async function renderHome($: EngineInterface, e: any, ctx: HomeCtx): Prom
           {tile('t-wait', m.waiting.length, '👉 wartet', STATE_COLOR.waiting, opener(m.waiting[0]))}
           {tile('t-run', m.running.length, '⏳ läuft', STATE_COLOR.running, opener(m.running[0]))}
           {tile('t-done', m.done.length, '🟩 fertig', STATE_COLOR.done, opener(m.done[0]))}
-          {tile('t-clean', m.cleanup, cleanBusy === 'starting' ? '🧹 startet …' : cleanBusy === 'started' ? '🧹 Plan läuft' : '🧹 aufräumen', STATE_COLOR.cleanup, () => pressCleanup($, ctx))}
+          {tile('t-clean', hereClean, cleanBusy === 'starting' ? '🧹 startet …' : cleanBusy === 'started' ? '🧹 Plan läuft' : `🧹 ${nameOf(here)} aufräumen`, STATE_COLOR.cleanup, () => pressCleanup($, ctx))}
         </Box>
         {m.waiting[0] && <Text key="home-oldest" dimColor>{`Am längsten offen: ${nameOf(m.waiting[0].project)} · ${m.waiting[0].title.replace(/^\S+\s+➜\s+/u, '')}`}</Text>}
         <Box key="home-bed" flexDirection="row" alignItems="center" columnGap={1}>
@@ -978,23 +1046,25 @@ export async function renderHome($: EngineInterface, e: any, ctx: HomeCtx): Prom
             : s.bed ? <Button key="home-bed-btn" label="Abbrechen" onPress={() => pressBed($, ctx, 'cancel')} />
             : <Button key="home-bed-btn" variant={bedConfirm ? 'primary' : undefined} label={bedConfirm ? 'Sicher? PC fährt dann herunter' : '🛏 Ins Bett gehen'} onPress={() => pressBed($, ctx, 'start')} />}
         </Box>
-        <Text key="home-projects-h" bold>Projekte</Text>
-        {m.projects.length === 0 && <Text key="home-projects-empty" dimColor>Keine Sitzungen gefunden.</Text>}
-        {m.projects.map(p => {
-          const b = busy.get(p.path)
-          const chips = [p.waiting ? `👉 ${p.waiting}` : '', p.running ? `⏳ ${p.running}` : '', p.done ? `🟩 ${p.done}` : '', p.cleanup ? `🧹 ${p.cleanup}` : ''].filter(Boolean).join('  ')
-          return (
-            <Box key={`p-${p.path}`} flexDirection="row" alignItems="center" columnGap={1}>
-              <Text>{p.name}</Text>
-              <Text dimColor>{chips}</Text>
-              <Box flexGrow={1} />
-              {b === 'starting' ? <Text key={`pb-${p.path}`} dimColor>⏳ startet …</Text>
-                : b === 'started' ? <Text key={`pb-${p.path}`} color={STATE_COLOR.done}>✓ Batch gestartet</Text>
-                : p.batch ? <Button key={`pb-${p.path}`} plain label="→ Batch" onPress={() => pressOpen($, p.batch as HomeSession)} />
-                : <Button key={`pb-${p.path}`} variant="primary" label={confirmFor === p.path ? `Woche ${s.rings[0]?.pct ?? ''} % – trotzdem?` : '＋ Batch'} onPress={() => pressBatch($, ctx, p)} />}
-            </Box>
-          )
-        })}
+        {card(
+          'home-projects', 'Projekte', '＋ Batch legt die Startanfrage in die Eingabe, Enter startet sie',
+          m.projects.length === 0 ? <Text key="home-projects-empty" dimColor>Keine Sitzungen gefunden.</Text> : null,
+          ...m.projects.map(p => {
+            const b = busy.get(p.path)
+            const chips = [p.waiting ? `👉 ${p.waiting}` : '', p.running ? `⏳ ${p.running}` : '', p.done ? `🟩 ${p.done}` : '', p.cleanup ? `🧹 ${p.cleanup}` : ''].filter(Boolean).join('  ')
+            return (
+              <Box key={`p-${p.path}`} flexDirection="row" alignItems="center" columnGap={1}>
+                <Text>{p.name}</Text>
+                <Text dimColor>{chips}</Text>
+                <Box flexGrow={1} />
+                {b === 'starting' ? <Text key={`pb-${p.path}`} dimColor>⏳ …</Text>
+                  : b === 'started' ? <Text key={`pb-${p.path}`} color={STATE_COLOR.done}>↵ Enter drücken</Text>
+                  : p.batch ? <Button key={`pb-${p.path}`} plain label="→ Batch" onPress={() => pressOpen($, p.batch as HomeSession)} />
+                  : <Button key={`pb-${p.path}`} variant="primary" label={confirmFor === p.path ? `Woche ${s.rings[0]?.pct ?? ''} % – trotzdem?` : '＋ Batch'} onPress={() => pressBatch($, p)} />}
+              </Box>
+            )
+          }),
+        )}
       </Box>
     )
   }

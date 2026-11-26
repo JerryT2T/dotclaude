@@ -1,7 +1,7 @@
 // devops Home pane (concept docs/concepts/20261121-1400-devops-home): the pure model behind the pane.
 import { expect, test } from 'claude-code/testing'
 
-import { agoText, bedFrom, bedText, cleanupFrom, homeModel, infoTiles, isBatchTitle, kindOf, needsConfirm, paceWord, projectOf, ringSvgSource, ringsFrom, resetText, sessionsFrom } from './home'
+import { agoText, batchPrompt, bedFrom, bedText, cleanupFrom, prereqSummary, homeModel, infoTiles, isBatchTitle, kindOf, needsConfirm, paceWord, projectOf, ringSvgSource, ringsFrom, resetText, sessionsFrom } from './home'
 import { browserNote, browsersFrom, prereqRows, THREAD_REQUEST_NOTE, threadCopyFrom, threadCopyNote, threadMeaning, threadProjectLabel, threadProjectName, threadsFrom, versionAtLeast, versionFrom } from './home'
 
 const rows = [
@@ -46,6 +46,20 @@ test('home: "＋ Batch" comes back once the batch session is archived, gone or n
   expect(homeModel(list, {}, { 'P:/Projects/scc': 'local_e' }).projects.find(p => p.name === 'scc')?.batch).toBe(null) // archived
   expect(homeModel(list, {}, { 'P:/Projects/scc': 'local_gone' }).projects.find(p => p.name === 'scc')?.batch).toBe(null) // deleted
   expect(homeModel(list, {}, { 'P:/Projects/scc': 'local_b' }).projects.find(p => p.name === 'scc')?.batch).toBe(null) // implemented: no batch title
+  // Claude starts the session on the person's Enter, so no id is stored: the live batch-titled session counts anyway.
+  expect(homeModel(list, {}, {}).projects.find(p => p.name === 'dotclaude')?.batch?.id).toBe('local_a')
+  expect(homeModel(list, {}, {}).projects.find(p => p.name === 'scc')?.batch).toBe(null)
+})
+
+test('home: "＋ Batch" puts a complete start request in the prompt box; the prerequisites fold into one line', () => {
+  const t = batchPrompt({ name: 'jerry', path: 'P:/Projects/jerry' })
+  expect(t).toMatch(/^📚 Neue Batch-Sitzung im Projekt „jerry“ starten\./)
+  expect(t).toContain('initiation user_asked')
+  expect(t).toContain('cwd `P:/Projects/jerry`')
+  expect(t).toContain('prompt `/do-batch`')
+  expect(t).toContain('„Started from the devops Home pane') // HOME_PANE_BACKGROUND: the plugin-scope hook lets it pass
+  expect(prereqSummary(prereqRows('2.1.330'))).toBe('1 ✓ · 4 prüfen')
+  expect(prereqSummary(prereqRows('2.1.1'))).toBe('1 ✗ · 4 prüfen')
 })
 
 test('home: budget rings carry the pace; past 85 % the batch start asks first', () => {
@@ -63,7 +77,7 @@ test('home: budget rings carry the pace; past 85 % the batch start asks first', 
   expect(svg).toContain('<line x1=')
 })
 
-test('home: the browser dropdown reads the script answer; the note says why the browser in effect is not the chosen one', () => {
+test('home: the browser choice reads the script answer; the note says why the browser in effect is not the chosen one', () => {
   const options = [{ id: 'edge', label: 'Microsoft Edge' }, { id: 'in-app', label: 'In-App (Claude Desktop)' }]
   const b = browsersFrom(JSON.stringify({ effective: options[0], stored: 'auto', options }))
   expect(b).toEqual({ effective: options[0], stored: 'auto', options })
