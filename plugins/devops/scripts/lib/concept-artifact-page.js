@@ -28,6 +28,14 @@
  *   - `/reload` has no document of its own: its counter is the newest
  *     `_processed_at`, which Claude writes only after it published the next
  *     round, so the engine's `/reload` poll then reloads every open view.
+ *   - Release fallback (#1241): a session that kept an older read-back
+ *     protocol (`concept/decisions`, no `_processed_at`) still frees a
+ *     waiting view. While an unprocessed submission is out, the wrapper
+ *     treats two signals as "the next round is published": a change in the
+ *     legacy `concept` collection, and a new build of this page (the
+ *     `data-ca-build` stamp in the page's own HTML differs from the one this
+ *     load runs). Either one counts that submission as processed and moves
+ *     the `/reload` counter, exactly as a `_processed_at` would.
  *
  *   After a stored (not duplicate) submit the wrapper also posts one comment
  *   to the owning session where the `comments` capability reports
@@ -95,11 +103,12 @@ function mergeDrafts(docs, pageVersion) {
  * released and a reload does not veil a finished round again); `{}` before
  * the first submit.
  */
-function pickDecision(list) {
+function pickDecision(list, releasedAt) {
   var all = (list || []).filter(function (d) { return d && typeof d === 'object'; });
   all.sort(function (a, b) { return (Number(b._storedAtMs) || 0) - (Number(a._storedAtMs) || 0); });
+  var rel = Number(releasedAt) || 0;
   for (var i = 0; i < all.length; i++) {
-    if (!all[i]._processed_at && all[i].submitted !== false) return all[i];
+    if (!all[i]._processed_at && all[i].submitted !== false && !((Number(all[i]._storedAtMs) || 0) <= rel)) return all[i];
   }
   if (!all.length) return {};
   var copy = {};
@@ -108,8 +117,9 @@ function pickDecision(list) {
   return copy;
 }
 
-function installConceptArtifact(win) {
+function installConceptArtifact(win, opts) {
   var claude = win.claude;
+  var BUILD = String((opts && opts.build) || '');
   if (!claude || typeof claude.use !== 'function' || typeof win.fetch !== 'function') return null;
   var doc = win.document || null;
   var realFetch = win.fetch.bind(win);
@@ -242,9 +252,9 @@ function installConceptArtifact(win) {
   function readDecisions() {
     return getDb().then(function (d) {
       if (!d) throw new TypeError('concept-artifact: no artifact db');
-      if (subsCache) return pickDecision(subsCache);
+      if (subsCache) return pickDecision(subsCache, releasedAt);
       return once(function () { return d.collection(SUBS).get(); }).then(function (snap) {
-        return pickDecision((snap.docs || []).map(function (x) { return x.data(); }));
+        return pickDecision((snap.docs || []).map(function (x) { return x.data(); }), releasedAt);
       });
     });
   }
@@ -416,12 +426,55 @@ function installConceptArtifact(win) {
   }
   function subscribeDrafts() { listen(db.collection(DRAFTS), function (snap) { draftsCache = (snap.docs || []).map(function (x) { return x.data(); }); applyRemote(); }, subscribeDrafts); }
   function subscribeSubs() { listen(db.collection(SUBS), onSubs, subscribeSubs); }
+
+  // --- release fallback (#1241) -------------------------------------------
+  var releasedAt = 0;
+  function pending() {
+    return (subsCache || []).some(function (d) {
+      return d && !d._processed_at && d.submitted !== false && !((Number(d._storedAtMs) || 0) <= releasedAt);
+    });
+  }
+  function release() {
+    if (!pending()) return false;
+    var n = Date.now();
+    releasedAt = n > releasedAt ? n : releasedAt + 1;
+    return true;
+  }
+  // Only a real change counts: a listener may deliver the same snapshot again.
+  var legacySeen = null;
+  function subscribeLegacy() {
+    listen(db.collection('concept'), function (snap) {
+      var key = '';
+      try {
+        key = JSON.stringify((snap.docs || []).map(function (x) { return [x.id, x.data()]; }));
+      } catch (e) { return; }
+      var first = legacySeen === null;
+      var changed = key !== legacySeen;
+      legacySeen = key;
+      if (!first && changed) release();
+    }, subscribeLegacy);
+  }
+  var BUILD_RE = /data-ca-build="([^"]+)"/;
+  function checkBuild() {
+    if (!BUILD || !pending()) return Promise.resolve(false);
+    var href = '';
+    try { href = String(win.location.href || ''); } catch (e) { href = ''; }
+    if (!/^https?:/i.test(href)) return Promise.resolve(false);
+    try {
+      return Promise.resolve(realFetch(href, { cache: 'no-store' }))
+        .then(function (r) { return r && r.ok ? r.text() : ''; })
+        .then(function (t) { var m = BUILD_RE.exec(String(t || '')); return !!(m && m[1] !== BUILD && release()); },
+          function () { return false; });
+    } catch (e) { return Promise.resolve(false); }
+  }
   var started = false;
   function startLive() {
     if (started || !db) return;
     started = true;
     subscribeDrafts();
     subscribeSubs();
+    subscribeLegacy();
+    setInterval(checkBuild, 60000);
     if (doc && typeof doc.addEventListener === 'function') {
       doc.addEventListener('focusout', function () { if (deferred) setTimeout(applyRemote, 0); });
     }
@@ -436,7 +489,7 @@ function installConceptArtifact(win) {
   // round, so the newest `_processed_at` is the reload counter: it moves
   // forward exactly when there is a new round to load.
   function reloadCounter(list) {
-    var n = 0;
+    var n = releasedAt;
     (list || []).forEach(function (x) { var t = x && Date.parse(x._processed_at); if (t > n) n = t; });
     return n;
   }
@@ -481,7 +534,7 @@ function installConceptArtifact(win) {
     };
   }
   getDb();
-  return { load: LOAD, applyRemote: applyRemote };
+  return { load: LOAD, applyRemote: applyRemote, checkBuild: checkBuild };
 }
 
 if (typeof module !== 'undefined' && module.exports) {

@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import vm from "node:vm";
 import { createRequire } from "node:module";
-import { wrap, stripWrapper, run, parseDocs, digestDocs, START, END, WRAPPER_JS } from "./concept-artifact.js";
+import { wrap, stripWrapper, wrapperBlock, protocolHint, pluginVersion, PROTOCOL, run, parseDocs, digestDocs, START, END, WRAPPER_JS } from "./concept-artifact.js";
 
 const require = createRequire(import.meta.url);
 const { installConceptArtifact, mergeDrafts, pickDecision } = require("./lib/concept-artifact-page.js");
@@ -52,9 +52,13 @@ function makeStorage(init = {}) {
 }
 
 /** One viewer: a fake window around the real wrapper. */
-function viewer(store, { user = "u1", local = {}, pageVersion = "v1", elements = [], db, comments = null } = {}) {
+function viewer(store, { user = "u1", local = {}, pageVersion = "v1", elements = [], db, comments = null, build = "", served = null } = {}) {
   const calls = [];
-  const realFetch = (input, init) => { calls.push({ input, init }); return Promise.resolve(new Response("{}", { status: 404 })); };
+  const realFetch = (input, init) => {
+    calls.push({ input, init });
+    if (served && input === "https://a.claude.ai/x.html") return Promise.resolve(new Response(served(), { status: 200 }));
+    return Promise.resolve(new Response("{}", { status: 404 }));
+  };
   const ls = makeStorage(Object.keys(local).length ? { "concept-state-x": JSON.stringify(local) } : {});
   const handlers = {};
   const document = {
@@ -75,7 +79,7 @@ function viewer(store, { user = "u1", local = {}, pageVersion = "v1", elements =
   };
   const dbNs = db === undefined ? store.db : db;
   win.claude = { use: async (name) => (name === "db" ? dbNs : name === "user" ? (user ? { id: async () => user } : null) : name === "comments" ? comments : null) };
-  const api = installConceptArtifact(win);
+  const api = installConceptArtifact(win, { build });
   const post = (route, body) => win.fetch(route, { method: "POST", body: typeof body === "string" ? body : JSON.stringify(body) });
   const get = async (route) => (await win.fetch(route, { cache: "no-store" })).json();
   // Like the engine's saveState(): the localStorage blob first, then the mirror.
@@ -318,6 +322,70 @@ describe("submissions — nothing is overwritten, nothing is acked unstored", ()
   });
 });
 
+describe("release fallback — a session on an older read-back protocol (#1241)", () => {
+  test("a change in the legacy concept collection releases a waiting view and reloads the open ones", async () => {
+    const store = makeStore();
+    const a = viewer(store);
+    await tick();
+    await a.post("/decisions", { submitted: true, iteration: 2, submission_id: "s2" });
+    await tick();
+    expect((await a.get("/decisions")).submission_id).toBe("s2");
+    expect(await a.get("/reload?tab=1")).toEqual({ counter: 0 });
+    // the pre-0.410 session: read concept/decisions, delete it, republish
+    await store.db.collection("concept").doc("decisions").set({ submitted: false });
+    await tick();
+    await store.db.collection("concept").doc("decisions").delete();
+    await tick();
+    const d = await a.get("/decisions");
+    expect(d.submitted).toBe(false);
+    expect(d.submission_id).toBe("s2");
+    expect((await a.get("/reload?tab=1")).counter).toBeGreaterThan(0);
+  });
+
+  test("a newer build of the page releases the waiting view; the same build does not", async () => {
+    const store = makeStore();
+    let html = '<html><head><script data-ca-build="b1"></script></head></html>';
+    const a = viewer(store, { build: "b1", served: () => html });
+    await tick();
+    await a.post("/decisions", { submitted: true, iteration: 2, submission_id: "s2" });
+    await tick();
+    expect(await a.api.checkBuild()).toBe(false);
+    expect((await a.get("/decisions")).submitted).toBe(true);
+    html = '<html><head><script data-ca-build="b2"></script></head></html>';
+    expect(await a.api.checkBuild()).toBe(true);
+    expect((await a.get("/decisions")).submitted).toBe(false);
+    expect((await a.get("/reload?tab=1")).counter).toBeGreaterThan(0);
+  });
+
+  test("nothing pending, nothing released: a legacy change or a new build never reloads an idle view", async () => {
+    const store = makeStore();
+    let html = '<html><script data-ca-build="b1"></script></html>';
+    const a = viewer(store, { build: "b1", served: () => html });
+    await tick();
+    await store.db.collection("concept").doc("decisions").set({ x: 1 });
+    await tick();
+    html = '<html><script data-ca-build="b9"></script></html>';
+    expect(await a.api.checkBuild()).toBe(false);
+    expect(await a.get("/reload?tab=1")).toEqual({ counter: 0 });
+  });
+
+  test("a submission sent after the release is in flight again", async () => {
+    const store = makeStore();
+    const a = viewer(store);
+    await tick();
+    await a.post("/decisions", { submitted: true, iteration: 2, submission_id: "s2" });
+    await tick();
+    await store.db.collection("concept").doc("decisions").set({ y: 1 });
+    await tick();
+    await tick(3);
+    await a.post("/decisions", { submitted: true, iteration: 3, submission_id: "s3" });
+    await tick();
+    const d = await a.get("/decisions");
+    expect(d.submission_id).toBe("s3");
+    expect(d.submitted).toBe(true);
+  });
+});
+
 describe("drafts — two people typing at once", () => {
   test("each page load writes only its own document; the recovered notes are the union", async () => {
     const store = makeStore();
@@ -484,6 +552,44 @@ describe("session side — record, digest, mark", () => {
     expect(r.next).toMatch(/§ Wake/);
     const src = fs.readFileSync(path.join(__dirname, "concept-artifact.js"), "utf8");
     expect(src).not.toMatch(/no crons/i);
+  });
+
+  test("build stamps the wrapper; the stamp is what an open view compares (#1241)", () => {
+    const src = path.join(dir, "x.html");
+    fs.writeFileSync(src, PAGE);
+    const res = run({ cmd: "build", artifact: src });
+    expect(res.build).toMatch(/^[a-z0-9]+$/);
+    expect(res.protocol).toBe(PROTOCOL);
+    const html = fs.readFileSync(res.out, "utf8");
+    expect(html).toContain(`data-ca-build="${res.build}"`);
+    expect(html).toContain(`installConceptArtifact(window, { build: '${res.build}' })`);
+    expect(wrapperBlock('x"><b>')).not.toContain("<script data-ca-build");
+    expect(wrapperBlock("x'+alert(1)+'")).toContain("{ build: '' }");
+  });
+
+  test("a plugin update mid-session: record and build carry the protocol hint once the record is older (#1241)", () => {
+    const url = "https://claude.ai/artifact/abcdef123";
+    const page = "docs/concepts/2026-p.html";
+    const first = run({ cmd: "record", page, url, root: dir });
+    expect(first.protocolHint).toBeUndefined();
+    expect(first.release).toBeUndefined();
+    expect(first.record).toMatchObject({ protocol: PROTOCOL, plugin_version: pluginVersion() });
+    const again = run({ cmd: "record", page, url, root: dir });
+    expect(again.protocolHint).toBeUndefined();
+    expect(again.release).toMatch(/mark --ids/);
+    // a record written by the plugin before the update (no protocol, older version)
+    const rec = JSON.parse(fs.readFileSync(first.file, "utf8"));
+    delete rec.protocol;
+    rec.plugin_version = "0.409.0";
+    fs.writeFileSync(first.file, JSON.stringify(rec));
+    expect(protocolHint(rec)).toMatch(/record → digest → ops\.pickup ack → mark → ops\.unacked/);
+    const src = path.join(dir, "docs", "concepts", "2026-p.html");
+    fs.mkdirSync(path.dirname(src), { recursive: true });
+    fs.writeFileSync(src, PAGE);
+    expect(run({ cmd: "build", artifact: src, root: dir }).protocolHint).toMatch(/artifact-fallback\.md § Read back/);
+    expect(run({ cmd: "record", page, url, root: dir }).protocolHint).toMatch(/protocol changed/);
+    // the re-record wrote the current protocol: the hint is gone
+    expect(run({ cmd: "record", page, url, root: dir }).protocolHint).toBeUndefined();
   });
 
   test("record survives a new session: url and processed ids live under .claude/concepts/<slug>", () => {

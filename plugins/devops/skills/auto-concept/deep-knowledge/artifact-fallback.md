@@ -94,6 +94,12 @@ the session stops halfway.
    `_processed_at`). Publish before mark: a session that stops in between
    left the submission open and simply reads it again; one that stops after
    mark finds the writes in the next digest's `ops.unacked`.
+   A re-`record` after a redeploy repeats this as its `release` field.
+   **`protocolHint` in a `build` or `record` result** means the plugin was
+   updated while this session ran and the read-back steps you remember from
+   earlier in it are stale (#1241): drop them, re-read this section and
+   follow it from step 1. Never `ArtifactData get concept/decisions` — no
+   page writes that document any more.
 6. The concept ends (implemented, disposed): `concept-artifact.js close --page …`.
 
 ## Wake
@@ -159,7 +165,8 @@ owner's wish to decide remotely is given; the hand-off tier is not needed.
 ## Wrapper contract
 
 `scripts/lib/concept-artifact-page.js` (inlined by the build). Store layout:
-`submissions/<submission_id>`, `drafts/<load id>`; nothing else.
+`submissions/<submission_id>`, `drafts/<load id>`; nothing else is written
+(the legacy `concept` collection is only listened to, for the release fallback).
 
 | Request | Artifact viewer with `db` | No `db` namespace | No `window.claude` |
 |---|---|---|---|
@@ -168,6 +175,7 @@ owner's wish to decide remotely is given; the hand-off tier is not needed.
 | `POST /draft` (autosave, also the teardown `sendBeacon`) | `drafts/<load id>`: the state, a time stamp per key this load changed, deliberate clears, the typed-note union, values replaced by someone else's newer edit → 200 `{durable:true}` | 507 → after three tries the "nur in diesem Browser" strip | untouched |
 | `GET /draft` (load-time hydrate) | `{found, page_version, recovered}`: per key the newest typed note across all loads and people; an empty autosave never erases, a deliberate clear does | rejects → the local copy stands | untouched |
 | `GET /reload` | `{counter}` = the newest `_processed_at` (written only after the next round is published) → open views reload | rejects → no reload | untouched |
+| release fallback (#1241) | while a submission is unprocessed: a change in the legacy `concept` collection, or a newer `data-ca-build` stamp in the page's own HTML (checked every 60 s), counts it as processed → the waiting panel is released and `/reload` moves forward, as `_processed_at` would | — | — |
 | live | the newest value per answer key (`input:`, `text:`, `range:`, `select:`) from other loads → localStorage + `restoreState()`; theme and navigation stay per tab; a new submission by someone else → `restoreInFlightRound()`; the engine's queued submit is retried every 15 s (an artifact has no connected heartbeat to drive it) | — | — |
 | anything else (`/heartbeat`, `/status`, `/attachments`) | real fetch — no bridge on the artifact host, the heartbeat shows "not connected" | same | untouched |
 
