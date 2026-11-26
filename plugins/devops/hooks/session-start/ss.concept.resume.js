@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @hook ss.concept.resume
- * @version 0.9.0
+ * @version 0.10.0
  * @event SessionStart
  * @plugin devops
  * @description Recover an open concept session after a Claude restart, and age out
@@ -590,6 +590,87 @@ function buildPausedHint(state) {
     `auto-concept § Resume from pause; any other prompt leaves the pause alone.`;
 }
 
+/**
+ * The resume offer (#1239): an unfinished concept with nothing pending and no
+ * bridge (dead, or paused on purpose) is no longer relaunched silently where
+ * the devops mod can ask. The hook writes this file; the mod shows one band
+ * above the input — Fortsetzen / Später / Abschließen — and nothing relaunches
+ * before the person picks. Without the mod (feature `claude-mods` closed) the
+ * old paths stay: the #348 relaunch, the #555 paused hint.
+ */
+const OFFER_PATH = path.join(cwd, '.claude', 'concept-resume-offer.json');
+
+function modsAllowed() {
+  try { return require('../lib/features').featureAllowed('claude-mods') === true; } catch { return false; }
+}
+
+/** Title and newest round of the page on disk; never throws. Pure on its input string. */
+function pageFacts(html) {
+  const s = String(html || '');
+  const t = /<title[^>]*>([^<]{1,200})<\/title>/i.exec(s);
+  let round = 0;
+  const re = /data-iteration="(\d{1,4})"/g;
+  let m;
+  while ((m = re.exec(s))) round = Math.max(round, Number(m[1]));
+  return { title: t ? t[1].trim() : '', round };
+}
+
+function buildResumeOffer(state, store, html) {
+  const facts = pageFacts(html);
+  const last = [state.paused_at, store && store.lastActivityAt, state.started_at]
+    .map((x) => Date.parse(x || '')).filter(Number.isFinite).sort((a, b) => b - a)[0];
+  return {
+    slug: state.slug || path.basename(state.html_path, '.html'),
+    title: facts.title || state.slug || path.basename(state.html_path, '.html'),
+    round: facts.round || null,
+    last_at: Number.isFinite(last) ? new Date(last).toISOString() : null,
+    paused: isPaused(state),
+    port: state.port,
+    html_path: state.html_path,
+    written_at: new Date().toISOString(),
+  };
+}
+
+function writeResumeOffer(offer, file = OFFER_PATH) {
+  try {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(`${file}.tmp`, JSON.stringify(offer, null, 2));
+    fs.renameSync(`${file}.tmp`, file);
+    return true;
+  } catch { return false; }
+}
+
+function deleteResumeOffer(file = OFFER_PATH) {
+  try { fs.unlinkSync(file); } catch { /* none */ }
+}
+
+/** What the model reads when the band asks instead of it relaunching (#1239). */
+function buildOfferHint(state, offer, statePath = STATE_PATH) {
+  const slug = offer.slug;
+  const server = path.join(__dirname, '..', '..', 'scripts', 'concept-server.py');
+  const bg = buildBackgroundTasks(state.port, statePath, state.owner || '');
+  const relaunch =
+    `relaunch the bridge on the SAME port: \`python "${server}" ${state.port} "${cwd}" --html "${state.html_path}"${inAppFlag()}\` ` +
+    `(Bash tool, run_in_background: true; a bound port means another session brought it back), verify the heartbeat ` +
+    `round-trips, re-arm the keepalive pulser (${bg.pulser}) and the pickup waker (${bg.waker}) as background tasks, and ` +
+    `rewrite ${statePath} in place: \`started_at\` = now, \`server_pid\` = the new PID, drop \`cron_id\`.`;
+  return [
+    `Unfinished /auto-concept "${offer.title}" (slug ${slug}, round ${offer.round || '?'}, ` +
+    `${offer.paused ? `paused at ${state.paused_at}` : 'bridge gone with the previous session'}, nothing pending). ` +
+    `The devops band above the input asks the person: Fortsetzen / Später / Abschließen. ` +
+    `Do NOT relaunch the bridge or re-arm watchers now, and do not mention it in a reply — except in a Claude ` +
+    `Projects thread (the person reads only the thread, never the band): there your first reply offers the same ` +
+    `three choices in one line.`,
+    `Only when the person's prompt is "Konzept ${slug} fortsetzen" (the band's button) or otherwise continues this concept: ` +
+    `delete ${OFFER_PATH}, then: ${relaunch}` +
+    `${offer.paused ? ` Delete \`paused_at\` from ${statePath} in the same rewrite.` : ''} ` +
+    `Read any submission the bridge recovers first, then open the page in the person's browser as in ` +
+    `auto-concept Step 3 (step3-open-browser.md, http://localhost:${state.port}/) and end with the waiting card.`,
+    `When the prompt is "Konzept ${slug} abschließen": delete ${OFFER_PATH} and run the auto-concept close-out ` +
+    `(Step 6, its disposition question) for this concept. Any other prompt leaves the concept alone.`,
+  ].join(' ');
+}
+
 /** Orphan store age-out: 7 days, 30 for a spec kept after code landed (#936). */
 const ORPHAN_STORE_MS = 7 * 24 * 60 * 60 * 1000;
 const KEPT_SPEC_MS = 30 * 24 * 60 * 60 * 1000;
@@ -664,7 +745,17 @@ function buildArtifactHints(root = cwd, now = Date.now()) {
   return lines.join('\n');
 }
 
+function safeRead(file) {
+  try { return fs.readFileSync(file, 'utf8'); } catch { return ''; }
+}
+
 module.exports = {
+  pageFacts,
+  buildResumeOffer,
+  buildOfferHint,
+  writeResumeOffer,
+  deleteResumeOffer,
+  OFFER_PATH,
   buildArtifactHints,
   sweepConceptStores,
   isValidHtmlPath,
@@ -691,6 +782,8 @@ if (require.main === module) {
     sweepConceptStores(cwd, Date.now(), state && state.html_path);
     const artifactHints = buildArtifactHints(cwd);
     if (artifactHints) process.stdout.write(artifactHints + '\n');
+    // Each start decides the offer afresh (#1239): a leftover never outlives its concept.
+    deleteResumeOffer();
     if (!state) process.exit(0);
 
     // Consistency check: the concept HTML on disk is the source of truth for
@@ -729,6 +822,14 @@ if (require.main === module) {
     // never over an unprocessed submission: that still takes the recovery
     // path below, a pause must not hide it.
     if (isPaused(state) && !store.unprocessed) {
+      // #1239: where the mod can ask, the band offers the resume.
+      if (modsAllowed()) {
+        const offer = buildResumeOffer(state, store, safeRead(htmlAbs));
+        if (writeResumeOffer(offer)) {
+          process.stdout.write(buildOfferHint(state, offer) + '\n');
+          process.exit(0);
+        }
+      }
       process.stdout.write(buildPausedHint(state) + '\n');
       process.exit(0);
     }
@@ -764,6 +865,14 @@ if (require.main === module) {
           `(bridge-server-state.md step 4 — same port ${state.port}, same --html ${state.html_path}).\n`
         );
         process.exit(0);
+      }
+      // #1239: where the mod can ask, nothing relaunches before the person picks.
+      if (modsAllowed()) {
+        const offer = buildResumeOffer(state, store, safeRead(htmlAbs));
+        if (writeResumeOffer(offer)) {
+          process.stdout.write(buildOfferHint(state, offer) + '\n');
+          process.exit(0);
+        }
       }
       process.stdout.write(buildDeadBridgeRelaunch(state, STATE_PATH) + '\n');
       process.exit(0);

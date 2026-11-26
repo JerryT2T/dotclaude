@@ -52,6 +52,8 @@ const CLAUDE_CODE_STATE = Object.freeze([
   '.claude/concept-active.json',
   // The pickup waker's beat file (scripts/concept-watch.js beatPath).
   '.claude/concept-waker-*.json',
+  // The resume offer the devops band shows after a restart (ss.concept.resume, #1239).
+  '.claude/concept-resume-offer.json',
   '.claude/concepts/',
   '.claude/session-opened-files.json',
   '.claude/scheduled_tasks.lock',

@@ -44,6 +44,7 @@ service-account*.json
 **/.claude/token-config.json
 **/.claude/concept-active.json
 **/.claude/concept-waker-*.json
+**/.claude/concept-resume-offer.json
 **/.claude/concepts/
 **/.claude/session-opened-files.json
 **/.claude/scheduled_tasks.lock
