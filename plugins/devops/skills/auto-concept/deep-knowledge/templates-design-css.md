@@ -343,15 +343,23 @@ body.anno-hidden .upin-layer .upin:not([data-upin-fresh]), body.anno-hidden .des
    It takes every other engine-owned bit of chrome along too — the bottom
    status messages and tips (.jr-toast, .submitted-toast, .hk-nudge, the
    .upin-hint / .dpin-hint pin hints) and the corner indicators
-   (.screen-indicator, .recovered-notes-strip) — so the design itself is all
-   that is left. Kept on purpose: the eye, the device switch beside it
-   (.viewport-toggle) and the draft-offline strip (a data-loss warning). */
+   (.screen-indicator, .recovered-notes-strip), the review pill beside the
+   eye (.review-switch), the LIVE chip (.fidelity-chip), the past-round bar
+   (.frozen-bar) and its veil (#content-dimmer, still armed underneath) — so
+   the design itself is all that is left. An OPEN notes dock goes too: the eye
+   closes it and opens it again on the way back (calmDock(), § Panel Chrome —
+   feedback dock), so Space can still open it on purpose while all is hidden.
+   Kept on purpose: the eye, the device switch beside it (.viewport-toggle),
+   the draft-offline strip (a data-loss warning), and what the user opens
+   deliberately while all is hidden (☰ panel, ? sheet, Alt key badges). */
 body.anno-hidden #design-quick, body.anno-hidden .design-switcher,
 body.anno-hidden .panel-fab, body.anno-hidden .feedback-fab,
 body.anno-hidden .jr-toast, body.anno-hidden .submitted-toast,
 body.anno-hidden .hk-nudge, body.anno-hidden .upin-hint,
 body.anno-hidden .dpin-hint, body.anno-hidden .screen-indicator,
-body.anno-hidden .recovered-notes-strip {
+body.anno-hidden .recovered-notes-strip, body.anno-hidden .review-switch,
+body.anno-hidden .fidelity-chip, body.anno-hidden .frozen-bar,
+body.anno-hidden #content-dimmer {
   opacity: 0 !important; visibility: hidden; pointer-events: none;
   transition: opacity 0.18s ease, visibility 0s linear 0.18s;
 }
@@ -361,7 +369,9 @@ body.anno-hidden .recovered-notes-strip {
   body.anno-hidden .jr-toast, body.anno-hidden .submitted-toast,
   body.anno-hidden .hk-nudge, body.anno-hidden .upin-hint,
   body.anno-hidden .dpin-hint, body.anno-hidden .screen-indicator,
-  body.anno-hidden .recovered-notes-strip { transition: none; }
+  body.anno-hidden .recovered-notes-strip, body.anno-hidden .review-switch,
+  body.anno-hidden .fidelity-chip, body.anno-hidden .frozen-bar,
+  body.anno-hidden #content-dimmer { transition: none; }
 }
 /* Eye = island control: filled, glow, no ring. The counter is the number of
    OPEN (unanswered) notes of the page; it hides at 0, the eye itself stays. */

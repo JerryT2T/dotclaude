@@ -578,7 +578,10 @@ like every other cross-cutting concern on this page (`viewing-frozen`,
     document.body.classList.toggle('anno-hidden');
     // Hiding the layer must not leave a bubble open underneath it —
     // reopening later should start from a clean collapsed state.
-    if (document.body.classList.contains('anno-hidden')) closeAllBubbles();
+    const nowHidden = document.body.classList.contains('anno-hidden');
+    if (nowHidden) closeAllBubbles();
+    // An open notes dock goes with the rest and comes back with it.
+    window.calmDock?.(nowHidden);
     updateAnnoUI();
     if (typeof saveState === 'function') saveState();
   });
