@@ -12,11 +12,14 @@
  *        [--session <id>] [--cwd <dir>] [--json]
  *
  *   project OFF: `.claude/settings.local.json` (git-ignored, never
- *   settings.json) gets enabledPlugins["devops@dotclaude"]=false and
- *   outputStyle="default"; what was there is kept in `.claude/devops-optout.json`.
- *   project ON: our false is removed, the output style restored, the memo
- *   deleted; if the resolver still says off (team settings.json false) an
- *   explicit true goes into settings.local.json. session: a flag file.
+ *   settings.json) gets enabledPlugins["devops@dotclaude"]=false. The output
+ *   style is left alone (it is its own setting, scripts/output-style.js).
+ *   project ON: our false is removed; if the resolver still says off (team
+ *   settings.json false) an explicit true goes into settings.local.json.
+ *   An old `.claude/devops-optout.json` memo (older versions wrote
+ *   outputStyle="default" on off) is still honoured once on ON, then deleted.
+ *   session: a flag file. global ("Alle Projekte"): the flag file
+ *   `~/.claude/devops-optout/global.json`; hooks/skills/MCP rest, Home stays.
  *   Exit 0 ok, 2 bad args.
  */
 
@@ -55,6 +58,13 @@ function run({ action, scope, session, cwd, home = os.homedir(), pluginRoot = pr
   const memoFile = path.join(claudeDir, 'devops-optout.json');
   const res = (state, extra = {}) => ({ state, scope, ...extra });
 
+  if (scope === 'global') {
+    const f = O.globalFlagPath(home);
+    if (action === 'off') { writeJson(f, { off: true, at: new Date().toISOString() }); return res('off', { file: f }); }
+    if (action === 'on') { try { fs.unlinkSync(f); } catch { /* none */ } return res('on', { file: f }); }
+    return res(fs.existsSync(f) ? 'off' : 'on', { file: f });
+  }
+
   if (scope === 'session') {
     if (!session) throw Object.assign(new Error('--session <id> required for --scope session'), { bad: true });
     const f = O.sessionFlagPath(home, session);
@@ -74,12 +84,7 @@ function run({ action, scope, session, cwd, home = os.homedir(), pluginRoot = pr
 
   const s = readJson(local) || {};
   if (action === 'off') {
-    if (!fs.existsSync(memoFile)) {
-      const had = Object.prototype.hasOwnProperty.call(s, 'outputStyle');
-      writeJson(memoFile, { prevOutputStyle: had ? s.outputStyle : null, hadLocalOutputStyle: had, at: new Date().toISOString() });
-    }
     s.enabledPlugins = { ...(s.enabledPlugins || {}), [KEY]: false };
-    s.outputStyle = 'default';
     writeJson(local, s);
     return res('off', { file: local });
   }
@@ -88,7 +93,7 @@ function run({ action, scope, session, cwd, home = os.homedir(), pluginRoot = pr
     for (const k of Object.keys(s.enabledPlugins)) if (O.isDevopsKey(k) && s.enabledPlugins[k] === false) delete s.enabledPlugins[k];
     if (!Object.keys(s.enabledPlugins).length) delete s.enabledPlugins;
   }
-  const memo = readJson(memoFile);
+  const memo = readJson(memoFile); // migration: written by an older off
   if (memo) {
     if (memo.hadLocalOutputStyle && typeof memo.prevOutputStyle === 'string') s.outputStyle = memo.prevOutputStyle;
     else delete s.outputStyle;
@@ -114,17 +119,17 @@ function parseArgs(argv) {
     else if (t === '--cwd') a.cwd = argv[++i];
     else return null;
   }
-  if (!['off', 'on', 'status'].includes(a.action) || !['session', 'project'].includes(a.scope)) return null;
+  if (!['off', 'on', 'status'].includes(a.action) || !['session', 'project', 'global'].includes(a.scope)) return null;
   return a;
 }
 
 function main(argv) {
   const a = parseArgs(argv);
-  if (!a) { process.stderr.write('usage: devops-optout.js off|on|status --scope session|project [--session <id>] [--cwd <dir>] [--json]\n'); return 2; }
+  if (!a) { process.stderr.write('usage: devops-optout.js off|on|status --scope session|project|global [--session <id>] [--cwd <dir>] [--json]\n'); return 2; }
   try {
     const r = run(a);
     const rel = r.file ? path.relative(a.cwd || process.cwd(), r.file) || r.file : '';
-    process.stdout.write((a.json ? JSON.stringify(r) : `devops ${r.state} (${r.scope === 'session' ? 'session' : 'project'})${rel ? ` · ${rel}` : ''}`) + '\n');
+    process.stdout.write((a.json ? JSON.stringify(r) : `devops ${r.state} (${r.scope})${rel ? ` · ${rel}` : ''}`) + '\n');
     return 0;
   } catch (e) {
     process.stderr.write(`${e.message}\n`);

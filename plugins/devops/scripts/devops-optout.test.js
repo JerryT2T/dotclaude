@@ -21,22 +21,22 @@ const read = (f) => JSON.parse(fs.readFileSync(f, "utf8"));
 const ROOT = path.join(os.tmpdir(), "src-root");
 
 describe("devops-optout script", () => {
-  test("project off merges into settings.local.json, keeps other keys, sets outputStyle default, writes memo", () => {
+  test("project off merges into settings.local.json, keeps other keys, never touches outputStyle, writes no memo", () => {
     const w = world();
     fs.mkdirSync(path.dirname(w.local), { recursive: true });
     fs.writeFileSync(w.local, JSON.stringify({ permissions: { allow: ["Bash"] }, outputStyle: "Quiet" }));
     S.run({ action: "off", scope: "project", cwd: w.proj, home: w.home, pluginRoot: ROOT });
     const s = read(w.local);
     expect(s.enabledPlugins["devops@dotclaude"]).toBe(false);
-    expect(s.outputStyle).toBe("default");
+    expect(s.outputStyle).toBe("Quiet");
     expect(s.permissions).toEqual({ allow: ["Bash"] });
     expect(fs.readFileSync(w.local, "utf8")).toMatch(/\n$/);
-    expect(read(w.memo)).toMatchObject({ prevOutputStyle: "Quiet", hadLocalOutputStyle: true });
+    expect(fs.existsSync(w.memo)).toBe(false);
     expect(fs.existsSync(path.join(w.proj, ".claude", "settings.json"))).toBe(false);
     expect(O.resolve({ cwd: w.proj, pluginRoot: ROOT, home: w.home })).toMatchObject({ on: false, scope: "local" });
   });
 
-  test("project on restores the style, drops our false and the memo", () => {
+  test("project off then on leaves the style and other keys exactly as they were", () => {
     const w = world();
     fs.mkdirSync(path.dirname(w.local), { recursive: true });
     fs.writeFileSync(w.local, JSON.stringify({ outputStyle: "Quiet", other: 1 }));
@@ -47,13 +47,43 @@ describe("devops-optout script", () => {
     expect(O.resolve({ cwd: w.proj, pluginRoot: ROOT, home: w.home }).on).toBe(true);
   });
 
-  test("project on removes an outputStyle that was not there before", () => {
+  test("migration: project on honours a memo from an older off once, then deletes it", () => {
+    const w = world();
+    fs.mkdirSync(path.dirname(w.local), { recursive: true });
+    fs.writeFileSync(w.local, JSON.stringify({ enabledPlugins: { "devops@dotclaude": false }, outputStyle: "default" }));
+    fs.writeFileSync(w.memo, JSON.stringify({ prevOutputStyle: "Quiet", hadLocalOutputStyle: true }));
+    S.run({ action: "on", scope: "project", cwd: w.proj, home: w.home, pluginRoot: ROOT });
+    expect(read(w.local)).toEqual({ outputStyle: "Quiet" });
+    expect(fs.existsSync(w.memo)).toBe(false);
+    fs.writeFileSync(w.local, JSON.stringify({ enabledPlugins: { "devops@dotclaude": false }, outputStyle: "default" }));
+    fs.writeFileSync(w.memo, JSON.stringify({ prevOutputStyle: null, hadLocalOutputStyle: false }));
+    S.run({ action: "on", scope: "project", cwd: w.proj, home: w.home, pluginRoot: ROOT });
+    expect(read(w.local).outputStyle).toBeUndefined();
+  });
+
+  test("project on of a plain off removes our entry and leaves no outputStyle", () => {
     const w = world();
     S.run({ action: "off", scope: "project", cwd: w.proj, home: w.home, pluginRoot: ROOT });
-    expect(read(w.memo)).toMatchObject({ prevOutputStyle: null, hadLocalOutputStyle: false });
     S.run({ action: "on", scope: "project", cwd: w.proj, home: w.home, pluginRoot: ROOT });
     expect(read(w.local).outputStyle).toBeUndefined();
     expect(read(w.local).enabledPlugins).toBeUndefined();
+  });
+
+  test("global off/on/status write only the devops-own flag, never user settings or outputStyle", () => {
+    const w = world();
+    const userSettings = path.join(w.home, ".claude", "settings.json");
+    const before = fs.readFileSync(userSettings, "utf8");
+    const g = O.globalFlagPath(w.home);
+    expect(S.run({ action: "status", scope: "global", home: w.home }).state).toBe("on");
+    S.run({ action: "off", scope: "global", cwd: w.proj, home: w.home, pluginRoot: ROOT });
+    expect(read(g).off).toBe(true);
+    expect(S.run({ action: "status", scope: "global", home: w.home }).state).toBe("off");
+    expect(O.resolve({ cwd: w.proj, pluginRoot: ROOT, home: w.home })).toMatchObject({ on: false, scope: "global" });
+    expect(fs.readFileSync(userSettings, "utf8")).toBe(before);
+    expect(fs.existsSync(w.local)).toBe(false);
+    S.run({ action: "on", scope: "global", home: w.home });
+    expect(fs.existsSync(g)).toBe(false);
+    expect(O.resolve({ cwd: w.proj, pluginRoot: ROOT, home: w.home }).on).toBe(true);
   });
 
   test("project on writes an explicit true when a team settings.json still says false", () => {
@@ -92,6 +122,11 @@ describe("devops-optout script", () => {
     expect(off.stdout).toContain("devops off (project)");
     const st = run("status", "--scope", "project", "--cwd", w.proj, "--json");
     expect(JSON.parse(st.stdout)).toMatchObject({ state: "off", resolved: "local" });
+    const goff = run("off", "--scope", "global");
+    expect(goff.status).toBe(0);
+    expect(goff.stdout).toContain("devops off (global)");
+    expect(JSON.parse(run("status", "--scope", "global", "--json").stdout)).toMatchObject({ state: "off", scope: "global" });
+    expect(run("on", "--scope", "global").status).toBe(0);
     expect(run("bogus").status).toBe(2);
     expect(run("off", "--scope", "session", "--cwd", w.proj).status).toBe(2);
   });
