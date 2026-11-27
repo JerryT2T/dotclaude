@@ -21,6 +21,8 @@
  *                                          (session.measure); branch-hygiene count with a cleanup button
  *                                          (opus subagent: plan, then apply); on a green (🟩) card "Archivieren":
  *                                          the app's archive_session on this session via $.mcp.call, no model turn
+ *                                          #1239: an unfinished concept after a restart (ss.concept.resume's offer file) as
+ *                                          the band's first row: Fortsetzen / Abschließen send the hook's own prompt, Später hides it
  *   Pane `devops-cleanup`                 the cleanup plan / result, Apply and Discard buttons
  *   PromptHint (under the prompt)          the word "devops": green while the hooks run and the MCP server is connected, grey
  *                                          (reason in an overlay) otherwise; the last benefit next to it for 90 s; a press
@@ -37,7 +39,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import type { AgentRow, Budget, CardView, CleanupHistory, CleanupRun, EchoState, Health, Hygiene, InfoData, InfoState, Progress, RecapState, WakeDue, RunMarker, SessionFlags, ShipView, SpikeWatch } from '../../types/index'
-import type { BatchView, CompactEnv, Locale, WorkState } from './format'
+import type { BatchView, CompactEnv, ConceptOffer, Locale, WorkState } from './format'
 import {
   activityOf,
   addRun,
@@ -73,6 +75,9 @@ import {
   answerHead,
   haltedLine,
   clockAt,
+  conceptOfferFrom,
+  conceptOfferLine,
+  conceptOfferPrompt,
   type Halted,
   archiveOffered,
   archiveRefusal,
@@ -608,6 +613,25 @@ async function repoRoot($: EngineInterface): Promise<string> {
   } catch {
     return sessionCwd
   }
+}
+
+// --- #1239: an unfinished concept after a restart ---
+// ss.concept.resume writes the offer and tells the model not to relaunch; this band row asks the person.
+// Fortsetzen / Abschließen send the prompt the hook names, as the person's own; Später only hides the row.
+const conceptOffer = atom({ plugin: 'devops', key: 'conceptOffer' } as const, null as ConceptOffer | null, { shape: 'concept-offer-1' })
+
+async function loadConceptOffer($: EngineInterface): Promise<void> {
+  const cwd = sessionCwd.replace(/[\\]/g, '/').replace(/[/]+$/, '')
+  let offer: ConceptOffer | null = null
+  if (cwd) offer = conceptOfferFrom(await $.fs.read(`${cwd}/.claude/concept-resume-offer.json`).catch(() => ''), await $.clock.now())
+  await update($, conceptOffer, () => offer)
+}
+
+async function pressConceptOffer($: EngineInterface, choice: 'resume' | 'later' | 'close'): Promise<void> {
+  const o = await read($, conceptOffer)
+  await update($, conceptOffer, () => null)
+  if (!o || choice === 'later') return
+  await $.prompt.submit({ text: conceptOfferPrompt(o, choice), asUser: true })
 }
 
 // --- Batch collect (docs/dev/mods.md § Batch collect) ---
@@ -1261,6 +1285,8 @@ export const register: Register = on => {
   on('classic.SessionStart', async ($, e, next) => {
     const result = await next(e)
     const source = (e as { source?: string }).source
+    // #1239: the hooks just decided whether an unfinished concept waits for the person's choice.
+    if (await open($)) await loadConceptOffer($).catch(() => undefined)
     if ((source === 'resume' || source === 'compact') && (await open($))) await restoreCard($)
     if (source !== 'compact' && source !== 'resume' && (await open($))) await toastNotices($, result && result.additionalContext)
     // #1105: a start after a gap shows a recap once: warm cache → one fork (no effort: an effort can force a full cache
@@ -1862,12 +1888,13 @@ export const register: Register = on => {
     const infoData = inf.open ? inf.data : null
     const hl = await read($, health)
     const rc = working ? null : (await read($, recap)).shown
+    const offer = await read($, conceptOffer)
     // Idle and nothing due (no cleanup, no context worth a glance, no budget bar, no batch collection, no info card): the band stays away.
     // #1150: a stopped turn is a state worth the band on its own — the user must see that nothing runs any more.
     const halt = idle ? await read($, halted) : null
     // #1161: a cleanup run in any phase but idle keeps the band up — the whole flow lives here, not in a pane.
     // B2: on a graphical surface the band's last row (status word + usage bars) is always there while devops is on, so only the terminal steps aside.
-    if (e.surface === 'terminal' && idle && run.phase === 'idle' && !cv && !bars.length && !bt && !infoData && !optPopup && !rc && !(halt && halt.aborted) && !(ring !== null && ring >= CONTEXT_SHOW_PERCENT)) return next(e)
+    if (e.surface === 'terminal' && idle && run.phase === 'idle' && !cv && !bars.length && !bt && !infoData && !optPopup && !rc && !offer && !(halt && halt.aborted) && !(ring !== null && ring >= CONTEXT_SHOW_PERCENT)) return next(e)
     const { Box, Button, Markdown, Text } = $.ui.resolve(e)
     // Desktop: the card's animated SVG (bars, hourglass, ring) at a fixed size; the terminal has no Svg, so glyphs.
     const desktop = e.surface !== 'terminal'
@@ -1939,6 +1966,18 @@ export const register: Register = on => {
       </Box>
     ) : null
     const optEl = optPopup ? optPopupEl($, e, loc, opt) : null
+    // #1239: one row, the band's first: the open concept and its three choices.
+    const offerEl = offer ? (
+      <Box key="devops-concept-offer" flexDirection="row" alignItems="center" columnGap={1} paddingX={1} borderStyle="round" borderColor={DIVIDER} flexWrap="wrap">
+        <Text>🧭</Text>
+        <Box flexGrow={1}>
+          <Markdown key="concept-offer-text" text={conceptOfferLine(offer, loc, now)} />
+        </Box>
+        <Button key="concept-resume" variant="primary" label={tr(loc, 'conceptResume')} onPress={() => pressConceptOffer($, 'resume')} />
+        <Button key="concept-later" label={tr(loc, 'conceptLater')} onPress={() => pressConceptOffer($, 'later')} />
+        <Button key="concept-close" plain label={tr(loc, 'conceptClose')} onPress={() => pressConceptOffer($, 'close')} />
+      </Box>
+    ) : null
     // The info card of the status element: left-aligned, the band's first row, so it sits right above the prompt's left edge.
     const infoEl = (() => {
       if (!infoData) return null
@@ -2095,6 +2134,7 @@ export const register: Register = on => {
       return (
         <Box key="band" flexDirection="column" rowGap={1}>
           {recapEl}
+          {offerEl}
           {optEl}
           {infoEl}
           {runEl}
@@ -2218,6 +2258,7 @@ export const register: Register = on => {
       return (
         <Box key="band" flexDirection="column" rowGap={1}>
           {recapEl}
+          {offerEl}
           {optEl}
           {infoEl}
           {batchEl}
@@ -2248,6 +2289,7 @@ export const register: Register = on => {
     return (
       <Box key="band" flexDirection="column" rowGap={1}>
         {recapEl}
+        {offerEl}
         {optEl}
         {infoEl}
         {batchEl}

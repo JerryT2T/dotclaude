@@ -60,7 +60,7 @@ const NOT_RUNTIME = new Set([
  * background tasks, sidebar title, user notice — the state file). Anything else
  * joined onto the raw cwd is a finding.
  */
-const CWD_ANCHORED_BY_DESIGN = new Set(['concept-active.json', 'concepts']);
+const CWD_ANCHORED_BY_DESIGN = new Set(['concept-active.json', 'concept-resume-offer.json', 'concepts']);
 
 /**
  * Every `.claude/` entry the runtime ignore list covers — Claude Code's own

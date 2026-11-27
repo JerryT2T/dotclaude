@@ -28,6 +28,23 @@ shows no concept link and no compass; strict mode bound to the concept is
 released. End the pausing turn with the `paused` card, without a `concept`
 field — its `[SESSION TITLE]` block sets `🟦 ➜ ✋ `.
 
+## Resume offer after a restart (#1239)
+
+Where the devops mod runs (feature `claude-mods`), a session start that finds
+an unfinished concept with nothing pending and no bridge (dead with the last
+session, or paused) relaunches nothing. `ss.concept.resume` writes
+`.claude/concept-resume-offer.json` and the band shows one row: „Konzept
+*<title>* ist noch offen (Runde N, zuletzt <time>). Fortsetzen?“ with
+**Fortsetzen** (sends `Konzept <slug> fortsetzen`), **Später** (hides the row
+for this session, keeps everything) and **Abschließen** (sends `Konzept <slug>
+abschließen` → the Step 6 close-out). Fortsetzen = the resume below plus the
+pending read and the page opened in the browser; delete the offer file first.
+An unprocessed submission still takes the recovery path at once (it must not
+wait for a click); without the mod the #348 relaunch and the paused hint stay.
+In a Claude Projects thread there is no local state: the session-start
+artifact hint is the source, and the thread's first reply after a restart
+offers the same three choices with the artifact link.
+
 ## Resume from pause
 
 Resume only when the user's prompt continues this concept ("weiter mit dem

@@ -94,6 +94,12 @@ the session stops halfway.
    `_processed_at`). Publish before mark: a session that stops in between
    left the submission open and simply reads it again; one that stops after
    mark finds the writes in the next digest's `ops.unacked`.
+   A re-`record` after a redeploy repeats this as its `release` field.
+   **`protocolHint` in a `build` or `record` result** means the plugin was
+   updated while this session ran and the read-back steps you remember from
+   earlier in it are stale (#1241): drop them, re-read this section and
+   follow it from step 1. Never `ArtifactData get concept/decisions` — no
+   page writes that document any more.
 6. The concept ends (implemented, disposed): `concept-artifact.js close --page …`.
 
 ## Wake
@@ -152,6 +158,17 @@ owner's wish to decide remotely is given; the hand-off tier is not needed.
   submission document, so no write replaces another; every open view applies
   the others' newer edits live (never the field under the cursor), and a
   submit by one person shows the round as sent on the others' pages.
+- **`action: "implement"` is the go (#1240).** The submit is the person's
+  approval for the whole approved scope: start in the same turn (reality
+  check, then `auto-agents`, SKILL.md Step 5b) at the person's default
+  execution place (project memory: local via Remote Control, else here). No
+  `request_decision` or question about *whether* or *how* to implement.
+  The click is newer than any earlier "concept only" brief or coordinator
+  note, so it overrides them. Another open concept or thread that touches the
+  same component is no reason to ask: build the approved concept, keep the
+  overlapping part easy to swap, and name the overlap in the PR and the
+  final report. Only a step that is irreversible beyond what do-ship already
+  gates (a production DB migration) is confirmed once.
 - **If nothing comes back** (the read-back is empty or errors): the person
   pastes the decisions, or says the action (`next round` / `implement`), into
   the thread; the session continues from those words. The post says so once.
@@ -159,7 +176,8 @@ owner's wish to decide remotely is given; the hand-off tier is not needed.
 ## Wrapper contract
 
 `scripts/lib/concept-artifact-page.js` (inlined by the build). Store layout:
-`submissions/<submission_id>`, `drafts/<load id>`; nothing else.
+`submissions/<submission_id>`, `drafts/<load id>`; nothing else is written
+(the legacy `concept` collection is only listened to, for the release fallback).
 
 | Request | Artifact viewer with `db` | No `db` namespace | No `window.claude` |
 |---|---|---|---|
@@ -168,6 +186,7 @@ owner's wish to decide remotely is given; the hand-off tier is not needed.
 | `POST /draft` (autosave, also the teardown `sendBeacon`) | `drafts/<load id>`: the state, a time stamp per key this load changed, deliberate clears, the typed-note union, values replaced by someone else's newer edit → 200 `{durable:true}` | 507 → after three tries the "nur in diesem Browser" strip | untouched |
 | `GET /draft` (load-time hydrate) | `{found, page_version, recovered}`: per key the newest typed note across all loads and people; an empty autosave never erases, a deliberate clear does | rejects → the local copy stands | untouched |
 | `GET /reload` | `{counter}` = the newest `_processed_at` (written only after the next round is published) → open views reload | rejects → no reload | untouched |
+| release fallback (#1241) | while a submission is unprocessed: a change in the legacy `concept` collection, or a newer `data-ca-build` stamp in the page's own HTML (checked every 60 s), counts it as processed → the waiting panel is released and `/reload` moves forward, as `_processed_at` would | — | — |
 | live | the newest value per answer key (`input:`, `text:`, `range:`, `select:`) from other loads → localStorage + `restoreState()`; theme and navigation stay per tab; a new submission by someone else → `restoreInFlightRound()`; the engine's queued submit is retried every 15 s (an artifact has no connected heartbeat to drive it) | — | — |
 | anything else (`/heartbeat`, `/status`, `/attachments`) | real fetch — no bridge on the artifact host, the heartbeat shows "not connected" | same | untouched |
 

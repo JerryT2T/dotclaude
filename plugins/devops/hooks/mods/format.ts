@@ -1084,6 +1084,13 @@ const TABLE = {
   toastOptOffSession: ['devops is off for this session — hooks stay silent from the next event', 'devops ist für diese Session aus — Hooks schweigen ab dem nächsten Ereignis', 'devops está apagado en esta sesión — los hooks callan desde el próximo evento', 'devops est désactivé pour cette session — les hooks se taisent dès le prochain événement', 'devops está desligado nesta sessão — os hooks se calam a partir do próximo evento', 'このセッションの devops はオフ — 次のイベントからフックは沈黙します', '本次会话已关闭 devops — 从下一个事件起钩子静默'],
   toastOptOffProject: ['devops is off for this project (.claude/settings.local.json)', 'devops ist für dieses Projekt aus (.claude/settings.local.json)', 'devops está apagado en este proyecto (.claude/settings.local.json)', 'devops est désactivé pour ce projet (.claude/settings.local.json)', 'devops está desligado neste projeto (.claude/settings.local.json)', 'このプロジェクトの devops はオフ (.claude/settings.local.json)', '此项目已关闭 devops (.claude/settings.local.json)'],
   toastOptOn: ['devops is on again', 'devops ist wieder an', 'devops vuelve a estar encendido', 'devops est de nouveau actif', 'devops está ligado de novo', 'devops が再びオンになりました', 'devops 已重新开启'],
+  // #1239: an unfinished concept after a restart, one band row with three buttons.
+  conceptOpen: ['Concept {t} is still open{r}{w}. Continue?', 'Konzept {t} ist noch offen{r}{w}. Fortsetzen?', 'El concepto {t} sigue abierto{r}{w}. ¿Continuar?', 'Le concept {t} est encore ouvert{r}{w}. Continuer ?', 'O conceito {t} ainda está aberto{r}{w}. Continuar?', 'コンセプト {t} はまだ開いています{r}{w}。続けますか？', '概念 {t} 仍未完成{r}{w}。继续吗？'],
+  conceptRound: [' (round {n}', ' (Runde {n}', ' (ronda {n}', ' (tour {n}', ' (rodada {n}', '（ラウンド {n}', '（第 {n} 轮'],
+  conceptLast: ['last {t}', 'zuletzt {t}', 'último {t}', 'dernier {t}', 'último {t}', '最終 {t}', '最近 {t}'],
+  conceptResume: ['Continue', 'Fortsetzen', 'Continuar', 'Continuer', 'Continuar', '続ける', '继续'],
+  conceptLater: ['Later', 'Später', 'Más tarde', 'Plus tard', 'Depois', '後で', '稍后'],
+  conceptClose: ['Close out', 'Abschließen', 'Cerrar', 'Clôturer', 'Encerrar', '完了する', '结束'],
   toastOptFailed: ['devops could not be switched here — use /plugin', 'devops ließ sich hier nicht umschalten — /plugin nutzen', 'No se pudo cambiar devops aquí — usa /plugin', 'Impossible de basculer devops ici — utilisez /plugin', 'Não foi possível alternar o devops aqui — use /plugin', 'ここでは切り替えできません — /plugin を使用', '无法在此切换 devops — 请用 /plugin'],
 } as const
 
@@ -2057,4 +2064,42 @@ export function readShare(u: { cache_read_input_tokens?: number; cache_creation_
 /** After a ping: disable for good on a miss (Spike 1's gate, red-team finding 4). */
 export function disablesAfter(share: number | null): boolean {
   return share === null || share < KEEPALIVE.minReadShare
+}
+
+/** #1239: the resume offer ss.concept.resume writes to `.claude/concept-resume-offer.json`. */
+export type ConceptOffer = { slug: string; title: string; round: number | null; lastAt: number | null; paused: boolean }
+
+const OFFER_SLUG_RE = /^[a-zA-Z0-9._-]{1,80}$/
+
+/** The offer file's text → the band's offer, or null when it is missing, malformed or older than a day. Pure. */
+export function conceptOfferFrom(text: unknown, now: number): ConceptOffer | null {
+  if (typeof text !== 'string' || !text.trim()) return null
+  let o: any
+  try {
+    o = JSON.parse(text)
+  } catch {
+    return null
+  }
+  if (!o || typeof o !== 'object' || typeof o.slug !== 'string' || !OFFER_SLUG_RE.test(o.slug)) return null
+  const written = Date.parse(String(o.written_at || ''))
+  if (!Number.isFinite(written) || now - written > 24 * 60 * 60 * 1000 || written - now > 5 * 60 * 1000) return null
+  const title = typeof o.title === 'string' && o.title.trim() ? clampText(o.title.trim().replace(/\s+/g, ' '), 80) : o.slug
+  const round = Number.isInteger(o.round) && o.round > 0 && o.round < 10000 ? o.round : null
+  const last = Date.parse(String(o.last_at || ''))
+  return { slug: o.slug, title, round, lastAt: Number.isFinite(last) ? last : null, paused: o.paused === true }
+}
+
+/** "Konzept *X* ist noch offen (Runde 3, zuletzt 21:40). Fortsetzen?" — the time with a date when not today. */
+export function conceptOfferLine(o: ConceptOffer, loc: Locale, now: number): string {
+  const sameDay = o.lastAt !== null && new Date(o.lastAt).toDateString() === new Date(now).toDateString()
+  const when = o.lastAt === null ? '' : sameDay ? clockAt(o.lastAt) : `${String(new Date(o.lastAt).getDate()).padStart(2, '0')}.${String(new Date(o.lastAt).getMonth() + 1).padStart(2, '0')}. ${clockAt(o.lastAt)}`
+  const r = o.round !== null ? tr(loc, 'conceptRound', { n: o.round }) : ''
+  const w = when ? `${r ? ', ' : ' ('}${tr(loc, 'conceptLast', { t: when })}` : ''
+  const close = r || w ? (loc === 'ja' || loc === 'zh' ? '）' : ')') : ''
+  return tr(loc, 'conceptOpen', { t: `*${o.title}*`, r, w: `${w}${close}` })
+}
+
+/** The prompt each button sends as the person's own (ss.concept.resume names exactly these). */
+export function conceptOfferPrompt(o: ConceptOffer, choice: 'resume' | 'close'): string {
+  return choice === 'resume' ? `Konzept ${o.slug} fortsetzen` : `Konzept ${o.slug} abschließen`
 }

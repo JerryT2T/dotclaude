@@ -52,11 +52,32 @@ const DRAFTS = 'drafts';
 
 const PAGE_SRC = fs.readFileSync(path.join(__dirname, 'lib', 'concept-artifact-page.js'), 'utf8');
 
-// Inlined verbatim. `</script` inside the source would end the tag early.
-const WRAPPER_JS = `(function () {\n${PAGE_SRC.replace(/<\/script/gi, '<\\/script')}\ninstallConceptArtifact(window);\n})();`;
+/**
+ * The read-back protocol the wrapper and this CLI speak. Bump it whenever the
+ * session-side steps change: a session that learned an older one from its
+ * context before a mid-session plugin update gets the hint (#1241).
+ * 2 = submissions + record → digest → pickup ack → mark → unacked batch.
+ */
+const PROTOCOL = 2;
+const PROTOCOL_HINT = 'The artifact read-back protocol changed since this concept was last published (plugin update mid-session?). Forget the read-back steps from earlier in this session: record → digest → ops.pickup ack → mark → ops.unacked batch; re-read artifact-fallback.md § Read back before the next step. No concept/decisions document is written any more.';
 
-function wrapperBlock() {
-  return `${START}<script>${WRAPPER_JS}</script>${END}`;
+function pluginVersion() {
+  try { return String(JSON.parse(fs.readFileSync(path.join(__dirname, '..', '.claude-plugin', 'plugin.json'), 'utf8')).version || ''); } catch { return ''; }
+}
+
+const BUILD_SAFE = /^[A-Za-z0-9_.:-]{1,64}$/;
+function safeBuild(build) { return BUILD_SAFE.test(String(build || '')) ? String(build) : ''; }
+
+// Inlined verbatim. `</script` inside the source would end the tag early.
+function wrapperJs(build) {
+  return `(function () {\n${PAGE_SRC.replace(/<\/script/gi, '<\\/script')}\ninstallConceptArtifact(window, { build: '${safeBuild(build)}' });\n})();`;
+}
+const WRAPPER_JS = wrapperJs('');
+
+/** `build` stamps this build, so an open view can tell that a newer one was published (#1241). */
+function wrapperBlock(build) {
+  const b = safeBuild(build);
+  return `${START}<script${b ? ` data-ca-build="${b}"` : ''}>${wrapperJs(b)}</script>${END}`;
 }
 
 /** Remove a previously inserted wrapper so a re-run replaces instead of stacking. */
@@ -72,12 +93,12 @@ function stripWrapper(html) {
  * Insert the wrapper right after the opening <head> tag (else <html>).
  * @returns {{ok:true,html:string}|{ok:false,reason:string}}
  */
-function wrap(source) {
+function wrap(source, build) {
   const html = stripWrapper(String(source));
   const m = /<head(\s[^>]*)?>/i.exec(html) || /<html(\s[^>]*)?>/i.exec(html);
   if (!m) return { ok: false, reason: 'no-head' };
   const at = m.index + m[0].length;
-  return { ok: true, html: html.slice(0, at) + wrapperBlock() + html.slice(at) };
+  return { ok: true, html: html.slice(0, at) + wrapperBlock(build) + html.slice(at) };
 }
 
 function defaultOut(src) {
@@ -143,15 +164,29 @@ function record(opts) {
     updated_at: now,
     open: true,
     processed: Array.isArray(prev.processed) ? prev.processed : [],
+    protocol: PROTOCOL,
+    plugin_version: pluginVersion(),
   };
+  const hint = protocolHint(prev);
   return {
     ok: true,
     file: writeRecord(opts.page, opts.root, rec),
     record: rec,
+    ...(hint ? { protocolHint: hint } : {}),
+    // A redeploy is the next round; the waiting page switches on _processed_at
+    // (the wrapper's build-stamp check is only the fallback).
+    ...(prev.url ? { release: 'This redeploy is the next round: digest a fresh submissions listing, mark --ids <markIds>, then send ops.unacked as one ArtifactData batch, so every waiting view switches to the new round.' } : {}),
     // Nothing else wakes the session on a submit. Named here because this is
     // the last step every publisher runs.
     next: 'MANDATORY before the turn ends: arm ONE read-back check (send_later if you have it, else a one-shot CronCreate) in 20 min, doubling the gap while nothing came (artifact-fallback.md § Wake), and tell the person once to say here when they have decided.',
   };
+}
+
+/** The hint when the record was written under another protocol or plugin version (#1241). */
+function protocolHint(rec) {
+  if (!rec || !rec.url) return null;
+  if (rec.protocol === PROTOCOL && (!rec.plugin_version || rec.plugin_version === pluginVersion())) return null;
+  return PROTOCOL_HINT;
 }
 
 function mark(opts) {
@@ -309,14 +344,19 @@ function build(opts) {
   const src = path.resolve(opts.artifact);
   let source;
   try { source = fs.readFileSync(src, 'utf8'); } catch (e) { return { ok: false, reason: 'unreadable', error: e.message }; }
-  const res = wrap(source);
+  const build = Date.now().toString(36);
+  const res = wrap(source, build);
   if (!res.ok) return res;
   const out = path.resolve(opts.out || defaultOut(src));
   fs.writeFileSync(out, res.html);
+  const hint = protocolHint(readRecord(src, opts.root));
   return {
     ok: true,
     source: src,
     out,
+    build,
+    protocol: PROTOCOL,
+    ...(hint ? { protocolHint: hint } : {}),
     capabilities: CAPABILITIES,
     // The browser tab of claude.ai/artifact/… shows the icon the FIRST publish
     // names; the page itself runs in a sandboxed frame, so a <link rel="icon">
@@ -342,7 +382,7 @@ function run(opts) {
 }
 
 module.exports = {
-  wrap, stripWrapper, wrapperBlock, run, parseArgs, parseDocs, digestDocs, slugOf, recordPath, readRecord,
+  wrap, stripWrapper, wrapperBlock, wrapperJs, protocolHint, pluginVersion, PROTOCOL, run, parseArgs, parseDocs, digestDocs, slugOf, recordPath, readRecord,
   START, END, WRAPPER_JS, CAPABILITIES, URL_RE,
 };
 
