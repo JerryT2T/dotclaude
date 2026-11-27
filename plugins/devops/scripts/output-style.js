@@ -37,7 +37,7 @@ function normalize(v) {
 
 function readSettings(file) {
   let text;
-  try { text = fs.readFileSync(file, 'utf8').replace(/^[﻿]/, ''); } catch { return {}; }
+  try { text = fs.readFileSync(file, 'utf8'); if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1); } catch { return {}; }
   if (!text.trim()) return {};
   const v = JSON.parse(text); // throws on corrupt: never clobber the person's file
   if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error('settings.json is not a JSON object');

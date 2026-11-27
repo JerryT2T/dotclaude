@@ -5,7 +5,7 @@ import { readOptState, switchOff, switchOn, globalFlagPath } from './optout.ts'
 /** A tiny in-memory `$` — only what optout.ts touches (fs.read/write, process.run, plugin.root). */
 function fake(files) {
   const writes = []
-  const runs[] = []
+  const runs = []
   const $ = {
     fs: {
       read: async (p) => {
