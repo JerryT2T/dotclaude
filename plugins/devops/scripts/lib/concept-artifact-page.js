@@ -428,16 +428,23 @@ function installConceptArtifact(win, opts) {
   function subscribeSubs() { listen(db.collection(SUBS), onSubs, subscribeSubs); }
 
   // --- release fallback (#1241) -------------------------------------------
+  // releasedAt is the cut by submission time: exactly the submissions pending at the release, never one stored
+  // in the same millisecond after it. releaseTick is the wall-clock step /reload reports.
   var releasedAt = 0;
+  var releaseTick = 0;
+  function isPending(d) {
+    return d && !d._processed_at && d.submitted !== false && !((Number(d._storedAtMs) || 0) <= releasedAt);
+  }
   function pending() {
-    return (subsCache || []).some(function (d) {
-      return d && !d._processed_at && d.submitted !== false && !((Number(d._storedAtMs) || 0) <= releasedAt);
-    });
+    return (subsCache || []).some(isPending);
   }
   function release() {
     if (!pending()) return false;
+    var cut = releasedAt;
+    (subsCache || []).forEach(function (d) { var t = Number(d && d._storedAtMs) || 0; if (isPending(d) && t > cut) cut = t; });
+    releasedAt = cut;
     var n = Date.now();
-    releasedAt = n > releasedAt ? n : releasedAt + 1;
+    releaseTick = n > releaseTick ? n : releaseTick + 1;
     return true;
   }
   // Only a real change counts: a listener may deliver the same snapshot again.
@@ -489,7 +496,7 @@ function installConceptArtifact(win, opts) {
   // round, so the newest `_processed_at` is the reload counter: it moves
   // forward exactly when there is a new round to load.
   function reloadCounter(list) {
-    var n = releasedAt;
+    var n = releaseTick;
     (list || []).forEach(function (x) { var t = x && Date.parse(x._processed_at); if (t > n) n = t; });
     return n;
   }

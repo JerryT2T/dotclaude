@@ -384,6 +384,26 @@ describe("release fallback — a session on an older read-back protocol (#1241)"
     expect(d.submission_id).toBe("s3");
     expect(d.submitted).toBe(true);
   });
+
+  test("a submission stored in the same millisecond as the release stays in flight", async () => {
+    const store = makeStore();
+    const a = viewer(store);
+    await tick();
+    const now = vi.spyOn(Date, "now").mockReturnValue(1_800_000_000_000);
+    try {
+      await a.post("/decisions", { submitted: true, iteration: 2, submission_id: "s2" });
+      await tick();
+      now.mockReturnValue(1_800_000_000_500);
+      await store.db.collection("concept").doc("decisions").set({ z: 1 });
+      await tick();
+      await a.post("/decisions", { submitted: true, iteration: 3, submission_id: "s3" });
+      await tick();
+      const d = await a.get("/decisions");
+      expect(d.submission_id).toBe("s3");
+      expect(d.submitted).toBe(true);
+      expect((await a.get("/reload?tab=1")).counter).toBe(1_800_000_000_500);
+    } finally { now.mockRestore(); }
+  });
 });
 
 describe("drafts — two people typing at once", () => {
