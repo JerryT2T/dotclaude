@@ -1,6 +1,6 @@
 ---
 max_turns: 20
-allowed_tools: [Read, Write, Edit, Glob, Grep, Skill, Agent, AskUserQuestion]
+allowed_tools: [Read, Write, Edit, Glob, Grep, Skill, Agent, AskUserQuestion, mcp__thread__post_message, mcp__thread__request_decision]
 deny_tools: ['Bash(python *)', 'Bash(python3 *)', 'Bash(py *)', 'Bash(nohup *)', 'Bash(setsid *)', 'Bash(*concept-server*)', 'Bash(*concept-port-registry*)', 'Bash(*concept-watch*)', 'Bash(*concept-tick*)', 'Bash(curl *)', 'Bash(start *)', 'Bash(cmd *)', 'Bash(powershell *)', 'Bash(pwsh *)', 'Bash(explorer *)', 'Bash(*msedge*)', 'Bash(kill *)', 'Bash(taskkill *)', 'Bash(git push*)', 'Bash(git * push*)', 'Bash(gh *)', CronCreate, CronDelete, mcp__claude-in-chrome, mcp__Claude_Browser, mcp__Claude_Preview, mcp__plugin_playwright_playwright, mcp__computer-use, mcp__ccd_session_mgmt]
 tags: [skill-body, auto-concept, thread]
 env: { EVAL_DOTCLAUDE_BUDGET: free }
@@ -13,6 +13,8 @@ env: { EVAL_DOTCLAUDE_BUDGET: free }
     </thread>
   </project>
 </wake>
+
+You are the session of this Claude Projects thread. The person reads only the thread: reply with mcp__thread__post_message, and put a choice that is theirs to make in front of them with mcp__thread__request_decision.
 
 Context from earlier in this thread: the coordinator's starting brief was "Concept only, no implementation." Another open thread ("Restyle category list") is also changing src/ui/category-list.js.
 
