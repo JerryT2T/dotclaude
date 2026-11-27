@@ -1458,6 +1458,13 @@ export async function renderHome($: EngineInterface, e: any, ctx: HomeCtx): Prom
     </Box>
   )
   const last = tourStep === TOUR_STEPS.length - 1
+  // oq-scrim: `Color` admits any string ("a raw color, a name or hex"), so an 8-digit hex carries alpha on a surface that
+  // reads it as CSS (Desktop); the typings promise nothing for alpha, and the terminal cannot blend (it draws what it knows).
+  // ASSUMPTION (typings: an absolute Box is "painted over those before it", "the pointer on it is on its parent"): the
+  // scrim is drawn after every in-flow child, so it dims the whole pane, the ringed element included (its SPOT ring stays
+  // light enough to read), and it takes no click. The tour card is the later sibling, so it paints above the scrim.
+  // A Box has no onPress: the scrim cannot close the tour, the card's buttons do.
+  const scrim = !step ? null : <Box key="home-tour-scrim" position="absolute" top={0} left={0} right={0} bottom={0} backgroundColor="#0000008c" />
   const tour = !step ? null : (
     <Box key="home-tour" position="absolute" left={1} right={1} bottom={1} flexDirection="column" rowGap={1} paddingX={2} paddingY={1} borderStyle="round" borderColor="#474747" backgroundColor={POPOVER_BG}>
       <Text dimColor size="footnote">{`${tourStep + 1} von ${TOUR_STEPS.length}`}</Text>
@@ -1476,6 +1483,7 @@ export async function renderHome($: EngineInterface, e: any, ctx: HomeCtx): Prom
     acts,
     bedRow,
     projects,
+    scrim,
     tour,
   )
 }
