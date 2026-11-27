@@ -3136,10 +3136,9 @@ test('opt-out popup: "For this project" merges settings.local.json (keeps keys, 
   band = await $.ui.mount({ ...BAND, surface: 'desktop' })
   await band.press({ key: 'optout-project' })
   const settings = optWrites(seen).find(w => w.path.endsWith(OPT_SETTINGS))
-  expect(JSON.parse(settings!.text)).toEqual({ permissions: { allow: ['x'] }, outputStyle: 'default', enabledPlugins: { 'other@mp': true, 'devops@dotclaude': false } })
+  expect(JSON.parse(settings!.text)).toEqual({ permissions: { allow: ['x'] }, outputStyle: 'Quiet', enabledPlugins: { 'other@mp': true, 'devops@dotclaude': false } })
   expect(settings!.text).toMatch(/^\{\n {2}"/) // 2-space indent
-  const memo = optWrites(seen).find(w => w.path.endsWith('/.claude/devops-optout.json'))
-  expect(JSON.parse(memo!.text)).toMatchObject({ prevOutputStyle: 'Quiet', hadLocalOutputStyle: true })
+  expect(optWrites(seen).find(w => w.path.endsWith('/.claude/devops-optout.json'))).toBeUndefined() // no style memo any more
   expect(seen.toasts.some(t => /off for this project/.test(t))).toBe(true)
 })
 
