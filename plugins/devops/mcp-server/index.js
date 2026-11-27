@@ -2451,6 +2451,8 @@ function buildCardModel(input, lang, key, buildId, usageData, delta5h, deltaWk, 
     customButtons: decision.customButtons || null,
     sessionLinks: decision.sessionLinks || null,
     extraButtons: decision.extraButtons || null,
+    // Beside every promote offer: archive the session, or resolve it in a Claude Projects thread (card-widget.js closeButton).
+    close: input._threadCard ? 'resolve' : 'archive',
     readOnly: input.readOnly === true,
     // #757: the answer to the user's question, drawn above the card body.
     answerHtml: answerHtml(input.answer),

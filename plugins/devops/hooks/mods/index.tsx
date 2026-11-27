@@ -68,6 +68,7 @@ import {
   cardTextSvg,
   isShippedCard,
   isReleaseCard,
+  isCardClosePrompt,
   releaseLine,
   isOfflineCardRender,
   bandCardFile,
@@ -2182,7 +2183,7 @@ export const register: Register = on => {
     ) : null
     const buttons = c && (c.buttons.length > 0 || archiveBtn) && (
       <Box key="card-buttons" flexDirection="row" columnGap={1} flexWrap="wrap">
-        {c.buttons.map((bt, i) => (
+        {c.buttons.filter(bt => !(archiveBtn && isCardClosePrompt(bt.prompt))).map((bt, i) => (
           <Button key={`card-button-${i}`} label={bt.label} variant={bt.primary ? 'primary' : undefined} onPress={() => pressCardButton($, bt.prompt)} />
         ))}
         {archiveBtn}

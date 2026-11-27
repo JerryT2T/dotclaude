@@ -1523,7 +1523,18 @@ export function releaseLine(heading: string): string {
  * The press calls the Desktop app's own archive_session through $.mcp.call — no model turn.
  */
 export function archiveOffered(c: { heading: string } | null, working: boolean): boolean {
-  return !working && (isShippedCard(c) || isReleaseCard(c))
+  return !working && (isShippedCard(c) || isReleaseCard(c) || isPromotedCard(c))
+}
+
+/** A promotion card (🎊, "👉 🎊 Beta — v0.411.1 — nach Stable?"): the work is shipped, the band offers to archive beside it. */
+export function isPromotedCard(c: { heading: string } | null): boolean {
+  return !!c && /^(?:🟩|👉)\s*🎊/u.test(c.heading) && /\bv?\d+\.\d+\.\d+\b/.test(c.heading)
+}
+
+/** The card's own close buttons (card-widget.js CLOSE_BUTTONS, archive prompt): the band draws its direct archive button instead. */
+export function isCardClosePrompt(prompt: string): boolean {
+  const p = String(prompt || '')
+  return (TABLE.archivePrompt as readonly string[]).includes(p)
 }
 
 /** archive_session's answer: null = archived; else the app's reason (pinned, still working, …), one line. */

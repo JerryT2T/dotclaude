@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.411.2] — 2026-11-27
+
+### Fixed
+- Completion card: every promote offer now also offers to close the session — Archivieren in the Code tab, Thread lösen in a Claude Projects thread; the devops band offers its archive button on a promotion card (🎊) too.
+
 ## [0.411.1] — 2026-11-27
 
 ### Fixed
