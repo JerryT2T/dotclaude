@@ -25,6 +25,8 @@ import {
   rollBudget,
   windowsFromLive,
   fiveHourNoneFromLive,
+  isPromotedCard,
+  isCardClosePrompt,
   cleanupApplyPrompt,
   cleanupPlanPrompt,
   planComplete,
@@ -3031,6 +3033,18 @@ test('#1204 budget after a resume: a fresh usage-live.json fills empty windows, 
   const cur = { weekly: 30, weeklyResetsAt: NOW + 86_400_000, fiveHour: 10, fiveHourResetsAt: NOW + 3_600_000, context: null }
   expect(budgetForBand(cur, fresh, NOW)).toEqual(cur)
   expect(bandBars(budgetForBand(null, null, NOW), NOW).map(x => x.empty)).toEqual([true, true])
+})
+
+test('2026-11-27: a promotion card (🎊) offers the band archive too; the card own archive prompt is not drawn twice', () => {
+  const beta = { heading: '👉 🎊 Beta — v0.411.1 — nach Stable?' }
+  expect(isPromotedCard(beta)).toBe(true)
+  expect(archiveOffered(beta, false)).toBe(true)
+  expect(archiveOffered(beta, true)).toBe(false)
+  expect(isPromotedCard({ heading: '⏳ 🎊 Beta — läuft' })).toBe(false)
+  expect(archiveOffered({ heading: '👉 🚀 Released Alpha — v0.411.1 — nach Beta promoten?' }, false)).toBe(true)
+  expect(isCardClosePrompt('Archiviere diese Session.')).toBe(true)
+  expect(isCardClosePrompt('Archive this session.')).toBe(true)
+  expect(isCardClosePrompt('promote beta 0.411.1')).toBe(false)
 })
 
 test('no 5h window on the account (verified Ultra): the band draws Wk / Fb only; a seen or delivered window keeps 5h', () => {

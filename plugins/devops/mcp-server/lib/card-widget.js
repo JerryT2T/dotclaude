@@ -183,6 +183,37 @@ export const CLEANUP = {
   en: { label: "Clean up", icon: "trash", tooltip: "Puts the prepared answer to the cleanup hints into the input box — Enter sends." },
 };
 
+/**
+ * The close button beside every promote offer (2026-11-27, the owner: "whenever you offer promote, offer archiving too,
+ * or resolving in a project"). A shipped card asks "promote?" and the session is done either way, so the card always
+ * also offers to close it: `archive` on the Desktop (archive_session), `resolve` in a Claude Projects thread, which
+ * is resolved, never archived (set_thread_resolved). Never primary: promote stays the card's verb. The prompts are the
+ * band's own archive prompt (mods/format.ts `archivePrompt`), so the band can drop the duplicate.
+ */
+export const CLOSE_BUTTONS = {
+  de: {
+    archive: { label: "Archivieren", icon: "archive", prompt: "Archiviere diese Session.", tooltip: "Archiviert diese Session — die Arbeit ist geshippt, nichts ist mehr offen." },
+    resolve: { label: "Thread lösen", icon: "circle-check", prompt: "Löse diesen Thread.", tooltip: "Markiert diesen Projekt-Thread als gelöst — die Arbeit ist geshippt." },
+  },
+  en: {
+    archive: { label: "Archive", icon: "archive", prompt: "Archive this session.", tooltip: "Archives this session — the work is shipped, nothing is left open." },
+    resolve: { label: "Resolve thread", icon: "circle-check", prompt: "Resolve this thread.", tooltip: "Marks this project thread as resolved — the work is shipped." },
+  },
+};
+
+/** The close button for a card that offers a promotion: resolve in a project thread, archive anywhere else. */
+export function closeButton(lang = "de", thread = false) {
+  const t = CLOSE_BUTTONS[lang] || CLOSE_BUTTONS.de;
+  const b = thread ? t.resolve : t.archive;
+  return { label: b.label, icon: b.icon, prompt: b.prompt, tooltip: b.tooltip };
+}
+
+/** A close button's prompt (archive or resolve, any language). */
+function isClosePrompt(prompt) {
+  const p = String(prompt || "");
+  return Object.values(CLOSE_BUTTONS).some((t) => t.archive.prompt === p || t.resolve.prompt === p);
+}
+
 /** Label of the analysis card's primary button when the card names its recommended next step (`nextStep`). */
 /** #1185: a `nextStep` that asks for the web guide (de/en), e.g. "Führ mich per Web-Guide durch …". */
 export const WEB_GUIDE_STEP_RE = /\b(?:web[- ]?guide|auto-guide)\b/i;
@@ -319,6 +350,8 @@ export function buttonsFor(buttonsKey, lang = "de", opts = {}) {
       : buttons.slice(1);
   }
   if (opts && Array.isArray(opts.extra)) for (const x of opts.extra) buttons.push({ label: x.label, icon: x.icon, prompt: x.prompt, tooltip: x.tooltip, ...(x.primary ? { primary: true } : {}) });
+  // Every promote offer comes with the close button (archive, or resolve in a project thread).
+  if (opts && opts.close && buttons.some((a) => isPromotePrompt(a.prompt)) && !buttons.some((a) => isClosePrompt(a.prompt))) buttons.push(closeButton(lang, opts.close === "resolve"));
   const tidy = conclusionPrompt(opts && opts.cleanup, lang);
   if (tidy && !(opts && Array.isArray(opts.custom) && opts.custom.length)) {
     const c = CLEANUP[lang] || CLEANUP.de;
@@ -350,9 +383,11 @@ const WRAP_LABEL_MAX = 24;
 export function wrapUpArgs(model) {
   if (!model || model.variant === "test-minimal") return {};
   const lang = model.lang === "en" ? "en" : "de";
-  const buttons = buttonsFor(model.buttonsKey, lang, { custom: model.customButtons, extra: model.extraButtons, version: model.promoteVersion, replies: model.replies, cleanup: model.cleanup, noShip: model.noShip, guideHandoff: model.guideHandoff, appStart: model.appStart, nextStep: model.nextStep, readOnly: model.readOnly });
+  const buttons = buttonsFor(model.buttonsKey, lang, { custom: model.customButtons, extra: model.extraButtons, version: model.promoteVersion, replies: model.replies, cleanup: model.cleanup, noShip: model.noShip, guideHandoff: model.guideHandoff, appStart: model.appStart, nextStep: model.nextStep, readOnly: model.readOnly, close: model.close });
   if (!buttons.length) return {};
-  const ordered = [...buttons.filter((a) => a.primary), ...buttons.filter((a) => !a.primary)];
+  // The close button is the second choice beside a promotion: promote or call it done.
+  const rest = buttons.filter((a) => !a.primary);
+  const ordered = [...buttons.filter((a) => a.primary), ...rest.filter((a) => isClosePrompt(a.prompt)), ...rest.filter((a) => !isClosePrompt(a.prompt))];
   const labelOf = (a) => {
     const p = String(a.prompt || "").trim();
     const l = String(a.label || "").trim();
@@ -547,7 +582,7 @@ export function cardWidgetData(model, repoUrl = "") {
   const nz = (v) => (v ? v : undefined);
   const arr = (a) => (Array.isArray(a) ? a : []);
   const list = (a) => (arr(a).length ? a : undefined);
-  const buttons = buttonsFor(model.buttonsKey, lang, { custom: model.customButtons, extra: model.extraButtons, version: model.promoteVersion, replies: model.replies, cleanup: model.cleanup, noShip: model.noShip, guideHandoff: model.guideHandoff, appStart: model.appStart, nextStep: model.nextStep, readOnly: model.readOnly });
+  const buttons = buttonsFor(model.buttonsKey, lang, { custom: model.customButtons, extra: model.extraButtons, version: model.promoteVersion, replies: model.replies, cleanup: model.cleanup, noShip: model.noShip, guideHandoff: model.guideHandoff, appStart: model.appStart, nextStep: model.nextStep, readOnly: model.readOnly, close: model.close });
   const prNum = model.pipelinePr && model.pipelinePr.number;
   const b = model.budget;
   let bu;

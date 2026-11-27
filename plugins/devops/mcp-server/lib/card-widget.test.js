@@ -20,6 +20,7 @@ import {
   safeSessionId,
   APP_START_BUTTON,
   wrapUpArgs,
+  closeButton,
 } from "./card-widget.js";
 
 const desktop = { CLAUDE_CODE_ENTRYPOINT: "claude-desktop" };
@@ -1074,6 +1075,27 @@ describe("wrapUpArgs", () => {
     const a = wrapUpArgs(baseModel({ variant: "ship-successful", key: "ship-successful", buttonsKey: "ship-successful", promoteVersion: "0.379.0", heading: "👉 🚀 Released Alpha — v0.379.0 — nach Beta?" }));
     expect(a.actions.map((x) => x.label)).toEqual(["promote beta 0.379.0", "promote stable 0.379.0"]);
     expect(a.ask).toBe("v0.379.0 — nach Beta?");
+  });
+
+  test("2026-11-27: every promote offer also offers to close the session — archive, or resolve in a project thread", () => {
+    const ship = { variant: "ship-successful", key: "ship-successful", buttonsKey: "ship-successful", promoteVersion: "0.411.1", heading: "👉 🚀 Released Alpha — v0.411.1 — nach Beta promoten?" };
+    const desk = wrapUpArgs(baseModel({ ...ship, close: "archive" }));
+    expect(desk.actions.map((x) => x.label)).toEqual(["promote beta 0.411.1", "Archivieren"]);
+    const thread = wrapUpArgs(baseModel({ ...ship, close: "resolve" }));
+    expect(thread.actions.map((x) => x.label)).toEqual(["promote beta 0.411.1", "Löse diesen Thread."]);
+    // The released-beta card ("nach Stable?") too.
+    const beta = wrapUpArgs(baseModel({ ...ship, buttonsKey: "released-beta", heading: "👉 🎊 Beta — v0.411.1 — nach Stable?", close: "archive" }));
+    expect(beta.actions.map((x) => x.label)).toEqual(["promote stable 0.411.1", "Archivieren"]);
+    // The widget draws all three: promote beta, promote stable, close (never primary).
+    const all = buttonsFor("ship-successful", "de", { version: "0.411.1", close: "archive" });
+    expect(all.map((b) => b.label)).toEqual(["Promote beta", "Promote stable", "Archivieren"]);
+    expect(all[2]).toMatchObject({ prompt: "Archiviere diese Session.", icon: "archive" });
+    expect(all[2].primary).toBeUndefined();
+    expect(buttonsFor("ship-successful", "en", { version: "0.411.1", close: "resolve" }).at(-1)).toMatchObject({ label: "Resolve thread", prompt: "Resolve this thread." });
+    expect(closeButton("de", true).label).toBe("Thread lösen");
+    // No promote offered (no version, a plain merge, a ready card): no close button.
+    expect(buttonsFor("ship-successful", "de", { close: "archive" }).map((b) => b.label)).toEqual([]);
+    expect(buttonsFor("ready", "de", { close: "archive" }).map((b) => b.label)).toEqual(["Ship"]);
   });
 
   test("a card with nothing to click → recap only (empty args)", () => {
