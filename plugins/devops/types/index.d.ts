@@ -25,6 +25,8 @@ export type Budget = {
   /** The measured context: tokens in use and the window they sit in (session.measure); the ring's basis, never a model constant. */
   contextTokens?: number | null
   contextWindow?: number | null
+  /** The account has no 5-hour window: none delivered now and none ever (plan.js fiveHourWindow 'none', e.g. a verified Ultra plan). The band then draws no 5h bar. */
+  fiveHourNone?: boolean
 }
 
 /** copies: undecided safety copies (parked ≥ 3 days); optional so a value stored before it still reads. */

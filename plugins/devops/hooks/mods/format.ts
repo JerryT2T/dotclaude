@@ -189,12 +189,37 @@ export function rollBudget(b: Budget | null, nowMs: number): Budget | null {
 }
 
 /**
+ * plan.js `sessionDelivered`, mirrored: a usage-live `session` is a real 5-hour window only with a percent AND a reset
+ * or usage above 0. The usage mapper writes an absent window as `{ pct: 0, resetInMinutes: null }`.
+ */
+function liveSessionDelivered(session: unknown): boolean {
+  const s = session as { pct?: unknown; resetInMinutes?: unknown } | null
+  if (!s || typeof s !== 'object' || typeof s.pct !== 'number' || !Number.isFinite(s.pct)) return false
+  return (typeof s.resetInMinutes === 'number' && Number.isFinite(s.resetInMinutes)) || s.pct > 0
+}
+
+/**
+ * plan.js `fiveHourWindow` state 'none', mirrored: usage-live.json holds a `session` that is no delivered window and the
+ * account never had one (`fiveHourSeen` not true), so no 5-hour limit exists (a verified Ultra plan). The data decides,
+ * never the plan name. A missing file or `session` is unknown (false): the band keeps its "–" bar. Never throws.
+ */
+export function fiveHourNoneFromLive(live: unknown): boolean {
+  try {
+    const o = live as { session?: unknown; fiveHourSeen?: unknown } | null
+    if (!o || typeof o !== 'object' || !('session' in o)) return false
+    return !liveSessionDelivered(o.session) && o.fiveHourSeen !== true
+  } catch {
+    return false
+  }
+}
+
+/**
  * #1204: the Wk / 5h windows from the parsed `~/.claude/usage-live.json` (`weekly`, `session` = 5 h), used only
  * while it is fresh (≤ 15 min). Anything missing or malformed is no reading (null); never throws.
  */
 export function windowsFromLive(live: unknown, nowMs: number): Pick<Budget, 'weekly' | 'weeklyResetsAt' | 'fiveHour' | 'fiveHourResetsAt'> | null {
   try {
-    const o = live as { timestamp?: unknown; weekly?: unknown; session?: unknown } | null
+    const o = live as { timestamp?: unknown; weekly?: unknown; session?: unknown; fiveHourSeen?: unknown } | null
     if (!o || typeof o !== 'object') return null
     const ts = typeof o.timestamp === 'string' ? Date.parse(o.timestamp) : NaN
     if (!Number.isFinite(ts) || nowMs - ts > LIVE_WINDOW_FRESH_MS || ts - nowMs > LIVE_WINDOW_FRESH_MS) return null
@@ -205,7 +230,8 @@ export function windowsFromLive(live: unknown, nowMs: number): Pick<Budget, 'wee
       return { pct: Math.max(0, Math.min(100, Math.round(x.pct))), resetsAt: r }
     }
     const wk = win(o.weekly)
-    const fh = win(o.session)
+    // plan.js fiveHourWindow: a delivered window is used, an idle one (seen before) reads 0 %, none is no reading.
+    const fh = liveSessionDelivered(o.session) ? win(o.session) : o.fiveHourSeen === true ? { pct: 0, resetsAt: null } : { pct: null, resetsAt: null }
     if (wk.pct == null && fh.pct == null) return null
     return { weekly: wk.pct, weeklyResetsAt: wk.resetsAt, fiveHour: fh.pct, fiveHourResetsAt: fh.resetsAt }
   } catch {
@@ -226,8 +252,15 @@ export function bandWindowsCurrent(b: Budget | null, nowMs: number): { weekly: b
  */
 export function budgetForBand(b: Budget | null, live: unknown, nowMs: number): Budget | null {
   const cur = bandWindowsCurrent(b, nowMs)
+  if (cur.weekly && cur.fiveHour) return rollBudget(b, nowMs)
+  const out = budgetFromLive(b, cur, live, nowMs)
+  // No 5-hour window on this account (plan.js 'none'): the band draws no 5h bar instead of an empty "–" one.
+  if (typeof (out ? out.fiveHour : null) !== 'number' && fiveHourNoneFromLive(live)) return { ...(out || { fiveHour: null, weekly: null, context: null }), fiveHourNone: true }
+  return out
+}
+
+function budgetFromLive(b: Budget | null, cur: { weekly: boolean; fiveHour: boolean }, live: unknown, nowMs: number): Budget | null {
   const rolled = rollBudget(b, nowMs)
-  if (cur.weekly && cur.fiveHour) return rolled
   const l = windowsFromLive(live, nowMs)
   if (!l) return rolled
   const base: Budget = rolled || { fiveHour: null, weekly: null, context: null }
@@ -298,8 +331,8 @@ export function formatResetShort(minutes: number | null): string {
 }
 
 /**
- * The status row's bars (Desktop band): Wk, Fb (only while the Fable counter exists), 5h, always shown, no due-rules.
- * A window without data is an empty bar with a "–" watermark, drawn in the same style.
+ * The status row's bars (Desktop band): Wk, Fb (only while the Fable counter exists), 5h (only on an account that has a
+ * 5-hour window), no due-rules. A window without data is an empty bar with a "–" watermark, drawn in the same style.
  */
 export function bandBars(b: Budget | null, now: number): BudgetBar[] {
   const minsTo = (t: number | null | undefined) => (typeof t === 'number' ? Math.max(0, Math.round((t - now) / 60_000)) : null)
@@ -311,7 +344,8 @@ export function bandBars(b: Budget | null, now: number): BudgetBar[] {
   }
   const bars = [make('Wk', b?.weekly, b?.weeklyResetsAt, WINDOW_WK_MIN)]
   if (b && typeof b.fable === 'number' && b.fable > 0) bars.push(make('Fb', b.fable, b.fableResetsAt, WINDOW_WK_MIN))
-  bars.push(make('5h', b?.fiveHour, b?.fiveHourResetsAt, WINDOW_5H_MIN))
+  // An account without a 5-hour window (plan.js 'none', e.g. a verified Ultra plan) gets no 5h bar at all.
+  if (!(b && b.fiveHourNone === true && typeof b.fiveHour !== 'number')) bars.push(make('5h', b?.fiveHour, b?.fiveHourResetsAt, WINDOW_5H_MIN))
   return bars
 }
 

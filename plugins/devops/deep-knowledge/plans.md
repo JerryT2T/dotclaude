@@ -58,6 +58,12 @@ keep it; a missing flag heals with the next delivered window. A brand-new
 account shows no row until its first window. A carried-over idle window is kept
 only for an account with `fiveHourSeen`.
 
+Every display of the 5h window follows this rule, none "always" shows it. The
+mod band cannot load `plan.js` (no Node in a mod) and mirrors the rule in
+`hooks/mods/format.ts` (`fiveHourNoneFromLive`, `bandBars`): a change here is
+made there too. #1217 moved every display to this rule but missed the band,
+so a verified Ultra account saw an empty "5h –" bar until 0.411.x.
+
 At question time the injected `[budget]` line tells the two apart: with no
 5h limit it shows only `week N%` (`budgetLine()` in `hooks/lib/budget.js`),
 with one it shows `window N% · week N%`. do-run reads it to drop the resume
