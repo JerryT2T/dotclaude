@@ -2,7 +2,7 @@
      rewrites it on every tab switch. body overflow is set by that function,
      the inline style below is only the first-paint value. -->
 <!DOCTYPE html>
-<html lang="de" data-theme="dark" data-page-version="2026-11-27T19:35:19" data-template="design">
+<html lang="de" data-theme="dark" data-page-version="2026-11-27T19:35:19" data-template="free">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -5993,7 +5993,7 @@ html .feedback-dock .feedback-section textarea[data-attachable] { padding-right:
 }
 </style>
 </head>
-<body style="overflow: hidden">
+<body>
   <div class="concept-layout design fullscreen">
     <div class="concept-content">
       <header class="page-header" data-page-header>
@@ -6728,7 +6728,8 @@ Voraussetzungen  devops ändert nichts davon.</pre></div>
 </section>
 </section>
 
-<section data-iteration="2" data-iteration-template="design" data-design-set="alternatives" id="iter-2" data-active>
+<section data-iteration="2" data-iteration-template="design" data-design-set="alternatives" data-baked id="iter-2" hidden>
+  <script type="application/json" data-frozen-feedback>{"general":{"text":"","attachments":[]},"designs":{},"screens":{},"views":{},"favorite":"r2d1","userPins":[{"id":"up-mwzgljh1gv0b","design":"r2d2","screen":"r2d2-s3","x":44.4,"y":42.6,"target":"div.r2-head.r2-off \"devops○ Aus · in dotclaude⏻ Ausschalten \"","text":"wenn ich hier hin klicke, sollte da sdropdown auch zughene","attachments":[]},{"id":"up-mwzhky6ewi8o","design":"r2d1","screen":"r2d1-s2","x":46.1,"y":58.5,"target":"span \"⧉ Textblock kopieren\"","text":"was hilft mir das kopieren hier!?","attachments":[]},{"id":"up-mwzhl3urwuco","design":"r2d1","screen":"r2d1-s2","x":46.7,"y":63.2,"target":"div.r2-gh \"Statistik · 7 Tage\"","text":"Stastistik kann gern als dritter punkt nebst übersicht einstellungen sein und more fency! Das mus svisuell attraktiv sien, das muss klar quantiativ anzeigen. Dort gern richtig ideen reinstekcen und was tolles draus machen","attachments":[]},{"id":"up-mwzhom8vv2y7","design":"r2d1","screen":"r2d1-s2","x":40.4,"y":14,"target":"div.r2-state \"● An · überall\"","text":"zeigen wir dne punkt nicht rechts von devosp sonst an? und an benötigt es dann wirklich nicht mehr... überall aktiv auch nicht, nur wenn es nicht überall aktiv ist, aber selbst das wäre verwirrend, also dieses texteuelle neben dem greünen goi nicht","attachments":[]},{"id":"up-mwzhuqyiz1ra","design":"r2d1","screen":"r2d1-s3","x":56.1,"y":41.5,"target":"div.r2-mi \"Alle Projekte\"","text":"bitte das overlay dropdown auch darüber machen und nicht alle elemente verschieben :/","attachments":[]}],"fidelity":"off"}</script>
 <style>
 /* Round 2 · shared pane chrome comes from the .mock-* rules (same values as round 1, repeated so the round stands alone).
      Round-2 classes: r2- shared body, r2b- / r2c- per head; every rule is scoped to this round. */
@@ -6856,7 +6857,7 @@ Voraussetzungen  devops ändert nichts davon.</pre></div>
         <div class="r2-top"><div><div class="r2-name">devops</div><div class="r2-state">● An · überall</div></div><span class="mock-grow"></span><span class="r2-power" data-screen-link="r2d1-s3" data-tip="devops ein- oder ausschalten">⏻</span></div>
         <div class="r2-bars"><div class="r2-meter"><span class="r2-ml">Woche</span><span class="r2-bar"><span class="r2-el" style="width:61%"></span><span class="r2-mk" style="left:54%"></span><span class="r2-wm">4 d 19 h</span></span><span class="r2-pct mock-num">54 %</span></div><div class="r2-meter"><span class="r2-ml">Fable</span><span class="r2-bar"><span class="r2-el" style="width:61%"></span><span class="r2-mk" style="left:31%"></span><span class="r2-wm">4 d 19 h</span></span><span class="r2-pct mock-num">31 %</span></div></div>
       </div>
-      <div class="r2-tabs"><span class="r2-tab r2-cur" data-screen-link="r2d1-s1">Übersicht</span><span class="r2-tab" data-screen-link="r2d1-s2">Einstellungen</span><span class="mock-grow"></span><button class="r2-ib r2-bed" type="button" data-tip="PC ausschalten, sobald keine Sitzung mehr arbeitet">🛏</button><button class="r2-ib" type="button" data-tip="vor 4 s aktualisiert">↻</button></div>
+      <div class="r2-tabs"><span class="r2-tab r2-cur" data-screen-link="r2d1-s1">Übersicht</span><span class="r2-tab" data-screen-link="r2d1-s2">Einstellungen</span><span class="mock-grow"></span><button class="r2-ib r2-bed" type="button" data-tip="PC ausschalten, sobald keine Sitzung mehr arbeitet" disabled>🛏</button><button class="r2-ib" type="button" data-tip="vor 4 s aktualisiert" disabled>↻</button></div>
       <div class="r2-acts">
         <span class="r2-act" data-tip="Öffnet die Sitzung, die am längsten wartet">👉 <b class="mock-num">2</b> <span class="r2-verb">Öffnen</span></span>
         <span class="r2-act" data-tip="Öffnet die zuletzt gestartete laufende Sitzung">⏳ <b class="mock-num">3</b> <span class="r2-verb">Öffnen</span></span>
@@ -6865,9 +6866,9 @@ Voraussetzungen  devops ändert nichts davon.</pre></div>
       </div>
       <div class="r2-sec r2-projects">
         <div class="r2-sh">Projekte</div>
-        <div class="r2-proj"><span class="r2-pn">dotclaude</span><span class="r2-pchip" data-tip="Neueste wartende Sitzung öffnen">👉 1</span><span class="r2-pchip" data-tip="Neueste laufende Sitzung öffnen">⏳ 2</span><span class="r2-pchip" data-tip="Aufräumen in dotclaude öffnen">🧹 4</span><span class="mock-grow"></span><button class="mock-btn mock-sm" type="button">＋ Batch</button></div>
-        <div class="r2-proj"><span class="r2-pn">hearthbot</span><span class="r2-pchip" data-tip="Neueste laufende Sitzung öffnen">⏳ 1</span><span class="r2-pchip" data-tip="Neueste fertige Sitzung öffnen">🟩 3</span><span class="mock-grow"></span><button class="mock-btn mock-sm" type="button">＋ Batch</button></div>
-        <div class="r2-proj"><span class="r2-pn">website</span><span class="r2-pchip" data-tip="Neueste wartende Sitzung öffnen">👉 1</span><span class="r2-pchip" data-tip="Neueste fertige Sitzung öffnen">🟩 2</span><span class="mock-grow"></span><button class="mock-btn mock-plain mock-sm" type="button">→ Batch</button></div>
+        <div class="r2-proj"><span class="r2-pn">dotclaude</span><span class="r2-pchip" data-tip="Neueste wartende Sitzung öffnen">👉 1</span><span class="r2-pchip" data-tip="Neueste laufende Sitzung öffnen">⏳ 2</span><span class="r2-pchip" data-tip="Aufräumen in dotclaude öffnen">🧹 4</span><span class="mock-grow"></span><button class="mock-btn mock-sm" type="button" disabled>＋ Batch</button></div>
+        <div class="r2-proj"><span class="r2-pn">hearthbot</span><span class="r2-pchip" data-tip="Neueste laufende Sitzung öffnen">⏳ 1</span><span class="r2-pchip" data-tip="Neueste fertige Sitzung öffnen">🟩 3</span><span class="mock-grow"></span><button class="mock-btn mock-sm" type="button" disabled>＋ Batch</button></div>
+        <div class="r2-proj"><span class="r2-pn">website</span><span class="r2-pchip" data-tip="Neueste wartende Sitzung öffnen">👉 1</span><span class="r2-pchip" data-tip="Neueste fertige Sitzung öffnen">🟩 2</span><span class="mock-grow"></span><button class="mock-btn mock-plain mock-sm" type="button" disabled>→ Batch</button></div>
       </div>
     </div></div>
     <div class="anno-layer" data-anno-layer>
@@ -6876,7 +6877,7 @@ Voraussetzungen  devops ändert nichts davon.</pre></div>
         <div class="anno-bubble" id="anno-bubble-r2-d1-s1-a1" data-anno-bubble="r2-d1-s1-a1" data-open="false">
         <p class="anno-bubble-improved"><strong>Verbessert</strong> Balken wie im Band</p>
           <button type="button" class="anno-bubble-summary" data-anno-summary="r2-d1-s1-a1" aria-expanded="false" aria-controls="anno-bubble-r2-d1-s1-a1"><span class="anno-bubble-question">Zwei Balken oben, Woche und Fable – oder nur den knapperen?</span></button>
-          <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r2-d1-s1-a1" data-annotation="r2-d1-s1-a1" data-attachable placeholder="Deine Antwort…"></textarea><div class="attach-slot" data-attach-slot="anno-r2-d1-s1-a1"></div></div>
+          <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r2-d1-s1-a1" data-annotation="r2-d1-s1-a1" data-attachable placeholder="Deine Antwort…" readonly>gern dort immer alle vs in den completion cards / mod panel, nur die die relevant sind zu jener zeit ( check das nochmal </textarea><div class="attach-slot" data-attach-slot="anno-r2-d1-s1-a1"></div></div>
         </div>
       </div>
       <div class="anno" data-anno="r2-d1-s1-a2" data-anno-side="right" data-anno-target=".r2-acts" style="--anno-x:72%;--anno-y:40%">
@@ -6884,7 +6885,7 @@ Voraussetzungen  devops ändert nichts davon.</pre></div>
         <div class="anno-bubble" id="anno-bubble-r2-d1-s1-a2" data-anno-bubble="r2-d1-s1-a2" data-open="false">
         <p class="anno-bubble-improved"><strong>Verbessert</strong> Emoji, Zahl und Aktion, eine Farbe</p>
           <button type="button" class="anno-bubble-summary" data-anno-summary="r2-d1-s1-a2" aria-expanded="false" aria-controls="anno-bubble-r2-d1-s1-a2"><span class="anno-bubble-question">Klickbar = Rahmen und Verb, nur Info = graue Zahl – ist die Regel klar?</span></button>
-          <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r2-d1-s1-a2" data-annotation="r2-d1-s1-a2" data-attachable placeholder="Deine Antwort…"></textarea><div class="attach-slot" data-attach-slot="anno-r2-d1-s1-a2"></div></div>
+          <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r2-d1-s1-a2" data-annotation="r2-d1-s1-a2" data-attachable placeholder="Deine Antwort…" readonly>passt! </textarea><div class="attach-slot" data-attach-slot="anno-r2-d1-s1-a2"></div></div>
         </div>
       </div>
       <div class="anno" data-anno="r2-d1-s1-a3" data-anno-side="left" data-anno-target=".r2-bed" style="--anno-x:72%;--anno-y:31%">
@@ -6892,7 +6893,7 @@ Voraussetzungen  devops ändert nichts davon.</pre></div>
         <div class="anno-bubble" id="anno-bubble-r2-d1-s1-a3" data-anno-bubble="r2-d1-s1-a3" data-open="false">
         <p class="anno-bubble-improved"><strong>Verbessert</strong> Ins Bett als Symbol neben ↻</p>
           <button type="button" class="anno-bubble-summary" data-anno-summary="r2-d1-s1-a3" aria-expanded="false" aria-controls="anno-bubble-r2-d1-s1-a3"><span class="anno-bubble-question">Bett-Symbol nur mit Tooltip – findest du es so wieder?</span></button>
-          <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r2-d1-s1-a3" data-annotation="r2-d1-s1-a3" data-attachable placeholder="Deine Antwort…"></textarea><div class="attach-slot" data-attach-slot="anno-r2-d1-s1-a3"></div></div>
+          <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r2-d1-s1-a3" data-annotation="r2-d1-s1-a3" data-attachable placeholder="Deine Antwort…" readonly>lieber ein echtes bett symobol und generell die symbole einent icken größer und auch die schrift4en !</textarea><div class="attach-slot" data-attach-slot="anno-r2-d1-s1-a3"></div></div>
         </div>
       </div>
     </div>
@@ -6905,7 +6906,7 @@ Voraussetzungen  devops ändert nichts davon.</pre></div>
         <div class="r2-top"><div><div class="r2-name">devops</div><div class="r2-state">● An · überall</div></div><span class="mock-grow"></span><span class="r2-power" data-screen-link="r2d1-s3" data-tip="devops ein- oder ausschalten">⏻</span></div>
         <div class="r2-bars"><div class="r2-meter"><span class="r2-ml">Woche</span><span class="r2-bar"><span class="r2-el" style="width:61%"></span><span class="r2-mk" style="left:54%"></span><span class="r2-wm">4 d 19 h</span></span><span class="r2-pct mock-num">54 %</span></div><div class="r2-meter"><span class="r2-ml">Fable</span><span class="r2-bar"><span class="r2-el" style="width:61%"></span><span class="r2-mk" style="left:31%"></span><span class="r2-wm">4 d 19 h</span></span><span class="r2-pct mock-num">31 %</span></div></div>
       </div>
-      <div class="r2-tabs"><span class="r2-tab" data-screen-link="r2d1-s1">Übersicht</span><span class="r2-tab r2-cur" data-screen-link="r2d1-s2">Einstellungen</span><span class="mock-grow"></span><button class="r2-ib r2-bed" type="button" data-tip="PC ausschalten, sobald keine Sitzung mehr arbeitet">🛏</button><button class="r2-ib" type="button" data-tip="vor 4 s aktualisiert">↻</button></div>
+      <div class="r2-tabs"><span class="r2-tab" data-screen-link="r2d1-s1">Übersicht</span><span class="r2-tab r2-cur" data-screen-link="r2d1-s2">Einstellungen</span><span class="mock-grow"></span><button class="r2-ib r2-bed" type="button" data-tip="PC ausschalten, sobald keine Sitzung mehr arbeitet" disabled>🛏</button><button class="r2-ib" type="button" data-tip="vor 4 s aktualisiert" disabled>↻</button></div>
       <div>
         <div class="r2-gh">Allgemein</div>
         <div class="r2-group">
@@ -6944,7 +6945,7 @@ Voraussetzungen  devops ändert nichts davon.</pre></div>
         <button class="anno-pin" type="button" data-anno-pin="r2-d1-s2-a1" aria-expanded="false" aria-controls="anno-bubble-r2-d1-s2-a1" aria-label="Frage {n}">1</button>
         <div class="anno-bubble" id="anno-bubble-r2-d1-s2-a1" data-anno-bubble="r2-d1-s2-a1" data-open="false">
           <button type="button" class="anno-bubble-summary" data-anno-summary="r2-d1-s2-a1" aria-expanded="false" aria-controls="anno-bubble-r2-d1-s2-a1"><span class="anno-bubble-question">Ausgabestil als eigene Zeile unter Allgemein – richtig einsortiert?</span></button>
-          <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r2-d1-s2-a1" data-annotation="r2-d1-s2-a1" data-attachable placeholder="Deine Antwort…"></textarea><div class="attach-slot" data-attach-slot="anno-r2-d1-s2-a1"></div></div>
+          <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r2-d1-s2-a1" data-annotation="r2-d1-s2-a1" data-attachable placeholder="Deine Antwort…" readonly>Ja super! </textarea><div class="attach-slot" data-attach-slot="anno-r2-d1-s2-a1"></div></div>
         </div>
       </div>
     </div>
@@ -6965,7 +6966,7 @@ Voraussetzungen  devops ändert nichts davon.</pre></div>
         </div>
         <div class="r2-bars r2-muted"><div class="r2-meter"><span class="r2-ml">Woche</span><span class="r2-bar"><span class="r2-el" style="width:61%"></span><span class="r2-mk" style="left:54%"></span><span class="r2-wm">4 d 19 h</span></span><span class="r2-pct mock-num">54 %</span></div><div class="r2-meter"><span class="r2-ml">Fable</span><span class="r2-bar"><span class="r2-el" style="width:61%"></span><span class="r2-mk" style="left:31%"></span><span class="r2-wm">4 d 19 h</span></span><span class="r2-pct mock-num">31 %</span></div></div>
       </div>
-      <div class="r2-tabs r2-muted"><span class="r2-tab r2-cur">Übersicht</span><span class="r2-tab">Einstellungen</span><span class="mock-grow"></span><button class="r2-ib r2-bed" type="button" data-tip="PC ausschalten, sobald keine Sitzung mehr arbeitet">🛏</button><button class="r2-ib" type="button" data-tip="vor 4 s aktualisiert">↻</button></div>
+      <div class="r2-tabs r2-muted"><span class="r2-tab r2-cur">Übersicht</span><span class="r2-tab">Einstellungen</span><span class="mock-grow"></span><button class="r2-ib r2-bed" type="button" data-tip="PC ausschalten, sobald keine Sitzung mehr arbeitet" disabled>🛏</button><button class="r2-ib" type="button" data-tip="vor 4 s aktualisiert" disabled>↻</button></div>
       <div class="r2-acts r2-muted">
         <span class="r2-act" data-tip="Öffnet die Sitzung, die am längsten wartet">👉 <b class="mock-num">2</b> <span class="r2-verb">Öffnen</span></span>
         <span class="r2-act" data-tip="Öffnet die zuletzt gestartete laufende Sitzung">⏳ <b class="mock-num">3</b> <span class="r2-verb">Öffnen</span></span>
@@ -6974,9 +6975,9 @@ Voraussetzungen  devops ändert nichts davon.</pre></div>
       </div>
       <div class="r2-sec r2-projects r2-muted">
         <div class="r2-sh">Projekte</div>
-        <div class="r2-proj"><span class="r2-pn">dotclaude</span><span class="r2-pchip" data-tip="Neueste wartende Sitzung öffnen">👉 1</span><span class="r2-pchip" data-tip="Neueste laufende Sitzung öffnen">⏳ 2</span><span class="r2-pchip" data-tip="Aufräumen in dotclaude öffnen">🧹 4</span><span class="mock-grow"></span><button class="mock-btn mock-sm" type="button">＋ Batch</button></div>
-        <div class="r2-proj"><span class="r2-pn">hearthbot</span><span class="r2-pchip" data-tip="Neueste laufende Sitzung öffnen">⏳ 1</span><span class="r2-pchip" data-tip="Neueste fertige Sitzung öffnen">🟩 3</span><span class="mock-grow"></span><button class="mock-btn mock-sm" type="button">＋ Batch</button></div>
-        <div class="r2-proj"><span class="r2-pn">website</span><span class="r2-pchip" data-tip="Neueste wartende Sitzung öffnen">👉 1</span><span class="r2-pchip" data-tip="Neueste fertige Sitzung öffnen">🟩 2</span><span class="mock-grow"></span><button class="mock-btn mock-plain mock-sm" type="button">→ Batch</button></div>
+        <div class="r2-proj"><span class="r2-pn">dotclaude</span><span class="r2-pchip" data-tip="Neueste wartende Sitzung öffnen">👉 1</span><span class="r2-pchip" data-tip="Neueste laufende Sitzung öffnen">⏳ 2</span><span class="r2-pchip" data-tip="Aufräumen in dotclaude öffnen">🧹 4</span><span class="mock-grow"></span><button class="mock-btn mock-sm" type="button" disabled>＋ Batch</button></div>
+        <div class="r2-proj"><span class="r2-pn">hearthbot</span><span class="r2-pchip" data-tip="Neueste laufende Sitzung öffnen">⏳ 1</span><span class="r2-pchip" data-tip="Neueste fertige Sitzung öffnen">🟩 3</span><span class="mock-grow"></span><button class="mock-btn mock-sm" type="button" disabled>＋ Batch</button></div>
+        <div class="r2-proj"><span class="r2-pn">website</span><span class="r2-pchip" data-tip="Neueste wartende Sitzung öffnen">👉 1</span><span class="r2-pchip" data-tip="Neueste fertige Sitzung öffnen">🟩 2</span><span class="mock-grow"></span><button class="mock-btn mock-plain mock-sm" type="button" disabled>→ Batch</button></div>
       </div>
       <div class="mock-foot">devops 0.411.1</div>
     </div></div>
@@ -6986,7 +6987,7 @@ Voraussetzungen  devops ändert nichts davon.</pre></div>
         <div class="anno-bubble" id="anno-bubble-r2-d1-s3-a1" data-anno-bubble="r2-d1-s3-a1" data-open="false">
         <p class="anno-bubble-improved"><strong>Verbessert</strong> Liest den Zustand live, ≤ 20 s</p>
           <button type="button" class="anno-bubble-summary" data-anno-summary="r2-d1-s3-a1" aria-expanded="false" aria-controls="anno-bubble-r2-d1-s3-a1" aria-label="Verbessert: Liest den Zustand live, ≤ 20 s"></button>
-          <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r2-d1-s3-a1" data-annotation="r2-d1-s3-a1" data-attachable placeholder="Deine Antwort…"></textarea><div class="attach-slot" data-attach-slot="anno-r2-d1-s3-a1"></div></div>
+          <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r2-d1-s3-a1" data-annotation="r2-d1-s3-a1" data-attachable placeholder="Deine Antwort…" readonly></textarea><div class="attach-slot" data-attach-slot="anno-r2-d1-s3-a1"></div></div>
         </div>
       </div>
     </div>
@@ -6999,7 +7000,7 @@ Voraussetzungen  devops ändert nichts davon.</pre></div>
         <div class="r2-top"><div><div class="r2-name">devops</div><div class="r2-state">● An · überall</div></div><span class="mock-grow"></span><span class="r2-power">⏻</span></div>
         <div class="r2-bars"><div class="r2-meter"><span class="r2-ml">Woche</span><span class="r2-bar"><span class="r2-el" style="width:61%"></span><span class="r2-mk" style="left:54%"></span><span class="r2-wm">4 d 19 h</span></span><span class="r2-pct mock-num">54 %</span></div><div class="r2-meter"><span class="r2-ml">Fable</span><span class="r2-bar"><span class="r2-el" style="width:61%"></span><span class="r2-mk" style="left:31%"></span><span class="r2-wm">4 d 19 h</span></span><span class="r2-pct mock-num">31 %</span></div></div>
       </div>
-      <div class="r2-tabs r2-muted"><span class="r2-tab r2-cur">Übersicht</span><span class="r2-tab">Einstellungen</span><span class="mock-grow"></span><button class="r2-ib r2-bed" type="button" data-tip="PC ausschalten, sobald keine Sitzung mehr arbeitet">🛏</button><button class="r2-ib" type="button" data-tip="vor 4 s aktualisiert">↻</button></div>
+      <div class="r2-tabs r2-muted"><span class="r2-tab r2-cur">Übersicht</span><span class="r2-tab">Einstellungen</span><span class="mock-grow"></span><button class="r2-ib r2-bed" type="button" data-tip="PC ausschalten, sobald keine Sitzung mehr arbeitet" disabled>🛏</button><button class="r2-ib" type="button" data-tip="vor 4 s aktualisiert" disabled>↻</button></div>
       <div class="r2-acts">
         <span class="r2-act" data-tip="Öffnet die Sitzung, die am längsten wartet">👉 <b class="mock-num">2</b> <span class="r2-verb">Öffnen</span></span>
         <span class="r2-act" data-tip="Öffnet die zuletzt gestartete laufende Sitzung">⏳ <b class="mock-num">3</b> <span class="r2-verb">Öffnen</span></span>
@@ -7008,9 +7009,9 @@ Voraussetzungen  devops ändert nichts davon.</pre></div>
       </div>
       <div class="r2-sec r2-projects">
         <div class="r2-sh">Projekte</div>
-        <div class="r2-proj"><span class="r2-pn">dotclaude</span><span class="r2-pchip" data-tip="Neueste wartende Sitzung öffnen">👉 1</span><span class="r2-pchip" data-tip="Neueste laufende Sitzung öffnen">⏳ 2</span><span class="r2-pchip" data-tip="Aufräumen in dotclaude öffnen">🧹 4</span><span class="mock-grow"></span><button class="mock-btn mock-sm" type="button">＋ Batch</button></div>
-        <div class="r2-proj"><span class="r2-pn">hearthbot</span><span class="r2-pchip" data-tip="Neueste laufende Sitzung öffnen">⏳ 1</span><span class="r2-pchip" data-tip="Neueste fertige Sitzung öffnen">🟩 3</span><span class="mock-grow"></span><button class="mock-btn mock-sm" type="button">＋ Batch</button></div>
-        <div class="r2-proj"><span class="r2-pn">website</span><span class="r2-pchip" data-tip="Neueste wartende Sitzung öffnen">👉 1</span><span class="r2-pchip" data-tip="Neueste fertige Sitzung öffnen">🟩 2</span><span class="mock-grow"></span><button class="mock-btn mock-plain mock-sm" type="button">→ Batch</button></div>
+        <div class="r2-proj"><span class="r2-pn">dotclaude</span><span class="r2-pchip" data-tip="Neueste wartende Sitzung öffnen">👉 1</span><span class="r2-pchip" data-tip="Neueste laufende Sitzung öffnen">⏳ 2</span><span class="r2-pchip" data-tip="Aufräumen in dotclaude öffnen">🧹 4</span><span class="mock-grow"></span><button class="mock-btn mock-sm" type="button" disabled>＋ Batch</button></div>
+        <div class="r2-proj"><span class="r2-pn">hearthbot</span><span class="r2-pchip" data-tip="Neueste laufende Sitzung öffnen">⏳ 1</span><span class="r2-pchip" data-tip="Neueste fertige Sitzung öffnen">🟩 3</span><span class="mock-grow"></span><button class="mock-btn mock-sm" type="button" disabled>＋ Batch</button></div>
+        <div class="r2-proj"><span class="r2-pn">website</span><span class="r2-pchip" data-tip="Neueste wartende Sitzung öffnen">👉 1</span><span class="r2-pchip" data-tip="Neueste fertige Sitzung öffnen">🟩 2</span><span class="mock-grow"></span><button class="mock-btn mock-plain mock-sm" type="button" disabled>→ Batch</button></div>
       </div>
       <div class="r2-scrim"></div>
       <div class="r2-coach">
@@ -7036,9 +7037,9 @@ Voraussetzungen  devops ändert nichts davon.</pre></div>
       <div class="mock-title">🏠 devops Home <span class="mock-grow"></span><span class="mock-dim">⤢ ✕</span></div>
       <div class="r2-head">
         <div class="r2-top"><div><div class="r2-name">devops</div><div class="r2-state">● An · überall</div></div><span class="mock-grow"></span><span class="r2-power" data-screen-link="r2d2-s3" data-tip="devops ein- oder ausschalten">⏻</span></div>
-        <div class="r2b-stack"><div class="r2b-wait"><span class="r2b-n mock-num">2</span><span class="r2b-l">warten auf dich</span><span class="mock-grow"></span><button class="mock-btn mock-pri" type="button" data-tip="Öffnet die Sitzung, die am längsten wartet">Öffnen</button></div><div class="r2-meter"><span class="r2-ml">Woche</span><span class="r2-bar"><span class="r2-el" style="width:61%"></span><span class="r2-mk" style="left:54%"></span><span class="r2-wm">4 d 19 h</span></span><span class="r2-pct mock-num">54 %</span></div></div>
+        <div class="r2b-stack"><div class="r2b-wait"><span class="r2b-n mock-num">2</span><span class="r2b-l">warten auf dich</span><span class="mock-grow"></span><button class="mock-btn mock-pri" type="button" data-tip="Öffnet die Sitzung, die am längsten wartet" disabled>Öffnen</button></div><div class="r2-meter"><span class="r2-ml">Woche</span><span class="r2-bar"><span class="r2-el" style="width:61%"></span><span class="r2-mk" style="left:54%"></span><span class="r2-wm">4 d 19 h</span></span><span class="r2-pct mock-num">54 %</span></div></div>
       </div>
-      <div class="r2-tabs"><span class="r2-tab r2-cur" data-screen-link="r2d2-s1">Übersicht</span><span class="r2-tab" data-screen-link="r2d2-s2">Einstellungen</span><span class="mock-grow"></span><button class="r2-ib r2-bed" type="button" data-tip="PC ausschalten, sobald keine Sitzung mehr arbeitet">🛏</button><button class="r2-ib" type="button" data-tip="vor 4 s aktualisiert">↻</button></div>
+      <div class="r2-tabs"><span class="r2-tab r2-cur" data-screen-link="r2d2-s1">Übersicht</span><span class="r2-tab" data-screen-link="r2d2-s2">Einstellungen</span><span class="mock-grow"></span><button class="r2-ib r2-bed" type="button" data-tip="PC ausschalten, sobald keine Sitzung mehr arbeitet" disabled>🛏</button><button class="r2-ib" type="button" data-tip="vor 4 s aktualisiert" disabled>↻</button></div>
       <div class="r2-acts">
         <span class="r2-act" data-tip="Öffnet die Sitzung, die am längsten wartet">👉 <b class="mock-num">2</b> <span class="r2-verb">Öffnen</span></span>
         <span class="r2-act" data-tip="Öffnet die zuletzt gestartete laufende Sitzung">⏳ <b class="mock-num">3</b> <span class="r2-verb">Öffnen</span></span>
@@ -7047,9 +7048,9 @@ Voraussetzungen  devops ändert nichts davon.</pre></div>
       </div>
       <div class="r2-sec r2-projects">
         <div class="r2-sh">Projekte</div>
-        <div class="r2-proj"><span class="r2-pn">dotclaude</span><span class="r2-pchip" data-tip="Neueste wartende Sitzung öffnen">👉 1</span><span class="r2-pchip" data-tip="Neueste laufende Sitzung öffnen">⏳ 2</span><span class="r2-pchip" data-tip="Aufräumen in dotclaude öffnen">🧹 4</span><span class="mock-grow"></span><button class="mock-btn mock-sm" type="button">＋ Batch</button></div>
-        <div class="r2-proj"><span class="r2-pn">hearthbot</span><span class="r2-pchip" data-tip="Neueste laufende Sitzung öffnen">⏳ 1</span><span class="r2-pchip" data-tip="Neueste fertige Sitzung öffnen">🟩 3</span><span class="mock-grow"></span><button class="mock-btn mock-sm" type="button">＋ Batch</button></div>
-        <div class="r2-proj"><span class="r2-pn">website</span><span class="r2-pchip" data-tip="Neueste wartende Sitzung öffnen">👉 1</span><span class="r2-pchip" data-tip="Neueste fertige Sitzung öffnen">🟩 2</span><span class="mock-grow"></span><button class="mock-btn mock-plain mock-sm" type="button">→ Batch</button></div>
+        <div class="r2-proj"><span class="r2-pn">dotclaude</span><span class="r2-pchip" data-tip="Neueste wartende Sitzung öffnen">👉 1</span><span class="r2-pchip" data-tip="Neueste laufende Sitzung öffnen">⏳ 2</span><span class="r2-pchip" data-tip="Aufräumen in dotclaude öffnen">🧹 4</span><span class="mock-grow"></span><button class="mock-btn mock-sm" type="button" disabled>＋ Batch</button></div>
+        <div class="r2-proj"><span class="r2-pn">hearthbot</span><span class="r2-pchip" data-tip="Neueste laufende Sitzung öffnen">⏳ 1</span><span class="r2-pchip" data-tip="Neueste fertige Sitzung öffnen">🟩 3</span><span class="mock-grow"></span><button class="mock-btn mock-sm" type="button" disabled>＋ Batch</button></div>
+        <div class="r2-proj"><span class="r2-pn">website</span><span class="r2-pchip" data-tip="Neueste wartende Sitzung öffnen">👉 1</span><span class="r2-pchip" data-tip="Neueste fertige Sitzung öffnen">🟩 2</span><span class="mock-grow"></span><button class="mock-btn mock-plain mock-sm" type="button" disabled>→ Batch</button></div>
       </div>
     </div></div>
     <div class="anno-layer" data-anno-layer>
@@ -7057,14 +7058,14 @@ Voraussetzungen  devops ändert nichts davon.</pre></div>
         <button class="anno-pin" type="button" data-anno-pin="r2-d2-s1-a1" aria-expanded="false" aria-controls="anno-bubble-r2-d2-s1-a1" aria-label="Frage {n}">1</button>
         <div class="anno-bubble" id="anno-bubble-r2-d2-s1-a1" data-anno-bubble="r2-d2-s1-a1" data-open="false">
           <button type="button" class="anno-bubble-summary" data-anno-summary="r2-d2-s1-a1" aria-expanded="false" aria-controls="anno-bubble-r2-d2-s1-a1"><span class="anno-bubble-question">Reicht eine Zeile Budget, wenn oben die wartenden Sitzungen stehen?</span></button>
-          <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r2-d2-s1-a1" data-annotation="r2-d2-s1-a1" data-attachable placeholder="Deine Antwort…"></textarea><div class="attach-slot" data-attach-slot="anno-r2-d2-s1-a1"></div></div>
+          <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r2-d2-s1-a1" data-annotation="r2-d2-s1-a1" data-attachable placeholder="Deine Antwort…" readonly></textarea><div class="attach-slot" data-attach-slot="anno-r2-d2-s1-a1"></div></div>
         </div>
       </div>
       <div class="anno" data-anno="r2-d2-s1-a2" data-anno-side="left" data-anno-target=".r2b-wait .mock-btn" style="--anno-x:72%;--anno-y:22%">
         <button class="anno-pin" type="button" data-anno-pin="r2-d2-s1-a2" aria-expanded="false" aria-controls="anno-bubble-r2-d2-s1-a2" aria-label="Frage {n}">2</button>
         <div class="anno-bubble" id="anno-bubble-r2-d2-s1-a2" data-anno-bubble="r2-d2-s1-a2" data-open="false">
           <button type="button" class="anno-bubble-summary" data-anno-summary="r2-d2-s1-a2" aria-expanded="false" aria-controls="anno-bubble-r2-d2-s1-a2"><span class="anno-bubble-question">„Öffnen“ springt zur am längsten wartenden Sitzung – oder lieber zur neuesten?</span></button>
-          <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r2-d2-s1-a2" data-annotation="r2-d2-s1-a2" data-attachable placeholder="Deine Antwort…"></textarea><div class="attach-slot" data-attach-slot="anno-r2-d2-s1-a2"></div></div>
+          <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r2-d2-s1-a2" data-annotation="r2-d2-s1-a2" data-attachable placeholder="Deine Antwort…" readonly></textarea><div class="attach-slot" data-attach-slot="anno-r2-d2-s1-a2"></div></div>
         </div>
       </div>
       <div class="anno" data-anno="r2-d2-s1-a3" data-anno-side="right" data-anno-target=".r2-projects" style="--anno-x:72%;--anno-y:62%">
@@ -7072,7 +7073,7 @@ Voraussetzungen  devops ändert nichts davon.</pre></div>
         <div class="anno-bubble" id="anno-bubble-r2-d2-s1-a3" data-anno-bubble="r2-d2-s1-a3" data-open="false">
         <p class="anno-bubble-improved"><strong>Verbessert</strong> Chips öffnen die Sitzung per Klick</p>
           <button type="button" class="anno-bubble-summary" data-anno-summary="r2-d2-s1-a3" aria-expanded="false" aria-controls="anno-bubble-r2-d2-s1-a3"><span class="anno-bubble-question">Projekt-Chip öffnet die neueste Sitzung mit diesem Status – passt das?</span></button>
-          <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r2-d2-s1-a3" data-annotation="r2-d2-s1-a3" data-attachable placeholder="Deine Antwort…"></textarea><div class="attach-slot" data-attach-slot="anno-r2-d2-s1-a3"></div></div>
+          <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r2-d2-s1-a3" data-annotation="r2-d2-s1-a3" data-attachable placeholder="Deine Antwort…" readonly></textarea><div class="attach-slot" data-attach-slot="anno-r2-d2-s1-a3"></div></div>
         </div>
       </div>
     </div>
@@ -7083,9 +7084,9 @@ Voraussetzungen  devops ändert nichts davon.</pre></div>
       <div class="mock-title">🏠 devops Home <span class="mock-grow"></span><span class="mock-dim">⤢ ✕</span></div>
       <div class="r2-head">
         <div class="r2-top"><div><div class="r2-name">devops</div><div class="r2-state">● An · überall</div></div><span class="mock-grow"></span><span class="r2-power" data-screen-link="r2d2-s3" data-tip="devops ein- oder ausschalten">⏻</span></div>
-        <div class="r2b-stack"><div class="r2b-wait"><span class="r2b-n mock-num">2</span><span class="r2b-l">warten auf dich</span><span class="mock-grow"></span><button class="mock-btn mock-pri" type="button" data-tip="Öffnet die Sitzung, die am längsten wartet">Öffnen</button></div><div class="r2-meter"><span class="r2-ml">Woche</span><span class="r2-bar"><span class="r2-el" style="width:61%"></span><span class="r2-mk" style="left:54%"></span><span class="r2-wm">4 d 19 h</span></span><span class="r2-pct mock-num">54 %</span></div></div>
+        <div class="r2b-stack"><div class="r2b-wait"><span class="r2b-n mock-num">2</span><span class="r2b-l">warten auf dich</span><span class="mock-grow"></span><button class="mock-btn mock-pri" type="button" data-tip="Öffnet die Sitzung, die am längsten wartet" disabled>Öffnen</button></div><div class="r2-meter"><span class="r2-ml">Woche</span><span class="r2-bar"><span class="r2-el" style="width:61%"></span><span class="r2-mk" style="left:54%"></span><span class="r2-wm">4 d 19 h</span></span><span class="r2-pct mock-num">54 %</span></div></div>
       </div>
-      <div class="r2-tabs"><span class="r2-tab" data-screen-link="r2d2-s1">Übersicht</span><span class="r2-tab r2-cur" data-screen-link="r2d2-s2">Einstellungen</span><span class="mock-grow"></span><button class="r2-ib r2-bed" type="button" data-tip="PC ausschalten, sobald keine Sitzung mehr arbeitet">🛏</button><button class="r2-ib" type="button" data-tip="vor 4 s aktualisiert">↻</button></div>
+      <div class="r2-tabs"><span class="r2-tab" data-screen-link="r2d2-s1">Übersicht</span><span class="r2-tab r2-cur" data-screen-link="r2d2-s2">Einstellungen</span><span class="mock-grow"></span><button class="r2-ib r2-bed" type="button" data-tip="PC ausschalten, sobald keine Sitzung mehr arbeitet" disabled>🛏</button><button class="r2-ib" type="button" data-tip="vor 4 s aktualisiert" disabled>↻</button></div>
       <div>
         <div class="r2-gh">Allgemein</div>
         <div class="r2-group">
@@ -7134,9 +7135,9 @@ Voraussetzungen  devops ändert nichts davon.</pre></div>
           <div class="r2-sep"></div>
           <div class="r2-mi" data-screen-link="r2d2-s1"><b>Einschalten</b></div>
         </div>
-        <div class="r2-muted r2b-stack"><div class="r2b-wait"><span class="r2b-n mock-num">2</span><span class="r2b-l">warten auf dich</span><span class="mock-grow"></span><button class="mock-btn mock-pri" type="button" data-tip="Öffnet die Sitzung, die am längsten wartet">Öffnen</button></div><div class="r2-meter"><span class="r2-ml">Woche</span><span class="r2-bar"><span class="r2-el" style="width:61%"></span><span class="r2-mk" style="left:54%"></span><span class="r2-wm">4 d 19 h</span></span><span class="r2-pct mock-num">54 %</span></div></div>
+        <div class="r2-muted r2b-stack"><div class="r2b-wait"><span class="r2b-n mock-num">2</span><span class="r2b-l">warten auf dich</span><span class="mock-grow"></span><button class="mock-btn mock-pri" type="button" data-tip="Öffnet die Sitzung, die am längsten wartet" disabled>Öffnen</button></div><div class="r2-meter"><span class="r2-ml">Woche</span><span class="r2-bar"><span class="r2-el" style="width:61%"></span><span class="r2-mk" style="left:54%"></span><span class="r2-wm">4 d 19 h</span></span><span class="r2-pct mock-num">54 %</span></div></div>
       </div>
-      <div class="r2-tabs r2-muted"><span class="r2-tab r2-cur">Übersicht</span><span class="r2-tab">Einstellungen</span><span class="mock-grow"></span><button class="r2-ib r2-bed" type="button" data-tip="PC ausschalten, sobald keine Sitzung mehr arbeitet">🛏</button><button class="r2-ib" type="button" data-tip="vor 4 s aktualisiert">↻</button></div>
+      <div class="r2-tabs r2-muted"><span class="r2-tab r2-cur">Übersicht</span><span class="r2-tab">Einstellungen</span><span class="mock-grow"></span><button class="r2-ib r2-bed" type="button" data-tip="PC ausschalten, sobald keine Sitzung mehr arbeitet" disabled>🛏</button><button class="r2-ib" type="button" data-tip="vor 4 s aktualisiert" disabled>↻</button></div>
       <div class="r2-acts r2-muted">
         <span class="r2-act" data-tip="Öffnet die Sitzung, die am längsten wartet">👉 <b class="mock-num">2</b> <span class="r2-verb">Öffnen</span></span>
         <span class="r2-act" data-tip="Öffnet die zuletzt gestartete laufende Sitzung">⏳ <b class="mock-num">3</b> <span class="r2-verb">Öffnen</span></span>
@@ -7145,9 +7146,9 @@ Voraussetzungen  devops ändert nichts davon.</pre></div>
       </div>
       <div class="r2-sec r2-projects r2-muted">
         <div class="r2-sh">Projekte</div>
-        <div class="r2-proj"><span class="r2-pn">dotclaude</span><span class="r2-pchip" data-tip="Neueste wartende Sitzung öffnen">👉 1</span><span class="r2-pchip" data-tip="Neueste laufende Sitzung öffnen">⏳ 2</span><span class="r2-pchip" data-tip="Aufräumen in dotclaude öffnen">🧹 4</span><span class="mock-grow"></span><button class="mock-btn mock-sm" type="button">＋ Batch</button></div>
-        <div class="r2-proj"><span class="r2-pn">hearthbot</span><span class="r2-pchip" data-tip="Neueste laufende Sitzung öffnen">⏳ 1</span><span class="r2-pchip" data-tip="Neueste fertige Sitzung öffnen">🟩 3</span><span class="mock-grow"></span><button class="mock-btn mock-sm" type="button">＋ Batch</button></div>
-        <div class="r2-proj"><span class="r2-pn">website</span><span class="r2-pchip" data-tip="Neueste wartende Sitzung öffnen">👉 1</span><span class="r2-pchip" data-tip="Neueste fertige Sitzung öffnen">🟩 2</span><span class="mock-grow"></span><button class="mock-btn mock-plain mock-sm" type="button">→ Batch</button></div>
+        <div class="r2-proj"><span class="r2-pn">dotclaude</span><span class="r2-pchip" data-tip="Neueste wartende Sitzung öffnen">👉 1</span><span class="r2-pchip" data-tip="Neueste laufende Sitzung öffnen">⏳ 2</span><span class="r2-pchip" data-tip="Aufräumen in dotclaude öffnen">🧹 4</span><span class="mock-grow"></span><button class="mock-btn mock-sm" type="button" disabled>＋ Batch</button></div>
+        <div class="r2-proj"><span class="r2-pn">hearthbot</span><span class="r2-pchip" data-tip="Neueste laufende Sitzung öffnen">⏳ 1</span><span class="r2-pchip" data-tip="Neueste fertige Sitzung öffnen">🟩 3</span><span class="mock-grow"></span><button class="mock-btn mock-sm" type="button" disabled>＋ Batch</button></div>
+        <div class="r2-proj"><span class="r2-pn">website</span><span class="r2-pchip" data-tip="Neueste wartende Sitzung öffnen">👉 1</span><span class="r2-pchip" data-tip="Neueste fertige Sitzung öffnen">🟩 2</span><span class="mock-grow"></span><button class="mock-btn mock-plain mock-sm" type="button" disabled>→ Batch</button></div>
       </div>
       <div class="mock-foot">devops 0.411.1</div>
     </div></div>
@@ -7157,7 +7158,7 @@ Voraussetzungen  devops ändert nichts davon.</pre></div>
         <div class="anno-bubble" id="anno-bubble-r2-d2-s3-a1" data-anno-bubble="r2-d2-s3-a1" data-open="false">
         <p class="anno-bubble-improved"><strong>Verbessert</strong> Liest den Zustand live, ≤ 20 s</p>
           <button type="button" class="anno-bubble-summary" data-anno-summary="r2-d2-s3-a1" aria-expanded="false" aria-controls="anno-bubble-r2-d2-s3-a1" aria-label="Verbessert: Liest den Zustand live, ≤ 20 s"></button>
-          <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r2-d2-s3-a1" data-annotation="r2-d2-s3-a1" data-attachable placeholder="Deine Antwort…"></textarea><div class="attach-slot" data-attach-slot="anno-r2-d2-s3-a1"></div></div>
+          <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r2-d2-s3-a1" data-annotation="r2-d2-s3-a1" data-attachable placeholder="Deine Antwort…" readonly></textarea><div class="attach-slot" data-attach-slot="anno-r2-d2-s3-a1"></div></div>
         </div>
       </div>
     </div>
@@ -7168,9 +7169,9 @@ Voraussetzungen  devops ändert nichts davon.</pre></div>
       <div class="mock-title">🏠 devops Home <span class="mock-grow"></span><span class="mock-dim">⤢ ✕</span></div>
       <div class="r2-head r2-spot">
         <div class="r2-top"><div><div class="r2-name">devops</div><div class="r2-state">● An · überall</div></div><span class="mock-grow"></span><span class="r2-power">⏻</span></div>
-        <div class="r2b-stack"><div class="r2b-wait"><span class="r2b-n mock-num">2</span><span class="r2b-l">warten auf dich</span><span class="mock-grow"></span><button class="mock-btn mock-pri" type="button" data-tip="Öffnet die Sitzung, die am längsten wartet">Öffnen</button></div><div class="r2-meter"><span class="r2-ml">Woche</span><span class="r2-bar"><span class="r2-el" style="width:61%"></span><span class="r2-mk" style="left:54%"></span><span class="r2-wm">4 d 19 h</span></span><span class="r2-pct mock-num">54 %</span></div></div>
+        <div class="r2b-stack"><div class="r2b-wait"><span class="r2b-n mock-num">2</span><span class="r2b-l">warten auf dich</span><span class="mock-grow"></span><button class="mock-btn mock-pri" type="button" data-tip="Öffnet die Sitzung, die am längsten wartet" disabled>Öffnen</button></div><div class="r2-meter"><span class="r2-ml">Woche</span><span class="r2-bar"><span class="r2-el" style="width:61%"></span><span class="r2-mk" style="left:54%"></span><span class="r2-wm">4 d 19 h</span></span><span class="r2-pct mock-num">54 %</span></div></div>
       </div>
-      <div class="r2-tabs r2-muted"><span class="r2-tab r2-cur">Übersicht</span><span class="r2-tab">Einstellungen</span><span class="mock-grow"></span><button class="r2-ib r2-bed" type="button" data-tip="PC ausschalten, sobald keine Sitzung mehr arbeitet">🛏</button><button class="r2-ib" type="button" data-tip="vor 4 s aktualisiert">↻</button></div>
+      <div class="r2-tabs r2-muted"><span class="r2-tab r2-cur">Übersicht</span><span class="r2-tab">Einstellungen</span><span class="mock-grow"></span><button class="r2-ib r2-bed" type="button" data-tip="PC ausschalten, sobald keine Sitzung mehr arbeitet" disabled>🛏</button><button class="r2-ib" type="button" data-tip="vor 4 s aktualisiert" disabled>↻</button></div>
       <div class="r2-acts">
         <span class="r2-act" data-tip="Öffnet die Sitzung, die am längsten wartet">👉 <b class="mock-num">2</b> <span class="r2-verb">Öffnen</span></span>
         <span class="r2-act" data-tip="Öffnet die zuletzt gestartete laufende Sitzung">⏳ <b class="mock-num">3</b> <span class="r2-verb">Öffnen</span></span>
@@ -7179,9 +7180,9 @@ Voraussetzungen  devops ändert nichts davon.</pre></div>
       </div>
       <div class="r2-sec r2-projects">
         <div class="r2-sh">Projekte</div>
-        <div class="r2-proj"><span class="r2-pn">dotclaude</span><span class="r2-pchip" data-tip="Neueste wartende Sitzung öffnen">👉 1</span><span class="r2-pchip" data-tip="Neueste laufende Sitzung öffnen">⏳ 2</span><span class="r2-pchip" data-tip="Aufräumen in dotclaude öffnen">🧹 4</span><span class="mock-grow"></span><button class="mock-btn mock-sm" type="button">＋ Batch</button></div>
-        <div class="r2-proj"><span class="r2-pn">hearthbot</span><span class="r2-pchip" data-tip="Neueste laufende Sitzung öffnen">⏳ 1</span><span class="r2-pchip" data-tip="Neueste fertige Sitzung öffnen">🟩 3</span><span class="mock-grow"></span><button class="mock-btn mock-sm" type="button">＋ Batch</button></div>
-        <div class="r2-proj"><span class="r2-pn">website</span><span class="r2-pchip" data-tip="Neueste wartende Sitzung öffnen">👉 1</span><span class="r2-pchip" data-tip="Neueste fertige Sitzung öffnen">🟩 2</span><span class="mock-grow"></span><button class="mock-btn mock-plain mock-sm" type="button">→ Batch</button></div>
+        <div class="r2-proj"><span class="r2-pn">dotclaude</span><span class="r2-pchip" data-tip="Neueste wartende Sitzung öffnen">👉 1</span><span class="r2-pchip" data-tip="Neueste laufende Sitzung öffnen">⏳ 2</span><span class="r2-pchip" data-tip="Aufräumen in dotclaude öffnen">🧹 4</span><span class="mock-grow"></span><button class="mock-btn mock-sm" type="button" disabled>＋ Batch</button></div>
+        <div class="r2-proj"><span class="r2-pn">hearthbot</span><span class="r2-pchip" data-tip="Neueste laufende Sitzung öffnen">⏳ 1</span><span class="r2-pchip" data-tip="Neueste fertige Sitzung öffnen">🟩 3</span><span class="mock-grow"></span><button class="mock-btn mock-sm" type="button" disabled>＋ Batch</button></div>
+        <div class="r2-proj"><span class="r2-pn">website</span><span class="r2-pchip" data-tip="Neueste wartende Sitzung öffnen">👉 1</span><span class="r2-pchip" data-tip="Neueste fertige Sitzung öffnen">🟩 2</span><span class="mock-grow"></span><button class="mock-btn mock-plain mock-sm" type="button" disabled>→ Batch</button></div>
       </div>
       <div class="r2-scrim"></div>
       <div class="r2-coach">
@@ -7196,7 +7197,7 @@ Voraussetzungen  devops ändert nichts davon.</pre></div>
         <button class="anno-pin" type="button" data-anno-pin="r2-d2-s4-a1" aria-expanded="false" aria-controls="anno-bubble-r2-d2-s4-a1" aria-label="Frage {n}">1</button>
         <div class="anno-bubble" id="anno-bubble-r2-d2-s4-a1" data-anno-bubble="r2-d2-s4-a1" data-open="false">
           <button type="button" class="anno-bubble-summary" data-anno-summary="r2-d2-s4-a1" aria-expanded="false" aria-controls="anno-bubble-r2-d2-s4-a1"><span class="anno-bubble-question">Startet die Einführung richtig mit dem Zweck – oder gleich mit dem ⏻?</span></button>
-          <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r2-d2-s4-a1" data-annotation="r2-d2-s4-a1" data-attachable placeholder="Deine Antwort…"></textarea><div class="attach-slot" data-attach-slot="anno-r2-d2-s4-a1"></div></div>
+          <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r2-d2-s4-a1" data-annotation="r2-d2-s4-a1" data-attachable placeholder="Deine Antwort…" readonly>Zweck ist gut erstmal !</textarea><div class="attach-slot" data-attach-slot="anno-r2-d2-s4-a1"></div></div>
         </div>
       </div>
     </div>
@@ -7218,7 +7219,7 @@ Voraussetzungen  devops ändert nichts davon.</pre></div>
         <div class="r2-top"><div><div class="r2-name">devops</div><div class="r2-state">● An · überall<span class="r2c-health" data-tip="Alle Hooks laufen">Hooks ✓</span></div></div><span class="mock-grow"></span><span class="r2-power" data-screen-link="r2d3-s3" data-tip="devops ein- oder ausschalten">⏻</span></div>
         <div class="r2c-stack"><div class="r2c-verdict"><b>Im Plan</b><span class="r2c-rest-txt"> · 54 % verbraucht bei 61 % der Woche</span></div><div class="r2c-wide"><span class="r2-bar"><span class="r2-el" style="width:61%"></span><span class="r2-mk" style="left:54%"></span><span class="r2-wm">4 d 19 h</span></span></div></div>
       </div>
-      <div class="r2-tabs"><span class="r2-tab r2-cur" data-screen-link="r2d3-s1">Übersicht</span><span class="r2-tab" data-screen-link="r2d3-s2">Einstellungen</span><span class="mock-grow"></span><button class="r2-ib r2-bed" type="button" data-tip="PC ausschalten, sobald keine Sitzung mehr arbeitet">🛏</button><button class="r2-ib" type="button" data-tip="vor 4 s aktualisiert">↻</button></div>
+      <div class="r2-tabs"><span class="r2-tab r2-cur" data-screen-link="r2d3-s1">Übersicht</span><span class="r2-tab" data-screen-link="r2d3-s2">Einstellungen</span><span class="mock-grow"></span><button class="r2-ib r2-bed" type="button" data-tip="PC ausschalten, sobald keine Sitzung mehr arbeitet" disabled>🛏</button><button class="r2-ib" type="button" data-tip="vor 4 s aktualisiert" disabled>↻</button></div>
       <div class="r2-acts">
         <span class="r2-act" data-tip="Öffnet die Sitzung, die am längsten wartet">👉 <b class="mock-num">2</b> <span class="r2-verb">Öffnen</span></span>
         <span class="r2-act" data-tip="Öffnet die zuletzt gestartete laufende Sitzung">⏳ <b class="mock-num">3</b> <span class="r2-verb">Öffnen</span></span>
@@ -7227,9 +7228,9 @@ Voraussetzungen  devops ändert nichts davon.</pre></div>
       </div>
       <div class="r2-sec r2-projects">
         <div class="r2-sh">Projekte</div>
-        <div class="r2-proj"><span class="r2-pn">dotclaude</span><span class="r2-pchip" data-tip="Neueste wartende Sitzung öffnen">👉 1</span><span class="r2-pchip" data-tip="Neueste laufende Sitzung öffnen">⏳ 2</span><span class="r2-pchip" data-tip="Aufräumen in dotclaude öffnen">🧹 4</span><span class="mock-grow"></span><button class="mock-btn mock-sm" type="button">＋ Batch</button></div>
-        <div class="r2-proj"><span class="r2-pn">hearthbot</span><span class="r2-pchip" data-tip="Neueste laufende Sitzung öffnen">⏳ 1</span><span class="r2-pchip" data-tip="Neueste fertige Sitzung öffnen">🟩 3</span><span class="mock-grow"></span><button class="mock-btn mock-sm" type="button">＋ Batch</button></div>
-        <div class="r2-proj"><span class="r2-pn">website</span><span class="r2-pchip" data-tip="Neueste wartende Sitzung öffnen">👉 1</span><span class="r2-pchip" data-tip="Neueste fertige Sitzung öffnen">🟩 2</span><span class="mock-grow"></span><button class="mock-btn mock-plain mock-sm" type="button">→ Batch</button></div>
+        <div class="r2-proj"><span class="r2-pn">dotclaude</span><span class="r2-pchip" data-tip="Neueste wartende Sitzung öffnen">👉 1</span><span class="r2-pchip" data-tip="Neueste laufende Sitzung öffnen">⏳ 2</span><span class="r2-pchip" data-tip="Aufräumen in dotclaude öffnen">🧹 4</span><span class="mock-grow"></span><button class="mock-btn mock-sm" type="button" disabled>＋ Batch</button></div>
+        <div class="r2-proj"><span class="r2-pn">hearthbot</span><span class="r2-pchip" data-tip="Neueste laufende Sitzung öffnen">⏳ 1</span><span class="r2-pchip" data-tip="Neueste fertige Sitzung öffnen">🟩 3</span><span class="mock-grow"></span><button class="mock-btn mock-sm" type="button" disabled>＋ Batch</button></div>
+        <div class="r2-proj"><span class="r2-pn">website</span><span class="r2-pchip" data-tip="Neueste wartende Sitzung öffnen">👉 1</span><span class="r2-pchip" data-tip="Neueste fertige Sitzung öffnen">🟩 2</span><span class="mock-grow"></span><button class="mock-btn mock-plain mock-sm" type="button" disabled>→ Batch</button></div>
       </div>
     </div></div>
     <div class="anno-layer" data-anno-layer>
@@ -7237,14 +7238,14 @@ Voraussetzungen  devops ändert nichts davon.</pre></div>
         <button class="anno-pin" type="button" data-anno-pin="r2-d3-s1-a1" aria-expanded="false" aria-controls="anno-bubble-r2-d3-s1-a1" aria-label="Frage {n}">1</button>
         <div class="anno-bubble" id="anno-bubble-r2-d3-s1-a1" data-anno-bubble="r2-d3-s1-a1" data-open="false">
           <button type="button" class="anno-bubble-summary" data-anno-summary="r2-d3-s1-a1" aria-expanded="false" aria-controls="anno-bubble-r2-d3-s1-a1"><span class="anno-bubble-question">Ein Satz zum Tempo als wichtigste Info oben – reicht dir das?</span></button>
-          <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r2-d3-s1-a1" data-annotation="r2-d3-s1-a1" data-attachable placeholder="Deine Antwort…"></textarea><div class="attach-slot" data-attach-slot="anno-r2-d3-s1-a1"></div></div>
+          <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r2-d3-s1-a1" data-annotation="r2-d3-s1-a1" data-attachable placeholder="Deine Antwort…" readonly></textarea><div class="attach-slot" data-attach-slot="anno-r2-d3-s1-a1"></div></div>
         </div>
       </div>
       <div class="anno" data-anno="r2-d3-s1-a2" data-anno-side="right" data-anno-target=".r2c-health" style="--anno-x:72%;--anno-y:12%">
         <button class="anno-pin" type="button" data-anno-pin="r2-d3-s1-a2" aria-expanded="false" aria-controls="anno-bubble-r2-d3-s1-a2" aria-label="Frage {n}">2</button>
         <div class="anno-bubble" id="anno-bubble-r2-d3-s1-a2" data-anno-bubble="r2-d3-s1-a2" data-open="false">
           <button type="button" class="anno-bubble-summary" data-anno-summary="r2-d3-s1-a2" aria-expanded="false" aria-controls="anno-bubble-r2-d3-s1-a2"><span class="anno-bubble-question">„Hooks ✓“ immer zeigen – oder nur, wenn etwas nicht läuft?</span></button>
-          <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r2-d3-s1-a2" data-annotation="r2-d3-s1-a2" data-attachable placeholder="Deine Antwort…"></textarea><div class="attach-slot" data-attach-slot="anno-r2-d3-s1-a2"></div></div>
+          <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r2-d3-s1-a2" data-annotation="r2-d3-s1-a2" data-attachable placeholder="Deine Antwort…" readonly></textarea><div class="attach-slot" data-attach-slot="anno-r2-d3-s1-a2"></div></div>
         </div>
       </div>
     </div>
@@ -7257,7 +7258,7 @@ Voraussetzungen  devops ändert nichts davon.</pre></div>
         <div class="r2-top"><div><div class="r2-name">devops</div><div class="r2-state">● An · überall<span class="r2c-health" data-tip="Alle Hooks laufen">Hooks ✓</span></div></div><span class="mock-grow"></span><span class="r2-power" data-screen-link="r2d3-s3" data-tip="devops ein- oder ausschalten">⏻</span></div>
         <div class="r2c-stack"><div class="r2c-verdict"><b>Im Plan</b><span class="r2c-rest-txt"> · 54 % verbraucht bei 61 % der Woche</span></div><div class="r2c-wide"><span class="r2-bar"><span class="r2-el" style="width:61%"></span><span class="r2-mk" style="left:54%"></span><span class="r2-wm">4 d 19 h</span></span></div></div>
       </div>
-      <div class="r2-tabs"><span class="r2-tab" data-screen-link="r2d3-s1">Übersicht</span><span class="r2-tab r2-cur" data-screen-link="r2d3-s2">Einstellungen</span><span class="mock-grow"></span><button class="r2-ib r2-bed" type="button" data-tip="PC ausschalten, sobald keine Sitzung mehr arbeitet">🛏</button><button class="r2-ib" type="button" data-tip="vor 4 s aktualisiert">↻</button></div>
+      <div class="r2-tabs"><span class="r2-tab" data-screen-link="r2d3-s1">Übersicht</span><span class="r2-tab r2-cur" data-screen-link="r2d3-s2">Einstellungen</span><span class="mock-grow"></span><button class="r2-ib r2-bed" type="button" data-tip="PC ausschalten, sobald keine Sitzung mehr arbeitet" disabled>🛏</button><button class="r2-ib" type="button" data-tip="vor 4 s aktualisiert" disabled>↻</button></div>
       <div>
         <div class="r2-gh">Allgemein</div>
         <div class="r2-group">
@@ -7296,7 +7297,7 @@ Voraussetzungen  devops ändert nichts davon.</pre></div>
         <button class="anno-pin" type="button" data-anno-pin="r2-d3-s2-a1" aria-expanded="false" aria-controls="anno-bubble-r2-d3-s2-a1" aria-label="Frage {n}">1</button>
         <div class="anno-bubble" id="anno-bubble-r2-d3-s2-a1" data-anno-bubble="r2-d3-s2-a1" data-open="false">
           <button type="button" class="anno-bubble-summary" data-anno-summary="r2-d3-s2-a1" aria-expanded="false" aria-controls="anno-bubble-r2-d3-s2-a1"><span class="anno-bubble-question">Einführung unter Hilfe wiederholbar – suchst du sie dort?</span></button>
-          <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r2-d3-s2-a1" data-annotation="r2-d3-s2-a1" data-attachable placeholder="Deine Antwort…"></textarea><div class="attach-slot" data-attach-slot="anno-r2-d3-s2-a1"></div></div>
+          <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r2-d3-s2-a1" data-annotation="r2-d3-s2-a1" data-attachable placeholder="Deine Antwort…" readonly></textarea><div class="attach-slot" data-attach-slot="anno-r2-d3-s2-a1"></div></div>
         </div>
       </div>
     </div>
@@ -7317,7 +7318,7 @@ Voraussetzungen  devops ändert nichts davon.</pre></div>
         </div>
         <div class="r2-muted r2c-stack"><div class="r2c-verdict"><b>Im Plan</b><span class="r2c-rest-txt"> · 54 % verbraucht bei 61 % der Woche</span></div><div class="r2c-wide"><span class="r2-bar"><span class="r2-el" style="width:61%"></span><span class="r2-mk" style="left:54%"></span><span class="r2-wm">4 d 19 h</span></span></div></div>
       </div>
-      <div class="r2-tabs r2-muted"><span class="r2-tab r2-cur">Übersicht</span><span class="r2-tab">Einstellungen</span><span class="mock-grow"></span><button class="r2-ib r2-bed" type="button" data-tip="PC ausschalten, sobald keine Sitzung mehr arbeitet">🛏</button><button class="r2-ib" type="button" data-tip="vor 4 s aktualisiert">↻</button></div>
+      <div class="r2-tabs r2-muted"><span class="r2-tab r2-cur">Übersicht</span><span class="r2-tab">Einstellungen</span><span class="mock-grow"></span><button class="r2-ib r2-bed" type="button" data-tip="PC ausschalten, sobald keine Sitzung mehr arbeitet" disabled>🛏</button><button class="r2-ib" type="button" data-tip="vor 4 s aktualisiert" disabled>↻</button></div>
       <div class="r2-acts r2-muted">
         <span class="r2-act" data-tip="Öffnet die Sitzung, die am längsten wartet">👉 <b class="mock-num">2</b> <span class="r2-verb">Öffnen</span></span>
         <span class="r2-act" data-tip="Öffnet die zuletzt gestartete laufende Sitzung">⏳ <b class="mock-num">3</b> <span class="r2-verb">Öffnen</span></span>
@@ -7326,9 +7327,9 @@ Voraussetzungen  devops ändert nichts davon.</pre></div>
       </div>
       <div class="r2-sec r2-projects r2-muted">
         <div class="r2-sh">Projekte</div>
-        <div class="r2-proj"><span class="r2-pn">dotclaude</span><span class="r2-pchip" data-tip="Neueste wartende Sitzung öffnen">👉 1</span><span class="r2-pchip" data-tip="Neueste laufende Sitzung öffnen">⏳ 2</span><span class="r2-pchip" data-tip="Aufräumen in dotclaude öffnen">🧹 4</span><span class="mock-grow"></span><button class="mock-btn mock-sm" type="button">＋ Batch</button></div>
-        <div class="r2-proj"><span class="r2-pn">hearthbot</span><span class="r2-pchip" data-tip="Neueste laufende Sitzung öffnen">⏳ 1</span><span class="r2-pchip" data-tip="Neueste fertige Sitzung öffnen">🟩 3</span><span class="mock-grow"></span><button class="mock-btn mock-sm" type="button">＋ Batch</button></div>
-        <div class="r2-proj"><span class="r2-pn">website</span><span class="r2-pchip" data-tip="Neueste wartende Sitzung öffnen">👉 1</span><span class="r2-pchip" data-tip="Neueste fertige Sitzung öffnen">🟩 2</span><span class="mock-grow"></span><button class="mock-btn mock-plain mock-sm" type="button">→ Batch</button></div>
+        <div class="r2-proj"><span class="r2-pn">dotclaude</span><span class="r2-pchip" data-tip="Neueste wartende Sitzung öffnen">👉 1</span><span class="r2-pchip" data-tip="Neueste laufende Sitzung öffnen">⏳ 2</span><span class="r2-pchip" data-tip="Aufräumen in dotclaude öffnen">🧹 4</span><span class="mock-grow"></span><button class="mock-btn mock-sm" type="button" disabled>＋ Batch</button></div>
+        <div class="r2-proj"><span class="r2-pn">hearthbot</span><span class="r2-pchip" data-tip="Neueste laufende Sitzung öffnen">⏳ 1</span><span class="r2-pchip" data-tip="Neueste fertige Sitzung öffnen">🟩 3</span><span class="mock-grow"></span><button class="mock-btn mock-sm" type="button" disabled>＋ Batch</button></div>
+        <div class="r2-proj"><span class="r2-pn">website</span><span class="r2-pchip" data-tip="Neueste wartende Sitzung öffnen">👉 1</span><span class="r2-pchip" data-tip="Neueste fertige Sitzung öffnen">🟩 2</span><span class="mock-grow"></span><button class="mock-btn mock-plain mock-sm" type="button" disabled>→ Batch</button></div>
       </div>
       <div class="mock-foot">devops 0.411.1</div>
     </div></div>
@@ -7338,7 +7339,7 @@ Voraussetzungen  devops ändert nichts davon.</pre></div>
         <div class="anno-bubble" id="anno-bubble-r2-d3-s3-a1" data-anno-bubble="r2-d3-s3-a1" data-open="false">
         <p class="anno-bubble-improved"><strong>Verbessert</strong> Liest den Zustand live, ≤ 20 s</p>
           <button type="button" class="anno-bubble-summary" data-anno-summary="r2-d3-s3-a1" aria-expanded="false" aria-controls="anno-bubble-r2-d3-s3-a1" aria-label="Verbessert: Liest den Zustand live, ≤ 20 s"></button>
-          <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r2-d3-s3-a1" data-annotation="r2-d3-s3-a1" data-attachable placeholder="Deine Antwort…"></textarea><div class="attach-slot" data-attach-slot="anno-r2-d3-s3-a1"></div></div>
+          <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r2-d3-s3-a1" data-annotation="r2-d3-s3-a1" data-attachable placeholder="Deine Antwort…" readonly></textarea><div class="attach-slot" data-attach-slot="anno-r2-d3-s3-a1"></div></div>
         </div>
       </div>
     </div>
@@ -7351,7 +7352,7 @@ Voraussetzungen  devops ändert nichts davon.</pre></div>
         <div class="r2-top"><div><div class="r2-name">devops</div><div class="r2-state">● An · überall<span class="r2c-health" data-tip="Alle Hooks laufen">Hooks ✓</span></div></div><span class="mock-grow"></span><span class="r2-power">⏻</span></div>
         <div class="r2c-stack"><div class="r2c-verdict"><b>Im Plan</b><span class="r2c-rest-txt"> · 54 % verbraucht bei 61 % der Woche</span></div><div class="r2c-wide"><span class="r2-bar"><span class="r2-el" style="width:61%"></span><span class="r2-mk" style="left:54%"></span><span class="r2-wm">4 d 19 h</span></span></div></div>
       </div>
-      <div class="r2-tabs r2-muted"><span class="r2-tab r2-cur">Übersicht</span><span class="r2-tab">Einstellungen</span><span class="mock-grow"></span><button class="r2-ib r2-bed" type="button" data-tip="PC ausschalten, sobald keine Sitzung mehr arbeitet">🛏</button><button class="r2-ib" type="button" data-tip="vor 4 s aktualisiert">↻</button></div>
+      <div class="r2-tabs r2-muted"><span class="r2-tab r2-cur">Übersicht</span><span class="r2-tab">Einstellungen</span><span class="mock-grow"></span><button class="r2-ib r2-bed" type="button" data-tip="PC ausschalten, sobald keine Sitzung mehr arbeitet" disabled>🛏</button><button class="r2-ib" type="button" data-tip="vor 4 s aktualisiert" disabled>↻</button></div>
       <div class="r2-acts">
         <span class="r2-act" data-tip="Öffnet die Sitzung, die am längsten wartet">👉 <b class="mock-num">2</b> <span class="r2-verb">Öffnen</span></span>
         <span class="r2-act" data-tip="Öffnet die zuletzt gestartete laufende Sitzung">⏳ <b class="mock-num">3</b> <span class="r2-verb">Öffnen</span></span>
@@ -7360,9 +7361,9 @@ Voraussetzungen  devops ändert nichts davon.</pre></div>
       </div>
       <div class="r2-sec r2-projects">
         <div class="r2-sh">Projekte</div>
-        <div class="r2-proj"><span class="r2-pn">dotclaude</span><span class="r2-pchip" data-tip="Neueste wartende Sitzung öffnen">👉 1</span><span class="r2-pchip" data-tip="Neueste laufende Sitzung öffnen">⏳ 2</span><span class="r2-pchip" data-tip="Aufräumen in dotclaude öffnen">🧹 4</span><span class="mock-grow"></span><button class="mock-btn mock-sm" type="button">＋ Batch</button></div>
-        <div class="r2-proj"><span class="r2-pn">hearthbot</span><span class="r2-pchip" data-tip="Neueste laufende Sitzung öffnen">⏳ 1</span><span class="r2-pchip" data-tip="Neueste fertige Sitzung öffnen">🟩 3</span><span class="mock-grow"></span><button class="mock-btn mock-sm" type="button">＋ Batch</button></div>
-        <div class="r2-proj"><span class="r2-pn">website</span><span class="r2-pchip" data-tip="Neueste wartende Sitzung öffnen">👉 1</span><span class="r2-pchip" data-tip="Neueste fertige Sitzung öffnen">🟩 2</span><span class="mock-grow"></span><button class="mock-btn mock-plain mock-sm" type="button">→ Batch</button></div>
+        <div class="r2-proj"><span class="r2-pn">dotclaude</span><span class="r2-pchip" data-tip="Neueste wartende Sitzung öffnen">👉 1</span><span class="r2-pchip" data-tip="Neueste laufende Sitzung öffnen">⏳ 2</span><span class="r2-pchip" data-tip="Aufräumen in dotclaude öffnen">🧹 4</span><span class="mock-grow"></span><button class="mock-btn mock-sm" type="button" disabled>＋ Batch</button></div>
+        <div class="r2-proj"><span class="r2-pn">hearthbot</span><span class="r2-pchip" data-tip="Neueste laufende Sitzung öffnen">⏳ 1</span><span class="r2-pchip" data-tip="Neueste fertige Sitzung öffnen">🟩 3</span><span class="mock-grow"></span><button class="mock-btn mock-sm" type="button" disabled>＋ Batch</button></div>
+        <div class="r2-proj"><span class="r2-pn">website</span><span class="r2-pchip" data-tip="Neueste wartende Sitzung öffnen">👉 1</span><span class="r2-pchip" data-tip="Neueste fertige Sitzung öffnen">🟩 2</span><span class="mock-grow"></span><button class="mock-btn mock-plain mock-sm" type="button" disabled>→ Batch</button></div>
       </div>
       <div class="r2-scrim"></div>
       <div class="r2-coach">
@@ -7377,7 +7378,7 @@ Voraussetzungen  devops ändert nichts davon.</pre></div>
         <button class="anno-pin" type="button" data-anno-pin="r2-d3-s4-a1" aria-expanded="false" aria-controls="anno-bubble-r2-d3-s4-a1" aria-label="Frage {n}">1</button>
         <div class="anno-bubble" id="anno-bubble-r2-d3-s4-a1" data-anno-bubble="r2-d3-s4-a1" data-open="false">
           <button type="button" class="anno-bubble-summary" data-anno-summary="r2-d3-s4-a1" aria-expanded="false" aria-controls="anno-bubble-r2-d3-s4-a1"><span class="anno-bubble-question">Abdunkeln mit Ring um den Kopf – zu viel für eine Einführung?</span></button>
-          <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r2-d3-s4-a1" data-annotation="r2-d3-s4-a1" data-attachable placeholder="Deine Antwort…"></textarea><div class="attach-slot" data-attach-slot="anno-r2-d3-s4-a1"></div></div>
+          <div class="anno-bubble-body"><textarea class="anno-answer" data-comment="anno-r2-d3-s4-a1" data-annotation="r2-d3-s4-a1" data-attachable placeholder="Deine Antwort…" readonly></textarea><div class="attach-slot" data-attach-slot="anno-r2-d3-s4-a1"></div></div>
         </div>
       </div>
     </div>
@@ -7414,17 +7415,17 @@ Voraussetzungen  devops ändert nichts davon.</pre></div>
     <section id="r2-d-style-model" data-nav-label="Modell Ausgabestil" data-decision="r2-d-style-model" data-decision-mode="verify"
              data-label="Modell Ausgabestil" data-rec="ok"
              data-rec-why="So beschreibt es deine Notiz aus Runde 1."
-             data-applies-to="Ausgabestil auf allen Ebenen" data-finding="r2-f-style-model">
+             data-applies-to="Ausgabestil auf allen Ebenen" data-finding="r2-f-style-model"><input type="hidden" name="dm-r2-d-style-model-hes" value="{&quot;ms&quot;:39559,&quot;revisits&quot;:2,&quot;median&quot;:19512}" disabled>
       <p data-applies>Gilt für: Ausgabestil auf allen Ebenen</p>
       <p data-situation>Wer devops abschaltet, verliert auch die kurzen Antworten, obwohl diese Regeln devops gar nicht brauchen.</p>
       <h3 data-question>Stimmt das: Ausgabestil ist eine eigene Einstellung, Quiet wirkt auch ohne devops?</h3>
       <div data-options>
-        <label data-opt="ok" data-recommended><input type="radio" name="dm-r2-d-style-model" value="ok" checked><span data-opt-label>Stimmt</span><span data-opt-consequence>Home bekommt die eigene Zeile Ausgabestil, der ⏻ lässt sie in Ruhe.</span></label>
-        <label data-opt="partial"><input type="radio" name="dm-r2-d-style-model" value="partial"><span data-opt-label>Teilweise</span><span data-opt-consequence>Du sagst, welcher Teil woanders hingehört.</span></label>
-        <label data-opt="wrong"><input type="radio" name="dm-r2-d-style-model" value="wrong"><span data-opt-label>Stimmt nicht</span><span data-opt-consequence>Das Modell wird nach deiner Korrektur neu gefasst.</span></label>
-        <input type="text" name="dm-r2-d-style-model-fix" placeholder="Was stimmt nicht?" value="">
+        <label data-opt="ok" data-recommended><input type="radio" name="dm-r2-d-style-model" value="ok" checked disabled><span data-opt-label>Stimmt</span><span data-opt-consequence>Home bekommt die eigene Zeile Ausgabestil, der ⏻ lässt sie in Ruhe.</span></label>
+        <label data-opt="partial"><input type="radio" name="dm-r2-d-style-model" value="partial" disabled><span data-opt-label>Teilweise</span><span data-opt-consequence>Du sagst, welcher Teil woanders hingehört.</span></label>
+        <label data-opt="wrong"><input type="radio" name="dm-r2-d-style-model" value="wrong" disabled><span data-opt-label>Stimmt nicht</span><span data-opt-consequence>Das Modell wird nach deiner Korrektur neu gefasst.</span></label>
+        <input type="text" name="dm-r2-d-style-model-fix" placeholder="Was stimmt nicht?" value="" readonly disabled>
       </div>
-      <textarea data-comment="r2-d-style-model-note" placeholder="Notiz (optional)"></textarea>
+      <textarea data-comment="r2-d-style-model-note" placeholder="Notiz (optional)" readonly></textarea>
       <div data-alevel="3" data-title="Modell Ausgabestil">
         <div data-slot="short"><p>Quiet trägt zwei Schichten, nur eine braucht devops.</p></div>
         <div data-slot="long">
@@ -7443,15 +7444,15 @@ devops an   →  Quiet plus devops-Teile</pre></div>
     <section id="r2-d-style-scope" data-nav-label="Speicherort Ausgabestil" data-decision="r2-d-style-scope" data-decision-mode="single"
              data-label="Speicherort Ausgabestil" data-rec="user"
              data-rec-why="Du stellst den Stil einmal ein; kein Repo überschreibt ihn unbemerkt."
-             data-applies-to="Ausgabestil" data-finding="r2-f-style-scope">
+             data-applies-to="Ausgabestil" data-finding="r2-f-style-scope"><input type="hidden" name="dm-r2-d-style-scope-hes" value="{&quot;ms&quot;:24049,&quot;revisits&quot;:2,&quot;median&quot;:19512}" disabled>
       <p data-applies>Gilt für: Ausgabestil</p>
       <p data-situation>Liegt der Stil je Projekt, antwortet Claude in jedem Repo anders, ohne dass es auffällt.</p>
       <h3 data-question>Wo speichert Home den Ausgabestil?</h3>
       <div data-options>
-        <label data-opt="user" data-recommended><input type="radio" name="dm-r2-d-style-scope" value="user" checked><span data-opt-label>Einmal für alle Projekte speichern</span><span data-opt-consequence>In der Benutzer-Einstellung, gilt überall gleich.</span></label>
-        <label data-opt="project"><input type="radio" name="dm-r2-d-style-scope" value="project"><span data-opt-label>Pro Projekt speichern, mit globalem Standard</span><span data-opt-consequence>Ein Repo kann abweichen, der Rest folgt dem Standard.</span></label>
+        <label data-opt="user" data-recommended><input type="radio" name="dm-r2-d-style-scope" value="user" checked disabled><span data-opt-label>Einmal für alle Projekte speichern</span><span data-opt-consequence>In der Benutzer-Einstellung, gilt überall gleich.</span></label>
+        <label data-opt="project"><input type="radio" name="dm-r2-d-style-scope" value="project" disabled><span data-opt-label>Pro Projekt speichern, mit globalem Standard</span><span data-opt-consequence>Ein Repo kann abweichen, der Rest folgt dem Standard.</span></label>
       </div>
-      <textarea data-comment="r2-d-style-scope-note" placeholder="Notiz (optional)"></textarea>
+      <textarea data-comment="r2-d-style-scope-note" placeholder="Notiz (optional)" readonly></textarea>
       <div data-alevel="3" data-title="Speicherort Ausgabestil">
         <div data-slot="short"><p>Die Projektdatei gewinnt über die Benutzerdatei.</p></div>
         <div data-slot="long">
@@ -7466,16 +7467,16 @@ devops an   →  Quiet plus devops-Teile</pre></div>
     <section id="r2-d-style-offwrite" data-nav-label="Stil beim Projekt-Aus" data-decision="r2-d-style-offwrite" data-decision-mode="yesnoalt"
              data-label="Stil beim Projekt-Aus" data-rec="yes"
              data-rec-why="Folgt aus deiner Notiz: der Stil ist unabhängig von devops."
-             data-applies-to="Projekt-Ebene" data-finding="r2-f-style-offwrite">
+             data-applies-to="Projekt-Ebene" data-finding="r2-f-style-offwrite"><input type="hidden" name="dm-r2-d-style-offwrite-hes" value="{&quot;ms&quot;:14975,&quot;revisits&quot;:0,&quot;median&quot;:19512}" disabled>
       <p data-applies>Gilt für: Projekt-Ebene</p>
       <p data-situation>Wer ein Projekt abschaltet, bekommt dort wieder lange Antworten, weil der Stil mitspringt.</p>
       <h3 data-question>Soll das Projekt-Aus den Ausgabestil künftig unangetastet lassen?</h3>
       <div data-options>
-        <label data-opt="yes" data-recommended><input type="radio" name="dm-r2-d-style-offwrite" value="yes" checked><span data-opt-label>Stil beim Projekt-Aus behalten</span><span data-opt-consequence>Quiet bleibt, nur die devops-Teile ruhen.</span></label>
-        <label data-opt="no"><input type="radio" name="dm-r2-d-style-offwrite" value="no"><span data-opt-label>Stil weiter auf Standard setzen</span><span data-opt-consequence>Wie bisher; beim Einschalten kommt Quiet zurück.</span></label>
-        <label data-opt="alt"><input type="radio" name="dm-r2-d-style-offwrite" value="alt"><span data-opt-label>Anders</span><input type="text" name="dm-r2-d-style-offwrite-alt" placeholder="Wie stattdessen?" value=""></label>
+        <label data-opt="yes" data-recommended><input type="radio" name="dm-r2-d-style-offwrite" value="yes" checked disabled><span data-opt-label>Stil beim Projekt-Aus behalten</span><span data-opt-consequence>Quiet bleibt, nur die devops-Teile ruhen.</span></label>
+        <label data-opt="no"><input type="radio" name="dm-r2-d-style-offwrite" value="no" disabled><span data-opt-label>Stil weiter auf Standard setzen</span><span data-opt-consequence>Wie bisher; beim Einschalten kommt Quiet zurück.</span></label>
+        <label data-opt="alt"><input type="radio" name="dm-r2-d-style-offwrite" value="alt" disabled><span data-opt-label>Anders</span><input type="text" name="dm-r2-d-style-offwrite-alt" placeholder="Wie stattdessen?" value="" readonly disabled></label>
       </div>
-      <textarea data-comment="r2-d-style-offwrite-note" placeholder="Notiz (optional)"></textarea>
+      <textarea data-comment="r2-d-style-offwrite-note" placeholder="Notiz (optional)" readonly></textarea>
       <div data-alevel="3" data-title="Stil beim Projekt-Aus">
         <div data-slot="short"><p>Das Projekt-Aus setzt den Stil zurück.</p></div>
         <div data-slot="long">
@@ -7505,20 +7506,20 @@ Neu
     <section id="r2-d-tut-points" data-nav-label="Inhalte der Einführung" data-decision="r2-d-tut-points" data-decision-mode="multi"
              data-label="Inhalte der Einführung" data-rec="purpose power chips bed batch"
              data-rec-why="Genau die fünf Dinge, die man ohne Erklärung nur durch Ausprobieren findet."
-             data-applies-to="Einführung" data-finding="r2-f-tut-points">
+             data-applies-to="Einführung" data-finding="r2-f-tut-points"><input type="hidden" name="dm-r2-d-tut-points-hes" value="{&quot;ms&quot;:25102,&quot;revisits&quot;:0,&quot;median&quot;:19512}" disabled>
       <p data-applies>Gilt für: Einführung</p>
       <p data-situation>Fünf Funktionen von Home findet man nur durch Ausprobieren, keine erklärt sich beim ersten Öffnen.</p>
       <h3 data-question>Was erklärt die Einführung?</h3>
       <p data-context>Mehrere Antworten möglich.</p>
       <div data-options>
-        <label data-opt="purpose" data-recommended><input type="checkbox" name="dm-r2-d-tut-points.purpose" checked><span data-opt-label>Zweck von Home</span><span data-opt-consequence>Ein Satz: wozu Home da ist.</span></label>
-        <label data-opt="power" data-recommended><input type="checkbox" name="dm-r2-d-tut-points.power" checked><span data-opt-label>⏻ und die drei Ebenen</span><span data-opt-consequence>Ausschalten für Sitzung, Projekt oder alle Projekte.</span></label>
-        <label data-opt="chips" data-recommended><input type="checkbox" name="dm-r2-d-tut-points.chips" checked><span data-opt-label>Aktions-Chips springen in Sitzungen</span><span data-opt-consequence>Ein Klick öffnet die Sitzung, ohne Prompt.</span></label>
-        <label data-opt="bed" data-recommended><input type="checkbox" name="dm-r2-d-tut-points.bed" checked><span data-opt-label>🛏 Ins Bett</span><span data-opt-consequence>PC geht aus, sobald keine Sitzung mehr arbeitet.</span></label>
-        <label data-opt="batch" data-recommended><input type="checkbox" name="dm-r2-d-tut-points.batch" checked><span data-opt-label>＋ Batch sammelt Notizen</span><span data-opt-consequence>Legt die Startanfrage in die Eingabe, Enter startet sie.</span></label>
-        <label data-opt="thread"><input type="checkbox" name="dm-r2-d-tut-points.thread"><span data-opt-label>Thread-Ort für Claude-Projekte</span><span data-opt-consequence>Nur zu sehen, wenn Claude-Projekte an sind.</span></label>
+        <label data-opt="purpose" data-recommended><input type="checkbox" name="dm-r2-d-tut-points.purpose" checked disabled><span data-opt-label>Zweck von Home</span><span data-opt-consequence>Ein Satz: wozu Home da ist.</span></label>
+        <label data-opt="power" data-recommended><input type="checkbox" name="dm-r2-d-tut-points.power" checked disabled><span data-opt-label>⏻ und die drei Ebenen</span><span data-opt-consequence>Ausschalten für Sitzung, Projekt oder alle Projekte.</span></label>
+        <label data-opt="chips" data-recommended><input type="checkbox" name="dm-r2-d-tut-points.chips" checked disabled><span data-opt-label>Aktions-Chips springen in Sitzungen</span><span data-opt-consequence>Ein Klick öffnet die Sitzung, ohne Prompt.</span></label>
+        <label data-opt="bed" data-recommended><input type="checkbox" name="dm-r2-d-tut-points.bed" checked disabled><span data-opt-label>🛏 Ins Bett</span><span data-opt-consequence>PC geht aus, sobald keine Sitzung mehr arbeitet.</span></label>
+        <label data-opt="batch" data-recommended><input type="checkbox" name="dm-r2-d-tut-points.batch" checked disabled><span data-opt-label>＋ Batch sammelt Notizen</span><span data-opt-consequence>Legt die Startanfrage in die Eingabe, Enter startet sie.</span></label>
+        <label data-opt="thread"><input type="checkbox" name="dm-r2-d-tut-points.thread" disabled><span data-opt-label>Thread-Ort für Claude-Projekte</span><span data-opt-consequence>Nur zu sehen, wenn Claude-Projekte an sind.</span></label>
       </div>
-      <textarea data-comment="r2-d-tut-points-note" placeholder="Notiz (optional)"></textarea>
+      <textarea data-comment="r2-d-tut-points-note" placeholder="Notiz (optional)" readonly>das bett icon bitte simpler, das erkennt man so nicht !?=</textarea>
       <div data-alevel="3" data-title="Inhalte der Einführung">
         <div data-slot="short"><p>Fünf Funktionen findet man nur durch Ausprobieren.</p></div>
         <div data-slot="long">
@@ -7538,15 +7539,15 @@ Neu     1 von 5  Wozu devops Home?
     <section id="r2-d-tut-when" data-nav-label="Wann die Einführung kommt" data-decision="r2-d-tut-when" data-decision-mode="single"
              data-label="Wann die Einführung kommt" data-rec="first"
              data-rec-why="Einmal reicht; wer sie wieder sehen will, holt sie über Hilfe."
-             data-applies-to="Einführung" data-finding="r2-f-tut-when">
+             data-applies-to="Einführung" data-finding="r2-f-tut-when"><input type="hidden" name="dm-r2-d-tut-when-hes" value="{&quot;ms&quot;:12967,&quot;revisits&quot;:0,&quot;median&quot;:19512}" disabled>
       <p data-applies>Gilt für: Einführung</p>
       <p data-situation>Eine Einführung, die nach jedem Update wiederkommt, wird weggeklickt; eine, die nie wiederkommt, verpasst neue Funktionen.</p>
       <h3 data-question>Wann zeigt Home die Einführung von selbst?</h3>
       <div data-options>
-        <label data-opt="first" data-recommended><input type="radio" name="dm-r2-d-tut-when" value="first" checked><span data-opt-label>Beim ersten Öffnen zeigen, bis fertig oder übersprungen</span><span data-opt-consequence>Danach nur noch auf Wunsch über Hilfe.</span></label>
-        <label data-opt="updates"><input type="radio" name="dm-r2-d-tut-when" value="updates"><span data-opt-label>Zusätzlich nach größeren Änderungen an Home zeigen</span><span data-opt-consequence>Dann nur die neuen Schritte, je Änderung einmal.</span></label>
+        <label data-opt="first" data-recommended><input type="radio" name="dm-r2-d-tut-when" value="first" checked disabled><span data-opt-label>Beim ersten Öffnen zeigen, bis fertig oder übersprungen</span><span data-opt-consequence>Danach nur noch auf Wunsch über Hilfe.</span></label>
+        <label data-opt="updates"><input type="radio" name="dm-r2-d-tut-when" value="updates" disabled><span data-opt-label>Zusätzlich nach größeren Änderungen an Home zeigen</span><span data-opt-consequence>Dann nur die neuen Schritte, je Änderung einmal.</span></label>
       </div>
-      <textarea data-comment="r2-d-tut-when-note" placeholder="Notiz (optional)"></textarea>
+      <textarea data-comment="r2-d-tut-when-note" placeholder="Notiz (optional)" readonly></textarea>
       <div data-alevel="3" data-title="Wann die Einführung kommt">
         <div data-slot="short"><p>Zu oft wird sie weggeklickt, zu selten verpasst sie Neues.</p></div>
         <div data-slot="long">
@@ -7562,15 +7563,15 @@ Hilfe › Einführung erneut zeigen   → Tour von vorn</pre></div>
     <section id="r2-d-tut-scope" data-nav-label="Wo Einführung gemerkt wird" data-decision="r2-d-tut-scope" data-decision-mode="single"
              data-label="Wo Einführung gemerkt wird" data-rec="machine"
              data-rec-why="Die Tour erklärt Home selbst, und Home ist in jedem Projekt gleich."
-             data-applies-to="Einführung" data-finding="r2-f-tut-scope">
+             data-applies-to="Einführung" data-finding="r2-f-tut-scope"><input type="hidden" name="dm-r2-d-tut-scope-hes" value="{&quot;ms&quot;:5568,&quot;revisits&quot;:0,&quot;median&quot;:19512}" disabled>
       <p data-applies>Gilt für: Einführung</p>
       <p data-situation>Wer in jedem neuen Repo dieselbe Tour wegklicken muss, überspringt sie bald ungelesen.</p>
       <h3 data-question>Wofür merkt sich Home, dass die Einführung erledigt ist?</h3>
       <div data-options>
-        <label data-opt="machine" data-recommended><input type="radio" name="dm-r2-d-tut-scope" value="machine" checked><span data-opt-label>Einmal pro Computer merken</span><span data-opt-consequence>Gilt für alle Projekte auf diesem Computer.</span></label>
-        <label data-opt="project"><input type="radio" name="dm-r2-d-tut-scope" value="project"><span data-opt-label>Einmal pro Projekt merken</span><span data-opt-consequence>Jedes neue Repo zeigt die Tour erneut.</span></label>
+        <label data-opt="machine" data-recommended><input type="radio" name="dm-r2-d-tut-scope" value="machine" checked disabled><span data-opt-label>Einmal pro Computer merken</span><span data-opt-consequence>Gilt für alle Projekte auf diesem Computer.</span></label>
+        <label data-opt="project"><input type="radio" name="dm-r2-d-tut-scope" value="project" disabled><span data-opt-label>Einmal pro Projekt merken</span><span data-opt-consequence>Jedes neue Repo zeigt die Tour erneut.</span></label>
       </div>
-      <textarea data-comment="r2-d-tut-scope-note" placeholder="Notiz (optional)"></textarea>
+      <textarea data-comment="r2-d-tut-scope-note" placeholder="Notiz (optional)" readonly></textarea>
       <div data-alevel="3" data-title="Wo Einführung gemerkt wird">
         <div data-slot="short"><p>Eine Tour je Repo wird bald ungelesen übersprungen.</p></div>
         <div data-slot="long">
@@ -7583,6 +7584,131 @@ Pro Projekt:   dotclaude  Tour ✓   →  hearthbot  Tour von vorn</pre></div>
     </section>
   </section>
 </section>
+</section>
+
+<section data-iteration="3" data-iteration-template="free" data-final-report id="iter-3" data-active>
+  <p class="fr-sentence">devops Home zeigt jetzt den Budget-Kopf mit ⏻-Menü für Sitzung, Projekt und alle Projekte, dazu einen Statistik-Tab und die Einführung.</p>
+
+  <div class="fr-main">
+    <div class="fr-results">
+      <p class="fr-label">Was kam raus</p>
+      <ul class="fr-wins">
+        <li><span class="fr-win-icon" aria-hidden="true">⏻</span><span>devops <b>auf drei Ebenen ausschalten</b>, auch für alle Projekte.</span></li>
+        <li><span class="fr-win-icon" aria-hidden="true">✍️</span><span><b>Ausgabestil als eigene Einstellung</b>, unabhängig von devops an/aus.</span></li>
+        <li><span class="fr-win-icon" aria-hidden="true">📊</span><span><b>Statistik-Tab</b>, Aktions-Chips und eine Einführung beim ersten Öffnen.</span></li>
+      </ul>
+    </div>
+    <ol class="fr-flow">
+      <li>Kopf: „devops ●“, Balken wie im Band, ⏻ rechts</li>
+      <li>⏻ öffnet das Menü über dem Inhalt: Sitzung · Projekt · Alle</li>
+      <li>Tabs Übersicht · Einstellungen · Statistik, daneben Bett und ↻</li>
+      <li>Erstes Öffnen: Einführung in 5 Schritten, einmal pro Computer</li>
+    </ol>
+  </div>
+
+  <div class="fr-holds">
+    <p class="fr-label">Was es aushält<small>Balken = wie weit die Anforderung erfüllt ist</small></p>
+    <div class="fr-meters">
+      <div class="fr-meter" data-grade="part" style="--fr-fill: 86%" data-tip="24 von 28 Punkten der Abnahme voll erfüllt; Anforderung alle 28 (geschätzt). Die 4 offenen stehen unten als Funde.">
+        <span class="fr-meter-name">✅ Abnahme</span>
+        <div class="fr-meter-bar" aria-hidden="true"></div>
+        <b class="fr-meter-value">24 / 28</b>
+      </div>
+      <div class="fr-meter" data-grade="full" style="--fr-fill: 100%" data-tip="Volle Testsuite 14 396 grün, Engine-Tests 165 grün, Lint sauber; Anforderung alles grün (geschätzt).">
+        <span class="fr-meter-name">🧪 Tests</span>
+        <div class="fr-meter-bar" aria-hidden="true"></div>
+        <b class="fr-meter-value">0 rot</b>
+      </div>
+    </div>
+  </div>
+
+  <div class="fr-depth" tabindex="0" data-tip="3 / 7 · ✓ Code-Check · ✓ Trockentest · ✓ Zusammenspiel · ○ Lokal durchgespielt · ○ Prod-Build geprüft · ○ Live vertestet · ◌ Von dir abgenommen">
+    <span class="fr-depth-done">✓ Zuletzt bestanden: <b>Zusammenspiel</b></span>
+    <span class="fr-depth-next">○ Noch nicht gemacht: <b>Lokal durchgespielt</b></span>
+  </div>
+
+  <div class="fr-close">
+  <div class="fr-funde-box" data-open-questions>
+    <p class="fr-close-head"><span>🧭 Du entscheidest</span><small>4 Funde unterwegs</small></p>
+    <ul class="fr-funde">
+      <li data-oq-id="oq-band-bars"
+          data-issue-title="[FEATURE] Band shows only the budget bars relevant at the moment"
+          data-issue-type="feature"
+          data-issue-body="Round 2, head bars: the user wants Home to show all bars always, but the completion card and the mod band only the ones relevant at that time ('check das nochmal'). Check result: the card's terminal line (budgetBars, format.ts:353) filters by relevance; the Desktop band (bandBars, format.ts:337, used at index.tsx:2132) always shows Wk, Fb and 5h. That matches the older decision B2 (docs/dev/mods.md, status element 2026-11-21) and contradicts the newer quote. Fix: let the band use the budgetBars relevance rule (Wk/Fb when the marker is not white or near the reset, 5h from 50 % or within 60 min of reset), keep Home on bandBars, update the B2 row in docs/dev/mods.md and the band tests."
+          data-oq-origin="shortfall"
+          data-route-default="now"
+          data-route-reason="im Repo">
+        <span class="oq-label">Band zeigt alle Balken</span>
+        <dl class="fr-fkv">
+          <dt>Was</dt><dd>Geprüft: Die Karte zeigt nur die relevanten Balken, das Band aber immer alle. Das kommt aus einer älteren Entscheidung und ist noch nicht geändert.</dd>
+          <dt>Wo</dt><dd>Statuszeile über der Eingabe</dd>
+          <dt>Warum vorbelegt</dt><dd>⚡ Jetzt: Die Regel der Karte gibt es schon, sie muss nur ins Band.</dd>
+        </dl>
+      </li>
+      <li data-oq-id="oq-scrim"
+          data-issue-title="[FEATURE] Dim backdrop behind the Home first-run tour"
+          data-issue-type="feature"
+          data-issue-body="Round 2, Erster Start mock r2d1-s4: a dark scrim over the pane with the highlighted element. Built: tour card, step dots, ring highlight via border; no scrim (home.tsx ~1462). Next try: an absolute Box at top 0 / left 0, width and height '100%', backgroundColor with alpha, drawn before the tour card; verify in the Desktop pane that it stacks above the content."
+          data-oq-origin="shortfall"
+          data-route-default="now"
+          data-route-reason="Versuch">
+        <span class="oq-label">Einführung ohne Abdunkeln</span>
+        <dl class="fr-fkv">
+          <dt>Was</dt><dd>Nicht umgesetzt: Die Einführung dunkelt den Rest nicht ab, weil die Reihenfolge der Ebenen ungetestet war.</dd>
+          <dt>Wo</dt><dd>Home · Erster Start</dd>
+          <dt>Warum vorbelegt</dt><dd>⚡ Jetzt: Ein zweiter Versuch mit einer halbtransparenten Fläche kann klappen.</dd>
+        </dl>
+      </li>
+      <li data-oq-id="oq-bed-icon"
+          data-issue-title="[FEATURE] Pressable SVG icon for the Home bed button"
+          data-issue-type="feature"
+          data-issue-body="Round 2: 'lieber ein echtes bett symobol' / 'das bett icon bitte simpler, das erkennt man so nicht'. The mod engine's Button accepts only strings and Text children (claude-code.d.ts ButtonProps.label: any other element is refused), and neither Box nor Svg has onPress. So the press target stays the 🛏 glyph (now one size larger); the simple bed SVG (bedSvg) is shown in the bed status row and the tour. Needs an engine feature (pressable Svg or Button icon) or a text glyph the user accepts."
+          data-oq-origin="shortfall"
+          data-route-default="issue"
+          data-route-reason="Engine">
+        <span class="oq-label">Bett-Grafik nicht klickbar</span>
+        <dl class="fr-fkv">
+          <dt>Was</dt><dd>Nicht umgesetzt: Ein Knopf darf in der Mod-Engine nur Text enthalten. Deshalb bleibt das 🛏-Zeichen, jetzt eine Stufe größer.</dd>
+          <dt>Wo</dt><dd>Home · Tab-Zeile neben ↻</dd>
+          <dt>Warum vorbelegt</dt><dd>📌 Issue: Das braucht eine Funktion der Engine.</dd>
+        </dl>
+      </li>
+      <li data-oq-id="oq-menu-outside"
+          data-issue-title="[FEATURE] Close the Home power menu on a click outside"
+          data-issue-type="feature"
+          data-issue-body="Round 2 pin: 'wenn ich hier hin klicke, sollte da sdropdown auch zughene'. Built: the head, ⏻, tabs, bed, ↻ and every chip close the menu. A click on empty pane space cannot: Box has no onPress in the mod engine (claude-code.d.ts BoxProps), and a Button may not hold a Box. Needs a pressable backdrop or an outside-click event from the engine."
+          data-oq-origin="shortfall"
+          data-route-default="issue"
+          data-route-reason="Engine">
+        <span class="oq-label">Menü: Klick ins Leere</span>
+        <dl class="fr-fkv">
+          <dt>Was</dt><dd>Teilweise: Kopf, Tabs und Chips schließen das ⏻-Menü, ein Klick auf eine leere Stelle nicht.</dd>
+          <dt>Wo</dt><dd>Home · ⏻-Menü</dd>
+          <dt>Warum vorbelegt</dt><dd>📌 Issue: Freie Flächen sind in der Engine nicht klickbar.</dd>
+        </dl>
+      </li>
+    </ul>
+    <p class="fr-funde-hint">↻ Ein Tipp auf die Pille wechselt: ⚡ Jetzt → 📌 Issue → Weglassen.</p>
+  </div>
+  </div>
+
+  <div class="fr-folds">
+  <details class="fr-fold">
+    <summary>🛠 Für Entwickler</summary>
+    <ul class="fr-dev">
+      <li>Branch <code>claude/devops-toggle-all-levels-d58822</code> · Commits <code>49b949e3</code>, <code>df1a0545</code>, <code>9acaa774</code></li>
+      <li><code>hooks/mods/home.tsx</code>, <code>hooks/lib/devops-optout.js</code>, <code>scripts/output-style.js</code></li>
+      <li>Tests: volle Suite 14 396 grün, Engine 165 grün, Lint sauber</li>
+      <li>Nebenbei: Symbole und Schrift eine Stufe größer (Engine hat die Stufe <code>title</code>)</li>
+    </ul>
+  </details>
+  </div>
+
+  <section data-tests hidden aria-label="Du testest">
+    <ul>
+      <li data-todo-id="t-home-look" data-crit="high" data-guide="">Neues Home im Desktop-Panel ansehen</li>
+    </ul>
+  </section>
 </section>
 </main>
     </div>
@@ -7796,7 +7922,8 @@ Pro Projekt:   dotclaude  Tour ✓   →  hearthbot  Tour von vorn</pre></div>
       <div class="panel-nav-scroll">
       <nav class="iteration-tabs" role="tablist" aria-label="Runden">
 <button class="iteration-tab" role="tab" data-iteration="1" aria-selected="false" aria-controls="iter-1">Runde 1</button>
-<button class="iteration-tab" role="tab" data-iteration="2" aria-selected="true" aria-controls="iter-2">Runde 2</button>
+<button class="iteration-tab" role="tab" data-iteration="2" aria-selected="false" aria-controls="iter-2">Runde 2</button>
+<button class="iteration-tab" role="tab" data-final-report data-iteration="3" aria-selected="true" aria-controls="iter-3">Abschlussbericht</button>
 </nav>
       <!-- #section-nav also lives on the design skeleton: a free/decision round
            on a design concept (the final report is always free) renders its TOC

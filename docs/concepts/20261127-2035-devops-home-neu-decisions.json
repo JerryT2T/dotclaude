@@ -171,5 +171,190 @@
         "attachments": []
       }
     ]
+  },
+  {
+    "iteration": 2,
+    "action": "implement",
+    "favorite": "r2d1",
+    "decisions": [
+      {
+        "id": "r2-d-style-model",
+        "value": "ok",
+        "note": "",
+        "deviates": false
+      },
+      {
+        "id": "r2-d-style-scope",
+        "value": "user",
+        "note": "",
+        "deviates": false
+      },
+      {
+        "id": "r2-d-style-offwrite",
+        "value": {
+          "answer": "yes",
+          "alt": ""
+        },
+        "note": "",
+        "deviates": false
+      },
+      {
+        "id": "r2-d-tut-points",
+        "value": [
+          "purpose",
+          "power",
+          "chips",
+          "bed",
+          "batch"
+        ],
+        "note": "das bett icon bitte simpler, das erkennt man so nicht !?=",
+        "deviates": false
+      },
+      {
+        "id": "r2-d-tut-when",
+        "value": "first",
+        "note": "",
+        "deviates": false
+      },
+      {
+        "id": "r2-d-tut-scope",
+        "value": "machine",
+        "note": "",
+        "deviates": false
+      }
+    ],
+    "comments": {
+      "general": {
+        "text": "",
+        "attachments": []
+      },
+      "items": [
+        {
+          "id": "anno-r2-d1-s1-a1",
+          "text": "gern dort immer alle vs in den completion cards / mod panel, nur die die relevant sind zu jener zeit ( check das nochmal",
+          "attachments": []
+        },
+        {
+          "id": "anno-r2-d1-s1-a2",
+          "text": "passt!",
+          "attachments": []
+        },
+        {
+          "id": "anno-r2-d1-s1-a3",
+          "text": "lieber ein echtes bett symobol und generell die symbole einent icken größer und auch die schrift4en !",
+          "attachments": []
+        },
+        {
+          "id": "anno-r2-d1-s2-a1",
+          "text": "Ja super!",
+          "attachments": []
+        },
+        {
+          "id": "anno-r2-d2-s4-a1",
+          "text": "Zweck ist gut erstmal !",
+          "attachments": []
+        },
+        {
+          "id": "r2-d-tut-points-note",
+          "text": "das bett icon bitte simpler, das erkennt man so nicht !?=",
+          "attachments": []
+        }
+      ],
+      "designs": {},
+      "screens": {},
+      "views": {}
+    },
+    "annotations": [
+      {
+        "id": "r2-d1-s1-a1",
+        "screen": "r2d1-s1",
+        "design": "r2d1",
+        "question": "Zwei Balken oben, Woche und Fable – oder nur den knapperen?",
+        "improved": "Balken wie im Band",
+        "answer": "gern dort immer alle vs in den completion cards / mod panel, nur die die relevant sind zu jener zeit ( check das nochmal"
+      },
+      {
+        "id": "r2-d1-s1-a2",
+        "screen": "r2d1-s1",
+        "design": "r2d1",
+        "question": "Klickbar = Rahmen und Verb, nur Info = graue Zahl – ist die Regel klar?",
+        "improved": "Emoji, Zahl und Aktion, eine Farbe",
+        "answer": "passt!"
+      },
+      {
+        "id": "r2-d1-s1-a3",
+        "screen": "r2d1-s1",
+        "design": "r2d1",
+        "question": "Bett-Symbol nur mit Tooltip – findest du es so wieder?",
+        "improved": "Ins Bett als Symbol neben ↻",
+        "answer": "lieber ein echtes bett symobol und generell die symbole einent icken größer und auch die schrift4en !"
+      },
+      {
+        "id": "r2-d1-s2-a1",
+        "screen": "r2d1-s2",
+        "design": "r2d1",
+        "question": "Ausgabestil als eigene Zeile unter Allgemein – richtig einsortiert?",
+        "answer": "Ja super!"
+      },
+      {
+        "id": "r2-d2-s4-a1",
+        "screen": "r2d2-s4",
+        "design": "r2d2",
+        "question": "Startet die Einführung richtig mit dem Zweck – oder gleich mit dem ⏻?",
+        "answer": "Zweck ist gut erstmal !"
+      }
+    ],
+    "userPins": [
+      {
+        "id": "up-mwzgljh1gv0b",
+        "design": "r2d2",
+        "screen": "r2d2-s3",
+        "x": 44.4,
+        "y": 42.6,
+        "target": "div.r2-head.r2-off \"devops○ Aus · in dotclaude⏻ Ausschalten \"",
+        "text": "wenn ich hier hin klicke, sollte da sdropdown auch zughene",
+        "attachments": []
+      },
+      {
+        "id": "up-mwzhky6ewi8o",
+        "design": "r2d1",
+        "screen": "r2d1-s2",
+        "x": 46.1,
+        "y": 58.5,
+        "target": "span \"⧉ Textblock kopieren\"",
+        "text": "was hilft mir das kopieren hier!?",
+        "attachments": []
+      },
+      {
+        "id": "up-mwzhl3urwuco",
+        "design": "r2d1",
+        "screen": "r2d1-s2",
+        "x": 46.7,
+        "y": 63.2,
+        "target": "div.r2-gh \"Statistik · 7 Tage\"",
+        "text": "Stastistik kann gern als dritter punkt nebst übersicht einstellungen sein und more fency! Das mus svisuell attraktiv sien, das muss klar quantiativ anzeigen. Dort gern richtig ideen reinstekcen und was tolles draus machen",
+        "attachments": []
+      },
+      {
+        "id": "up-mwzhom8vv2y7",
+        "design": "r2d1",
+        "screen": "r2d1-s2",
+        "x": 40.4,
+        "y": 14,
+        "target": "div.r2-state \"● An · überall\"",
+        "text": "zeigen wir dne punkt nicht rechts von devosp sonst an? und an benötigt es dann wirklich nicht mehr... überall aktiv auch nicht, nur wenn es nicht überall aktiv ist, aber selbst das wäre verwirrend, also dieses texteuelle neben dem greünen goi nicht",
+        "attachments": []
+      },
+      {
+        "id": "up-mwzhuqyiz1ra",
+        "design": "r2d1",
+        "screen": "r2d1-s3",
+        "x": 56.1,
+        "y": 41.5,
+        "target": "div.r2-mi \"Alle Projekte\"",
+        "text": "bitte das overlay dropdown auch darüber machen und nicht alle elemente verschieben :/",
+        "attachments": []
+      }
+    ]
   }
 ]

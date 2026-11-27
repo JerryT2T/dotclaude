@@ -1,0 +1,124 @@
+<section data-iteration="3" data-iteration-template="free" data-final-report>
+  <p class="fr-sentence">devops Home zeigt jetzt den Budget-Kopf mit ⏻-Menü für Sitzung, Projekt und alle Projekte, dazu einen Statistik-Tab und die Einführung.</p>
+
+  <div class="fr-main">
+    <div class="fr-results">
+      <p class="fr-label">{{final.results}}</p>
+      <ul class="fr-wins">
+        <li><span class="fr-win-icon" aria-hidden="true">⏻</span><span>devops <b>auf drei Ebenen ausschalten</b>, auch für alle Projekte.</span></li>
+        <li><span class="fr-win-icon" aria-hidden="true">✍️</span><span><b>Ausgabestil als eigene Einstellung</b>, unabhängig von devops an/aus.</span></li>
+        <li><span class="fr-win-icon" aria-hidden="true">📊</span><span><b>Statistik-Tab</b>, Aktions-Chips und eine Einführung beim ersten Öffnen.</span></li>
+      </ul>
+    </div>
+    <ol class="fr-flow">
+      <li>Kopf: „devops ●“, Balken wie im Band, ⏻ rechts</li>
+      <li>⏻ öffnet das Menü über dem Inhalt: Sitzung · Projekt · Alle</li>
+      <li>Tabs Übersicht · Einstellungen · Statistik, daneben Bett und ↻</li>
+      <li>Erstes Öffnen: Einführung in 5 Schritten, einmal pro Computer</li>
+    </ol>
+  </div>
+
+  <div class="fr-holds">
+    <p class="fr-label">{{final.holds}}<small>{{final.holds_hint}}</small></p>
+    <div class="fr-meters">
+      <div class="fr-meter" data-grade="part" style="--fr-fill: 86%" data-tip="24 von 28 Punkten der Abnahme voll erfüllt; Anforderung alle 28 (geschätzt). Die 4 offenen stehen unten als Funde.">
+        <span class="fr-meter-name">✅ Abnahme</span>
+        <div class="fr-meter-bar" aria-hidden="true"></div>
+        <b class="fr-meter-value">24 / 28</b>
+      </div>
+      <div class="fr-meter" data-grade="full" style="--fr-fill: 100%" data-tip="Volle Testsuite 14 396 grün, Engine-Tests 165 grün, Lint sauber; Anforderung alles grün (geschätzt).">
+        <span class="fr-meter-name">🧪 Tests</span>
+        <div class="fr-meter-bar" aria-hidden="true"></div>
+        <b class="fr-meter-value">0 rot</b>
+      </div>
+    </div>
+  </div>
+
+  <div class="fr-depth" tabindex="0" data-tip="3 / 7 · ✓ {{final.level_code}} · ✓ {{final.level_dry}} · ✓ {{final.level_interplay}} · ○ {{final.level_local}} · ○ {{final.level_prod}} · ○ {{final.level_live}} · ◌ {{final.level_accept}}">
+    <span class="fr-depth-done">✓ {{final.depth_done}}: <b>{{final.level_interplay}}</b></span>
+    <span class="fr-depth-next">○ {{final.depth_next}}: <b>{{final.level_local}}</b></span>
+  </div>
+
+  <div class="fr-close">
+  <div class="fr-funde-box" data-open-questions>
+    <p class="fr-close-head"><span>🧭 {{final.group_decide}}</span><small>4 {{final.funde_fold}}</small></p>
+    <ul class="fr-funde">
+      <li data-oq-id="oq-band-bars"
+          data-issue-title="[FEATURE] Band shows only the budget bars relevant at the moment"
+          data-issue-type="feature"
+          data-issue-body="Round 2, head bars: the user wants Home to show all bars always, but the completion card and the mod band only the ones relevant at that time ('check das nochmal'). Check result: the card's terminal line (budgetBars, format.ts:353) filters by relevance; the Desktop band (bandBars, format.ts:337, used at index.tsx:2132) always shows Wk, Fb and 5h. That matches the older decision B2 (docs/dev/mods.md, status element 2026-11-21) and contradicts the newer quote. Fix: let the band use the budgetBars relevance rule (Wk/Fb when the marker is not white or near the reset, 5h from 50 % or within 60 min of reset), keep Home on bandBars, update the B2 row in docs/dev/mods.md and the band tests."
+          data-oq-origin="shortfall"
+          data-route-default="now"
+          data-route-reason="im Repo">
+        <span class="oq-label">Band zeigt alle Balken</span>
+        <dl class="fr-fkv">
+          <dt>{{final.fund_what}}</dt><dd>Geprüft: Die Karte zeigt nur die relevanten Balken, das Band aber immer alle. Das kommt aus einer älteren Entscheidung und ist noch nicht geändert.</dd>
+          <dt>{{final.fund_where}}</dt><dd>Statuszeile über der Eingabe</dd>
+          <dt>{{final.fund_why}}</dt><dd>⚡ Jetzt: Die Regel der Karte gibt es schon, sie muss nur ins Band.</dd>
+        </dl>
+      </li>
+      <li data-oq-id="oq-scrim"
+          data-issue-title="[FEATURE] Dim backdrop behind the Home first-run tour"
+          data-issue-type="feature"
+          data-issue-body="Round 2, Erster Start mock r2d1-s4: a dark scrim over the pane with the highlighted element. Built: tour card, step dots, ring highlight via border; no scrim (home.tsx ~1462). Next try: an absolute Box at top 0 / left 0, width and height '100%', backgroundColor with alpha, drawn before the tour card; verify in the Desktop pane that it stacks above the content."
+          data-oq-origin="shortfall"
+          data-route-default="now"
+          data-route-reason="Versuch">
+        <span class="oq-label">Einführung ohne Abdunkeln</span>
+        <dl class="fr-fkv">
+          <dt>{{final.fund_what}}</dt><dd>Nicht umgesetzt: Die Einführung dunkelt den Rest nicht ab, weil die Reihenfolge der Ebenen ungetestet war.</dd>
+          <dt>{{final.fund_where}}</dt><dd>Home · Erster Start</dd>
+          <dt>{{final.fund_why}}</dt><dd>⚡ Jetzt: Ein zweiter Versuch mit einer halbtransparenten Fläche kann klappen.</dd>
+        </dl>
+      </li>
+      <li data-oq-id="oq-bed-icon"
+          data-issue-title="[FEATURE] Pressable SVG icon for the Home bed button"
+          data-issue-type="feature"
+          data-issue-body="Round 2: 'lieber ein echtes bett symobol' / 'das bett icon bitte simpler, das erkennt man so nicht'. The mod engine's Button accepts only strings and Text children (claude-code.d.ts ButtonProps.label: any other element is refused), and neither Box nor Svg has onPress. So the press target stays the 🛏 glyph (now one size larger); the simple bed SVG (bedSvg) is shown in the bed status row and the tour. Needs an engine feature (pressable Svg or Button icon) or a text glyph the user accepts."
+          data-oq-origin="shortfall"
+          data-route-default="issue"
+          data-route-reason="Engine">
+        <span class="oq-label">Bett-Grafik nicht klickbar</span>
+        <dl class="fr-fkv">
+          <dt>{{final.fund_what}}</dt><dd>Nicht umgesetzt: Ein Knopf darf in der Mod-Engine nur Text enthalten. Deshalb bleibt das 🛏-Zeichen, jetzt eine Stufe größer.</dd>
+          <dt>{{final.fund_where}}</dt><dd>Home · Tab-Zeile neben ↻</dd>
+          <dt>{{final.fund_why}}</dt><dd>📌 Issue: Das braucht eine Funktion der Engine.</dd>
+        </dl>
+      </li>
+      <li data-oq-id="oq-menu-outside"
+          data-issue-title="[FEATURE] Close the Home power menu on a click outside"
+          data-issue-type="feature"
+          data-issue-body="Round 2 pin: 'wenn ich hier hin klicke, sollte da sdropdown auch zughene'. Built: the head, ⏻, tabs, bed, ↻ and every chip close the menu. A click on empty pane space cannot: Box has no onPress in the mod engine (claude-code.d.ts BoxProps), and a Button may not hold a Box. Needs a pressable backdrop or an outside-click event from the engine."
+          data-oq-origin="shortfall"
+          data-route-default="issue"
+          data-route-reason="Engine">
+        <span class="oq-label">Menü: Klick ins Leere</span>
+        <dl class="fr-fkv">
+          <dt>{{final.fund_what}}</dt><dd>Teilweise: Kopf, Tabs und Chips schließen das ⏻-Menü, ein Klick auf eine leere Stelle nicht.</dd>
+          <dt>{{final.fund_where}}</dt><dd>Home · ⏻-Menü</dd>
+          <dt>{{final.fund_why}}</dt><dd>📌 Issue: Freie Flächen sind in der Engine nicht klickbar.</dd>
+        </dl>
+      </li>
+    </ul>
+    <p class="fr-funde-hint">{{final.funde_hint}}</p>
+  </div>
+  </div>
+
+  <div class="fr-folds">
+  <details class="fr-fold">
+    <summary>🛠 {{final.dev_fold}}</summary>
+    <ul class="fr-dev">
+      <li>Branch <code>claude/devops-toggle-all-levels-d58822</code> · Commits <code>49b949e3</code>, <code>df1a0545</code>, <code>9acaa774</code></li>
+      <li><code>hooks/mods/home.tsx</code>, <code>hooks/lib/devops-optout.js</code>, <code>scripts/output-style.js</code></li>
+      <li>Tests: volle Suite 14 396 grün, Engine 165 grün, Lint sauber</li>
+      <li>Nebenbei: Symbole und Schrift eine Stufe größer (Engine hat die Stufe <code>title</code>)</li>
+    </ul>
+  </details>
+  </div>
+
+  <section data-tests hidden aria-label="{{final.group_tests}}">
+    <ul>
+      <li data-todo-id="t-home-look" data-crit="high" data-guide="">Neues Home im Desktop-Panel ansehen</li>
+    </ul>
+  </section>
+</section>
