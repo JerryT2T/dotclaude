@@ -65,6 +65,34 @@ describe("resolve() matrix: copy x settings", () => {
   }
 });
 
+describe("resolve() global flag (Alle Projekte)", () => {
+  const flag = (w, o = { off: true }) => {
+    fs.mkdirSync(path.dirname(O.globalFlagPath(w.home)), { recursive: true });
+    fs.writeFileSync(O.globalFlagPath(w.home), JSON.stringify(o));
+  };
+  test.each(Object.keys(copies))("global flag silences a %s copy, whatever the settings say", (copy) => {
+    const w = world();
+    put(userF(w), { [K]: true });
+    put(localF(w), { [K]: true });
+    flag(w);
+    const r = O.resolve({ cwd: w.proj, pluginRoot: copies[copy](w), home: w.home });
+    expect(r).toMatchObject({ on: false, scope: "global" });
+    expect(O.optedOut({ cwd: w.proj, pluginRoot: copies[copy](w), home: w.home })).toBe(true);
+  });
+  test("session flag wins over global, no flag leaves the settings in charge", () => {
+    const w = world();
+    flag(w);
+    const sf = O.sessionFlagPath(w.home, "s1");
+    fs.mkdirSync(path.dirname(sf), { recursive: true });
+    fs.writeFileSync(sf, "{}");
+    expect(O.resolve({ cwd: w.proj, sessionId: "s1", home: w.home }).scope).toBe("session");
+    expect(O.resolve({ cwd: w.proj, sessionId: "s2", home: w.home }).scope).toBe("global");
+    fs.unlinkSync(O.globalFlagPath(w.home));
+    put(userF(w), { [K]: true });
+    expect(O.resolve({ cwd: w.proj, home: w.home })).toMatchObject({ on: true, scope: "user" });
+  });
+});
+
 describe("resolve() edge cases", () => {
   test("cwd in a subdirectory of a git repo uses the repo-root settings", () => {
     const w = world();

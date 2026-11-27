@@ -10,13 +10,19 @@
  *
  *   Order, first hit wins (Claude Code precedence):
  *     1. session flag  `~/.claude/devops-optout/sessions/<session_id>.json`
- *     2. `<project>/.claude/settings.local.json`
- *     3. `<project>/.claude/settings.json`
- *     4. `~/.claude/settings.json`
+ *     2. global flag   `~/.claude/devops-optout/global.json` ("Alle Projekte" off,
+ *        scope 'global'). A devops-own file, never `enabledPlugins:false` in user
+ *        settings (that would unload the plugin and its Home pane). The flag means
+ *        "keephome": hooks, skills, MCP tools and guards rest (they all consult this
+ *        resolver); the band mod and Home do not and keep rendering so one click
+ *        switches back. It beats project settings: off everywhere means everywhere.
+ *     3. `<project>/.claude/settings.local.json`
+ *     4. `<project>/.claude/settings.json`
+ *     5. `~/.claude/settings.json`
  *        — the first file with an explicit boolean for a devops key decides;
  *        several devops keys in one file: any `false` → off. Corrupt/unreadable
  *        JSON is skipped, never read as "off".
- *     5. no file decides: a plugin root outside `~/.claude/plugins/cache/`
+ *     6. no file decides: a plugin root outside `~/.claude/plugins/cache/`
  *        (account copy, `--plugin-dir`, eval) → on (`adhoc`); else off (`none`).
  *
  *   An explicit `false` therefore silences every copy of the plugin.
@@ -42,6 +48,10 @@ function isDevopsKey(k) {
 
 function sessionFlagPath(home, id) {
   return path.join(home, '.claude', 'devops-optout', 'sessions', `${String(id).replace(/[^\w.-]/g, '_')}.json`);
+}
+
+function globalFlagPath(home) {
+  return path.join(home, '.claude', 'devops-optout', 'global.json');
 }
 
 function realpathOr(p) {
@@ -73,7 +83,7 @@ function fileVerdict(file) {
 
 /**
  * @param {{cwd?: string, sessionId?: string, pluginRoot?: string, home?: string}} [o]
- * @returns {{on: boolean, scope: 'session'|'local'|'project'|'user'|'adhoc'|'none', file?: string}}
+ * @returns {{on: boolean, scope: 'session'|'global'|'local'|'project'|'user'|'adhoc'|'none', file?: string}}
  */
 function resolve(o = {}) {
   const home = o.home || os.homedir();
@@ -81,6 +91,8 @@ function resolve(o = {}) {
     const f = sessionFlagPath(home, o.sessionId);
     if (fs.existsSync(f)) return { on: false, scope: 'session', file: f };
   }
+  const g = globalFlagPath(home);
+  if (fs.existsSync(g)) return { on: false, scope: 'global', file: g };
   const dir = require('./project-root').projectClaudeDir(o.cwd || process.cwd());
   const chain = [
     ['local', path.join(dir, 'settings.local.json')],
@@ -100,4 +112,4 @@ function optedOut(o) {
   return !r.on && r.scope !== 'none';
 }
 
-module.exports = { resolve, optedOut, sessionFlagPath, DEVOPS_KEYS, isDevopsKey, isAdHocRoot, fileVerdict };
+module.exports = { resolve, optedOut, sessionFlagPath, globalFlagPath, DEVOPS_KEYS, isDevopsKey, isAdHocRoot, fileVerdict };
