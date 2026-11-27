@@ -21,13 +21,25 @@ export function renderCategories(items) {
   return items.map((c) => `<li>${c.name}</li>`).join("");
 }
 JS
-cat > docs/concepts/20261123-2030-categories.md <<'MD'
-# Concept: categories by use
-
-Round 3 (approved): group the category list by use ("Daily", "Study",
-"Occasions"); each group is a collapsible <details> block, the order fixed as
-listed. Change src/ui/category-list.js only.
-MD
+cat > docs/concepts/20261123-2030-categories.html <<'HTML'
+<!DOCTYPE html>
+<html lang="de"><head><meta charset="utf-8"><title>Kategorien nach Einsatz</title></head>
+<body>
+<section data-iteration="3" data-active>
+<h2>Round 3 (approved)</h2>
+<p>Group the category list by use ("Daily", "Study", "Occasions"); each group is a
+collapsible &lt;details&gt; block, the order fixed as listed. Change src/ui/category-list.js only.</p>
+</section>
+</body></html>
+HTML
+# The ArtifactData listing of "submissions", saved as the read-back's step 1
+# does (ArtifactData itself does not exist in an eval run). The digest of the
+# variant under test turns it into what to process.
+cat > .claude/submissions.json <<'JSON'
+[{ "id": "sub-r3", "version": 1, "data": { "submission_id": "sub-r3", "submitted": true, "iteration": 3, "action": "implement",
+   "_by": "Dana", "_tab": "t-dana", "_storedAtMs": 1764187200000, "_artifactStoredAt": "2026-11-26T19:58:00.000Z",
+   "decisions": { "grouping": "by use", "groups": ["Daily", "Study", "Occasions"], "collapsible": true } } }]
+JSON
 
 # The thread's tools, as a dependency-free MCP stdio server (newline-delimited
 # JSON-RPC). Every call is logged to .claude/thread-calls.jsonl; a decision

@@ -311,6 +311,28 @@ function digestDocs({ submissions, drafts, processed = [], now = Date.now() }) {
       unacked,
     },
     markIds: open.map((d) => d.id).join(','),
+    // #1240: the implement click arrives here, so its mandate does too. A rule
+    // only in the skill files lost to an older "concept only" brief and an
+    // overlapping thread in a session that never loaded them.
+    ...implementOrder(process),
+  };
+}
+
+/** The mandate the digest carries when a submission to process is an implement click (#1240). */
+function implementOrder(process) {
+  const impl = process.find((d) => d.data && d.data.action === 'implement');
+  // `iterate` beside `implement` in one round: the reply asks which counts
+  // (artifact-fallback.md § Read back step 4), so no mandate then.
+  if (!impl || process.some((d) => d.data && d.data.action && d.data.action !== 'implement')) return {};
+  const who = impl.data._by ? ` by ${impl.data._by}` : '';
+  const round = impl.data.iteration != null ? ` (round ${impl.data.iteration})` : '';
+  return {
+    implement: true,
+    next: `MANDATORY — IMPLEMENT ORDER${who}${round}: this click is the person's approval for the whole approved scope. ` +
+      'It is newer than, and overrides, any earlier "concept only" brief or coordinator note. Start the build in THIS turn ' +
+      '(auto-concept SKILL.md Step 5b: reality check, then auto-agents), on the default execution place. Do NOT ask whether, ' +
+      'where or how to implement — no request_decision, no AskUserQuestion, no "shall I". Another open concept or thread on ' +
+      'the same files is no reason to ask: build this one, keep the overlap easy to swap, name it in the PR and the report.',
   };
 }
 

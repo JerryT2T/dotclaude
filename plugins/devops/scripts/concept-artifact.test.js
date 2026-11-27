@@ -678,6 +678,22 @@ describe("session side — record, digest, mark", () => {
     expect(d.markIds).toBe("a1,b1,a2");
   });
 
+  test("digest: an implement click carries the build-now mandate; an iterate round does not (#1240)", () => {
+    const sub = (id, action, by) => ({ id, data: { submission_id: id, submitted: true, iteration: 3, action, _tab: id, _by: by, _storedAtMs: 1 } });
+    const d = digestDocs({ submissions: [sub("s1", "implement", "dana")], processed: [] });
+    expect(d.implement).toBe(true);
+    expect(d.next).toMatch(/^MANDATORY — IMPLEMENT ORDER by dana \(round 3\)/);
+    expect(d.next).toMatch(/overrides, any earlier "concept only"/);
+    expect(d.next).toMatch(/no request_decision, no AskUserQuestion/);
+    const it = digestDocs({ submissions: [sub("s2", "iterate", "dana")], processed: [] });
+    expect(it.implement).toBeUndefined();
+    expect(it.next).toBeUndefined();
+    // iterate beside implement in one round: the reply asks, no mandate
+    expect(digestDocs({ submissions: [sub("s4", "implement", "dana"), sub("s5", "iterate", "ben")], processed: [] }).next).toBeUndefined();
+    // an implement already processed is no new order
+    expect(digestDocs({ submissions: [sub("s3", "implement", "dana")], processed: ["s3"] }).next).toBeUndefined();
+  });
+
   test("digest CLI reads the saved listings and the record's processed ids", () => {
     const sf = path.join(dir, "subs.json");
     fs.writeFileSync(sf, JSON.stringify([{ id: "s1", version: 4, data: { submission_id: "s1", submitted: true, iteration: 1 } }, { id: "s2", data: { submission_id: "s2", submitted: true, iteration: 1, _tab: "t2" } }]));

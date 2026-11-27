@@ -76,6 +76,8 @@ the session stops halfway.
      takes the newer answer and the reply names both. Different actions
      (`iterate` beside `implement`): the reply asks which one counts, and the
      round is iterated meanwhile, never implemented on a guess.
+   - `implement: true` + `next` — the round is an implement click: `next` is
+     binding (#1240). Build in this turn, never ask whether or how.
    - `superseded` — a sender's earlier payload of the same round, replaced by
      their re-send. Not processed.
    - `lateEdits` — typed on the page after the last submit, in no payload.
