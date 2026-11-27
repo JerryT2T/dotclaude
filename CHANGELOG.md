@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.411.0] — 2026-11-27
+
+### Added
+- Concept pages: after a restart with an unfinished concept, the devops band asks Fortsetzen / Später / Abschließen instead of relaunching the page silently; without the mod the old resume paths stay (#1239).
+
+### Fixed
+- Concept pages: a click on Umsetzen starts the build at once, the session no longer asks again (#1240).
+- Concept pages: the artifact page is released after a plugin update in the middle of a session, and a submission sent in the same moment stays pending (#1241).
+
+### Docs
+- Mods developer guide: the band cannot draw in Claude Projects threads or Remote Control viewers (no mod surface, no official setting), and a missing band marker only means nobody had the session open.
+
 ## [0.410.3] — 2026-11-26
 
 ### Fixed
