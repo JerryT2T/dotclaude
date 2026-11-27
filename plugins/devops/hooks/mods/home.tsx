@@ -1143,15 +1143,15 @@ export async function renderHome($: EngineInterface, e: any, ctx: HomeCtx): Prom
       <Box key="home-head-top" flexDirection="row" alignItems="center" columnGap={1}>
         {/* The engine's Button holds strings and Text only (no Box, no Svg). */}
         <Button key="home-head-name" plain onPress={closeMenu}>
-          <Text bold size="heading">devops </Text>
-          <Text key="home-state-dot" size="heading" color={H.dot}>{off ? '○' : '●'}</Text>
+          <Text bold size="title">devops </Text>
+          <Text key="home-state-dot" size="title" color={H.dot}>{off ? '○' : '●'}</Text>
           {stateLine ? <Text key="home-state" color={H.dot}>{` ${stateLine}`}</Text> : null}
         </Button>
         <Box flexGrow={1} />
         {tip('home-power-wrap', 'devops ein- oder ausschalten', (
           <Box borderStyle="round" borderColor={H.ring} backgroundColor={H.ringBg} paddingX={1} {...spot('power')}>
             <Button key="home-power" plain onPress={() => { menuOpen = !menuOpen; redraw() }}>
-              <Text size="heading" color={H.dot}>⏻</Text>
+              <Text size="title" color={H.dot}>⏻</Text>
             </Button>
           </Box>
         ), 'right')}
@@ -1207,13 +1207,13 @@ export async function renderHome($: EngineInterface, e: any, ctx: HomeCtx): Prom
       {tip('home-bed-wrap', bedTip, (
         <Box {...spot('bed')}>
           <Button key="home-bed-btn" plain onPress={() => { menuOpen = false; if (!bedBusy) pressBed($, ctx, s?.bed ? 'cancel' : 'start') }}>
-            <Text size="heading" color={bedColor}>🛏</Text>
+            <Text size="title" color={bedColor}>🛏</Text>
           </Button>
         </Box>
       ), 'right')}
       {tip('home-refresh-wrap', s ? `${agoText(now - s.at)} aktualisiert` : 'Lädt …', (
         <Button key="home-refresh" plain onPress={() => { menuOpen = false; if (tab === 'settings') { loadBrowsers($, now, true); loadStyle($, now, true); void threadsOn($).then(on => { if (on) loadThreads($, now, true) }) } refreshHome($, ctx, true) }}>
-          <Text size="heading" color={ICON_COLOR}>↻</Text>
+          <Text size="title" color={ICON_COLOR}>↻</Text>
         </Button>
       ), 'right')}
     </Box>
@@ -1285,18 +1285,18 @@ export async function renderHome($: EngineInterface, e: any, ctx: HomeCtx): Prom
     const th = threadsShown ? threads : null
     const group = (key: string, title: string, ...rows: any[]) => (
       <Box key={key} flexDirection="column" rowGap={0}>
-        <Text dimColor size="footnote">{title.toUpperCase()}</Text>
+        <Text dimColor size="body">{title.toUpperCase()}</Text>
         <Box flexDirection="column" rowGap={1} borderStyle="round" borderColor={GROUP_BORDER} backgroundColor={GROUP_BG} paddingX={1} paddingY={1}>{rows}</Box>
       </Box>
     )
     /** One list row: label left, value right; the value with › is the press that opens the choice below. */
     const row = (id: string, label: string, value: string, info?: { id: string; text: string }) => (
       <Box key={`home-row-${id}-line`} flexDirection="row" alignItems="center" columnGap={1}>
-        <Text>{label}</Text>
+        <Text size="heading">{label}</Text>
         {info ? iBtn(info.id, info.text) : null}
         <Box flexGrow={1} />
         <Button key={`home-row-${id}`} plain onPress={() => toggle(id)}>
-          <Text dimColor>{`${value} ${shown.has(id) ? '⌄' : '›'}`}</Text>
+          <Text size="heading" dimColor>{`${value} ${shown.has(id) ? '⌄' : '›'}`}</Text>
         </Button>
       </Box>
     )
@@ -1395,14 +1395,14 @@ export async function renderHome($: EngineInterface, e: any, ctx: HomeCtx): Prom
   const chip = (key: string, emoji: string, n: number, verb: string, tipText: string, action: () => void) =>
     n ? tip(`${key}-wrap`, tipText, (
       <Button key={`${key}-btn`} onPress={() => { menuOpen = false; action() }}>
-        <Text size="heading">{`${emoji} `}</Text>
-        <Text bold tabular dimColor={off}>{`${n} `}</Text>
-        <Text weight="medium" dimColor={off}>{verb}</Text>
+        <Text size="title">{`${emoji} `}</Text>
+        <Text size="heading" bold tabular dimColor={off}>{`${n} `}</Text>
+        <Text size="heading" weight="medium" dimColor={off}>{verb}</Text>
       </Button>
     )) : (
       <Box key={`${key}-info`} flexDirection="row" alignItems="center" columnGap={1} paddingX={1}>
-        <Text size="heading" dimColor>{emoji}</Text>
-        <Text dimColor tabular>0</Text>
+        <Text size="title" dimColor>{emoji}</Text>
+        <Text size="heading" dimColor tabular>0</Text>
       </Box>
     )
   const open1 = (x: HomeSession | undefined) => () => { if (x) pressOpen($, x) }
@@ -1433,7 +1433,7 @@ export async function renderHome($: EngineInterface, e: any, ctx: HomeCtx): Prom
       </Box>
     ) : null
   const pchip = (key: string, emoji: string, n: number, tipText: string, action: (() => void) | null) =>
-    !n ? null : action ? tip(`${key}-wrap`, tipText, <Button key={key} label={`${emoji} ${n}`} onPress={action} />) : <Text key={key} dimColor>{`${emoji} ${n}`}</Text>
+    !n ? null : action ? tip(`${key}-wrap`, tipText, <Button key={key} onPress={action}><Text size="title">{`${emoji} `}</Text><Text size="heading" tabular>{String(n)}</Text></Button>) : <Text key={key} dimColor>{`${emoji} ${n}`}</Text>
   const projects = (
     <Box key="home-projects" flexDirection="column" rowGap={1} {...spot('batch')}>
       <Text dimColor size="footnote">PROJEKTE</Text>
