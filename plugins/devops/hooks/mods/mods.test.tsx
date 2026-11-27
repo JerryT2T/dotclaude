@@ -2045,7 +2045,7 @@ test('status state: active unless the hooks or the MCP server are not running; t
   expect(statusText(ok, e, NOW + 90_000, 'de')).toBe('🟢 aktiv')
 })
 
-test('under the prompt: "● devops" beside the engine hint; a press opens the devops Home pane (no card in the band), its Einstellungen tab holds the figures; no prompt, no write', async ($, on) => {
+test('under the prompt: "● devops" beside the engine hint; a press opens the devops Home pane (no card in the band), its Statistik tab holds the figures; no prompt, no write', async ($, on) => {
   const { seen } = engine(on, { files: LOG_FILES })
   const forks: unknown[] = []
   on('model.fork', (_: unknown, e: unknown) => {
@@ -2067,7 +2067,7 @@ test('under the prompt: "● devops" beside the engine hint; a press opens the d
   expect(await band.find({ key: 'devops-info' })).toBeUndefined()
   await band.unmount()
   let home = await $.ui.mount({ ...pane('devops-home', 'devops Home'), surface: 'desktop' } as any)
-  await home.press({ key: 'home-tab-settings' })
+  await home.press({ key: 'home-tab-stats' })
   let text = ''
   for (let i = 0; i < 40 && !/≈ 20 k/.test(text); i++) {
     await home.unmount()
@@ -2078,7 +2078,9 @@ test('under the prompt: "● devops" beside the engine hint; a press opens the d
   expect(text).toMatch(/≈ 20 k/) // the headline tile: the net estimate
   expect(await home.find({ type: 'Text', text: /searches narrowed/ })).toBeDefined()
   expect(await home.find({ type: 'Text', text: /devops 9.9.9/ })).toBeDefined()
-  expect(await home.find({ key: 'home-devops-switch' })).toBeDefined()
+  // The ⏻ in the head owns on/off now (C17): no switch row in any tab.
+  expect(await home.find({ key: 'home-devops-switch' })).toBeUndefined()
+  expect(await home.find({ key: 'home-power' })).toBeDefined()
   await home.unmount()
   await hint.unmount()
   // Opening costs nothing: no prompt, no model call, no file written.
@@ -2116,6 +2118,7 @@ test('Home → Einstellungen: the browser row offers the installed browsers plus
   let home = await mount()
   await home.press({ key: 'home-tab-settings' })
   await home.press({ key: 'home-refresh' }) // an earlier test's answer may still count as fresh
+  await home.press({ key: 'home-row-browser' }) // the list row opens its choice
   await home.unmount()
   // No dropdown: every option is a button of one row, the one in effect filled and ticked.
   home = await until('home-browser-edge', /✓ Microsoft Edge/)
@@ -2129,9 +2132,10 @@ test('Home → Einstellungen: the browser row offers the installed browsers plus
   expect(JSON.stringify(await home.find({ key: 'home-browser-in-app' }))).toMatch(/primary/)
   expect(JSON.stringify(await home.find({ key: 'home-browser-edge' }))).not.toMatch(/✓/)
   expect(runs.at(-1)).toEqual(['set', 'in-app', '--json'])
-  // The blocks are cards of their own; the figures sit in Statistik.
+  // Grouped list: Allgemein and Hilfe; the figures moved to their own Statistik tab.
   expect(await home.find({ key: 'home-general' })).toBeDefined()
-  expect(await home.find({ key: 'home-stats' })).toBeDefined()
+  expect(await home.find({ key: 'home-help' })).toBeDefined()
+  expect(await home.find({ key: 'home-stats' })).toBeUndefined()
   await home.unmount()
   expect(seen.prompts).toEqual([])
 })

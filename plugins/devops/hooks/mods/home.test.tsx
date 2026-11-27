@@ -2,6 +2,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import { agoText, batchPrompt, bedFrom, bedText, cleanupFrom, prereqSummary, homeModel, infoTiles, isBatchTitle, kindOf, needsConfirm, paceWord, projectOf, ringSvgSource, ringsFrom, resetText, sessionsFrom } from './home'
+import { barLabel, bedSvg, newestOf, offText, prereqWord, shareSvg, statTiles, styleFrom, styleLabel, tourDone, TOUR_STEPS } from './home'
 import { browserNote, browsersFrom, prereqRows, THREAD_REQUEST_NOTE, threadCopyFrom, threadCopyNote, threadMeaning, threadProjectLabel, threadProjectName, threadsFrom, versionAtLeast, versionFrom } from './home'
 
 const rows = [
@@ -178,4 +179,52 @@ test('home: the bedtime row shows only a watcher that is really armed', () => {
   expect(bedFrom({ phase: 'shutdown', shutdownAt: now - 1, active: [] }, now)).toBe(null)
   expect(bedFrom(null, now)).toBe(null)
   expect(bedText(bedFrom({ phase: 'shutdown', shutdownAt: now + 42_000, active: [] }, now)!, now)).toBe('🛏 PC fährt in 42 s herunter')
+})
+
+// Round 2 (concept 20261127-2035-devops-home-neu, mock r2d1).
+
+test('home r2: the head says nothing while on; off names the level (C1)', () => {
+  const on = { on: true, sessionOff: false, projectOff: false, globalOff: false }
+  expect(offText(on, 'dotclaude')).toBe('')
+  expect(offText({ ...on, on: false, projectOff: true }, 'dotclaude')).toBe('Aus · in dotclaude')
+  expect(offText({ ...on, on: false, sessionOff: true, projectOff: true }, 'dotclaude')).toBe('Aus · diese Sitzung')
+  expect(offText({ ...on, on: false, globalOff: true }, 'dotclaude')).toBe('Aus · überall')
+  expect([barLabel('Wk'), barLabel('Fb'), barLabel('5h')]).toEqual(['Woche', 'Fable', '5 h'])
+})
+
+test('home r2: the bed is a stroked SVG, not the emoji; proportion bars split by share (C8, C15)', () => {
+  const bed = bedSvg('#cfcfcf')
+  expect(bed).toMatch(/^<svg /)
+  expect(bed).toContain('stroke="#cfcfcf"')
+  expect(bed).not.toContain('🛏')
+  expect(shareSvg(1, 3, '#a', '#b', 100)).toContain('width="25"')
+  expect(shareSvg(0, 0, '#a', '#b', 100)).not.toContain('fill="#a"')
+})
+
+test('home r2: Statistik draws only what InfoData measured (C15)', () => {
+  const d = { benefit: { net7: 20_000, blocks7: 6, released7: 2, narrowed: 3, narrowedTokens: 9000, since: 1, last: null }, overhead: { ownTokens7: 4000, guardBlocks7: 0 }, api: null, ships: { branches7: 10, reused7: 4 }, version: '9.9.9', at: 1 }
+  const { hero, tiles } = statTiles(d, 'de')
+  expect(hero?.key).toBe('info-head')
+  expect(hero?.share).toEqual({ a: 6, b: 2, aLabel: '6 gehalten', bLabel: '2 freigegeben' })
+  expect(tiles.find(t => t.key === 'info-shipped')?.share).toMatchObject({ a: 4, b: 6 })
+  expect(tiles.find(t => t.key === 'info-own')?.share).toMatchObject({ a: 20_000, b: 4000 })
+  expect(statTiles({ ...d, benefit: { ...d.benefit, net7: 0 } }, 'de').hero).toBe(null)
+  expect(statTiles(null, 'de')).toEqual({ hero: null, tiles: [] })
+})
+
+test('home r2: prerequisites as keywords, output style answer, tour marker, newest session per project (C12, C16, B1, D1, D2)', () => {
+  const pre = prereqRows('2.1.302')
+  expect(pre.map(r => prereqWord(r, '2.1.302'))).toEqual(['Projekt-Umgebung', 'Remote Control', 'Wach halten', 'Claude Code 2.1.302', 'Trusted devices aus'])
+  expect(prereqWord(prereqRows('')[3]!, '')).toBe('Claude-Code-Version')
+  expect(styleFrom('{"style":"Quiet"}')).toBe('Quiet')
+  expect(styleFrom('{"style":"default"}')).toBe('default')
+  expect(styleFrom('{"style":"Other"}')).toBe(null)
+  expect(styleFrom('nope')).toBe(null)
+  expect(styleLabel('default')).toBe('Standard')
+  expect(tourDone({ done: true })).toBe(true)
+  expect(tourDone(null)).toBe(false)
+  expect(TOUR_STEPS.map(s => s.target)).toEqual(['head', 'power', 'chips', 'bed', 'batch'])
+  const m = homeModel(sessionsFrom(JSON.stringify(rows)), {}, {})
+  expect(newestOf(m.waiting, 'P:/Projects/scc')?.id).toBe('local_b')
+  expect(newestOf(m.waiting, 'P:/Projects/none')).toBe(undefined)
 })

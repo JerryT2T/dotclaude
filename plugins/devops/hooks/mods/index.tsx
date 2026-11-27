@@ -465,14 +465,19 @@ async function optNow($: EngineInterface): Promise<OptState> {
   return v
 }
 
-async function pressOpt($: EngineInterface, mode: 'off' | 'on', scope: 'session' | 'project'): Promise<void> {
+/** The three off levels of the Home ⏻ menu (decision d-levels); 'global' is the devops-own user-level flag (keephome). */
+type OptScope = 'session' | 'project' | 'global'
+
+async function pressOpt($: EngineInterface, mode: 'off' | 'on', scope: OptScope): Promise<void> {
   const loc = (await sharedNow($)).loc
   const root = await repoRoot($)
   const sid = await $.session.id().catch(() => '')
-  const ok = mode === 'off' ? await switchOff($, scope, { home: await homeDir($), root, sid, now: await $.clock.now() }) : await switchOn($, scope, { root, sid })
+  // optout.ts gains 'global' with the backend half of this change; the cast keeps this side compiling until it lands.
+  const sc = scope as 'session' | 'project'
+  const ok = mode === 'off' ? await switchOff($, sc, { home: await homeDir($), root, sid, now: await $.clock.now() }) : await switchOn($, sc, { home: await homeDir($), root, sid } as { root: string; sid: string })
   optPopup = false
   optCache = null
-  const text = !ok ? tr(loc, 'toastOptFailed') : mode === 'on' ? tr(loc, 'toastOptOn') : tr(loc, scope === 'session' ? 'toastOptOffSession' : 'toastOptOffProject')
+  const text = !ok ? tr(loc, 'toastOptFailed') : mode === 'on' ? tr(loc, 'toastOptOn') : tr(loc, scope === 'session' ? 'toastOptOffSession' : scope === 'global' ? 'toastOptOffGlobal' : 'toastOptOffProject')
   $.ui.toast(text, { timeoutMs: 6000 })
   $.ui.invalidate('ui.render')
 }
@@ -515,12 +520,21 @@ async function toggleInfo($: EngineInterface): Promise<void> {
 
 /** What the Home pane needs from this module, resolved for one call. */
 async function homeCtx($: EngineInterface): Promise<HomeCtx> {
+  const opt = (await optNow($)) as OptState & { globalOff?: boolean }
+  const now = await $.clock.now()
   return {
     loc: (await sharedNow($)).loc,
-    isOn: (await optNow($)).on,
+    opt: { on: opt.on, sessionOff: opt.sessionOff, projectOff: opt.projectOff, globalOff: opt.globalOff === true },
+    budget: await bandBudget($, await read($, budget), now).catch(() => null),
     root: await repoRoot($),
     loadInfo: () => loadInfo($),
-    switchDevops: v => pressOpt($, v ? 'on' : 'off', 'session'),
+    switchOpt: async (mode, scope) => {
+      if (mode === 'off') return pressOpt($, 'off', scope)
+      // "Einschalten" lifts every level that is off, so one press brings devops back here.
+      const cur = (await optNow($)) as OptState & { globalOff?: boolean }
+      const off: OptScope[] = scope ? [scope] : [...(cur.sessionOff ? ['session' as const] : []), ...(cur.projectOff ? ['project' as const] : []), ...(cur.globalOff ? ['global' as const] : [])]
+      for (const sc of off.length ? off : ['session' as const]) await pressOpt($, 'on', sc)
+    },
     startCleanup: () => startCleanup($, 'plan'),
   }
 }
