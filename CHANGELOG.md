@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.411.1] — 2026-11-27
+
+### Fixed
+- devops band: an account without a 5-hour window (a verified Ultra plan) no longer sees an empty "5h –" bar; the band follows the same rule as the completion card and the budget line. A measured or previously seen window keeps the bar.
+
 ## [0.411.0] — 2026-11-27
 
 ### Added
