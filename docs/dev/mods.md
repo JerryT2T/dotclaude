@@ -127,6 +127,26 @@ report claims the opposite. Hence the per-ping log and the self-disable rule.
 | VS Code | yes | extension ≥ 2.1.299 |
 | `claude -p`, Agent SDK | yes | no |
 | Cloud session | only if the plugin reaches it | no |
+| Remote Control viewer (claude.ai/code, mobile, Desktop view of an RC session) | yes (on the machine) | no — only the local terminal draws (anthropics/claude-code#99217, #101256, #111514) |
+| Claude Projects thread on this machine | yes | no — the Projects view attaches no mod surface (`$.session.surfaces()` empty), the band is never asked for |
+| Claude Projects main chat (coordinator) | no — a cloud session without the local plugin | no |
+
+**Projects threads (checked 2026-11-24 and 2026-11-27).** Measured: the devops
+mod loads in local thread sessions and never draws there; every band marker
+came from a normal Code-tab session. The mod types (2.1.330) know only the
+`terminal`, `desktop`, `vscode` and `mobile` surfaces and say that under a host
+that attaches no surface nothing drawn shows. Web research found no official
+setting that lets a mod draw in a thread or a Remote Control view, and no issue
+about Projects threads; the only route is modifying the Desktop app, which we
+do not do. In a thread the plugin speaks through the thread tools (progress
+checklist, card widget, thread title). Re-check when one of the issues above
+closes.
+
+**Band marker is not a health signal.** `devops-band-active.json` is written
+only while a client asks the band to draw, i.e. while a person has that
+session open in the Code tab. Sessions that run unwatched (a thread, a
+background session, a session in another window tab) write none, so a day
+without marker rows is not a broken band.
 
 ## Red-team findings and how they are handled
 
