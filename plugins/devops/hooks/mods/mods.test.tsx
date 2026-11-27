@@ -24,6 +24,7 @@ import {
   restoredCardText,
   rollBudget,
   windowsFromLive,
+  fiveHourNoneFromLive,
   cleanupApplyPrompt,
   cleanupPlanPrompt,
   planComplete,
@@ -3030,6 +3031,31 @@ test('#1204 budget after a resume: a fresh usage-live.json fills empty windows, 
   const cur = { weekly: 30, weeklyResetsAt: NOW + 86_400_000, fiveHour: 10, fiveHourResetsAt: NOW + 3_600_000, context: null }
   expect(budgetForBand(cur, fresh, NOW)).toEqual(cur)
   expect(bandBars(budgetForBand(null, null, NOW), NOW).map(x => x.empty)).toEqual([true, true])
+})
+
+test('no 5h window on the account (verified Ultra): the band draws Wk / Fb only; a seen or delivered window keeps 5h', () => {
+  const live = (o: Record<string, unknown>, ageMs = 60_000) => ({ timestamp: new Date(NOW - ageMs).toISOString(), plan: 'Ultra', ...o })
+  // The usage mapper writes an absent five_hour as { pct: 0, resetInMinutes: null }: no window, never seen → none.
+  const ultra = live({ weekly: { pct: 53, resetInMinutes: 2253 }, session: { pct: 0, resetInMinutes: null } })
+  expect(fiveHourNoneFromLive(ultra)).toBe(true)
+  expect(windowsFromLive(ultra, NOW)).toMatchObject({ weekly: 53, fiveHour: null })
+  const b = budgetForBand(null, ultra, NOW)
+  expect(b).toMatchObject({ weekly: 53, fiveHour: null, fiveHourNone: true })
+  expect(bandBars({ ...b!, fable: 49, fableResetsAt: NOW + 3_600_000 }, NOW).map(x => x.label)).toEqual(['Wk', 'Fb'])
+  // The fact outlives the 15-min freshness: a stale file still says "no window"; the weekly bar then shows the dash.
+  expect(bandBars(budgetForBand(null, live({ session: { pct: 0, resetInMinutes: null } }, 3 * 3_600_000), NOW), NOW).map(x => x.label)).toEqual(['Wk'])
+  // A window seen before (idle between two windows) keeps its row at 0 %; a delivered one is used.
+  const idle = live({ weekly: { pct: 5, resetInMinutes: 900 }, session: { pct: 0, resetInMinutes: null }, fiveHourSeen: true })
+  expect(fiveHourNoneFromLive(idle)).toBe(false)
+  expect(bandBars(budgetForBand(null, idle, NOW), NOW).map(x => [x.label, x.pct])).toEqual([['Wk', 5], ['5h', 0]])
+  const delivered = live({ session: { pct: 12, resetInMinutes: 120 } })
+  expect(fiveHourNoneFromLive(delivered)).toBe(false)
+  expect(bandBars(budgetForBand(null, delivered, NOW), NOW).map(x => x.label)).toEqual(['Wk', '5h'])
+  // A measured 5h value from the engine always wins over the file.
+  const measured = { weekly: 30, weeklyResetsAt: NOW + 86_400_000, fiveHour: 10, fiveHourResetsAt: NOW + 3_600_000, context: null }
+  expect(bandBars(budgetForBand(measured, ultra, NOW), NOW).map(x => x.label)).toEqual(['Wk', '5h'])
+  // Unknown (no file, no session key, garbage): the 5h bar stays as the "–" bar.
+  for (const unknown of [null, 'x', {}, live({ weekly: { pct: 2 } })]) expect(fiveHourNoneFromLive(unknown)).toBe(false)
 })
 
 test('#1204 band after a resume: no measure yet, a fresh usage-live.json → the Wk bar shows its reset, not "–"', async ($, on) => {
