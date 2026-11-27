@@ -376,6 +376,16 @@ export function budgetBars(b: Budget | null, now: number): BudgetBar[] {
   return bars
 }
 
+/**
+ * The Desktop band's bars: the compact bandBars drawing, but only the windows budgetBars finds relevant right now (the
+ * completion card's rule: Wk/Fb when the marker is not white or the reset is near, 5h from 50 % or within 60 min of its
+ * reset). None relevant: none drawn. Home keeps bandBars (all bars, always).
+ */
+export function bandBarsRelevant(b: Budget | null, now: number): BudgetBar[] {
+  const keep = new Set(budgetBars(b, now).map(x => x.label))
+  return bandBars(b, now).filter(x => keep.has(x.label))
+}
+
 /** Terminal glyph bar: ▰ time elapsed · │ usage marker · ▱ time left (the card's terminal fallback). */
 export function budgetGlyphBar(pct: number, elapsedPct: number, width = BUDGET_BAR_WIDTH): string {
   const usagePos = Math.min(width - 1, Math.round((clampPct(pct) / 100) * width))

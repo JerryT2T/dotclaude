@@ -83,7 +83,7 @@ import {
   archiveOffered,
   archiveRefusal,
   BAND_BAR_SIZE,
-  bandBars,
+  bandBarsRelevant,
   BUDGET_BAR_SIZE,
   budgetBars,
   budgetBarSvg,
@@ -2129,7 +2129,7 @@ export const register: Register = on => {
         {/* A host that draws the line under the prompt shows the word there already: the row keeps the bars only. */}
         {!hintDrawn && statusWordEl($, { Box, Button, Text }, isActive(hl), inactiveReason(hl, loc), 'devops-word-wrap')}
         <Box key="budget" flexDirection="row" alignItems="center" columnGap={2} flexWrap="wrap">
-          {bandBars(b, now).map(bar => (
+          {bandBarsRelevant(b, now).map(bar => (
             <Box key={`bar-${bar.label}`} flexDirection="row" alignItems="center" columnGap={1}>
               <Text dimColor>{bar.label}</Text>
               <Svg source={budgetBarSvg(bar, { width: BAND_BAR_SIZE.width, compact: true })} alt={budgetBarAlt(bar, loc)} width={BAND_BAR_SIZE.width} height={BAND_BAR_SIZE.height} isInteractive />
