@@ -2029,5 +2029,15 @@
         ]
       }
     ]
-  }
+  },
+  "docs/dev/mods.md›Band layout›status-row budget bars": [
+    {
+      "ship": "devops-toggle-all-levels",
+      "by": "user (concept 20261127-2035-devops-home-neu, close-out item oq-band-bars routed to Jetzt umsetzen)",
+      "value": "band shows only the bars relevant now (bandBarsRelevant); Home shows all",
+      "decided": true,
+      "at": "2026-11-28T00:08:46.469Z",
+      "overrules": "#1194 B2 always Wk/Fb/5h"
+    }
+  ]
 }
