@@ -85,6 +85,16 @@
         "hunks": [
           "7f9356083424"
         ]
+      },
+      {
+        "ship": "claude/project-thread-hx50gy",
+        "by": "Jerry",
+        "value": "121 (generated count incl. 1 new hook)",
+        "decided": true,
+        "at": "2026-11-28T01:26:23.537Z",
+        "hunks": [
+          "0eacbcbdf8b3"
+        ]
       }
     ],
     "README.md›hooks-summary›count": [
