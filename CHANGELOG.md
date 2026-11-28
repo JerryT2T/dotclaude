@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.413.0] — 2026-11-28
+
+### Added
+- Stable gate: promoting to stable checks five criteria (no open bugs, 72 h without a new ship/card/hook bug, no MCP-stale tool errors, green checks on the exact commit, hook dispatch median under 500 ms); override only with the user's own reason.
+- Only one full test-suite run per machine; a second session's run is blocked with the holder named.
+- devops Home: API-Guthaben toggle (default off).
+- render_completion_card: a "before you call" checklist of every enforced card rule.
+
+### Fixed
+- An orphaned concept pulser exits with its owner instead of keeping the page on "setzt um" (#1246).
+- Running states expire without a pulse; a dead live session no longer keeps its ⏳ title.
+- Projects threads: a merged ship ends with its completion card, and a turn cannot end on a stuck ✱ checklist step (#1250).
+- Concept resume finds a state file in a linked worktree below the session cwd (#1245).
+
+### Changed
+- Setup no longer recommends opting into API credit.
+
 ## [0.412.1] — 2026-11-28
 
 ### Fixed
