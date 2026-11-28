@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.412.1] — 2026-11-28
+
+### Fixed
+- Band: after a plugin update mid-session it says once that the session needs a restart, instead of silently mixing old band and new card (e.g. Archivieren shown twice)
+
 ## [0.412.0] — 2026-11-28
 
 ### Added

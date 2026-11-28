@@ -82,6 +82,7 @@ import {
   type Halted,
   archiveOffered,
   archiveRefusal,
+  versionSkew,
   BAND_BAR_SIZE,
   bandBarsRelevant,
   BUDGET_BAR_SIZE,
@@ -1196,6 +1197,32 @@ async function markHintDrawn($: EngineInterface): Promise<void> {
 `)
 }
 
+/**
+ * Version skew: the plugin version this module was loaded with (module scope, so a reload of new code starts over)
+ * against the manifest on disk. An in-place update mid-session → one toast per new version: restart the session.
+ */
+let loadedVersion = ''
+let skewToasted = ''
+async function manifestVersion($: EngineInterface): Promise<string> {
+  const m = (await readJson($, `${String($.plugin.root || '').replace(/[\\]/g, '/')}/.claude-plugin/plugin.json`)) as { version?: unknown } | null
+  return m && typeof m.version === 'string' ? m.version : ''
+}
+async function checkSkew($: EngineInterface): Promise<void> {
+  try {
+    const onDisk = await manifestVersion($)
+    if (!loadedVersion) {
+      loadedVersion = onDisk
+      return
+    }
+    const skew = versionSkew(loadedVersion, onDisk)
+    if (!skew || skewToasted === skew.to) return
+    skewToasted = skew.to
+    $.ui.toast(tr((await sharedNow($)).loc, 'versionSkew', skew), { timeoutMs: 12000 })
+  } catch {
+    /* display only */
+  }
+}
+
 /** C9: the notices a hook asks Claude to show verbatim, as toasts; once per session. */
 async function toastNotices($: EngineInterface, contexts: readonly string[] | undefined): Promise<void> {
   const texts = verbatimNotices(contexts)
@@ -1272,6 +1299,7 @@ export const register: Register = on => {
     await $.command.register({ name: 'mods-spike-wake', description: 'devops spike: a mod timer wakes this session after N minutes (default 1.5) via prompt.submit' })
     await $.command.register({ name: 'devops', description: 'devops: what the plugin saved and cost, from its local logs (no model call)' })
     sessionCwd = e.cwd || ''
+    await checkSkew($)
     await writeLoadMarker($, e.surface || null, e.isInteractive === true).catch(() => undefined)
     await refreshHygiene($)
     // Status element: what the savings log already holds is old news, the MCP server is asked once, the state goes on screen.
@@ -1288,7 +1316,10 @@ export const register: Register = on => {
   // The dispatcher holds those notices until the first typed prompt (lib/thread-notice-hold.js), so they also come from there.
   on('classic.UserPromptSubmit', async ($, e, next) => {
     const result = await next(e)
-    if (await open($)) await toastNotices($, result && result.additionalContext)
+    if (await open($)) {
+      await toastNotices($, result && result.additionalContext)
+      await checkSkew($)
+    }
     return result
   })
 
@@ -1464,6 +1495,7 @@ export const register: Register = on => {
       }
     }
     if (cardSource) {
+      await checkSkew($)
       const view = cardFromResult(cardSource)
       if (view) {
         await update($, halted, () => null)
