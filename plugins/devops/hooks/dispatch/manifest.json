@@ -146,6 +146,12 @@
       },
       {
         "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.concept.implement-order.js\"", "timeout": 20 }
+        ],
+        "matcher": "AskUserQuestion|mcp__.*__request_decision"
+      },
+      {
+        "hooks": [
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.thread.session.js\"", "timeout": 5, "dispatch": "fast" },
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.plugin.session.js\"", "timeout": 10, "dispatch": "fast" },
           { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/pre.ask.title.js\"", "timeout": 5, "dispatch": "fast" }

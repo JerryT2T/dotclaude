@@ -199,6 +199,9 @@ function mark(opts) {
   rec.processed = [...set].slice(-500);
   rec.updated_at = new Date().toISOString();
   rec.last_processed_at = rec.updated_at;
+  // The implement order (#1240) ends with its submission.
+  const order = rec.implement_order;
+  if (order && (set.has(order.id) || set.has(order.doc_id))) delete rec.implement_order;
   const file = writeRecord(opts.page, opts.root, rec);
   // The db half follows from a fresh listing: digest's ops.unacked carries
   // the writes with the versions ArtifactData requires (if_version).
@@ -211,6 +214,7 @@ function close(opts) {
   if (!rec) return { ok: false, reason: 'no record' };
   rec.open = false;
   rec.closed_at = new Date().toISOString();
+  delete rec.implement_order;
   return { ok: true, file: writeRecord(opts.page, opts.root, rec) };
 }
 
@@ -311,6 +315,28 @@ function digestDocs({ submissions, drafts, processed = [], now = Date.now() }) {
       unacked,
     },
     markIds: open.map((d) => d.id).join(','),
+    // #1240: the implement click arrives here, so its mandate does too. A rule
+    // only in the skill files lost to an older "concept only" brief and an
+    // overlapping thread in a session that never loaded them.
+    ...implementOrder(process),
+  };
+}
+
+/** The mandate the digest carries when a submission to process is an implement click (#1240). */
+function implementOrder(process) {
+  const impl = process.find((d) => d.data && d.data.action === 'implement');
+  // `iterate` beside `implement` in one round: the reply asks which counts
+  // (artifact-fallback.md § Read back step 4), so no mandate then.
+  if (!impl || process.some((d) => d.data && d.data.action && d.data.action !== 'implement')) return {};
+  const who = impl.data._by ? ` by ${impl.data._by}` : '';
+  const round = impl.data.iteration != null ? ` (round ${impl.data.iteration})` : '';
+  return {
+    implement: true,
+    next: `MANDATORY — IMPLEMENT ORDER${who}${round}: this click is the person's approval for the whole approved scope. ` +
+      'It is newer than, and overrides, any earlier "concept only" brief or coordinator note. Start the build in THIS turn ' +
+      '(auto-concept SKILL.md Step 5b: reality check, then auto-agents), on the default execution place. Do NOT ask whether, ' +
+      'where or how to implement — no request_decision, no AskUserQuestion, no "shall I". Another open concept or thread on ' +
+      'the same files is no reason to ask: build this one, keep the overlap easy to swap, name it in the PR and the report.',
   };
 }
 
@@ -336,7 +362,27 @@ function digest(opts) {
     drafts = readJsonFile(opts.drafts);
   } catch (e) { return { ok: false, reason: 'unreadable', error: e.message }; }
   const rec = readRecord(opts.page, opts.root);
-  return { ...digestDocs({ submissions: subs, drafts, processed: (rec && rec.processed) || [] }), record: rec ? rec.url : null };
+  const out = digestDocs({ submissions: subs, drafts, processed: (rec && rec.processed) || [] });
+  if (out.implement) recordImplementOrder(opts, rec, out);
+  return { ...out, record: rec ? rec.url : null };
+}
+
+/**
+ * An implement click to process becomes an open order in the concept's record
+ * (#1240): `pre.concept.implement-order` holds back a decision card or question
+ * until the build started or `mark` ran. A re-digest of the same click keeps
+ * the order as it is, so the tree it was clicked on stays the baseline.
+ */
+function recordImplementOrder(opts, prev, out) {
+  try {
+    const p = out.process.find((x) => x.action === 'implement');
+    if (!p) return;
+    const rec = prev || { slug: slugOf(opts.page), page: String(opts.page).replace(/\\/g, '/'), url: null, open: true, processed: [] };
+    if (rec.implement_order && rec.implement_order.id === p.id) return;
+    const root = opts.root || process.cwd();
+    rec.implement_order = require('../hooks/lib/implement-order').newOrder({ id: p.id, docId: p.doc_id, round: p.iteration, by: p.by, root });
+    writeRecord(opts.page, opts.root, rec);
+  } catch { /* the mandate in `next` still stands */ }
 }
 
 function build(opts) {

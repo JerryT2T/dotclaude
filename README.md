@@ -26,7 +26,7 @@ keep git clean, block risky moves and stop context waste.
 - **Runs while you are away** — `/do-run` works off a backlog, a task or the leftover weekly budget, and ships each item
 - **Per-project tuning** — extend any skill with a `reference.md`, no fork
 
-<!--devops:count:hooks-->120<!--/devops:count:hooks--> hooks ·
+<!--devops:count:hooks-->121<!--/devops:count:hooks--> hooks ·
 <!--devops:count:skills-->15<!--/devops:count:skills--> skills ·
 <!--devops:count:agents-->11<!--/devops:count:agents--> agents ·
 ~0.7M tokens/week overhead (1–4 % of a Max plan), paid back 1.5–6× by the
@@ -525,7 +525,7 @@ A different stack: extend the skills per project — see [Customize](#customize)
 </details>
 
 <details>
-<summary><strong>Hooks</strong> — <!--devops:count:hooks-->120<!--/devops:count:hooks--> hooks by lifecycle and by category</summary>
+<summary><strong>Hooks</strong> — <!--devops:count:hooks-->121<!--/devops:count:hooks--> hooks by lifecycle and by category</summary>
 
 ```
 SessionStart  ──>  UserPromptSubmit  ──>  PreToolUse  ──>  PostToolUse  ──>  Stop
@@ -610,6 +610,7 @@ SessionStart  ──>  UserPromptSubmit  ──>  PreToolUse  ──>  PostToolU
 - `pre.session.archive` — Only the post-ship hand-over archives this session (#632).
 - `pre.title.topic` — Enforces the 30-character session-title topic (user decision d-len, 2026-11-17: 20; 3…
 - `pre.ask.title` — Puts `👉 ➜ ❓ ` on the session title BEFORE a call blocks on the user (a question, a p…
+- `pre.concept.implement-order` — An implement click on a concept page is the person's go (#1240).
 - `pre.thread.session` — Fan-out rule of a Claude Projects thread (line C5): a thread may spawn subagents but…
 - `pre.plugin.session` — Refuse once a plugin fix session started from a consumer project before the upstream…
 - `pre.ask.title` — Puts `👉 ➜ ❓ ` on the session title BEFORE a call blocks on the user (a question, a p…
@@ -766,6 +767,7 @@ SessionStart  ──>  UserPromptSubmit  ──>  PreToolUse  ──>  PostToolU
 - `prompt.skill.overrides` *(UserPromptSubmit)*
 - `prompt.strict.enforce` *(UserPromptSubmit)*
 - `pre.readme.standards` *(PreToolUse)*
+- `pre.concept.implement-order` *(PreToolUse)*
 - `pre.strict.agent-gate` *(PreToolUse)*
 - `post.concept.gate` *(PostToolUse)*
 - `post.concept.title` *(PostToolUse)*
@@ -856,7 +858,7 @@ plugins/
 │   ├── .claude-plugin/plugin.json ← Plugin manifest (SemVer, tags v0.x.y)
 │   ├── .mcp.json                  ← MCP servers: completion card, ship, issues
 │   ├── CONVENTIONS.md             ← Naming, versioning, extension rules
-│   ├── hooks/                     ← <!--devops:count:hooks-->120<!--/devops:count:hooks--> hooks (JS) registered in hooks/dispatch/manifest.json
+│   ├── hooks/                     ← <!--devops:count:hooks-->121<!--/devops:count:hooks--> hooks (JS) registered in hooks/dispatch/manifest.json
 │   ├── skills/                    ← <!--devops:count:skills-->15<!--/devops:count:skills--> skill definitions (SKILL.md)
 │   ├── agents/                    ← <!--devops:count:agents-->11<!--/devops:count:agents--> agent definitions
 │   ├── mcp-server/                ← Card renderer + Desktop widget, ship tools, issue matching

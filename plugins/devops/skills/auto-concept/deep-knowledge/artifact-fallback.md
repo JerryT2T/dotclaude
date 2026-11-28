@@ -76,6 +76,12 @@ the session stops halfway.
      takes the newer answer and the reply names both. Different actions
      (`iterate` beside `implement`): the reply asks which one counts, and the
      round is iterated meanwhile, never implemented on a guess.
+   - `implement: true` + `next` — the round is an implement click: `next` is
+     binding (#1240). Build in this turn, never ask whether or how. The digest
+     also records the click as an open `implement_order` in the concept's
+     record; until the build changed files (or `mark` / `close` ran, or 24 h
+     passed) the hook `pre.concept.implement-order` holds back
+     `AskUserQuestion` and every `request_decision` with the order to build.
    - `superseded` — a sender's earlier payload of the same round, replaced by
      their re-send. Not processed.
    - `lateEdits` — typed on the page after the last submit, in no payload.
@@ -168,7 +174,9 @@ owner's wish to decide remotely is given; the hand-off tier is not needed.
   same component is no reason to ask: build the approved concept, keep the
   overlapping part easy to swap, and name the overlap in the PR and the
   final report. Only a step that is irreversible beyond what do-ship already
-  gates (a production DB migration) is confirmed once.
+  gates (a production DB migration) is confirmed once, and it comes up in the
+  build, where the hook no longer holds a question back. A real obstacle to
+  starting at all is said in a thread message, which is never blocked.
 - **If nothing comes back** (the read-back is empty or errors): the person
   pastes the decisions, or says the action (`next round` / `implement`), into
   the thread; the session continues from those words. The post says so once.
