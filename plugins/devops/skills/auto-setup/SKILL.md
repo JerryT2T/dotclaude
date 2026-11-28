@@ -70,7 +70,7 @@ writes. Frame:
 |---|---|---|
 | Header | `API-Guthaben` | `API credit` |
 | Question | Problem: Dein Plan enthält monatliches API-Guthaben, das sonst verfällt. Nutzen: Recherche, Suche, Reviews und Audits laufen zuerst darüber und schonen dein Plan-Limit; ist es leer, läuft alles über den Plan. Gilt dann immer, bis du es abschaltest. Claude Code selbst bleibt immer auf dem Plan; gekauftes Guthaben lässt sich nicht ausschließen (Anthropic verbraucht zuerst das inklusive). | Problem: your plan includes monthly API credit that otherwise expires. Benefit: research, search, reviews and audits run on it first and spare your plan limit; when empty, everything runs on the plan. Applies always until you switch it off. Claude Code itself always stays on the plan; purchased credit cannot be excluded (Anthropic spends the included credit first). |
-| Options | `Ja, API-Guthaben nutzen (Empfohlen)` / `Nein, alles über den Plan` | `Yes, use API credit (Recommended)` / `No, everything on the plan` |
+| Options | `Nein, alles über den Plan` / `Ja, API-Guthaben nutzen` | `No, everything on the plan` / `Yes, use API credit` |
 
 Yes → `apiCredit.enabled true --global`, then the web-guide question from
 api-credits.md (`apiCredit.webGuide`). Never put a key into `settings.json`.
