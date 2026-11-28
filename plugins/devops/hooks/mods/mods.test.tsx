@@ -8,6 +8,7 @@ import {
   formatResetShort,
   archiveOffered,
   archiveRefusal,
+  versionSkew,
   isLimitStop,
   limitTitle,
   agentRows,
@@ -3259,4 +3260,25 @@ test('#1239 concept offer: Später only hides the row; no offer file, no row', a
   const after = await $.ui.mount({ ...BAND, surface: 'terminal' })
   expect(await after.find({ key: 'devops-concept-offer' })).toBeUndefined()
   await after.unmount()
+})
+
+// 2026-11-28 (do-learn): a plugin update mid-session left the band on the old code while the offline renderer ran the
+// new one — the new card's own Archivieren and the old band's button both showed. The band now says so once.
+test('version skew: pure — only two known, different versions are a skew', () => {
+  expect(versionSkew('0.411.1', '0.411.2')).toEqual({ from: '0.411.1', to: '0.411.2' })
+  expect(versionSkew('0.411.2', '0.411.2')).toBeNull()
+  expect(versionSkew('', '0.411.2')).toBeNull()
+  expect(versionSkew('0.411.1', '')).toBeNull()
+})
+
+test('version skew: an in-place plugin update after session start toasts "restart the session" once per new version', async ($, on) => {
+  const { seen, files } = engine(on, { files: { '/.claude-plugin/plugin.json': JSON.stringify({ name: 'devops', version: '0.411.1' }) } })
+  on('classic.UserPromptSubmit', () => ({}))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.classic.UserPromptSubmit({ prompt: 'hi' } as any)
+  expect(seen.toasts.filter(t => /restart the session/.test(t))).toEqual([])
+  files['/.claude-plugin/plugin.json'] = JSON.stringify({ name: 'devops', version: '0.411.2' })
+  await $.classic.UserPromptSubmit({ prompt: 'again' } as any)
+  await $.classic.UserPromptSubmit({ prompt: 'and again' } as any)
+  expect(seen.toasts.filter(t => /restart the session/.test(t))).toEqual(['devops updated 0.411.1 → 0.411.2: this band still runs 0.411.1 — restart the session'])
 })
