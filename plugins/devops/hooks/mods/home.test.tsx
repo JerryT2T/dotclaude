@@ -2,7 +2,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import { agoText, batchPrompt, bedFrom, bedText, cleanupFrom, prereqSummary, homeModel, infoTiles, isBatchTitle, kindOf, needsConfirm, paceWord, projectOf, ringSvgSource, ringsFrom, resetText, sessionsFrom } from './home'
-import { barLabel, bedSvg, newestOf, offText, prereqWord, shareSvg, statTiles, styleFrom, styleLabel, tourDone, TOUR_STEPS } from './home'
+import { apiCreditFrom, apiCreditLabel, barLabel, bedSvg, newestOf, offText, prereqWord, shareSvg, statTiles, styleFrom, styleLabel, tourDone, TOUR_STEPS } from './home'
 import { browserNote, browsersFrom, prereqRows, THREAD_REQUEST_NOTE, threadCopyFrom, threadCopyNote, threadMeaning, threadProjectLabel, threadProjectName, threadsFrom, versionAtLeast, versionFrom } from './home'
 
 const rows = [
@@ -227,4 +227,15 @@ test('home r2: prerequisites as keywords, output style answer, tour marker, newe
   const m = homeModel(sessionsFrom(JSON.stringify(rows)), {}, {})
   expect(newestOf(m.waiting, 'P:/Projects/scc')?.id).toBe('local_b')
   expect(newestOf(m.waiting, 'P:/Projects/none')).toBe(undefined)
+})
+
+test('home: the API-Guthaben row reads devops-config get output; unreadable stays null (default off is the config default)', () => {
+  expect(apiCreditFrom('apiCredit.enabled = true  (global)
+')).toBe(true)
+  expect(apiCreditFrom('apiCredit.enabled = false  (default)
+')).toBe(false)
+  expect(apiCreditFrom('apiCredit.enabled = falsey')).toBe(null)
+  expect(apiCreditFrom('')).toBe(null)
+  expect(apiCreditLabel(true)).toBe('An')
+  expect(apiCreditLabel(false)).toBe('Aus')
 })

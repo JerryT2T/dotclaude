@@ -228,6 +228,9 @@ describe("sessionLine — the SessionStart [api-credit] line", () => {
   test("off → no line at all", () => {
     expect(api.sessionLine({ pluginRoot: "/p", cwd, home, env: {} })).toBeNull();
   });
+  test("a stored key alone never switches the route on (no line, no spawn)", () => {
+    expect(api.sessionLine({ pluginRoot: "/p", cwd, home, env: { ANTHROPIC_API_KEY: "sk-ant-test" } })).toBeNull();
+  });
   test("on without key → names the missing key and the guide", () => {
     setConfig({ enabled: true, webGuide: true });
     expect(api.sessionLine({ pluginRoot: "/p", cwd, home, env: {} })).toMatch(/no key stored.*web guide/);
