@@ -3281,4 +3281,9 @@ test('version skew: an in-place plugin update after session start toasts "restar
   await $.classic.UserPromptSubmit({ prompt: 'again' } as any)
   await $.classic.UserPromptSubmit({ prompt: 'and again' } as any)
   expect(seen.toasts.filter(t => /restart the session/.test(t))).toEqual(['devops updated 0.411.1 → 0.411.2: this band still runs 0.411.1 — restart the session'])
+  // A second update in the same session is news again: one more toast, still measured against the loaded 0.411.1.
+  files['/.claude-plugin/plugin.json'] = JSON.stringify({ name: 'devops', version: '0.411.3' })
+  await $.classic.UserPromptSubmit({ prompt: 'later' } as any)
+  expect(seen.toasts.filter(t => /restart the session/.test(t)).at(-1)).toBe('devops updated 0.411.1 → 0.411.3: this band still runs 0.411.1 — restart the session')
+  expect(seen.toasts.filter(t => /restart the session/.test(t))).toHaveLength(2)
 })
