@@ -75,6 +75,16 @@
         "hunks": [
           "4a52ea8cc5c7"
         ]
+      },
+      {
+        "ship": "claude/project-thread-hx50gy",
+        "by": "Jerry",
+        "value": "121 (generated count incl. 1 new hook)",
+        "decided": true,
+        "at": "2026-11-28T01:05:56.761Z",
+        "hunks": [
+          "7f9356083424"
+        ]
       }
     ],
     "README.md›hooks-summary›count": [
@@ -445,6 +455,16 @@
         "hunks": [
           "06f2fd986dc8"
         ]
+      },
+      {
+        "ship": "claude/project-thread-hx50gy",
+        "by": "Jerry",
+        "value": "35 (generated count incl. 1 new pre hook)",
+        "decided": true,
+        "at": "2026-11-28T01:05:56.761Z",
+        "hunks": [
+          "4815c33dbf5a"
+        ]
       }
     ],
     "plugins/devops/docs/architecture.html›devops:count:hooks:prompt›value": [
@@ -498,6 +518,16 @@
         "at": "2026-11-28T00:59:02.265Z",
         "hunks": [
           "ecd47674ab3e"
+        ]
+      },
+      {
+        "ship": "claude/project-thread-hx50gy",
+        "by": "Jerry",
+        "value": "121 (generated count incl. 1 new hook)",
+        "decided": true,
+        "at": "2026-11-28T01:05:56.761Z",
+        "hunks": [
+          "a8e65e057fe7"
         ]
       }
     ],
