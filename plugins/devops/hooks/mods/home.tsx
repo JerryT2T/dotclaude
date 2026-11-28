@@ -959,7 +959,7 @@ export function styleFrom(text: string): OutputStyle | null {
 }
 /** `scripts/devops-config.js get apiCredit.enabled` → "apiCredit.enabled = true  (global)"; null when unreadable. */
 export function apiCreditFrom(text: string): boolean | null {
-  const m = /apiCredit\.enabled\s*=\s*(true|false)/.exec(text)
+  const m = /apiCredit\.enabled\s*=\s*(true|false)\b/.exec(text)
   return m ? m[1] === 'true' : null
 }
 export function apiCreditLabel(on: boolean): string {

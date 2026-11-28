@@ -230,10 +230,8 @@ test('home r2: prerequisites as keywords, output style answer, tour marker, newe
 })
 
 test('home: the API-Guthaben row reads devops-config get output; unreadable stays null (default off is the config default)', () => {
-  expect(apiCreditFrom('apiCredit.enabled = true  (global)
-')).toBe(true)
-  expect(apiCreditFrom('apiCredit.enabled = false  (default)
-')).toBe(false)
+  expect(apiCreditFrom('apiCredit.enabled = true  (global)\n')).toBe(true)
+  expect(apiCreditFrom('apiCredit.enabled = false  (default)\n')).toBe(false)
   expect(apiCreditFrom('apiCredit.enabled = falsey')).toBe(null)
   expect(apiCreditFrom('')).toBe(null)
   expect(apiCreditLabel(true)).toBe('An')
