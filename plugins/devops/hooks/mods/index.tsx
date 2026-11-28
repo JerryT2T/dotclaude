@@ -83,7 +83,7 @@ import {
   archiveOffered,
   archiveRefusal,
   BAND_BAR_SIZE,
-  bandBars,
+  bandBarsRelevant,
   BUDGET_BAR_SIZE,
   budgetBars,
   budgetBarSvg,
@@ -170,7 +170,7 @@ import { featureAllowed, homeDir } from './gate'
 import { HOME_PANE, homeClosed, renderHome, toggleHome } from './home'
 import type { HomeCtx } from './home'
 import { readOptState, switchOff, switchOn } from './optout'
-import type { OptState } from './optout'
+import type { OptScope, OptState } from './optout'
 
 /** The switch popup: OFF form while devops is on (session / project / cancel), ON form while it is off. */
 function optPopupEl($: EngineInterface, e: any, loc: Locale, opt: OptState): any {
@@ -465,14 +465,16 @@ async function optNow($: EngineInterface): Promise<OptState> {
   return v
 }
 
-async function pressOpt($: EngineInterface, mode: 'off' | 'on', scope: 'session' | 'project'): Promise<void> {
+/** The three off levels of the Home ⏻ menu (decision d-levels); 'global' is the devops-own user-level flag (keephome). */
+
+async function pressOpt($: EngineInterface, mode: 'off' | 'on', scope: OptScope): Promise<void> {
   const loc = (await sharedNow($)).loc
   const root = await repoRoot($)
   const sid = await $.session.id().catch(() => '')
   const ok = mode === 'off' ? await switchOff($, scope, { home: await homeDir($), root, sid, now: await $.clock.now() }) : await switchOn($, scope, { root, sid })
   optPopup = false
   optCache = null
-  const text = !ok ? tr(loc, 'toastOptFailed') : mode === 'on' ? tr(loc, 'toastOptOn') : tr(loc, scope === 'session' ? 'toastOptOffSession' : 'toastOptOffProject')
+  const text = !ok ? tr(loc, 'toastOptFailed') : mode === 'on' ? tr(loc, 'toastOptOn') : tr(loc, scope === 'session' ? 'toastOptOffSession' : scope === 'global' ? 'toastOptOffGlobal' : 'toastOptOffProject')
   $.ui.toast(text, { timeoutMs: 6000 })
   $.ui.invalidate('ui.render')
 }
@@ -515,12 +517,21 @@ async function toggleInfo($: EngineInterface): Promise<void> {
 
 /** What the Home pane needs from this module, resolved for one call. */
 async function homeCtx($: EngineInterface): Promise<HomeCtx> {
+  const opt = await optNow($)
+  const now = await $.clock.now()
   return {
     loc: (await sharedNow($)).loc,
-    isOn: (await optNow($)).on,
+    opt: { on: opt.on, sessionOff: opt.sessionOff, projectOff: opt.projectOff, globalOff: opt.globalOff === true },
+    budget: await bandBudget($, await read($, budget), now).catch(() => null),
     root: await repoRoot($),
     loadInfo: () => loadInfo($),
-    switchDevops: v => pressOpt($, v ? 'on' : 'off', 'session'),
+    switchOpt: async (mode, scope) => {
+      if (mode === 'off') return pressOpt($, 'off', scope)
+      // "Einschalten" lifts every level that is off, so one press brings devops back here.
+      const cur = await optNow($)
+      const off: OptScope[] = scope ? [scope] : [...(cur.sessionOff ? ['session' as const] : []), ...(cur.projectOff ? ['project' as const] : []), ...(cur.globalOff ? ['global' as const] : [])]
+      for (const sc of off.length ? off : ['session' as const]) await pressOpt($, 'on', sc)
+    },
     startCleanup: () => startCleanup($, 'plan'),
   }
 }
@@ -2118,7 +2129,7 @@ export const register: Register = on => {
         {/* A host that draws the line under the prompt shows the word there already: the row keeps the bars only. */}
         {!hintDrawn && statusWordEl($, { Box, Button, Text }, isActive(hl), inactiveReason(hl, loc), 'devops-word-wrap')}
         <Box key="budget" flexDirection="row" alignItems="center" columnGap={2} flexWrap="wrap">
-          {bandBars(b, now).map(bar => (
+          {bandBarsRelevant(b, now).map(bar => (
             <Box key={`bar-${bar.label}`} flexDirection="row" alignItems="center" columnGap={1}>
               <Text dimColor>{bar.label}</Text>
               <Svg source={budgetBarSvg(bar, { width: BAND_BAR_SIZE.width, compact: true })} alt={budgetBarAlt(bar, loc)} width={BAND_BAR_SIZE.width} height={BAND_BAR_SIZE.height} isInteractive />

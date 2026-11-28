@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.412.0] — 2026-11-28
+
+### Added
+- devops Home: power menu switches devops off or on for this session, this project or all projects
+- devops Home: Statistik tab, action chips that open, archive or clean up sessions, clickable project chips
+- devops Home: first-run tour (5 steps, once per computer, restartable from Einstellungen)
+- Output style is its own user-level setting (Quiet / Standard), independent of devops on/off
+
+### Changed
+- devops Home: budget head with the band's bars, grouped settings list, shorter texts, larger icons
+- Band shows only the budget bars relevant right now; Home always shows all
+- Switching devops off for a project or all projects no longer changes the output style
+
 ## [0.411.2] — 2026-11-27
 
 ### Fixed

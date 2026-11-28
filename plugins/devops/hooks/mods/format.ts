@@ -376,6 +376,16 @@ export function budgetBars(b: Budget | null, now: number): BudgetBar[] {
   return bars
 }
 
+/**
+ * The Desktop band's bars: the compact bandBars drawing, but only the windows budgetBars finds relevant right now (the
+ * completion card's rule: Wk/Fb when the marker is not white or the reset is near, 5h from 50 % or within 60 min of its
+ * reset). None relevant: none drawn. Home keeps bandBars (all bars, always).
+ */
+export function bandBarsRelevant(b: Budget | null, now: number): BudgetBar[] {
+  const keep = new Set(budgetBars(b, now).map(x => x.label))
+  return bandBars(b, now).filter(x => keep.has(x.label))
+}
+
 /** Terminal glyph bar: ▰ time elapsed · │ usage marker · ▱ time left (the card's terminal fallback). */
 export function budgetGlyphBar(pct: number, elapsedPct: number, width = BUDGET_BAR_WIDTH): string {
   const usagePos = Math.min(width - 1, Math.round((clampPct(pct) / 100) * width))
@@ -1116,6 +1126,7 @@ const TABLE = {
   optChipProject: ['devops · off (project)', 'devops · aus (Projekt)', 'devops · apagado (proyecto)', 'devops · désactivé (projet)', 'devops · desligado (projeto)', 'devops · オフ（プロジェクト）', 'devops · 已关（项目）'],
   optEnable: ['switch on', 'einschalten', 'encender', 'activer', 'ligar', 'オンにする', '开启'],
   toastOptOffSession: ['devops is off for this session — hooks stay silent from the next event', 'devops ist für diese Session aus — Hooks schweigen ab dem nächsten Ereignis', 'devops está apagado en esta sesión — los hooks callan desde el próximo evento', 'devops est désactivé pour cette session — les hooks se taisent dès le prochain événement', 'devops está desligado nesta sessão — os hooks se calam a partir do próximo evento', 'このセッションの devops はオフ — 次のイベントからフックは沈黙します', '本次会话已关闭 devops — 从下一个事件起钩子静默'],
+  toastOptOffGlobal: ['devops is off in all projects; the Home pane switches it back on', 'devops ist in allen Projekten aus; im Home schaltest du es wieder ein', 'devops está apagado en todos los proyectos; Home lo vuelve a encender', 'devops est désactivé dans tous les projets ; Home le réactive', 'devops está desligado em todos os projetos; o Home o religa', 'すべてのプロジェクトで devops はオフ。Home から再びオンにできます', '所有项目已关闭 devops；可在 Home 中重新开启'],
   toastOptOffProject: ['devops is off for this project (.claude/settings.local.json)', 'devops ist für dieses Projekt aus (.claude/settings.local.json)', 'devops está apagado en este proyecto (.claude/settings.local.json)', 'devops est désactivé pour ce projet (.claude/settings.local.json)', 'devops está desligado neste projeto (.claude/settings.local.json)', 'このプロジェクトの devops はオフ (.claude/settings.local.json)', '此项目已关闭 devops (.claude/settings.local.json)'],
   toastOptOn: ['devops is on again', 'devops ist wieder an', 'devops vuelve a estar encendido', 'devops est de nouveau actif', 'devops está ligado de novo', 'devops が再びオンになりました', 'devops 已重新开启'],
   // #1239: an unfinished concept after a restart, one band row with three buttons.

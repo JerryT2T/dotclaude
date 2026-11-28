@@ -37,7 +37,7 @@ hand. Confirm the change in one line with the new effective value.
 
 ## devops ausschalten (opt-out)
 
-The user wants devops silent — for this project, or only for this session:
+The user wants devops silent — for this project, for this session only, or everywhere ("Alle Projekte"):
 "devops aus für dieses Projekt", "devops nur für diese Session aus", "devops wieder an".
 One script writes the same switches as the mod band's popup:
 
@@ -45,14 +45,16 @@ One script writes the same switches as the mod band's popup:
 node "{PLUGIN_ROOT}/scripts/devops-optout.js" off --scope project            # this project, permanent
 node "{PLUGIN_ROOT}/scripts/devops-optout.js" off --scope session --session <session_id>
 node "{PLUGIN_ROOT}/scripts/devops-optout.js" on  --scope project            # back on (add --session <id> to clear that flag too)
+node "{PLUGIN_ROOT}/scripts/devops-optout.js" off --scope global             # every project (keephome), `on --scope global` to undo
 node "{PLUGIN_ROOT}/scripts/devops-optout.js" status --scope project --json
 ```
 
 Run it from the project's directory (or `--cwd <dir>`); the session id is the current session's. Confirm in one line.
 
-- **Project** writes `.claude/settings.local.json` (git-ignored, never `settings.json`): `enabledPlugins["devops@dotclaude"] = false` and `outputStyle = "default"` (the old style is kept in `.claude/devops-optout.json` and restored by `on`). Every hook and the MCP server (no tools listed) stay silent from the next event on — for every copy of the plugin, including the account-synced one. The statusline is not silenced.
+- **Project** writes `.claude/settings.local.json` (git-ignored, never `settings.json`): `enabledPlugins["devops@dotclaude"] = false`. The output style is not touched (it is its own setting, `scripts/output-style.js get|set Quiet|default`, user level); an old `.claude/devops-optout.json` memo from an earlier off is restored once by `on`, then deleted. Every hook and the MCP server (no tools listed) stay silent from the next event on — for every copy of the plugin, including the account-synced one. The statusline is not silenced.
 - **Session** writes `~/.claude/devops-optout/sessions/<session_id>.json`: every hook, incl. the permission hooks, exits silently for that session from the next event on. The skills stay listed until the session ends but only run when the user calls them.
-- **Precedence** (as in Claude Code): session flag > `settings.local.json` > `settings.json` > user settings; the first explicit true/false decides. No entry: the cache copy is off, an account copy / `--plugin-dir` / eval is on. Corrupt JSON is skipped. Resolver: `hooks/lib/devops-optout.js`.
+- **Global** writes the devops-own flag `~/.claude/devops-optout/global.json` — never `enabledPlugins:false` in user settings (that would unload the plugin and its Home pane). Keephome: hooks, skills, MCP tools and guards rest in every project; the band mod and Home keep rendering so one click switches back.
+- **Precedence** (as in Claude Code): session flag > global flag > `settings.local.json` > `settings.json` > user settings; the first explicit true/false decides. No entry: the cache copy is off, an account copy / `--plugin-dir` / eval is on. Corrupt JSON is skipped. Resolver: `hooks/lib/devops-optout.js`.
 - **Way back**: the same phrase ("devops wieder an"), the "devops · aus" chip in the mod band, or `/plugin` / `claude plugin enable devops@dotclaude` where no band loads.
 - **Account copy**: the skills of the account-synced copy (claude.ai plugin directory) stay listed until the plugin is removed in the claude.ai account — only the hooks and tools are silenced.
 

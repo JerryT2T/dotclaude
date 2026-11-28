@@ -1,6 +1,6 @@
 # dotclaude
 
-**Version: 0.411.2**
+**Version: 0.412.0**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
 
@@ -232,8 +232,11 @@ for you, in your language.
    ```
 2. **CLI:** copy the file as above, then `/output-style Quiet` in a session
 3. **Manually:** copy [`templates/output-style-quiet.md`](plugins/devops/templates/output-style-quiet.md) to `~/.claude/output-styles/quiet.md` and set `"outputStyle": "Quiet"` in `~/.claude/settings.json`
+4. **devops Home:** Einstellungen › Ausgabestil switches Quiet / Standard for all projects
 
-Start a new session afterwards.
+Start a new session afterwards. The style is its own setting: switching devops
+off (session, project or all projects) leaves it as it is, and Quiet keeps its
+general rules when devops is off.
 
 <details>
 <summary><strong>More about the style</strong></summary>

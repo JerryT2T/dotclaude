@@ -183,6 +183,18 @@
         ]
       }
     ],
+    "docs/dev/mods.md›Band layout›status-row budget bars": [
+      {
+        "ship": "devops-toggle-all-levels",
+        "by": "user",
+        "value": "only relevant bars in the band; Home all",
+        "decided": true,
+        "at": "2026-11-28T00:10:15.340Z",
+        "hunks": [
+          "f7eedc1d6e78"
+        ]
+      }
+    ],
     "docs/dev/mods.md›Home pane: redraws and tiles›＋ Batch": [
       {
         "ship": "#1211",
