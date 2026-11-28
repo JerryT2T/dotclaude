@@ -65,6 +65,16 @@
         "hunks": [
           "b3ddb0edabed"
         ]
+      },
+      {
+        "ship": "claude/project-thread-hx50gy",
+        "by": "Jerry",
+        "value": "121 (generated count incl. 1 new hook)",
+        "decided": true,
+        "at": "2026-11-28T00:59:02.265Z",
+        "hunks": [
+          "4a52ea8cc5c7"
+        ]
       }
     ],
     "README.md›hooks-summary›count": [
@@ -425,6 +435,18 @@
         ]
       }
     ],
+    "plugins/devops/docs/architecture.html›devops:count:hooks:pre›value": [
+      {
+        "ship": "claude/project-thread-hx50gy",
+        "by": "Jerry",
+        "value": "35 (generated count incl. 1 new pre hook)",
+        "decided": true,
+        "at": "2026-11-28T00:59:02.265Z",
+        "hunks": [
+          "06f2fd986dc8"
+        ]
+      }
+    ],
     "plugins/devops/docs/architecture.html›devops:count:hooks:prompt›value": [
       {
         "ship": "claude/project-thread-5l5z8o",
@@ -467,6 +489,64 @@
         "hunks": [
           "b79b18e14332"
         ]
+      },
+      {
+        "ship": "claude/project-thread-hx50gy",
+        "by": "Jerry",
+        "value": "121 (generated count incl. 1 new hook)",
+        "decided": true,
+        "at": "2026-11-28T00:59:02.265Z",
+        "hunks": [
+          "ecd47674ab3e"
+        ]
+      }
+    ],
+    "plugins/devops/evals/skills/auto-concept/implement-click-starts-build›grader builds-in-same-run›form": [
+      {
+        "ship": "claude/project-thread-hx50gy",
+        "by": "Jerry",
+        "value": "moved into graders.js (reads the file in the workdir or a worktree); reworked on the owner's order in the same thread",
+        "decided": true,
+        "at": "2026-11-28T00:59:02.265Z",
+        "hunks": [
+          "51f3ca3588b7"
+        ]
+      }
+    ],
+    "plugins/devops/evals/skills/auto-concept/implement-click-starts-build›grader no-decision-card›form": [
+      {
+        "ship": "claude/project-thread-hx50gy",
+        "by": "Jerry",
+        "value": "moved into graders.js (reads the stub server's call log); reworked on the owner's order in the same thread",
+        "decided": true,
+        "at": "2026-11-28T00:59:02.265Z",
+        "hunks": [
+          "112b2d896031"
+        ]
+      }
+    ],
+    "plugins/devops/evals/skills/auto-concept/implement-click-starts-build›prompt›read-back": [
+      {
+        "ship": "claude/project-thread-hx50gy",
+        "by": "Jerry",
+        "value": "the session reads the submission through digest itself; reworked on the owner's order in the same thread",
+        "decided": true,
+        "at": "2026-11-28T00:59:02.265Z",
+        "hunks": [
+          "ba88a69262b2"
+        ]
+      }
+    ],
+    "plugins/devops/evals/skills/auto-concept/implement-click-starts-build›scaffold›concept page": [
+      {
+        "ship": "claude/project-thread-hx50gy",
+        "by": "Jerry",
+        "value": "HTML concept page plus submissions listing and stub thread server; reworked on the owner's order in the same thread",
+        "decided": true,
+        "at": "2026-11-28T00:59:02.265Z",
+        "hunks": [
+          "b397399ffb26"
+        ]
       }
     ],
     "plugins/devops/features.json›project-threads›summary+scripts": [
@@ -478,6 +558,18 @@
         "at": "2026-11-22T16:13:42.383Z",
         "hunks": [
           "d08495f4d4c3"
+        ]
+      }
+    ],
+    "plugins/devops/hooks/hooks.json›PreToolUse›matcher": [
+      {
+        "ship": "claude/project-thread-hx50gy",
+        "by": "Jerry",
+        "value": "generated from dispatch/manifest.json incl. the pre.concept.implement-order matcher",
+        "decided": true,
+        "at": "2026-11-28T00:59:02.265Z",
+        "hunks": [
+          "1b03aa36c311"
         ]
       }
     ],
