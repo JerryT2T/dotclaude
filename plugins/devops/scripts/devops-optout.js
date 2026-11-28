@@ -20,7 +20,8 @@
  *   outputStyle="default" on off) is still honoured once on ON, then deleted.
  *   session: a flag file. global ("Alle Projekte"): the flag file
  *   `~/.claude/devops-optout/global.json`; hooks/skills/MCP rest, Home stays.
- *   Exit 0 ok, 2 bad args.
+ *   A corrupt settings.local.json is never overwritten (exit 1).
+ *   Exit 0 ok, 1 error, 2 bad args.
  */
 
 const fs = require('fs');
@@ -34,6 +35,13 @@ const DAY = 86400000;
 
 function readJson(f) {
   try { return JSON.parse(fs.readFileSync(f, 'utf8').replace(/^[\ufeff]/, '')); } catch { return null; }
+}
+/** settings.local.json as an object; {} when absent. A corrupt file throws, so it is never clobbered. */
+function readSettings(f) {
+  if (!fs.existsSync(f)) return {};
+  const v = readJson(f);
+  if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error(`${f} is not valid JSON — fix it first, nothing was changed`);
+  return v;
 }
 function writeJson(f, o) {
   fs.mkdirSync(path.dirname(f), { recursive: true });
@@ -82,7 +90,7 @@ function run({ action, scope, session, cwd, home = os.homedir(), pluginRoot = pr
     return res(r.on ? 'on' : 'off', { resolved: r.scope, file: r.file || null });
   }
 
-  const s = readJson(local) || {};
+  const s = readSettings(local);
   if (action === 'off') {
     s.enabledPlugins = { ...(s.enabledPlugins || {}), [KEY]: false };
     writeJson(local, s);

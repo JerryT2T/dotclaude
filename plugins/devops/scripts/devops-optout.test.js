@@ -36,6 +36,18 @@ describe("devops-optout script", () => {
     expect(O.resolve({ cwd: w.proj, pluginRoot: ROOT, home: w.home })).toMatchObject({ on: false, scope: "local" });
   });
 
+  test("project off/on never clobber a corrupt settings.local.json", () => {
+    const w = world();
+    fs.mkdirSync(path.dirname(w.local), { recursive: true });
+    fs.writeFileSync(w.local, '{ "permissions": { "allow": ["Bash"] ');
+    for (const action of ["off", "on"]) {
+      expect(() => S.run({ action, scope: "project", cwd: w.proj, home: w.home, pluginRoot: ROOT })).toThrow(/not valid JSON/);
+      expect(fs.readFileSync(w.local, "utf8")).toBe('{ "permissions": { "allow": ["Bash"] ');
+    }
+    const r = spawnSync(process.execPath, [SCRIPT, "off", "--scope", "project", "--cwd", w.proj], { env: { ...process.env, HOME: w.home, USERPROFILE: w.home }, encoding: "utf8" });
+    expect(r.status).toBe(1);
+  });
+
   test("project off then on leaves the style and other keys exactly as they were", () => {
     const w = world();
     fs.mkdirSync(path.dirname(w.local), { recursive: true });
