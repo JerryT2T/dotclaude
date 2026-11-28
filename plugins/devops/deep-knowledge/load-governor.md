@@ -272,3 +272,16 @@ only a system-pressure signal of the 80 % rule.
 - The governor does not end leaked wait loops. `pre.waitloop.guard` keeps new
   unbounded or sleepless `until`/`while` loops in Bash from starting; PowerShell
   loops and loops already running are not covered.
+
+## One full test-suite run per machine
+
+The governor only reacts once a process-spawn storm runs; parallel full suites
+from several sessions caused one (2026-11-22). `pre.test.fullguard` therefore
+also holds a machine-wide lock (`<governor home>/full-suite.lock`, library
+`hooks/lib/full-suite-lock.js`): the first full run (`npm test`, `npx vitest run`
+without file filter) takes it, a second one from another session is blocked with
+holder session, cwd and age and is told to retry or run touched-file tests.
+`post.test.release` frees it on PostToolUse/PostToolUseFailure of the same tool
+call. Crashed or `run_in_background` holders expire after 30 min (lease, no pid
+check; the hook is a short-lived child). The same session may re-run;
+`DEVOPS_ALLOW_FULL_SUITE=1` overrides.

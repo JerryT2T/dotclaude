@@ -80,7 +80,7 @@ describe("post.test.record e2e", () => {
 
 describe("pre.test.fullguard", () => {
   const active = { isActive: () => true };
-  const idle = { isActive: () => false };
+  const idle = { isActive: () => false, lock: { acquire: () => ({ ok: true }), blockMessage: () => "" } };
 
   test("blocks a full suite during a ship, with the documented message", () => {
     for (const c of ["npm test", "npm run test", "npx vitest run", "cd x && npm test"]) {

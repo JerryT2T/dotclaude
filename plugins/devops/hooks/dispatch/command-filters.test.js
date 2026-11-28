@@ -121,6 +121,14 @@ const MODULES = [
     miss: ["echo hi", "pnpm test"],
   },
   {
+    name: "post.test.release",
+    event: "PostToolUse",
+    acts: containsFullSuite,
+    hit: ["npm test", "vitest run"],
+    filterOnly: [],
+    miss: ["echo hi", "pnpm test"],
+  },
+  {
     name: "post.project.setup",
     event: "PostToolUse",
     acts: initActs,
