@@ -914,6 +914,15 @@ const TABLE = {
   cleanupBtn: ['Clean up', 'Aufräumen', 'Limpiar', 'Nettoyer', 'Limpar', '整理する', '清理'],
   archiveBtn: ['🗄 Archive', '🗄 Archivieren', '🗄 Archivar', '🗄 Archiver', '🗄 Arquivar', '🗄 アーカイブ', '🗄 归档'],
   archiveRefused: ['Not archived: {why}', 'Nicht archiviert: {why}', 'No archivado: {why}', 'Non archivée : {why}', 'Não arquivada: {why}', 'アーカイブされませんでした: {why}', '未归档：{why}'],
+  versionSkew: [
+    'devops updated {from} → {to}: this band still runs {from} — restart the session',
+    'devops aktualisiert {from} → {to}: Diese Leiste läuft noch mit {from} — Session neu starten',
+    'devops actualizado {from} → {to}: esta barra sigue con {from} — reinicia la sesión',
+    'devops mis à jour {from} → {to} : cette barre tourne encore en {from} — redémarre la session',
+    'devops atualizado {from} → {to}: esta barra ainda roda {from} — reinicie a sessão',
+    'devops を {from} → {to} に更新: このバーはまだ {from} で動作中 — セッションを再起動してください',
+    'devops 已更新 {from} → {to}：此栏仍运行 {from} — 请重启会话',
+  ],
   archivePrompt: ['Archive this session.', 'Archiviere diese Session.', 'Archiva esta sesión.', 'Archive cette session.', 'Arquive esta sessão.', 'このセッションをアーカイブして。', '归档此会话。'],
   junk: ['{n} leftovers', '{n} Altlasten', '{n} restos', '{n} restes', '{n} restos', '残り {n} 件', '{n} 项遗留'],
   last: ['Last:', 'Zuletzt:', 'Último:', 'Dernier :', 'Último:', '直近:', '最近：'],
@@ -1540,6 +1549,18 @@ export function archiveOffered(c: { heading: string } | null, working: boolean):
 /** A promotion card (🎊, "👉 🎊 Beta — v0.411.1 — nach Stable?"): the work is shipped, the band offers to archive beside it. */
 export function isPromotedCard(c: { heading: string } | null): boolean {
   return !!c && /^(?:🟩|👉)\s*🎊/u.test(c.heading) && /\bv?\d+\.\d+\.\d+\b/.test(c.heading)
+}
+
+/**
+ * The band's code is the plugin version loaded at session start; an in-place plugin update leaves it running while
+ * the offline card renderer, new hooks and scripts already run the new version — the two then disagree (2026-11-28:
+ * a 0.411.2 card carried its own Archivieren, the 0.411.1 band did not know to hide it, so it showed twice).
+ * Null when nothing is known or both match; else the two versions for the "restart the session" toast.
+ */
+export function versionSkew(loaded: string, onDisk: string): { from: string; to: string } | null {
+  const a = String(loaded || '').trim()
+  const b = String(onDisk || '').trim()
+  return a && b && a !== b ? { from: a, to: b } : null
 }
 
 /** The card's own close buttons (card-widget.js CLOSE_BUTTONS, archive prompt): the band draws its direct archive button instead. */
