@@ -17,9 +17,18 @@ export function isDevopsKey(k: string): boolean {
 export type OptState = {
   on: boolean
   /** Where the deciding answer came from (the chip only tells session or project). */
-  scope: 'session' | 'local' | 'project' | 'user' | 'none'
+  scope: 'session' | 'local' | 'project' | 'user' | 'global' | 'none'
   sessionOff: boolean
   projectOff: boolean
+  /** "Alle Projekte" off: the devops-own flag `~/.claude/devops-optout/global.json` exists. Hooks/skills/MCP rest; band and Home keep rendering. */
+  globalOff: boolean
+}
+
+export type OptScope = 'session' | 'project' | 'global'
+
+export function globalFlagPath(home: string): string {
+  // Same as globalFlagPath() in hooks/lib/devops-optout.js — keep both in sync.
+  return `${home}/.claude/devops-optout/global.json`
 }
 
 /** The explicit answer of one settings object: false when any devops key is false, true when only trues, null when no entry. */
@@ -72,8 +81,11 @@ export async function readOptState($: EngineInterface, home: string, root: strin
     break
   }
   const projectOff = decided && !on
-  if (sessionOff) return { on: false, scope: 'session', sessionOff, projectOff }
-  return { on, scope, sessionOff, projectOff }
+  const globalOff = !!home && (await readObj($, globalFlagPath(home))) !== undefined
+  // Resolver order: session, global, then the settings files. A read-only look, no locks.
+  if (sessionOff) return { on: false, scope: 'session', sessionOff, projectOff, globalOff }
+  if (globalOff) return { on: false, scope: 'global', sessionOff, projectOff, globalOff }
+  return { on, scope, sessionOff, projectOff, globalOff }
 }
 
 async function writeJson($: EngineInterface, path: string, v: unknown): Promise<void> {
@@ -89,8 +101,8 @@ async function writerScript($: EngineInterface, args: string[], root: string): P
   }
 }
 
-/** Switch devops off for the session (flag file) or the project (settings.local.json merge + outputStyle default + restore memo). */
-export async function switchOff($: EngineInterface, scope: 'session' | 'project', env: { home: string; root: string; sid: string; now: number }): Promise<boolean> {
+/** Switch devops off for the session (flag file), the project (settings.local.json merge) or everywhere (global flag file). Never writes `outputStyle`. */
+export async function switchOff($: EngineInterface, scope: OptScope, env: { home: string; root: string; sid: string; now: number }): Promise<boolean> {
   const { home, root, sid, now } = env
   const at = new Date(now).toISOString()
   const args = ['off', '--scope', scope, ...(sid ? ['--session', sid] : []), ...(root ? ['--cwd', root] : [])]
@@ -100,17 +112,17 @@ export async function switchOff($: EngineInterface, scope: 'session' | 'project'
       await writeJson($, sessionFlagPath(home, sid), { off: true, at, cwd: root })
       return true
     }
+    if (scope === 'global') {
+      if (!home) return false
+      await writeJson($, globalFlagPath(home), { off: true, at })
+      return true
+    }
     if (!root) return false
     const cur = await readObj($, `${root}/.claude/settings.local.json`)
     if (cur === null) return false // corrupt: never clobber the person's file
     const local = cur ?? {}
-    const memoFile = `${root}/.claude/devops-optout.json`
-    if ((await readObj($, memoFile)) === undefined) {
-      const prev = typeof local.outputStyle === 'string' ? local.outputStyle : null
-      await writeJson($, memoFile, { prevOutputStyle: prev, hadLocalOutputStyle: 'outputStyle' in local, at })
-    }
     const ep = local.enabledPlugins && typeof local.enabledPlugins === 'object' ? (local.enabledPlugins as Record<string, unknown>) : {}
-    await writeJson($, `${root}/.claude/settings.local.json`, { ...local, enabledPlugins: { ...ep, [DEVOPS_KEY]: false }, outputStyle: 'default' })
+    await writeJson($, `${root}/.claude/settings.local.json`, { ...local, enabledPlugins: { ...ep, [DEVOPS_KEY]: false } })
     return true
   } catch {
     return await writerScript($, args, root)
@@ -118,6 +130,6 @@ export async function switchOff($: EngineInterface, scope: 'session' | 'project'
 }
 
 /** Switch devops back on: the writer script (it deletes the flag / memo, which `$.fs` cannot). */
-export async function switchOn($: EngineInterface, scope: 'session' | 'project', env: { root: string; sid: string }): Promise<boolean> {
+export async function switchOn($: EngineInterface, scope: OptScope, env: { root: string; sid: string }): Promise<boolean> {
   return writerScript($, ['on', '--scope', scope, ...(env.sid ? ['--session', env.sid] : []), ...(env.root ? ['--cwd', env.root] : [])], env.root)
 }

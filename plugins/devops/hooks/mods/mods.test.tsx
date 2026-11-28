@@ -18,6 +18,7 @@ import {
   budgetFrom,
   budgetBars,
   bandBars,
+  bandBarsRelevant,
   budgetBarSvg,
   fableFromLive,
   budgetForBand,
@@ -970,7 +971,7 @@ test('#1170: the rail is the small fixed context column; the usage bars sit unde
   expect(await band.find({ key: 'budget' })).toBeDefined() // the bars sit in the status row ...
   const rows = (await band.find({ key: 'band' }))?.children as Array<{ props?: { key?: string } }>
   expect(rows.at(-1)?.props?.key).toBe('devops-status-row') // ... the band's last row, under the zones
-  expect(JSON.stringify(rows.at(-1))).toMatch(/bar-Wk/)
+  expect(JSON.stringify(rows.at(-1))).toMatch(/bar-5h/)
   await band.unmount()
 })
 
@@ -1124,10 +1125,10 @@ test('B2: the band bar watermark keeps the largest unit only — 6 d, 19 h, 45 m
   expect(formatResetShort(null)).toBe('–')
 })
 
-test('B2: bars row = Wk, Fb, 5h always (also not due), 110 px, hours-only watermark with the full text in the alt; no 5h window = empty bar with "–"', async ($, on) => {
+test('B2: bars row = the relevant windows only, 110 px, hours-only watermark with the full text in the alt; no 5h window = empty bar with "–"', async ($, on) => {
   engine(on)
   await $.session.start({ cwd: REPO, surface: 'desktop', isInteractive: true })
-  await $.session.measure({ context: { window: 200000, tokens: 20000, percent: 10 }, rateLimits: [{ name: '5h', pct: 10, resetInMinutes: 280 }, { name: 'Wk', pct: 5, resetInMinutes: 9000 }], changed: ['context'] } as any)
+  await $.session.measure({ context: { window: 200000, tokens: 20000, percent: 10 }, rateLimits: [{ kind: 'five_hour', percentUsed: 60, resetsAt: new Date(NOW + 50 * 60_000).toISOString() }, { kind: 'seven_day', percentUsed: 5, resetsAt: new Date(NOW + 1000 * 60_000).toISOString() }], changed: ['context'] } as any)
   const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
   for (const l of ['Wk', '5h']) {
     const bar = await svgIn(await band.find({ key: `bar-${l}` }))
@@ -2045,7 +2046,7 @@ test('status state: active unless the hooks or the MCP server are not running; t
   expect(statusText(ok, e, NOW + 90_000, 'de')).toBe('🟢 aktiv')
 })
 
-test('under the prompt: "● devops" beside the engine hint; a press opens the devops Home pane (no card in the band), its Einstellungen tab holds the figures; no prompt, no write', async ($, on) => {
+test('under the prompt: "● devops" beside the engine hint; a press opens the devops Home pane (no card in the band), its Statistik tab holds the figures; no prompt, no write', async ($, on) => {
   const { seen } = engine(on, { files: LOG_FILES })
   const forks: unknown[] = []
   on('model.fork', (_: unknown, e: unknown) => {
@@ -2067,7 +2068,7 @@ test('under the prompt: "● devops" beside the engine hint; a press opens the d
   expect(await band.find({ key: 'devops-info' })).toBeUndefined()
   await band.unmount()
   let home = await $.ui.mount({ ...pane('devops-home', 'devops Home'), surface: 'desktop' } as any)
-  await home.press({ key: 'home-tab-settings' })
+  await home.press({ key: 'home-tab-stats' })
   let text = ''
   for (let i = 0; i < 40 && !/≈ 20 k/.test(text); i++) {
     await home.unmount()
@@ -2078,7 +2079,9 @@ test('under the prompt: "● devops" beside the engine hint; a press opens the d
   expect(text).toMatch(/≈ 20 k/) // the headline tile: the net estimate
   expect(await home.find({ type: 'Text', text: /searches narrowed/ })).toBeDefined()
   expect(await home.find({ type: 'Text', text: /devops 9.9.9/ })).toBeDefined()
-  expect(await home.find({ key: 'home-devops-switch' })).toBeDefined()
+  // The ⏻ in the head owns on/off now (C17): no switch row in any tab.
+  expect(await home.find({ key: 'home-devops-switch' })).toBeUndefined()
+  expect(await home.find({ key: 'home-power' })).toBeDefined()
   await home.unmount()
   await hint.unmount()
   // Opening costs nothing: no prompt, no model call, no file written.
@@ -2116,6 +2119,7 @@ test('Home → Einstellungen: the browser row offers the installed browsers plus
   let home = await mount()
   await home.press({ key: 'home-tab-settings' })
   await home.press({ key: 'home-refresh' }) // an earlier test's answer may still count as fresh
+  await home.press({ key: 'home-row-browser' }) // the list row opens its choice
   await home.unmount()
   // No dropdown: every option is a button of one row, the one in effect filled and ticked.
   home = await until('home-browser-edge', /✓ Microsoft Edge/)
@@ -2129,9 +2133,10 @@ test('Home → Einstellungen: the browser row offers the installed browsers plus
   expect(JSON.stringify(await home.find({ key: 'home-browser-in-app' }))).toMatch(/primary/)
   expect(JSON.stringify(await home.find({ key: 'home-browser-edge' }))).not.toMatch(/✓/)
   expect(runs.at(-1)).toEqual(['set', 'in-app', '--json'])
-  // The blocks are cards of their own; the figures sit in Statistik.
+  // Grouped list: Allgemein and Hilfe; the figures moved to their own Statistik tab.
   expect(await home.find({ key: 'home-general' })).toBeDefined()
-  expect(await home.find({ key: 'home-stats' })).toBeDefined()
+  expect(await home.find({ key: 'home-help' })).toBeDefined()
+  expect(await home.find({ key: 'home-stats' })).toBeUndefined()
   await home.unmount()
   expect(seen.prompts).toEqual([])
 })
@@ -3010,6 +3015,17 @@ test('budget bars: Wk, Fb, 5h in that order; Fable follows the weekly show rule;
   }
 })
 
+test('oq-band-bars: the band draws only the budgetBars-relevant windows (compact bandBars drawing), Home keeps all', () => {
+  const calm = { fiveHour: 10, weekly: 5, context: null, fiveHourResetsAt: NOW + 4 * 3_600_000, weeklyResetsAt: NOW + 6 * 86_400_000, fable: null }
+  expect(bandBars(calm, NOW).length).toBeGreaterThan(0)
+  expect(bandBarsRelevant(calm, NOW)).toEqual([])
+  expect(bandBarsRelevant(null, NOW)).toEqual([])
+  const busy = { ...calm, fiveHour: 80, fiveHourResetsAt: NOW + 3_600_000 }
+  const rel = bandBarsRelevant(busy, NOW)
+  expect(rel.map(x => x.label)).toEqual(['5h'])
+  expect(rel[0].short).toBeDefined()
+})
+
 test('#1204 budget after a resume: a fresh usage-live.json fills empty windows, a pre-reset window reads 0 %, no fresh source keeps the dash', () => {
   const live = (o: Record<string, unknown>, ageMs = 60_000) => ({ timestamp: new Date(NOW - ageMs).toISOString(), ...o })
   const fresh = live({ weekly: { pct: 2, resetInMinutes: 9921 }, session: { pct: 7, resetInMinutes: 200 } })
@@ -3073,13 +3089,13 @@ test('no 5h window on the account (verified Ultra): the band draws Wk / Fb only;
 })
 
 test('#1204 band after a resume: no measure yet, a fresh usage-live.json → the Wk bar shows its reset, not "–"', async ($, on) => {
-  const usage = JSON.stringify({ timestamp: new Date(NOW - 60_000).toISOString(), weekly: { pct: 2, resetInMinutes: 9921 }, session: { pct: 7, resetInMinutes: 200 } })
+  const usage = JSON.stringify({ timestamp: new Date(NOW - 60_000).toISOString(), weekly: { pct: 2, resetInMinutes: 1000 }, session: { pct: 7, resetInMinutes: 200 } })
   const { tick } = engine(on, { files: { '/.claude/usage-live.json': usage } })
   tick(10 * 60_000) // past any cache of an earlier test; the file is still fresh (11 min)
   await $.session.start({ cwd: REPO, surface: 'desktop', isInteractive: true })
   const band = await $.ui.mount({ ...BAND, surface: 'desktop' })
   const wk = await svgIn(await band.find({ key: 'bar-Wk' }))
-  expect(wk?.props.source).toMatch(/>6 d</)
+  expect(wk?.props.source).toMatch(/>16 h</)
   expect(wk?.props.source).not.toMatch(/>–</)
   await band.unmount()
 })
@@ -3136,10 +3152,9 @@ test('opt-out popup: "For this project" merges settings.local.json (keeps keys, 
   band = await $.ui.mount({ ...BAND, surface: 'desktop' })
   await band.press({ key: 'optout-project' })
   const settings = optWrites(seen).find(w => w.path.endsWith(OPT_SETTINGS))
-  expect(JSON.parse(settings!.text)).toEqual({ permissions: { allow: ['x'] }, outputStyle: 'default', enabledPlugins: { 'other@mp': true, 'devops@dotclaude': false } })
+  expect(JSON.parse(settings!.text)).toEqual({ permissions: { allow: ['x'] }, outputStyle: 'Quiet', enabledPlugins: { 'other@mp': true, 'devops@dotclaude': false } })
   expect(settings!.text).toMatch(/^\{\n {2}"/) // 2-space indent
-  const memo = optWrites(seen).find(w => w.path.endsWith('/.claude/devops-optout.json'))
-  expect(JSON.parse(memo!.text)).toMatchObject({ prevOutputStyle: 'Quiet', hadLocalOutputStyle: true })
+  expect(optWrites(seen).find(w => w.path.endsWith('/.claude/devops-optout.json'))).toBeUndefined() // no style memo any more
   expect(seen.toasts.some(t => /off for this project/.test(t))).toBe(true)
 })
 
