@@ -233,11 +233,43 @@ process.stdin.on('end', () => {
   let projectThread = false;
   try { projectThread = require('../lib/project-thread').isThread(hook, { deep: true }); } catch { /* not a thread */ }
   if (projectThread) {
+    // #1250: a merged ship whose turn ends without a rendered card (whatever
+    // tool ended it) is missing its card — read before the flags are cleared.
+    const shipNoCard = readSessionFile('dotclaude-devops-shipped', sessionId, { exact: true }) !== null
+      && readSessionFile('dotclaude-devops-card-rendered', sessionId, { exact: true }) === null;
     for (const prefix of THREAD_TURN_FLAGS) {
       const flag = readSessionFile(prefix, sessionId, { exact: true });
       if (flag) try { fs.unlinkSync(flag.filePath); } catch { /* already gone */ }
     }
     releaseOnce('prompt-title-work', sessionId);
+    // A checklist left on `✱` after the work ended tells the person it still
+    // runs (an 11 h "Ship läuft"). Blocked once, and only with no live work.
+    if (shipNoCard && hook.stop_hook_active !== true) {
+      process.stdout.write(JSON.stringify({
+        decision: 'block',
+        reason: 'A ship merged this turn but no completion card was rendered. The plugin is loaded, so the "✨✨✨" result format of ' +
+          '.claude/rules/devops.md does NOT apply. Call render_completion_card (variant "ship-successful", with delivery, tests and open items such as the tag hand-off), ' +
+          'then post the returned markdown VERBATIM as the text of ONE mcp__hearthbot__post_message call: in a Projects thread session text never reaches the person.',
+      }));
+      process.exit(0);
+    }
+    if (hook.stop_hook_active !== true) {
+      const tr = safeReadTranscript(hook.transcript_path, PENDING_TAIL_BYTES);
+      const stuck = require('../lib/project-thread').openChecklistSteps(tr);
+      if (stuck.length) {
+        const live = scanOpenTasksInFile(hook.transcript_path, PENDING_TAIL_BYTES).length > 0
+          || scanLinkedSessionsInFile(hook.transcript_path, PENDING_TAIL_BYTES).length > 0
+          || (armedWaitsThisTurn(tr) || []).length > 0;
+        if (!live) {
+          process.stdout.write(JSON.stringify({
+            decision: 'block',
+            reason: `Your last progress checklist still shows ${stuck.length} in-progress step(s) (${stuck.map(l => JSON.stringify(l)).join(', ')}) ` +
+              'but no background work is running, so the person believes it still runs. Post the checklist again with ' +
+              'mcp__hearthbot__update_progress_checklist and bring EVERY line to its true end state (✓ done, or ○ not done / failed with the reason) before you end the turn.',
+          }));
+        }
+      }
+    }
     process.exit(0);
   }
 

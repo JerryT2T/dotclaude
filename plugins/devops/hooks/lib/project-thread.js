@@ -511,7 +511,38 @@ function checklistComplete(text) {
   return steps.length > 0 && steps.every((l) => CHECK_DONE.test(l));
 }
 
+/**
+ * The in-progress (`✱`) lines of the LAST progress checklist this session
+ * posted (newest `update_progress_checklist` call in the transcript), or []
+ * when it posted none or its last one has no in-progress line. A checklist
+ * left with `✱` after the work ended told the person a ship was still running
+ * for ~11 hours.
+ *
+ * @param {string} transcriptContent JSONL transcript text
+ * @returns {string[]}
+ */
+function openChecklistSteps(transcriptContent) {
+  if (typeof transcriptContent !== 'string' || !transcriptContent.includes(CHECKLIST_TOOL)) return [];
+  const lines = transcriptContent.split('\n');
+  for (let i = lines.length - 1; i >= 0; i--) {
+    if (!lines[i].includes(`"${CHECKLIST_TOOL}"`)) continue;
+    let entry;
+    try { entry = JSON.parse(lines[i]); } catch { continue; }
+    if (!entry || entry.type !== 'assistant' || entry.isSidechain) continue;
+    const content = entry.message && entry.message.content;
+    if (!Array.isArray(content)) continue;
+    let text = null;
+    for (const b of content) {
+      if (b && b.type === 'tool_use' && b.name === CHECKLIST_TOOL && b.input && typeof b.input.text === 'string') text = b.input.text;
+    }
+    if (text === null) continue;
+    return text.split('\n').map((l) => l.trim()).filter((l) => l.startsWith('✱'));
+  }
+  return [];
+}
+
 module.exports = {
+  openChecklistSteps,
   FEATURE,
   THREAD_FLAG,
   HEARTHBOT_PREFIX,
