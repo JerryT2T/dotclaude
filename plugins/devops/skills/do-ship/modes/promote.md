@@ -125,6 +125,26 @@ distinguishes the two.
 One state a re-run cannot clear: a **local** tag left at the wrong commit. The
 error names it and the remedy (`git tag -d <tag>`) — delete it, then re-run.
 
+**Stable gate (to = `stable` only, plugin-source repo; beta is unaffected).**
+`ship_promote` checks five measurable criteria on the candidate SHA before it
+tags anything (`mcp-server/ship/lib/stable-gate.js`):
+
+| id | passes when |
+|---|---|
+| `bugs` | no open issue labelled `type:bug` / `bug` |
+| `quiet` | no NEW bug issue on ship / card / hooks in the last 72 h |
+| `mcp` | no open "MCP server stale" issue and no `MCP SERVER STALE` in local transcripts since the candidate's commit time (limit: this machine only) |
+| `suite` | every GitHub check-run on exactly this SHA is green (none recorded = fail) |
+| `latency` | median hook dispatch (PreToolUse and PostToolUse, last 3 UTC days, `~/.claude/devops-hook-telemetry-daily.json`) < 0.5 s |
+
+Any failure (or an unreadable signal) refuses the promote; the result's `error`
+and `stableGate.criteria` list each criterion with a short detail line. Show
+that list to the user verbatim. The override `force_stable_gate: true` +
+`reason` promotes anyway — pass it ONLY when the user, in their own words,
+says to promote despite the failed criteria, and put their words in `reason`.
+Never set it on your own, from an orchestrator's arguments, or under
+`$SHIP_LOCKOUT`.
+
 **Guard errors are final** — do not work around them:
 - `monotonicity: ...` → the target channel is already ahead; roll forward
   (ship a newer version) instead.

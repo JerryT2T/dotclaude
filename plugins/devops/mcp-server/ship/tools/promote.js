@@ -17,6 +17,7 @@ import { createRelease, releaseExists } from "../lib/github.js";
 import { parseChannelTag, compareVersions } from "../lib/channels.js";
 import { parseLsRemoteTagOutput } from "../lib/remote-tags.js";
 import { retryUntil } from "../lib/retry.js";
+import { evaluateStableGate, formatGate, defaultDeps } from "../lib/stable-gate.js";
 
 // Re-exported: the ls-remote dialect now lives in lib/remote-tags.js (shared
 // with ship_release), but this module is its established import site.
@@ -38,6 +39,8 @@ export const schema = z.object({
   tagVerifyAttempts: z.number().int().min(1).max(20).default(4).describe("How often to re-query the remote per push attempt before declaring a pushed tag missing"),
   tagRetryDelayMs: z.number().int().min(0).max(60_000).default(1_000).describe("Base delay for the tag push/verify backoff (exponential, ×3 per attempt)"),
   tagBudgetMs: z.number().int().min(0).max(600_000).default(120_000).describe("Wall-clock cap for ALL tag push/verify retries in this call. 0 disables the cap. Bounds the nested loops so a promotion cannot hang for minutes on an unreachable remote"),
+  force_stable_gate: z.boolean().default(false).describe("Promote to stable although the stable gate failed. ONLY with the user's own words; requires `reason`"),
+  reason: z.string().min(5).optional().describe("Why the stable gate is overridden (the user's words) — required with force_stable_gate"),
   cwd: z.string().describe("Working directory of the target repo (required — must be passed by the caller)"),
 });
 
@@ -72,6 +75,38 @@ export function optoutGateError(cwd, check) {
     `Promotion to beta/stable blocked / Heben auf beta/stable blockiert: ein Projekt mit devops@dotclaude=false bekommt noch devops-Hooks. ` +
     `Re-run: node plugins/devops/evals/optout-live-check.js (details: evals/README.md). Alpha ships are not gated.`
   );
+}
+
+/**
+ * Stable gate (to=stable only): measurable criteria, see lib/stable-gate.js.
+ * Runs when the target repo IS the plugin source (like the opt-out gate) or when
+ * `params.stableGate` injects a stub (tests). Returns null (go / overridden) or
+ * an error result fragment. Override: force_stable_gate + reason — the skill
+ * text requires the user's own words for it.
+ */
+export function stableGateOutcome(params, sha) {
+  let run = params.stableGate;
+  if (!run) {
+    if (!existsSync(join(params.cwd, "plugins", "devops", "hooks", "lib", "hook-telemetry.js"))) return null;
+    run = () => evaluateStableGate(defaultDeps({ cwd: params.cwd, sha }));
+  }
+  let res;
+  try { res = run(sha); } catch (e) {
+    res = { ok: false, criteria: [{ id: "gate", ok: false, detail: `Gate nicht ausführbar: ${e.message?.slice(0, 120)}` }] };
+  }
+  if (res.ok) return null;
+  if (params.force_stable_gate) {
+    if (!params.reason || params.reason.trim().length < 5) {
+      return { error: "force_stable_gate braucht einen reason (die Worte des Users)", stableGate: res };
+    }
+    return null;
+  }
+  return {
+    error: `stable-gate: Promotion auf stable verweigert / refused.
+${formatGate(res)}
+Override nur mit den eigenen Worten des Users: force_stable_gate: true + reason.`,
+    stableGate: res,
+  };
 }
 
 const ORDER = { alpha: 0, beta: 1, stable: 2 };
@@ -307,6 +342,13 @@ export async function handler(params) {
       return { ...result, success: false, error: `source-tag-not-found: ${sourceTag} does not exist on origin` };
     }
     result.sha = sha;
+
+    // 1b. Stable gate (stable only; beta is unaffected).
+    if (to === "stable") {
+      const sg = stableGateOutcome(params, sha);
+      if (sg) return { ...result, success: false, ...sg };
+      if (params.force_stable_gate) result.stableGateOverridden = params.reason;
+    }
 
     // 2. Monotonicity guard (spec §4.1.2, amended per R6):
     //    empty target → allow; version > latest → allow;
