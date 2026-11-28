@@ -38,6 +38,8 @@ const {
   stripPrefixes, classify, startsWithPrefix, SUB_MARK,
 } = require('./title-scheme');
 
+const { OPEN_WORK_PULSE_TTL_MS, isPulseStale } = require('./pulse-ttl');
+
 const IDLE_MS = 2 * 60_000;
 /** A live session idle this long with no open background work is treated as idle too (#964). */
 const LIVE_IDLE_MS = 60 * 60_000;
@@ -241,7 +243,8 @@ function findStaleTitles({
     if (!next) continue;
     // A live process normally keeps the title; only a long idle session whose
     // transcript holds no open work (a dev server does not count) is handed on.
-    if (governorAlive(sessionId, governorDir) && (now - tm < LIVE_IDLE_MS || !noOpenWork(jsonl))) continue;
+    // Open work protects the title only while the transcript still pulses (pulse-ttl).
+    if (governorAlive(sessionId, governorDir) && (now - tm < LIVE_IDLE_MS || (!noOpenWork(jsonl) && !isPulseStale(tm, now, OPEN_WORK_PULSE_TTL_MS)))) continue;
     out.push({ sessionId, title, next, mtimeMs: tm });
   }
   return out.sort((a, b) => b.mtimeMs - a.mtimeMs);

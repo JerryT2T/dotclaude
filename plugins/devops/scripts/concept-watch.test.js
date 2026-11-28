@@ -18,7 +18,7 @@ function stateFile(contents) {
  *  seconds) is testable. `stopAfter` ends an otherwise endless loop — the
  *  pulser never gives up on request failures any more — by reporting the
  *  state file gone from that poll on (STATE_GONE after `confirm` polls). */
-function harness({ mode = "watch", port = 8883, state, responses = [], exists = true, grace = 60, interval, stopAfter = Infinity, confirm, beat, beats, spawnSuccessor, order, successor }) {
+function harness({ mode = "watch", port = 8883, state, responses = [], exists = true, grace = 60, interval, stopAfter = Infinity, confirm, beat, beats, spawnSuccessor, order, successor, ownerPid, ownerAlive }) {
   const calls = [];
   let reason = null;
   let clock = 1_000_000;
@@ -28,8 +28,10 @@ function harness({ mode = "watch", port = 8883, state, responses = [], exists = 
     ...(interval === undefined ? {} : { interval }),
     ...(confirm === undefined ? {} : { confirm }),
     ...(successor === undefined ? {} : { successor }),
+    ...(ownerPid === undefined ? {} : { ownerPid }),
   };
   const p = run(opts, {
+    ...(ownerAlive === undefined ? {} : { pidAlive: () => ownerAlive() }),
     exists: () => (typeof exists === "function" ? exists() : exists),
     sleep: async (ms) => { calls.push({ sleep: ms }); clock += ms; },
     now: () => clock,
@@ -975,5 +977,23 @@ describe("run — waker re-armed during a close-out (--hold-version)", () => {
     const echo = () => pend(2, "finalize", { prev_waker: younger });
     const w = watcher({ holdVersion: 2, responses: [pend(2), echo(), echo(), echo()] });
     await expect(w.done).resolves.toBe("DUPLICATE_WAKER");
+  });
+});
+
+describe("run — owner liveness (#1246)", () => {
+  test("pulser exits OWNER_GONE once the owning Claude pid is gone, without another heartbeat", async () => {
+    let polls = 0;
+    const beat = { ok: true, body: "{}" };
+    const h = harness({ mode: "pulse", state: "ok", responses: () => beat, ownerPid: 4242, ownerAlive: () => ++polls <= 2 });
+    await expect(h.done).resolves.toBe("OWNER_GONE");
+    expect(h.requests().length).toBe(2);
+  });
+  test("without an owner pid nothing changes", async () => {
+    const beat = { ok: true, body: "{}" };
+    const h = harness({ mode: "pulse", state: "ok", responses: () => beat, stopAfter: 4, ownerAlive: () => false });
+    await expect(h.done).resolves.toBe("STATE_GONE");
+  });
+  test("parseArgs reads --owner-pid", () => {
+    expect(parseArgs(["--mode", "pulse", "--owner-pid", "77"]).ownerPid).toBe(77);
   });
 });
