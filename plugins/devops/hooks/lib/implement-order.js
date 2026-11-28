@@ -26,6 +26,8 @@ const ORDER_TTL_MS = 24 * 60 * 60 * 1000;
 /** Runtime state and the concept page itself are no build. */
 const NO_BUILD_RE = /^(?:\.claude\/|docs\/concepts\/)/;
 const SLUG_RE = /^[a-zA-Z0-9._-]{1,80}$/;
+/** Changed files up to this size are compared by content. */
+const CONTENT_HASH_MAX = 2 * 1024 * 1024;
 
 /** The path of one `git status --porcelain` line (the new name of a rename), forward slashes. */
 function pathOfStatusLine(line) {
@@ -36,8 +38,24 @@ function pathOfStatusLine(line) {
 }
 
 /**
+ * What one changed file looks like right now: a hash of its content, so an edit
+ * that keeps size and timestamp (a coarse file system clock, a restored mtime)
+ * still counts. A file above the cap is told by size and mtime alone.
+ */
+function fileMark(file) {
+  try {
+    const s = fs.statSync(file);
+    if (!s.isFile()) return `dir:${Math.floor(s.mtimeMs)}`;
+    if (s.size > CONTENT_HASH_MAX) return `${s.size}:${Math.floor(s.mtimeMs)}`;
+    return crypto.createHash('sha1').update(fs.readFileSync(file)).digest('hex');
+  } catch {
+    return 'gone';
+  }
+}
+
+/**
  * HEAD plus a hash over every changed file outside the no-build paths (its
- * status, size and mtime, so a second edit of an already changed file counts).
+ * status and content, so a second edit of an already changed file counts).
  * @returns {{head:string, dirty:string}|null} null where git cannot answer
  */
 function treeState(root) {
@@ -51,9 +69,7 @@ function treeState(root) {
     const lines = run(['status', '--porcelain', '--untracked-files=all']).split(/\r?\n/).filter(Boolean)
       .filter((l) => !NO_BUILD_RE.test(pathOfStatusLine(l)))
       .map((l) => {
-        let stat = '';
-        try { const s = fs.statSync(path.join(top, pathOfStatusLine(l))); stat = `${s.size}:${Math.floor(s.mtimeMs)}`; } catch { stat = 'gone'; }
-        return `${l}\t${stat}`;
+        return `${l}\t${fileMark(path.join(top, pathOfStatusLine(l)))}`;
       })
       .sort();
     return { head, dirty: crypto.createHash('sha1').update(lines.join('\n')).digest('hex') };

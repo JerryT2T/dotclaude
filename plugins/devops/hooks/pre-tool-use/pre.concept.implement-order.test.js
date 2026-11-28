@@ -113,6 +113,19 @@ describe("the hook holds the question back until the build started", () => {
     expect(ask()).toBeNull();
   });
 
+  test("an edit that keeps size and timestamp of an already changed file counts too", () => {
+    const f = path.join(dir, "src", "a.js");
+    fs.writeFileSync(f, "export const a = 5;\n");
+    const before = fs.statSync(f);
+    digest([sub("s3", "implement")]);
+    expect(ask().block).toBeDefined();
+    fs.writeFileSync(f, "export const a = 7;\n");
+    fs.utimesSync(f, before.atime, before.mtime);
+    expect(fs.statSync(f).size).toBe(before.size);
+    expect(Math.floor(fs.statSync(f).mtimeMs)).toBe(Math.floor(before.mtimeMs));
+    expect(ask()).toBeNull();
+  });
+
   test("an order older than a day, or of a closed concept, blocks nothing", () => {
     digest([sub("s3", "implement")]);
     expect(main({ tool_name: "AskUserQuestion", cwd: dir }, { now: Date.now() + lib.ORDER_TTL_MS + 1000 })).toBeNull();
