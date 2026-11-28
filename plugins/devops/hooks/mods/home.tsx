@@ -455,6 +455,10 @@ let styleAt = 0
 let styleLoading = false
 let styleSaving = ''
 let styleChanged = false
+let apiCredit: boolean | null = null
+let apiCreditAt = 0
+let apiCreditLoading = false
+let apiCreditSaving = ''
 let openInfo = ''
 let confirmFor = ''
 const CLEANUP_KEY = '__cleanup__'
@@ -953,6 +957,16 @@ export function styleFrom(text: string): OutputStyle | null {
     return null
   }
 }
+/** `scripts/devops-config.js get apiCredit.enabled` → "apiCredit.enabled = true  (global)"; null when unreadable. */
+export function apiCreditFrom(text: string): boolean | null {
+  const m = /apiCredit\.enabled\s*=\s*(true|false)\b/.exec(text)
+  return m ? m[1] === 'true' : null
+}
+export function apiCreditLabel(on: boolean): string {
+  return on ? 'An' : 'Aus'
+}
+export const API_CREDIT_INFO = 'Nur lesende Nebenarbeit (Recherche, Reviews) läuft zuerst auf dem API-Guthaben deiner Console-Organisation, der Plan ist der Fallback. Standard: Aus. Wirkt auf alle Projekte.'
+
 export function styleLabel(s: OutputStyle): string {
   return s === 'Quiet' ? 'Quiet' : 'Standard'
 }
@@ -1015,6 +1029,41 @@ async function styleScript($: EngineInterface, args: string[]): Promise<OutputSt
   } catch {
     return null
   }
+}
+
+async function apiCreditScript($: EngineInterface, args: string[]): Promise<boolean | null> {
+  try {
+    const r = await $.process.run(['node', `${$.plugin.root}/scripts/devops-config.js`, ...args], { timeoutMs: BROWSER_TIMEOUT_MS })
+    return r.exitCode === 0 ? apiCreditFrom(String(r.stdout || '')) : null
+  } catch {
+    return null
+  }
+}
+
+/** API-Guthaben: the global apiCredit.enabled switch (default off); same cache rule as the style row. */
+function loadApiCredit($: EngineInterface, now: number, force = false): void {
+  if (apiCreditLoading || (!force && apiCreditAt && now - apiCreditAt < (apiCredit !== null ? BROWSER_FRESH_MS : STALE_MS))) return
+  apiCreditLoading = true
+  apiCreditAt = now || 1
+  void (async () => {
+    const v = await apiCreditScript($, ['get', 'apiCredit.enabled'])
+    if (v !== null) apiCredit = v
+    apiCreditLoading = false
+    $.ui.invalidate('ui.render')
+  })()
+}
+
+function pickApiCredit($: EngineInterface, on: boolean): void {
+  if (apiCreditSaving || on === apiCredit) return
+  apiCreditSaving = on ? 'on' : 'off'
+  $.ui.invalidate('ui.render')
+  void (async () => {
+    const v = await apiCreditScript($, ['set', 'apiCredit.enabled', String(on), '--global'])
+    if (v !== null) apiCredit = v
+    else $.ui.toast('API-Guthaben konnte nicht gespeichert werden.', { timeoutMs: 8000 })
+    apiCreditSaving = ''
+    $.ui.invalidate('ui.render')
+  })()
 }
 
 /** Ausgabestil: same cache rule as the browser row (5 min good, 20 s after a failure, ↻ asks now). */
@@ -1212,7 +1261,7 @@ export async function renderHome($: EngineInterface, e: any, ctx: HomeCtx): Prom
         </Box>
       ), 'right')}
       {tip('home-refresh-wrap', s ? `${agoText(now - s.at)} aktualisiert` : 'Lädt …', (
-        <Button key="home-refresh" plain onPress={() => { menuOpen = false; if (tab === 'settings') { loadBrowsers($, now, true); loadStyle($, now, true); void threadsOn($).then(on => { if (on) loadThreads($, now, true) }) } refreshHome($, ctx, true) }}>
+        <Button key="home-refresh" plain onPress={() => { menuOpen = false; if (tab === 'settings') { loadBrowsers($, now, true); loadStyle($, now, true); loadApiCredit($, now, true); void threadsOn($).then(on => { if (on) loadThreads($, now, true) }) } refreshHome($, ctx, true) }}>
           <Text size="title" color={ICON_COLOR}>↻</Text>
         </Button>
       ), 'right')}
@@ -1278,6 +1327,7 @@ export async function renderHome($: EngineInterface, e: any, ctx: HomeCtx): Prom
   if (tab === 'settings') {
     loadBrowsers($, now)
     loadStyle($, now)
+    loadApiCredit($, now)
     const br = browsers
     const note = br ? browserNote(br) : ''
     const threadsShown = await threadsOn($)
@@ -1317,6 +1367,14 @@ export async function renderHome($: EngineInterface, e: any, ctx: HomeCtx): Prom
           {style ? seg('home-style', [{ id: 'Quiet', label: 'Quiet' }, { id: 'default', label: 'Standard' }], style, styleSaving, id => pickStyle($, id))
             : <Text key="home-style-none" dimColor>{styleLoading ? 'Lädt …' : 'Ausgabestil nicht lesbar. ↻ versucht es noch einmal.'}</Text>}
           {styleChanged ? <Text key="home-style-note" dimColor size="footnote">Gilt ab der nächsten Sitzung.</Text> : null}
+        </Box>
+      ) : null,
+      row('apicredit', 'API-Guthaben', apiCredit !== null ? apiCreditLabel(apiCredit) : apiCreditLoading ? '…' : '–', { id: 'apicredit', text: API_CREDIT_INFO }),
+      iNote('apicredit', API_CREDIT_INFO),
+      shown.has('apicredit') ? (
+        <Box key="home-apicredit" flexDirection="column" rowGap={1} paddingLeft={2}>
+          {apiCredit !== null ? seg('home-apicredit', [{ id: 'off', label: 'Aus' }, { id: 'on', label: 'An' }], apiCredit ? 'on' : 'off', apiCreditSaving, id => pickApiCredit($, id === 'on'))
+            : <Text key="home-apicredit-none" dimColor>{apiCreditLoading ? 'Lädt …' : 'Einstellung nicht lesbar. ↻ versucht es noch einmal.'}</Text>}
         </Box>
       ) : null,
     )

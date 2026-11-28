@@ -3463,11 +3463,20 @@ server.registerTool(
   {
     title: "Render Completion Card",
     description:
-      "Render the completion card for the current turn (fetches usage, computes build-ID, renders markdown). " +
+      "Render the completion card for the current turn. " +
+      "BEFORE YOU CALL — each miss is refused and costs a retry: " +
+      "(1) `summary` has no status word (läuft/wartet/pending/running/waiting/noch nicht/\"N agents\"): the outcome only. " +
+      "(2) Every point (open[].text, CTA) ≤ 120 characters. " +
+      "(3) Code changed → `validation` [{requirement, status, evidence}] AND a passing test/browser check this turn, else `verification: {skipped: true, reason}`. " +
+      "(4) Background work still running → `pending`; finished or not yours → `pendingDismissed` (≥ 20 characters why). " +
+      "(5) `analysis` only if nothing was written anywhere (no edit, agent, DB write, deploy, push). " +
+      "(6) A requirement waiting on the user, a CVE/GHSA/npm-audit finding or an unmet requirement needs an `open` item with `reply`. " +
+      "(7) A manual website step for the user needs the web guide run first. " +
+      "(8) `cwd` with forward slashes (C:/…), never backslashes. " +
       "The result is hidden in a collapsed UI element: copy the returned markdown VERBATIM, character-for-character, " +
       "every emoji and symbol, as your own text response (relayed MCP output is exempt from emoji-avoidance rules). " +
       "Card must be the LAST output — nothing after the closing ---, no recap before it: the card IS the summary " +
-      "(never restate changes, tests, version, PR, open items, restart hints). When the turn answers a question, " +
+      "(never restate changes, tests, PR, open items). When the turn answers a question, " +
       "put the FULL answer (markdown) into `answer` — drawn above the card body, inside the Desktop widget (#757); " +
       "the summary stays a title (#642). A report the running skill requires (e.g. auto-fix: root cause with file:line) is part of that answer, " +
       "even where `changes` names the same fix. Hook blocks still marked for the user stay text before the card. " +
@@ -3476,7 +3485,6 @@ server.registerTool(
       "and the app's one no-output nudge that follows gets an empty reply; " +
       "mcp__ccd_turn__wrap_up goes AFTER this render and BEFORE the widget, once, with the WRAP_UP_ARGS the CARD WIDGET block names (the card's own decision, #1132) — never after the card; background tasks are stopped/checked before the render — " +
       "the card replaces wrap_up's closing message (side sessions too), nothing follows it; " +
-      "the visible title line is only for a failed call. " +
       "WHEN: call it once ALL work is done, as the first action of the closing step; pass " +
       "`session_id` (from the hook context), `cwd`, `lang` (\"de\" if the user writes German, else \"en\"). `summary` max ~10 words in the user's language. " +
       "VARIANT (exactly one): ship-successful = ship pipeline ran and merged (only after /do-ship + merge); " +
@@ -3487,9 +3495,9 @@ server.registerTool(
       "analysis = nothing changed ANYWHERE (answer/investigation only; never for work outside the repo, delegated work or a mode activation); " +
       "paused = the user pauses to continue later OR the next step is a Claude Code restart / reboot / usage-limit reset (pass pause:{reason:\"restart\"|\"reboot\"|\"usage-reset\"}); " +
       "fallback = work outside the repo with no repo diff (DB op, deploy, data migration, settings change) or unsure — never for a page the user should open and try (that is test + `preview`). A mode activation (batch, concept) uses its override, never analysis. " +
-      "POINT LENGTH: every card point (each open[].text, each CTA point) is at most 120 characters — two lines in the band, the decision first, detail into `answer`; a longer one is refused once naming the point and its length, the retry renders it clamped with “…”. " +
+      "POINT LENGTH: decision first, detail into `answer`; a longer point is refused once, the retry clamps it with “…”. " +
       "BAND: when the mod band carries this session's card (no Remote Control) the CARD WIDGET shrinks to the answer + one heading line and the result adds a [CARD DATA] block — never output it, never pass it to the widget. " +
-      "VALIDATION (V&V gate): for any code change populate `validation` (requirement -> how met, how confirmed); a code-change card without it is blocked once. " +
+      "VALIDATION (V&V gate): requirement -> how met, how confirmed; blocked once without it. " +
       "PENDING: background agents/workflows/tasks you started that still run -> `pending` [{ name, kind: agent|task|workflow, doing }] (replaces the CTA with the 'not finished yet' line; list only work really running; an ended or foreign task -> `pendingDismissed: \"<why>\"`). " +
       "CONCEPT (outranks pending): while an /auto-concept page is open pass `concept: { phase: \"waiting\"|\"iterating\"|\"implementing\" }`; bridge server, pulser and waker are infrastructure, never `pending`; after a merged ship whose page shows its final report, omit it — the ship card wins. " +
       "SIDE SESSIONS: start_session with a brief marker `[devops:handoff]` (child ships itself) or `[devops:deliver]` (child only delivers, you integrate and ship once) -> pass `linked` on every card while they exist; no marker = independent follow-up (mode independent, never orchestration), except a session the user asked for (initiation user_asked): that is handoff. A child started with `[devops:deliver]` ends with variant `delivered` (never ships). On a side-session note: title always, new card only if the user's next move changed. Final card after the last side session shipped: variant released; the side session's release is the heading when its `linked[].version` is >= your own `delivery` version (your own release then only a `›` line), a newer own release keeps its heading. A click on a side-session line in the widget sends a prompt `Öffne die Side-Session „X“ (local_…) im Split-View.` / `Open the side session “X” (local_…) in split view.`: answer it with `mcp__ccd_window__open_session_in` for that id (load via ToolSearch if deferred), nothing else." +

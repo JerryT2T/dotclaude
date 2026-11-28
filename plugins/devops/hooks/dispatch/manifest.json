@@ -337,7 +337,8 @@
       },
       {
         "hooks": [
-          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use/post.test.record.js\"", "timeout": 40, "commandFilter": "\\b(?:npm|vitest)\\b" }
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use/post.test.record.js\"", "timeout": 40, "commandFilter": "\\b(?:npm|vitest)\\b" },
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use/post.test.release.js\"", "timeout": 5, "commandFilter": "\\b(?:npm|vitest)\\b" }
         ],
         "matcher": "Bash|PowerShell"
       }
@@ -351,7 +352,8 @@
       },
       {
         "hooks": [
-          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use/post.governor.clear.js\"", "timeout": 5 }
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use/post.governor.clear.js\"", "timeout": 5 },
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use/post.test.release.js\"", "timeout": 5, "commandFilter": "\\b(?:npm|vitest)\\b" }
         ],
         "matcher": "Bash|PowerShell"
       },

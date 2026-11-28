@@ -243,7 +243,8 @@ function relaunchInstruction(port, statePath, htmlPath, owner = '') {
   const root = path.dirname(path.dirname(statePath));
   const server = path.join(__dirname, 'concept-server.py');
   const watch = path.join(__dirname, 'concept-watch.js');
-  const ownerArg = owner ? ` --owner "${owner}"` : '';
+  const ownerArg = (owner ? ` --owner "${owner}"` : '') +
+    (parseInt(process.env.CLAUDE_PID, 10) > 0 ? ` --owner-pid ${parseInt(process.env.CLAUDE_PID, 10)}` : '');
   return (
     `The concept bridge on port ${port} has not answered /heartbeat for ${RELAUNCH_AFTER_FAILURES} consecutive ` +
     `ticks — the server process is gone (a Claude restart or a crash takes it and both watchers with it). ` +

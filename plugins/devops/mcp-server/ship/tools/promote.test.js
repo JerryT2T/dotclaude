@@ -707,3 +707,40 @@ describe("ship_promote — opt-out live gate (beta / stable only)", () => {
     expect(optoutGateError("/repo-without-plugin")).toBeNull();
   });
 });
+
+describe("stable gate in ship_promote", () => {
+  const red = { ok: false, criteria: [{ id: "bugs", ok: false, detail: "2 offene Bugs: #1, #2" }, { id: "suite", ok: true, detail: "gruen" }] };
+  const green = { ok: true, criteria: [{ id: "bugs", ok: true, detail: "ok" }] };
+  const pushCalls = () => vi.mocked(gitLib.gitStrict).mock.calls.filter((c) => String(c[0]).includes("push origin"));
+
+  test("failed criterion refuses stable and lists criteria; nothing is pushed", async () => {
+    const r = await handler(params({ from: "beta", to: "stable", stableGate: () => red }));
+    expect(r.success).toBe(false);
+    expect(r.error).toContain("stable-gate");
+    expect(r.error).toContain("FAIL bugs");
+    expect(r.stableGate).toEqual(red);
+    expect(pushCalls()).toHaveLength(0);
+  });
+
+  test("override needs force_stable_gate AND a reason", async () => {
+    const noReason = await handler(params({ from: "beta", to: "stable", stableGate: () => red, force_stable_gate: true }));
+    expect(noReason.success).toBe(false);
+    expect(noReason.error).toContain("reason");
+    const ok = await handler(params({ from: "beta", to: "stable", stableGate: () => red, force_stable_gate: true, reason: "User: trotzdem stable" }));
+    expect(ok.success).toBe(true);
+    expect(ok.stableGateOverridden).toBe("User: trotzdem stable");
+  });
+
+  test("green gate passes; gate throwing fails closed", async () => {
+    expect((await handler(params({ from: "beta", to: "stable", stableGate: () => green }))).success).toBe(true);
+    const thrown = await handler(params({ from: "beta", to: "stable", stableGate: () => { throw new Error("boom"); } }));
+    expect(thrown.success).toBe(false);
+  });
+
+  test("beta promotes never run the gate", async () => {
+    const gate = vi.fn(() => red);
+    const r = await handler(params({ from: "alpha", to: "beta", stableGate: gate }));
+    expect(r.success).toBe(true);
+    expect(gate).not.toHaveBeenCalled();
+  });
+});

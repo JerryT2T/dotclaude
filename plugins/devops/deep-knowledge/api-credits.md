@@ -2,6 +2,8 @@
 
 Run devops' read-only side work on the monthly Claude API credit of a Max/Team plan instead of the plan's usage limits: credit first when switched on, the plan as the fallback. Opt-in, off by default.
 
+The switch is `apiCredit.enabled` (global only, default `false`; a stored key alone never turns it on). The user flips it in devops Home → Einstellungen → Allgemein → API-Guthaben (same setting as `devops-config.js set apiCredit.enabled …`).
+
 ## What is billed where (measured, not assumed)
 
 Since 2026-10-07 Max / Ultra / Team plans include monthly API credits

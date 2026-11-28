@@ -128,7 +128,17 @@ const DEFAULTS = {
   // hold a re-armed waker exits PENDING_SUBMISSION for N on its first poll and
   // nobody watches for the rest of the run. 0 = off (versions start at 1).
   holdVersion: 0,
+  // `--owner-pid N`: the Claude Code process that owns this watcher (#1246).
+  // The pulser is detached from the session, so when Claude is gone it kept
+  // POSTing /heartbeat and the page claimed "setzt um" for hours. Both modes
+  // exit OWNER_GONE once the pid no longer exists. 0 = unknown (no check).
+  ownerPid: 0,
 };
+
+function pidAlive(pid) {
+  if (!Number.isInteger(pid) || pid <= 0) return true; // unknown owner: assume alive
+  try { process.kill(pid, 0); return true; } catch (e) { return e.code === 'EPERM'; }
+}
 
 // After the last known tab said /bye, wait this long before re-opening: a
 // reload or an in-place navigation fires pagehide too, and the fresh load
@@ -485,6 +495,8 @@ async function run(opts, deps = {}) {
   let orphanRuns = 0;
   for (;;) {
     rememberHtml();
+    // The owner is gone: stop pulsing so the page falls back to "not active".
+    if (opts.ownerPid > 0 && !(io.pidAlive || pidAlive)(opts.ownerPid)) return emit('OWNER_GONE');
     if (watch) beat();
     const state = io.checkState(opts.state, opts.port, watch ? io.exists : undefined, opts.owner);
     if (confirmed(state)) {
@@ -622,14 +634,16 @@ async function run(opts, deps = {}) {
   }
 }
 
-module.exports = { spawnSuccessor, beatPath, readBeat, writeBeat, beatStaleMs, parseArgs, validate, checkState, readState, isForeignBridge, reopen, reopenCommand, run, pulserId, pulserStart, DEFAULTS, BYE_GRACE_MS, DUPLICATE_AFTER };
+module.exports = { pidAlive, spawnSuccessor, beatPath, readBeat, writeBeat, beatStaleMs, parseArgs, validate, checkState, readState, isForeignBridge, reopen, reopenCommand, run, pulserId, pulserStart, DEFAULTS, BYE_GRACE_MS, DUPLICATE_AFTER };
 
 if (require.main === module) {
   const opts = parseArgs(process.argv.slice(2));
+  // Launched from a Bash tool the owner is not on the command line: fall back to the session's pid.
+  if (!(opts.ownerPid > 0)) opts.ownerPid = parseInt(process.env.CLAUDE_PID, 10) || 0;
   const err = validate(opts);
   if (err) {
     process.stderr.write(`concept-watch: ${err}\n`);
-    process.stderr.write('usage: concept-watch.js --mode pulse|watch --port <n> --state <abs path> [--owner <token>] [--interval 20] [--grace 60] [--liveness 900] [--hold-version <n>]\n');
+    process.stderr.write('usage: concept-watch.js --mode pulse|watch --port <n> --state <abs path> [--owner <token>] [--owner-pid <n>] [--interval 20] [--grace 60] [--liveness 900] [--hold-version <n>]\n');
     process.exit(2);
   }
   // A crash must still announce itself as a reason line, not as a stack trace:

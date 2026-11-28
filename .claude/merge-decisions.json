@@ -35,6 +35,30 @@
         ]
       }
     ],
+    "README.md›devops:count:hooks summary›value": [
+      {
+        "ship": "claude/project-thread-uvxn6w",
+        "by": "JerryT2T",
+        "value": "121 (generated count)",
+        "decided": true,
+        "at": "2026-11-28T15:18:16.877Z",
+        "hunks": [
+          "7f9356083424"
+        ]
+      }
+    ],
+    "README.md›devops:count:hooks tree›value": [
+      {
+        "ship": "claude/project-thread-uvxn6w",
+        "by": "JerryT2T",
+        "value": "121 (generated count)",
+        "decided": true,
+        "at": "2026-11-28T15:18:16.877Z",
+        "hunks": [
+          "0eacbcbdf8b3"
+        ]
+      }
+    ],
     "README.md›devops:count:hooks›value": [
       {
         "ship": "claude/project-thread-5l5z8o",
@@ -64,6 +88,16 @@
         "at": "2026-11-23T21:48:52.197Z",
         "hunks": [
           "b3ddb0edabed"
+        ]
+      },
+      {
+        "ship": "claude/project-thread-uvxn6w",
+        "by": "JerryT2T",
+        "value": "121 (generated count, one new hook)",
+        "decided": true,
+        "at": "2026-11-28T15:18:16.877Z",
+        "hunks": [
+          "4a52ea8cc5c7"
         ]
       }
     ],
@@ -98,6 +132,30 @@
         "at": "2026-11-18T23:04:59.372Z",
         "hunks": [
           "b10e01dd8bd6"
+        ]
+      }
+    ],
+    "architecture.html›devops:count:hooks h4›value": [
+      {
+        "ship": "claude/project-thread-uvxn6w",
+        "by": "JerryT2T",
+        "value": "121 (generated count)",
+        "decided": true,
+        "at": "2026-11-28T15:18:16.877Z",
+        "hunks": [
+          "a8e65e057fe7"
+        ]
+      }
+    ],
+    "architecture.html›devops:count:hooks intro›value": [
+      {
+        "ship": "claude/project-thread-uvxn6w",
+        "by": "JerryT2T",
+        "value": "121 (generated count)",
+        "decided": true,
+        "at": "2026-11-28T15:18:16.877Z",
+        "hunks": [
+          "ecd47674ab3e"
         ]
       }
     ],

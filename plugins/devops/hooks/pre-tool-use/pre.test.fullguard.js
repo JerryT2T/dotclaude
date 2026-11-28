@@ -13,6 +13,10 @@
  *   nothing new. Filtered runs (`vitest run <files>`, `vitest related`) pass,
  *   as does everything outside a ship. Matching lives in lib/full-suite-cmd.
  *
+ *   Machine lock: outside a ship too, only ONE full run at a time per machine
+ *   (lib/full-suite-lock); a second run from another session is blocked with
+ *   holder and age. post.test.release frees the lock.
+ *
  *   Bypass: inline `DEVOPS_ALLOW_FULL_SUITE=1` in the command or in the hook
  *   environment (e.g. ship_build named a red suite and you re-run it to debug).
  *   Fails open on any error.
@@ -39,8 +43,10 @@ function main(hook, deps = {}) {
   if (process.env.DEVOPS_ALLOW_FULL_SUITE === '1' || /\bDEVOPS_ALLOW_FULL_SUITE=1\b/.test(cmd)) return null;
   const isActive = deps.isActive || require('../lib/ship-sentinel').isActive;
   const cwd = typeof hook.cwd === 'string' && hook.cwd ? hook.cwd : process.cwd();
-  if (!isActive(cwd)) return null;
-  return { block: MESSAGE };
+  if (isActive(cwd)) return { block: MESSAGE };
+  const lock = deps.lock || require('../lib/full-suite-lock');
+  const r = lock.acquire({ sessionId: hook.session_id, toolUseId: hook.tool_use_id, cwd });
+  return r.ok ? null : { block: lock.blockMessage(r.holder) };
 }
 
 if (require.main === module) {

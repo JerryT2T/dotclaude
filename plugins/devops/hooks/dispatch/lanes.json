@@ -275,6 +275,9 @@
       ],
       [
         "post.test.record"
+      ],
+      [
+        "post.test.release"
       ]
     ],
     "PostToolUse:fast": [
@@ -291,6 +294,9 @@
     "PostToolUseFailure": [
       [
         "post.governor.clear"
+      ],
+      [
+        "post.test.release"
       ],
       [
         "post.approval.clear"

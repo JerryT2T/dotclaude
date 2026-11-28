@@ -43,7 +43,31 @@ const http = require('http');
 // The session's directory, not the hook process's: Desktop starts hooks of a
 // worktree session in the repo root (see hook-input sessionCwd).
 // Only as the hook entry point: imported by a test, a sync stdin read blocks forever.
-const cwd = require.main === module ? require('../lib/hook-input').sessionCwd().cwd : process.cwd();
+const sessionCwd = require.main === module ? require('../lib/hook-input').sessionCwd().cwd : process.cwd();
+
+/**
+ * The project root that owns the open concept (#1245). Normally the session cwd.
+ * A session started in a parent folder (no repo) or a repo root has no state
+ * file of its own when the concept runs in a linked worktree below it
+ * (`<base>/.claude/worktrees/<wt>/` or `<base>/<repo>/.claude/worktrees/<wt>/`),
+ * so look there: the most recently written state file wins. Bounded scan.
+ */
+function findConceptRoot(base) {
+  const has = d => { try { return fs.statSync(path.join(d, '.claude', 'concept-active.json')).mtimeMs; } catch { return 0; } };
+  if (has(base)) return base;
+  const subdirs = d => { try { return fs.readdirSync(d, { withFileTypes: true }).filter(e => e.isDirectory()).map(e => path.join(d, e.name)); } catch { return []; } };
+  const candidates = [];
+  const wtsOf = repo => subdirs(path.join(repo, '.claude', 'worktrees'));
+  candidates.push(...wtsOf(base));
+  for (const repo of subdirs(base).slice(0, 200)) {
+    if (path.basename(repo).startsWith('.')) continue;
+    candidates.push(...wtsOf(repo));
+  }
+  let best = null; let bestM = 0;
+  for (const c of candidates) { const m = has(c); if (m > bestM) { best = c; bestM = m; } }
+  return best || base;
+}
+const cwd = findConceptRoot(sessionCwd);
 const STATE_PATH = path.join(cwd, '.claude', 'concept-active.json');
 
 // Age-out: if a state file is older than 24h and the server is gone,
@@ -750,6 +774,7 @@ function safeRead(file) {
 }
 
 module.exports = {
+  findConceptRoot,
   pageFacts,
   buildResumeOffer,
   buildOfferHint,

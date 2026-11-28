@@ -227,3 +227,58 @@ describe("an ordinary Desktop session stays as it was", () => {
     expect(stderr).not.toContain("mcp__hearthbot__");
   });
 });
+
+describe("the Stop gate in a thread: stuck checklist and card-less ship (#1250)", () => {
+  const checklist = (text) => ({ type: "assistant", message: { role: "assistant", content: [{ type: "tool_use", id: "c" + Math.random(), name: "mcp__hearthbot__update_progress_checklist", input: { text } }] } });
+  const stop = (w, extra = {}) => exec(HOOK("stop/stop.flow.guard.js"), [], w, { ...w.base, hook_event_name: "Stop", stop_hook_active: false, ...extra });
+  const setFlag = (w, prefix) => fs.writeFileSync(path.join(w.tmp, `${prefix}-${w.sid}`), "1");
+  const thread = async (name) => {
+    const w = world(name, "alpha");
+    w.append({ type: "user", uuid: "u1", projectsUserTurn: true, message: { role: "user", content: wake("ship") } });
+    await hook("user-prompt-submit/prompt.flow.silent-turn.js", w, prompt(w, wake("ship")));
+    return w;
+  };
+
+  test("a last checklist with a ✱ line and no live work blocks once", async () => {
+    const w = await thread("stuck-checklist");
+    w.append(checklist("Backlog\n\n✓ build\n✱ Ship läuft"));
+    const first = await stop(w);
+    const out = JSON.parse(first.stdout);
+    expect(out.decision).toBe("block");
+    expect(out.reason).toContain("✱ Ship läuft");
+    expect(out.reason).toContain("update_progress_checklist");
+    expect((await stop(w, { stop_hook_active: true })).stdout).toBe("");
+  });
+
+  test("a later fully-done checklist passes", async () => {
+    const w = await thread("done-checklist");
+    w.append(checklist("Backlog\n\n✓ build\n✱ Ship läuft"));
+    w.append(checklist("Backlog\n\n✓ build\n✓ Ship"));
+    expect((await stop(w)).stdout).toBe("");
+  });
+
+  test("a ✱ line with live background work passes", async () => {
+    const w = await thread("live-checklist");
+    w.append(checklist("Backlog\n\n✱ Ship läuft"));
+    w.append({ type: "assistant", message: { role: "assistant", content: [{ type: "tool_use", id: "toolu_a", name: "Agent", input: { subagent_type: "general-purpose", run_in_background: true, description: "ship", prompt: "x" } }] } });
+    w.append({ type: "user", message: { role: "user", content: [{ type: "tool_result", tool_use_id: "toolu_a", content: [{ type: "text", text: "Async agent launched successfully.\nagentId: a75d674f7108dd6c8 (internal ID - do not mention to user.)\nThe agent is working in the background." }] }] } });
+    expect((await stop(w)).stdout).toBe("");
+  });
+
+  test("a merged ship without a rendered card blocks and names render + post_message", async () => {
+    const w = await thread("ship-no-card");
+    setFlag(w, "dotclaude-devops-shipped");
+    const out = JSON.parse((await stop(w)).stdout);
+    expect(out.decision).toBe("block");
+    expect(out.reason).toContain("render_completion_card");
+    expect(out.reason).toContain("ship-successful");
+    expect(out.reason).toContain("mcp__hearthbot__post_message");
+  });
+
+  test("a merged ship with its card rendered passes", async () => {
+    const w = await thread("ship-card");
+    setFlag(w, "dotclaude-devops-shipped");
+    setFlag(w, "dotclaude-devops-card-rendered");
+    expect((await stop(w)).stdout).toBe("");
+  });
+});
